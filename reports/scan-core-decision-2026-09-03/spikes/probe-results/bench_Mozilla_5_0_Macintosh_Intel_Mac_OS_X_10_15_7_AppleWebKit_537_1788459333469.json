@@ -1,0 +1,86 @@
+{
+  "tag": "bench",
+  "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Claude/1.44121.4 Chrome/148.0.7778.280 Safari/537.36",
+  "time": "2026-09-03T18:15:26.088Z",
+  "frames": [
+    {
+      "frame": "a_00_dist_120mm_3_0_px_module_.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 8,
+      "zxingHarderMs": 73.6,
+      "zxingFastMs": 30.8,
+      "zbarMs": 93.8,
+      "zxing": "3818095251828",
+      "zbar": "3818095251828"
+    },
+    {
+      "frame": "a_01_dist_180mm_2_0_px_module_.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 4.6,
+      "zxingHarderMs": 77.8,
+      "zxingFastMs": 19.1,
+      "zbarMs": 80.6,
+      "zxing": "3818095251828",
+      "zbar": "3818095251828"
+    },
+    {
+      "frame": "a_02_dist_240mm_1_5_px_module_.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 3.9,
+      "zxingHarderMs": 43.4,
+      "zxingFastMs": 19.4,
+      "zbarMs": 84.2,
+      "zxing": "-",
+      "zbar": "-"
+    },
+    {
+      "frame": "a_03_dist_300mm_1_2_px_module_.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 5.2,
+      "zxingHarderMs": 36.1,
+      "zxingFastMs": 17.4,
+      "zbarMs": 60.1,
+      "zxing": "-",
+      "zbar": "-"
+    },
+    {
+      "frame": "a_07_blur_0_7_180mm.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 8,
+      "zxingHarderMs": 39.6,
+      "zxingFastMs": 18.2,
+      "zbarMs": 70.3,
+      "zxing": "-",
+      "zbar": "-"
+    },
+    {
+      "frame": "a_08_blur_1_2_180mm.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 8.7,
+      "zxingHarderMs": 47.9,
+      "zxingFastMs": 17.4,
+      "zbarMs": 71,
+      "zxing": "-",
+      "zbar": "-"
+    },
+    {
+      "frame": "a_09_blur_1_8_180mm.png",
+      "w": 1280,
+      "h": 720,
+      "getImageDataMs": 9.5,
+      "zxingHarderMs": 39.2,
+      "zxingFastMs": 17.4,
+      "zbarMs": 63.3,
+      "zxing": "-",
+      "zbar": "-"
+    }
+  ],
+  "zxingWarmupMs": 193.7,
+  "zbarWarmupMs": 22.1
+}

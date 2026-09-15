@@ -1,0 +1,66 @@
+// Adapters: zxing-wasm (reader), @undecaf/zbar-wasm, and the repo's pure scanline reader.
+import fs from 'node:fs';
+import path from 'node:path';
+import { grayToRgba } from './ean13.mjs';
+
+const here = path.dirname(new URL(import.meta.url).pathname);
+
+// ---- zxing-wasm ----
+let zx = null;
+export async function zxingInit() {
+  if (zx) return zx;
+  const mod = await import('zxing-wasm/reader');
+  const wasmPath = path.join(here, '../node_modules/zxing-wasm/dist/reader/zxing_reader.wasm');
+  await mod.prepareZXingModule({ overrides: { wasmBinary: fs.readFileSync(wasmPath).buffer }, fireImmediately: true });
+  zx = mod;
+  return zx;
+}
+/** returns { results:[{text,isValid,error,format,position,lineCount}], ms } */
+export async function zxingDecode(gray, w, h, opts = {}) {
+  const m = await zxingInit();
+  const rgba = grayToRgba(gray);
+  const t0 = performance.now();
+  const results = await m.readBarcodes({ data: rgba, width: w, height: h }, {
+    formats: ['EAN-13', 'EAN-8', 'UPC-A'],
+    tryHarder: opts.tryHarder ?? true,
+    tryRotate: opts.tryRotate ?? true,
+    tryInvert: false,
+    tryDownscale: opts.tryDownscale ?? true,
+    returnErrors: opts.returnErrors ?? true,
+    maxNumberOfSymbols: 4,
+    ...(opts.extra || {}),
+  });
+  const ms = performance.now() - t0;
+  return { results: results.map(r => ({ text: r.text, isValid: r.isValid, error: r.error, format: r.format, position: r.position, lineCount: r.lineCount, orientation: r.orientation })), ms };
+}
+
+// ---- zbar-wasm ----
+let zb = null;
+export async function zbarInit() {
+  if (zb) return zb;
+  zb = await import('@undecaf/zbar-wasm');
+  return zb;
+}
+export async function zbarDecode(gray, w, h) {
+  const m = await zbarInit();
+  const t0 = performance.now();
+  const buf = new Uint8Array(gray).buffer; // copy so zbar owns it
+  const symbols = await m.scanGrayBuffer(buf, w, h);
+  const ms = performance.now() - t0;
+  return { results: symbols.map(s => ({ text: s.decode(), type: s.typeName, quality: s.quality, points: s.points, orientation: s.orientation })), ms };
+}
+
+// ---- repo scanline reader (pure TS, imported via tsx) ----
+let repo = null;
+export async function repoInit() {
+  if (repo) return repo;
+  repo = await import('/Users/tomaszboro22/Developer/pinguino-scan-core-decision/src/features/product-scanner/barcodeScanline.ts');
+  return repo;
+}
+export async function repoDecode(gray, w, h) {
+  const m = await repoInit();
+  const t0 = performance.now();
+  const v = m.decodeGtinFromLuminance(gray, w, h);
+  const ms = performance.now() - t0;
+  return { results: v ? [{ text: v }] : [], ms };
+}
