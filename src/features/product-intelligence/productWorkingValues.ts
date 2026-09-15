@@ -1125,18 +1125,23 @@ export function resolveProductWorkingValues(
   const technicalAuthorityRequired =
     input.technical && !input.technicalAuthority && valueReadiness !== 'REVIEW';
   const readiness: ProductReadiness = valueReadiness;
-  const criticalPhysicsBlockers = requirementsApplicable
-    ? [
-        ...missingEngineFields.map((field) => `MISSING_${field.toUpperCase()}`),
-        ...(power.resolved ? [] : ['UNRESOLVED_SWEETENING_FREEZING_PATH']),
-        ...(contradictedByDeclaration ? ['SELF_CONTRADICTORY_DECLARATION'] : []),
-        ...unsafeEstimatedFields.map(
+  const criticalPhysicsBlockers = [
+    // Semantic uncertainty defers the ordinary BASE requirement set. The
+    // independent freezing-path and declaration-consistency blockers remain
+    // truthful regardless of role/form certainty.
+    ...(requirementsApplicable
+      ? missingEngineFields.map((field) => `MISSING_${field.toUpperCase()}`)
+      : []),
+    ...(power.resolved ? [] : ['UNRESOLVED_SWEETENING_FREEZING_PATH']),
+    ...(contradictedByDeclaration ? ['SELF_CONTRADICTORY_DECLARATION'] : []),
+    ...(requirementsApplicable
+      ? unsafeEstimatedFields.map(
           (field) =>
             `FIELD_CONFIDENCE_BELOW_READY_FLOOR:${field}:` +
             `${fields[field].provenance.confidence.toFixed(4)}<${(ENGINE_ESTIMATE_READY_FLOORS[field] ?? 0.96).toFixed(4)}`,
-        ),
-      ]
-    : [];
+        )
+      : []),
+  ];
 
   const mapperReferences = [
     ...new Set(

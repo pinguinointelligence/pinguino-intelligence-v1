@@ -336,7 +336,7 @@ describe('working values and readiness', () => {
       sourceUrls: [],
     }),
     productArchetype: 'NORMAL_INGREDIENT' as const,
-    ingredientFamily: 'cocoa' as const,
+    ingredientFamily: 'cocoa_butter' as const,
     physicalForm: 'SOLID' as const,
     intendedUsageRole: 'BASE_ONLY' as const,
     modelRequired: false,
@@ -919,7 +919,7 @@ describe('engine readiness contract', () => {
     expect(resolved.valueReadiness).toBe('READY');
   });
 
-  it('keeps genuinely unresolved water/solids as a critical composition blocker', () => {
+  it('defers water/solids requirement gaps while semantics are unresolved', () => {
     const resolved = resolveProductWorkingValues(
       {
         ...base,
@@ -939,7 +939,7 @@ describe('engine readiness contract', () => {
 
     expect(resolved.values.water_percent).toBeNull();
     expect(resolved.values.total_solids_percent).toBeNull();
-    expect(resolved.criticalPhysicsBlockers).toContain('MISSING_WATER_PERCENT');
+    expect(resolved.criticalPhysicsBlockers).not.toContain('MISSING_WATER_PERCENT');
     expect(resolved.engineReady).toBe(false);
   });
 

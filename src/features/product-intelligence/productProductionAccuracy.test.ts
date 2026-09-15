@@ -188,7 +188,9 @@ describe('one production-oriented Product Accuracy authority', () => {
     expect(result.gellattiReadiness.ready).toBe(true);
     expect(result.gellattiReadiness.blockers).not.toContain('MISSING_SALT_PERCENT');
     expect(result.gellattiReadiness.blockers).not.toContain('NUTRITION_FACT_REQUIRED:salt_percent');
-    expect(result.gellattiReadiness.blockers).not.toContain('NUTRITION_FACT_REQUIRED:kcal_per_100g');
+    expect(result.gellattiReadiness.blockers).not.toContain(
+      'NUTRITION_FACT_REQUIRED:kcal_per_100g',
+    );
     expect(result.productAccuracy).toBe(result.rawProductAccuracy);
     expect(result.criticalCapApplied).toBe(false);
   });

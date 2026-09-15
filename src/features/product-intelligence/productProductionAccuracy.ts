@@ -347,7 +347,7 @@ export function assessProductProductionAccuracy(
 
   const role = recognition?.intendedUsageRole ?? input.behavior.intendedUsageRole;
   const semanticsResolved =
-    recognition !== null &&
+    recognition != null &&
     recognition.modelRequired === false &&
     recognition.productArchetype !== 'UNKNOWN' &&
     recognition.ingredientFamily !== 'unknown' &&
