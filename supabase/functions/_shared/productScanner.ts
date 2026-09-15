@@ -6,6 +6,10 @@ import {
   type EanConfirmationMethod,
 } from '../../../src/features/product-intelligence/pageEanConfirmation.ts';
 import type { ProductSemanticEvidence } from '../../../src/features/product-intelligence/productRecognition.ts';
+export {
+  scannerCaptureFormatForSymbology,
+  verifyScannerBarcodePayload,
+} from '../../../src/scan-import-v2/barcodeIdentityContract.ts';
 
 export const PRODUCT_SCAN_SCHEMA_VERSION = 'gellatti_product_scan_v1';
 

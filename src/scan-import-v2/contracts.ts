@@ -12,7 +12,8 @@ export type InvalidCodeReason =
   | 'charset'
   | 'length'
   | 'symbology_mismatch'
-  | 'checksum';
+  | 'checksum'
+  | 'canonical_mismatch';
 
 export interface CodeIdentity {
   symbology: ConfirmedSymbology;

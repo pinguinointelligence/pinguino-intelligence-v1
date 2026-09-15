@@ -154,7 +154,9 @@ export function canonicalRegistryIdentityFromScanResult(
 }
 
 export function manualConfirmedScan(input: string, now = Date.now()): ConfirmedScan | null {
-  const digits = input.replace(/\D/g, '');
+  const trimmed = input.trim();
+  if (!/^[0-9]+$/.test(trimmed)) return null;
+  const digits = trimmed;
   // Eight digits are ambiguous between EAN-8 and UPC-E without decoder evidence. Do not invent a
   // symbology for manual input; the input remains in the field so the customer can use the camera
   // or provide a format-bearing code instead.
@@ -164,7 +166,7 @@ export function manualConfirmedScan(input: string, now = Date.now()): ConfirmedS
   return {
     symbology,
     value: digits,
-    rawValue: input.trim(),
+    rawValue: trimmed,
     // a code typed by the customer is a confirmed value, not a single unverified read: the identity
     // contract requires two agreeing reads, and the QA harness records a typed code the same way
     confirmation: { lane: 'consensus', agreeingFrames: 2, sources: ['manual'] },

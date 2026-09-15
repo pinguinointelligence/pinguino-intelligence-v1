@@ -144,13 +144,16 @@ describe('scan flow — pure rules', () => {
   });
 
   it('a typed code becomes the same confirmed-scan contract, with manual provenance', () => {
-    const scan = manualConfirmedScan(' 8402 0010 47251 ', 1000);
+    const scan = manualConfirmedScan(' 8402001047251 ', 1000);
     expect(scan?.symbology).toBe('EAN-13');
     expect(scan?.value).toBe('8402001047251');
     expect(scan?.confirmation.sources).toEqual(['manual']);
     expect(scan?.provenance.trackId).toBe('manual');
     expect(manualConfirmedScan('036000291452')?.symbology).toBe('UPC-A');
     expect(manualConfirmedScan('96385074')).toBeNull();
+    expect(manualConfirmedScan('8402 0010 47251')).toBeNull();
+    expect(manualConfirmedScan('8402001047251-')).toBeNull();
+    expect(manualConfirmedScan('8402001047251\uFF11')).toBeNull();
     expect(manualConfirmedScan('123')).toBeNull();
     expect(manualConfirmedScan('12345678901234')).toBeNull();
   });
