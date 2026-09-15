@@ -253,8 +253,10 @@ describe('AS3 — no LIVE definition still depends on the invalid value', () => 
       // the latest definition of the submit function when the audit actor_type
       // regression was fixed. Pinning the filename made this test fail for a
       // correct change, which is the wrong thing to assert. The semantic claim
-      // below is the contract.
-      expect(latest.file).toMatch(/^202608312\d{5}_/);
+      // below is the contract. 20260910220000 (C-APP-09, READY / NOT APPLIED)
+      // redefines the decision RPC to link /partner instead of the retired
+      // /work-with-us; it carries the same fix, so it may win too.
+      expect(latest.file).toMatch(/^(202608312\d{5}|20260910220000)_/);
       // strip comments: the fix is explained in prose above the code it replaces
       const executable = latest.body.replace(/--.*$/gm, '');
       expect(executable).not.toContain('in_review');
