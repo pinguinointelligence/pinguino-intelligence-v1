@@ -1125,12 +1125,25 @@ export function resolveProductWorkingValues(
   const technicalAuthorityRequired =
     input.technical && !input.technicalAuthority && valueReadiness !== 'REVIEW';
   const readiness: ProductReadiness = valueReadiness;
+  let massBalanceBlockerEmitted = false;
   const criticalPhysicsBlockers = [
     // Semantic uncertainty defers the ordinary BASE requirement set. The
     // independent freezing-path and declaration-consistency blockers remain
     // truthful regardless of role/form certainty.
     ...(requirementsApplicable
-      ? missingEngineFields.map((field) => `MISSING_${field.toUpperCase()}`)
+      ? missingEngineFields.flatMap((field) => {
+          const isMassBalanceField = field === 'water_percent' || field === 'total_solids_percent';
+          if (isMassBalanceField) {
+            // Water and total solids are one degree of freedom. Keep the existing
+            // solids code as the deterministic external representative so the
+            // complementary unknown cannot become two obligations. A material
+            // conflict remains represented by Product Accuracy's conflict blocker.
+            if (massBalanceConflict || massBalanceBlockerEmitted) return [];
+            massBalanceBlockerEmitted = true;
+            return ['MISSING_TOTAL_SOLIDS_PERCENT'];
+          }
+          return [`MISSING_${field.toUpperCase()}`];
+        })
       : []),
     ...(power.resolved ? [] : ['UNRESOLVED_SWEETENING_FREEZING_PATH']),
     ...(contradictedByDeclaration ? ['SELF_CONTRADICTORY_DECLARATION'] : []),

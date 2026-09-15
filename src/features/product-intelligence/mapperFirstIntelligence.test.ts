@@ -863,6 +863,99 @@ describe('engine readiness contract', () => {
     technical: false,
   };
 
+  const resolvedBeverage = {
+    ...base,
+    identity: {
+      name: 'Dr Pepper',
+      category: 'beverage',
+      subcategory: 'soft drink',
+      semantic: classifyProductSemantics({
+        name: 'Dr Pepper',
+        brand: 'Coca-Cola',
+        manufacturer: null,
+        manufacturerCode: null,
+        gtin: null,
+        productType: 'beverage',
+        category: 'beverage',
+        subcategory: 'soft drink',
+        variant: null,
+        ingredients: 'water, sugar',
+        nutrition: 'fat:0 | protein:0 | carbohydrate:4.9 | sugars:4.9',
+        description: 'carbonated soft drink',
+        dosage: null,
+        technicalParameters: null,
+        sourceUrls: [],
+      }),
+    },
+    declared: {
+      fat_percent: 0,
+      protein_percent: 0,
+      carbohydrate_percent: 4.9,
+      total_sugars_percent: 4.9,
+      sucrose_percent: 4.9,
+      alcohol_percent: 0,
+      polyol_percent: 0,
+    },
+  };
+
+  it('emits one canonical blocker when both complementary mass fields are unknown', () => {
+    const resolved = resolveProductWorkingValues(resolvedBeverage, knowledge);
+
+    expect(resolved.values.water_percent).toBeNull();
+    expect(resolved.values.total_solids_percent).toBeNull();
+    expect(resolved.criticalPhysicsBlockers).toContain('MISSING_TOTAL_SOLIDS_PERCENT');
+    expect(resolved.criticalPhysicsBlockers).not.toContain('MISSING_WATER_PERCENT');
+    expect(
+      resolved.criticalPhysicsBlockers.filter((blocker) =>
+        /^MISSING_(?:WATER|TOTAL_SOLIDS)_PERCENT$/.test(blocker),
+      ),
+    ).toEqual(['MISSING_TOTAL_SOLIDS_PERCENT']);
+  });
+
+  it('emits no mass-balance blocker when either complement is supplied and closed', () => {
+    const fromWater = resolveProductWorkingValues(
+      { ...resolvedBeverage, declared: { ...resolvedBeverage.declared, water_percent: 62 } },
+      knowledge,
+    );
+    const fromSolids = resolveProductWorkingValues(
+      { ...resolvedBeverage, declared: { ...resolvedBeverage.declared, total_solids_percent: 38 } },
+      knowledge,
+    );
+
+    expect(fromWater.values.total_solids_percent).toBe(38);
+    expect(fromSolids.values.water_percent).toBe(62);
+    expect(fromWater.criticalPhysicsBlockers).not.toContain('MISSING_TOTAL_SOLIDS_PERCENT');
+    expect(fromWater.criticalPhysicsBlockers).not.toContain('MISSING_WATER_PERCENT');
+    expect(fromSolids.criticalPhysicsBlockers).not.toContain('MISSING_TOTAL_SOLIDS_PERCENT');
+    expect(fromSolids.criticalPhysicsBlockers).not.toContain('MISSING_WATER_PERCENT');
+  });
+
+  it('preserves a mass-balance conflict without adding a generic missing alias', () => {
+    const resolved = resolveProductWorkingValues(
+      {
+        ...resolvedBeverage,
+        materialConflictDetails: [
+          {
+            field: 'productionDeclarations.waterPercent',
+            labelValue: 80,
+            externalValue: 90,
+            retainedSource: null,
+            state: 'UNRESOLVED',
+            canonicalValue: null,
+          },
+        ],
+      },
+      knowledge,
+    );
+
+    expect(resolved.criticalPhysicsBlockers).not.toContain('MISSING_TOTAL_SOLIDS_PERCENT');
+    expect(resolved.criticalPhysicsBlockers).not.toContain('MISSING_WATER_PERCENT');
+    expect(resolved.rescueOutcome.status).toBe('BLOCKED');
+    expect(resolved.rescueOutcome.reasonCodes).toContain(
+      'RESCUE_INPUT_MATERIAL_CONFLICT:productionDeclarations.waterPercent',
+    );
+  });
+
   it('derives solids from water, and water from solids, without a second penalty', () => {
     const fromWater = resolveProductWorkingValues(
       { ...base, declared: { water_percent: 62 } },
