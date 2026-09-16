@@ -2,6 +2,7 @@ import type {
   IntimportMapperAuthorityRow,
   IntimportProductProfileProposalInput,
   IntimportTrustedProductProfile,
+  IntimportProductProfileKnowledge,
 } from './intimportWholeProfileAuthority.ts';
 import {
   finalizeProductProductionAccuracy,
@@ -70,6 +71,7 @@ export function validateSharedProductOnboarding(input: {
   proposal: SharedProductOnboardingProposal;
   mapperRows: readonly IntimportMapperAuthorityRow[];
   behaviorRows: readonly MapperProductBehaviorAuthorityRow[];
+  mapperKnowledge?: IntimportProductProfileKnowledge;
 }): SharedProductOnboardingResult | null {
   const standaloneTopping = usesStandaloneToppingOnboardingAuthority(input.proposal);
   const profile = validateIntimportProductProfileProposal({
@@ -78,6 +80,7 @@ export function validateSharedProductOnboarding(input: {
     // also keeps the edge worker from building three 2.5k-row inference indexes
     // for an authority whose persisted referenceMapperIngredientId is null.
     rows: standaloneTopping ? [] : input.mapperRows,
+    mapperKnowledge: standaloneTopping ? undefined : input.mapperKnowledge,
   });
   if (!profile) return null;
 

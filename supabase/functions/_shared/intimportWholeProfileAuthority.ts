@@ -5,6 +5,7 @@ import {
   isCanonicalMapperRescueDonor,
   profileDonor,
   PROFILE_MATCH_FLOOR,
+  type MapperKnowledge,
   type MapperKnowledgeRow,
   type ProfileMatchBasis,
   type ProfileMatchInput,
@@ -182,6 +183,39 @@ export interface IntimportProductProfileProposalInput {
    * browser-supplied final profile has no authority at this boundary. */
   proposedTechnicalComposition?: Record<string, unknown>;
   rows: readonly IntimportMapperAuthorityRow[];
+  /** Optional request-scoped indexes for a second authority pass over the same immutable rows. */
+  mapperKnowledge?: IntimportProductProfileKnowledge;
+}
+
+export interface IntimportProductProfileKnowledge {
+  /** Reference identity prevents reuse with a different row snapshot. */
+  sourceRows: readonly IntimportMapperAuthorityRow[];
+  mapperFingerprint: string;
+  rescueKnowledge: MapperKnowledge;
+  wholeProfileKnowledge: MapperKnowledge;
+}
+
+/**
+ * Build the two full-source indexes used by PRODUCT_PROFILE_V1 once per request.
+ * The source rows remain complete; only the existing authority filters select which
+ * index each decision consumes. This is deliberately not a module/global cache.
+ */
+export function buildIntimportProductProfileKnowledge(
+  rows: readonly IntimportMapperAuthorityRow[],
+): IntimportProductProfileKnowledge {
+  const mapperFingerprint = fingerprintMapperRows(rows);
+  return {
+    sourceRows: rows,
+    mapperFingerprint,
+    rescueKnowledge: buildMapperKnowledge(
+      rows.filter(isIntimportMapperRescueDonor),
+      mapperFingerprint,
+    ),
+    wholeProfileKnowledge: buildMapperKnowledge(
+      rows.filter(isBindableIntimportMapperTarget),
+      mapperFingerprint,
+    ),
+  };
 }
 
 const TECHNICAL_KEYS: Readonly<Record<WorkingNumericField, string>> = Object.freeze({
@@ -278,7 +312,9 @@ export function validateIntimportWholeProfileProposal(
 export function validateIntimportProductProfileProposal(
   input: IntimportProductProfileProposalInput,
 ): IntimportTrustedProductProfile | null {
-  const mapperFingerprint = fingerprintMapperRows(input.rows);
+  const reusableKnowledge =
+    input.mapperKnowledge?.sourceRows === input.rows ? input.mapperKnowledge : null;
+  const mapperFingerprint = reusableKnowledge?.mapperFingerprint ?? fingerprintMapperRows(input.rows);
   const deterministicRecognition = input.recognitionEvidence
     ? classifyProductSemantics(input.recognitionEvidence)
     : null;
@@ -292,14 +328,12 @@ export function validateIntimportProductProfileProposal(
   // Field Rescue gets every active canonical PI-ING row. Whole-profile authority
   // remains a separate, narrower decision so changing Rescue provenance policy
   // cannot weaken publication/runtime profile binding.
-  const knowledge = buildMapperKnowledge(
-    input.rows.filter(isIntimportMapperRescueDonor),
-    mapperFingerprint,
-  );
-  const wholeProfileKnowledge = buildMapperKnowledge(
-    input.rows.filter(isBindableIntimportMapperTarget),
-    mapperFingerprint,
-  );
+  const knowledge =
+    reusableKnowledge?.rescueKnowledge ??
+    buildMapperKnowledge(input.rows.filter(isIntimportMapperRescueDonor), mapperFingerprint);
+  const wholeProfileKnowledge =
+    reusableKnowledge?.wholeProfileKnowledge ??
+    buildMapperKnowledge(input.rows.filter(isBindableIntimportMapperTarget), mapperFingerprint);
   const evidenceAssessment = assessProductConfidence(input.evidence);
   const exactProductIdentity =
     (input.evidence.exactCanonicalMatch || input.evidence.validatedBarcode) &&
