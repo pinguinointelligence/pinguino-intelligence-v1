@@ -182,7 +182,10 @@ async function exactProductForBarcode(
       kind: 'EXACT_PRODUCT',
       product: {
         id: row.product_id,
-        canonical_gtin: row.matched_gtin,
+        // The RPC's matched_gtin records the catalogue key that hit (which may be an explicit
+        // EAN-8/UPC alias). The scanner response must carry the already-validated canonical
+        // identity, while the row still remains the authority for product/version facts.
+        canonical_gtin: identity.canonicalGtin13,
         product_code: row.product_code,
         product_name_display: row.display_name,
         brand: row.brand,

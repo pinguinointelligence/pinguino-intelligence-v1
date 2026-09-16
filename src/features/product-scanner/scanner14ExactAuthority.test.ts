@@ -364,4 +364,9 @@ describe('Scanner 1.4 — one exact GELLATTI authority', () => {
     ])
       expect(ANALYZE).toContain(field);
   });
+
+  it('SCN-1.4-29 Edge response uses canonical identity, not an alias hit key', () => {
+    expect(ANALYZE).toContain('canonical_gtin: identity.canonicalGtin13');
+    expect(ANALYZE).toContain('matched_gtin');
+  });
 });
