@@ -32,6 +32,10 @@ import {
   usesStandaloneToppingOnboardingAuthority,
   validateSharedProductOnboarding,
 } from '../_shared/sharedProductOnboarding.ts';
+import {
+  buildIntimportProductProfileKnowledge,
+  type IntimportProductProfileKnowledge,
+} from '../_shared/intimportWholeProfileAuthority.ts';
 import { buildSharedProductSemanticBindingProposal } from '../_shared/sharedProductSemanticBinding.ts';
 import {
   classifyProductSemantics,
@@ -831,6 +835,10 @@ Deno.serve(async (request) => {
     });
   }
 
+  // One Finalize request may recompute after targeted research changes the evidence. The
+  // product profile must be recomputed, but the immutable full Mapper snapshot and its two
+  // authority indexes do not change between those passes. Keep this reuse request-scoped only.
+  let mapperKnowledge: IntimportProductProfileKnowledge | null = null;
   const recomputeProductAuthorities = async () => {
     const proposal = customerProductProfileProposal({
       scanResult: corrections.result,
@@ -859,11 +867,15 @@ Deno.serve(async (request) => {
       trustedRecognition: proposal.trustedRecognition,
     } as const;
     const standaloneTopping = usesStandaloneToppingOnboardingAuthority(sharedProposal);
+    const mapperRows = standaloneTopping ? [] : await loadMapperRows(service);
+    const behaviorRows = standaloneTopping ? [] : await loadBehaviorRows(service);
+    if (!standaloneTopping) mapperKnowledge ??= buildIntimportProductProfileKnowledge(mapperRows);
     const authority = validateSharedProductOnboarding({
       source: 'SCANNER',
       proposal: sharedProposal,
-      mapperRows: standaloneTopping ? [] : await loadMapperRows(service),
-      behaviorRows: standaloneTopping ? [] : await loadBehaviorRows(service),
+      mapperRows,
+      behaviorRows,
+      mapperKnowledge: standaloneTopping ? undefined : mapperKnowledge,
     });
     if (!authority) return { kind: 'profile_rejected' as const };
     return {
