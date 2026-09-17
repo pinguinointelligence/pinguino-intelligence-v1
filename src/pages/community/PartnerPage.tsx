@@ -38,6 +38,7 @@ import {
   type PartnerCodeAnalytics,
   type PartnerWorkspace,
 } from '@/services/partner';
+import { ACCOUNTING_CALENDAR_NOTE, madridAccountingDay } from '@/features/affiliate/accountingDate';
 import { earningsSummary } from '@/features/affiliate/earningsSummary';
 import { PartnerFirstSteps } from '@/features/affiliate/PartnerFirstSteps';
 
@@ -548,13 +549,11 @@ function Earnings({ data }: { data: PartnerWorkspace }) {
             {(data.commissions ?? []).map((row) => (
               <tr key={String(row.id)} className="border-b border-ink/10">
                 <td className="px-3 py-4">
-                  {new Date(String(row.earnedAt)).toLocaleDateString('pl-PL')}
+                  {madridAccountingDay(row.earnedAt) ?? '—'}
                 </td>
                 {/* H-DASH-07: when the refund window closes and the amount can settle. */}
                 <td className="px-3 py-4">
-                  {row.eligibleAt
-                    ? new Date(String(row.eligibleAt)).toLocaleDateString('pl-PL')
-                    : '—'}
+                  {madridAccountingDay(row.eligibleAt) ?? '—'}
                 </td>
                 <td className="px-3 py-4">{commissionProductLabel(row.product)}</td>
                 <td className="px-3 py-4">{commissionCadenceLabel(row.cadence)}</td>
@@ -572,6 +571,7 @@ function Earnings({ data }: { data: PartnerWorkspace }) {
           </tbody>
         </table>
       </div>
+      <p className="mt-2 text-[11px] text-stone-500">{ACCOUNTING_CALENDAR_NOTE}</p>
     </>
   );
 }
@@ -626,12 +626,15 @@ function Payouts({ data }: { data: PartnerWorkspace }) {
             <div>
               <span className="text-[10px] uppercase text-stone-500">Data</span>
               <p className="mt-1 text-sm">
-                {new Date(String(row.createdAt)).toLocaleDateString('pl-PL')}
+                {madridAccountingDay(row.createdAt) ?? '—'}
               </p>
             </div>
           </article>
         ))}
       </div>
+      {(data.payouts ?? []).length > 0 ? (
+        <p className="mt-2 text-[11px] text-stone-500">{ACCOUNTING_CALENDAR_NOTE}</p>
+      ) : null}
       {connect.isError ? (
         <p className="mt-3 text-xs text-status-error">
           {customerErrorMessage(connect.error, 'partner')}
