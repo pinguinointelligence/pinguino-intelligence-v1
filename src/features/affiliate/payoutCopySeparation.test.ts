@@ -12,6 +12,8 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
+import { partnerFirstSteps } from './firstStepsModel';
+
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const read = (...parts: string[]) => readFileSync(join(REPO, ...parts), 'utf8');
 
@@ -73,5 +75,46 @@ describe('what the Partner is asked to do', () => {
   it('keeps the waiting states honest: no promise that verification is done', () => {
     expect(PARTNER_PAGE).toContain('Gellatti przygotowuje Twoje konto wypłat. Damy znać, kiedy będzie gotowe.');
     expect(COMMISSION).toContain('Twoje dane do wypłat nie są jeszcze potwierdzone. Kwota czeka.');
+  });
+});
+
+describe('the four states, run against what the QA branch actually returned', () => {
+  /* Measured on the isolated QA branch (2026-09-17, sandbox connected account
+     acct_1UGnj3…): the Partner finished Stripe's hosted onboarding, the signed
+     account.updated delivery mirrored it, and the workspace RPC then returned
+     payoutsEnabled/onboardingComplete/connectAccountPresent all true with one
+     paid payout of 2500. These cases pin the sentence each real projection
+     produces, so a change of shape cannot silently move a Partner back into a
+     "waiting" state. */
+  const workspace = (partner: Record<string, unknown>) =>
+    ({ partner, codes: [], links: [] }) as unknown as Parameters<typeof partnerFirstSteps>[0];
+  const payoutStep = (partner: Record<string, unknown>) =>
+    partnerFirstSteps(workspace(partner)).find((step) => step.id === 'payouts')!;
+
+  it('nothing yet: Gellatti is preparing the account, and the Partner is told so', () => {
+    const step = payoutStep({ connectAccountPresent: false, onboardingComplete: false, payoutsEnabled: false });
+    expect(step.done).toBe(false);
+    expect(step.detail).toContain('Gellatti przygotowuje Twoje konto wypłat');
+    expect(step.section).toBeUndefined();
+  });
+
+  it('account ready, data not confirmed: the Partner is asked, and can act', () => {
+    const step = payoutStep({ connectAccountPresent: true, onboardingComplete: false, payoutsEnabled: false });
+    expect(step.done).toBe(false);
+    expect(step.detail).toContain('Potwierdź tożsamość i dane do wypłat u operatora płatności');
+    expect(step.section).toBe('payouts');
+  });
+
+  it('sent, still waiting on the operator: no promise that it is finished', () => {
+    const step = payoutStep({ connectAccountPresent: true, onboardingComplete: true, payoutsEnabled: false });
+    expect(step.done).toBe(false);
+    expect(step.detail).not.toMatch(/nic więcej nie musisz robić/i);
+    expect(step.section).toBe('payouts');
+  });
+
+  it('the measured QA projection: confirmed, and the step is done', () => {
+    const step = payoutStep({ connectAccountPresent: true, onboardingComplete: true, payoutsEnabled: true });
+    expect(step.done).toBe(true);
+    expect(step.detail).toBe('Dane potwierdzone — wypłaty są aktywne.');
   });
 });
