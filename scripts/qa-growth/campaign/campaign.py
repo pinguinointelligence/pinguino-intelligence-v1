@@ -26,6 +26,10 @@ import urllib.request
 import uuid
 from zoneinfo import ZoneInfo
 
+# A slice may be run again after a fix; the suffix keeps the new lane's users,
+# labels and Stripe idempotency keys distinct from the first run's.
+SUFFIX = ''
+
 REF = 'ncmsonfwbgsqedgnzofg'
 BRANCH = '14d26da6-6ce1-404d-87b7-449f1cbd700b'
 FN = f'https://{REF}.supabase.co/functions/v1'
@@ -679,7 +683,7 @@ def slice5b(c: Campaign):
 
 
 def dispute_lane(c, st, outcome):
-    label = f's7{outcome}'
+    label = f's7{outcome}{SUFFIX}'
     L = lane(c, label, 'STRIPE_PRICE_HOME_MONTHLY_STANDARD', 'home_monthly_standard', pm='pm_card_createDispute', backdate=False)
     inv = first_paid_facts(c, st, f'{outcome}: dispute test card', L, 999)
     pi = pi_of(c, f'{label}-pi', inv['id'])
@@ -714,8 +718,18 @@ def dispute_lane(c, st, outcome):
     c.check(st, f'{outcome}: Stripe closed the dispute as {outcome}', outcome, final['status'] if final else None)
     expect = ['charge.dispute.closed'] + (['charge.dispute.funds_reinstated'] if outcome == 'won' else [])
     evs = c.wait_events(f'{label}-events-2', [dispute['id']], expect, timeout=180)
-    c.check(st, f'{outcome}: every dispute delivery processed', [],
-            [f"{x['type']}:{x['state']}:{x['failure']}" for x in evs if x['state'] != 'processed'])
+    parked = [f"{x['type']}:{x['state']}:{x['failure']}" for x in evs if x['state'] != 'processed']
+    if parked:
+        # A delivery that arrived before the entry existed is PARKED, not dropped.
+        # The recovery worker is what closes it — waiting for the first backoff
+        # step is part of the contract, not a workaround.
+        c.say(f'{label} parked deliveries awaiting the worker: {json.dumps(parked)}')
+        time.sleep(70)
+        recovery_tick(c, f'{label}-recovery')
+        time.sleep(25)
+        evs = c.events_for(f'{label}-events-3', [dispute['id']])
+        parked = [f"{x['type']}:{x['state']}:{x['failure']}" for x in evs if x['state'] != 'processed']
+    c.check(st, f'{outcome}: every dispute delivery settles — the worker finishes what the race parked', [], parked)
     c.say(f"{label} dispute deliveries: {json.dumps([(x['type'], x['state'], x['failure']) for x in evs])}")
     time.sleep(10)
     led = ledger(c, f'{label}-ledger-2', L['sub'])
@@ -766,26 +780,26 @@ def slice9(c: Campaign):
     """Refund BEFORE accrual on real deliveries: invoice.paid receipt refused, full refund processed, invoice.paid redelivered."""
     st = 'S9'
     hold = {}
-    L = lane(c, 's9gapb', 'STRIPE_PRICE_HOME_MONTHLY_STANDARD', 'home_monthly_standard', backdate=False,
-             before_subscribe=lambda cust: hold.update(id=fault(c, 's9-hold-invoice-paid', cust, ['invoice.paid', 'invoice.payment_succeeded'])))
+    L = lane(c, f's9gapb{SUFFIX}', 'STRIPE_PRICE_HOME_MONTHLY_STANDARD', 'home_monthly_standard', backdate=False,
+             before_subscribe=lambda cust: hold.update(id=fault(c, f's9-hold-invoice-paid{SUFFIX}', cust, ['invoice.paid', 'invoice.payment_succeeded'])))
     inv = first_paid_facts(c, st, 'S9 lane', L, 999)
     time.sleep(25)
-    paid = stripe_events(c, 's9-events-paid', L['t0'] - 120, object_id=inv['id'], types=['invoice.paid', 'invoice.payment_succeeded'])
+    paid = stripe_events(c, f's9-events-paid{SUFFIX}', L['t0'] - 120, object_id=inv['id'], types=['invoice.paid', 'invoice.payment_succeeded'])
     rows = db_events_by_id(c, 's9-db-paid-held', [e['id'] for e in paid])
     c.check(st, 'invoice.paid / payment_succeeded exist in Stripe but their receipt was refused (no durable row, Stripe still pending)',
             {'stripe_events': 2, 'db_rows': 0, 'pending': True},
             {'stripe_events': len(paid), 'db_rows': len(rows), 'pending': all(e['pending_webhooks'] >= 1 for e in paid)})
     led = ledger(c, 's9-ledger-0', L['sub'])
     c.check(st, 'no commission yet (the paid invoice has not been received)', [], led['entries'])
-    pi = pi_of(c, 's9-pi', inv['id'])
-    c.stripe('s9-refund-full', 'refund_create', {'paymentIntentId': pi})
+    pi = pi_of(c, f's9-pi{SUFFIX}', inv['id'])
+    c.stripe(f's9-refund-full{SUFFIX}', 'refund_create', {'paymentIntentId': pi})
     ev = c.wait_events('s9-refund-events', [pi], ['charge.refunded'], timeout=120)
     c.say(f"s9 refund deliveries before accrual: {json.dumps([(e['type'], e['state'], e['failure']) for e in ev])}")
     c.check(st, 'refund delivered first: processed with the honest no-entry note', True,
             any(e['type'] == 'charge.refunded' and e['state'] == 'processed' and e['failure'] == 'skipped_no_commission_entry_for_refund' for e in ev))
     release(c, hold['id'])
     for i, e in enumerate(paid):
-        c.stripe(f's9-redeliver-{i}', 'event_resend', {'eventId': e['id']})
+        c.stripe(f's9-redeliver{SUFFIX}-{i}', 'event_resend', {'eventId': e['id']})
     led = wait_ledger(c, 's9-ledger-1', L['sub'], lambda l: len(l['entries']) >= 1, timeout=120)
     time.sleep(15)
     led = ledger(c, 's9-ledger-2', L['sub'])
@@ -908,6 +922,43 @@ select payload from qa_harness.observations where run_id = '{c.run}' and worker 
     c.save()
 
 
+def recovery_tick(c, tag, mode='retry', payload=None):
+    """Run the EXISTING server path for parked deliveries: the DB tick presents the
+    dispatch key from Vault to stripe-recovery. Nothing is replayed by hand."""
+    body = json.dumps(payload or {}).replace("'", "''")
+    rows = c.sql(tag, f"select public.gellatti_stripe_recovery_tick_v1('{mode}', '{body}'::jsonb) as t;")
+    c.say(f"recovery tick [{mode}]: {json.dumps(rows[0]['t'], default=str)}")
+    return rows[0]['t']
+
+
+def backlog(c, tag):
+    return c.sql(tag, """select coalesce(jsonb_agg(jsonb_build_object('event', e.event_id, 'type', e.event_type,
+  'state', e.state, 'attempts', e.attempts, 'note', e.last_error, 'age_min', round(extract(epoch from (now() - e.received_at)) / 60))
+  order by e.received_at), '[]'::jsonb) as b
+from public.stripe_webhook_events e where e.state in ('received', 'failed', 'dead_letter') and e.attempts > 0;""")[0]['b']
+
+
+def slice_recovery(c: Campaign):
+    """The worker that closes what a race parked, and the escalation that keeps it visible."""
+    st = 'S14'
+    before = backlog(c, 's14-backlog-before')
+    c.say(f's14 backlog before: {json.dumps(before, default=str)}')
+    tick = recovery_tick(c, 's14-tick')
+    time.sleep(30)
+    after = backlog(c, 's14-backlog-after')
+    c.say(f's14 backlog after: {json.dumps(after, default=str)}')
+    c.check(st, 'the tick reaches the worker through Vault + pg_net (no manual replay)', True,
+            bool(tick.get('dispatched')) or tick.get('skipped') == 'nothing_due')
+    settled = [e for e in before if e['event'] not in {x['event'] for x in after}]
+    c.say(f"s14 settled by the worker: {json.dumps([e['type'] + ':' + (e['note'] or '') for e in settled])}")
+    c.check(st, 'no delivery is left parked on a dependency that already exists', [],
+            [f"{e['type']}:{e['note']}" for e in after
+             if str(e['note'] or '').startswith('commission_entry_not_booked_yet')])
+    json.dump({'before': before, 'after': after, 'tick': tick}, open(os.path.join(c.dir, 'recovery-s14.json'), 'w'),
+              indent=1, default=str)
+    c.save()
+
+
 def slice13(c: Campaign):
     """The two clocks disagree: a renewal paid on the Stripe clock IN THE NEXT MONTH, while the
     database (and therefore the tier snapshot writer) is still in this one."""
@@ -948,7 +999,8 @@ from public.partner_tier_snapshots where partner_id = '{PARTNER_A}';""")[0]['s']
 
 if __name__ == '__main__':
     camp = Campaign(sys.argv[2] if len(sys.argv) > 2 else None)
+    SUFFIX = sys.argv[3] if len(sys.argv) > 3 else ''
     {'slice1': slice1, 'slice2': slice2, 'slice2b': slice2b, 'slice3': slice3, 'slice4': slice4, 'slice5': slice5,
      'u1': slice_u1, 'u2': slice_u2, 'slice6': slice5b, 'slice7': slice7, 'slice8': slice8, 'slice9': slice9,
-     'slice10': slice10, 'slice11': slice11, 'slice13': slice13}[sys.argv[1]](camp)
+     'slice10': slice10, 'slice11': slice11, 'slice13': slice13, 'recovery': slice_recovery}[sys.argv[1]](camp)
     camp.say(f"run {camp.run}: {sum(x['pass'] for x in camp.checks)}/{len(camp.checks)} checks passed")

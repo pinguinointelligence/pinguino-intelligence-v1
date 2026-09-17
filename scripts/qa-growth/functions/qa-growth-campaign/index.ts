@@ -219,6 +219,70 @@ Deno.serve(async (req) => {
       case 'dispute_get':
         result = await stripe.disputes.retrieve(String(p.disputeId));
         break;
+      case 'connect_account_create':
+        // The SAME shape admin-control provisions, plus the explicit capability
+        // the payout lane actually needs: transfers in, nothing to charge with.
+        result = await stripe.accounts.create({
+          type: 'express',
+          email: String(p.email),
+          capabilities: { transfers: { requested: true } },
+          business_type: p.businessType ? String(p.businessType) : undefined,
+          metadata: { gellatti_partner_id: String(p.partnerId ?? ''), environment: 'qa', qa_run: run },
+        }, idem());
+        break;
+      case 'token_bank_account':
+        // A test bank account token for Connect onboarding prefill (sandbox only).
+        result = await stripe.tokens.create({
+          bank_account: {
+            country: String(p.country ?? 'ES'),
+            currency: String(p.currency ?? 'eur'),
+            account_holder_name: String(p.holderName ?? 'QA Partner A'),
+            account_holder_type: 'individual',
+            account_number: String(p.accountNumber ?? 'ES9121000418450200051332'),
+          },
+        }, idem());
+        break;
+      case 'webhook_endpoint_get':
+        result = await stripe.webhookEndpoints.retrieve(String(p.endpointId ?? 'we_1UGdYfAi07MMapq2rQwaGFpG'));
+        break;
+      case 'connect_account_get':
+        result = await stripe.accounts.retrieve(String(p.accountId));
+        break;
+      case 'connect_account_update':
+        result = await stripe.accounts.update(String(p.accountId), (p.params ?? {}) as Stripe.AccountUpdateParams);
+        break;
+      case 'connect_account_link':
+        result = await stripe.accountLinks.create({
+          account: String(p.accountId),
+          type: 'account_onboarding',
+          return_url: String(p.returnUrl),
+          refresh_url: String(p.refreshUrl),
+        });
+        break;
+      case 'balance_get':
+        result = await stripe.balance.retrieve();
+        break;
+      case 'platform_funding_charge':
+        // Test-mode funding: this payment method lands directly in the AVAILABLE
+        // balance, which is what a transfer needs. Sandbox only.
+        result = await stripe.paymentIntents.create({
+          amount: Number(p.amount ?? 20000),
+          currency: 'eur',
+          payment_method: 'pm_card_bypassPending',
+          confirm: true,
+          description: `QA platform funding ${run}`,
+          automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
+        }, idem());
+        break;
+      case 'transfer_get':
+        result = await stripe.transfers.retrieve(String(p.transferId));
+        break;
+      case 'transfers_for_destination':
+        result = await stripe.transfers.list({ destination: String(p.accountId), limit: 100 });
+        break;
+      case 'payouts_for_account':
+        result = await stripe.payouts.list({ limit: 20 }, { stripeAccount: String(p.accountId) });
+        break;
       case 'events_since':
         result = await stripe.events.list({ created: { gte: Number(p.since) }, limit: 100, types: p.types ?? undefined });
         break;
