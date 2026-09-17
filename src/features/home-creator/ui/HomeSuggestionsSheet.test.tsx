@@ -163,3 +163,12 @@ describe('a REFUSED choice must not look like success', () => {
     expect(html).toContain('home-suggestions-create-own');
   });
 });
+
+describe('one dimmed overlay at a time', () => {
+  it('stops painting its own scrim when another shell is on top (the sign-in modal)', () => {
+    const css = readFileSync(join(process.cwd(), 'src/components/ui/homeLayer.css'), 'utf8');
+    expect(css).toMatch(
+      /\.home-layer-scrim\[data-dialog-active='false'\]\s*\{\s*background:\s*transparent;/,
+    );
+  });
+});

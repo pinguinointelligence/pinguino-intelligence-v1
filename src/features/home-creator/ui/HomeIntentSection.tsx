@@ -9,7 +9,7 @@
  * No preset flavour tiles (§17): the field is open, because the owner rule is that any
  * idea may be described, and a tile grid quietly teaches the opposite.
  */
-import { useCallback, useEffect, useId, useState, type ReactNode } from 'react';
+import { useCallback, useId, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { shouldOfferRecipeCta } from '../homeComposerGate';
@@ -101,10 +101,11 @@ export function HomeIntentSection({
   onDraftTextChange?: (hasText: boolean) => void;
 }) {
   const [value, setValue] = useState('');
-  const hasDraftText = value.trim().length > 0;
-  useEffect(() => {
-    onDraftTextChange?.(hasDraftText);
-  }, [hasDraftText, onDraftTextChange]);
+  /** One place that changes the field, so the page learns about a draft without an effect. */
+  const changeValue = (next: string) => {
+    setValue(next);
+    onDraftTextChange?.(next.trim().length > 0);
+  };
   /* §31: the fruit camera is the composer's own, so HOME's page does not have to
      learn a fourth entry point — the recognised fruit lands through exactly the
      ingestion path voice already uses. */
@@ -151,7 +152,7 @@ export function HomeIntentSection({
     const text = value.trim();
     if (!text) return;
     ingest(text, 'text');
-    setValue('');
+    changeValue('');
   };
 
   return (
@@ -212,7 +213,7 @@ export function HomeIntentSection({
             id={fieldId}
             data-testid="home-intent-input"
             value={value}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={(event) => changeValue(event.target.value)}
             onKeyDown={(event) => {
               // `key` is the normal identity, but some keyboards and input drivers send
               // the commit key with an empty `key` name; `code` still identifies it.

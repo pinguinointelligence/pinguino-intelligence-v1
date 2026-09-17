@@ -6,6 +6,11 @@
 .home-layer-scrim {
   background: rgba(16, 17, 19, 0.28);
 }
+/* ONE dimmed overlay at a time: a shell that is no longer topmost (the customer signed
+   in over this layer) stops painting its own scrim, exactly like every other placement. */
+.home-layer-scrim[data-dialog-active='false'] {
+  background: transparent;
+}
 .home-layer-overlay {
   display: flex;
   flex-direction: column;

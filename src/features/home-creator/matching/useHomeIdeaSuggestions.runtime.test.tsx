@@ -187,12 +187,19 @@ describe('B — matching keyed to the idea version', () => {
     expect(probe.latest!.cards).toHaveLength(0);
   });
 
-  it('B-05: a dismissal applies to its own idea version only', async () => {
+  it('B-05: a dismissal applies to its own idea only — another ingredient is a new offer', async () => {
     resolvedStrawberry();
     const first = probe.latest!.signature;
     act(() => probe.latest!.dismiss(first));
     expect(probe.latest!.isDismissed(first)).toBe(true);
-    act(() => useHomeDraftStore.getState().setProfile('sorbet'));
+    act(() =>
+      useHomeDraftStore.getState().addChip({
+        ...chip('c2', 'bazylia'),
+        concept: 'basil',
+        productId: 'PI-ING-000999',
+        productName: 'BASIL',
+      }),
+    );
     expect(probe.latest!.signature).not.toBe(first);
     expect(probe.latest!.isDismissed(probe.latest!.signature)).toBe(false);
   });
@@ -275,5 +282,110 @@ describe('B — a generic idea is offered the recipes of its concept (never adop
       settled = await probe.latest!.settle();
     });
     expect(settled!.result.decision.kind).toBe('create_my_own');
+  });
+});
+
+describe('B — review 2026-09-17: one door, one dismissal, one answer', () => {
+  const STRAWBERRY_NAME = 'STRAWBERRIES · Fresh Fruit';
+  const resolvedChip = (id: string): IntentChip => ({
+    ...chip(id, 'truskawka'),
+    productId: STRAWBERRY,
+    productName: STRAWBERRY_NAME,
+  });
+
+  it('B-10: „Tworzę swoją” in the same render is honoured — settle reports the dismissal', async () => {
+    act(() => useHomeDraftStore.getState().addChip(resolvedChip('c1')));
+    const idea = probe.latest!.signature;
+    act(() => probe.latest!.dismiss(idea));
+    let settled: Awaited<ReturnType<HomeIdeaSuggestions['settle']>> | null = null;
+    await act(async () => {
+      settled = await probe.latest!.settle();
+    });
+    expect(settled!.dismissed).toBe(true);
+  });
+
+  it('B-11: a dismissal survives the profile the flow asks for afterwards', async () => {
+    act(() => useHomeDraftStore.getState().addChip(resolvedChip('c1')));
+    const before = probe.latest!.signature;
+    act(() => probe.latest!.dismiss(before));
+    act(() => useHomeDraftStore.getState().setProfile('sorbet'));
+    expect(probe.latest!.signature).not.toBe(before);
+    // Narrowing the same matches by profile is not a new offer.
+    expect(probe.latest!.isDismissed(probe.latest!.signature)).toBe(true);
+  });
+
+  it('B-12: settle stores the Community answer it waited for', async () => {
+    mocks.community.mockResolvedValue([
+      {
+        publication: 'p1',
+        candidate: {
+          id: 'p1',
+          title: 'Truskawki z mascarpone',
+          source: 'community',
+          profile: 'gelato',
+          ingredients: [],
+          imageUrl: null,
+          authorName: 'Anna',
+          rank: 4,
+        },
+        alsoIncludes: [],
+        slug: 's',
+        publicationId: 'p1',
+        handle: 'anna',
+        title: 'Truskawki z mascarpone',
+        creatorDisplayName: 'Anna',
+      },
+    ]);
+    act(() => useHomeDraftStore.getState().addChip(resolvedChip('c1')));
+    expect(probe.latest!.communitySettled).toBe(false);
+    await act(async () => {
+      await probe.latest!.settle();
+    });
+    expect(probe.latest!.communitySettled).toBe(true);
+    expect(probe.latest!.cards.at(-1)).toMatchObject({ source: 'community' });
+  });
+
+  it('B-13: the idea is „recognising” until every committed chip has an answer', async () => {
+    let finish: () => void = () => undefined;
+    resolveOne.mockImplementation(
+      (resolving) =>
+        new Promise((resolve) => {
+          finish = () => {
+            useHomeDraftStore.getState().resolveChip(resolving.id, { productId: STRAWBERRY });
+            resolve({ chipId: resolving.id, status: 'added' });
+          };
+        }),
+    );
+    act(() => useHomeDraftStore.getState().addChip(chip('c1', 'truskawka')));
+    expect(probe.latest!.recognising).toBe(true);
+    await flush(IDEA_SUGGESTION_DEBOUNCE_MS + 10);
+    expect(probe.latest!.recognising).toBe(true);
+    await act(async () => finish());
+    expect(probe.latest!.recognising).toBe(false);
+  });
+
+  it('B-14: the CTA resolves each chip once and never re-answers an identity question', async () => {
+    resolveOne.mockImplementation(async (resolving) => {
+      useHomeDraftStore.getState().resolveChip(resolving.id, { ambiguous: true });
+      return { chipId: resolving.id, status: 'ambiguous' };
+    });
+    act(() => useHomeDraftStore.getState().addChip(chip('c1', 'truskawka')));
+    await flush(IDEA_SUGGESTION_DEBOUNCE_MS + 10);
+    expect(resolveOne).toHaveBeenCalledTimes(1);
+    // The customer answers the question the first resolution raised.
+    act(() =>
+      useHomeDraftStore
+        .getState()
+        .resolveChip('c1', {
+          productId: STRAWBERRY,
+          productName: STRAWBERRY_NAME,
+          ambiguous: false,
+        }),
+    );
+    await act(async () => {
+      await probe.latest!.resolveRemaining();
+    });
+    expect(resolveOne).toHaveBeenCalledTimes(1);
+    expect(useHomeDraftStore.getState().chips[0]?.productId).toBe(STRAWBERRY);
   });
 });

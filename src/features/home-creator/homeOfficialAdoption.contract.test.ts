@@ -23,9 +23,13 @@ describe('HOME opens an official Gellatti recipe', () => {
 
   it('adopts the §35 single match and a chosen match, keeping the customer idea', () => {
     // §35 still needs a signed-in customer; since DESIGN V3.0 VIII it also yields to a
-    // suggestion the customer already saw and decided about for the same idea version.
+    // suggestion the customer already saw and decided about for the same idea version —
+    // read from `settle()`, so „Tworzę swoją” in the same render is honoured.
     expect(page).toMatch(
-      /result\.decision\.kind === 'auto_adopt_official' &&\s+userId &&\s+!suggestions\.isDismissed\(settledIdea\)/,
+      /result\.decision\.kind === 'auto_adopt_official' && userId && !dismissed/,
+    );
+    expect(page).toContain(
+      'const { signature: settledIdea, result, dismissed } = await suggestions.settle();',
     );
     expect(page).toContain(
       'void adoptOfficialRecipe(match.candidate.id, { keepIdea: true, automatic: false });',

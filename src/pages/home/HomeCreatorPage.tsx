@@ -319,6 +319,9 @@ export function HomeCreatorPage() {
     !suggestions.isDismissed(suggestions.signature) &&
     !draft.recipeReady &&
     !resolving &&
+    // Never over an idea that is still being recognised: one chip's cards would be
+    // shown, then replaced (or emptied) the moment its sibling answers.
+    !suggestions.recognising &&
     officialAdoption?.state !== 'loading' &&
     (draft.intentSubmitted || !composerHasText);
   const suggestionsFrom: 'idea' | 'cta' = draft.intentSubmitted ? 'cta' : 'idea';
@@ -763,6 +766,9 @@ export function HomeCreatorPage() {
       // Never while the idea is still being resolved and matched after the CTA: a
       // suggestion (or the §35 single match) may be about to become the recipe.
       !resolving &&
+      // Nor before the Community answer for THIS version: a match arriving a moment
+      // later must not land behind a recipe that was already built.
+      suggestions.communitySettled &&
       // Never behind an official recipe that is still opening: it is about to BE the recipe.
       officialAdoption?.state !== 'loading' &&
       lastGeneratedFor.current !== key
@@ -777,6 +783,7 @@ export function HomeCreatorPage() {
     draft.recipeReady,
     matchPopupOpen,
     resolving,
+    suggestions.communitySettled,
     officialAdoption?.state,
     machine?.id,
     amount?.totalGrams,
@@ -892,20 +899,15 @@ export function HomeCreatorPage() {
     void (async () => {
       try {
         markHomeTiming('cta-tap', { chips: useHomeDraftStore.getState().chips.length });
-        for (const chip of useHomeDraftStore.getState().chips) {
-          if (chip.productId !== null) continue;
-          await intentIngredients.resolveOne(chip);
-        }
         // §32–§40 matching runs on the RESOLVED identities (§22) — the same
-        // idea version the suggestions layer already showed, if it did.
-        const { signature: settledIdea, result } = await suggestions.settle();
+        // idea version the suggestions layer already showed, if it did. `settle` finishes
+        // every chip that still has no answer through the SAME door the layer used, so a
+        // chip is never resolved twice and an answered §23 question is never overwritten.
+        const { signature: settledIdea, result, dismissed } = await suggestions.settle();
         // §35: exactly one Gellatti recipe and nothing from Community — adopt it, with a
-        // way back — unless the customer already saw and decided about that suggestion.
-        if (
-          result.decision.kind === 'auto_adopt_official' &&
-          userId &&
-          !suggestions.isDismissed(settledIdea)
-        ) {
+        // way back — unless the customer already saw and decided about that suggestion
+        // („Tworzę swoją” dismisses it and then presses this same door).
+        if (result.decision.kind === 'auto_adopt_official' && userId && !dismissed) {
           suggestions.dismiss(settledIdea);
           await adoptOfficialRecipe(result.decision.match.candidate.id, {
             keepIdea: true,
