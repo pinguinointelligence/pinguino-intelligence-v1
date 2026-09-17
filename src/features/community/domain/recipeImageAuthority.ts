@@ -13,8 +13,15 @@
  * replaced by changing one set of files, without hunting for a component that
  * quietly hardcoded a path of its own.
  *
- * The four `/brand/profile/*.jpg` files are TEMPORARY examples. Replacing them
- * on disk replaces them everywhere; no code changes with them.
+ * The four `/brand/profile/*.jpg` files are the OWNER-APPROVED photographs
+ * delivered 2026-09-17 (1254 × 1254, square — the share page frames them
+ * square so neither the bowl logo nor the scene is cropped). They were swapped
+ * on disk, exactly as this design intended; no code changed with them.
+ *
+ * A customer's recipe shared from HOME or PRO is the `customer_share`
+ * context: the customer's own photograph, otherwise the branded card of the
+ * SHARED VERSION's profile. Library pictures stay available to every other
+ * caller, but never stand in for a customer's share.
  */
 import { getFlavorEntryByCode } from '@/data/recipes/flavorCatalogue';
 
@@ -53,6 +60,13 @@ export interface RecipeImageDecision {
 }
 
 export interface RecipeImageInput {
+  /**
+   * Owner decision 2026-09-17: a customer's recipe shared from HOME or PRO
+   * shows the customer's own photograph, otherwise the branded card of its
+   * profile. A library picture is never used there, even when the customer's
+   * version started from one of our recipes. Omitted = the full order above.
+   */
+  readonly context?: 'customer_share';
   /** A photograph the user attached to THIS recipe, if any. */
   readonly userImageUrl?: string | null;
   /**
@@ -75,7 +89,7 @@ export function resolveRecipeImage(input: RecipeImageInput): RecipeImageDecision
   const own = usable(input.userImageUrl);
   if (own) return { url: own, origin: 'user_photo', isPlaceholder: false };
 
-  const code = usable(input.libraryFlavorCode);
+  const code = input.context === 'customer_share' ? null : usable(input.libraryFlavorCode);
   if (code) {
     const entry = getFlavorEntryByCode(code);
     const path = usable(entry?.imagePath);
@@ -99,11 +113,32 @@ export function resolveRecipeImage(input: RecipeImageInput): RecipeImageDecision
  *
  * This blocks PUBLISHING only. Saving the recipe, sharing it privately and
  * using it again are untouched.
+ *
+ * So the answer is not „anything that is not one of our paths" — an absolute
+ * `https://…/brand/profile/gelato.jpg`, or our asset with the upload path
+ * smuggled into a query or fragment, would pass that. It is the shape of a
+ * maker's upload and nothing else: one canonical https URL of a public object
+ * in the Community photo bucket (`<owner folder>/<file>`), no query, no
+ * fragment, no dot segments. Who owns the object is proven by the database at
+ * publish time; this check only refuses what can never be an upload.
  */
+const COMMUNITY_PHOTO_OBJECT_PATH =
+  /^\/storage\/v1\/object\/public\/community-recipe-images\/[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
+
 export function communityPhotoAccepted(imageUrl: string | null | undefined): boolean {
   const url = usable(imageUrl);
   if (url === null) return false;
-  if (url.startsWith('/brand/')) return false;
-  if (url.startsWith('/recipes/')) return false;
-  return true;
+  if (url.includes('?') || url.includes('#')) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    // Relative paths (`/brand/…`, `/recipes/…`) are our own assets, never an upload.
+    return false;
+  }
+  if (parsed.protocol !== 'https:') return false;
+  // Canonical only: dot segments, credentials or re-encodings would parse to a
+  // different address than the one that is stored and rendered.
+  if (parsed.href !== url || parsed.username || parsed.password) return false;
+  return COMMUNITY_PHOTO_OBJECT_PATH.test(parsed.pathname);
 }

@@ -100,15 +100,23 @@ export function SharedRecipePage() {
 
   /* §23 — a shared recipe always shows a picture, and the customer is never
      asked to choose one. The order of preference and the asset mapping live in
-     ONE place (`recipeImageAuthority`), so replacing the branded files later is
-     a change to four files on disk and to nothing here.
+     ONE place (`recipeImageAuthority`), so replacing the branded files is a
+     change to four files on disk and to nothing here.
+
+     Owner decision 2026-09-17: this is a customer's recipe shared from HOME or
+     PRO (`customer_share`) — the customer's own photograph, otherwise the
+     branded card of its profile. The profile is the SHARED VERSION's own
+     `recipe.category` (the demo-safe projection of that immutable
+     `recipe_input`), never the viewer's profile or account defaults.
 
      The share payload carries no photograph field yet — `SharePreview` has no
-     `image_url` and `saved_recipes` has no image column — so today every own
-     recipe resolves to its branded profile card, which is exactly the owner's
-     third rule. The first two rules are wired and tested; they light up the
-     moment the payload carries the field. */
-  const image = resolveRecipeImage({ profile: state.recipe.category ?? null });
+     photo and no share/recipe/version table stores one — so today every shared
+     recipe resolves to its branded profile card. The own-photo rule is wired
+     and tested in the authority; it lights up when the payload carries one. */
+  const image = resolveRecipeImage({
+    context: 'customer_share',
+    profile: state.recipe.category ?? null,
+  });
 
   return (
     <DestinationSurface eyebrow={copy.roles.sharedBy} title={state.title}>
@@ -123,7 +131,10 @@ export function SharedRecipePage() {
             aria-hidden
             data-testid="shared-recipe-image"
             data-image-origin={image.origin}
-            className="aspect-[4/3] w-full rounded-2xl object-cover"
+            /* Square, like the approved profile photographs: a 4:3 cover crop
+               cut the whisk and hand off the top of every card. The width cap
+               keeps a square from pushing the recipe below the fold on desktop. */
+            className="aspect-square w-full max-w-xl rounded-2xl bg-shell-raised object-cover"
             loading="lazy"
           />
 
