@@ -1,7 +1,28 @@
--- Rollback of 20260917153000_community_photo_exact_upload_url.
--- Restores gellatti_publish_recipe_v1 exactly as live on 2026-09-17 (read back with
--- pg_get_functiondef) = the definition from 20260913233000_home_community_recipe_images.
--- No bucket, policy, table or data is touched.
+-- Community takes the maker's OWN upload and nothing else (owner decision 2026-09-17).
+--
+-- Owner-approved 2026-09-17 for the shared project tunabqqrwabacxjcxxkz (staging and
+-- production). Applied exactly as this file, never through `db push`. Rollback: the
+-- file with the same name in supabase/rollbacks/ (.rollback.sql).
+--
+-- The live check (20260913233000) only required the storage marker to appear
+-- SOMEWHERE in the URL and then read the object path after it. Anything could
+-- stand in front of the marker, or wrap the real path in a query or fragment:
+--
+--   https://staging.pinguinoai.com/brand/profile/gelato.jpg?/storage/v1/object/public/community-recipe-images/<uid>/<upload>
+--   https://staging.pinguinoai.com/brand/profile/gelato.jpg#/storage/v1/object/public/community-recipe-images/<uid>/<upload>
+--   https://other.example/storage/v1/object/public/community-recipe-images/<uid>/<upload>
+--
+-- all passed once the caller owned any one upload, so a Gellatti asset or a
+-- foreign image could be stored and shown as the maker's own photograph.
+--
+-- Now the URL must be EXACTLY the public address the app's own upload returns:
+-- this project's origin (the issuer of the caller's verified JWT, minus
+-- `/auth/v1` — the client builds public URLs from the same project URL), the
+-- fixed bucket path, the caller's own folder, one generated file name with an
+-- accepted extension, and nothing after it. The object must still exist.
+--
+-- Only this function changes. Signature, SECURITY DEFINER, search_path, grants,
+-- error codes and every other statement are identical to the live definition.
 create or replace function public.gellatti_publish_recipe_v1(
   p_recipe_id uuid, p_version_number integer, p_slug text, p_title text,
   p_description text default null, p_image_url text default null,
@@ -15,6 +36,8 @@ declare
   v_slug text := lower(btrim(coalesce(p_slug, '')));
   v_image_url text := btrim(coalesce(p_image_url, ''));
   v_image_marker constant text := '/storage/v1/object/public/community-recipe-images/';
+  v_storage_origin text := regexp_replace(coalesce(auth.jwt() ->> 'iss', ''), '/auth/v1/?$', '');
+  v_image_prefix text;
   v_image_path text;
   v_pub public.community_publications;
 begin
@@ -29,11 +52,14 @@ begin
   if v_version.id is null then raise exception 'recipe_version_not_found' using errcode = '42501'; end if;
   if v_slug !~ '^[a-z0-9][a-z0-9-]{0,79}$' then raise exception 'slug_invalid' using errcode = '22023'; end if;
   if btrim(coalesce(p_title, '')) = '' then raise exception 'title_required' using errcode = '22023'; end if;
-  if v_image_url = '' or position(v_image_marker in v_image_url) = 0 then
+  v_image_prefix := v_storage_origin || v_image_marker;
+  if v_image_url = ''
+     or v_storage_origin !~ '^https?://[^/?#@]+$'
+     or left(v_image_url, length(v_image_prefix)) <> v_image_prefix then
     raise exception 'community_photo_required' using errcode = '22023';
   end if;
-  v_image_path := split_part(split_part(v_image_url, v_image_marker, 2), '?', 1);
-  if v_image_path not like v_uid::text || '/%'
+  v_image_path := substr(v_image_url, length(v_image_prefix) + 1);
+  if v_image_path !~ ('^' || v_uid::text || '/[A-Za-z0-9-]+\.(jpg|png|webp)$')
      or not exists (
        select 1 from storage.objects object
        where object.bucket_id = 'community-recipe-images'

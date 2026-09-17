@@ -1,7 +1,8 @@
 -- A customer's OWN photograph on a direct share (owner decisions 2026-09-17).
 --
--- Apply exactly this file, never through `db push`.
--- Rollback: supabase/rollbacks/20260917154000_direct_share_own_photo.rollback.sql
+-- Owner-approved 2026-09-17 for the shared project tunabqqrwabacxjcxxkz (staging and
+-- production). Applied exactly as this file, never through `db push`. Rollback: the
+-- file with the same name in supabase/rollbacks/ (.rollback.sql).
 --
 -- Rule: a shared recipe shows the sharer's own photograph when one is attached,
 -- otherwise the delivered card of the SHARED VERSION's profile (client authority

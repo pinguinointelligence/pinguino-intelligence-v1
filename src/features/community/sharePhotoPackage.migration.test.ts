@@ -1,15 +1,17 @@
 /// <reference types="node" />
 /**
- * Share photos, part 2 — a contract over two migrations that are READY but NOT
- * APPLIED (staging and production share one database; the owner applies them).
+ * Share photos, part 2 — a contract over two migrations APPLIED 2026-09-17 with
+ * owner approval to the shared project tunabqqrwabacxjcxxkz (staging and
+ * production). File names carry the versions `apply_migration` recorded; the
+ * recorded statements hash to the same SHA-256 as these files.
  *
- *   20260917153000_community_photo_exact_upload_url — Community accepts only the
+ *   20260917103328_community_photo_exact_upload_url — Community accepts only the
  *     exact public URL of the maker's own upload.
- *   20260917154000_direct_share_own_photo — a private, link-scoped own photo for
- *     direct shares.
+ *   20260917103413_direct_share_own_photo — a private, link-scoped own photo for
+ *     direct shares, served per request by the `share-photo` Edge Function.
  *
- * These read the SQL. They prove shape and scope, not execution: the live
- * behaviour is verified only after the owner applies the files.
+ * These read the SQL (shape and scope). Execution was proven in isolation
+ * (PGlite, 28 checks) and by read-back and HTTP probes on the live project.
  */
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -24,8 +26,8 @@ const code = (sql: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-const EXACT = '20260917153000_community_photo_exact_upload_url';
-const PHOTO = '20260917154000_direct_share_own_photo';
+const EXACT = '20260917103328_community_photo_exact_upload_url';
+const PHOTO = '20260917103413_direct_share_own_photo';
 const EXACT_SQL = read(`supabase/migrations/${EXACT}.sql`);
 const EXACT_ROLLBACK = read(`supabase/rollbacks/${EXACT}.rollback.sql`);
 const PHOTO_SQL = read(`supabase/migrations/${PHOTO}.sql`);
@@ -236,16 +238,17 @@ describe(`${PHOTO} — a private, link-scoped own photo`, () => {
     expect(rollback).not.toMatch(/recipe_share_(?:links|recipients)\b/);
   });
 
-  it('MIG-SP-10 both versions are new and sort after every migration already in the repo', () => {
+  it('MIG-SP-10 both files carry the versions the database recorded, once each', () => {
     const versions = readdirSync(join(ROOT, 'supabase/migrations'))
       .filter((file) => file.endsWith('.sql'))
-      .map((file) => file.slice(0, 14))
-      .sort();
-    const others = versions.filter(
-      (version) => !['20260917153000', '20260917154000'].includes(version),
-    );
-    expect(versions.filter((version) => version === '20260917153000')).toHaveLength(1);
-    expect(versions.filter((version) => version === '20260917154000')).toHaveLength(1);
-    expect(others.at(-1)! < '20260917153000').toBe(true);
+      .map((file) => file.slice(0, 14));
+    for (const recorded of ['20260917103328', '20260917103413']) {
+      expect(
+        versions.filter((version) => version === recorded),
+        recorded,
+      ).toHaveLength(1);
+    }
+    expect(versions).not.toContain('20260917153000');
+    expect(versions).not.toContain('20260917154000');
   });
 });

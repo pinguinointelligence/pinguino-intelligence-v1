@@ -1,4 +1,4 @@
--- Rollback of 20260917154000_direct_share_own_photo.
+-- Rollback of migration direct_share_own_photo.
 --
 -- Switches the feature OFF without deleting anyone's data: removes the access
 -- and attach RPCs, the upload policy and its helper. Undeploy (or stop routing

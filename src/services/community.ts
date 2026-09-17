@@ -392,7 +392,7 @@ export async function openReceivedShare(shareLinkId: string) {
 
 // ── Own photograph on a direct share (owner decisions 2026-09-17) ──────────
 //
-// Backend: migration 20260917154000_direct_share_own_photo + Edge Function
+// Backend: migration 20260917103413_direct_share_own_photo + Edge Function
 // `share-photo`. The photograph is private to the link: its bytes are served per
 // request after the database has decided, so a revoked or expired link refuses
 // the very next request. There are no signed URLs.
