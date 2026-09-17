@@ -1036,7 +1036,7 @@ where e.state in ('received','failed') and e.last_error like 'tier_snapshot_miss
     # branch the row is seeded as a fixture — this is the dependency appearing,
     # not a business rule being bent.
     c.sql('s16-seed-snapshot', f"""do $s$ begin {GUARD}
-  insert into public.partner_tier_snapshots (partner_id, month, tier, active_referred_count, counted_at)
+  insert into public.partner_tier_snapshots (partner_id, month, tier, active_subscription_count, computed_at)
   select p.id, '{month}'::date, 'standard', 0, now() from public.partners p
   on conflict (partner_id, month) do nothing;
   insert into qa_harness.observations (run_id, worker, payload)
