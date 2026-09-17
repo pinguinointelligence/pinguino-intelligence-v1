@@ -313,15 +313,8 @@ export async function submitPartnerApplication(
   draft: PartnerApplicationDraft,
 ): Promise<{ id: string; status: PartnerApplicationStatus; duplicate: boolean }> {
   if (!supabase) return unavailable();
-  // The origin is added HERE rather than by each caller, so no submission path
-  // can forget it. Staging and production share one database, and the
-  // application e-mail (C-APP-08) labels its environment from this value; the
-  // live RPC ignores the key until that migration is applied.
   const { data, error } = await supabase.rpc('gellatti_submit_partner_application_v1', {
-    p_application: {
-      ...draft,
-      origin: typeof window === 'undefined' ? '' : window.location.origin,
-    },
+    p_application: draft,
   });
   if (error) throw new Error(error.message);
   return data as { id: string; status: PartnerApplicationStatus; duplicate: boolean };

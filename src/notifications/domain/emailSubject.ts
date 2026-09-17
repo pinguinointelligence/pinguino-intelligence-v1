@@ -37,6 +37,7 @@ export type EmailArea = 'PARTNER' | 'MACHINE' | 'MOBILE' | 'TRAILER' | 'FRANCHIS
 /** ES1: what happened. Stable contract values. */
 export type EmailEvent =
   | 'APPLICATION'
+  | 'ACTIVATION'
   | 'CONNECT'
   | 'PAYOUT'
   | 'REFUND'
@@ -73,6 +74,9 @@ export const OPERATIONAL_SUBJECTS = {
   partnerApplicationMoreInfo: { area: 'PARTNER', event: 'APPLICATION', state: 'MORE-INFO' },
   partnerApplicationApproved: { area: 'PARTNER', event: 'APPLICATION', state: 'APPROVED' },
   partnerApplicationRejected: { area: 'PARTNER', event: 'APPLICATION', state: 'REJECTED' },
+  // Partner mode switched on without an application: admin activation or an
+  // accepted invitation. Nobody applied, so no APPLICATION subject fits.
+  partnerActivated: { area: 'PARTNER', event: 'ACTIVATION' },
   partnerConnectActionRequired: { area: 'PARTNER', event: 'CONNECT', state: 'ACTION-REQUIRED' },
   partnerPayoutReady: { area: 'PARTNER', event: 'PAYOUT', state: 'READY' },
   partnerPayoutFailed: { area: 'PARTNER', event: 'PAYOUT', state: 'FAILED' },
