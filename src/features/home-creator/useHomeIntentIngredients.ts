@@ -69,16 +69,19 @@ export function useHomeIntentIngredients() {
 
   /** Resolve a chip's identity and record it on the chip (§22, §23). */
   const resolveOne = useCallback(
-    async (chip: IntentChip): Promise<IntentIngredientOutcome> => {
+    async (chip: IntentChip, signal?: AbortSignal): Promise<IntentIngredientOutcome> => {
       // The chip's own utterance element goes to the central selection stage, so a
       // generic idea consumes the frozen concept default while explicit words around
       // it (a form, a brand) keep their meaning. A known profile narrows the frozen
       // order by its SA-04 recipe scope.
       const resolution = await resolveChipTerm(
         { label: chip.label, concept: chip.concept, segment: chip.segment },
-        undefined,
+        signal,
         { profile: useHomeDraftStore.getState().profile },
       );
+      // A cancelled resolution (the idea changed, the chip was removed) must not write a
+      // late answer onto the draft.
+      if (signal?.aborted) return { chipId: chip.id, status: 'unavailable' };
       switch (resolution.kind) {
         case 'resolved':
           resolveChip(chip.id, {

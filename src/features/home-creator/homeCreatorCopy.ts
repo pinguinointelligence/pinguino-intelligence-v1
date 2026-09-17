@@ -84,6 +84,19 @@ export interface HomeCreatorCopy {
     readonly basedOnOriginal: string;
     readonly viewOriginal: string;
     readonly byGellatti: string;
+    /** DESIGN V3.0 VIII — the suggestions layer shown while the idea is recognised. */
+    readonly suggestionsTitle: string;
+    readonly suggestionsSubtitle: string;
+    readonly suggestionsCarousel: (idea: string) => string;
+    readonly createOwnShort: string;
+    readonly skip: string;
+    readonly choose: string;
+    readonly chooseFirst: string;
+    readonly chosen: string;
+    readonly communityEyebrow: string;
+    readonly rankShort: (rank: number) => string;
+    readonly previousCards: string;
+    readonly nextCards: string;
   };
   readonly profile: {
     readonly question: string;
@@ -272,6 +285,18 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     basedOnOriginal: 'Na podstawie oryginalnej receptury:',
     viewOriginal: 'Zobacz oryginał',
     byGellatti: 'Gellatti',
+    suggestionsTitle: 'Znaleźliśmy pasujące receptury.',
+    suggestionsSubtitle: 'Chcesz z którejś skorzystać?',
+    suggestionsCarousel: (idea) => `Receptury do „${idea}”`,
+    createOwnShort: 'Tworzę swoją',
+    skip: 'Pomiń',
+    choose: 'Wybierz',
+    chooseFirst: 'Najpierw wybierz recepturę.',
+    chosen: 'Wybrana',
+    communityEyebrow: 'Community · Top 100',
+    rankShort: (rank) => `miejsce ${rank}`,
+    previousCards: 'Poprzednie receptury',
+    nextCards: 'Następne receptury',
   },
   profile: {
     question: 'Jak chcesz je zrobić?',
@@ -445,6 +470,18 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     basedOnOriginal: 'Based on original recipe by',
     viewOriginal: 'View original',
     byGellatti: 'Gellatti',
+    suggestionsTitle: 'We found matching recipes.',
+    suggestionsSubtitle: 'Would you like to use one of them?',
+    suggestionsCarousel: (idea) => `Recipes for “${idea}”`,
+    createOwnShort: 'I’ll make my own',
+    skip: 'Skip',
+    choose: 'Choose',
+    chooseFirst: 'Choose a recipe first.',
+    chosen: 'Chosen',
+    communityEyebrow: 'Community · Top 100',
+    rankShort: (rank) => `rank ${rank}`,
+    previousCards: 'Previous recipes',
+    nextCards: 'Next recipes',
   },
   profile: {
     question: 'How do you want to make it?',

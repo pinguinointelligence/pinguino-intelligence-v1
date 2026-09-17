@@ -51,29 +51,54 @@ export function closestOfficialMatches(matches: readonly RecipeMatch[]): readonl
   return [...matches].sort((left, right) => left.alsoIncludes.length - right.alsoIncludes.length);
 }
 
-export async function searchExistingRecipes(query: HomeMatchQuery): Promise<HomeMatchResult> {
-  // §22: only RESOLVED identities may drive matching. An unresolved chip is not a
-  // weaker constraint — it is not a constraint, and matching on it would be matching
-  // on guessed text.
-  const resolved = query.requested.filter((item) => item.productId.trim() !== '');
-  if (resolved.length === 0) return NO_MATCH;
+/** §22: only RESOLVED identities may drive matching. */
+const resolvedRequests = (query: HomeMatchQuery): readonly RequestedIngredient[] =>
+  query.requested.filter((item) => item.productId.trim() !== '');
 
-  const official = closestOfficialMatches(
-    matchRecipes(officialCandidates(), { requested: resolved, profile: query.profile }),
+let officialCandidateCache: ReturnType<typeof officialCandidates> | null = null;
+
+/**
+ * The official side alone. Synchronous (the library ships with the app), so a matching
+ * Gellatti card can appear while the Community oracle is still answering.
+ */
+export function searchOfficialMatches(query: HomeMatchQuery): readonly RecipeMatch[] {
+  const resolved = resolvedRequests(query);
+  if (resolved.length === 0) return [];
+  // The library is deep-frozen, so its candidates are computed once per page.
+  officialCandidateCache ??= officialCandidates();
+  return closestOfficialMatches(
+    matchRecipes(officialCandidateCache, { requested: resolved, profile: query.profile }),
   );
+}
 
+/** The Community side alone: the strict match oracle over the current Top 100. */
+export async function searchCommunityMatches(query: HomeMatchQuery): Promise<{
+  readonly community: readonly RecipeMatch[];
+  readonly communityMatches: readonly CommunityMatch[];
+}> {
+  const resolved = resolvedRequests(query);
+  if (resolved.length === 0) return { community: [], communityMatches: [] };
   const communityMatches = await matchCommunityTop100({
     ingredientIds: resolved.map((item) => item.productId),
     profile: query.profile,
   });
-
   // The oracle already proved containment, so these are matches by construction.
   // `alsoIncludes` comes from the oracle (public names), not from a client diff of a
   // formulation the client was never given.
-  const community: readonly RecipeMatch[] = communityMatches.map((match) => ({
-    candidate: match.candidate,
-    alsoIncludes: match.alsoIncludes,
-  }));
+  return {
+    community: communityMatches.map((match) => ({
+      candidate: match.candidate,
+      alsoIncludes: match.alsoIncludes,
+    })),
+    communityMatches,
+  };
+}
 
+export async function searchExistingRecipes(query: HomeMatchQuery): Promise<HomeMatchResult> {
+  // §22: an unresolved chip is not a weaker constraint — it is not a constraint, and
+  // matching on it would be matching on guessed text.
+  if (resolvedRequests(query).length === 0) return NO_MATCH;
+  const official = searchOfficialMatches(query);
+  const { community, communityMatches } = await searchCommunityMatches(query);
   return { decision: decideMatch({ official, community }), communityMatches };
 }

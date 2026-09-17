@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { isTopmostDialogShell, openDialogCount, registerDialogShell } from './dialogShellRegistry';
 import { lockBodyScroll } from './bodyScrollLock';
+import './homeLayer.css';
 
 /**
  * THE one modal primitive for PINGÜINO Pro line-level dialogs.
@@ -95,7 +96,13 @@ export function DialogShell({
   testId: string;
   children: React.ReactNode;
   onClose: () => void;
-  placement?: 'center' | 'bottom' | 'responsive';
+  /**
+   * `home-layer` — DESIGN V3.0 HOME layers (corrections VIII + XIII): a compact bottom
+   * sheet (height from content, capped under the sticky header) on phones and tablets in
+   * portrait, and a light centred modal from 1024 px. Its frame lives in
+   * `homeLayer.css`; the four existing placements are untouched by it.
+   */
+  placement?: 'center' | 'bottom' | 'responsive' | 'home-layer';
   panelClassName?: string;
   /**
    * The panel's own surface treatment.
@@ -288,19 +295,23 @@ export function DialogShell({
         // treatment: a lighter scrim and a milky panel, so the recipe a sheet
         // belongs to stays partly visible behind it. Every other dialog keeps
         // the standard scrim. One declaration per property, chosen here.
-        tone === 'context'
-          ? 'fixed inset-0 z-[70] bg-black/20'
-          : 'fixed inset-0 z-[70] bg-black/45',
+        placement === 'home-layer'
+          ? 'home-layer-scrim fixed inset-0 z-[70]'
+          : tone === 'context'
+            ? 'fixed inset-0 z-[70] bg-black/20'
+            : 'fixed inset-0 z-[70] bg-black/45',
         // ONE overlay reads as active at a time. A shell that is no longer the
         // topmost keeps its own state but stops painting a second scrim and
         // stops taking pointer events, so a flow that briefly holds two shells
         // cannot present them as two stacked windows.
         isTopmost ? null : 'pointer-events-none bg-transparent',
-        placement === 'bottom'
-          ? 'flex flex-col justify-end p-0'
-          : placement === 'responsive'
-            ? 'flex flex-col justify-end p-0 sm:flex-row sm:items-center sm:justify-center sm:p-4'
-            : 'grid place-items-center p-[var(--pro-dialog-gutter)] sm:p-4',
+        placement === 'home-layer'
+          ? 'home-layer-overlay'
+          : placement === 'bottom'
+            ? 'flex flex-col justify-end p-0'
+            : placement === 'responsive'
+              ? 'flex flex-col justify-end p-0 sm:flex-row sm:items-center sm:justify-center sm:p-4'
+              : 'grid place-items-center p-[var(--pro-dialog-gutter)] sm:p-4',
       )}
       data-testid={testId}
       data-placement={placement}
@@ -324,26 +335,31 @@ export function DialogShell({
         aria-hidden={isTopmost ? undefined : true}
         data-dialog-state={panelState}
         data-terminal-state={panelState}
-        className={cn(
-          'relative overflow-y-auto border text-ink [overscroll-behavior:contain]',
-          tone === 'context' ? 'bg-white/[0.92] backdrop-blur-md' : 'bg-white',
-          // EXACTLY ONE border colour and EXACTLY ONE box-shadow, chosen here.
-          // The attention treatment keeps the same elevation and adds the warm
-          // ring as part of the SAME shadow value, so it cannot be replaced by
-          // the elevation shadow the way a separate `ring-*` utility was.
-          tone === 'attention'
-            ? 'border-[var(--g-orange)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--g-orange)_18%,transparent),0_8px_18px_rgba(16,17,19,0.12),0_28px_72px_rgba(16,17,19,0.24)]'
-            : 'border-ink/15 shadow-pro-e3',
-          placement === 'bottom'
-            ? 'max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] w-full rounded-t-[22px] border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)]'
-            : placement === 'responsive'
-              ? cn(
-                  'max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] w-full rounded-t-[22px] border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] sm:max-h-[min(86vh,760px)] sm:rounded-[24px] sm:border sm:p-5',
-                  PANEL_WIDTH[size],
-                )
-              : cn('max-h-[min(86vh,760px)] rounded-[24px] p-5', CENTERED_WIDTH[size]),
-          panelClassName,
-        )}
+        data-home-layer-size={placement === 'home-layer' ? size : undefined}
+        className={
+          placement === 'home-layer'
+            ? cn('home-layer-panel text-ink', panelClassName)
+            : cn(
+                'relative overflow-y-auto border text-ink [overscroll-behavior:contain]',
+                tone === 'context' ? 'bg-white/[0.92] backdrop-blur-md' : 'bg-white',
+                // EXACTLY ONE border colour and EXACTLY ONE box-shadow, chosen here.
+                // The attention treatment keeps the same elevation and adds the warm
+                // ring as part of the SAME shadow value, so it cannot be replaced by
+                // the elevation shadow the way a separate `ring-*` utility was.
+                tone === 'attention'
+                  ? 'border-[var(--g-orange)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--g-orange)_18%,transparent),0_8px_18px_rgba(16,17,19,0.12),0_28px_72px_rgba(16,17,19,0.24)]'
+                  : 'border-ink/15 shadow-pro-e3',
+                placement === 'bottom'
+                  ? 'max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] w-full rounded-t-[22px] border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)]'
+                  : placement === 'responsive'
+                    ? cn(
+                        'max-h-[min(88dvh,calc(100dvh-env(safe-area-inset-top)-0.5rem))] w-full rounded-t-[22px] border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] sm:max-h-[min(86vh,760px)] sm:rounded-[24px] sm:border sm:p-5',
+                        PANEL_WIDTH[size],
+                      )
+                    : cn('max-h-[min(86vh,760px)] rounded-[24px] p-5', CENTERED_WIDTH[size]),
+                panelClassName,
+              )
+        }
       >
         {showCloseControl ? (
           <button

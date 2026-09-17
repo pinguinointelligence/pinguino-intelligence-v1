@@ -9,7 +9,7 @@
  * No preset flavour tiles (§17): the field is open, because the owner rule is that any
  * idea may be described, and a tile grid quietly teaches the opposite.
  */
-import { useCallback, useId, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useId, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { shouldOfferRecipeCta } from '../homeComposerGate';
@@ -88,16 +88,23 @@ export function HomeIntentSection({
   onChipClick,
   onChooseIdentity,
   resolving = false,
+  onDraftTextChange,
 }: {
   onSubmit: () => void;
   onScan: () => void;
   onChipClick?: (chip: IntentChip) => void;
   /** §23: the user picked one of the offered real products. */
   onChooseIdentity?: (chip: IntentChip, candidate: { id: string; name: string }) => void;
-  /** §18: identity resolution runs only after `Create my recipe`. */
+  /** True while `Create my recipe` finishes resolution and matching. */
   resolving?: boolean;
+  /** Whether an uncommitted idea is still in the field (suggestions wait for it). */
+  onDraftTextChange?: (hasText: boolean) => void;
 }) {
   const [value, setValue] = useState('');
+  const hasDraftText = value.trim().length > 0;
+  useEffect(() => {
+    onDraftTextChange?.(hasDraftText);
+  }, [hasDraftText, onDraftTextChange]);
   /* §31: the fruit camera is the composer's own, so HOME's page does not have to
      learn a fourth entry point — the recognised fruit lands through exactly the
      ingestion path voice already uses. */
