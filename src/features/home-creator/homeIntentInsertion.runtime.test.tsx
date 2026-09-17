@@ -4,11 +4,13 @@ import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIde
 
 const mocks = vi.hoisted(() => ({
   search: vi.fn(),
+  select: vi.fn(),
   getRichRow: vi.fn(),
 }));
 
 vi.mock('@/services/productPicker/mapperSearch', () => ({
   searchCanonicalMapperIngredients: mocks.search,
+  selectApprovedConceptDefault: mocks.select,
 }));
 
 vi.mock('@/services/ingredients', () => ({
@@ -59,14 +61,24 @@ function hook() {
 
 beforeEach(() => {
   mocks.search.mockReset();
+  mocks.select.mockReset();
   mocks.getRichRow.mockReset();
   useHomeDraftStore.getState().startNew();
   useRecipeStore.setState({ items: [], toppings: [], baseOrder: [], priority_mode: 'AUTO' });
 });
 
 describe('served G — central HOME result reaches the recipe', () => {
-  it('HOME-G-01 keeps central #1 through anonymous hydration and recipe insertion', async () => {
-    mocks.search.mockResolvedValue({ kind: 'results', rows: [bananaRow], hasMore: false });
+  it('HOME-G-01 keeps the central selection through anonymous hydration and recipe insertion', async () => {
+    mocks.select.mockResolvedValue({
+      kind: 'selected',
+      row: bananaRow,
+      conceptKey: 'banana',
+      conceptId: 'SC-ING-000013',
+      decisionId: 'SA03-Q-000043',
+      rank: 0,
+      scope: null,
+      recognisedBy: 'central',
+    });
     mocks.getRichRow.mockRejectedValue(
       new Error('permission denied for view mapper_basement_search'),
     );

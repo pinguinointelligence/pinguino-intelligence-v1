@@ -117,8 +117,23 @@ const stemPhrase = (value: string): string => value.split(' ').map(matchStem).jo
  */
 const PLAIN_FORM_SUBCATEGORIES: ReadonlySet<string> = new Set(['fresh_fruit_profile']);
 
-export const isPlainForm = (row: SafeMapperSearchRow): boolean =>
-  row.ingredient_subcategory !== null && PLAIN_FORM_SUBCATEGORIES.has(row.ingredient_subcategory);
+/**
+ * The same plain form in the canonical ProductBehavior binding. `search_products_v1`
+ * projects `coalesce(binding.form_id, mapper.ingredient_subcategory)` as the form, so
+ * a signed-in row carries the binding pair (fruit, `fresh`) where the public Mapper
+ * view carries `fresh_fruit_profile` — one identity, two canonical field vocabularies.
+ */
+const PLAIN_BINDING_FORMS: Readonly<Record<string, ReadonlySet<string>>> = {
+  fruit: new Set(['fresh']),
+};
+
+export const isPlainForm = (row: SafeMapperSearchRow): boolean => {
+  const form = row.ingredient_subcategory;
+  if (form === null) return false;
+  if (PLAIN_FORM_SUBCATEGORIES.has(form)) return true;
+  const family = row.ingredient_category?.trim().toLowerCase() ?? '';
+  return PLAIN_BINDING_FORMS[family]?.has(form) === true;
+};
 
 /**
  * Score one row against the searched term. Higher is better; ties keep catalogue order,

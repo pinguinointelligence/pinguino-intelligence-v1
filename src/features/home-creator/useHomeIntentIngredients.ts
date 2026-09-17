@@ -70,9 +70,15 @@ export function useHomeIntentIngredients() {
   /** Resolve a chip's identity and record it on the chip (§22, §23). */
   const resolveOne = useCallback(
     async (chip: IntentChip): Promise<IntentIngredientOutcome> => {
-      // The canonical concept is tried before the raw word — the catalogue is
-      // English and §25 invites Polish/Spanish/German input.
-      const resolution = await resolveChipTerm({ label: chip.label, concept: chip.concept });
+      // The chip's own utterance element goes to the central selection stage, so a
+      // generic idea consumes the frozen concept default while explicit words around
+      // it (a form, a brand) keep their meaning. A known profile narrows the frozen
+      // order by its SA-04 recipe scope.
+      const resolution = await resolveChipTerm(
+        { label: chip.label, concept: chip.concept, segment: chip.segment },
+        undefined,
+        { profile: useHomeDraftStore.getState().profile },
+      );
       switch (resolution.kind) {
         case 'resolved':
           resolveChip(chip.id, {

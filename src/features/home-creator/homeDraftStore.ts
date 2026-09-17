@@ -27,6 +27,11 @@ export interface IntentChip {
   readonly label: string;
   readonly concept: string | null;
   readonly role: IntentRole | null;
+  /**
+   * The listed element of the utterance the chip came from (see `IntentTerm.segment`).
+   * Optional: chips persisted before it existed resolve from their label alone.
+   */
+  readonly segment?: string;
   /** How this chip entered the intent (§19 — now four doors, one flow: §30 adds AI fruit recognition). */
   readonly source: 'text' | 'voice' | 'scan' | 'vision';
   /** Resolved Mapper/catalogue identity, once resolution has run. */

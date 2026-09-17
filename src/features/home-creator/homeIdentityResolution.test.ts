@@ -178,3 +178,37 @@ describe('§23 ordering — the plain form is offered first', () => {
     if (result.kind === 'resolved') expect(result.row.ingredient_id).toBe('EXACT');
   });
 });
+
+describe('plain form through the canonical field pair (owner 2026-09-17 C)', () => {
+  const base = {
+    ingredient_id: 'PI-ING-001553',
+    ingredient_name_display: 'STRAWBERRIES · Fresh Fruit',
+    ingredient_name_internal: 'strawberries',
+    vegan: null,
+    dairy_free: null,
+    gluten_free: null,
+    contains_alcohol: null,
+    approved_for_base: true,
+    approved_for_engines: true,
+    dataset_version: null,
+  };
+  it('HOME-FORM-01: the public Mapper subcategory and the signed-in binding form mean the same plain form', () => {
+    expect(
+      isPlainForm({
+        ...base,
+        ingredient_category: 'fruit',
+        ingredient_subcategory: 'fresh_fruit_profile',
+      }),
+    ).toBe(true);
+    // search_products_v1 projects coalesce(binding.form_id, mapper.ingredient_subcategory).
+    expect(
+      isPlainForm({ ...base, ingredient_category: 'fruit', ingredient_subcategory: 'fresh' }),
+    ).toBe(true);
+    expect(
+      isPlainForm({ ...base, ingredient_category: 'fruit', ingredient_subcategory: 'fruit_puree' }),
+    ).toBe(false);
+    expect(
+      isPlainForm({ ...base, ingredient_category: 'dairy', ingredient_subcategory: 'fresh' }),
+    ).toBe(false);
+  });
+});

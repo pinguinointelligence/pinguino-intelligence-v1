@@ -12,3 +12,16 @@ export type {
   RoleMention,
   TechnicalMention,
 } from './types';
+export {
+  approvedConceptOrder,
+  conceptDefaultIntent,
+  indexConceptDefaults,
+  loadMapperConceptDefaults,
+} from './conceptDefaults';
+export type {
+  ConceptDefaultFocus,
+  ConceptDefaultIndex,
+  ConceptDefaultIntent,
+  MapperConceptDefaultDecision,
+  MapperConceptScope,
+} from './conceptDefaults';

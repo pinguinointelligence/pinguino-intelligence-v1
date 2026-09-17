@@ -40,6 +40,13 @@ describe('HOME identity resolution uses the canonical catalogue paths', () => {
     expect(SOURCE).toContain("kind: 'unresolved'");
   });
 
+  it('consumes the frozen concept default before any literal catalogue search', () => {
+    expect(SOURCE).toContain('selectApprovedConceptDefault');
+    expect(SOURCE.indexOf('selectApprovedConceptDefault({')).toBeLessThan(
+      SOURCE.indexOf('searchCanonicalMapperIngredients({'),
+    );
+  });
+
   it('auto-selects only an exact identity and otherwise preserves a real ambiguity', () => {
     expect(SOURCE).toContain("from './homeIdentityResolution'");
     expect(SOURCE).toContain('resolveIdentity(outcome.rows, term)');
