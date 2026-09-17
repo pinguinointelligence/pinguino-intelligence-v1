@@ -89,6 +89,9 @@ export interface CommunityCopy {
     readonly photoFailed: string;
     readonly photoRetry: string;
     readonly photoSkip: string;
+    readonly photoReplaceFailed: string;
+    readonly photoKeepCurrent: string;
+    readonly photoRemoveFailed: string;
     readonly photoOptionsFailed: string;
     /** Recipient page: the photograph could not be loaded (a failure, not „no photo"). */
     readonly ownPhotoUnavailable: string;
@@ -240,6 +243,9 @@ export const communityCopyPl: CommunityCopy = {
       'Nie udało się dodać zdjęcia. Do czasu dodania własnego odbiorca zobaczy zdjęcie Gellatti.',
     photoRetry: 'Spróbuj ponownie',
     photoSkip: 'Udostępnij bez zdjęcia',
+    photoReplaceFailed: 'Nie udało się dodać nowego zdjęcia. Odbiorca nadal widzi poprzednie.',
+    photoKeepCurrent: 'Zostaw obecne zdjęcie',
+    photoRemoveFailed: 'Nie udało się usunąć zdjęcia. Odbiorca nadal je widzi.',
     photoOptionsFailed: 'Nie udało się sprawdzić zdjęcia dla tego linku.',
     ownPhotoUnavailable: 'Nie udało się wczytać zdjęcia autora.',
     ownPhotoRefused: 'To zdjęcie nie jest już dostępne.',
@@ -390,6 +396,10 @@ export const communityCopyEn: CommunityCopy = {
       'The photo could not be added. Until you add your own, the recipient sees the Gellatti photo.',
     photoRetry: 'Try again',
     photoSkip: 'Share without a photo',
+    photoReplaceFailed:
+      'The new photo could not be added. The recipient still sees the previous one.',
+    photoKeepCurrent: 'Keep the current photo',
+    photoRemoveFailed: 'The photo could not be removed. The recipient still sees it.',
     photoOptionsFailed: 'The photo options for this link could not be loaded.',
     ownPhotoUnavailable: "The author's photo could not be loaded.",
     ownPhotoRefused: 'This photo is no longer available.',
