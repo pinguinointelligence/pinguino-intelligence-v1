@@ -6,6 +6,7 @@ import { absoluteUrl, canWebShare, sharePath } from '@/features/community/domain
 import { cn } from '@/lib/cn';
 import { createShareLink, type CreatedShareLink } from '@/services/community';
 import { customerErrorMessage } from '@/copy/customerError';
+import { ShareRecipePhoto } from './ShareRecipePhoto';
 
 /**
  * „Udostępnij recepturę" (§10, §45).
@@ -20,6 +21,13 @@ import { customerErrorMessage } from '@/copy/customerError';
  *     feel like it silently changed what they already sent.
  *  3. IT SHOWS THE TOKEN ONCE. The database keeps only a hash, so the link
  *     cannot be recovered later. The UI never pretends otherwise.
+ *
+ * Once the link exists the sharer may attach their own photograph for the
+ * recipient (`ShareRecipePhoto`, owner decision 2026-09-17). It is optional,
+ * private to the link and never published. Copy-link and the system share
+ * sheet still send the LINK only (title + url): no photo file is attached to
+ * a message, and the link preview in a messenger stays the neutral private
+ * card (`directShareMetadata`).
  */
 export function ShareRecipeDialog({
   recipeId,
@@ -82,7 +90,7 @@ export function ShareRecipeDialog({
       aria-labelledby="share-dialog-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
     >
-      <div className="w-full max-w-lg rounded-md border border-ink/10 bg-paper p-8">
+      <div className="max-h-full w-full max-w-lg overflow-y-auto rounded-md border border-ink/10 bg-paper p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <SectionLabel>{copy.roles.creator}</SectionLabel>
@@ -142,6 +150,8 @@ export function ShareRecipeDialog({
                 {copy.share.partnerNote}
               </p>
             ) : null}
+
+            <ShareRecipePhoto shareLinkId={link.share_link_id} />
 
             <div className="flex flex-wrap gap-3">
               <button type="button" className={buttonClasses('primary')} onClick={copyLink}>
