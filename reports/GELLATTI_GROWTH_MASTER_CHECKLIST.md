@@ -86,6 +86,9 @@ K16 🟡 Status visible (reversed shown struck) — the RewardRow renders earned
        strikes a reversal through; unit-tested. NOT served-proven: the QA account has no
        reversed reward, so no live row exists to show. Needs a real reversal to close.
        → READY FOR SERVED OWNER QA (owner 2026-09-10). Not a served pass.
+       → Script: reports/GELLATTI_WWU_SERVED_OWNER_QA_SCRIPT.md §5 (needs a reversed reward
+         first). Render test added 2026-09-17: referralRewardRow.render.test.tsx — the
+         reversed row stays listed, reads Cofnięte, its days struck through and dimmed.
 K17 🟢 Earned days visible    — SERVED 305d086c: "ZDOBYTE DNI PRO" renders from the RPC
 K18 🟢 Remaining bank visible — SERVED 305d086c: "BANK DNI PRO" + the banked-while-PRO help
        Rules render the canonical 7/30 from REFERRAL_BONUS_DAYS, and the separation line
@@ -107,6 +110,10 @@ L09 🟢 RLS proven by 15 negative attempts, every one refused
 L10 🟡 Anonymous limited — anon blocked on referral tables; BUT anon still holds
        table-level INSERT/UPDATE/DELETE/TRUNCATE grants on commission_entries.
        RLS is currently the only barrier. Recorded as a defence-in-depth gap.
+       FINDING 2026-09-17 (Lane A J-REF-17, read-only on the live DB): authenticated holds
+       table-level SELECT on referral_rewards and user_referral_attributions, so a referrer can
+       read referred_user_id and the purchase's Stripe ids on their OWN reward rows via REST.
+       Latent (both tables empty). Grant change prepared for owner approval; no count changed.
 
 REGRESSION / EXISTING PRODUCT                                                 1/9
 M01 ⚪ HOME  M02 ⚪ PRO  M03 ⚪ Shop  M04 🟡 Work With Us route (test, needs served)
