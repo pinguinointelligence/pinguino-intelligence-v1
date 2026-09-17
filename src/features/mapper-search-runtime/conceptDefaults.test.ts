@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   approvedConceptOrder,
+  attachedFormText,
   conceptDefaultIntent,
   conceptLineage,
   indexConceptDefaults,
@@ -224,6 +225,38 @@ describe(
         kind: 'default',
         decision: { conceptKey: 'passion_fruit' },
       });
+    });
+
+    it('HOME-FORM-ATTACH-01: a form joined by a central linker belongs to the ingredient', () => {
+      const z = (before: string) => ({ before: { text: before, separator: ' z ' } });
+      expect(attachedFormText('cytryny', z('sok'), resolve, lineage)).toBe('sok z cytryny');
+      expect(attachedFormText('mango', z('puree'), resolve, lineage)).toBe('puree z mango');
+      expect(
+        attachedFormText('sok', { after: { text: 'cytryny', separator: ' z ' } }, resolve, lineage),
+      ).toBe('sok z cytryny');
+      expect(intent('puree z mango', 'mango', 'mango')).toMatchObject({
+        kind: 'clarify',
+        reason: 'explicit_qualifier',
+      });
+    });
+
+    it('HOME-FORM-ATTACH-02: two ingredients, a list separator or no form stay apart', () => {
+      const join = (separator: string, text: string) => ({ before: { text, separator } });
+      expect(attachedFormText('bananem', join(' z ', 'truskawki'), resolve, lineage)).toBe(
+        'bananem',
+      );
+      expect(attachedFormText('mango', join(', ', 'puree'), resolve, lineage)).toBe('mango');
+      expect(attachedFormText('mango', join(' i ', 'puree'), resolve, lineage)).toBe('mango');
+      expect(attachedFormText('mango', join(' z ', 'poproszę'), resolve, lineage)).toBe('mango');
+    });
+
+    it('HOME-FORM-ATTACH-03: a word that only states a form is covered by the ingredient it describes', () => {
+      expect(intent('puree truskawkowe', 'puree', null)).toMatchObject({ kind: 'covered' });
+      expect(intent('świeży banan', 'swiezy', null)).toMatchObject({ kind: 'covered' });
+      expect(intent('mrożone truskawki', 'mrozone', null)).toMatchObject({ kind: 'covered' });
+      expect(intent('sok z cytryny', 'sok', null)).toMatchObject({ kind: 'covered' });
+      // Nothing to carry it: the lone form word is not covered.
+      expect(intent('puree', 'puree', null)).toMatchObject({ kind: 'not_applicable' });
     });
 
     it('HOME-ADD-SEL-09 (review): one multi-word product is selected once', () => {

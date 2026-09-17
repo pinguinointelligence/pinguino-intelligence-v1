@@ -63,7 +63,13 @@ const frozenOrder = (conceptKey: string) => {
 const chipFrom = (text: string, index = 0) => {
   const term = parseIntent(text).terms[index];
   if (!term) throw new Error(`no term parsed from ${text}`);
-  return { label: term.raw, concept: term.concept, segment: term.segment };
+  return {
+    label: term.raw,
+    concept: term.concept,
+    segment: term.segment,
+    utterance: term.utterance,
+    segmentIndex: term.segmentIndex,
+  };
 };
 
 const idsReadByExactId = () =>
@@ -259,6 +265,74 @@ describe('explicit customer words keep their meaning', { timeout: REAL_RUNTIME_T
     });
   });
 });
+
+describe(
+  'a stated form belongs to its ingredient (served staging df1d0d33 reproducer)',
+  {
+    timeout: REAL_RUNTIME_TIMEOUT_MS,
+  },
+  () => {
+    beforeEach(() => {
+      mocks.searchProducts.mockResolvedValue([]);
+      mocks.state.table = [
+        ...mocks.state.table,
+        ...demoViewRowsFromRelease(frozenOrder('lemon')),
+        ...demoViewRowsFromRelease(frozenOrder('mango')),
+      ];
+    });
+
+    it('HOME-FORM-02: „sok z cytryny” never becomes the fresh-lemon default — the form is asked', async () => {
+      const lemon = chipFrom('sok z cytryny', 1);
+      expect(lemon.concept).toBe('lemon');
+      const result = await resolveChipTerm(lemon);
+      expect(result.kind).toBe('ambiguous');
+      expect(
+        result.kind === 'ambiguous' && result.candidates.map((row) => row.ingredient_id),
+      ).toEqual(frozenOrder('lemon').slice(0, 6));
+    });
+
+    it('HOME-FORM-03: „puree z mango” keeps the stated form for mango', async () => {
+      const result = await resolveChipTerm(chipFrom('puree z mango', 1));
+      expect(result).not.toMatchObject({ kind: 'resolved' });
+      expect(result.kind).toBe('ambiguous');
+    });
+
+    it('HOME-FORM-04: the form word itself asks nothing — its ingredient carries the question', async () => {
+      for (const [text, index] of [
+        ['puree truskawkowe', 0],
+        ['sok z cytryny', 0],
+        ['świeży banan', 0],
+        ['mrożone truskawki', 0],
+      ] as const) {
+        await expect(resolveChipTerm(chipFrom(text, index)), text).resolves.toEqual({
+          kind: 'covered',
+        });
+      }
+    });
+
+    it('HOME-FORM-05: a form that agrees with the fresh default still consumes it („świeży banan”)', async () => {
+      const result = await resolveChipTerm(chipFrom('świeży banan', 1));
+      expect(result).toMatchObject({
+        kind: 'resolved',
+        row: { ingredient_id: decision('banana').defaultPiId },
+        provenance: { authority: 'SA03_CONCEPT_DEFAULT' },
+      });
+    });
+
+    it('HOME-FORM-06: two ingredients joined by „z” stay two ingredients with their own defaults', async () => {
+      const result = await resolveChipTerm(chipFrom('truskawki z bananem', 0));
+      expect(result).toMatchObject({
+        kind: 'resolved',
+        row: { ingredient_id: decision('strawberry').defaultPiId },
+      });
+    });
+
+    it('HOME-FORM-07: a lone form word with no ingredient keeps the literal path (nothing is covered)', async () => {
+      const result = await resolveChipTerm(chipFrom('puree'));
+      expect(result.kind).not.toBe('covered');
+    });
+  },
+);
 
 describe('source guards', () => {
   const source = readFileSync(

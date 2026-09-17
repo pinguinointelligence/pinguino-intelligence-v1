@@ -321,6 +321,79 @@ const adjacent = (
   return /^[\s\-–—]*$/u.test(between) || lineage.isLinker(between);
 };
 
+/** A listed element next to the focus element, with the words said between them. */
+export interface ConceptDefaultNeighbour {
+  readonly text: string;
+  readonly separator: string;
+}
+
+const isFormAttribute = (key: string, lineage: ConceptLineage): boolean =>
+  !lineage.isRecipeAttribute(key);
+
+/** An unknown word the release confirms only as a concept (a typo, an inflection). */
+const conceptOnlyWord = (word: string, lineage: ConceptLineage): boolean => {
+  if (word.length < 3 || lineage.isLinker(word)) return false;
+  const near = lineage.nearest(word);
+  return near.concepts.size > 0 && near.qualifiers.size === 0 && near.attributes.size === 0;
+};
+
+/** An unknown word the release confirms only as a stated form („mrożone” ≈ „mrożony”). */
+const formOnlyWord = (word: string, lineage: ConceptLineage): boolean => {
+  if (word.length < 3 || lineage.isLinker(word)) return false;
+  const near = lineage.nearest(word);
+  return near.qualifiers.size > 0 && near.concepts.size === 0;
+};
+
+const namesIngredient = (resolution: MapperSearchResolution, lineage: ConceptLineage): boolean =>
+  resolution.searchMentions.length > 0 ||
+  resolution.technicalMentions.length > 0 ||
+  resolution.searchGaps.some((gap) =>
+    words(gap.sourceText).some((word) => conceptOnlyWord(word, lineage)),
+  );
+
+const statesForm = (resolution: MapperSearchResolution, lineage: ConceptLineage): boolean =>
+  resolution.attributes.some((key) => isFormAttribute(key, lineage)) ||
+  resolution.searchGaps.some((gap) =>
+    words(gap.sourceText).some((word) => formOnlyWord(word, lineage)),
+  );
+
+/**
+ * The text an input element must be resolved as. A listing parser splits „sok z cytryny”
+ * and „puree z mango” on „z”, but when a central grammar linker joins an element that only
+ * states a form to an element that names an ingredient, the form belongs to that
+ * ingredient. Two ingredients joined the same way („truskawki z bananem”) stay apart.
+ */
+export function attachedFormText(
+  element: string,
+  neighbours: {
+    readonly before?: ConceptDefaultNeighbour | null;
+    readonly after?: ConceptDefaultNeighbour | null;
+  },
+  resolve: (text: string) => MapperSearchResolution,
+  lineage: ConceptLineage,
+): string {
+  const kindOf = (text: string): 'ingredient' | 'form' | 'other' => {
+    const resolution = resolve(text);
+    if (namesIngredient(resolution, lineage)) return 'ingredient';
+    return statesForm(resolution, lineage) ? 'form' : 'other';
+  };
+  const own = kindOf(element);
+  if (own === 'other') return element;
+  const joins = (neighbour: ConceptDefaultNeighbour | null | undefined) => {
+    if (!neighbour || !lineage.isLinker(neighbour.separator)) return false;
+    const other = kindOf(neighbour.text);
+    return (own === 'form' && other === 'ingredient') || (own === 'ingredient' && other === 'form');
+  };
+  let text = element;
+  if (joins(neighbours.before)) {
+    text = `${neighbours.before!.text} ${neighbours.before!.separator.trim()} ${text}`;
+  }
+  if (joins(neighbours.after)) {
+    text = `${text} ${neighbours.after!.separator.trim()} ${neighbours.after!.text}`;
+  }
+  return text;
+}
+
 /**
  * Decide whether the frozen default may be consumed for `focus` within `resolution`
  * (the central resolution of the WHOLE input element the focus came from). Pure.
@@ -344,6 +417,27 @@ export function conceptDefaultIntent(
   }
 
   const focusWords = words(focus.text);
+  // The focus only STATES a form of an ingredient named next to it („puree truskawkowe”,
+  // „świeży banan”, „sok z cytryny”): that ingredient carries the form and asks about it.
+  const formSpan = resolution.trace.find(
+    (entry) =>
+      entry.span !== null &&
+      (entry.action === 'MATCH:QUALIFIER' || entry.action === 'MATCH:ATTRIBUTE') &&
+      containsRun(words(resolution.input.slice(entry.span.start, entry.span.end)), focusWords),
+  );
+  const focusIsForm =
+    formSpan !== undefined ||
+    (focusWords.length === 1 &&
+      resolution.searchGaps.some((gap) => containsRun(words(gap.sourceText), focusWords)) &&
+      formOnlyWord(focusWords[0]!, lineage));
+  if (focusIsForm && namesIngredient(resolution, lineage)) {
+    const span = formSpan?.span;
+    return {
+      kind: 'covered',
+      phraseText: span ? resolution.input.slice(span.start, span.end) : focus.text,
+    };
+  }
+
   const covering = resolution.searchMentions.find((mention) =>
     containsRun(words(mention.sourceText), focusWords),
   );
