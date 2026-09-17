@@ -79,7 +79,7 @@ export function ShopProductCard({
       data-testid={`shop-card-${product.sku}`}
       data-availability={product.availability}
     >
-      <ShopReservedFrame />
+      <ShopReservedFrame sku={product.sku} imageUrl={product.imageUrl} />
 
       <div className="min-w-0">
         <h3 className="text-[15.5px] leading-[1.25] font-bold tracking-[-0.015em]">{name}</h3>
