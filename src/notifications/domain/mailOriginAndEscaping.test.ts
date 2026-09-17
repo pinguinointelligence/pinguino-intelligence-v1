@@ -88,10 +88,11 @@ describe('gellatti_html_escape_v1', () => {
 });
 
 describe('its dependants and its rollback', () => {
-  it('both dependants refuse to apply without it', () => {
+  it('every dependant refuses to apply without it', () => {
     for (const file of [
       'supabase/migrations/20260910180000_partner_application_lifecycle_email.sql',
       'supabase/migrations/20260917180000_franchise_inquiry_server_environment.sql',
+      'supabase/migrations/20260918090000_audit_environment_server_decided.sql',
     ]) {
       expect(read(file), file).toContain("raise exception 'apply 20260910175900_mail_origin_and_escaping.sql first';");
     }
@@ -103,6 +104,9 @@ describe('its dependants and its rollback', () => {
     );
     expect(rollback).toContain(
       "raise exception 'rollback refused: roll back 20260917180000_franchise_inquiry_server_environment first';",
+    );
+    expect(rollback).toContain(
+      "raise exception 'rollback refused: roll back 20260918090000_audit_environment_server_decided first';",
     );
     const guard = rollback.indexOf('rollback refused');
     for (const statement of [

@@ -5,13 +5,14 @@
 -- helper, and nothing else.
 --
 -- REFUSES while anything that calls them is applied: the partner lifecycle mail
--- (20260910180000) and the franchise inquiry correction (20260917180000). Roll
--- those back first. PL/pgSQL binds late, so without this refusal the drop would
+-- (20260910180000), the franchise inquiry correction (20260917180000) and the
+-- audit environment (20260918090000). Roll those back first. PL/pgSQL binds late, so without this refusal the drop would
 -- succeed and break those paths at run time instead.
 
 do $guard$
 declare
   v_franchise regprocedure := to_regprocedure('public.gellatti_submit_franchise_inquiry_v1(jsonb)');
+  v_audit regprocedure := to_regprocedure('public.gellatti_write_audit_v1(text,text,text,jsonb,text,text,text,text)');
 begin
   if to_regprocedure('public.gellatti_partner_application_stamp_app_v1()') is not null
      or to_regprocedure('public.gellatti_partner_application_email_v1()') is not null then
@@ -20,6 +21,10 @@ begin
   if v_franchise is not null
      and pg_get_functiondef(v_franchise) like '%gellatti_request_app_origin_v1%' then
     raise exception 'rollback refused: roll back 20260917180000_franchise_inquiry_server_environment first';
+  end if;
+  if v_audit is not null
+     and pg_get_functiondef(v_audit) like '%gellatti_request_app_origin_v1%' then
+    raise exception 'rollback refused: roll back 20260918090000_audit_environment_server_decided first';
   end if;
 end $guard$;
 
