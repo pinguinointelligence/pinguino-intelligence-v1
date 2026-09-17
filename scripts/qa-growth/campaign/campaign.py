@@ -1063,6 +1063,109 @@ from public.commission_entries ce where ce.earned_at >= date_trunc('month', '{mo
     c.save()
 
 
+def slice18(c: Campaign):
+    """The whole cycle on FIXED code, in one run: a renewal whose month does not exist
+    parks; it stays parked while the dependency really is missing; and it settles by
+    itself once the month appears — no replayed delivery, no SQL on the entry."""
+    st = 'S18'
+    L = lane(c, 's18park', 'STRIPE_PRICE_HOME_MONTHLY_STANDARD', 'home_monthly_standard', backdate=False)
+    first = first_paid_facts(c, st, 'S18 lane', L, 999)
+    wait_ledger(c, 's18-ledger-1', L['sub'], lambda l: len(l['entries']) >= 1, timeout=120)
+
+    # Forward ON THE STRIPE CLOCK ONLY, one interval at a time — a test clock refuses
+    # to jump more than two billing intervals. Stop at the first month whose tier
+    # snapshot does not exist: earlier runs seeded theirs, and a month that already
+    # has one books straight away (which is the other half of this contract, proven
+    # by S13).
+    have = {str(r['month']) for r in c.sql('s18-have-months', f"""select month from public.partner_tier_snapshots
+where partner_id = '{PARTNER_A}';""")}
+    c.say(f's18 months that already have a snapshot: {sorted(have)}')
+    steps = 1
+    while steps < 12:
+        m = datetime.datetime.utcfromtimestamp(month_shift(L['t0'], steps)).strftime('%Y-%m-01')
+        if m not in have:
+            break
+        steps += 1
+    c.say(f's18 advancing {steps} interval(s) to reach a month with no snapshot')
+    clock = None
+    for step in range(1, steps + 1):
+        clock = advance(c, f's18-advance-{step}', L['clock'], month_shift(L['t0'], step) + 2 * 3600)
+    db_now = c.sql('s18-dbnow', "select now() as now, (now() at time zone 'Europe/Madrid')::date as madrid_day;")[0]
+    c.clocks('S18.month-that-does-not-exist', stripe_clock=clock['frozen_time'],
+             business_time='the snapshot job still runs in the real month')
+    c.say(f"s18 clocks: stripe={datetime.datetime.utcfromtimestamp(clock['frozen_time']).isoformat()}Z db={db_now['now']}")
+
+    renewals = sorted([i for i in invoices(c, 's18-invoices', L['sub'])
+                       if i.get('billing_reason') == 'subscription_cycle'], key=lambda i: i['created'])
+    c.check(st, 'the Stripe clock billed every renewal the database never lived through', steps, len(renewals))
+    last = renewals[-1]
+
+    parked = []
+    deadline = time.time() + 150
+    while time.time() < deadline:
+        parked = [e for e in c.events_for(f's18-events-{int(time.time())}', [last['id']])
+                  if e['type'] == 'invoice.paid']
+        if parked and parked[0]['state'] in ('received', 'failed') and parked[0]['attempts']:
+            break
+        time.sleep(8)
+    c.say(f"s18 delivery for {last['id']}: {json.dumps(parked, default=str)}")
+    c.check(st, 'the renewal parks on its missing month instead of booking or being dropped',
+            {'parked': True, 'reason': 'tier_snapshot_missing'},
+            {'parked': bool(parked) and parked[0]['state'] in ('received', 'failed'),
+             'reason': str(parked[0]['failure']).split(':')[0] if parked else None})
+    month = str(parked[0]['failure']).split(':')[-1] if parked else None
+    c.say(f's18 missing month: {month}')
+    if not month or not month[0].isdigit():
+        c.say('s18 stops here: nothing parked, so there is no missing month to make appear')
+        c.save()
+        return
+
+    # The worker runs while the dependency is still missing: it must NOT invent it.
+    time.sleep(70)
+    recovery_tick(c, 's18-recovery-1')
+    time.sleep(15)
+    still = [e for e in c.events_for('s18-events-still', [last['id']]) if e['type'] == 'invoice.paid']
+    c.say(f's18 after a retry with the month still missing: {json.dumps(still, default=str)}')
+    c.check(st, 'a retry while the month is still missing changes nothing but the attempt count',
+            {'stillParked': True, 'sameReason': True, 'attemptsGrew': True, 'entriesForInvoice': 0},
+            {'stillParked': bool(still) and still[0]['state'] in ('received', 'failed'),
+             'sameReason': bool(still) and str(still[0]['failure']).startswith('tier_snapshot_missing'),
+             'attemptsGrew': bool(still) and still[0]['attempts'] > parked[0]['attempts'],
+             'entriesForInvoice': c.sql('s18-entry-mid', f"""select count(*) as n from public.commission_entries
+where stripe_invoice_id = '{last['id']}';""")[0]['n']})
+
+    # The dependency appears — the month's snapshot row, written the way the job writes it.
+    c.sql('s18-seed-snapshot', f"""do $s$ begin {GUARD}
+  insert into public.partner_tier_snapshots (partner_id, month, tier, active_subscription_count, computed_at)
+  select p.id, '{month}'::date, 'standard', 0, now() from public.partners p
+  on conflict (partner_id, month) do nothing;
+  insert into qa_harness.observations (run_id, worker, payload)
+  values ('{c.run}', 's18-seed-snapshot', jsonb_build_object('month', '{month}',
+    'rows', (select count(*) from public.partner_tier_snapshots where month = '{month}'::date)));
+end $s$;
+select payload from qa_harness.observations where run_id = '{c.run}' and worker = 's18-seed-snapshot' order by observed_at desc limit 1;""")
+
+    time.sleep(140)
+    recovery_tick(c, 's18-recovery-2')
+    time.sleep(25)
+    after = [e for e in c.events_for('s18-events-after', [last['id']]) if e['type'] == 'invoice.paid']
+    c.say(f's18 after the month exists: {json.dumps(after, default=str)}')
+    c.check(st, 'the parked delivery settles itself once the month exists', 'processed',
+            after[0]['state'] if after else None)
+    entry = c.sql('s18-entry', f"""select coalesce(jsonb_agg(jsonb_build_object('amount', ce.amount_cents,
+  'tier', ce.tier, 'status', ce.status, 'earned', ce.earned_at)), '[]'::jsonb) as e
+from public.commission_entries ce where ce.stripe_invoice_id = '{last['id']}';""")[0]['e']
+    c.say(f's18 entry booked by the worker: {json.dumps(entry, default=str)}')
+    c.check(st, 'and books exactly one commission at the tier of ITS month',
+            {'count': 1, 'amounts': [199], 'tiers': ['standard']},
+            {'count': len(entry), 'amounts': [e['amount'] for e in entry], 'tiers': [e['tier'] for e in entry]})
+    json.dump({'lane': {k: L[k] for k in ('uid', 'clock', 'customer', 'sub', 'first_invoice')},
+               'firstInvoice': first['id'], 'renewals': [i['id'] for i in renewals], 'month': month,
+               'clock': clock['frozen_time'], 'dbNow': db_now['now'], 'parked': parked, 'after': after,
+               'entry': entry}, open(os.path.join(c.dir, 'park-s18.json'), 'w'), indent=1, default=str)
+    c.save()
+
+
 def slice17(c: Campaign):
     """The same money must not be taken twice: a refund on a charge whose dispute
     already reversed the commission."""
@@ -1146,5 +1249,5 @@ if __name__ == '__main__':
     {'slice1': slice1, 'slice2': slice2, 'slice2b': slice2b, 'slice3': slice3, 'slice4': slice4, 'slice5': slice5,
      'u1': slice_u1, 'u2': slice_u2, 'slice6': slice5b, 'slice7': slice7, 'slice8': slice8, 'slice9': slice9,
      'slice10': slice10, 'slice11': slice11, 'slice13': slice13, 'recovery': slice_recovery,
-     'slice15': slice15, 'slice16': slice16, 'slice17': slice17}[sys.argv[1]](camp)
+     'slice15': slice15, 'slice16': slice16, 'slice17': slice17, 'slice18': slice18}[sys.argv[1]](camp)
     camp.say(f"run {camp.run}: {sum(x['pass'] for x in camp.checks)}/{len(camp.checks)} checks passed")
