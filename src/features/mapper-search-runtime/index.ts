@@ -14,6 +14,7 @@ export type {
 } from './types';
 export {
   approvedConceptOrder,
+  attachedFormText,
   conceptDefaultIntent,
   conceptLineage,
   indexConceptDefaults,
@@ -21,6 +22,7 @@ export {
 } from './conceptDefaults';
 export type {
   ConceptDefaultFocus,
+  ConceptDefaultNeighbour,
   ConceptDefaultIndex,
   ConceptDefaultIntent,
   ConceptLineage,

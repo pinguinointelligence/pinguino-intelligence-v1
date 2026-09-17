@@ -128,6 +128,8 @@ export function HomeIntentSection({
           concept: term.concept,
           role: term.role,
           segment: term.segment,
+          utterance: term.utterance,
+          segmentIndex: term.segmentIndex,
           source,
           productId: null,
           productName: null,

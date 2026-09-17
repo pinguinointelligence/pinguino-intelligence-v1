@@ -33,7 +33,7 @@ import type { EngineIngredient } from '@/engine';
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
 import type { MapperConceptScope } from '@/features/mapper-search-runtime';
 import { catalogueSearchTerms, resolveIdentity } from './homeIdentityResolution';
-import { parseIntent, type IntentProfile } from './homeIntentParsing';
+import { intentSegmentParts, parseIntent, type IntentProfile } from './homeIntentParsing';
 
 /** What one chip resolved to, ready for the UI to act on. */
 export interface ResolvedChipIdentity {
@@ -94,19 +94,53 @@ export const SCOPE_BY_PROFILE: Readonly<Record<IntentProfile, MapperConceptScope
  * 3. Anything else (brand words, exact names, unknown concepts) → the literal
  *    catalogue path: an exact label survives, several products are a real choice.
  */
+export interface ChipTerm {
+  readonly label: string;
+  readonly concept: string | null;
+  readonly segment?: string;
+  readonly utterance?: string;
+  readonly segmentIndex?: number;
+}
+
+/** The words a chip was said in, as the resolution stage reads them. */
+export const chipTermOf = (chip: ChipTerm): ChipTerm => ({
+  label: chip.label,
+  concept: chip.concept,
+  segment: chip.segment,
+  utterance: chip.utterance,
+  segmentIndex: chip.segmentIndex,
+});
+
+/** The listed elements said right before and after the chip's own element, if known. */
+function neighboursOf(chip: ChipTerm, segment: string) {
+  if (chip.utterance === undefined || chip.segmentIndex === undefined) return undefined;
+  const parts = intentSegmentParts(chip.utterance);
+  const own = parts[chip.segmentIndex];
+  if (!own || own.text !== segment) return undefined;
+  const previous = parts[chip.segmentIndex - 1];
+  const next = parts[chip.segmentIndex + 1];
+  return {
+    before:
+      previous && own.separatorBefore !== null
+        ? { text: previous.text, separator: own.separatorBefore }
+        : null,
+    after:
+      next && next.separatorBefore !== null
+        ? { text: next.text, separator: next.separatorBefore }
+        : null,
+  };
+}
+
 export async function resolveChipTerm(
-  chip: {
-    readonly label: string;
-    readonly concept: string | null;
-    readonly segment?: string;
-  },
+  chip: ChipTerm,
   signal?: AbortSignal,
   context: { readonly profile?: IntentProfile | null } = {},
 ): Promise<ChipResolution> {
   const segment = chip.segment?.trim() || chip.label;
-  const siblings = parseIntent(segment).terms;
+  const siblings = parseIntent(chip.utterance ?? segment).terms;
   const selection = await selectApprovedConceptDefault({
     text: segment,
+    neighbours: neighboursOf(chip, segment),
     focus: {
       text: chip.label,
       hintedConceptKey: chip.concept,
