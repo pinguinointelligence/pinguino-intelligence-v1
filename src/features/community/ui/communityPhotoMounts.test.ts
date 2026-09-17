@@ -24,7 +24,7 @@ function sources(dir: string, acc: string[] = []): string[] {
 const ALL = sources('src').map((file) => ({ file, text: readFileSync(file, 'utf8') }));
 
 describe('Community publishing has one dialog and one photo path', () => {
-  it('HOME, PRO and Production mount the same PublishToCommunityDialog', () => {
+  it('COMM-MOUNT-01 HOME, PRO and Production mount the same PublishToCommunityDialog', () => {
     for (const mount of [
       'src/pages/home/HomeCreatorPage.tsx',
       'src/features/community/ui/RecipeCommunityActions.tsx',
@@ -38,7 +38,7 @@ describe('Community publishing has one dialog and one photo path', () => {
     }
   });
 
-  it('only that dialog publishes or uploads a Community photo', () => {
+  it('COMM-MOUNT-02 only that dialog publishes or uploads a Community photo', () => {
     const publishers = ALL.filter(({ text }) => /\bpublishRecipe\(/.test(text)).map(
       ({ file }) => file,
     );
