@@ -94,6 +94,11 @@ export interface CommunityCopy {
     readonly slugLabel: string;
     readonly imageLabel: string;
     readonly imageRequired: string;
+    /** Why „Opublikuj" is unavailable while no own photograph is attached. */
+    readonly ownPhotoRequired: string;
+    /** Shown only when the recipe version is confirmed saved. */
+    readonly ownPhotoLaterSaved: string;
+    readonly publishLater: string;
     readonly needsCreatorProfile: string;
     readonly published: string;
   };
@@ -224,6 +229,9 @@ export const communityCopyPl: CommunityCopy = {
     slugLabel: 'Adres publiczny',
     imageLabel: 'Zdjęcie',
     imageRequired: 'Wybierz zdjęcie receptury.',
+    ownPhotoRequired: 'Aby opublikować w Community, dodaj własne zdjęcie gotowych lodów.',
+    ownPhotoLaterSaved: 'Możesz zrobić to później — Twoja receptura pozostaje zapisana.',
+    publishLater: 'Opublikuję później',
     needsCreatorProfile: 'Najpierw utwórz profil Twórcy.',
     published: 'Receptura jest już w Community.',
   },
@@ -355,6 +363,9 @@ export const communityCopyEn: CommunityCopy = {
     slugLabel: 'Public address',
     imageLabel: 'Photo',
     imageRequired: 'Choose a recipe photo.',
+    ownPhotoRequired: 'To publish in Community, add your own photo of the finished ice cream.',
+    ownPhotoLaterSaved: 'You can do it later — your recipe stays saved.',
+    publishLater: "I'll publish later",
     needsCreatorProfile: 'Najpierw utwórz profil twórcy.',
     published: 'Published',
   },
