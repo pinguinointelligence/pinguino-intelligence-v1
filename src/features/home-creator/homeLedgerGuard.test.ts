@@ -110,7 +110,7 @@ describe('the guard reads the real ledger correctly', () => {
   const { rows: parsed, problems } = parse(ledgerText);
 
   it('parses every requirement row at 17 columns with unique ids', () => {
-    expect(parsed.size).toBe(214);
+    expect(parsed.size).toBe(215);
     expect(problems).toEqual([]);
   });
 
