@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { ShopProduct } from '@/services/shop';
 import { ShopProductCard } from './ShopProductCard';
 import {
+  SHOP_SINGLE_OWN_PHOTOS,
   SHOP_SINGLE_PLACEHOLDER_SKUS,
   SHOP_SINGLE_PLACEHOLDER_SRC,
   SHOP_STARTER_SHOTS,
@@ -130,34 +131,51 @@ describe('shop C3 · the product carries the emphasis, never the money', () => {
     // The strip offers only what is NOT on display.
     const offer = read('features', 'shop', 'ShopStarterOffer.tsx');
     expect(offer).toContain('SHOP_STARTER_SHOTS.filter((s) => s.id !== primary.id)');
-    // The offer never reaches for the singles' placeholder.
+    // The offer never reaches for the singles' placeholder or their photos.
     expect(offer).not.toContain('SHOP_SINGLE_PLACEHOLDER');
     expect(offer).not.toContain('single-placeholder');
+    expect(offer).not.toContain('SHOP_SINGLE_OWN_PHOTOS');
+    expect(offer).not.toContain('/shop/singles/');
   });
 
-  it('shows the owner placeholder on the seven physical singles, and on no other article', () => {
-    /* OWNER DECISION 2026-09-12, scoped 2026-09-17: supersedes C3's „the
-       reserved frame is never filled with invented imagery" for exactly these
-       seven articles. The list is repeated here on purpose, so that extending it
-       is a decision and never a side effect. */
-    const seven = [
-      'GEL-DEX-500',
-      'GEL-FRU-500',
-      'GEL-INU-500',
-      'GEL-STB-500',
-      'GEL-YOL-500',
-      'GEL-SMP-500',
-      'GEL-CRP-500',
-    ];
-    expect([...SHOP_SINGLE_PLACEHOLDER_SKUS].sort()).toEqual([...seven].sort());
-    // ONE shared file, and it ships.
-    expect(SHOP_SINGLE_PLACEHOLDER_SRC).toBe('/shop/single-placeholder.png');
-    expect(existsSync(join(process.cwd(), 'public', SHOP_SINGLE_PLACEHOLDER_SRC))).toBe(true);
-    for (const sku of seven) {
+  /* OWNER DECISIONS: 2026-09-12 a shared placeholder photo, scoped to exactly
+     these seven articles on 2026-09-17; later on 2026-09-17 each of the seven
+     gets its own photo, with the placeholder kept behind it as the fallback.
+     Both supersede C3's „the reserved frame is never filled with invented
+     imagery" for these seven ONLY. The list is repeated here on purpose, so
+     that extending it is a decision and never a side effect. */
+  const SEVEN = [
+    'GEL-DEX-500',
+    'GEL-FRU-500',
+    'GEL-INU-500',
+    'GEL-STB-500',
+    'GEL-YOL-500',
+    'GEL-SMP-500',
+    'GEL-CRP-500',
+  ];
+
+  it('gives each of the seven physical singles its own photo, and no other article', () => {
+    expect([...SHOP_SINGLE_OWN_PHOTOS.keys()].sort()).toEqual([...SEVEN].sort());
+    const files = [...SHOP_SINGLE_OWN_PHOTOS.values()];
+    // One file per article, never shared between two.
+    expect(new Set(files).size).toBe(SEVEN.length);
+    for (const src of files) {
+      expect(src).toMatch(/^\/shop\/singles\/[a-z0-9-]+\.png$/);
+      const path = join(process.cwd(), 'public', src);
+      expect(existsSync(path)).toBe(true);
+      // The approved placeholder format: a transparent (RGBA) 512 px square PNG.
+      const png = readFileSync(path);
+      expect(png.subarray(1, 4).toString('latin1')).toBe('PNG');
+      expect(png.readUInt32BE(16)).toBe(512);
+      expect(png.readUInt32BE(20)).toBe(512);
+      expect(png[25]).toBe(6);
+    }
+    for (const sku of SEVEN) {
       const markup = row({ sku, imageUrl: null });
-      expect(markup).toContain(`src="${SHOP_SINGLE_PLACEHOLDER_SRC}"`);
-      // Illustrative, never the article: decorative, so it is never announced
-      // as the product. The name beside it names the article.
+      expect(markup).toContain(`src="${SHOP_SINGLE_OWN_PHOTOS.get(sku)}"`);
+      expect(markup).not.toContain(SHOP_SINGLE_PLACEHOLDER_SRC);
+      // Decorative: the name beside it names the article, so the picture is
+      // never announced a second time.
       expect(markup).toMatch(/<img[^>]*\salt=""/);
       // Same slot as before: the frame opens the row, before the name.
       expect(markup.indexOf('shop-reserved-frame')).toBeGreaterThan(-1);
@@ -167,14 +185,26 @@ describe('shop C3 · the product carries the emphasis, never the money', () => {
     const unnamed = row({ sku: 'GEL-NEW-500', imageUrl: null });
     expect(unnamed).toContain('shop-reserved-frame');
     expect(unnamed).not.toContain('<img');
-    expect(unnamed).not.toContain(SHOP_SINGLE_PLACEHOLDER_SRC);
-    // The frame keeps the ivory ground C3 pinned before this decision.
+    // The frame keeps the ivory ground C3 pinned before these decisions.
     expect(read('features', 'shop', 'ShopPackaging.tsx')).toMatch(/bg-\[var\(--g-ivory\)\]/);
   });
 
-  it("lets an article's own photograph win over the placeholder", () => {
+  it('keeps the shared placeholder behind the own photos of the same seven', () => {
+    expect([...SHOP_SINGLE_PLACEHOLDER_SKUS].sort()).toEqual([...SEVEN].sort());
+    // ONE shared file, and it ships.
+    expect(SHOP_SINGLE_PLACEHOLDER_SRC).toBe('/shop/single-placeholder.png');
+    expect(existsSync(join(process.cwd(), 'public', SHOP_SINGLE_PLACEHOLDER_SRC))).toBe(true);
+    // The order a failed picture gives way in (walked event by event in
+    // ShopPackaging.runtime.test.tsx): imageUrl, own photo, placeholder, outline.
+    expect(read('features', 'shop', 'ShopPackaging.tsx')).toContain(
+      '[imageUrl, ownPhoto, placeholder].find(',
+    );
+  });
+
+  it("lets an article's imageUrl win over its own photo and the placeholder", () => {
     const own = row({ sku: 'GEL-DEX-500', imageUrl: '/shop/own-photo.jpg' });
     expect(own).toContain('src="/shop/own-photo.jpg"');
+    expect(own).not.toContain('/shop/singles/dextrose.png');
     expect(own).not.toContain(SHOP_SINGLE_PLACEHOLDER_SRC);
     expect(own).toMatch(/<img[^>]*\salt=""/);
   });

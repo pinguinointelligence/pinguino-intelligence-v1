@@ -49,22 +49,47 @@ export const SHOP_STARTER_SHOTS: readonly ShopShot[] = [
 ];
 
 /**
+ * Each physical single's own photograph, by SKU — OWNER DECISION 2026-09-17.
+ *
+ * The owner's photos of the seven singles: the same white stand-up pouch as the
+ * placeholder below, labelled for its article. Web derivatives only: the white
+ * studio ground and its cast shadow are cut away, and each pouch sits exactly
+ * where the placeholder's pouch sits in the same transparent 512 px square, so
+ * every row keeps the approved scale. The pouch and its label are untouched —
+ * the masters are not in the repository.
+ *
+ * An article's own `ShopProduct.imageUrl` still wins. If a photo here fails to
+ * load, the frame falls back to the shared placeholder, then to the empty
+ * outline. A single added later has no entry until the owner supplies one.
+ */
+export const SHOP_SINGLE_OWN_PHOTOS: ReadonlyMap<string, string> = new Map([
+  ['GEL-DEX-500', '/shop/singles/dextrose.png'],
+  ['GEL-FRU-500', '/shop/singles/fructose.png'],
+  ['GEL-INU-500', '/shop/singles/inulin.png'],
+  ['GEL-STB-500', '/shop/singles/gellatti-stabilizer.png'],
+  ['GEL-YOL-500', '/shop/singles/dried-egg-yolk.png'],
+  ['GEL-SMP-500', '/shop/singles/skimmed-milk-powder.png'],
+  ['GEL-CRP-500', '/shop/singles/cream-powder-42.png'],
+]);
+
+/**
  * The placeholder photo for single articles — OWNER DECISION 2026-09-12,
  * scoped to seven articles 2026-09-17.
  *
  * ONE owner-supplied photo of a plain stand-up pouch (a transparent PNG), shared
- * by the singles in `SHOP_SINGLE_PLACEHOLDER_SKUS` until each has photography of
- * its own (`ShopProduct.imageUrl`, which always wins). It is illustrative, never
- * the article itself, so it renders as decoration. It supersedes C3's „the
- * reserved frame is never filled" for those seven articles ONLY, and it is never
- * one of the Starter Pack shots above.
+ * by the singles in `SHOP_SINGLE_PLACEHOLDER_SKUS`. Since the seven received
+ * their own photos (2026-09-17, above) it is the FALLBACK behind them, shown
+ * only when an own photo cannot load. It is illustrative, never the article
+ * itself, so it renders as decoration. It supersedes C3's „the reserved frame is
+ * never filled" for those seven articles ONLY, and it is never one of the
+ * Starter Pack shots above.
  */
 export const SHOP_SINGLE_PLACEHOLDER_SRC = '/shop/single-placeholder.png';
 
 /**
- * The seven physical singles that show the placeholder, by SKU. A single added
- * later is NOT covered: it keeps the empty reserved frame until it has a photo
- * of its own or the owner names it here.
+ * The seven physical singles that may show the placeholder, by SKU. A single
+ * added later is NOT covered: it keeps the empty reserved frame until it has a
+ * photo of its own or the owner names it here.
  */
 export const SHOP_SINGLE_PLACEHOLDER_SKUS: readonly string[] = [
   'GEL-DEX-500',
