@@ -1063,6 +1063,45 @@ from public.commission_entries ce where ce.earned_at >= date_trunc('month', '{mo
     c.save()
 
 
+def slice17(c: Campaign):
+    """The same money must not be taken twice: a refund on a charge whose dispute
+    already reversed the commission."""
+    st = 'S17'
+    L = lane(c, 's17double', 'STRIPE_PRICE_HOME_MONTHLY_STANDARD', 'home_monthly_standard',
+             pm='pm_card_createDispute', backdate=False)
+    inv = first_paid_facts(c, st, 'S17 lane', L, 999)
+    led = wait_ledger(c, 's17-ledger-1', L['sub'],
+                      lambda l: bool(l['entries']) and len(l['entries'][0]['adjustments']) >= 1, timeout=180)
+    e = led['entries'][0] if led['entries'] else {'adjustments': [], 'status': None}
+    c.check(st, 'the dispute took the whole commission first',
+            {'adjustments': [[-199, 'dispute_reversal']], 'status': 'reversed'},
+            {'adjustments': [[a['amount'], a['kind']] for a in e['adjustments']], 'status': e.get('status')})
+
+    pi = pi_of(c, 's17-pi', inv['id'])
+    refund_outcome = None
+    try:
+        c.stripe('s17-refund-after-dispute', 'refund_create', {'paymentIntentId': pi, 'amount': 300})
+        refund_outcome = 'accepted'
+    except RuntimeError as error:
+        refund_outcome = f'refused:{str(error)[-160:]}'
+    c.say(f's17 refund on a disputed charge: {refund_outcome}')
+
+    time.sleep(25)
+    recovery_tick(c, 's17-recovery')
+    time.sleep(20)
+    led = ledger(c, 's17-ledger-2', L['sub'])
+    e = led['entries'][0] if led['entries'] else {'adjustments': [], 'status': None}
+    total = sum(a['amount'] for a in e['adjustments'])
+    c.check(st, 'whatever Stripe allowed, the ledger never takes more than the commission (R3)',
+            {'entry': 199, 'totalReversed': -199, 'status': 'reversed'},
+            {'entry': e.get('amount'), 'totalReversed': total, 'status': e.get('status')})
+    c.say(f"s17 adjustments: {json.dumps([(a['amount'], a['kind'], a['source']) for a in e['adjustments']])}")
+    json.dump({'lane': {k: L[k] for k in ('uid', 'clock', 'customer', 'sub', 'first_invoice')}, 'pi': pi,
+               'refund': refund_outcome, 'ledger': led}, open(os.path.join(c.dir, 'double-s17.json'), 'w'),
+              indent=1, default=str)
+    c.save()
+
+
 def slice13(c: Campaign):
     """The two clocks disagree: a renewal paid on the Stripe clock IN THE NEXT MONTH, while the
     database (and therefore the tier snapshot writer) is still in this one."""
@@ -1107,5 +1146,5 @@ if __name__ == '__main__':
     {'slice1': slice1, 'slice2': slice2, 'slice2b': slice2b, 'slice3': slice3, 'slice4': slice4, 'slice5': slice5,
      'u1': slice_u1, 'u2': slice_u2, 'slice6': slice5b, 'slice7': slice7, 'slice8': slice8, 'slice9': slice9,
      'slice10': slice10, 'slice11': slice11, 'slice13': slice13, 'recovery': slice_recovery,
-     'slice15': slice15, 'slice16': slice16}[sys.argv[1]](camp)
+     'slice15': slice15, 'slice16': slice16, 'slice17': slice17}[sys.argv[1]](camp)
     camp.say(f"run {camp.run}: {sum(x['pass'] for x in camp.checks)}/{len(camp.checks)} checks passed")
