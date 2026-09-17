@@ -55,7 +55,8 @@ export interface HeatProcessClassification {
 
 const unique = (values: readonly string[]): string[] => [...new Set(values)];
 
-const isVerified = (evidence: RecipeProcessEvidence): boolean =>
+/** Decision-grade evidence: verified status with a non-empty source reference. */
+export const isVerifiedProcessEvidence = (evidence: RecipeProcessEvidence): boolean =>
   evidence.source.verificationStatus === 'verified' && evidence.source.reference.trim().length > 0;
 
 const reasonFromEvidence = (evidence: RecipeProcessEvidence): HeatProcessReason => ({
@@ -95,7 +96,7 @@ export function classifyHeatProcess({
   const current = new Set(currentIds);
   const verified = evidence.filter(
     (entry) =>
-      isVerified(entry) &&
+      isVerifiedProcessEvidence(entry) &&
       entry.affectedIngredientIds.some((ingredientId) => current.has(ingredientId)),
   );
   const functional = verified.filter((entry) => entry.decision === 'heat_required_for_function');
