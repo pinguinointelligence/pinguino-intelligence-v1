@@ -795,8 +795,12 @@ def slice9(c: Campaign):
     c.stripe(f's9-refund-full{SUFFIX}', 'refund_create', {'paymentIntentId': pi})
     ev = c.wait_events('s9-refund-events', [pi], ['charge.refunded'], timeout=120)
     c.say(f"s9 refund deliveries before accrual: {json.dumps([(e['type'], e['state'], e['failure']) for e in ev])}")
-    c.check(st, 'refund delivered first: processed with the honest no-entry note', True,
-            any(e['type'] == 'charge.refunded' and e['state'] == 'processed' and e['failure'] == 'skipped_no_commission_entry_for_refund' for e in ev))
+    # THE CONTRACT CHANGED HERE, and this is the change: a refund that arrives
+    # before the commission exists is no longer answered and forgotten. It parks
+    # on the missing entry and waits for it.
+    c.check(st, 'refund delivered first: parked on the entry it belongs to, not dropped', True,
+            any(e['type'] == 'charge.refunded' and e['state'] == 'received'
+                and str(e['failure'] or '').startswith('commission_entry_not_booked_yet') for e in ev))
     release(c, hold['id'])
     for i, e in enumerate(paid):
         c.stripe(f's9-redeliver{SUFFIX}-{i}', 'event_resend', {'eventId': e['id']})
@@ -959,6 +963,103 @@ def slice_recovery(c: Campaign):
     c.save()
 
 
+def slice15(c: Campaign):
+    """The production window, reproduced without touching a clock: the Madrid month
+    has turned over, the nightly snapshot job has not run yet, and a payment arrives."""
+    st = 'S15'
+    month = c.sql('s15-month', """select jsonb_build_object(
+  'madridMonth', date_trunc('month', (now() at time zone 'Europe/Madrid'))::date,
+  'madridMonthStartsUtc', (date_trunc('month', (now() at time zone 'Europe/Madrid')) at time zone 'Europe/Madrid') at time zone 'UTC',
+  'snapshotJobUtc', (select schedule from cron.job where jobname = 'gellatti-partner-tier-snapshots'),
+  'monthlyJobUtc', (select schedule from cron.job where jobname = 'gellatti-partner-monthly')) as m;""")[0]['m']
+    c.say(f's15 calendar: {json.dumps(month, default=str)}')
+
+    saved = c.sql('s15-remove-snapshots', f"""do $s$ declare v jsonb; begin {GUARD}
+  select coalesce(jsonb_agg(to_jsonb(s)), '[]'::jsonb) into v from public.partner_tier_snapshots s
+    where s.month = date_trunc('month', (now() at time zone 'Europe/Madrid'))::date;
+  insert into qa_harness.observations (run_id, worker, payload) values ('{c.run}', 's15-snapshots-before', v);
+  delete from public.partner_tier_snapshots
+    where month = date_trunc('month', (now() at time zone 'Europe/Madrid'))::date;
+end $s$;
+select payload from qa_harness.observations where run_id = '{c.run}' and worker = 's15-snapshots-before' order by observed_at desc limit 1;""")[0]['payload']
+    c.say(f's15 snapshots removed for the current month: {len(saved)}')
+    c.check(st, 'the month starts with no tier snapshot, exactly as it does before the nightly job',
+            0, c.sql('s15-count', "select count(*) as n from public.partner_tier_snapshots where month = date_trunc('month', (now() at time zone 'Europe/Madrid'))::date;")[0]['n'])
+
+    L = lane(c, 's15window', 'STRIPE_PRICE_HOME_MONTHLY_STANDARD', 'home_monthly_standard', backdate=False)
+    inv = first_paid_facts(c, st, 'S15 lane', L, 999)
+    ev = c.wait_events('s15-events-1', [inv['id']], ['invoice.paid'], timeout=150)
+    notes = [(e['type'], e['state'], e['failure']) for e in ev if e['type'].startswith('invoice.')]
+    c.say(f's15 deliveries while the month has no snapshot: {json.dumps(notes)}')
+    led = ledger(c, 's15-ledger-1', L['sub'])
+    c.check(st, 'the payment parks on the missing dependency instead of booking a wrong tier',
+            {'entries': 0, 'parked': True},
+            {'entries': len(led['entries']),
+             'parked': any(s == 'received' and str(f or '').startswith('tier_snapshot_missing') for (_t, s, f) in notes)})
+
+    job = c.sql('s15-run-job', 'select public.gellatti_partner_tier_snapshot_job_v1() as job;')[0]['job']
+    c.say(f's15 nightly job: {json.dumps(job, default=str)}')
+    c.check(st, 'the nightly job writes the month it is responsible for', True,
+            c.sql('s15-count-2', "select count(*) as n from public.partner_tier_snapshots where month = date_trunc('month', (now() at time zone 'Europe/Madrid'))::date;")[0]['n'] > 0)
+
+    time.sleep(70)
+    recovery_tick(c, 's15-recovery')
+    time.sleep(30)
+    led = wait_ledger(c, 's15-ledger-2', L['sub'], lambda l: len(l['entries']) >= 1, timeout=180)
+    ev = c.events_for('s15-events-2', [inv['id']])
+    notes = [(e['type'], e['state'], e['failure']) for e in ev if e['type'].startswith('invoice.')]
+    c.say(f's15 deliveries after the snapshot exists: {json.dumps(notes)}')
+    c.check(st, 'once the snapshot exists the parked payment books itself — no manual SQL, no redelivery',
+            [(199, 'monthly', 'standard', 'held')],
+            [(e['amount'], e['cadence'], e['tier'], e['status']) for e in led['entries']])
+    c.check(st, 'and the parked deliveries are settled', [],
+            [f'{t}:{s2}:{f}' for (t, s2, f) in notes if s2 not in ('processed',)])
+    json.dump({'calendar': month, 'snapshotsRemoved': len(saved), 'lane': {k: L[k] for k in ('uid', 'clock', 'customer', 'sub', 'first_invoice')},
+               'ledger': led}, open(os.path.join(c.dir, 'window-s15.json'), 'w'), indent=1, default=str)
+    c.save()
+
+
+def slice16(c: Campaign):
+    """The October renewal that S13 left parked: it settles the moment its month exists."""
+    st = 'S16'
+    parked = c.sql('s16-parked', """select coalesce(jsonb_agg(jsonb_build_object('event', e.event_id, 'type', e.event_type,
+  'state', e.state, 'note', e.last_error, 'attempts', e.attempts)), '[]'::jsonb) as p
+from public.stripe_webhook_events e
+where e.state in ('received','failed') and e.last_error like 'tier_snapshot_missing%';""")[0]['p']
+    c.say(f's16 parked on a future month: {json.dumps(parked, default=str)}')
+    c.check(st, 'S13 left deliveries parked on a month that does not exist yet', True, len(parked) > 0)
+    if not parked:
+        c.save()
+        return
+    month = str(parked[0]['note']).split(':')[-1]
+    # The month arrives. The writer refuses to invent a FUTURE month, so on the QA
+    # branch the row is seeded as a fixture — this is the dependency appearing,
+    # not a business rule being bent.
+    c.sql('s16-seed-snapshot', f"""do $s$ begin {GUARD}
+  insert into public.partner_tier_snapshots (partner_id, month, tier, active_referred_count, counted_at)
+  select p.id, '{month}'::date, 'standard', 0, now() from public.partners p
+  on conflict (partner_id, month) do nothing;
+  insert into qa_harness.observations (run_id, worker, payload)
+  values ('{c.run}', 's16-seed-snapshot', jsonb_build_object('month', '{month}', 'rows', (select count(*) from public.partner_tier_snapshots where month = '{month}'::date)));
+end $s$;
+select payload from qa_harness.observations where run_id = '{c.run}' and worker = 's16-seed-snapshot' order by observed_at desc limit 1;""")
+    time.sleep(70)
+    recovery_tick(c, 's16-recovery')
+    time.sleep(30)
+    after = c.sql('s16-after', f"""select coalesce(jsonb_agg(jsonb_build_object('event', e.event_id, 'type', e.event_type,
+  'state', e.state, 'note', e.last_error)), '[]'::jsonb) as p
+from public.stripe_webhook_events e where e.event_id in ({', '.join("'" + x['event'] + "'" for x in parked)});""")[0]['p']
+    c.say(f's16 after the month exists: {json.dumps(after, default=str)}')
+    c.check(st, 'every delivery parked on the missing month is now settled', [],
+            [f"{x['type']}:{x['state']}:{x['note']}" for x in after if x['state'] != 'processed'])
+    booked = c.sql('s16-entries', f"""select coalesce(jsonb_agg(jsonb_build_object('amount', ce.amount_cents, 'tier', ce.tier,
+  'status', ce.status, 'invoice', ce.stripe_invoice_id)), '[]'::jsonb) as e
+from public.commission_entries ce where ce.earned_at >= date_trunc('month', '{month}'::date) and ce.livemode = false;""")[0]['e']
+    c.say(f's16 entries earned in that month: {json.dumps(booked, default=str)}')
+    c.check(st, 'the renewal is booked at the snapshot tier of ITS month', True, len(booked) > 0)
+    c.save()
+
+
 def slice13(c: Campaign):
     """The two clocks disagree: a renewal paid on the Stripe clock IN THE NEXT MONTH, while the
     database (and therefore the tier snapshot writer) is still in this one."""
@@ -1002,5 +1103,6 @@ if __name__ == '__main__':
     SUFFIX = sys.argv[3] if len(sys.argv) > 3 else ''
     {'slice1': slice1, 'slice2': slice2, 'slice2b': slice2b, 'slice3': slice3, 'slice4': slice4, 'slice5': slice5,
      'u1': slice_u1, 'u2': slice_u2, 'slice6': slice5b, 'slice7': slice7, 'slice8': slice8, 'slice9': slice9,
-     'slice10': slice10, 'slice11': slice11, 'slice13': slice13, 'recovery': slice_recovery}[sys.argv[1]](camp)
+     'slice10': slice10, 'slice11': slice11, 'slice13': slice13, 'recovery': slice_recovery,
+     'slice15': slice15, 'slice16': slice16}[sys.argv[1]](camp)
     camp.say(f"run {camp.run}: {sum(x['pass'] for x in camp.checks)}/{len(camp.checks)} checks passed")

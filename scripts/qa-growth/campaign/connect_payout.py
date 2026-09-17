@@ -38,22 +38,28 @@ RETURN_URL = 'http://localhost:5188/partner?section=payouts&connect=returned'
 REFRESH_URL = 'http://localhost:5188/partner?section=payouts&connect=refresh'
 
 
-def service_call(c, name, path, payload):
-    """Call an operator-only Edge Function the way the scheduler does: the service
-    role key comes from the environment of the caller, never from this file."""
-    key = os.environ.get('QA_SERVICE_ROLE_KEY', '')
-    if not key:
-        raise SystemExit('QA_SERVICE_ROLE_KEY is not set in the environment of this process')
-    req = urllib.request.Request(f'{FN}/{path}', data=json.dumps(payload).encode(), method='POST',
-                                 headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {key}'})
-    try:
-        with urllib.request.urlopen(req, timeout=180) as r:
-            body = json.loads(r.read())
-            status = r.status
-    except urllib.error.HTTPError as e:
-        status, body = e.code, json.loads(e.read() or b'{}')
-    open(os.path.join(c.dir, f'svc-{name}.json'), 'w').write(json.dumps({'status': status, 'body': body}, indent=1))
-    return status, body
+def execute_payouts(c, name, batch_id, options=None, limit=5):
+    """Run the executor through the DATABASE caller, the way an operator does:
+    gellatti_payout_execute_tick_v1 presents the dispatch key from Vault. No
+    credential is read, held or passed by this script."""
+    opts = json.dumps(options or {}).replace("'", "''")
+    tick = c.sql(f'exec-{name}',
+                 f"select public.gellatti_payout_execute_tick_v1('{batch_id}'::uuid, {limit}, '{opts}'::jsonb) as t;")[0]['t']
+    c.say(f'payout tick [{name}]: {json.dumps(tick, default=str)}')
+    body = {}
+    if tick.get('requestId'):
+        for _ in range(30):
+            time.sleep(4)
+            rows = c.sql(f'exec-{name}-resp-{int(time.time())}',
+                         f"select status_code, content from net._http_response where id = {tick['requestId']};")
+            if rows and rows[0].get('status_code'):
+                try:
+                    body = json.loads(rows[0]['content'])
+                except Exception:
+                    body = {'raw': str(rows[0]['content'])[:400]}
+                break
+    open(os.path.join(c.dir, f'svc-{name}.json'), 'w').write(json.dumps({'tick': tick, 'body': body}, indent=1, default=str))
+    return tick, body
 
 
 def state(c):
@@ -206,12 +212,10 @@ select payload from qa_harness.observations where run_id = '{c.run}' and worker 
 def stage_interrupt(c):
     st = 'C6'
     s = state(c)
-    status, body = service_call(c, 'execute-stop', 'payout-execute',
-                                {'batchId': s['batch'], 'limit': 5, 'qaStopAfterTransfer': True})
+    tick, body = execute_payouts(c, 'stop', s['batch'], {'qaStopAfterTransfer': True})
     c.say(f"c6 executor (stop after transfer): {json.dumps(body)[:600]}")
     transferred = [r for r in body.get('results', []) if r.get('outcome') == 'transferred_not_settled']
-    c.check(st, 'the transfer exists at Stripe and the ledger has NOT recorded it', True,
-            status == 200 and len(transferred) == 1)
+    c.check(st, 'the transfer exists at Stripe and the ledger has NOT recorded it', True, len(transferred) == 1)
     ledger = c.sql('c6-ledger', f"""select jsonb_build_object('status', pp.status, 'transfer', pp.stripe_transfer_id,
   'entry_status', (select ce.status from public.commission_entries ce where ce.id = '{s['entry']}')) as l
 from public.partner_payouts pp where pp.id = '{s['payout']}';""")[0]['l']
@@ -224,7 +228,7 @@ from public.partner_payouts pp where pp.id = '{s['payout']}';""")[0]['l']
 def stage_recover(c):
     st = 'C7'
     s = state(c)
-    status, body = service_call(c, 'execute-recover', 'payout-execute', {'batchId': s['batch'], 'limit': 5})
+    tick, body = execute_payouts(c, 'recover', s['batch'])
     c.say(f"c7 executor (recovery run): {json.dumps(body)[:600]}")
     settled = [r for r in body.get('results', []) if r.get('outcome') == 'settled']
     c.check(st, 'the recovery run binds the SAME transfer instead of sending a second one',
@@ -239,9 +243,9 @@ from public.partner_payouts pp where pp.id = '{s['payout']}';""")[0]['l']
             {'status': 'paid', 'transfer': s.get('interrupted_transfer'), 'entry_status': 'paid'},
             {'status': ledger['status'], 'transfer': ledger['transfer'], 'entry_status': ledger['entry_status']})
     # A third run must find nothing left to pay.
-    status, again = service_call(c, 'execute-again', 'payout-execute', {'batchId': s['batch'], 'limit': 5})
-    c.check(st, 'a third run pays nothing: the batch has no claimable line left', {'claimed': 0, 'transferred': 0},
-            {'claimed': again.get('claimed'), 'transferred': again.get('transferred')})
+    tick3, again = execute_payouts(c, 'again', s['batch'])
+    c.check(st, 'a third run pays nothing: the batch has no claimable line left',
+            {'skipped': 'nothing_claimable'}, {'skipped': tick3.get('skipped')})
     payouts = c.stripe('c7-payouts', 'payouts_for_account', {'accountId': s['account']})['data']
     c.say(f"c7 payouts on the connected account: {json.dumps([{k: p.get(k) for k in ('id', 'amount', 'status', 'arrival_date', 'automatic')} for p in payouts], default=str)}")
     c.say('c7 boundary: a Transfer moves platform → connected account. The payout to the partner bank is made by '
