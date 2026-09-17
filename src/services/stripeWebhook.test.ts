@@ -375,11 +375,15 @@ describe('Deno entrypoint — signature-first, insert-first, 2xx after durable r
 
   it('lists InvoicePayments and refunds to the last page, never from one expanded page', () => {
     const code = indexSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-    expect(code).toMatch(/for await \(const payment of stripe\.invoicePayments\.list\(\{ invoice: filter, limit: 100 \}\)\)/);
+    // Every list walks to the last page AND carries the account context, so a
+    // connected account's objects are read where they exist.
     expect(code).toMatch(
-      /for await \(const payment of stripe\.invoicePayments\.list\(\{\s*payment: \{ type: 'payment_intent', payment_intent: filter \},\s*limit: 100,\s*\}\)\)/,
+      /for await \(const payment of stripe\.invoicePayments\.list\(\{ invoice: filter, limit: 100 \}, requestOptions\)\)/,
     );
-    expect(code).toMatch(/for await \(const refund of stripe\.refunds\.list\(\{ charge: filter, limit: 100 \}\)\)/);
+    expect(code).toMatch(
+      /for await \(const payment of stripe\.invoicePayments\.list\(\{\s*payment: \{ type: 'payment_intent', payment_intent: filter \},\s*limit: 100,\s*\}, requestOptions\)\)/,
+    );
+    expect(code).toMatch(/for await \(const refund of stripe\.refunds\.list\(\{ charge: filter, limit: 100 \}, requestOptions\)\)/);
     expect(code).not.toMatch(/expand:/);
     // No list result is ever read as a single page.
     expect(code).not.toMatch(/(refunds|payments|list\([^)]*\))\.data\b/);

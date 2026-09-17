@@ -139,6 +139,51 @@ describe('the schedule is the caller shape this project already uses', () => {
   });
 });
 
+describe('whose event is this? (Connect destinations)', () => {
+  const WEBHOOK = read('supabase', 'functions', 'stripe-webhook', 'index.ts');
+
+  it('accepts BOTH destinations’ secrets, and the signature still decides', () => {
+    /* Stripe delivers platform events and connected-account events through
+       different destinations, each with its own signing secret. The Connect
+       secret was documented and referenced nowhere, so a connected account's
+       account.updated — the delivery that turns payouts_enabled on — could
+       never be verified. */
+    expect(WEBHOOK).toContain("Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET')");
+    expect(WEBHOOK).toContain('for (const secret of [signingSecret, connectSigningSecret])');
+    expect(WEBHOOK).toContain("if (!event) return json(400, { error: 'invalid_signature' });");
+  });
+
+  it('records the scope the event actually came from', () => {
+    expect(WEBHOOK).toContain("const eventAccount = typeof event.account === 'string' ? event.account : null;");
+    expect(WEBHOOK).toContain("account_scope: eventAccount ? 'connect' : 'platform',");
+  });
+
+  it('re-reads every object in the account that owns it', () => {
+    /* An object of a connected account does not exist in the platform's
+       context: a re-read without the account is a 404 or, worse, another
+       account's object. */
+    expect(WEBHOOK).toContain('const requestOptions = eventAccount ? { stripeAccount: eventAccount } : undefined;');
+    for (const call of [
+      'stripe.subscriptions.retrieve(id, requestOptions)',
+      'stripe.invoices.retrieve(id, requestOptions)',
+      'stripe.charges.retrieve(id, requestOptions)',
+      'stripe.refunds.retrieve(id, requestOptions)',
+      'stripe.disputes.retrieve(id, requestOptions)',
+    ]) {
+      expect(WEBHOOK).toContain(call);
+    }
+    // …and the account itself is always read from the platform, because it IS
+    // the connected account.
+    expect(WEBHOOK).toContain('stripe.accounts.retrieve(id)');
+  });
+
+  it('lists with the same account context', () => {
+    expect(WEBHOOK).toContain('stripe.invoicePayments.list({ invoice: filter, limit: 100 }, requestOptions)');
+    expect(WEBHOOK).toContain('stripe.refunds.list({ payment_intent: filter, limit: 100 }, requestOptions)');
+    expect(WEBHOOK).toContain('stripe.disputes.list({ payment_intent: filter, limit: 100 }, requestOptions)');
+  });
+});
+
 describe('a won dispute can be stored (R6)', () => {
   it('adds the value without rewriting 0018 or touching a row', () => {
     expect(KIND).toContain("'dispute_reinstatement'");

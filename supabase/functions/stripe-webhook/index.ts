@@ -72,18 +72,33 @@ Deno.serve(async (req) => {
   }
   const stripe = new Stripe(stripeKey, { apiVersion: apiVersion as Stripe.LatestApiVersion });
   const cryptoProvider = Stripe.createSubtleCryptoProvider();
-  let event: Stripe.Event;
-  try {
-    event = await stripe.webhooks.constructEventAsync(
-      rawBody,
-      signature,
-      signingSecret,
-      undefined,
-      cryptoProvider,
-    );
-  } catch {
-    return json(400, { error: 'invalid_signature' });
+
+  /* TWO DESTINATIONS, ONE URL. Stripe delivers events about the platform and
+     events about a connected account through different destinations, each with
+     its OWN signing secret. The Connect secret has been named in the docs since
+     the lane was designed and referenced nowhere, so a connected account's
+     `account.updated` could never be verified here — which is the delivery that
+     turns `payouts_enabled` on. Both secrets are accepted, tried in order, and
+     the signature still decides: an event that matches neither is refused. */
+  const connectSigningSecret = Deno.env.get('STRIPE_CONNECT_WEBHOOK_SECRET') ?? '';
+  let event: Stripe.Event | null = null;
+  for (const secret of [signingSecret, connectSigningSecret]) {
+    if (!secret) continue;
+    try {
+      event = await stripe.webhooks.constructEventAsync(rawBody, signature, secret, undefined, cryptoProvider);
+      break;
+    } catch {
+      event = null;
+    }
   }
+  if (!event) return json(400, { error: 'invalid_signature' });
+
+  /* WHOSE EVENT IS THIS? Stripe sets `account` on an event about a connected
+     account. It decides the durable scope (0021 knows 'platform' and 'connect')
+     and, just as importantly, the account every re-read must use: an object of a
+     connected account does not exist in the platform's context. */
+  const eventAccount = typeof event.account === 'string' ? event.account : null;
+  const requestOptions = eventAccount ? { stripeAccount: eventAccount } : undefined;
 
   // 2. Deliberate matrix only — anything else is acknowledged, never stored.
   const handlerIntent = routeWebhookEvent(event.type);
@@ -105,7 +120,7 @@ Deno.serve(async (req) => {
     .from('stripe_webhook_events')
     .upsert(
       {
-        account_scope: 'platform',
+        account_scope: eventAccount ? 'connect' : 'platform',
         livemode: event.livemode,
         event_id: event.id,
         event_type: event.type,
@@ -144,16 +159,17 @@ Deno.serve(async (req) => {
     const refetch = async (resource: StripeResource, id: string): Promise<Record<string, unknown>> => {
       switch (resource) {
         case 'subscription':
-          return (await stripe.subscriptions.retrieve(id)) as unknown as Record<string, unknown>;
+          return (await stripe.subscriptions.retrieve(id, requestOptions)) as unknown as Record<string, unknown>;
         case 'invoice':
-          return (await stripe.invoices.retrieve(id)) as unknown as Record<string, unknown>;
+          return (await stripe.invoices.retrieve(id, requestOptions)) as unknown as Record<string, unknown>;
         case 'charge':
-          return (await stripe.charges.retrieve(id)) as unknown as Record<string, unknown>;
+          return (await stripe.charges.retrieve(id, requestOptions)) as unknown as Record<string, unknown>;
         case 'refund':
-          return (await stripe.refunds.retrieve(id)) as unknown as Record<string, unknown>;
+          return (await stripe.refunds.retrieve(id, requestOptions)) as unknown as Record<string, unknown>;
         case 'dispute':
-          return (await stripe.disputes.retrieve(id)) as unknown as Record<string, unknown>;
+          return (await stripe.disputes.retrieve(id, requestOptions)) as unknown as Record<string, unknown>;
         case 'account':
+          // An account is always read from the platform: it IS the connected account.
           return (await stripe.accounts.retrieve(id)) as unknown as Record<string, unknown>;
       }
     };
@@ -163,7 +179,7 @@ Deno.serve(async (req) => {
       const items: Record<string, unknown>[] = [];
       switch (list) {
         case 'invoice_payments_by_invoice':
-          for await (const payment of stripe.invoicePayments.list({ invoice: filter, limit: 100 })) {
+          for await (const payment of stripe.invoicePayments.list({ invoice: filter, limit: 100 }, requestOptions)) {
             items.push(payment as unknown as Record<string, unknown>);
           }
           return items;
@@ -171,22 +187,22 @@ Deno.serve(async (req) => {
           for await (const payment of stripe.invoicePayments.list({
             payment: { type: 'payment_intent', payment_intent: filter },
             limit: 100,
-          })) {
+          }, requestOptions)) {
             items.push(payment as unknown as Record<string, unknown>);
           }
           return items;
         case 'refunds_by_charge':
-          for await (const refund of stripe.refunds.list({ charge: filter, limit: 100 })) {
+          for await (const refund of stripe.refunds.list({ charge: filter, limit: 100 }, requestOptions)) {
             items.push(refund as unknown as Record<string, unknown>);
           }
           return items;
         case 'refunds_by_payment_intent':
-          for await (const refund of stripe.refunds.list({ payment_intent: filter, limit: 100 })) {
+          for await (const refund of stripe.refunds.list({ payment_intent: filter, limit: 100 }, requestOptions)) {
             items.push(refund as unknown as Record<string, unknown>);
           }
           return items;
         case 'disputes_by_payment_intent':
-          for await (const dispute of stripe.disputes.list({ payment_intent: filter, limit: 100 })) {
+          for await (const dispute of stripe.disputes.list({ payment_intent: filter, limit: 100 }, requestOptions)) {
             items.push(dispute as unknown as Record<string, unknown>);
           }
           return items;
