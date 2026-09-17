@@ -30,12 +30,21 @@ const statements = (sql: string) =>
 
 const MIGRATION = read(`supabase/migrations/${VERSION}.sql`);
 const ROLLBACK = read(`supabase/rollbacks/${VERSION}.rollback.sql`);
-const ORIGIN = read('supabase/migrations/20260902100000_refer_a_friend_pro_bonus.sql');
-
 const MIGRATIONS_DIR = join(ROOT, 'supabase/migrations');
 const migrationFiles = readdirSync(MIGRATIONS_DIR)
   .filter((file) => file.endsWith('.sql'))
   .sort();
+
+/**
+ * The migration that created the tables and their grants, found by CONTENT: it
+ * is due to be renamed to its recorded version (DB-DRIFT-01, group G35), and a
+ * rename must not quietly break this contract.
+ */
+const ORIGIN_FILE = migrationFiles.find((file) =>
+  readFileSync(join(MIGRATIONS_DIR, file), 'utf8').includes('create table if not exists public.referral_rewards ('),
+);
+if (!ORIGIN_FILE) throw new Error('no migration creates public.referral_rewards');
+const ORIGIN = readFileSync(join(MIGRATIONS_DIR, ORIGIN_FILE), 'utf8');
 
 describe('the change', () => {
   it('revokes only the direct SELECT of authenticated, on the two relationship tables', () => {
