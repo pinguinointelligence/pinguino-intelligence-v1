@@ -375,24 +375,69 @@ export const educationCopy = {
       required: 'Najpierw potwierdź decyzję procesu.',
     },
   },
+  /** One preparation plan for HOME and PRO Production. Composed only from recipe order,
+   * the line role, verified per-product process evidence and the selected machine guide. */
+  preparation: {
+    title: 'Plan przygotowania',
+    beforeStartTitle: 'Zanim zaczniesz',
+    baseTitle: 'Baza',
+    addonsTitle: 'Po obróbce w maszynie',
+    actions: {
+      add: 'Dodaj do naczynia',
+      /** Fresh fruit approved for cold use — the approval is conditional on washing. */
+      washAndAddCold: 'Umyj i dodaj na zimno',
+      washAddColdAndBlend: 'Umyj, dodaj na zimno i zmiksuj',
+      addAfterCooling: 'Dodaj po schłodzeniu',
+      addAfterMachine: 'Dodaj po obróbce',
+      /** Owner decision 2026-09-17 — fresh strawberries used as a topping in pieces. */
+      cutFreshStrawberriesAtServing: 'Pokrój truskawki i dodaj przy podaniu. Nie miksuj z bazą.',
+    },
+    markers: {
+      cold: 'Na zimno',
+      heat: 'Wymaga obróbki na ciepło',
+      heatSensitive: 'Wrażliwy na ciepło',
+      /** Only where an unknown line falls after cooling. */
+      unknown: 'Brak szczegółowej instrukcji obróbki dla tego produktu.',
+      conflict: 'Źródła podają różne informacje o obróbce — sprawdź instrukcję produktu.',
+    },
+    conditions: {
+      /** Owner addendum 2026-09-17 — a generic milk line is a condition, not a product claim. */
+      pasteurizedOrUhtMilk: 'Użyj mleka pasteryzowanego lub UHT.',
+    },
+    illustrations: {
+      freezeMixtureContainer: 'Pojemnik z przygotowaną mieszanką w zamrażarce',
+    },
+    heat: {
+      title: 'Obróbka na ciepło',
+      lead: 'Wskazana dla:',
+      afterCoolingTitle: 'Po schłodzeniu',
+      method: 'Sposób, temperatura i czas — według instrukcji produktu.',
+      cool: 'Następnie schłódź.',
+    },
+  },
   machine: {
     title: 'Jak działa Twoja maszyna?',
     unknownSelection: 'Wybierz maszynę w Profilu, aby zobaczyć jej właściwy proces',
     categories: {
       frozen_container: {
         title: 'Procesor z mrożonym pojemnikiem',
+        beforeStartSteps: [],
         steps: ['Przygotuj mix', 'Zamroź cały pojemnik', 'Urządzenie obrabia zamrożoną bazę'],
       },
       frozen_bowl: {
         title: 'Maszyna z mrożoną misą',
-        steps: ['Zamroź misę', 'Wlej mieszankę', 'Uruchom'],
+        /** The empty bowl is frozen before the mix is prepared, not after weighing. */
+        beforeStartSteps: ['Zamroź misę'],
+        steps: ['Wlej mieszankę', 'Uruchom'],
       },
       compressor: {
         title: 'Maszyna z kompresorem',
+        beforeStartSteps: [],
         steps: ['Przygotuj mix', 'Wlej', 'Maszyna sama chłodzi i mrozi'],
       },
       fresh_gelato: {
         title: 'Fresh Gelato',
+        beforeStartSteps: [],
         steps: [
           'Przygotuj właściwą mieszankę',
           'Wykonaj proces, jeśli jest wymagany',
@@ -403,6 +448,8 @@ export const educationCopy = {
       },
     },
     timingVerified: (hours: number) => `Wymagane wstępne mrożenie: minimum ${hours} h`,
+    /** Frozen-container machines: the source states a duration, not a minimum. */
+    timingMixtureVerified: (hours: number) => `Zamrażanie mieszanki w pojemniku: ${hours} h`,
     timingMissing: 'Czas przygotowania nie jest zweryfikowany dla tego modelu.',
     comparisonTitle: 'Trzy proste drogi',
     comparisonLabels: ['PROFESSIONAL CLASSIC', 'FRESH GELATO', 'Maszyna domowa'],

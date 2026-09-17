@@ -79,6 +79,7 @@ import {
   type HomeSweetness,
 } from '@/features/home-creator/homeSweetness';
 import type { HomeStage } from '@/features/home-creator/homeStageFlow';
+import { ideaProductsMissingFromRecipe } from '@/features/home-creator/homeIdeaLines';
 import { resolveIdea } from '@/features/home-creator/homeIdeaResolution';
 import { HomeIntentSection } from '@/features/home-creator/ui/HomeIntentSection';
 import { HomeProfileSection } from '@/features/home-creator/ui/HomeProfileSection';
@@ -490,6 +491,39 @@ export function HomeCreatorPage() {
   );
 
   /**
+   * Owner 2026-09-17 (kiwi): every RECOGNISED element of the current idea must be in the
+   * recipe the customer is looking at.
+   *
+   * Resolution only writes the product onto the chip (`resolveOne` → „added”); the LINE is
+   * created by `addResolvedChip` — the same door §23's identity answer already uses. With a
+   * recipe already on screen (a saved recipe reopened, or a second idea after the first
+   * recipe was built) nothing called that door, so the chip showed „KIWI · Fresh Fruit”
+   * while the recipe silently stayed without it.
+   */
+  const missingIdeaProducts = useCallback(() => {
+    const store = useRecipeStore.getState();
+    return ideaProductsMissingFromRecipe(
+      useHomeDraftStore.getState().chips,
+      store.items,
+      store.toppings,
+    );
+  }, []);
+
+  const addIdeaChipsToOpenRecipe = useCallback(async () => {
+    if (!useHomeDraftStore.getState().recipeReady) return;
+    for (const chip of missingIdeaProducts()) {
+      const outcome = await intentIngredients.addResolvedChip(chip);
+      // §B: without an automatic amount the customer is ASKED — never silently skipped.
+      askAmountFor(outcome);
+      if (outcome.status === 'unresolved' || outcome.status === 'unavailable') {
+        setRecipeNotice(
+          `Nie udało się dodać składnika ${chip.productName ?? chip.label} do tej receptury. Spróbuj ponownie.`,
+        );
+      }
+    }
+  }, [askAmountFor, intentIngredients, missingIdeaProducts]);
+
+  /**
    * §58 — the picked product waiting for the customer to say how they meant to use it.
    * Only reached for a product the catalogue says is genuinely BOTH; everything it can
    * settle is settled silently by `decideUsageRole`.
@@ -635,6 +669,16 @@ export function HomeCreatorPage() {
     if (ready) {
       useHomeDraftStore.getState().markRecipeReady(true);
       setInitialBuilding(false);
+      // A recipe is „ready” only when it carries the idea it was built from: a recognised
+      // element that reached no line is reported, never quietly dropped.
+      const missing = missingIdeaProducts();
+      if (missing.length > 0) {
+        setRecipeNotice(
+          `Ta receptura nie zawiera jeszcze: ${missing
+            .map((chip) => chip.productName ?? chip.label)
+            .join(', ')}. Dodaj ten składnik ponownie albo wybierz inny produkt.`,
+        );
+      }
       window.setTimeout(() => scrollToStage('recipe'), 60);
     } else {
       setRecipeNotice(
@@ -644,7 +688,7 @@ export function HomeCreatorPage() {
       lastGeneratedFor.current = null;
     }
     initialFinalizing.current = false;
-  }, [scrollToStage]);
+  }, [missingIdeaProducts, scrollToStage]);
 
   useEffect(() => {
     if (!initialBuilding || pendingAdd || pendingUsage || initialFinalizing.current) return;

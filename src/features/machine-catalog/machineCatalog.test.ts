@@ -306,6 +306,22 @@ describe('Annex A capacities — exact numbers, per §9.1 field, never guessed',
     expect(CUISINART_ICE30BCE.preFreezeMinimumHours).toBe(12);
   });
 
+  it('Ninja CREAMi: the 24 h mixture freeze comes from each model-exact official product page', () => {
+    for (const profile of [
+      NINJA_CREAMI_NC302EU,
+      NINJA_CREAMI_DELUXE_NC502EU,
+      NINJA_CREAMI_SCOOP_SWIRL_NC7,
+    ]) {
+      expect(profile.preFreezeTarget, profile.id).toBe('mixture');
+      expect(profile.preFreezeMinimumHours, profile.id).toBe(24);
+      const page = profile.specificationEvidence?.find((entry) => entry.kind === 'product_page');
+      expect(page?.url, profile.id).toBe(profile.specificationSourceUrl);
+      expect(page?.verifiedFacts, profile.id).toContain('twenty_four_hour_mixture_pre_freeze');
+      // The record's evidence campaign date stays; the 24 h fact was re-read 2026-09-17 (comment).
+      expect(profile.specificationVerifiedAt, profile.id).toBe('2026-09-05');
+    }
+  });
+
   it('KitchenAid: 1.9 l finished ≠ 1.4 l max liquid mix (kept separate); 16 h pre-freeze', () => {
     const c = KITCHENAID_5KSMICM.capacity;
     expect(c.finishedProductCapacityMl).toBe(1900);
