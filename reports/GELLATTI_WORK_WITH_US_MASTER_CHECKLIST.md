@@ -375,7 +375,7 @@ Agree with what is live: J-REF-01 (K03), J-REF-02 (K12), J-REF-03 (K04), J-REF-0
 | ID | Area | Requirement | Work | Auto | Served | Owner | Freeze | PR/SHA | Problem / Why | Next Action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | N-TRAIL-01 | Trailer | Own route **`/trailer`**, "Twój własny mobilny punkt Gellatti." | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Owner correction §9.** Franchise's `przyczepa` card must link here rather than duplicating the funnel | Build route; re-point franchise card |
-| N-TRAIL-02 | Trailer | Base trailer FROM €10,000 · Lokalizacja: Niemcy | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Owner-supplied figure; no supporting document in the machine pack | Copy row |
+| N-TRAIL-02 | Trailer | Base trailer FROM €10,000 · Lokalizacja: Niemcy | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `src/copy/workWithUsOwnerRules.guard.test.ts` | Owner-supplied figure; no supporting document in the machine pack · **2026-09-17:** already built — it is the first two sentences of the owner's exact trailer line (`TRAILER_PAGE.next`), pinned verbatim by the N-TRAIL-05 guard. **Served 2026-09-17** on staging.pinguinoai.com/trailer (origin/staging `6e83b8d1`) | Owner QA |
 | N-TRAIL-03 | Trailer | **9-step** configurator: trailer · machine · refrigeration/storage · water/sink · coffee · storage · branding · country/location · inquiry | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **Expanded by owner correction §13** from 5 steps to 9 | Build |
 | N-TRAIL-04 | Trailer | Standard trailer ≈3.5 m × 2.1 m, real geometry preserved | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | — | Build from `TRL-D` |
 | N-TRAIL-07 | Trailer | **Machine bay rule: MAXIMUM MACHINE DEPTH 600 mm** | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | **New rule, owner correction §10.** Verified depths: V2 600 ✅ · V4B 600 ✅ · V4 800 ❌ · V6 800 ❌ · V8 800 ❌ · V4C 800 ❌ · Battery Cart 760 ❌. Countertop models (Milano 540, Café Specialty 550) pass on depth but are **countertop, not floor bay** — a different integration | Encode the rule + test |
@@ -393,7 +393,7 @@ Agree with what is live: J-REF-01 (K03), J-REF-02 (K12), J-REF-03 (K04), J-REF-0
 | O-FRAN-02 | Franchise | No invented fee / ROI / turnover / CAPEX / margin promises | 🟢 | ✅ | ✅ | ⬜ | 🔓 | `src/copy/workWithUsOwnerRules.guard.test.ts` | Current copy already says "Szczegóły wymagają rozmowy i potwierdzonego źródła" — good posture · **2026-09-17 — guard landed:** no fee, ROI, payback, turnover, revenue, margin, profit or CAPEX term in the lane copy or the `/franchise` destination; no amount and no percentage in franchise copy; terms and investment stay "ustalamy indywidualnie" / "Warunki ustalamy w rozmowie". **Served 2026-09-17** (staging.pinguinoai.com, origin/staging `6e83b8d1`): /franchise shows no amount, percentage or promise word | Owner QA |
 | O-FRAN-03 | Franchise | Hero "Otwórz własne Gellatti." with a premium traditional gelateria visual (display, pans, fresh gelato, live machine, coherent brand) | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Needs FRANCHISE-01..03 assets | After Q |
 | O-FRAN-04 | Franchise | Inquiry captures country, city, location status, m², experience, opening time, budget, format, message, contact | 🟡 | ⬜ | ⬜ | ⬜ | 🔓 | — | Existing form captures concept/name/email/phone/city/country/note — **missing m², experience, timing, budget, location status** | Extend form + RPC |
-| O-FRAN-05 | Franchise | CTA "Porozmawiaj o Gellatti Franchise" | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Current CTA is "Wyślij zapytanie" | Copy change |
+| O-FRAN-05 | Franchise | CTA "Porozmawiaj o Gellatti Franchise" | ⚪ | ⬜ | ⬜ | ⬜ | 🔓 | — | Current CTA is "Wyślij zapytanie" · **2026-09-17 — not changed, needs the owner:** the franchise destination's CTA reads "Zapytaj o Franchise" (`GlobalDestinationPages.tsx`), and that exact label is pinned by `GlobalDestinationPages.test.tsx` in the global-destinations lane; the enquiry form submits with "Wyślij zapytanie". Which CTA should read "Porozmawiaj o Gellatti Franchise" (hero, form submit, or both), given the 2026-09-03 umbrella redesign, is an owner call | Owner: confirm which CTA takes the §31 wording; then a copy change + the pinned test in the destinations lane |
 
 ### P — Lead operations (§32) · CHECKPOINTS G/H/I
 
@@ -564,15 +564,15 @@ Writing no GRANT does not produce a table with no grants.
 
 | Work status | Count |
 | --- | --- |
-| 🟢 DONE | 109 |
+| 🟢 DONE | 110 |
 | 🟡 DOING / partially built | 31 |
 | ⏳ WAITING FOR OWNER ASSET (not a blocker) | 9 |
 | 🔴 BLOCKED | 5 |
-| ⚪ TODO | 88 |
+| ⚪ TODO | 87 |
 | ⊘ SUPERSEDED (owner decision recorded in the row) | 8 |
 | **Total rows** | **250** |
 
-Auto ✅ **98** · ⬜ 152. Served ✅ **44** · ⬜ 206 · Owner ✅ 0 · ⬜ 250.
+Auto ✅ **99** · ⬜ 151. Served ✅ **45** · ⬜ 205 · Owner ✅ 0 · ⬜ 250.
 
 **Row-based** — recomputed from the rows themselves at `origin/staging` `6e83b8d1` on 2026-09-17. The block used to be maintained by hand and had drifted (it said 203 rows; see *Summary-block drift* below). Recount it from the rows, never from this block.
 
