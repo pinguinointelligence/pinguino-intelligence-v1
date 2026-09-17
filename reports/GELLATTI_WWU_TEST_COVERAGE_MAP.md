@@ -1,15 +1,15 @@
 # Work With Us / Partner — checklist row → automated test map
 
-Prepared 2026-09-17 against `origin/staging` `6e83b8d1`.
+Prepared 2026-09-17 on branch `claude/wwu-phase2-qa-coverage-drift`, which is `origin/staging` `6e83b8d1` plus this phase's tests and ledger.
 
-**Scope:** every Lane A row whose text changed between `27a7cf87` (before this workstream's merge sequence) and `6e83b8d1` — 50 rows. Lane B's only READY row, K16, is listed at the end.
+**Scope:** every Lane A row whose text changed between `27a7cf87` (before this workstream's merge sequence) and this branch — 57 rows. Lane B's only READY row, K16, is listed at the end.
 
 **Method:**
 - a test the row cites, resolved to its path
-- a test file that names the row ID
+- a test file that names the row ID (a mention that is not coverage is removed by hand)
 - where neither exists, tests located by the module or migration the row names, each checked by reading
 
-**Evidence:** all 40 test files in this map pass on `6e83b8d1` — 559 tests, `vitest run`, 2026-09-17.
+**Evidence:** all 45 test files in this map pass on the branch — 586 tests, `vitest run`, 2026-09-17 (the count is the files' own tests, run together). Every new test added this phase was also mutation-checked: each failed when the behaviour it pins was broken.
 
 **Coverage legend:**
 - **full**: the row's behaviour is pinned.
@@ -17,17 +17,17 @@ Prepared 2026-09-17 against `origin/staging` `6e83b8d1`.
 - **none**: no automated test.
 - **n/a**: not behaviour.
 
-**Summary:** full 30 · partial 14 · none 5 · n/a 1.
+**Summary:** full 36 · partial 15 · none 3 · n/a 3.
 
 | Row | Work | Auto | Coverage | Test file(s) | Note |
 |---|---|---|---|---|---|
-| A-IA-07 | 🟢 | ✅ | partial | `src/features/work-with-us/leadEnquiry.test.tsx` | the client sends `sourceRoute`; nothing pins migration `20260906200629` (`franchise_inquiries.source_route` + RPC allowlist) |
+| A-IA-07 | 🟢 | ✅ | full | `src/features/franchise/franchiseInquiry.migration.test.ts`<br>`src/features/work-with-us/leadEnquiry.test.tsx` | client sends `sourceRoute`; SQL side pinned 2026-09-17 — nullable column, the latest RPC writes it, allowlist = `FRANCHISE_SOURCE_ROUTES`, unknown route stored as null |
 | C-APP-04 | 🟢 | ✅ | full | `src/features/partner-application/openApplicationUniq.migration.test.ts` |  |
 | C-APP-07 | 🟢 | ✅ | full | `src/features/partner-application/ApplicationStatusCard.test.tsx`<br>`src/features/partner-application/applicationReachable.test.ts`<br>`src/features/partner-application/applicationSurface.test.ts` |  |
 | C-APP-08 | 🟡 | ✅ | partial | `src/notifications/domain/applicationLifecycleEmail.test.ts` | the tests cover the built part; the rest of the row is open (see its Next column) |
 | C-APP-09 | 🟢 | ✅ | full | `src/features/partner-application/approvalGrants.migration.test.ts` |  |
 | C-APP-10 | 🟢 | ✅ | full | `src/features/partner-application/approvalGrants.migration.test.ts` |  |
-| C-APP-13 | 🟢 | ⬜ | none | — | a naming decision (KEEP "Partner"); no guard asserts it |
+| C-APP-13 | 🟢 | ✅ | full | `src/copy/workWithUsOwnerRules.guard.test.ts` | guard 2026-09-17 — mode switcher and dashboard title say Partner; nothing inside /partner says Affiliate; the dead "Panel Affiliate" copy stays unrendered |
 | D-ATTR-01 | 🟢 | ✅ | full | `src/billing/domain/attribution.test.ts`<br>`src/billing/domain/attributionOwnership.migration.test.ts` |  |
 | D-CODE-01 | 🟢 | ✅ | full | `src/billing/domain/partnerCodeSlots.migration.test.ts`<br>`src/billing/domain/partnerCodes.test.ts` |  |
 | D-CODE-02 | 🟢 | ✅ | full | `src/pages/community/partnerCodeSlots.render.test.tsx` |  |
@@ -38,7 +38,7 @@ Prepared 2026-09-17 against `origin/staging` `6e83b8d1`.
 | D-CODE-07 | 🟢 | ✅ | full | `src/features/admin/adminCodeDisable.test.ts` |  |
 | D-LINK-02 | 🟢 | ✅ | full | `src/features/affiliate/partnerLinkOwnership.contract.test.ts` |  |
 | D-LINK-03 | 🟡 | ✅ | partial | `src/features/affiliate/codeLinkDisplay.test.ts`<br>`src/features/affiliate/linkPerformance.migration.test.ts` | the tests cover the built part; the rest of the row is open (see its Next column) |
-| DB-DRIFT-01 | ⚪ | ⬜ | n/a | — | a migration-history audit, not behaviour; plan: `reports/DB_DRIFT_01_AB_RECONCILIATION_PLAN.md` |
+| DB-DRIFT-01 | 🟡 | ⬜ | n/a | — | a migration-history audit, not behaviour; plan: `reports/DB_DRIFT_01_AB_RECONCILIATION_PLAN.md` |
 | E-HOLD-02 | 🟡 | ⬜ | partial | `src/features/affiliate/workspacePayload.contract.test.ts`<br>`src/pages/community/partnerEarnings.render.test.tsx` | earned · held · eligible date · eligible · paid · reversed covered; batched and transfer are not built (DB) |
 | E-REV-04 | 🟢 | ✅ | full | `src/features/affiliate/partnerAccountDisplay.test.ts` |  |
 | EMAIL-01 | ⚪ | ⬜ | none | — | still to do; listed only because its DB-ACL duplicate ID was renamed |
@@ -67,26 +67,40 @@ Prepared 2026-09-17 against `origin/staging` `6e83b8d1`.
 | I-ADM-02 | 🟡 | ✅ | partial | `src/features/admin/adminPartnerFilter.test.ts` | the tests cover the built part; the rest of the row is open (see its Next column) |
 | I-ADM-05 | 🟡 | ✅ | partial | `src/features/admin/adminPartnerActionConfirm.test.ts`<br>`src/features/admin/adminPartnersSection.confirm.test.tsx` | the tests cover the built part; the rest of the row is open (see its Next column) |
 | I-ADM-06 | ⚪ | ⬜ | none | — | not built — needs an admin read RPC (DB) |
-| P-LEAD-06 | 🟢 | ✅ | none | — | migration `20260910032351` (admin e-mail to info@gellatti.com) was verified live, but no test pins it |
+| J-REF-17 | 🟡 | ✅ | partial | `src/features/referral/referralDashboardPrivacy.migration.test.ts` | the three user RPCs return nothing about the other person; the direct table read is still granted to `authenticated` — closing it is package 6 / PR #380 (owner DB approval) |
+| L-PRICE-02 | 🟢 | ✅ | full | `src/copy/workWithUsOwnerRules.guard.test.ts` | no Incoterm in any public literal, no delivered-pricing phrase on the lanes, the only price is the trailer sentence, transport and taxes left to the quote |
+| L-STORY-02 | 🟡 | ✅ | partial | `src/copy/workWithUsOwnerRules.guard.test.ts` | no manufacturer identity or manufacturing claim in any public literal; naming models on public pages is not built yet |
+| N-TRAIL-05 | 🟢 | ✅ | full | `src/copy/workWithUsOwnerRules.guard.test.ts` | no FOB in any public literal; the trailer line is the exact owner sentence and the lane page renders it |
+| O-FRAN-02 | 🟢 | ✅ | full | `src/copy/workWithUsOwnerRules.guard.test.ts` | no fee / ROI / payback / turnover / margin / CAPEX term, amount or percentage in franchise copy or the /franchise destination |
+| P-LEAD-06 | 🟢 | ✅ | full | `src/features/franchise/franchiseInquiry.migration.test.ts`<br>`src/notifications/domain/emailSubject.test.ts`<br>`src/services/franchiseOrigin.test.ts` | SQL side pinned 2026-09-17 — recipient, subject taxonomy parity, idempotency, environment default, lead survives an enqueue failure, anon grant; the client origin by franchiseOrigin.test.ts |
 | R-DES-02 | 🟡 | ✅ | partial | `src/copy/customerCopyGuard.test.ts`<br>`src/pages/community/partnerPageCopy.render.test.tsx` | the tests cover the built part; the rest of the row is open (see its Next column) |
 | S-SEC-03 | 🟢 | ✅ | full | `src/features/affiliate/workspacePayload.contract.test.ts` |  |
+| T-SQA-01 | ⚪ | ⬜ | n/a | — | served QA is not automated; the script is `reports/GELLATTI_WWU_SERVED_OWNER_QA_SCRIPT.md` |
+| T-TEST-01 | 🟡 | ⬜ | n/a | — | a meta row: this map is its evidence |
 | T-TEST-03 | 🟢 | ✅ | full | `src/billing/domain/attribution.test.ts`<br>`src/billing/domain/attributionOwnership.migration.test.ts`<br>`src/billing/domain/partnerCodeHistory.migration.test.ts`<br>`src/billing/domain/partnerCodeSlots.test.ts`<br>`src/billing/domain/partnerCodes.test.ts`<br>`src/features/affiliate/codeAvailability.test.ts`<br>`src/features/affiliate/partnerLinkOwnership.contract.test.ts` |  |
 
 ## Lane B
 
 | Row | Coverage | Test file(s) | Note |
 |---|---|---|---|
-| K16 | partial | `src/features/referral/referralWebhookWiring.test.ts` | the reversal itself is pinned (webhook → `referral_reward_reversed`). **The struck-through rendering of a reversed reward (`RewardRow` in `ReferralPanel.tsx`) has no test**, although K16's note says it is unit-tested. Not served-proven either: no reversed reward exists on staging |
+| K16 | full (automated) | `src/features/referral/referralWebhookWiring.test.ts`<br>`src/features/referral/referralRewardRow.render.test.tsx` | the reversal (webhook → `referral_reward_reversed`) and, since 2026-09-17, its rendering: the reversed row stays listed, reads *Cofnięte*, its days struck through and dimmed. **Not served-proven**: no reversed reward exists on staging |
 
-## Rows with no automated coverage, and what closing each needs
+## Gaps closed on 2026-09-17 (tests only, no DB change)
 
-| Row | Why there is no test | To close |
+| Row | Was | Now |
 |---|---|---|
-| P-LEAD-06 | migration `20260910032351` was verified live by hand | a migration contract test pinning the admin e-mail enqueue to info@gellatti.com (**no DB change**, implementable now) |
-| A-IA-07 | only the client side is pinned | a migration contract test for `franchise_inquiries.source_route` and its RPC allowlist (**no DB change**, implementable now) |
-| K16 (Lane B) | the reversed-row rendering was never tested | a render test: a reversed reward reads *Cofnięte* with its days struck through (**no DB change**, implementable now) |
-| C-APP-13 | a naming decision | a copy guard: the signed-in area is titled "Partner", never "Affiliate" (**no DB change**, implementable now) |
+| P-LEAD-06 | none — verified live by hand only | `franchiseInquiry.migration.test.ts` pins the applied RPC |
+| A-IA-07 | partial — client side only | the same file pins `source_route` and the allowlist |
+| C-APP-13 | none — a decision with no guard | `workWithUsOwnerRules.guard.test.ts` |
+| K16 (Lane B) | partial — rendering untested | `referralRewardRow.render.test.tsx` |
+
+## Still without full automated coverage
+
+| Row | Why | To close |
+|---|---|---|
 | EMAIL-01 | the row is still to do | build it first |
 | G-WEL-04 | not built | the DB field for the resolved rate profile (owner approval) |
 | I-ADM-06 | not built | an admin read RPC (owner approval) |
-| DB-DRIFT-01 | an audit, not behaviour | — |
+| J-REF-17 | the RPCs are pinned, but a direct table read is still granted | package 6 / PR #380 (owner DB approval) |
+| L-STORY-02 | public pages name no model yet | name models when the catalogue lands; the guard already holds |
+| rows marked partial above | the rest of each row is not built | see each row's Next column |
