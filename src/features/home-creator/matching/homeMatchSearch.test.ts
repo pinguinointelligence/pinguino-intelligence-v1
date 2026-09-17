@@ -10,7 +10,12 @@ vi.mock('./communityMatchService', () => ({
   matchCommunityTop100: (...args: unknown[]) => matchCommunityTop100(...args),
 }));
 
-const { searchExistingRecipes } = await import('./homeMatchSearch');
+const {
+  COMMUNITY_FORM_QUERY_LIMIT,
+  communityIdSets,
+  searchCommunityMatches,
+  searchExistingRecipes,
+} = await import('./homeMatchSearch');
 const { officialCandidates } = await import('./officialLibraryCandidates');
 
 const want = (productId: string): RequestedIngredient => ({
@@ -219,5 +224,64 @@ describe('a matching outage must never block creation', () => {
     // The SERVICE swallows failures (returns []); this test documents that the
     // orchestrator itself does not add a second layer of silent catching, so a real
     // bug stays visible in development.
+  });
+});
+
+describe('Owner 2026-09-17: a generic idea also finds recipes made with another approved form', () => {
+  const STRAWBERRY = 'PI-ING-001553';
+  const STRAWBERRY_PUREE = 'PI-ING-002331';
+  const STRAWBERRY_FROZEN = 'PI-ING-001554';
+  const BANANA = 'PI-ING-000345';
+  const generic = (productId: string, conceptKey: string): RequestedIngredient => ({
+    ...want(productId),
+    conceptKey,
+  });
+  const forms: Record<string, readonly string[]> = {
+    strawberry: [STRAWBERRY, STRAWBERRY_PUREE, STRAWBERRY_FROZEN],
+  };
+  const formsFor = (item: RequestedIngredient) =>
+    item.conceptKey ? (forms[item.conceptKey] ?? []) : [];
+
+  it('FORM-OR-01: alternative forms of ONE concept are asked as separate sets, never merged', () => {
+    const sets = communityIdSets([generic(STRAWBERRY, 'strawberry')], formsFor);
+    expect(sets).toEqual([[STRAWBERRY], [STRAWBERRY_PUREE], [STRAWBERRY_FROZEN]]);
+  });
+
+  it('FORM-OR-02: different requested ingredients stay an AND in every set', () => {
+    const sets = communityIdSets([generic(STRAWBERRY, 'strawberry'), want(BANANA)], formsFor);
+    expect(sets[0]).toEqual([STRAWBERRY, BANANA]);
+    for (const set of sets) expect(set).toContain(BANANA);
+    expect(sets.some((set) => set.length !== 2)).toBe(false);
+  });
+
+  it('FORM-OR-03: an exact product asks for itself only', () => {
+    expect(communityIdSets([want(STRAWBERRY)], formsFor)).toEqual([[STRAWBERRY]]);
+    expect(communityIdSets([generic(STRAWBERRY, 'strawberry'), want(BANANA)], undefined)).toEqual([
+      [STRAWBERRY, BANANA],
+    ]);
+  });
+
+  it('FORM-OR-04: the number of oracle calls is bounded and the requested identity is first', () => {
+    const many = (item: RequestedIngredient) =>
+      item.conceptKey
+        ? [item.productId, ...Array.from({ length: 20 }, (_, i) => `PI-ING-9000${i}`)]
+        : [];
+    const sets = communityIdSets([generic(STRAWBERRY, 'strawberry')], many);
+    expect(sets.length).toBe(COMMUNITY_FORM_QUERY_LIMIT);
+    expect(sets[0]).toEqual([STRAWBERRY]);
+  });
+
+  it('FORM-OR-05: one publication answered by two forms is ONE Community candidate', async () => {
+    matchCommunityTop100.mockImplementation(
+      async ({ ingredientIds }: { ingredientIds: string[] }) =>
+        ingredientIds[0] === STRAWBERRY ? [] : [communityMatch('pub-1', 4)],
+    );
+    const answer = await searchCommunityMatches({
+      requested: [generic(STRAWBERRY, 'strawberry')],
+      profile: null,
+      formsFor,
+    });
+    expect(matchCommunityTop100).toHaveBeenCalledTimes(3);
+    expect(answer.communityMatches.map((match) => match.publicationId)).toEqual(['pub-1']);
   });
 });

@@ -58,6 +58,12 @@ export interface RequestedIngredient {
 }
 
 export interface RecipeMatch {
+  /**
+   * When a GENERIC idea was satisfied by another approved form of the same concept
+   * („truskawka” by „Puree truskawkowe”), the form this recipe actually uses. It is the
+   * SAME flavour in another shape — never an extra ingredient.
+   */
+  readonly usedForms?: readonly string[];
   readonly candidate: RecipeCandidate;
   /** §32: the candidate's ingredients that the user did not ask for. */
   readonly alsoIncludes: readonly string[];
@@ -114,6 +120,32 @@ export function extraIngredientsOf(
   return extras;
 }
 
+/**
+ * The lines that satisfied a GENERIC request with another form of the same concept.
+ * Shown as the form the suggestion uses, never as an extra flavour.
+ */
+export function usedFormsOf(
+  candidate: RecipeCandidate,
+  requested: readonly RequestedIngredient[],
+  conceptMatcher?: ConceptLineMatcher,
+): readonly string[] {
+  const forms: string[] = [];
+  for (const wanted of requested) {
+    if (wanted.conceptKey == null) continue;
+    for (const ingredient of candidate.ingredients) {
+      if (ingredient.productId === wanted.productId) break;
+      if (
+        satisfies(ingredient, wanted, conceptMatcher) &&
+        !forms.includes(ingredient.displayName)
+      ) {
+        forms.push(ingredient.displayName);
+        break;
+      }
+    }
+  }
+  return forms;
+}
+
 export interface MatchQuery {
   readonly requested: readonly RequestedIngredient[];
   /** §40: when known, only candidates of this profile are considered. */
@@ -137,6 +169,7 @@ export function matchRecipes(
     .map((candidate) => ({
       candidate,
       alsoIncludes: extraIngredientsOf(candidate, query.requested, query.conceptMatcher),
+      usedForms: usedFormsOf(candidate, query.requested, query.conceptMatcher),
     }));
 }
 

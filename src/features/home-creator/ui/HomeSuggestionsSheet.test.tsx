@@ -143,6 +143,22 @@ describe('CUSTOMER LANGUAGE — no matcher vocabulary, no grams', () => {
     }
   });
 
+  it('Owner 2026-09-17 — the same fruit in another form is the form used, not an extra flavour', () => {
+    const html = render({
+      official: [
+        {
+          ...match(official.recipeId, 'official'),
+          usedForms: ['Puree truskawkowe'],
+          alsoIncludes: ['Cukier'],
+        },
+      ],
+    });
+    expect(html).toContain('home-recipe-card-used-form');
+    expect(html).toContain('Puree truskawkowe');
+    // It is never listed among the ingredients the customer did not ask for.
+    expect(html).not.toContain('Zawiera też: Puree truskawkowe');
+  });
+
   it('§32 — Also-includes names, never a quantity', () => {
     const html = render({
       official: [{ ...match(official.recipeId, 'official'), alsoIncludes: ['Karmel', 'Wanilia'] }],

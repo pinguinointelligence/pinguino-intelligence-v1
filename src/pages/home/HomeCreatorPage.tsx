@@ -319,9 +319,6 @@ export function HomeCreatorPage() {
     !suggestions.isDismissed(suggestions.signature) &&
     !draft.recipeReady &&
     !resolving &&
-    // Never over an idea that is still being recognised: one chip's cards would be
-    // shown, then replaced (or emptied) the moment its sibling answers.
-    !suggestions.recognising &&
     officialAdoption?.state !== 'loading' &&
     (draft.intentSubmitted || !composerHasText);
   const suggestionsFrom: 'idea' | 'cta' = draft.intentSubmitted ? 'cta' : 'idea';

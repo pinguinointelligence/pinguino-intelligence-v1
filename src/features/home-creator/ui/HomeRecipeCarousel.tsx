@@ -15,6 +15,7 @@ export interface HomeRecipeCardView {
   readonly subline: string | null;
   readonly alsoIncludes?: string | null;
   readonly basedOn?: string | null;
+  readonly usedForm?: string | null;
 }
 
 export interface HomeRecipeCarouselHandle {
@@ -120,6 +121,11 @@ export const HomeRecipeCarousel = forwardRef<
                 {card.basedOn ? (
                   <span className="home-rcard-also" data-testid="home-recipe-card-based-on">
                     {card.basedOn}
+                  </span>
+                ) : null}
+                {card.usedForm ? (
+                  <span className="home-rcard-also" data-testid="home-recipe-card-used-form">
+                    {card.usedForm}
                   </span>
                 ) : null}
                 {card.alsoIncludes ? (

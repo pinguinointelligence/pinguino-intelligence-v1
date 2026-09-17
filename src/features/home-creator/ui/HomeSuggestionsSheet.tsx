@@ -79,6 +79,7 @@ export function HomeSuggestionsSheet({
             eyebrow: card.eyebrow,
             subline: card.subline,
             basedOn: card.basedOn ? `${copy.basedOnOriginal} ${card.basedOn}` : null,
+            usedForm: card.usedForm ? `${copy.usedForm} ${card.usedForm}` : null,
             alsoIncludes:
               card.alsoIncludes.length > 0
                 ? `${copy.alsoIncludes} ${card.alsoIncludes.join(', ')}`

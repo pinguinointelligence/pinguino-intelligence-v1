@@ -22,11 +22,12 @@ import { useHomeDraftStore, type IntentChip } from '../homeDraftStore';
 import {
   decideMatch,
   highestRankedCommunityMatch,
-  type ConceptLineMatcher,
   type RecipeMatch,
+  type RequestedIngredient,
 } from '../homeRecipeMatching';
 import type { IntentIngredientOutcome } from '../useHomeIntentIngredients';
 import { ideaFingerprint, markHomeTiming } from '../homeTimingMarks';
+import { SCOPE_BY_PROFILE } from '../homeIntentResolutionService';
 import type { CommunityMatch } from './communityMatchService';
 import {
   ideaSuggestionSignature,
@@ -35,10 +36,11 @@ import {
   type HomeSuggestionCard,
 } from './homeIdeaSuggestions';
 import {
-  loadOfficialConceptMatcher,
+  loadConceptMatchContext,
   NO_MATCH,
   searchCommunityMatches,
   searchOfficialMatches,
+  type ConceptMatchContext,
   type HomeMatchQuery,
   type HomeMatchResult,
 } from './homeMatchSearch';
@@ -108,8 +110,8 @@ export function useHomeIdeaSuggestions({
   );
   const answeredRef = useRef(answered);
   const communityByIdea = useRef(new Map<string, Promise<CommunityAnswer>>());
-  const [conceptMatcher, setConceptMatcher] = useState<ConceptLineMatcher | null>(null);
-  const conceptMatcherLoad = useRef<Promise<ConceptLineMatcher | null> | null>(null);
+  const [conceptContext, setConceptContext] = useState<ConceptMatchContext | null>(null);
+  const conceptContextLoad = useRef<Promise<ConceptMatchContext | null> | null>(null);
 
   const signature = useMemo(() => ideaSuggestionSignature(chips, profile), [chips, profile]);
   const asksForConcept = useMemo(
@@ -117,24 +119,33 @@ export function useHomeIdeaSuggestions({
     [chips],
   );
 
-  const loadConceptMatcher = useCallback(() => {
-    conceptMatcherLoad.current ??= loadOfficialConceptMatcher().then(
-      (matcher) => {
-        setConceptMatcher(() => matcher);
-        return matcher;
+  const loadConceptContext = useCallback(() => {
+    conceptContextLoad.current ??= loadConceptMatchContext().then(
+      (context) => {
+        setConceptContext(context);
+        return context;
       },
       () => {
         // Unavailable release → identity matching only; a later idea may try again.
-        conceptMatcherLoad.current = null;
+        conceptContextLoad.current = null;
         return null;
       },
     );
-    return conceptMatcherLoad.current;
+    return conceptContextLoad.current;
   }, []);
 
   useEffect(() => {
-    if (enabled && asksForConcept) void loadConceptMatcher();
-  }, [asksForConcept, enabled, loadConceptMatcher]);
+    if (enabled && asksForConcept) void loadConceptContext();
+  }, [asksForConcept, enabled, loadConceptContext]);
+
+  /** The approved forms of a generic request, for the scope the profile implies. */
+  const formsFor = useCallback(
+    (item: RequestedIngredient): readonly string[] =>
+      item.conceptKey == null || conceptContext === null
+        ? []
+        : conceptContext.formsOf(item.conceptKey, profile ? SCOPE_BY_PROFILE[profile] : null),
+    [conceptContext, profile],
+  );
 
   const communityFor = useCallback((idea: string, query: HomeMatchQuery) => {
     let pending = communityByIdea.current.get(idea);
@@ -261,12 +272,12 @@ export function useHomeIdeaSuggestions({
         ? searchOfficialMatches({
             requested: requestedFromChips(chips),
             profile,
-            conceptMatcher: conceptMatcher ?? undefined,
+            conceptMatcher: conceptContext?.matcher,
           })
         : [],
     // `signature` is exactly the resolved identities + roles + concepts + profile the query reads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [conceptMatcher, enabled, signature],
+    [conceptContext, enabled, signature],
   );
 
   useEffect(() => {
@@ -276,7 +287,7 @@ export function useHomeIdeaSuggestions({
 
   useEffect(() => {
     if (!enabled || signature === '') return;
-    const query: HomeMatchQuery = { requested: requestedFromChips(chips), profile };
+    const query: HomeMatchQuery = { requested: requestedFromChips(chips), profile, formsFor };
     let current = true;
     const timer = setTimeout(() => {
       void communityFor(signature, query).then((answer) => {
@@ -292,9 +303,9 @@ export function useHomeIdeaSuggestions({
       current = false;
       clearTimeout(timer);
     };
-    // The query is fully described by `signature`.
+    // The query is fully described by `signature` (plus the loaded central authority).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [communityFor, enabled, signature]);
+  }, [communityFor, conceptContext, enabled, signature]);
 
   const settle = useCallback(async () => {
     await resolveRemaining();
@@ -302,12 +313,21 @@ export function useHomeIdeaSuggestions({
     const draft = useHomeDraftStore.getState();
     const idea = ideaSuggestionSignature(draft.chips, draft.profile);
     if (idea === '') return { signature: idea, result: NO_MATCH, dismissed: false };
+    const context = await loadConceptContext();
     const query: HomeMatchQuery = {
       requested: requestedFromChips(draft.chips),
       profile: draft.profile,
+      conceptMatcher: context?.matcher,
+      formsFor: (item) =>
+        item.conceptKey == null || !context
+          ? []
+          : context.formsOf(
+              item.conceptKey,
+              draft.profile ? SCOPE_BY_PROFILE[draft.profile] : null,
+            ),
     };
     // §35 decides on exact identity only: a concept suggestion is offered, never adopted.
-    const officialNow = searchOfficialMatches(query);
+    const officialNow = searchOfficialMatches({ ...query, conceptMatcher: undefined });
     const { community, communityMatches } = await communityFor(idea, query);
     const best = highestRankedCommunityMatch(community);
     // The answer this door waited for is the answer the layer shows: without this the
@@ -319,7 +339,7 @@ export function useHomeIdeaSuggestions({
       dismissed: dismissedNow.current.has(dismissKey(idea)),
       result: { decision: decideMatch({ official: officialNow, community }), communityMatches },
     };
-  }, [communityFor, resolveRemaining]);
+  }, [communityFor, loadConceptContext, resolveRemaining]);
 
   const settled = communityState !== null && communityState.signature === signature;
   const community = settled ? communityState.community : null;

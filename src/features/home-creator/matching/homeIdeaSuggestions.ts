@@ -65,6 +65,8 @@ export interface HomeSuggestionCard {
   readonly alsoIncludes: readonly string[];
   /** §38 — the ORIGINAL creator of a Community family, never the intermediate remixer. */
   readonly basedOn: string | null;
+  /** The form of the SAME flavour the suggestion uses („Puree truskawkowe”). */
+  readonly usedForm: string | null;
   readonly match: RecipeMatch;
 }
 
@@ -95,6 +97,7 @@ export function suggestionCards(input: {
         : null,
       alsoIncludes: match.alsoIncludes,
       basedOn: null,
+      usedForm: match.usedForms?.join(', ') || null,
       match,
     };
   });
@@ -112,6 +115,7 @@ export function suggestionCards(input: {
       ]),
       alsoIncludes: input.community.alsoIncludes,
       basedOn: candidate.originalCreatorName ?? null,
+      usedForm: input.community.usedForms?.join(', ') || null,
       match: input.community,
     });
   }

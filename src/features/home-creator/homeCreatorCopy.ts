@@ -82,6 +82,8 @@ export interface HomeCreatorCopy {
     readonly createMyOwnHint: string;
     readonly adopted: string;
     readonly basedOnOriginal: string;
+    /** The form of the same flavour this suggestion uses („Puree truskawkowe”). */
+    readonly usedForm: string;
     readonly viewOriginal: string;
     readonly byGellatti: string;
     /** DESIGN V3.0 VIII — the suggestions layer shown while the idea is recognised. */
@@ -283,6 +285,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     createMyOwnHint: 'Zaczniesz od zera — będziesz autorem oryginału.',
     adopted: 'Wybrano recepturę',
     basedOnOriginal: 'Na podstawie oryginalnej receptury:',
+    usedForm: 'Używa postaci:',
     viewOriginal: 'Zobacz oryginał',
     byGellatti: 'Gellatti',
     suggestionsTitle: 'Znaleźliśmy pasujące receptury.',
@@ -468,6 +471,7 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     createMyOwnHint: "You'll start from scratch — and be the original author.",
     adopted: 'Recipe selected',
     basedOnOriginal: 'Based on original recipe by',
+    usedForm: 'Uses the form:',
     viewOriginal: 'View original',
     byGellatti: 'Gellatti',
     suggestionsTitle: 'We found matching recipes.',
