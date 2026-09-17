@@ -28,6 +28,12 @@ export function requestedFromChips(chips: readonly IntentChip[]): readonly Reque
       productId: chip.productId as string,
       statedRole: chip.role,
       displayName: chip.productName ?? chip.label,
+      // A generic idea („truskawka”) resolved to its frozen SA-03 default asks for the
+      // concept; an exact product (scan, choice, brand, literal catalogue) asks for itself.
+      conceptKey:
+        chip.resolvedBy?.authority === 'SA03_CONCEPT_DEFAULT'
+          ? (chip.resolvedBy.conceptKey ?? null)
+          : null,
     }));
 }
 
@@ -41,7 +47,7 @@ export function ideaSuggestionSignature(
   profile: IntentProfile | null,
 ): string {
   const requested = requestedFromChips(chips)
-    .map((item) => `${item.productId}:${item.statedRole ?? '-'}`)
+    .map((item) => `${item.productId}:${item.statedRole ?? '-'}:${item.conceptKey ?? '-'}`)
     .sort();
   return requested.length === 0 ? '' : `${profile ?? '-'}|${requested.join(',')}`;
 }
@@ -57,6 +63,8 @@ export interface HomeSuggestionCard {
   readonly subline: string | null;
   /** §32/§36 — what the customer would also be making. Names only. */
   readonly alsoIncludes: readonly string[];
+  /** §38 — the ORIGINAL creator of a Community family, never the intermediate remixer. */
+  readonly basedOn: string | null;
   readonly match: RecipeMatch;
 }
 
@@ -86,6 +94,7 @@ export function suggestionCards(input: {
           ])
         : null,
       alsoIncludes: match.alsoIncludes,
+      basedOn: null,
       match,
     };
   });
@@ -102,6 +111,7 @@ export function suggestionCards(input: {
         typeof candidate.rank === 'number' ? copy.rankShort(candidate.rank) : null,
       ]),
       alsoIncludes: input.community.alsoIncludes,
+      basedOn: candidate.originalCreatorName ?? null,
       match: input.community,
     });
   }

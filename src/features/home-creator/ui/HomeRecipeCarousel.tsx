@@ -14,6 +14,7 @@ export interface HomeRecipeCardView {
   readonly eyebrow: string | null;
   readonly subline: string | null;
   readonly alsoIncludes?: string | null;
+  readonly basedOn?: string | null;
 }
 
 export interface HomeRecipeCarouselHandle {
@@ -116,6 +117,11 @@ export const HomeRecipeCarousel = forwardRef<
                 {card.eyebrow ? <span className="home-rcard-eyebrow">{card.eyebrow}</span> : null}
                 <span className="home-rcard-name">{card.title}</span>
                 {card.subline ? <span className="home-rcard-sub">{card.subline}</span> : null}
+                {card.basedOn ? (
+                  <span className="home-rcard-also" data-testid="home-recipe-card-based-on">
+                    {card.basedOn}
+                  </span>
+                ) : null}
                 {card.alsoIncludes ? (
                   <span className="home-rcard-also">{card.alsoIncludes}</span>
                 ) : null}

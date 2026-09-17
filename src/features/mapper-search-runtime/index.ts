@@ -16,6 +16,7 @@ export {
   approvedConceptOrder,
   conceptDefaultIntent,
   conceptLineage,
+  conceptMembership,
   indexConceptDefaults,
   loadMapperConceptDefaults,
 } from './conceptDefaults';

@@ -15,9 +15,11 @@
  *
  * Nothing here scores popularity, and nothing here decides gram visibility.
  */
+import { conceptMembership, loadMapperSearchRuntime } from '@/features/mapper-search-runtime';
 import {
   decideMatch,
   matchRecipes,
+  type ConceptLineMatcher,
   type MatchDecision,
   type RecipeMatch,
   type RequestedIngredient,
@@ -29,6 +31,11 @@ import { officialCandidates } from './officialLibraryCandidates';
 export interface HomeMatchQuery {
   readonly requested: readonly RequestedIngredient[];
   readonly profile: IntentProfile | null;
+  /**
+   * Central concept membership, for requests that came from a generic idea. Absent →
+   * identity only (§22), which is also what every §35 decision uses.
+   */
+  readonly conceptMatcher?: ConceptLineMatcher;
 }
 
 export interface HomeMatchResult {
@@ -67,8 +74,23 @@ export function searchOfficialMatches(query: HomeMatchQuery): readonly RecipeMat
   // The library is deep-frozen, so its candidates are computed once per page.
   officialCandidateCache ??= officialCandidates();
   return closestOfficialMatches(
-    matchRecipes(officialCandidateCache, { requested: resolved, profile: query.profile }),
+    matchRecipes(officialCandidateCache, {
+      requested: resolved,
+      profile: query.profile,
+      conceptMatcher: query.conceptMatcher,
+    }),
   );
+}
+
+/**
+ * The concept membership of a recipe line's canonical identity, from the frozen Search
+ * release (PI→concept links and concept lineage). Never a name: a line whose product has
+ * no concept link does not belong to the concept, whatever it is called.
+ */
+export async function loadOfficialConceptMatcher(): Promise<ConceptLineMatcher> {
+  const runtime = await loadMapperSearchRuntime();
+  const member = conceptMembership(runtime.release);
+  return (line, conceptKey) => member(line.productId, conceptKey);
 }
 
 /** The Community side alone: the strict match oracle over the current Top 100. */

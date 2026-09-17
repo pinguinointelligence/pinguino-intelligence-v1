@@ -153,6 +153,10 @@
   gap: 12px;
   margin-top: 4px;
 }
+.home-sugg-hd > div {
+  flex: 1;
+  min-width: 0;
+}
 .home-sugg-title {
   display: block;
   font: 600 18px/1.25 var(--font-sans, Manrope, sans-serif);

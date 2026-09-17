@@ -46,6 +46,12 @@ export interface RecipeCandidate {
 /** What the user asked for, after identity resolution (§22). */
 export interface RequestedIngredient {
   readonly productId: string;
+  /**
+   * Set only when the identity is the frozen SA-03 default of a GENERIC idea
+   * („truskawka”): the customer asked for the concept, so a recipe line of the same
+   * concept satisfies the request. An exact product (scan, choice, brand) has none.
+   */
+  readonly conceptKey?: string | null;
   /** §33: only a role the user STATED. `null` → the recipe may decide. */
   readonly statedRole: IntentRole | null;
   readonly displayName: string;
@@ -60,17 +66,35 @@ export interface RecipeMatch {
 /**
  * Does this candidate satisfy EVERY requested identity, with a stated role respected?
  */
+/**
+ * Whether a recipe line belongs to a concept, answered by the central Mapper/Search
+ * authority (PI→concept links of the frozen release, by the line's canonical id — never
+ * its name). Absent → identity only.
+ */
+export type ConceptLineMatcher = (line: CandidateIngredient, conceptKey: string) => boolean;
+
+const satisfies = (
+  ingredient: CandidateIngredient,
+  wanted: RequestedIngredient,
+  conceptMatcher: ConceptLineMatcher | undefined,
+): boolean =>
+  (ingredient.productId === wanted.productId ||
+    (wanted.conceptKey != null &&
+      conceptMatcher !== undefined &&
+      conceptMatcher(ingredient, wanted.conceptKey))) &&
+  // §33: an unstated role imposes nothing; a stated role must be honoured.
+  (wanted.statedRole === null || ingredient.role === wanted.statedRole);
+
+/**
+ * Does this candidate satisfy EVERY requested identity, with a stated role respected?
+ */
 export function candidateMatches(
   candidate: RecipeCandidate,
   requested: readonly RequestedIngredient[],
+  conceptMatcher?: ConceptLineMatcher,
 ): boolean {
   return requested.every((wanted) =>
-    candidate.ingredients.some(
-      (ingredient) =>
-        ingredient.productId === wanted.productId &&
-        // §33: an unstated role imposes nothing; a stated role must be honoured.
-        (wanted.statedRole === null || ingredient.role === wanted.statedRole),
-    ),
+    candidate.ingredients.some((ingredient) => satisfies(ingredient, wanted, conceptMatcher)),
   );
 }
 
@@ -78,11 +102,12 @@ export function candidateMatches(
 export function extraIngredientsOf(
   candidate: RecipeCandidate,
   requested: readonly RequestedIngredient[],
+  conceptMatcher?: ConceptLineMatcher,
 ): readonly string[] {
-  const asked = new Set(requested.map((item) => item.productId));
   const extras: string[] = [];
   for (const ingredient of candidate.ingredients) {
-    if (!asked.has(ingredient.productId) && !extras.includes(ingredient.displayName)) {
+    const asked = requested.some((wanted) => satisfies(ingredient, wanted, conceptMatcher));
+    if (!asked && !extras.includes(ingredient.displayName)) {
       extras.push(ingredient.displayName);
     }
   }
@@ -93,6 +118,8 @@ export interface MatchQuery {
   readonly requested: readonly RequestedIngredient[];
   /** §40: when known, only candidates of this profile are considered. */
   readonly profile: IntentProfile | null;
+  /** Central concept membership for requests that came from a generic idea. */
+  readonly conceptMatcher?: ConceptLineMatcher;
 }
 
 /**
@@ -106,10 +133,10 @@ export function matchRecipes(
   if (query.requested.length === 0) return [];
   return candidates
     .filter((candidate) => query.profile === null || candidate.profile === query.profile)
-    .filter((candidate) => candidateMatches(candidate, query.requested))
+    .filter((candidate) => candidateMatches(candidate, query.requested, query.conceptMatcher))
     .map((candidate) => ({
       candidate,
-      alsoIncludes: extraIngredientsOf(candidate, query.requested),
+      alsoIncludes: extraIngredientsOf(candidate, query.requested, query.conceptMatcher),
     }));
 }
 

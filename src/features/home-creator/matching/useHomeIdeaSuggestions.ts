@@ -11,10 +11,20 @@
  *   • version  — results are kept only for the idea signature they were computed for; a
  *                 removed chip aborts its resolution and a stale answer is dropped;
  *   • order    — official matches are synchronous and appear first; Community follows.
+ *
+ * A generic idea resolved to its frozen SA-03 default („truskawka”) is also offered the
+ * official recipes whose line belongs to the same concept by its canonical id (the Search
+ * release's PI→concept links). Those are suggestions only: the §35 CTA decision stays on
+ * exact identity, so nothing the customer did not choose is adopted automatically.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useHomeDraftStore, type IntentChip } from '../homeDraftStore';
-import { decideMatch, highestRankedCommunityMatch, type RecipeMatch } from '../homeRecipeMatching';
+import {
+  decideMatch,
+  highestRankedCommunityMatch,
+  type ConceptLineMatcher,
+  type RecipeMatch,
+} from '../homeRecipeMatching';
 import type { IntentIngredientOutcome } from '../useHomeIntentIngredients';
 import { ideaFingerprint, markHomeTiming } from '../homeTimingMarks';
 import type { CommunityMatch } from './communityMatchService';
@@ -25,6 +35,7 @@ import {
   type HomeSuggestionCard,
 } from './homeIdeaSuggestions';
 import {
+  loadOfficialConceptMatcher,
   NO_MATCH,
   searchCommunityMatches,
   searchOfficialMatches,
@@ -76,8 +87,33 @@ export function useHomeIdeaSuggestions({
   );
   const attempted = useRef(new Set<string>());
   const communityByIdea = useRef(new Map<string, Promise<CommunityAnswer>>());
+  const [conceptMatcher, setConceptMatcher] = useState<ConceptLineMatcher | null>(null);
+  const conceptMatcherLoad = useRef<Promise<ConceptLineMatcher | null> | null>(null);
 
   const signature = useMemo(() => ideaSuggestionSignature(chips, profile), [chips, profile]);
+  const asksForConcept = useMemo(
+    () => requestedFromChips(chips).some((item) => item.conceptKey != null),
+    [chips],
+  );
+
+  const loadConceptMatcher = useCallback(() => {
+    conceptMatcherLoad.current ??= loadOfficialConceptMatcher().then(
+      (matcher) => {
+        setConceptMatcher(() => matcher);
+        return matcher;
+      },
+      () => {
+        // Unavailable release → identity matching only; a later idea may try again.
+        conceptMatcherLoad.current = null;
+        return null;
+      },
+    );
+    return conceptMatcherLoad.current;
+  }, []);
+
+  useEffect(() => {
+    if (enabled && asksForConcept) void loadConceptMatcher();
+  }, [asksForConcept, enabled, loadConceptMatcher]);
 
   const communityFor = useCallback((idea: string, query: HomeMatchQuery) => {
     let pending = communityByIdea.current.get(idea);
@@ -157,11 +193,15 @@ export function useHomeIdeaSuggestions({
   const official = useMemo(
     () =>
       enabled && signature !== ''
-        ? searchOfficialMatches({ requested: requestedFromChips(chips), profile })
+        ? searchOfficialMatches({
+            requested: requestedFromChips(chips),
+            profile,
+            conceptMatcher: conceptMatcher ?? undefined,
+          })
         : [],
-    // `signature` is exactly the resolved identities + roles + profile the query reads.
+    // `signature` is exactly the resolved identities + roles + concepts + profile the query reads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [enabled, signature],
+    [conceptMatcher, enabled, signature],
   );
 
   useEffect(() => {
@@ -200,6 +240,7 @@ export function useHomeIdeaSuggestions({
       requested: requestedFromChips(draft.chips),
       profile: draft.profile,
     };
+    // §35 decides on exact identity only: a concept suggestion is offered, never adopted.
     const officialNow = searchOfficialMatches(query);
     const { community, communityMatches } = await communityFor(idea, query);
     return {
