@@ -254,8 +254,9 @@ export interface HomeMachineProfile {
   readonly requiresPreFreeze: boolean;
   readonly preFreezeTarget: PreFreezeTarget;
   /**
-   * Manufacturer-stated minimum pre-freeze duration in hours, when the
-   * recorded sources state one (e.g. KitchenAid: min. 16 h). Null = unstated.
+   * Manufacturer-stated pre-freeze duration in hours, when the recorded sources
+   * state one (e.g. KitchenAid bowl: min. 16 h; Ninja CREAMi mixture: 24 h).
+   * Null = unstated. How it is phrased per target lives in the education copy.
    */
   readonly preFreezeMinimumHours?: number | null;
   readonly servingStyle: MachineServingStyle;

@@ -1,5 +1,9 @@
 import { educationCopy } from '@/copy/education.pl';
 import {
+  machineStepIllustrationFor,
+  type PreparationIllustration,
+} from './preparationIllustrations';
+import {
   MACHINE_CATALOG,
   type HomeMachineProfile,
   type MachineTechnology,
@@ -14,11 +18,16 @@ export type MachineEducationCategory =
 export interface MachineEducationGuide {
   category: MachineEducationCategory;
   title: string;
+  /** Machine preparation that must happen before the mix is prepared (e.g. freezing an empty bowl). */
+  beforeStartSteps: readonly string[];
+  /** Machine steps after the mix is ready. */
   steps: readonly string[];
   timing:
     | { status: 'verified'; text: string; hours: number; source: string }
     | { status: 'missing'; text: string; source: null };
   sourceMachineId: string | null;
+  /** Owner illustration of this exact machine's step; null for generic or custom machines. */
+  illustration: PreparationIllustration | null;
 }
 
 const categoryForTechnology: Readonly<
@@ -52,17 +61,26 @@ export function machineEducationForProfile(
   return {
     category,
     title: operating?.instructionTitle ?? educationCopy.machine.categories[category].title,
+    // Model-specific instructions own the whole sequence; the generic split applies only to copy.
+    beforeStartSteps: operating?.operationalInstructions
+      ? []
+      : educationCopy.machine.categories[category].beforeStartSteps,
     steps: operating?.operationalInstructions ?? educationCopy.machine.categories[category].steps,
     timing:
       verifiedHours === null
         ? { status: 'missing', text: educationCopy.machine.timingMissing, source: null }
         : {
             status: 'verified',
-            text: educationCopy.machine.timingVerified(verifiedHours),
+            // A frozen container's source states a duration; a bowl's states a minimum.
+            text:
+              category === 'frozen_container'
+                ? educationCopy.machine.timingMixtureVerified(verifiedHours)
+                : educationCopy.machine.timingVerified(verifiedHours),
             hours: verifiedHours,
             source: profile.specificationSourceUrl ?? profile.id,
           },
     sourceMachineId: profile.id,
+    illustration: machineStepIllustrationFor(profile.id),
   };
 }
 
@@ -89,18 +107,22 @@ export function genericMachineEducation(category: MachineEducationCategory): Mac
   return {
     category,
     title: educationCopy.machine.categories[category].title,
+    beforeStartSteps: educationCopy.machine.categories[category].beforeStartSteps,
     steps: educationCopy.machine.categories[category].steps,
     timing: { status: 'missing', text: educationCopy.machine.timingMissing, source: null },
     sourceMachineId: null,
+    illustration: null,
   };
 }
 
 export const FRESH_GELATO_EDUCATION: MachineEducationGuide = {
   category: 'fresh_gelato',
   title: educationCopy.machine.categories.fresh_gelato.title,
+  beforeStartSteps: educationCopy.machine.categories.fresh_gelato.beforeStartSteps,
   steps: educationCopy.machine.categories.fresh_gelato.steps,
   timing: { status: 'missing', text: educationCopy.machine.timingMissing, source: null },
   sourceMachineId: null,
+  illustration: null,
 };
 
 export function availableMachineEducationCategories(): readonly MachineEducationCategory[] {

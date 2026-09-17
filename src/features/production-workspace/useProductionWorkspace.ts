@@ -508,9 +508,6 @@ export function useProductionWorkspace(enabled: boolean) {
   }>({ basisKey: null, optionId: null });
   const [rescueOptionsRetryRevision, setRescueOptionsRetryRevision] = useState(0);
   const [reconcileRevision, setReconcileRevision] = useState(0);
-  const [preStartHeatAcknowledgementKey, setPreStartHeatAcknowledgementKey] = useState<
-    string | null
-  >(null);
   const [preStartDegassingAcknowledgementKey, setPreStartDegassingAcknowledgementKey] = useState<
     string | null
   >(null);
@@ -1168,11 +1165,6 @@ export function useProductionWorkspace(enabled: boolean) {
   const heatAdvisories = processReadiness.advisories.filter(
     (advisory) => advisory.code === 'HEAT_TREATMENT_INDICATED',
   );
-  const heatInformationAcknowledged =
-    heatAdvisories.length === 0 ||
-    (session
-      ? session.heatInformationAcknowledgedAt !== null
-      : preStartHeatAcknowledgementKey === behaviorValidationKey);
   const carbonatedProducts = useMemo(
     () => carbonatedProductsForRecipe(plannedInput, plannedComposition),
     [plannedComposition, plannedInput],
@@ -1191,8 +1183,9 @@ export function useProductionWorkspace(enabled: boolean) {
     (session
       ? session.degassingAcknowledged && session.degassingAcknowledgedAt !== null
       : preStartDegassingAcknowledgementKey === degassingAcknowledgementKey);
-  const canStartProduction =
-    productionPrerequisite === null && heatInformationAcknowledged && degassingAcknowledged;
+  // Owner addendum 2026-09-17: heat treatment is one step of the preparation plan,
+  // not a separate reminder to acknowledge — it never gates Start.
+  const canStartProduction = productionPrerequisite === null && degassingAcknowledged;
   const corrections = useMemo(
     () =>
       proposeCorrections({
@@ -1412,6 +1405,8 @@ export function useProductionWorkspace(enabled: boolean) {
     session,
     source,
     plannedInput,
+    /** Same composition Production starts from; read by the shared preparation plan. */
+    plannedComposition,
     forecastInput,
     forecastResult,
     rescue,
@@ -1436,7 +1431,6 @@ export function useProductionWorkspace(enabled: boolean) {
      * event: it stays under the product `?` and renders nothing here.
      */
     heatInformation: heatAdvisories,
-    heatInformationAcknowledged,
     carbonatedProducts,
     degassingRequired,
     degassingAcknowledged,
@@ -1447,37 +1441,6 @@ export function useProductionWorkspace(enabled: boolean) {
     persistenceBusy: persistence.busy,
     persistenceError: persistence.error,
     currentSourceFingerprint,
-    acknowledgeHeatInformation: async () => {
-      if (!session) {
-        if (heatAdvisories.length > 0) {
-          setPreStartHeatAcknowledgementKey(behaviorValidationKey);
-        }
-        return;
-      }
-      if (!repositoryState.repository || persistence.busy) return;
-      if (session.heatInformationAcknowledgedAt) return;
-      setPersistence({ busy: true, error: null });
-      try {
-        const durableRun = await repositoryState.repository.acknowledgeHeatInformation(
-          session.sessionId,
-        );
-        replaceSession(
-          mergePendingProductionDrafts(
-            hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
-            session,
-          ),
-        );
-      } catch {
-        setPersistence({
-          busy: false,
-          error: 'Nie zapisano potwierdzenia informacji o obróbce. Partia pozostaje bez zmian.',
-        });
-        setReconcileRevision((current) => current + 1);
-        return;
-      } finally {
-        setPersistence((current) => ({ ...current, busy: false }));
-      }
-    },
     acknowledgeDegassing: async () => {
       if (!degassingRequired) return;
       if (!session) {
@@ -1853,14 +1816,10 @@ export function useProductionWorkspace(enabled: boolean) {
           capabilities: productionCapabilitiesFor(persona),
           by: ownerUserId,
         });
-        const heatAcknowledgedRun =
-          heatAdvisories.length > 0
-            ? await repositoryState.repository.acknowledgeHeatInformation(activeRun.runId)
-            : activeRun;
         const acknowledgedRun =
           carbonatedProducts.length > 0
-            ? await repositoryState.repository.acknowledgeDegassing(heatAcknowledgedRun.runId)
-            : heatAcknowledgedRun;
+            ? await repositoryState.repository.acknowledgeDegassing(activeRun.runId)
+            : activeRun;
         if (!requestStillOwnsProjection()) return;
         restoreDurableSession(
           hydrateProductionSessionFromRun(
@@ -1871,7 +1830,6 @@ export function useProductionWorkspace(enabled: boolean) {
           ),
           sessionAddress,
         );
-        setPreStartHeatAcknowledgementKey(null);
         setPreStartDegassingAcknowledgementKey(null);
       } catch {
         setSessionStart({
