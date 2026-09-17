@@ -149,28 +149,23 @@ export function useHomeIdeaSuggestions({
     [conceptContext, profile],
   );
 
-  const communityFor = useCallback((idea: string, query: HomeMatchQuery) => {
-    let pending = communityByIdea.current.get(idea);
+  /**
+   * One Community answer per idea version AND per authority state: a search that ran
+   * before the frozen release was loaded asked only the requested identities, so it must
+   * never be served to a caller that now asks for the approved forms as well.
+   */
+  const communityKey = (idea: string, withForms: boolean) => `${withForms ? 'F' : 'I'}|${idea}`;
+
+  const communityFor = useCallback((key: string, query: HomeMatchQuery) => {
+    let pending = communityByIdea.current.get(key);
     if (!pending) {
-      markHomeTiming('community-start', { idea: ideaFingerprint(idea) });
-      pending = Promise.race([
-        searchCommunityMatches(query),
-        new Promise<CommunityAnswer>((resolve) =>
-          setTimeout(
-            () =>
-              // A timed-out search proved nothing about the rest of the combinations.
-              resolve({
-                community: [],
-                communityMatches: [],
-                coverage: { asked: 0, combinations: 0, partial: true },
-              }),
-            COMMUNITY_ANSWER_TIMEOUT_MS,
-          ),
-        ),
-      ]).then(
+      markHomeTiming('community-start', { idea: ideaFingerprint(key) });
+      // The REAL answer is what gets cached — a deadline is a display decision, never a
+      // proof, so a slow oracle must not leave „no Community match” behind forever.
+      pending = searchCommunityMatches(query).then(
         (answer) => {
           markHomeTiming('community-end', {
-            idea: ideaFingerprint(idea),
+            idea: ideaFingerprint(key),
             count: answer.community.length,
           });
           return answer;
@@ -182,10 +177,33 @@ export function useHomeIdeaSuggestions({
             coverage: { asked: 0, combinations: 0, partial: true },
           }) as CommunityAnswer,
       );
-      communityByIdea.current.set(idea, pending);
+      communityByIdea.current.set(key, pending);
     }
     return pending;
   }, []);
+
+  /** The same answer, but never later than the deadline the layer is allowed to wait. */
+  const communityWithin = useCallback(
+    (key: string, query: HomeMatchQuery, deadlineMs: number): Promise<CommunityAnswer> => {
+      const real = communityFor(key, query);
+      return Promise.race([
+        real,
+        new Promise<CommunityAnswer>((resolve) =>
+          setTimeout(
+            () =>
+              // Nothing was proven about the combinations this search has not answered yet.
+              resolve({
+                community: [],
+                communityMatches: [],
+                coverage: { asked: 0, combinations: 0, partial: true },
+              }),
+            deadlineMs,
+          ),
+        ),
+      ]);
+    },
+    [communityFor],
+  );
 
   // 1 — ONE resolution door: the debounced recognition below and the CTA's
   // `resolveRemaining` both go through `startResolution`, so a chip is resolved once and
@@ -300,18 +318,27 @@ export function useHomeIdeaSuggestions({
 
   useEffect(() => {
     if (!enabled || signature === '') return;
-    const query: HomeMatchQuery = { requested: requestedFromChips(chips), profile, formsFor };
+    const query: HomeMatchQuery = {
+      requested: requestedFromChips(chips),
+      profile,
+      formsFor,
+      nameOf: conceptContext?.nameOf,
+    };
+    const key = communityKey(signature, conceptContext !== null);
     let current = true;
-    const timer = setTimeout(() => {
-      void communityFor(signature, query).then((answer) => {
-        if (!current) return;
-        setCommunityState({
-          signature,
-          community: highestRankedCommunityMatch(answer.community),
-          communityMatches: answer.communityMatches,
-          coverage: answer.coverage,
-        });
+    const show = (answer: CommunityAnswer) => {
+      if (!current) return;
+      setCommunityState({
+        signature,
+        community: highestRankedCommunityMatch(answer.community),
+        communityMatches: answer.communityMatches,
+        coverage: answer.coverage,
       });
+    };
+    const timer = setTimeout(() => {
+      // Show whatever is ready by the deadline, then correct it when the real answer lands.
+      void communityWithin(key, query, COMMUNITY_ANSWER_TIMEOUT_MS).then(show);
+      void communityFor(key, query).then(show);
     }, IDEA_SUGGESTION_DEBOUNCE_MS);
     return () => {
       current = false;
@@ -319,7 +346,7 @@ export function useHomeIdeaSuggestions({
     };
     // The query is fully described by `signature` (plus the loaded central authority).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [communityFor, conceptContext, enabled, signature]);
+  }, [communityFor, communityWithin, conceptContext, enabled, signature]);
 
   const settle = useCallback(async () => {
     await resolveRemaining();
@@ -342,7 +369,11 @@ export function useHomeIdeaSuggestions({
     };
     // §35 decides on exact identity only: a concept suggestion is offered, never adopted.
     const officialNow = searchOfficialMatches({ ...query, conceptMatcher: undefined });
-    const { community, communityMatches, coverage } = await communityFor(idea, query);
+    const { community, communityMatches, coverage } = await communityWithin(
+      communityKey(idea, context !== null),
+      query,
+      COMMUNITY_ANSWER_TIMEOUT_MS,
+    );
     const best = highestRankedCommunityMatch(community);
     // The answer this door waited for is the answer the layer shows: without this the
     // Community card could arrive only after the customer's own recipe had been built.
@@ -361,7 +392,7 @@ export function useHomeIdeaSuggestions({
         coverage,
       },
     };
-  }, [communityFor, loadConceptContext, resolveRemaining]);
+  }, [communityWithin, loadConceptContext, resolveRemaining]);
 
   const settled = communityState !== null && communityState.signature === signature;
   const community = settled ? communityState.community : null;

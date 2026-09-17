@@ -104,8 +104,10 @@ export const HomeRecipeCarousel = forwardRef<
                 card.title,
                 card.eyebrow,
                 card.subline,
+                card.basedOn,
                 card.usedForm,
                 card.alsoIncludesFull ?? card.alsoIncludes,
+                card.searchIncomplete,
               ]
                 .filter(Boolean)
                 .join(' · ')}

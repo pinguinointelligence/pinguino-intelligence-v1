@@ -8,13 +8,24 @@
  * adding them stays with the existing add door (`addResolvedChip`), and so does the
  * amount question when nothing sizes a new line automatically.
  */
+import { canonicalIngredientIdFromSourceId } from '@/data/ingredients/canonicalIngredientIdentity';
 import type { IntentChip } from './homeDraftStore';
 import type { IntentRole } from './homeIntentParsing';
 
 /** Whatever the recipe holds, read by its canonical ingredient identity. */
 export interface RecipeLineIdentity {
-  readonly ingredient: { readonly id: string };
+  readonly ingredient: { readonly id: string; readonly canonical_ingredient_id?: string | null };
 }
+
+/**
+ * The identity the ADD doors dedup on: a starter line still carries its toolbox id
+ * („milk_3_5”), while a chip always carries the Mapper id. Reading the raw id here made
+ * HOME report an ingredient as missing that the recipe already contains, and then say
+ * nothing when the add door refused it as a duplicate.
+ */
+const lineIdentity = (line: RecipeLineIdentity): string =>
+  line.ingredient.canonical_ingredient_id?.trim() ||
+  canonicalIngredientIdFromSourceId(line.ingredient.id);
 
 /**
  * The recognised chips whose product is not yet in the recipe IN THE ROLE THEY WERE SAID IN
@@ -32,8 +43,8 @@ export function ideaProductsMissingFromRecipe(
   toppings: readonly RecipeLineIdentity[],
   statedRoles: Readonly<Record<string, IntentRole>> = {},
 ): readonly IntentChip[] {
-  const inBase = new Set(items.map((line) => line.ingredient.id));
-  const inToppings = new Set(toppings.map((line) => line.ingredient.id));
+  const inBase = new Set(items.map(lineIdentity));
+  const inToppings = new Set(toppings.map(lineIdentity));
   return chips.filter((chip) => {
     if (chip.productId === null || chip.ambiguous) return false;
     const role = statedRoles[chip.id] ?? chip.role;

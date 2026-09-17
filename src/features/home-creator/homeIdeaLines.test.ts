@@ -22,6 +22,8 @@ const chip = (
   ...extra,
 });
 const line = (id: string) => ({ ingredient: { id } });
+/** A starter line still carries its toolbox id; the chip carries the Mapper id. */
+const toolboxLine = (id: string) => ({ ingredient: { id } });
 
 describe('KIWI-01 — the idea must be in the recipe', () => {
   it('reports a recognised product the recipe does not contain', () => {
@@ -101,6 +103,25 @@ describe('KIWI-01 — the idea must be in the recipe', () => {
         kiwi: 'ingredient',
       }).map((entry) => entry.id),
     ).toEqual(['kiwi']);
+  });
+
+  it('KIWI-10: a line that carries its toolbox id is the SAME product as the chip', () => {
+    // „milk_3_5” is what a HOME starter line holds; the chip resolves to PI-ING-000236.
+    expect(
+      ideaProductsMissingFromRecipe(
+        [chip('mleko', 'PI-ING-000236')],
+        [toolboxLine('milk_3_5')],
+        [],
+      ),
+    ).toEqual([]);
+    // And the same through the persisted canonical id.
+    expect(
+      ideaProductsMissingFromRecipe(
+        [chip('mleko', 'PI-ING-000236')],
+        [{ ingredient: { id: 'legacy-row', canonical_ingredient_id: 'PI-ING-000236' } }],
+        [],
+      ),
+    ).toEqual([]);
   });
 
   it('reports every missing element of a two-ingredient idea', () => {

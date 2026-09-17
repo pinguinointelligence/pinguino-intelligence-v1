@@ -319,6 +319,34 @@ describe('Owner 2026-09-17: a generic idea also finds recipes made with another 
     expect(answer.coverage).toEqual({ asked: 3, combinations: 3, partial: false });
   });
 
+  it('FORM-OR-08 (review): a Community card says which form answered it', async () => {
+    matchCommunityTop100.mockImplementation(
+      async ({ ingredientIds }: { ingredientIds: string[] }) =>
+        ingredientIds[0] === STRAWBERRY_PUREE ? [communityMatch('pub-2', 3)] : [],
+    );
+    const answer = await searchCommunityMatches({
+      requested: [generic(STRAWBERRY, 'strawberry')],
+      profile: null,
+      formsFor,
+      nameOf: (id) => (id === STRAWBERRY_PUREE ? 'Puree truskawkowe' : null),
+    });
+    expect(answer.community[0]?.usedForms).toEqual(['Puree truskawkowe']);
+  });
+
+  it('FORM-OR-09 (review): the exact request answers with no form line', async () => {
+    matchCommunityTop100.mockImplementation(
+      async ({ ingredientIds }: { ingredientIds: string[] }) =>
+        ingredientIds[0] === STRAWBERRY ? [communityMatch('pub-3', 2)] : [],
+    );
+    const answer = await searchCommunityMatches({
+      requested: [generic(STRAWBERRY, 'strawberry')],
+      profile: null,
+      formsFor,
+      nameOf: () => 'nigdy',
+    });
+    expect(answer.community[0]?.usedForms).toBeUndefined();
+  });
+
   it('FORM-OR-07 (owner): a partial search never lets §35 adopt a recipe automatically', async () => {
     matchCommunityTop100.mockResolvedValue([]);
     const many = (item: RequestedIngredient) =>

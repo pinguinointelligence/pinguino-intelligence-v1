@@ -98,7 +98,6 @@ export interface HomeCreatorCopy {
     readonly skip: string;
     readonly choose: string;
     readonly chooseFirst: string;
-    readonly chosen: string;
     readonly communityEyebrow: string;
     readonly rankShort: (rank: number) => string;
     readonly previousCards: string;
@@ -301,7 +300,6 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     skip: 'Pomiń',
     choose: 'Wybierz',
     chooseFirst: 'Najpierw wybierz recepturę.',
-    chosen: 'Wybrana',
     communityEyebrow: 'Community · Top 100',
     rankShort: (rank) => `miejsce ${rank}`,
     previousCards: 'Poprzednie receptury',
@@ -489,7 +487,6 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     skip: 'Skip',
     choose: 'Choose',
     chooseFirst: 'Choose a recipe first.',
-    chosen: 'Chosen',
     communityEyebrow: 'Community · Top 100',
     rankShort: (rank) => `rank ${rank}`,
     previousCards: 'Previous recipes',

@@ -9,6 +9,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   community: vi.fn(),
+  /** Set to hold the frozen release back, the way a cold page load does. */
+  runtimeHold: null as null | Promise<unknown>,
+  runtimeValue: null as unknown,
 }));
 
 vi.mock('./communityMatchService', () => ({ matchCommunityTop100: mocks.community }));
@@ -18,13 +21,19 @@ vi.mock('@/features/mapper-search-runtime', async (importOriginal) => {
   const { createTestMapperSearchRuntime } =
     await import('@/features/mapper-search-runtime/testRelease');
   const runtime = createTestMapperSearchRuntime();
-  return { ...actual, loadMapperSearchRuntime: async () => runtime };
+  mocks.runtimeValue = runtime;
+  return {
+    ...actual,
+    loadMapperSearchRuntime: async () =>
+      mocks.runtimeHold ? await mocks.runtimeHold : mocks.runtimeValue,
+  };
 });
 
 import { useHomeDraftStore, type IntentChip } from '../homeDraftStore';
 import type { IntentIngredientOutcome } from '../useHomeIntentIngredients';
 import { searchOfficialMatches } from './homeMatchSearch';
 import {
+  COMMUNITY_ANSWER_TIMEOUT_MS,
   IDEA_SUGGESTION_DEBOUNCE_MS,
   useHomeIdeaSuggestions,
   type HomeIdeaSuggestions,
@@ -67,6 +76,7 @@ const flush = async (ms = 0) => {
 };
 
 beforeEach(() => {
+  mocks.runtimeHold = null;
   vi.useFakeTimers();
   useHomeDraftStore.getState().startNew();
   resolveOne.mockReset();
@@ -374,18 +384,100 @@ describe('B — review 2026-09-17: one door, one dismissal, one answer', () => {
     expect(resolveOne).toHaveBeenCalledTimes(1);
     // The customer answers the question the first resolution raised.
     act(() =>
-      useHomeDraftStore
-        .getState()
-        .resolveChip('c1', {
-          productId: STRAWBERRY,
-          productName: STRAWBERRY_NAME,
-          ambiguous: false,
-        }),
+      useHomeDraftStore.getState().resolveChip('c1', {
+        productId: STRAWBERRY,
+        productName: STRAWBERRY_NAME,
+        ambiguous: false,
+      }),
     );
     await act(async () => {
       await probe.latest!.resolveRemaining();
     });
     expect(resolveOne).toHaveBeenCalledTimes(1);
     expect(useHomeDraftStore.getState().chips[0]?.productId).toBe(STRAWBERRY);
+  });
+});
+
+describe('B — review 2026-09-17: the Community answer tells the truth', () => {
+  const STRAWBERRY_ID = 'PI-ING-001553';
+  const generic = (id: string): IntentChip => ({
+    ...chip(id, 'truskawkowe'),
+    concept: 'strawberry',
+    productId: STRAWBERRY_ID,
+    productName: 'STRAWBERRIES · Fresh Fruit',
+    resolvedBy: { authority: 'SA03_CONCEPT_DEFAULT', conceptKey: 'strawberry', scope: null },
+  });
+
+  it('B-15: a search made before the frozen release loaded is never reused for the wider one', async () => {
+    let releaseRuntime: (value: unknown) => void = () => undefined;
+    mocks.runtimeHold = new Promise((resolve) => (releaseRuntime = resolve));
+    mocks.community.mockResolvedValue([]);
+    act(() => useHomeDraftStore.getState().addChip(generic('c1')));
+    await flush(IDEA_SUGGESTION_DEBOUNCE_MS + 10);
+    // Without the central authority the oracle can only be asked for the requested identity.
+    expect(mocks.community).toHaveBeenCalledTimes(1);
+    expect(mocks.community.mock.calls[0]?.[0]?.ingredientIds).toEqual([STRAWBERRY_ID]);
+
+    await act(async () => {
+      releaseRuntime(mocks.runtimeValue);
+      await Promise.resolve();
+    });
+    await flush(IDEA_SUGGESTION_DEBOUNCE_MS + 10);
+    // Once the approved forms are known the same idea is asked again — the narrow answer
+    // is not served as if it had covered them.
+    expect(mocks.community.mock.calls.length).toBeGreaterThan(1);
+    const widened = mocks.community.mock.calls.map((call) => call[0]?.ingredientIds?.[0]);
+    expect(new Set(widened).size).toBeGreaterThan(1);
+  });
+
+  it('B-16: the deadline only bounds what is SHOWN — the real answer still lands', async () => {
+    const pending: (() => void)[] = [];
+    const row = {
+      publication: 'p9',
+      candidate: {
+        id: 'p9',
+        title: 'Truskawkowe z bazylią',
+        source: 'community',
+        profile: 'gelato',
+        ingredients: [],
+        imageUrl: null,
+        authorName: 'Ola',
+        rank: 2,
+      },
+      alsoIncludes: [],
+      slug: 's',
+      publicationId: 'p9',
+      handle: 'ola',
+      title: 'Truskawkowe z bazylią',
+      creatorDisplayName: 'Ola',
+    };
+    mocks.community.mockImplementation(
+      ({ ingredientIds }: { ingredientIds: string[] }) =>
+        new Promise((resolve) => {
+          pending.push(() => resolve(ingredientIds[0] === STRAWBERRY_ID ? [row] : []));
+        }),
+    );
+    act(() => useHomeDraftStore.getState().addChip(generic('c1')));
+    // The debounce, then the central authority landing and asking again, then the deadline.
+    await flush(IDEA_SUGGESTION_DEBOUNCE_MS + 10);
+    await flush(COMMUNITY_ANSWER_TIMEOUT_MS + 10);
+    await flush(COMMUNITY_ANSWER_TIMEOUT_MS + 10);
+    // The layer stopped waiting, and says so instead of claiming there is no match.
+    expect(probe.latest!.communitySettled).toBe(true);
+    expect(probe.latest!.cards.some((card) => card.source === 'community')).toBe(false);
+
+    // The sets are asked in chunks, so answering releases the next chunk: drain them all.
+    for (let round = 0; round < 6 && pending.length > 0; round += 1) {
+      const ready = pending.splice(0, pending.length);
+      await act(async () => {
+        for (const resolve of ready) resolve();
+        await Promise.resolve();
+      });
+      await flush(0);
+    }
+    expect(probe.latest!.cards.at(-1)).toMatchObject({
+      source: 'community',
+      title: 'Truskawkowe z bazylią',
+    });
   });
 });

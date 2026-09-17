@@ -49,6 +49,8 @@ export interface HomeMatchQuery {
    * requested ingredients stay an AND. Absent → the requested identity alone.
    */
   readonly formsFor?: (item: RequestedIngredient) => readonly string[];
+  /** Customer-facing name of a product id, so a Community match can name the form it used. */
+  readonly nameOf?: (piId: string) => string | null;
 }
 
 /**
@@ -120,6 +122,8 @@ export function searchOfficialMatches(query: HomeMatchQuery): readonly RecipeMat
 }
 
 export interface ConceptMatchContext {
+  /** The customer-facing name of a Mapper product, for „Używa postaci: …”. */
+  readonly nameOf: (piId: string) => string | null;
   /**
    * Membership of a recipe line's canonical identity, from the frozen Search release
    * (PI→concept links and lineage). Never a name: a line whose product has no concept
@@ -137,10 +141,16 @@ export async function loadConceptMatchContext(): Promise<ConceptMatchContext> {
     loadMapperConceptDefaults(),
   ]);
   const member = conceptMembership(runtime.release);
+  const nameById = new Map(
+    (runtime.release.mapperRows as ReadonlyArray<{ id: string; displayName?: string }>).map(
+      (row) => [row.id, row.displayName ?? null],
+    ),
+  );
   // Owner-approved discovery links widen the SEARCH only: they are appended after the
   // frozen order and never consulted when a generic idea picks its product.
   const discovery = conceptDiscoveryIndex();
   return {
+    nameOf: (piId) => nameById.get(piId) ?? null,
     matcher: (line, conceptKey) =>
       member(line.productId, conceptKey) ||
       (discovery.get(conceptKey)?.includes(line.productId) ?? false),
@@ -238,19 +248,35 @@ export async function searchCommunityMatches(query: HomeMatchQuery): Promise<{
   // One publication is one candidate however many forms reached it; the oracle's own
   // Top 100 rank still decides which single Community card is offered (§34).
   const byPublication = new Map<string, CommunityMatch>();
-  for (const rows of answers) {
-    for (const row of rows)
-      if (!byPublication.has(row.publicationId)) byPublication.set(row.publicationId, row);
-  }
+  const formsByPublication = new Map<string, readonly string[]>();
+  answers.forEach((rows, index) => {
+    const askedIds = sets[index] ?? [];
+    for (const row of rows) {
+      if (byPublication.has(row.publicationId)) continue;
+      byPublication.set(row.publicationId, row);
+      // Which ids answered it, when they are not the ones the customer named.
+      const swapped = askedIds.filter(
+        (id, axis) => resolved[axis] !== undefined && resolved[axis]!.productId !== id,
+      );
+      if (swapped.length > 0) formsByPublication.set(row.publicationId, swapped);
+    }
+  });
   const communityMatches = [...byPublication.values()];
   // The oracle already proved containment, so these are matches by construction.
   // `alsoIncludes` comes from the oracle (public names), not from a client diff of a
   // formulation the client was never given.
   return {
-    community: communityMatches.map((match) => ({
-      candidate: match.candidate,
-      alsoIncludes: match.alsoIncludes,
-    })),
+    community: communityMatches.map((match) => {
+      const swapped = formsByPublication.get(match.publicationId) ?? [];
+      const usedForms = swapped
+        .map((id) => query.nameOf?.(id) ?? null)
+        .filter((name): name is string => Boolean(name));
+      return {
+        candidate: match.candidate,
+        alsoIncludes: match.alsoIncludes,
+        ...(usedForms.length > 0 ? { usedForms } : {}),
+      };
+    }),
     communityMatches,
     coverage: { asked: sets.length, combinations, partial },
   };
