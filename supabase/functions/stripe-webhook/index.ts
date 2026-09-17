@@ -38,7 +38,10 @@
 import Stripe from 'npm:stripe@18';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { decideFailureFollowup, routeWebhookEvent } from './handlers.ts';
-import { applyEventEffects, type DbClient, type StripeResource } from './dispatch.ts';
+import { applyEventEffects, type DbClient, type StripeList, type StripeResource } from './dispatch.ts';
+
+/** First API version with InvoicePayment; version strings compare by their date prefix. */
+const BASIL_API_VERSION_DATE = '2025-03-31';
 
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), {
@@ -59,6 +62,14 @@ Deno.serve(async (req) => {
   const rawBody = await req.text();
 
   const apiVersion = Deno.env.get('STRIPE_API_VERSION') ?? '2025-06-30.basil';
+  // The reversal writers find an invoice through InvoicePayment, which exists
+  // from 2025-03-31.basil on. An older pinned version would not fail — it would
+  // silently skip every refund and dispute reversal — so it is refused before
+  // anything is received, and Stripe keeps redelivering until it is fixed.
+  if (apiVersion < BASIL_API_VERSION_DATE) {
+    console.log('stripe-webhook: STRIPE_API_VERSION predates InvoicePayment (Basil); refusing');
+    return json(500, { error: 'webhook_not_configured' });
+  }
   const stripe = new Stripe(stripeKey, { apiVersion: apiVersion as Stripe.LatestApiVersion });
   const cryptoProvider = Stripe.createSubtleCryptoProvider();
   let event: Stripe.Event;
@@ -147,12 +158,37 @@ Deno.serve(async (req) => {
       }
     };
 
+    // Every page, always: auto-pagination follows has_more to the end.
+    const listAll = async (list: StripeList, filter: string): Promise<Record<string, unknown>[]> => {
+      const items: Record<string, unknown>[] = [];
+      switch (list) {
+        case 'invoice_payments_by_invoice':
+          for await (const payment of stripe.invoicePayments.list({ invoice: filter, limit: 100 })) {
+            items.push(payment as unknown as Record<string, unknown>);
+          }
+          return items;
+        case 'invoice_payments_by_payment_intent':
+          for await (const payment of stripe.invoicePayments.list({
+            payment: { type: 'payment_intent', payment_intent: filter },
+            limit: 100,
+          })) {
+            items.push(payment as unknown as Record<string, unknown>);
+          }
+          return items;
+        case 'refunds_by_charge':
+          for await (const refund of stripe.refunds.list({ charge: filter, limit: 100 })) {
+            items.push(refund as unknown as Record<string, unknown>);
+          }
+          return items;
+      }
+    };
+
     let note: string | null = null;
     let failureMessage: string | null = null;
     let terminalFailure = false;
     try {
       const result = await applyEventEffects(
-        { db: admin as unknown as DbClient, refetch },
+        { db: admin as unknown as DbClient, refetch, listAll },
         {
           id: event.id,
           type: event.type,

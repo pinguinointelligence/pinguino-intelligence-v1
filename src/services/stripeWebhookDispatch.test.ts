@@ -199,12 +199,107 @@ const event = (type: string, id: string, object: Row, created = 1_781_000_000): 
   object,
 });
 
+/**
+ * The Edge Functions import `npm:stripe@18` and refetch with the pinned Basil
+ * version. Basil REMOVED the relations the reversal writers were built on:
+ * `Invoice.payment_intent`, `Invoice.charge`, `Invoice.subscription`,
+ * `Charge.invoice` and `PaymentIntent.invoice`; an invoice and the payment
+ * that settled it are joined only through an `InvoicePayment`. `Charge.refunds`
+ * is not returned unless expanded, and even expanded it is one page.
+ *
+ * Every object below has exactly the fields stripe-node 18.5.0 declares for
+ * that API generation (the SDK the functions resolve today). None carries a
+ * removed field.
+ */
+const basilInvoice = (overrides: Row = {}): Row => ({
+  id: 'in_fake_1',
+  object: 'invoice',
+  status: 'paid',
+  amount_paid: 4900,
+  customer: 'cus_fake_1',
+  parent: {
+    type: 'subscription_details',
+    quote_details: null,
+    subscription_details: { metadata: {}, subscription: 'sub_fake_1' },
+  },
+  status_transitions: { finalized_at: PAID_AT_EPOCH, paid_at: PAID_AT_EPOCH },
+  ...overrides,
+});
+
+const basilInvoicePayment = (overrides: Row = {}): Row => ({
+  id: 'inpay_fake_1',
+  object: 'invoice_payment',
+  amount_paid: 4900,
+  amount_requested: 4900,
+  created: PAID_AT_EPOCH,
+  currency: 'eur',
+  invoice: 'in_fake_1',
+  is_default: true,
+  livemode: false,
+  payment: { type: 'payment_intent', payment_intent: 'pi_fake_1' },
+  status: 'paid',
+  status_transitions: { canceled_at: null, paid_at: PAID_AT_EPOCH },
+  ...overrides,
+});
+
+const basilCharge = (overrides: Row = {}): Row => ({
+  id: 'ch_fake_1',
+  object: 'charge',
+  amount: 4900,
+  amount_refunded: 0,
+  customer: 'cus_fake_1',
+  payment_intent: 'pi_fake_1',
+  refunded: false,
+  ...overrides,
+});
+
+const basilRefund = (id: string, amount: number, overrides: Row = {}): Row => ({
+  id,
+  object: 'refund',
+  amount,
+  charge: 'ch_fake_1',
+  currency: 'eur',
+  payment_intent: 'pi_fake_1',
+  status: 'succeeded',
+  ...overrides,
+});
+
+interface BasilWorld {
+  invoicePayments?: Row[];
+  refunds?: Row[];
+}
+
+/** A list port that already walked every page, as the adapter contract requires. */
+const basilLists = (world: BasilWorld) => ({
+  listAll: async (list: string, filter: string): Promise<Row[]> => {
+    switch (list) {
+      case 'invoice_payments_by_invoice':
+        return (world.invoicePayments ?? []).filter((payment) => payment.invoice === filter);
+      case 'invoice_payments_by_payment_intent':
+        return (world.invoicePayments ?? []).filter(
+          (payment) => (payment.payment as Row | undefined)?.payment_intent === filter,
+        );
+      case 'refunds_by_charge':
+        return (world.refunds ?? []).filter((refund) => refund.charge === filter);
+      default:
+        throw new Error(`unexpected list: ${list}`);
+    }
+  },
+});
+
+/** Paths that never list anything from Stripe get a port that refuses to be used. */
+const noLists = {
+  listAll: async (list: string): Promise<Row[]> => {
+    throw new Error(`unexpected Stripe list: ${list}`);
+  },
+};
+
 // ── checkout completion ───────────────────────────────────────────────────────
 
 describe('checkout_completion writer — billing_customers', () => {
   it('upserts the user ↔ customer mapping; redelivery is a byte-identical no-op', async () => {
     const db = new FakeDb();
-    const deps = { db, refetch: makeRefetcher({}) };
+    const deps = { db, refetch: makeRefetcher({}), ...noLists };
     const session = { id: 'cs_fake_1', client_reference_id: 'user-1', customer: 'cus_fake_1' };
 
     const first = await applyEventEffects(deps, event('checkout.session.completed', 'evt_fake_1', session));
@@ -220,7 +315,7 @@ describe('checkout_completion writer — billing_customers', () => {
   it('acknowledges a session without references — nothing safe to map', async () => {
     const db = new FakeDb();
     const result = await applyEventEffects(
-      { db, refetch: makeRefetcher({}) },
+      { db, refetch: makeRefetcher({}), ...noLists },
       event('checkout.session.completed', 'evt_fake_3', { id: 'cs_fake_2' }),
     );
     expect(result.note).toBe('skipped_no_user_or_customer_reference');
@@ -260,6 +355,7 @@ describe('subscription_state_sync writer — customer_subscriptions + entitlemen
     const deps = {
       db,
       refetch: makeRefetcher({ subscription: { sub_fake_1: subscriptionObject('active', 'price_fake_home_m') } }),
+      ...noLists,
     };
     const evt = event('customer.subscription.created', 'evt_fake_10', { id: 'sub_fake_1' });
 
@@ -299,6 +395,7 @@ describe('subscription_state_sync writer — customer_subscriptions + entitlemen
       refetch: makeRefetcher({
         subscription: { sub_fake_1: subscriptionObject('active', 'price_fake_not_in_catalog') },
       }),
+      ...noLists,
     };
     const result = await applyEventEffects(
       deps,
@@ -315,6 +412,7 @@ describe('subscription_state_sync writer — customer_subscriptions + entitlemen
     const deps = {
       db,
       refetch: makeRefetcher({ subscription: { sub_fake_1: subscriptionObject('active', 'price_fake_home_m') } }),
+      ...noLists,
     };
     await expect(
       applyEventEffects(deps, event('customer.subscription.created', 'evt_fake_13', { id: 'sub_fake_1' })),
@@ -328,12 +426,14 @@ describe('subscription_state_sync writer — customer_subscriptions + entitlemen
     const activeDeps = {
       db,
       refetch: makeRefetcher({ subscription: { sub_fake_1: subscriptionObject('active', 'price_fake_home_m') } }),
+      ...noLists,
     };
     await applyEventEffects(activeDeps, event('customer.subscription.created', 'evt_fake_14', { id: 'sub_fake_1' }));
 
     const deletedDeps = {
       db,
       refetch: makeRefetcher({ subscription: { sub_fake_1: subscriptionObject('canceled', 'price_fake_home_m') } }),
+      ...noLists,
     };
     expect(
       (
@@ -351,16 +451,6 @@ describe('subscription_state_sync writer — customer_subscriptions + entitlemen
 // ── commissionable payment ────────────────────────────────────────────────────
 
 const PAID_AT_EPOCH = 1_781_000_000; // determines the tier-snapshot month
-
-const invoiceObject = (): Row => ({
-  id: 'in_fake_1',
-  status: 'paid',
-  amount_paid: 4900,
-  customer: 'cus_fake_1',
-  subscription: 'sub_fake_1',
-  payment_intent: 'pi_fake_1',
-  status_transitions: { paid_at: PAID_AT_EPOCH },
-});
 
 const seedCommissionWorld = (db: FakeDb) => {
   db.seed('billing_price_catalog', {
@@ -400,7 +490,11 @@ describe('commissionable_payment writer — one entry per invoice + attribution 
   it('books ONE held entry at the snapshot tier and locks the pending attribution', async () => {
     const db = new FakeDb();
     seedCommissionWorld(db);
-    const deps = { db, refetch: makeRefetcher({ invoice: { in_fake_1: invoiceObject() } }) };
+    const deps = {
+      db,
+      refetch: makeRefetcher({ invoice: { in_fake_1: basilInvoice() } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+    };
 
     const result = await applyEventEffects(deps, event('invoice.paid', 'evt_fake_20', { id: 'in_fake_1' }));
     expect(result.note).toBeNull();
@@ -428,7 +522,11 @@ describe('commissionable_payment writer — one entry per invoice + attribution 
   it('invoice.payment_succeeded for the same invoice can never double-book', async () => {
     const db = new FakeDb();
     seedCommissionWorld(db);
-    const deps = { db, refetch: makeRefetcher({ invoice: { in_fake_1: invoiceObject() } }) };
+    const deps = {
+      db,
+      refetch: makeRefetcher({ invoice: { in_fake_1: basilInvoice() } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+    };
     await applyEventEffects(deps, event('invoice.paid', 'evt_fake_21', { id: 'in_fake_1' }));
     const after = db.snapshot();
 
@@ -446,7 +544,11 @@ describe('commissionable_payment writer — one entry per invoice + attribution 
     seedCommissionWorld(db);
     const partner = db.rows('partners')[0];
     if (partner) partner.user_id = 'user-1'; // the partner IS the payer
-    const deps = { db, refetch: makeRefetcher({ invoice: { in_fake_1: invoiceObject() } }) };
+    const deps = {
+      db,
+      refetch: makeRefetcher({ invoice: { in_fake_1: basilInvoice() } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+    };
     const result = await applyEventEffects(deps, event('invoice.paid', 'evt_fake_23', { id: 'in_fake_1' }));
     expect(result.note).toBe('skipped_self_referral');
     expect(db.rows('commission_entries')).toHaveLength(0);
@@ -457,7 +559,11 @@ describe('commissionable_payment writer — one entry per invoice + attribution 
     const db = new FakeDb();
     seedCommissionWorld(db);
     db.tables.set('referral_attributions', []);
-    const deps = { db, refetch: makeRefetcher({ invoice: { in_fake_1: invoiceObject() } }) };
+    const deps = {
+      db,
+      refetch: makeRefetcher({ invoice: { in_fake_1: basilInvoice() } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+    };
     const result = await applyEventEffects(deps, event('invoice.paid', 'evt_fake_24', { id: 'in_fake_1' }));
     expect(result.note).toBe('skipped_no_attribution');
     expect(db.rows('commission_entries')).toHaveLength(0);
@@ -467,7 +573,11 @@ describe('commissionable_payment writer — one entry per invoice + attribution 
     const db = new FakeDb();
     seedCommissionWorld(db);
     db.tables.set('partner_tier_snapshots', []);
-    const deps = { db, refetch: makeRefetcher({ invoice: { in_fake_1: invoiceObject() } }) };
+    const deps = {
+      db,
+      refetch: makeRefetcher({ invoice: { in_fake_1: basilInvoice() } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+    };
     await expect(
       applyEventEffects(deps, event('invoice.paid', 'evt_fake_25', { id: 'in_fake_1' })),
     ).rejects.toThrow(/tier_snapshot_missing/);
@@ -477,8 +587,8 @@ describe('commissionable_payment writer — one entry per invoice + attribution 
   it('an unpaid invoice never books commission', async () => {
     const db = new FakeDb();
     seedCommissionWorld(db);
-    const openInvoice = { ...invoiceObject(), status: 'open' };
-    const deps = { db, refetch: makeRefetcher({ invoice: { in_fake_1: openInvoice } }) };
+    const openInvoice = basilInvoice({ status: 'open' });
+    const deps = { db, refetch: makeRefetcher({ invoice: { in_fake_1: openInvoice } }), ...noLists };
     const result = await applyEventEffects(deps, event('invoice.paid', 'evt_fake_26', { id: 'in_fake_1' }));
     expect(result.note).toBe('skipped_not_commissionable:invoice_not_paid');
     expect(db.rows('commission_entries')).toHaveLength(0);
@@ -499,20 +609,16 @@ const seedEntryForReversal = (db: FakeDb) => {
   });
 };
 
-const chargeObject = (refunds: Row[]): Row => ({
-  id: 'ch_fake_1',
-  amount: 4900,
-  invoice: 'in_fake_1',
-  payment_intent: 'pi_fake_1',
-  refunds: { data: refunds },
-});
-
 describe('refund_reversal writer — commission_adjustments', () => {
   it('appends the round-half-up proportional reversal (900 × 1000 / 4900 → 184)', async () => {
     const db = new FakeDb();
     seedEntryForReversal(db);
-    const refund = { id: 're_fake_1', amount: 1000, status: 'succeeded', charge: 'ch_fake_1' };
-    const deps = { db, refetch: makeRefetcher({ charge: { ch_fake_1: chargeObject([refund]) } }) };
+    const refund = basilRefund('re_fake_1', 1000);
+    const deps = {
+      db,
+      refetch: makeRefetcher({ charge: { ch_fake_1: basilCharge({ amount_refunded: 1000 }) } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], refunds: [refund] }),
+    };
 
     const result = await applyEventEffects(deps, event('charge.refunded', 'evt_fake_30', { id: 'ch_fake_1' }));
     expect(result.note).toBeNull();
@@ -531,13 +637,14 @@ describe('refund_reversal writer — commission_adjustments', () => {
   it('the same refund via refund.created is deduplicated by source event key', async () => {
     const db = new FakeDb();
     seedEntryForReversal(db);
-    const refund = { id: 're_fake_1', amount: 1000, status: 'succeeded', charge: 'ch_fake_1' };
+    const refund = basilRefund('re_fake_1', 1000);
     const deps = {
       db,
       refetch: makeRefetcher({
-        charge: { ch_fake_1: chargeObject([refund]) },
+        charge: { ch_fake_1: basilCharge({ amount_refunded: 1000 }) },
         refund: { re_fake_1: refund },
       }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], refunds: [refund] }),
     };
     await applyEventEffects(deps, event('charge.refunded', 'evt_fake_31', { id: 'ch_fake_1' }));
     const after = db.snapshot();
@@ -551,13 +658,14 @@ describe('refund_reversal writer — commission_adjustments', () => {
   it('a follow-up full refund is CAPPED at the remaining commission and flips the entry to reversed', async () => {
     const db = new FakeDb();
     seedEntryForReversal(db);
-    const refund1 = { id: 're_fake_1', amount: 1000, status: 'succeeded', charge: 'ch_fake_1' };
-    const refund2 = { id: 're_fake_2', amount: 3900, status: 'succeeded', charge: 'ch_fake_1' };
+    const refund1 = basilRefund('re_fake_1', 1000);
+    const refund2 = basilRefund('re_fake_2', 3900);
     const deps = {
       db,
       refetch: makeRefetcher({
-        charge: { ch_fake_1: chargeObject([refund1, refund2]) },
+        charge: { ch_fake_1: basilCharge({ amount_refunded: 4900, refunded: true }) },
       }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], refunds: [refund1, refund2] }),
     };
     await applyEventEffects(deps, event('charge.refunded', 'evt_fake_33', { id: 'ch_fake_1' }));
     const adjustments = db.rows('commission_adjustments');
@@ -570,12 +678,18 @@ describe('refund_reversal writer — commission_adjustments', () => {
 
   it('a refund with no commission entry is an honest no-op', async () => {
     const db = new FakeDb();
-    const refund = { id: 're_fake_9', amount: 500, status: 'succeeded', charge: 'ch_fake_9' };
+    const refund = basilRefund('re_fake_9', 500, { charge: 'ch_fake_9', payment_intent: 'pi_fake_9' });
     const deps = {
       db,
       refetch: makeRefetcher({
         refund: { re_fake_9: refund },
-        charge: { ch_fake_9: { id: 'ch_fake_9', amount: 999, invoice: 'in_fake_9', refunds: { data: [refund] } } },
+        charge: { ch_fake_9: basilCharge({ id: 'ch_fake_9', amount: 999, payment_intent: 'pi_fake_9' }) },
+      }),
+      ...basilLists({
+        invoicePayments: [
+          basilInvoicePayment({ id: 'inpay_fake_9', invoice: 'in_fake_9', payment: { type: 'payment_intent', payment_intent: 'pi_fake_9' } }),
+        ],
+        refunds: [refund],
       }),
     };
     const result = await applyEventEffects(deps, event('refund.created', 'evt_fake_34', { id: 're_fake_9' }));
@@ -590,8 +704,8 @@ describe('invoice_voided / dispute writers — full reversals', () => {
   it('invoice.voided appends a FULL reversal once (object-scoped key)', async () => {
     const db = new FakeDb();
     seedEntryForReversal(db);
-    const voided = { id: 'in_fake_1', status: 'void', amount_paid: 4900, payment_intent: 'pi_fake_1' };
-    const deps = { db, refetch: makeRefetcher({ invoice: { in_fake_1: voided } }) };
+    const voided = basilInvoice({ status: 'void', status_transitions: { finalized_at: PAID_AT_EPOCH, paid_at: null, voided_at: PAID_AT_EPOCH } });
+    const deps = { db, refetch: makeRefetcher({ invoice: { in_fake_1: voided } }), ...noLists };
 
     expect((await applyEventEffects(deps, event('invoice.voided', 'evt_fake_40', { id: 'in_fake_1' }))).note).toBeNull();
     const adjustments = db.rows('commission_adjustments');
@@ -616,13 +730,14 @@ describe('invoice_voided / dispute writers — full reversals', () => {
   it('charge.dispute.funds_withdrawn appends a dispute_reversal of the remaining commission', async () => {
     const db = new FakeDb();
     seedEntryForReversal(db);
-    const dispute = { id: 'dp_fake_1', charge: 'ch_fake_1', payment_intent: 'pi_fake_1' };
+    const dispute = { id: 'dp_fake_1', object: 'dispute', amount: 4900, charge: 'ch_fake_1', payment_intent: 'pi_fake_1', status: 'lost' };
     const deps = {
       db,
       refetch: makeRefetcher({
         dispute: { dp_fake_1: dispute },
-        charge: { ch_fake_1: chargeObject([]) },
+        charge: { ch_fake_1: basilCharge() },
       }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
     };
     const result = await applyEventEffects(
       deps,
@@ -641,7 +756,7 @@ describe('invoice_voided / dispute writers — full reversals', () => {
     const db = new FakeDb();
     seedEntryForReversal(db);
     const result = await applyEventEffects(
-      { db, refetch: makeRefetcher({}) },
+      { db, refetch: makeRefetcher({}), ...noLists },
       event('charge.dispute.funds_reinstated', 'evt_fake_43', { id: 'dp_fake_1' }),
     );
     expect(result.note).toBe('skipped_no_contract:adjustment_kind_vocabulary_lacks_reinstatement');
@@ -666,6 +781,7 @@ describe('connect_account_status writer + skipped_no_contract intents', () => {
       refetch: makeRefetcher({
         account: { acct_fake_1: { id: 'acct_fake_1', details_submitted: true, payouts_enabled: true } },
       }),
+      ...noLists,
     };
     expect((await applyEventEffects(deps, event('account.updated', 'evt_fake_50', { id: 'acct_fake_1' }))).note).toBeNull();
     expect(db.rows('partners')[0]).toMatchObject({ onboarding_complete: true, payouts_enabled: true });
@@ -685,7 +801,7 @@ describe('connect_account_status writer + skipped_no_contract intents', () => {
     ] as const) {
       const db = new FakeDb();
       const result = await applyEventEffects(
-        { db, refetch: makeRefetcher({}) },
+        { db, refetch: makeRefetcher({}), ...noLists },
         event(eventType, 'evt_fake_60', { id: objectId }),
       );
       expect(result.note, eventType).toMatch(/^skipped_no_contract:/);
@@ -704,7 +820,7 @@ describe('connect_account_status writer + skipped_no_contract intents', () => {
     ] as const) {
       const db = new FakeDb();
       const result = await applyEventEffects(
-        { db, refetch: makeRefetcher({}) },
+        { db, refetch: makeRefetcher({}), ...noLists },
         event(eventType, 'evt_fake_61', { id: 'cs_fake_1' }),
       );
       expect(result.note, eventType).toBeNull();
@@ -759,7 +875,7 @@ const seedOrder = (db: FakeDb, over: Row = {}) =>
   });
 
 const settle = (db: FakeDb, session: Row, evt = 'evt_shop_1', type = 'checkout.session.completed') =>
-  applyEventEffects({ db, refetch: makeRefetcher({}) }, event(type, evt, session));
+  applyEventEffects({ db, refetch: makeRefetcher({}), ...noLists }, event(type, evt, session));
 
 describe('shop order settlement — the provider is the payment authority', () => {
   it('settles a paid order the customer never came back for', async () => {
@@ -932,94 +1048,6 @@ describe('shop order settlement — the provider is the payment authority', () =
 });
 
 // ── Stripe API "Basil" relations (2025-03-31.basil and later) ────────────────
-
-/**
- * The Edge Functions import `npm:stripe@18` and refetch with the pinned Basil
- * version. Basil REMOVED the relations the reversal writers were built on:
- * `Invoice.payment_intent`, `Invoice.charge`, `Invoice.subscription`,
- * `Charge.invoice` and `PaymentIntent.invoice`; an invoice and the payment
- * that settled it are joined only through an `InvoicePayment`. `Charge.refunds`
- * is not returned unless expanded, and even expanded it is one page.
- *
- * Every object below has exactly the fields stripe-node 18.5.0 declares for
- * that API generation (the SDK the functions resolve today). None carries a
- * removed field.
- */
-const basilInvoice = (overrides: Row = {}): Row => ({
-  id: 'in_fake_1',
-  object: 'invoice',
-  status: 'paid',
-  amount_paid: 4900,
-  customer: 'cus_fake_1',
-  parent: {
-    type: 'subscription_details',
-    quote_details: null,
-    subscription_details: { metadata: {}, subscription: 'sub_fake_1' },
-  },
-  status_transitions: { finalized_at: PAID_AT_EPOCH, paid_at: PAID_AT_EPOCH },
-  ...overrides,
-});
-
-const basilInvoicePayment = (overrides: Row = {}): Row => ({
-  id: 'inpay_fake_1',
-  object: 'invoice_payment',
-  amount_paid: 4900,
-  amount_requested: 4900,
-  created: PAID_AT_EPOCH,
-  currency: 'eur',
-  invoice: 'in_fake_1',
-  is_default: true,
-  livemode: false,
-  payment: { type: 'payment_intent', payment_intent: 'pi_fake_1' },
-  status: 'paid',
-  status_transitions: { canceled_at: null, paid_at: PAID_AT_EPOCH },
-  ...overrides,
-});
-
-const basilCharge = (overrides: Row = {}): Row => ({
-  id: 'ch_fake_1',
-  object: 'charge',
-  amount: 4900,
-  amount_refunded: 0,
-  customer: 'cus_fake_1',
-  payment_intent: 'pi_fake_1',
-  refunded: false,
-  ...overrides,
-});
-
-const basilRefund = (id: string, amount: number, overrides: Row = {}): Row => ({
-  id,
-  object: 'refund',
-  amount,
-  charge: 'ch_fake_1',
-  currency: 'eur',
-  payment_intent: 'pi_fake_1',
-  status: 'succeeded',
-  ...overrides,
-});
-
-interface BasilWorld {
-  invoicePayments?: Row[];
-  refunds?: Row[];
-}
-
-/** A list port that already walked every page, as the adapter contract requires. */
-const basilLists = (world: BasilWorld) => ({
-  listAll: async (list: string, filter: string): Promise<Row[]> => {
-    switch (list) {
-      case 'invoice_payments_by_invoice':
-        return (world.invoicePayments ?? []).filter((payment) => payment.invoice === filter);
-      case 'invoice_payments_by_payment_intent':
-        return (world.invoicePayments ?? []).filter(
-          (payment) => (payment.payment as Row | undefined)?.payment_intent === filter,
-        );
-      case 'refunds_by_charge':
-        return (world.refunds ?? []).filter((refund) => refund.charge === filter);
-      default:
-        throw new Error(`unexpected list: ${list}`);
-    }
-  },
-});
 
 /** Records the reward-reversal RPC so a test can prove it named the right invoice. */
 const recordRewardReversals = (db: FakeDb): Array<Record<string, unknown>> => {

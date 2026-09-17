@@ -536,13 +536,14 @@ export interface InvoiceSnapshot {
   amountPaidCents: number;
   customerId: string | null;
   subscriptionId: string | null;
-  paymentIntentId: string | null;
   paidAtEpoch: number | null;
 }
 
 /**
- * Version-robust invoice extraction: `subscription` is top-level pre-Basil
- * and under parent.subscription_details.subscription from 2025+.
+ * Basil invoice (API 2025-03-31.basil and later — index.ts refuses older
+ * versions). The subscription lives under parent.subscription_details, and
+ * the invoice no longer names the PaymentIntent or charge that paid it: that
+ * relation is an InvoicePayment (see extractInvoicePaymentSnapshot).
  */
 export function extractInvoiceSnapshot(invoice: Payload): InvoiceSnapshot {
   const parent = asObject(invoice.parent);
@@ -553,12 +554,88 @@ export function extractInvoiceSnapshot(invoice: Payload): InvoiceSnapshot {
     status: asString(invoice.status) ?? 'unknown',
     amountPaidCents: asNumber(invoice.amount_paid) ?? 0,
     customerId: asId(invoice.customer),
-    subscriptionId:
-      asId(invoice.subscription) ??
-      (subscriptionDetails ? asId(subscriptionDetails.subscription) : null),
-    paymentIntentId: asId(invoice.payment_intent),
+    subscriptionId: subscriptionDetails ? asId(subscriptionDetails.subscription) : null,
     paidAtEpoch: statusTransitions ? asNumber(statusTransitions.paid_at) : null,
   };
+}
+
+// ── invoice ↔ payment relation (Basil InvoicePayment) ────────────────────────
+
+/**
+ * Basil removed Invoice.payment_intent, Invoice.charge, Charge.invoice and
+ * PaymentIntent.invoice. An invoice and the payment that settled it are joined
+ * only by an InvoicePayment, listed through GET /v1/invoice_payments by invoice
+ * or by payment[payment_intent].
+ */
+export interface InvoicePaymentSnapshot {
+  id: string;
+  invoiceId: string | null;
+  status: string;
+  paymentIntentId: string | null;
+  isDefault: boolean;
+}
+
+export function extractInvoicePaymentSnapshot(payment: Payload): InvoicePaymentSnapshot {
+  const settledBy = asObject(payment.payment);
+  return {
+    id: asString(payment.id) ?? '',
+    invoiceId: asId(payment.invoice),
+    status: asString(payment.status) ?? 'unknown',
+    paymentIntentId: settledBy ? asId(settledBy.payment_intent) : null,
+    isDefault: asBoolean(payment.is_default) ?? false,
+  };
+}
+
+/**
+ * The PaymentIntent that PAID an invoice. Basil allows several payments on one
+ * invoice; when more than one PaymentIntent paid it, the default payment names
+ * it, and if even that is ambiguous the answer is null rather than a guess —
+ * reversals find the entry by invoice id either way.
+ */
+export function pickPaidPaymentIntent(
+  invoiceId: string,
+  payments: readonly InvoicePaymentSnapshot[],
+): string | null {
+  const paid = payments.filter(
+    (payment) => payment.invoiceId === invoiceId && payment.status === 'paid' && payment.paymentIntentId !== null,
+  );
+  const intents = [...new Set(paid.map((payment) => payment.paymentIntentId as string))];
+  if (intents.length === 1) return intents[0] ?? null;
+  const defaults = [
+    ...new Set(paid.filter((payment) => payment.isDefault).map((payment) => payment.paymentIntentId as string)),
+  ];
+  return defaults.length === 1 ? (defaults[0] ?? null) : null;
+}
+
+export type PaymentIntentInvoice =
+  | { kind: 'invoice'; invoiceId: string }
+  | { kind: 'none' }
+  | { kind: 'conflict'; invoiceIds: string[] };
+
+/**
+ * The invoice a PaymentIntent paid. A refund or dispute is only ever against a
+ * payment that succeeded, so only `paid` InvoicePayments count. No paid
+ * InvoicePayment means the charge was not an invoice payment (a Shop order);
+ * two different invoices is impossible in Stripe's model and is refused as a
+ * data conflict instead of picking one.
+ */
+export function resolvePaymentIntentInvoice(
+  paymentIntentId: string,
+  payments: readonly InvoicePaymentSnapshot[],
+): PaymentIntentInvoice {
+  const invoiceIds = [
+    ...new Set(
+      payments
+        .filter(
+          (payment) =>
+            payment.paymentIntentId === paymentIntentId && payment.status === 'paid' && payment.invoiceId !== null,
+        )
+        .map((payment) => payment.invoiceId as string),
+    ),
+  ].sort();
+  if (invoiceIds.length === 0) return { kind: 'none' };
+  if (invoiceIds.length === 1) return { kind: 'invoice', invoiceId: invoiceIds[0] as string };
+  return { kind: 'conflict', invoiceIds };
 }
 
 export type CommissionEligibility =
@@ -779,28 +856,23 @@ export function extractRefundSnapshot(refund: Payload): RefundSnapshot {
   };
 }
 
+/**
+ * Basil charge: it names its PaymentIntent but not its invoice, and its
+ * refunds are not part of the object unless expanded — and an expanded list is
+ * one page. The dispatcher lists refunds and InvoicePayments separately, to
+ * the last page.
+ */
 export interface ChargeSnapshot {
   id: string;
   amountCents: number;
-  invoiceId: string | null;
   paymentIntentId: string | null;
-  refunds: RefundSnapshot[];
 }
 
 export function extractChargeSnapshot(charge: Payload): ChargeSnapshot {
-  const refundsList = asObject(charge.refunds);
-  const refundsData = refundsList && Array.isArray(refundsList.data) ? (refundsList.data as unknown[]) : [];
-  const refunds: RefundSnapshot[] = [];
-  for (const item of refundsData) {
-    const refund = asObject(item);
-    if (refund) refunds.push(extractRefundSnapshot(refund));
-  }
   return {
     id: asString(charge.id) ?? '',
     amountCents: asNumber(charge.amount) ?? 0,
-    invoiceId: asId(charge.invoice),
     paymentIntentId: asId(charge.payment_intent),
-    refunds,
   };
 }
 

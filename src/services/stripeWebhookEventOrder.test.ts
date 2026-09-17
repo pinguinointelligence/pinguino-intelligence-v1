@@ -106,7 +106,7 @@ const subscriptionObject = (price: string, status = 'active'): Row => ({
 /** Basil shape: no top-level `subscription`, correlation under `parent`. */
 const invoiceObject = (price: string, amountPaid = 4900): Row => ({
   id: 'in_ord_1', status: amountPaid > 0 ? 'paid' : 'open', amount_paid: amountPaid,
-  customer: CUSTOMER, payment_intent: 'pi_ord_1',
+  customer: CUSTOMER,
   status_transitions: { paid_at: PAID_AT },
   parent: {
     type: 'subscription_details',
@@ -118,6 +118,13 @@ const invoiceObject = (price: string, amountPaid = 4900): Row => ({
 const sessionObject = (): Row => ({
   id: 'cs_ord_1', client_reference_id: USER, customer: CUSTOMER,
 });
+
+/** The ordering scenarios never book commission, so nothing may be listed from Stripe. */
+const noLists = {
+  listAll: async (list: string): Promise<Row[]> => {
+    throw new Error(`unexpected Stripe list: ${list}`);
+  },
+};
 
 const ev = (type: string, id: string, object: Row): WebhookEventFacts => ({
   id, type, created: PAID_AT, livemode: false, object,
@@ -153,7 +160,7 @@ const ORDER_B = ['subscription', 'invoice', 'checkout'] as const;
 
 const play = async (order: readonly string[], price: string, amountPaid = 4900) => {
   const db = new Fake();
-  const deps = { db, refetch: refetcher(price, 'active', amountPaid) };
+  const deps = { db, refetch: refetcher(price, 'active', amountPaid), ...noLists };
   let n = 0;
   for (const step of order) {
     n += 1;
@@ -208,7 +215,7 @@ describe('GROW-010 — delivery order must not change the outcome', () => {
   it('a subscription that never activated grants nothing', async () => {
     const db = new Fake();
     await applyEventEffects(
-      { db, refetch: refetcher('price_pro_a', 'incomplete') },
+      { db, refetch: refetcher('price_pro_a', 'incomplete'), ...noLists },
       ev('customer.subscription.created', 'e1', { id: 'sub_ord_1' }),
     );
     expect(db.rows('entitlements').filter((r) => r.status === 'active')).toHaveLength(0);
@@ -218,7 +225,7 @@ describe('GROW-010 — delivery order must not change the outcome', () => {
 
   it('replaying every event twice changes nothing', async () => {
     const db = new Fake();
-    const deps = { db, refetch: refetcher('price_pro_a') };
+    const deps = { db, refetch: refetcher('price_pro_a'), ...noLists };
     const events: Array<[string, Row]> = [
       ['checkout.session.completed', sessionObject()],
       ['customer.subscription.created', { id: 'sub_ord_1' }],
@@ -239,7 +246,7 @@ describe('GROW-010 — delivery order must not change the outcome', () => {
     ]);
     await expect(
       applyEventEffects(
-        { db, refetch: refetcher('price_pro_a') },
+        { db, refetch: refetcher('price_pro_a'), ...noLists },
         ev('customer.subscription.created', 'e1', { id: 'sub_ord_1' }),
       ),
     ).rejects.toThrow(/customer_user_conflict/);
@@ -259,7 +266,7 @@ describe('GROW-010 — delivery order must not change the outcome', () => {
       return invoiceObject('price_pro_a');
     };
     await expect(
-      applyEventEffects({ db, refetch: bad }, ev('customer.subscription.created', 'e1', { id: 'sub_ord_1' })),
+      applyEventEffects({ db, refetch: bad, ...noLists }, ev('customer.subscription.created', 'e1', { id: 'sub_ord_1' })),
     ).rejects.toThrow(/customer_not_mapped_yet/);
     expect(db.rows('billing_customers')).toHaveLength(0);
     expect(db.rows('entitlements')).toHaveLength(0);

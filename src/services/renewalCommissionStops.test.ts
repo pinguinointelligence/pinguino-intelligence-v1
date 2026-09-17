@@ -23,7 +23,6 @@ const invoice = (status: string, amountPaidCents: number): InvoiceSnapshot => ({
   amountPaidCents,
   customerId: 'cus_test',
   subscriptionId: 'sub_test',
-  paymentIntentId: null,
   paidAtEpoch: null,
 });
 

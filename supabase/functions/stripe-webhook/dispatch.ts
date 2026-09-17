@@ -46,12 +46,15 @@ import {
   extractChargeSnapshot,
   extractConnectAccountSnapshot,
   extractDisputeSnapshot,
+  extractInvoicePaymentSnapshot,
   extractInvoiceSnapshot,
   extractRefundSnapshot,
   extractSubscriptionSnapshot,
   noContractNote,
   pickAttributionToLock,
   pickLatestRuleVersion,
+  pickPaidPaymentIntent,
+  resolvePaymentIntentInvoice,
   type AttributionCandidate,
   type CatalogOffer,
   type ChargeSnapshot,
@@ -111,9 +114,18 @@ export interface DbClient {
 export type StripeResource = 'subscription' | 'invoice' | 'charge' | 'refund' | 'dispute' | 'account';
 export type StripeRefetcher = (resource: StripeResource, id: string) => Promise<Row>;
 
+/**
+ * Every item of a Stripe list, walked to the last page. A first page is never
+ * evidence that nothing else exists: a charge can carry more refunds than one
+ * page, and an invoice more payments.
+ */
+export type StripeList = 'invoice_payments_by_invoice' | 'invoice_payments_by_payment_intent' | 'refunds_by_charge';
+export type StripeListAll = (list: StripeList, filter: string) => Promise<Row[]>;
+
 export interface DispatchDeps {
   db: DbClient;
   refetch: StripeRefetcher;
+  listAll: StripeListAll;
 }
 
 export interface WebhookEventFacts {
@@ -634,7 +646,10 @@ async function applyCommissionablePayment(deps: DispatchDeps, event: WebhookEven
     subscriptionCacheId: cacheId,
     stripeSubscriptionId: invoice.subscriptionId,
     stripeInvoiceId: invoice.id,
-    stripePaymentIntentId: invoice.paymentIntentId,
+    stripePaymentIntentId: pickPaidPaymentIntent(
+      invoice.id,
+      (await deps.listAll('invoice_payments_by_invoice', invoice.id)).map(extractInvoicePaymentSnapshot),
+    ),
     offerKey,
     product,
     commissionCadence,
@@ -761,7 +776,9 @@ async function applyInvoiceVoidReversal(deps: DispatchDeps, event: WebhookEventF
   if (!objectId) return 'skipped_no_invoice_id';
   const invoice = extractInvoiceSnapshot(await deps.refetch('invoice', objectId));
   const rewardNote = await reverseReferralRewardForInvoice(deps, invoice.id, event.type);
-  const entry = await findEntryByInvoiceOrPaymentIntent(deps, invoice.id, invoice.paymentIntentId);
+  // A voided or uncollectible invoice was never paid, so it has no payment to
+  // look an entry up by; the invoice id is the whole key.
+  const entry = await findEntryByInvoiceOrPaymentIntent(deps, invoice.id, null);
   // Ledger effect is "full reversal appended IF an entry exists" — no entry,
   // no effect; the (nonexistent) invoice mirror is an honest no-op. The
   // referral reward is a separate ledger and is reversed either way.
@@ -782,15 +799,36 @@ async function applyInvoiceVoidReversal(deps: DispatchDeps, event: WebhookEventF
 
 // ── charge.refunded / refund.* → proportional reversal ───────────────────────
 
+/**
+ * The invoice a charge paid. Basil charges do not name their invoice; the
+ * relation is the InvoicePayment of the charge's PaymentIntent. A charge with
+ * no paid InvoicePayment was not an invoice payment (a Shop order), and one
+ * PaymentIntent paying two invoices is a data conflict for a human.
+ */
+async function invoiceIdForCharge(deps: DispatchDeps, charge: ChargeSnapshot): Promise<string | null> {
+  if (!charge.paymentIntentId) return null;
+  const payments = (await deps.listAll('invoice_payments_by_payment_intent', charge.paymentIntentId)).map(
+    extractInvoicePaymentSnapshot,
+  );
+  const resolution = resolvePaymentIntentInvoice(charge.paymentIntentId, payments);
+  if (resolution.kind === 'conflict') {
+    throw new EffectConflictError(
+      `payment_intent_paid_several_invoices:${charge.paymentIntentId}:${resolution.invoiceIds.join(',')}`,
+    );
+  }
+  return resolution.kind === 'invoice' ? resolution.invoiceId : null;
+}
+
 async function applyOneRefund(
   deps: DispatchDeps,
   charge: ChargeSnapshot,
+  invoiceId: string | null,
   refund: RefundSnapshot,
   event: WebhookEventFacts,
 ): Promise<string | null> {
   if (refund.status !== 'succeeded') return `skipped_refund_not_succeeded:${refund.id}`;
-  const rewardNote = await reverseReferralRewardForInvoice(deps, charge.invoiceId, event.type);
-  const entry = await findEntryByInvoiceOrPaymentIntent(deps, charge.invoiceId, charge.paymentIntentId);
+  const rewardNote = await reverseReferralRewardForInvoice(deps, invoiceId, event.type);
+  const entry = await findEntryByInvoiceOrPaymentIntent(deps, invoiceId, charge.paymentIntentId);
   if (!entry) return rewardNote ?? 'skipped_no_commission_entry_for_refund';
   if (charge.amountCents <= 0) return rewardNote ?? 'skipped_zero_gross_charge';
   const commissionNote = await appendReversal(deps, entry, {
@@ -815,9 +853,12 @@ async function applyRefundReversal(deps: DispatchDeps, event: WebhookEventFacts)
 
   if (event.type === 'charge.refunded') {
     const charge = extractChargeSnapshot(await deps.refetch('charge', objectId));
+    const invoiceId = await invoiceIdForCharge(deps, charge);
+    const refunds = (await deps.listAll('refunds_by_charge', charge.id)).map(extractRefundSnapshot);
+    if (refunds.length === 0) return 'skipped_no_refunds_listed_for_charge';
     const notes: string[] = [];
-    for (const refund of charge.refunds) {
-      const note = await applyOneRefund(deps, charge, refund, event);
+    for (const refund of refunds) {
+      const note = await applyOneRefund(deps, charge, invoiceId, refund, event);
       if (note) notes.push(note);
     }
     return notes.length > 0 ? notes.join('; ') : null;
@@ -829,7 +870,7 @@ async function applyRefundReversal(deps: DispatchDeps, event: WebhookEventFacts)
   const refund = extractRefundSnapshot(await deps.refetch('refund', objectId));
   if (!refund.chargeId) return 'skipped_refund_without_charge';
   const charge = extractChargeSnapshot(await deps.refetch('charge', refund.chargeId));
-  return applyOneRefund(deps, charge, refund, event);
+  return applyOneRefund(deps, charge, await invoiceIdForCharge(deps, charge), refund, event);
 }
 
 // ── charge.dispute.* → dispute reversal (funds_withdrawn only) ───────────────
@@ -845,10 +886,11 @@ async function applyDisputeLifecycle(deps: DispatchDeps, event: WebhookEventFact
   const dispute = extractDisputeSnapshot(await deps.refetch('dispute', objectId));
   if (!dispute.chargeId) return 'skipped_dispute_without_charge';
   const charge = extractChargeSnapshot(await deps.refetch('charge', dispute.chargeId));
+  const invoiceId = await invoiceIdForCharge(deps, charge);
   // A lost dispute invalidates the purchase exactly as a refund does, so the
   // referral reward is reversed on the same evidence.
-  const rewardNote = await reverseReferralRewardForInvoice(deps, charge.invoiceId, event.type);
-  const entry = await findEntryByInvoiceOrPaymentIntent(deps, charge.invoiceId, charge.paymentIntentId);
+  const rewardNote = await reverseReferralRewardForInvoice(deps, invoiceId, event.type);
+  const entry = await findEntryByInvoiceOrPaymentIntent(deps, invoiceId, charge.paymentIntentId);
   if (!entry) return rewardNote ?? 'skipped_no_commission_entry_for_dispute';
   const commissionNote = await appendReversal(deps, entry, {
     refundedGrossCents: null, // R5: dispute lost → full remaining reversal
