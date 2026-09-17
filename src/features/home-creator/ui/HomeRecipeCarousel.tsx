@@ -13,9 +13,14 @@ export interface HomeRecipeCardView {
   readonly imageUrl: string | null;
   readonly eyebrow: string | null;
   readonly subline: string | null;
+  /** Short, secondary line on the card („Zawiera też: A, B, C +2 więcej”). */
   readonly alsoIncludes?: string | null;
+  /** The same information in full, for the accessible name — nothing is lost. */
+  readonly alsoIncludesFull?: string | null;
   readonly basedOn?: string | null;
   readonly usedForm?: string | null;
+  /** Quiet honesty line: this matched, but the search did not cover everything. */
+  readonly searchIncomplete?: string | null;
 }
 
 export interface HomeRecipeCarouselHandle {
@@ -95,7 +100,15 @@ export const HomeRecipeCarousel = forwardRef<
               type="button"
               className="home-rcard"
               aria-pressed={selected}
-              aria-label={[card.title, card.eyebrow, card.subline].filter(Boolean).join(' · ')}
+              aria-label={[
+                card.title,
+                card.eyebrow,
+                card.subline,
+                card.usedForm,
+                card.alsoIncludesFull ?? card.alsoIncludes,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
               data-testid={`home-recipe-card-${card.id}`}
               onClick={() => onSelect(card.id)}
             >
@@ -130,6 +143,11 @@ export const HomeRecipeCarousel = forwardRef<
                 ) : null}
                 {card.alsoIncludes ? (
                   <span className="home-rcard-also">{card.alsoIncludes}</span>
+                ) : null}
+                {card.searchIncomplete ? (
+                  <span className="home-rcard-also" data-testid="home-recipe-card-incomplete">
+                    {card.searchIncomplete}
+                  </span>
                 ) : null}
               </span>
             </button>

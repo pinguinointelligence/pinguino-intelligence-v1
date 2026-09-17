@@ -90,11 +90,13 @@ export function useHomeIntentIngredients() {
           return { chipId: chip.id, status: 'duplicate' };
         case 'resolved':
           if (
-            useHomeDraftStore
-              .getState()
-              .chips.some(
-                (other) => other.id !== chip.id && other.productId === resolution.row.ingredient_id,
-              )
+            useHomeDraftStore.getState().chips.some(
+              (other) =>
+                other.id !== chip.id &&
+                other.productId === resolution.row.ingredient_id &&
+                // Another role is another use, not a repetition (§33).
+                (other.role ?? null) === (chip.role ?? null),
+            )
           ) {
             // The same product the customer already named: never a second chip or line.
             useHomeDraftStore.getState().removeChip(chip.id);
@@ -286,8 +288,12 @@ export function useHomeIntentIngredients() {
     async (chip: IntentChip, grams = 0): Promise<IntentIngredientOutcome> => {
       if (chip.productId === null) return { chipId: chip.id, status: 'unresolved' };
       // The chip's own role travels with it, so the row the customer ends up looking at
-      // says the same thing the chip said.
-      return await addByProductId(chip.id, chip.productId, chip.role ?? 'ingredient', grams);
+      // says the same thing the chip said — with the customer's §58 answer, when they gave
+      // one, outranking it. The presence check reads the SAME precedence, so the door and
+      // the check can never disagree about which collection a product belongs to.
+      const statedRole =
+        useHomeDraftStore.getState().usageAnswersByChipId[chip.id] ?? chip.role ?? 'ingredient';
+      return await addByProductId(chip.id, chip.productId, statedRole, grams);
     },
     [addByProductId],
   );

@@ -40,6 +40,7 @@ import {
   NO_MATCH,
   searchCommunityMatches,
   searchOfficialMatches,
+  type CommunitySearchCoverage,
   type ConceptMatchContext,
   type HomeMatchQuery,
   type HomeMatchResult,
@@ -59,6 +60,7 @@ interface CommunityState {
   readonly signature: string;
   readonly community: RecipeMatch | null;
   readonly communityMatches: readonly CommunityMatch[];
+  readonly coverage: CommunitySearchCoverage;
 }
 
 type CommunityAnswer = Awaited<ReturnType<typeof searchCommunityMatches>>;
@@ -155,7 +157,13 @@ export function useHomeIdeaSuggestions({
         searchCommunityMatches(query),
         new Promise<CommunityAnswer>((resolve) =>
           setTimeout(
-            () => resolve({ community: [], communityMatches: [] }),
+            () =>
+              // A timed-out search proved nothing about the rest of the combinations.
+              resolve({
+                community: [],
+                communityMatches: [],
+                coverage: { asked: 0, combinations: 0, partial: true },
+              }),
             COMMUNITY_ANSWER_TIMEOUT_MS,
           ),
         ),
@@ -167,7 +175,12 @@ export function useHomeIdeaSuggestions({
           });
           return answer;
         },
-        () => ({ community: [], communityMatches: [] }) as CommunityAnswer,
+        () =>
+          ({
+            community: [],
+            communityMatches: [],
+            coverage: { asked: 0, combinations: 0, partial: true },
+          }) as CommunityAnswer,
       );
       communityByIdea.current.set(idea, pending);
     }
@@ -296,6 +309,7 @@ export function useHomeIdeaSuggestions({
           signature,
           community: highestRankedCommunityMatch(answer.community),
           communityMatches: answer.communityMatches,
+          coverage: answer.coverage,
         });
       });
     }, IDEA_SUGGESTION_DEBOUNCE_MS);
@@ -328,22 +342,34 @@ export function useHomeIdeaSuggestions({
     };
     // §35 decides on exact identity only: a concept suggestion is offered, never adopted.
     const officialNow = searchOfficialMatches({ ...query, conceptMatcher: undefined });
-    const { community, communityMatches } = await communityFor(idea, query);
+    const { community, communityMatches, coverage } = await communityFor(idea, query);
     const best = highestRankedCommunityMatch(community);
     // The answer this door waited for is the answer the layer shows: without this the
     // Community card could arrive only after the customer's own recipe had been built.
-    setCommunityState({ signature: idea, community: best, communityMatches });
+    setCommunityState({ signature: idea, community: best, communityMatches, coverage });
     return {
       signature: idea,
       // Read at the moment of the verdict, never from the render that started the CTA.
       dismissed: dismissedNow.current.has(dismissKey(idea)),
-      result: { decision: decideMatch({ official: officialNow, community }), communityMatches },
+      result: {
+        decision: decideMatch({
+          official: officialNow,
+          community,
+          communitySearchPartial: coverage.partial,
+        }),
+        communityMatches,
+        coverage,
+      },
     };
   }, [communityFor, loadConceptContext, resolveRemaining]);
 
   const settled = communityState !== null && communityState.signature === signature;
   const community = settled ? communityState.community : null;
-  const cards = useMemo(() => suggestionCards({ official, community }), [official, community]);
+  const communityPartial = settled ? communityState.coverage.partial : false;
+  const cards = useMemo(
+    () => suggestionCards({ official, community, communityPartial }),
+    [official, community, communityPartial],
+  );
   const communityMatch =
     community === null || !settled
       ? null

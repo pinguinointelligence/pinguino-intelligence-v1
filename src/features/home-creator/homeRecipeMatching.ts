@@ -220,12 +220,18 @@ export function highestRankedCommunityMatch(matches: readonly RecipeMatch[]): Re
 export function decideMatch(input: {
   readonly official: readonly RecipeMatch[];
   readonly community: readonly RecipeMatch[];
+  /**
+   * The Community search could not cover every approved-form combination. „No Community
+   * match” is then unproven, so §35's automatic adoption — which depends on that very
+   * absence — must not fire; the customer decides instead.
+   */
+  readonly communitySearchPartial?: boolean;
 }): MatchDecision {
   const community = highestRankedCommunityMatch(input.community);
   const official = input.official;
 
   if (official.length === 0 && community === null) return { kind: 'create_my_own' };
-  if (official.length === 1 && community === null && official[0]) {
+  if (official.length === 1 && community === null && official[0] && !input.communitySearchPartial) {
     return { kind: 'auto_adopt_official', match: official[0] };
   }
   return { kind: 'show_popup', official, community };

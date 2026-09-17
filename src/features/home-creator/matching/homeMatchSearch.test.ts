@@ -10,12 +10,8 @@ vi.mock('./communityMatchService', () => ({
   matchCommunityTop100: (...args: unknown[]) => matchCommunityTop100(...args),
 }));
 
-const {
-  COMMUNITY_FORM_QUERY_LIMIT,
-  communityIdSets,
-  searchCommunityMatches,
-  searchExistingRecipes,
-} = await import('./homeMatchSearch');
+const { communityIdSets, searchCommunityMatches, searchExistingRecipes } =
+  await import('./homeMatchSearch');
 const { officialCandidates } = await import('./officialLibraryCandidates');
 
 const want = (productId: string): RequestedIngredient => ({
@@ -232,46 +228,83 @@ describe('Owner 2026-09-17: a generic idea also finds recipes made with another 
   const STRAWBERRY_PUREE = 'PI-ING-002331';
   const STRAWBERRY_FROZEN = 'PI-ING-001554';
   const BANANA = 'PI-ING-000345';
+  const BANANA_PUREE = 'PI-ING-002332';
   const generic = (productId: string, conceptKey: string): RequestedIngredient => ({
     ...want(productId),
     conceptKey,
   });
   const forms: Record<string, readonly string[]> = {
     strawberry: [STRAWBERRY, STRAWBERRY_PUREE, STRAWBERRY_FROZEN],
+    banana: [BANANA, BANANA_PUREE],
   };
   const formsFor = (item: RequestedIngredient) =>
     item.conceptKey ? (forms[item.conceptKey] ?? []) : [];
+  const asked = (sets: readonly (readonly string[])[]) => sets.map((set) => set.join('+'));
 
   it('FORM-OR-01: alternative forms of ONE concept are asked as separate sets, never merged', () => {
-    const sets = communityIdSets([generic(STRAWBERRY, 'strawberry')], formsFor);
+    const { sets, combinations, partial } = communityIdSets(
+      [generic(STRAWBERRY, 'strawberry')],
+      formsFor,
+    );
     expect(sets).toEqual([[STRAWBERRY], [STRAWBERRY_PUREE], [STRAWBERRY_FROZEN]]);
+    expect(combinations).toBe(3);
+    expect(partial).toBe(false);
   });
 
-  it('FORM-OR-02: different requested ingredients stay an AND in every set', () => {
-    const sets = communityIdSets([generic(STRAWBERRY, 'strawberry'), want(BANANA)], formsFor);
-    expect(sets[0]).toEqual([STRAWBERRY, BANANA]);
-    for (const set of sets) expect(set).toContain(BANANA);
-    expect(sets.some((set) => set.length !== 2)).toBe(false);
+  it('FORM-OR-02: different requested ingredients stay an AND — every set holds one id per ingredient', () => {
+    const { sets } = communityIdSets(
+      [generic(STRAWBERRY, 'strawberry'), generic(BANANA, 'banana')],
+      formsFor,
+    );
+    for (const set of sets) {
+      expect(set).toHaveLength(2);
+      expect(forms.strawberry).toContain(set[0]);
+      expect(forms.banana).toContain(set[1]);
+    }
+    // A recipe with only one of the two can never be answered by any of these sets.
+    expect(sets.some((set) => set.length === 1)).toBe(false);
   });
 
   it('FORM-OR-03: an exact product asks for itself only', () => {
-    expect(communityIdSets([want(STRAWBERRY)], formsFor)).toEqual([[STRAWBERRY]]);
-    expect(communityIdSets([generic(STRAWBERRY, 'strawberry'), want(BANANA)], undefined)).toEqual([
-      [STRAWBERRY, BANANA],
-    ]);
+    expect(communityIdSets([want(STRAWBERRY)], formsFor).sets).toEqual([[STRAWBERRY]]);
+    expect(
+      communityIdSets([generic(STRAWBERRY, 'strawberry'), want(BANANA)], undefined).sets,
+    ).toEqual([[STRAWBERRY, BANANA]]);
   });
 
-  it('FORM-OR-04: the number of oracle calls is bounded and the requested identity is first', () => {
-    const many = (item: RequestedIngredient) =>
-      item.conceptKey
-        ? [item.productId, ...Array.from({ length: 20 }, (_, i) => `PI-ING-9000${i}`)]
-        : [];
-    const sets = communityIdSets([generic(STRAWBERRY, 'strawberry')], many);
-    expect(sets.length).toBe(COMMUNITY_FORM_QUERY_LIMIT);
-    expect(sets[0]).toEqual([STRAWBERRY]);
+  it('FORM-OR-04 (owner): BOTH ingredients in another form is asked, and the request comes first', () => {
+    const { sets, combinations, partial } = communityIdSets(
+      [generic(STRAWBERRY, 'strawberry'), generic(BANANA, 'banana')],
+      formsFor,
+    );
+    expect(sets[0]).toEqual([STRAWBERRY, BANANA]);
+    expect(combinations).toBe(6);
+    expect(partial).toBe(false);
+    // The owner's case: [A puree, B puree].
+    expect(asked(sets)).toContain(`${STRAWBERRY_PUREE}+${BANANA_PUREE}`);
+    expect(asked(sets)).toContain(`${STRAWBERRY_FROZEN}+${BANANA_PUREE}`);
   });
 
-  it('FORM-OR-05: one publication answered by two forms is ONE Community candidate', async () => {
+  it('FORM-OR-05 (owner): a budget never spends itself on one ingredient, and says it was partial', () => {
+    const many = (item: RequestedIngredient): readonly string[] =>
+      item.conceptKey === 'strawberry'
+        ? [STRAWBERRY, ...Array.from({ length: 20 }, (_, index) => `PI-ING-9000${index}`)]
+        : (forms.banana ?? []);
+    const { sets, combinations, partial } = communityIdSets(
+      [generic(STRAWBERRY, 'strawberry'), generic(BANANA, 'banana')],
+      many,
+      6,
+    );
+    expect(sets).toHaveLength(6);
+    expect(combinations).toBe(42);
+    expect(partial).toBe(true);
+    // Each ingredient's first alternative is reached, and a both-varied set is asked.
+    expect(asked(sets)).toContain(`${STRAWBERRY}+${BANANA_PUREE}`);
+    expect(asked(sets)).toContain(`PI-ING-90000+${BANANA}`);
+    expect(asked(sets)).toContain(`PI-ING-90000+${BANANA_PUREE}`);
+  });
+
+  it('FORM-OR-06: one publication answered by two forms is ONE Community candidate', async () => {
     matchCommunityTop100.mockImplementation(
       async ({ ingredientIds }: { ingredientIds: string[] }) =>
         ingredientIds[0] === STRAWBERRY ? [] : [communityMatch('pub-1', 4)],
@@ -283,5 +316,22 @@ describe('Owner 2026-09-17: a generic idea also finds recipes made with another 
     });
     expect(matchCommunityTop100).toHaveBeenCalledTimes(3);
     expect(answer.communityMatches.map((match) => match.publicationId)).toEqual(['pub-1']);
+    expect(answer.coverage).toEqual({ asked: 3, combinations: 3, partial: false });
+  });
+
+  it('FORM-OR-07 (owner): a partial search never lets §35 adopt a recipe automatically', async () => {
+    matchCommunityTop100.mockResolvedValue([]);
+    const many = (item: RequestedIngredient) =>
+      item.conceptKey === 'strawberry'
+        ? [STRAWBERRY, ...Array.from({ length: 40 }, (_, index) => `PI-ING-8000${index}`)]
+        : [];
+    const result = await searchExistingRecipes({
+      requested: [generic(COCOA, 'strawberry')],
+      profile: null,
+      formsFor: many,
+    });
+    expect(result.coverage.partial).toBe(true);
+    // Exactly one official match + nothing from Community would normally auto-adopt.
+    expect(result.decision.kind).not.toBe('auto_adopt_official');
   });
 });

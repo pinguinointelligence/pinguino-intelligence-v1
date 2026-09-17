@@ -502,10 +502,13 @@ export function HomeCreatorPage() {
    */
   const missingIdeaProducts = useCallback(() => {
     const store = useRecipeStore.getState();
+    const draftNow = useHomeDraftStore.getState();
     return ideaProductsMissingFromRecipe(
-      useHomeDraftStore.getState().chips,
+      draftNow.chips,
       store.items,
       store.toppings,
+      // §58: the customer's own answer about how the product is used outranks the words.
+      draftNow.usageAnswersByChipId,
     );
   }, []);
 

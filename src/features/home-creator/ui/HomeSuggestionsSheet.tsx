@@ -21,6 +21,13 @@ import {
   type HomeRecipeCarouselHandle,
 } from './HomeRecipeCarousel';
 
+/**
+ * Owner 2026-09-17: „Zawiera też” is a SHORT, secondary line on the card. The full list
+ * is not lost — the chosen card shows it in full under the carousel, and every card
+ * carries it in its accessible name. No extra panel, no extra step, never empty.
+ */
+const ALSO_INCLUDES_ON_CARD = 3;
+
 export function HomeSuggestionsSheet({
   cards,
   ideaLabel,
@@ -47,6 +54,16 @@ export function HomeSuggestionsSheet({
   const carousel = useRef<HomeRecipeCarouselHandle>(null);
   const [hint, setHint] = useState<string | null>(null);
   const chosen = cards.find((card) => card.id === selectedId) ?? null;
+  const alsoIncludesLines = (names: readonly string[]) => {
+    if (names.length === 0) return { short: null, full: null };
+    const shown = names.slice(0, ALSO_INCLUDES_ON_CARD);
+    const rest = names.length - shown.length;
+    return {
+      short: `${copy.alsoIncludes} ${shown.join(', ')}${rest > 0 ? ` ${copy.alsoIncludesMore(rest)}` : ''}`,
+      full: `${copy.alsoIncludes} ${names.join(', ')}`,
+    };
+  };
+  const chosenAlsoIncludes = chosen ? alsoIncludesLines(chosen.alsoIncludes) : null;
 
   return (
     <DialogShell
@@ -72,19 +89,21 @@ export function HomeSuggestionsSheet({
       <div className="home-sugg-body">
         <HomeRecipeCarousel
           ref={carousel}
-          cards={cards.map((card) => ({
-            id: card.id,
-            title: card.title,
-            imageUrl: card.imageUrl,
-            eyebrow: card.eyebrow,
-            subline: card.subline,
-            basedOn: card.basedOn ? `${copy.basedOnOriginal} ${card.basedOn}` : null,
-            usedForm: card.usedForm ? `${copy.usedForm} ${card.usedForm}` : null,
-            alsoIncludes:
-              card.alsoIncludes.length > 0
-                ? `${copy.alsoIncludes} ${card.alsoIncludes.join(', ')}`
-                : null,
-          }))}
+          cards={cards.map((card) => {
+            const includes = alsoIncludesLines(card.alsoIncludes);
+            return {
+              id: card.id,
+              title: card.title,
+              imageUrl: card.imageUrl,
+              eyebrow: card.eyebrow,
+              subline: card.subline,
+              basedOn: card.basedOn ? `${copy.basedOnOriginal} ${card.basedOn}` : null,
+              usedForm: card.usedForm ? `${copy.usedForm} ${card.usedForm}` : null,
+              alsoIncludes: includes.short,
+              alsoIncludesFull: includes.full,
+              searchIncomplete: card.searchIncomplete ? copy.searchIncomplete : null,
+            };
+          })}
           selectedId={selectedId}
           onSelect={(id) => {
             setHint(null);
@@ -93,6 +112,11 @@ export function HomeSuggestionsSheet({
           label={copy.suggestionsCarousel(ideaLabel)}
           testId="home-suggestions-carousel"
         />
+        {chosenAlsoIncludes?.full && chosenAlsoIncludes.full !== chosenAlsoIncludes.short ? (
+          <p className="home-sugg-also" data-testid="home-suggestions-also-full">
+            {chosenAlsoIncludes.full}
+          </p>
+        ) : null}
         {message || hint ? (
           <p className="home-sugg-note" role="status" data-testid="home-suggestions-message">
             {message ?? hint}

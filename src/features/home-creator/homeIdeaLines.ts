@@ -9,23 +9,36 @@
  * amount question when nothing sizes a new line automatically.
  */
 import type { IntentChip } from './homeDraftStore';
+import type { IntentRole } from './homeIntentParsing';
 
 /** Whatever the recipe holds, read by its canonical ingredient identity. */
 export interface RecipeLineIdentity {
   readonly ingredient: { readonly id: string };
 }
 
-/** The recognised chips whose product is in no base line and no topping (§22 identity). */
+/**
+ * The recognised chips whose product is not yet in the recipe IN THE ROLE THEY WERE SAID IN
+ * (§22 identity, §33 role). The base and the toppings are two collections: a product used as
+ * a topping does not answer a request to use it in the base, and the other way round.
+ *
+ * `statedRoles` is the customer's own §58 answer per chip (`usageAnswersByChipId`), which
+ * outranks the word in the chip — the same precedence the add door uses. With no stated role
+ * either collection still counts: the existing resolver decides where such a chip belongs,
+ * and this module holds no ProductBehavior to repeat that decision.
+ */
 export function ideaProductsMissingFromRecipe(
   chips: readonly IntentChip[],
   items: readonly RecipeLineIdentity[],
   toppings: readonly RecipeLineIdentity[],
+  statedRoles: Readonly<Record<string, IntentRole>> = {},
 ): readonly IntentChip[] {
-  const present = new Set([
-    ...items.map((line) => line.ingredient.id),
-    ...toppings.map((line) => line.ingredient.id),
-  ]);
-  return chips.filter(
-    (chip) => chip.productId !== null && !chip.ambiguous && !present.has(chip.productId),
-  );
+  const inBase = new Set(items.map((line) => line.ingredient.id));
+  const inToppings = new Set(toppings.map((line) => line.ingredient.id));
+  return chips.filter((chip) => {
+    if (chip.productId === null || chip.ambiguous) return false;
+    const role = statedRoles[chip.id] ?? chip.role;
+    if (role === 'topping') return !inToppings.has(chip.productId);
+    if (role === 'ingredient') return !inBase.has(chip.productId);
+    return !inBase.has(chip.productId) && !inToppings.has(chip.productId);
+  });
 }

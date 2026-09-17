@@ -17,6 +17,7 @@
  */
 import {
   approvedConceptOrder,
+  conceptDiscoveryIndex,
   conceptMembership,
   loadMapperConceptDefaults,
   loadMapperSearchRuntime,
@@ -50,19 +51,40 @@ export interface HomeMatchQuery {
   readonly formsFor?: (item: RequestedIngredient) => readonly string[];
 }
 
-/** The Community oracle proves containment for ONE id set, so forms are asked one set at a time. */
-export const COMMUNITY_FORM_QUERY_LIMIT = 6;
+/**
+ * The Community oracle proves containment for ONE id set, so an AND of ORs is asked one
+ * combination at a time. The budget bounds the WORK, never the MEANING: whatever was not
+ * asked is reported as such, so no result claims to be the best of all matches.
+ */
+export const COMMUNITY_FORM_QUERY_LIMIT = 24;
+/** How many of those sets are in flight at once. */
+export const COMMUNITY_FORM_QUERY_CONCURRENCY = 6;
+
+export interface CommunitySearchCoverage {
+  readonly asked: number;
+  readonly combinations: number;
+  /** The search did not cover every combination — nothing may claim to be the best match. */
+  readonly partial: boolean;
+}
+
+export const FULL_COMMUNITY_COVERAGE: CommunitySearchCoverage = Object.freeze({
+  asked: 0,
+  combinations: 0,
+  partial: false,
+});
 
 export interface HomeMatchResult {
   readonly decision: MatchDecision;
   /** Kept so the popup can offer the canonical derive flow for a Community pick. */
   readonly communityMatches: readonly CommunityMatch[];
+  readonly coverage: CommunitySearchCoverage;
 }
 
 /** Nothing was asked for, or nothing matched → no popup, creation continues (§35). */
 export const NO_MATCH: HomeMatchResult = Object.freeze({
   decision: { kind: 'create_my_own' } as MatchDecision,
   communityMatches: [],
+  coverage: FULL_COMMUNITY_COVERAGE,
 });
 
 /**
@@ -115,55 +137,104 @@ export async function loadConceptMatchContext(): Promise<ConceptMatchContext> {
     loadMapperConceptDefaults(),
   ]);
   const member = conceptMembership(runtime.release);
+  // Owner-approved discovery links widen the SEARCH only: they are appended after the
+  // frozen order and never consulted when a generic idea picks its product.
+  const discovery = conceptDiscoveryIndex();
   return {
-    matcher: (line, conceptKey) => member(line.productId, conceptKey),
+    matcher: (line, conceptKey) =>
+      member(line.productId, conceptKey) ||
+      (discovery.get(conceptKey)?.includes(line.productId) ?? false),
     formsOf: (conceptKey, scope) => {
       const decision = defaults.get(conceptKey);
-      return decision ? approvedConceptOrder(decision, scope) : [];
+      if (!decision) return [];
+      const approved = approvedConceptOrder(decision, scope);
+      const discovered = (discovery.get(conceptKey) ?? []).filter((id) => !approved.includes(id));
+      return [...approved, ...discovered];
     },
   };
 }
 
+export interface CommunityIdSets {
+  /** The combinations actually asked, the requested identities first. */
+  readonly sets: readonly (readonly string[])[];
+  /** Every combination the AND of ORs really has (the product of each ingredient's forms). */
+  readonly combinations: number;
+  /** True when the budget stopped the enumeration before it covered them all. */
+  readonly partial: boolean;
+}
+
 /**
- * The id sets to ask the Community oracle for: the requested identities, then the same
- * request with ONE ingredient swapped for another approved form of its concept. Bounded,
- * because each set is one oracle call; the requested identities are always asked first.
+ * The AND of ORs, as id sets: (A or its approved forms) AND (B or its approved forms).
+ *
+ * Every requested ingredient is its own axis with the requested identity first, so the first
+ * set is always the exact request. The enumeration then walks outwards by how far a
+ * combination is from that request, preferring combinations that vary SEVERAL ingredients
+ * over yet another form of one — otherwise one generic idea with many forms would eat the
+ * whole budget and „[A puree, B puree]” would never be asked at all.
  */
 export function communityIdSets(
   resolved: readonly RequestedIngredient[],
   formsFor: HomeMatchQuery['formsFor'],
   limit = COMMUNITY_FORM_QUERY_LIMIT,
-): readonly (readonly string[])[] {
-  const base = resolved.map((item) => item.productId);
-  const sets: string[][] = [base];
-  if (!formsFor) return sets;
-  outer: for (let index = 0; index < resolved.length; index += 1) {
-    const item = resolved[index]!;
-    if (item.conceptKey == null) continue;
-    for (const form of formsFor(item)) {
-      if (form === item.productId) continue;
-      const next = [...base];
-      next[index] = form;
-      if (sets.some((set) => set.join('|') === next.join('|'))) continue;
-      sets.push(next);
-      if (sets.length >= limit) break outer;
+): CommunityIdSets {
+  const axes = resolved.map((item) => {
+    const forms = item.conceptKey == null ? [] : (formsFor?.(item) ?? []);
+    return [...new Set([item.productId, ...forms])];
+  });
+  const combinations = axes.reduce((total, axis) => total * axis.length, 1);
+  const distance = (tuple: readonly number[]) => tuple.reduce((total, index) => total + index, 0);
+  const varied = (tuple: readonly number[]) => tuple.filter((index) => index > 0).length;
+  const seen = new Set<string>();
+  const sets: string[][] = [];
+  let frontier: number[][] = [axes.map(() => 0)];
+  while (frontier.length > 0 && sets.length < limit) {
+    frontier.sort(
+      (left, right) =>
+        distance(left) - distance(right) ||
+        varied(right) - varied(left) ||
+        left.join().localeCompare(right.join()),
+    );
+    const next: number[][] = [];
+    for (const tuple of frontier) {
+      const key = tuple.join(',');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      sets.push(tuple.map((index, axis) => axes[axis]![index]!));
+      if (sets.length >= limit) break;
+      for (let axis = 0; axis < axes.length; axis += 1) {
+        if (tuple[axis]! + 1 < axes[axis]!.length) {
+          const grown = [...tuple];
+          grown[axis] = tuple[axis]! + 1;
+          next.push(grown);
+        }
+      }
     }
+    frontier = next;
   }
-  return sets;
+  return { sets, combinations, partial: sets.length < combinations };
 }
 
 /** The Community side alone: the strict match oracle over the current Top 100. */
 export async function searchCommunityMatches(query: HomeMatchQuery): Promise<{
   readonly community: readonly RecipeMatch[];
   readonly communityMatches: readonly CommunityMatch[];
+  readonly coverage: CommunitySearchCoverage;
 }> {
   const resolved = resolvedRequests(query);
-  if (resolved.length === 0) return { community: [], communityMatches: [] };
-  const answers = await Promise.all(
-    communityIdSets(resolved, query.formsFor).map((ingredientIds) =>
-      matchCommunityTop100({ ingredientIds, profile: query.profile }),
-    ),
-  );
+  if (resolved.length === 0) {
+    return { community: [], communityMatches: [], coverage: FULL_COMMUNITY_COVERAGE };
+  }
+  const { sets, combinations, partial } = communityIdSets(resolved, query.formsFor);
+  const answers: (readonly CommunityMatch[])[] = [];
+  for (let start = 0; start < sets.length; start += COMMUNITY_FORM_QUERY_CONCURRENCY) {
+    answers.push(
+      ...(await Promise.all(
+        sets
+          .slice(start, start + COMMUNITY_FORM_QUERY_CONCURRENCY)
+          .map((ingredientIds) => matchCommunityTop100({ ingredientIds, profile: query.profile })),
+      )),
+    );
+  }
   // One publication is one candidate however many forms reached it; the oracle's own
   // Top 100 rank still decides which single Community card is offered (§34).
   const byPublication = new Map<string, CommunityMatch>();
@@ -181,6 +252,7 @@ export async function searchCommunityMatches(query: HomeMatchQuery): Promise<{
       alsoIncludes: match.alsoIncludes,
     })),
     communityMatches,
+    coverage: { asked: sets.length, combinations, partial },
   };
 }
 
@@ -189,6 +261,10 @@ export async function searchExistingRecipes(query: HomeMatchQuery): Promise<Home
   // matching on it would be matching on guessed text.
   if (resolvedRequests(query).length === 0) return NO_MATCH;
   const official = searchOfficialMatches(query);
-  const { community, communityMatches } = await searchCommunityMatches(query);
-  return { decision: decideMatch({ official, community }), communityMatches };
+  const { community, communityMatches, coverage } = await searchCommunityMatches(query);
+  return {
+    decision: decideMatch({ official, community, communitySearchPartial: coverage.partial }),
+    communityMatches,
+    coverage,
+  };
 }

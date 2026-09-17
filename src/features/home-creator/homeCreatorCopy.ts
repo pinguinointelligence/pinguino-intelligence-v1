@@ -84,6 +84,10 @@ export interface HomeCreatorCopy {
     readonly basedOnOriginal: string;
     /** The form of the same flavour this suggestion uses („Puree truskawkowe”). */
     readonly usedForm: string;
+    /** Card tail when the extra ingredients do not fit the short line. */
+    readonly alsoIncludesMore: (count: number) => string;
+    /** Said on a Community card when the search was bounded — it is a match, not THE match. */
+    readonly searchIncomplete: string;
     readonly viewOriginal: string;
     readonly byGellatti: string;
     /** DESIGN V3.0 VIII — the suggestions layer shown while the idea is recognised. */
@@ -286,6 +290,8 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     adopted: 'Wybrano recepturę',
     basedOnOriginal: 'Na podstawie oryginalnej receptury:',
     usedForm: 'Używa postaci:',
+    alsoIncludesMore: (count: number) => `+${count} więcej`,
+    searchIncomplete: 'Mogą pasować też inne receptury.',
     viewOriginal: 'Zobacz oryginał',
     byGellatti: 'Gellatti',
     suggestionsTitle: 'Znaleźliśmy pasujące receptury.',
@@ -472,6 +478,8 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     adopted: 'Recipe selected',
     basedOnOriginal: 'Based on original recipe by',
     usedForm: 'Uses the form:',
+    alsoIncludesMore: (count: number) => `+${count} more`,
+    searchIncomplete: 'Other recipes may match too.',
     viewOriginal: 'View original',
     byGellatti: 'Gellatti',
     suggestionsTitle: 'We found matching recipes.',

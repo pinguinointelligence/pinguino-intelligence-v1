@@ -67,6 +67,11 @@ export interface HomeSuggestionCard {
   readonly basedOn: string | null;
   /** The form of the SAME flavour the suggestion uses („Puree truskawkowe”). */
   readonly usedForm: string | null;
+  /**
+   * Set when the Community search could not cover every approved-form combination: this
+   * card matches, but it may not be presented as the best of all Community recipes.
+   */
+  readonly searchIncomplete: boolean;
   readonly match: RecipeMatch;
 }
 
@@ -78,6 +83,8 @@ const joinQuiet = (parts: readonly (string | null | undefined)[]): string | null
 export function suggestionCards(input: {
   readonly official: readonly RecipeMatch[];
   readonly community: RecipeMatch | null;
+  /** The Community search was bounded — see `HomeSuggestionCard.searchIncomplete`. */
+  readonly communityPartial?: boolean;
 }): readonly HomeSuggestionCard[] {
   const copy = homeCreatorCopy.match;
   const cards: HomeSuggestionCard[] = input.official.map((match) => {
@@ -98,6 +105,7 @@ export function suggestionCards(input: {
       alsoIncludes: match.alsoIncludes,
       basedOn: null,
       usedForm: match.usedForms?.join(', ') || null,
+      searchIncomplete: false,
       match,
     };
   });
@@ -116,6 +124,7 @@ export function suggestionCards(input: {
       alsoIncludes: input.community.alsoIncludes,
       basedOn: candidate.originalCreatorName ?? null,
       usedForm: input.community.usedForms?.join(', ') || null,
+      searchIncomplete: input.communityPartial === true,
       match: input.community,
     });
   }

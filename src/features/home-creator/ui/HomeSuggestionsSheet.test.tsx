@@ -159,6 +159,37 @@ describe('CUSTOMER LANGUAGE — no matcher vocabulary, no grams', () => {
     expect(html).not.toContain('Zawiera też: Puree truskawkowe');
   });
 
+  it('Owner 2026-09-17 — „Zawiera też” is short on the card, and nothing is lost', () => {
+    const many = ['Mleko', 'Śmietanka', 'Cukier', 'Dekstroza', 'Inulina'];
+    const html = render({
+      official: [{ ...match(official.recipeId, 'official'), alsoIncludes: many }],
+    });
+    // Short, secondary line: the first three names and a quiet tail.
+    expect(html).toContain('Zawiera też: Mleko, Śmietanka, Cukier +2 więcej');
+    expect(html).not.toContain('Zawiera też: Mleko, Śmietanka, Cukier, Dekstroza, Inulina<');
+    // The full list is still carried by the card's accessible name.
+    expect(html).toMatch(/aria-label="[^"]*Dekstroza, Inulina/);
+  });
+
+  it('Owner 2026-09-17 — the chosen card shows the full list, without a new panel', () => {
+    const many = ['Mleko', 'Śmietanka', 'Cukier', 'Dekstroza', 'Inulina'];
+    const html = render(
+      { official: [{ ...match(official.recipeId, 'official'), alsoIncludes: many }] },
+      { selectedId: official.recipeId },
+    );
+    expect(html).toContain('home-suggestions-also-full');
+    expect(html).toContain('Zawiera też: Mleko, Śmietanka, Cukier, Dekstroza, Inulina');
+  });
+
+  it('Owner 2026-09-17 — nothing is shown when there is nothing extra', () => {
+    const html = render(
+      { official: [match(official.recipeId, 'official')] },
+      { selectedId: official.recipeId },
+    );
+    expect(html).not.toContain('Zawiera też');
+    expect(html).not.toContain('home-suggestions-also-full');
+  });
+
   it('§32 — Also-includes names, never a quantity', () => {
     const html = render({
       official: [{ ...match(official.recipeId, 'official'), alsoIncludes: ['Karmel', 'Wanilia'] }],
