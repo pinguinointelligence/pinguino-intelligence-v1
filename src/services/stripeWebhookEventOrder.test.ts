@@ -150,6 +150,12 @@ const only = (rows: Row[], what: string): Row => {
 
 const ORDER_A = ['checkout', 'subscription', 'invoice'] as const;
 const ORDER_B = ['subscription', 'invoice', 'checkout'] as const;
+/**
+ * T-TEST-02: the invoice FIRST. Neither A nor B ever delivered it first, so the
+ * writer's cache heal (the invoice runs the subscription-sync authority itself)
+ * had no test. It must converge on the same state as A and B.
+ */
+const ORDER_C = ['invoice', 'subscription', 'checkout'] as const;
 
 const play = async (order: readonly string[], price: string, amountPaid = 4900) => {
   const db = new Fake();
@@ -178,6 +184,15 @@ describe('GROW-010 — delivery order must not change the outcome', () => {
       expect(a.subscriptions).toEqual([`${USER}:${offer.key}:active`]);
       expect(a.entitlements).toEqual([`${USER}:${offer.product}:paid_subscription`]);
       expect(a.mappings).toEqual([`${USER}@${CUSTOMER}`]);
+    });
+  }
+
+  for (const offer of OFFERS) {
+    it(`${offer.key}: ORDER C (invoice first) converges on the same state as ORDER A`, async () => {
+      const a = finalState(await play(ORDER_A, offer.price));
+      const c = finalState(await play(ORDER_C, offer.price));
+      expect(c).toEqual(a);
+      expect(c.subscriptions).toEqual([`${USER}:${offer.key}:active`]);
     });
   }
 

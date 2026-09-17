@@ -930,3 +930,182 @@ describe('shop order settlement — the provider is the payment authority', () =
     expect(db.rows('shop_orders')).toHaveLength(0);
   });
 });
+
+// ── T-TEST-02: matrix gaps closed at writer level ─────────────────────────────
+// reports/GELLATTI_WWU_FINANCIAL_TEST_MATRIX.md §5 listed paths no test drove:
+// two deliveries of the same money event processed AT THE SAME TIME, a renewal
+// on an already-locked attribution, and a monthly → annual switch. Each test
+// below drives the real writer over the fake DB.
+
+/** Counts insert attempts on one table, so a test can see which guard decided. */
+const countInserts = (db: FakeDb, table: string) => {
+  const counter = { attempts: 0 };
+  const from = db.from.bind(db);
+  db.from = (name: string): DbTable => {
+    const real = from(name);
+    if (name !== table) return real;
+    return {
+      ...real,
+      insert: (values: Row) => {
+        counter.attempts += 1;
+        return real.insert(values);
+      },
+    } as DbTable;
+  };
+  return counter;
+};
+
+const notesOf = (results: ReadonlyArray<{ note: string | null }>) =>
+  results.map((result) => result.note ?? '(none)').sort();
+
+describe('T-TEST-02 — concurrent deliveries of one money event', () => {
+  it('invoice.paid and invoice.payment_succeeded at the same time book ONE entry; the unique key decides', async () => {
+    const db = new FakeDb();
+    seedCommissionWorld(db);
+    const inserts = countInserts(db, 'commission_entries');
+    const deps = { db, refetch: makeRefetcher({ invoice: { in_fake_1: invoiceObject() } }) };
+
+    const results = await Promise.all([
+      applyEventEffects(deps, event('invoice.paid', 'evt_fake_c1', { id: 'in_fake_1' })),
+      applyEventEffects(deps, event('invoice.payment_succeeded', 'evt_fake_c2', { id: 'in_fake_1' })),
+    ]);
+
+    expect(db.rows('commission_entries')).toHaveLength(1);
+    expect(notesOf(results)).toEqual(['(none)', 'skipped_duplicate_invoice_entry']);
+    // Both deliveries passed the app-level pre-read, so the second insert hit the
+    // 0018 unique key: the DB backstop (insertIgnoringDuplicate's 23505 branch)
+    // is what prevented the double booking, and it turned into a quiet no-op.
+    expect(inserts.attempts).toBe(2);
+    const attributions = db.rows('referral_attributions');
+    expect(attributions).toHaveLength(1);
+    expect(attributions[0]?.status).toBe('active');
+  });
+
+  it('charge.refunded and refund.created for one refund at the same time append ONE reversal', async () => {
+    const db = new FakeDb();
+    seedEntryForReversal(db);
+    const inserts = countInserts(db, 'commission_adjustments');
+    const refund = { id: 're_fake_1', amount: 1000, status: 'succeeded', charge: 'ch_fake_1' };
+    const deps = {
+      db,
+      refetch: makeRefetcher({
+        charge: { ch_fake_1: chargeObject([refund]) },
+        refund: { re_fake_1: refund },
+      }),
+    };
+
+    const results = await Promise.all([
+      applyEventEffects(deps, event('charge.refunded', 'evt_fake_c3', { id: 'ch_fake_1' })),
+      applyEventEffects(deps, event('refund.created', 'evt_fake_c4', { id: 're_fake_1' })),
+    ]);
+
+    const adjustments = db.rows('commission_adjustments');
+    expect(adjustments).toHaveLength(1);
+    expect(adjustments[0]).toMatchObject({ amount_cents: -184, source_event_key: 'obj:re_fake_1' });
+    expect(notesOf(results)).toEqual(['(none)', 'skipped_duplicate_reversal']);
+    expect(inserts.attempts).toBe(2);
+  });
+});
+
+describe('T-TEST-02 — renewals and a monthly → annual switch at writer level', () => {
+  it('a paid renewal on the locked attribution books a second entry (the positive control for H-DASH-11)', async () => {
+    const db = new FakeDb();
+    seedCommissionWorld(db);
+    const RENEWAL_PAID_AT = PAID_AT_EPOCH + 365 * 24 * 3600;
+    db.seed('partner_tier_snapshots', {
+      partner_id: 'partner-1',
+      month: commissionMonthDate(RENEWAL_PAID_AT * 1000),
+      tier: 'standard',
+    });
+    const renewal: Row = {
+      ...invoiceObject(),
+      id: 'in_fake_2',
+      payment_intent: 'pi_fake_2',
+      status_transitions: { paid_at: RENEWAL_PAID_AT },
+    };
+    const deps = { db, refetch: makeRefetcher({ invoice: { in_fake_1: invoiceObject(), in_fake_2: renewal } }) };
+
+    expect((await applyEventEffects(deps, event('invoice.paid', 'evt_fake_r1', { id: 'in_fake_1' }))).note).toBeNull();
+    expect((await applyEventEffects(deps, event('invoice.paid', 'evt_fake_r2', { id: 'in_fake_2' }))).note).toBeNull();
+
+    const entries = db.rows('commission_entries');
+    expect(entries.map((entry) => entry.stripe_invoice_id)).toEqual(['in_fake_1', 'in_fake_2']);
+    // The renewal is owned by the attribution the first payment locked: no
+    // second attribution, no second lock, same partner.
+    expect(entries[1]).toMatchObject({ partner_id: 'partner-1', attribution_id: 'attr-1', amount_cents: 900, status: 'held' });
+    expect(db.rows('referral_attributions')).toHaveLength(1);
+  });
+
+  it('monthly then a switch to annual books the monthly commission, then the annual one', async () => {
+    const db = new FakeDb();
+    const SWITCH_PAID_AT = PAID_AT_EPOCH + 40 * 24 * 3600;
+    db.seed('billing_price_catalog', CATALOG_HOME_MONTHLY);
+    db.seed('billing_price_catalog', {
+      offer_key: 'home_yearly_standard',
+      product: 'home',
+      cadence: 'annual',
+      variant: 'standard',
+      commission_cadence: 'annual',
+      stripe_price_id: 'price_fake_home_y',
+    });
+    db.seed('billing_customers', { user_id: 'user-1', stripe_customer_id: 'cus_fake_1' });
+    db.seed('customer_subscriptions', {
+      id: 'cache-1',
+      user_id: 'user-1',
+      offer_key: 'home_monthly_standard',
+      product: 'home',
+      status: 'active',
+      stripe_subscription_id: 'sub_fake_1',
+    });
+    db.seed('partners', { id: 'partner-1', user_id: 'partner-user-1' });
+    db.seed('referral_attributions', {
+      id: 'attr-1',
+      partner_id: 'partner-1',
+      user_id: 'user-1',
+      method: 'referral_link',
+      status: 'pending',
+      window_expires_at: '2027-01-01T00:00:00.000Z',
+      created_at: '2026-06-20T00:00:00.000Z',
+    });
+    for (const epoch of [PAID_AT_EPOCH, SWITCH_PAID_AT]) {
+      db.seed('partner_tier_snapshots', {
+        partner_id: 'partner-1',
+        month: commissionMonthDate(epoch * 1000),
+        tier: 'standard',
+      });
+    }
+    db.seed('commission_rules', { product: 'home', cadence: 'monthly', tier: 'standard', version: 1, amount_cents: 199 });
+    db.seed('commission_rules', { product: 'home', cadence: 'annual', tier: 'standard', version: 1, amount_cents: 900 });
+
+    const monthlyInvoice: Row = { ...invoiceObject(), id: 'in_fake_m1', amount_paid: 499 };
+    const prorationInvoice: Row = {
+      ...invoiceObject(),
+      id: 'in_fake_a1',
+      payment_intent: 'pi_fake_a1',
+      amount_paid: 4400,
+      status_transitions: { paid_at: SWITCH_PAID_AT },
+    };
+    const deps = {
+      db,
+      refetch: makeRefetcher({
+        invoice: { in_fake_m1: monthlyInvoice, in_fake_a1: prorationInvoice },
+        subscription: { sub_fake_1: subscriptionObject('active', 'price_fake_home_y') },
+      }),
+    };
+
+    expect((await applyEventEffects(deps, event('invoice.paid', 'evt_fake_s1', { id: 'in_fake_m1' }))).note).toBeNull();
+    expect(
+      (await applyEventEffects(deps, event('customer.subscription.updated', 'evt_fake_s2', { id: 'sub_fake_1' }))).note,
+    ).toBeNull();
+    expect(db.rows('customer_subscriptions')[0]?.offer_key).toBe('home_yearly_standard');
+    expect((await applyEventEffects(deps, event('invoice.paid', 'evt_fake_s3', { id: 'in_fake_a1' }))).note).toBeNull();
+
+    const entries = db.rows('commission_entries');
+    expect(entries.map((entry) => [entry.stripe_invoice_id, entry.cadence, entry.amount_cents])).toEqual([
+      ['in_fake_m1', 'monthly', 199],
+      ['in_fake_a1', 'annual', 900],
+    ]);
+    expect(entries.every((entry) => entry.attribution_id === 'attr-1')).toBe(true);
+    expect(db.rows('entitlements').filter((grant) => grant.status === 'active')).toHaveLength(1);
+  });
+});
