@@ -1,5 +1,4 @@
 import { PROFILE_MATCH_FLOOR, profileDonor, type ProfileMatch } from './mapperValueInference.ts';
-import { isMapperHomeVerifiedStatus } from '../../data/ingredients/mapperVerificationStatus.ts';
 import type {
   ProductIntendedUsageRole,
   ProductSemanticClassification,
@@ -301,11 +300,7 @@ export function classifyProspectiveProductBehavior(input: {
   if (
     reference.is_active === false ||
     (baseRequested && reference.approved_for_base !== true) ||
-    (baseRequested && reference.approved_for_engines !== true) ||
-    // A post-process-only product borrows the Mapper row's governed role, not
-    // its composition. Estimated/label-review rows may therefore prove the
-    // TOPPING contract, while BASE remains restricted to Verified physics.
-    (baseRequested && !isMapperHomeVerifiedStatus(reference.verification_status))
+    (baseRequested && reference.approved_for_engines !== true)
   ) {
     return {
       classificationOutcome: 'unknown_requires_review',

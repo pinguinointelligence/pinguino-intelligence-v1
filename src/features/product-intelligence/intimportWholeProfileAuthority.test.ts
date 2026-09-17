@@ -86,8 +86,8 @@ describe('INTIMPORT whole-profile target authority', () => {
     ).not.toBeNull();
   });
 
-  it('rejects a non-Verified target', () => {
-    expect(validate(baseRow({ verification_status: 'Estimated' }))).toBeNull();
+  it('accepts an approved target regardless of verification metadata', () => {
+    expect(validate(baseRow({ verification_status: 'Estimated' }))).not.toBeNull();
   });
 
   it('rejects an inactive target', () => {
@@ -442,7 +442,7 @@ describe('INTIMPORT trusted product-owned profile', () => {
     expect(authority?.articleIdentity).toBe('PRODUCT_OWNED');
   });
 
-  it('RSC-AUTH-03 keeps hard facts immutable while legacy approval metadata does not exclude a Rescue donor', () => {
+  it('RSC-AUTH-03 keeps hard facts immutable while explicit approval excludes a Rescue donor', () => {
     const authority = validateIntimportProductProfileProposal({
       proposedMapperIngredientId: 'PI-ING-TEST-001',
       matchInput: input(),
@@ -453,7 +453,7 @@ describe('INTIMPORT trusted product-owned profile', () => {
 
     expect(authority).not.toBeNull();
     expect(authority?.technicalComposition.fat).toBe(11);
-    expect(authority?.estimatedFromMapperIds).toEqual(['PI-ING-TEST-001']);
+    expect(authority?.estimatedFromMapperIds).toEqual([]);
     expect(authority?.profileReferenceMapperIngredientId).toBeNull();
   });
 

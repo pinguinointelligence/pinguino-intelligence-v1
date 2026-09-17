@@ -296,9 +296,9 @@ describe('prospective ProductBehavior authority', () => {
         profileMatch: estimatedReference,
       }),
     ).toMatchObject({
-      classificationOutcome: 'unknown_requires_review',
-      baseRecipeEligible: false,
-      classificationReasonCodes: ['module_permission_missing'],
+      classificationOutcome: 'classified',
+      baseRecipeEligible: true,
+      classificationReasonCodes: [],
     });
   });
 
