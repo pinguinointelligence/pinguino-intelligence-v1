@@ -84,18 +84,33 @@ def stage_account(c):
 from public.partners p where p.id = '{PARTNER_A}';""")[0]['p']
     account_id = existing.get('connect') or s.get('account')
     if not account_id:
-        account = c.stripe('c1-account-create', 'connect_account_create', {
-            'email': 'qa.growth.partner.a@example.invalid', 'partnerId': PARTNER_A, 'businessType': 'individual'})
+        try:
+            account = c.stripe('c1-account-create', 'connect_account_create', {
+                'email': 'qa.growth.partner.a@example.invalid', 'partnerId': PARTNER_A, 'businessType': 'individual'})
+        except RuntimeError as error:
+            # A platform that signed up for Connect after Stripe moved new
+            # integrations to Accounts v2 cannot create with /v1/accounts. The
+            # account is the same object afterwards: acct_…, Express dashboard,
+            # transfers capability, and every v1 read/link/transfer still works.
+            if 'Accounts v2' not in str(error) and 'v2/core/accounts' not in str(error):
+                raise
+            c.say('c1 /v1/accounts refused (platform is on Accounts v2) — creating through /v2/core/accounts')
+            account = c.stripe('c1-account-create-v2', 'connect_v2_account_create', {
+                'email': 'qa.growth.partner.a@example.invalid', 'partnerId': PARTNER_A,
+                'displayName': 'QA Partner A', 'country': 'es', 'entityType': 'individual'})
+            save_state(c, accounts_api='v2')
         account_id = account['id']
         c.say(f"c1 created connect account {account_id}")
     # The REAL admin path writes the binding: permission check, audit row and all.
-    bound = c.sql('c1-bind', f"""do $b$ declare v jsonb; begin {GUARD}
+    bound = c.sql('c1-bind', f"""do $b$ begin {GUARD}
   perform set_config('request.jwt.claims', json_build_object('sub', (select id from auth.users where email = '{ADMIN_EMAIL}'), 'role', 'authenticated')::text, true);
   perform set_config('request.headers', '{{"origin":"http://localhost:5188"}}', true);
   execute 'set local role authenticated';
-  v := public.gellatti_admin_register_partner_connect_v1('{PARTNER_A}'::uuid, '{account_id}');
+  -- The RPC returns void: it writes the binding and its own audit row.
+  perform public.gellatti_admin_register_partner_connect_v1('{PARTNER_A}'::uuid, '{account_id}');
   execute 'reset role';
-  insert into qa_harness.observations (run_id, worker, payload) values ('{c.run}', 'c1-bind', coalesce(v, '{{}}'::jsonb));
+  insert into qa_harness.observations (run_id, worker, payload)
+  values ('{c.run}', 'c1-bind', jsonb_build_object('account', '{account_id}'));
 exception when others then
   execute 'reset role';
   insert into qa_harness.observations (run_id, worker, payload) values ('{c.run}', 'c1-bind-error', jsonb_build_object('error', sqlerrm));
@@ -112,32 +127,49 @@ from public.partners p where p.id = '{PARTNER_A}';""")[0]['after']
 
 
 def stage_requirements(c, prefill=True):
+    """What Stripe still wants, and what the platform is allowed to answer.
+
+    Nothing here sets payouts_enabled by hand. Once an Account Link exists,
+    Stripe owns requirement collection (`requirements_collector: stripe`) and
+    refuses a platform write to identity — measured: "You do not have permission
+    to write to identity.individual.date_of_birth". The account holder completes
+    the hosted flow; this stage only reads the result and checks the app mirrored
+    it from the SIGNED account.updated delivery.
+    """
     st = 'C2'
     account_id = state(c)['account']
-    if prefill:
-        token = c.stripe('c2-bank-token', 'token_bank_account', {})
-        c.stripe('c2-prefill', 'connect_account_update', {'accountId': account_id, 'params': {
-            'business_profile': {'mcc': '5814', 'product_description': 'QA partner referrals', 'url': 'https://example.invalid/qa'},
-            'business_type': 'individual',
-            'individual': {
-                'first_name': 'QA', 'last_name': 'PartnerA', 'email': 'qa.growth.partner.a@example.invalid',
-                'phone': '+34600000000', 'dob': {'day': 1, 'month': 1, 'year': 1990},
-                'address': {'line1': 'Carrer de Test 1', 'city': 'Palma', 'postal_code': '07001', 'country': 'ES'},
-                'id_number': '000000000',
-            },
-            'external_account': token['id'],
-        }})
     account = c.stripe('c2-account-get', 'connect_account_get', {'accountId': account_id})
     due = (account.get('requirements') or {})
     c.say(f"c2 requirements: {json.dumps({k: due.get(k) for k in ('currently_due', 'past_due', 'disabled_reason', 'pending_verification')}, default=str)}")
     c.say(f"c2 capabilities: {json.dumps(account.get('capabilities'), default=str)} payouts_enabled={account.get('payouts_enabled')} details_submitted={account.get('details_submitted')}")
-    c.check(st, 'the account requests exactly the transfers capability, and nothing to take payments with',
+    c.check(st, 'the account has the transfers capability, and nothing to take payments with',
             {'transfers': True, 'card_payments': False},
             {'transfers': 'transfers' in (account.get('capabilities') or {}),
              'card_payments': 'card_payments' in (account.get('capabilities') or {})})
-    mirrored = c.sql('c2-mirror', f"""select jsonb_build_object('onboarding', p.onboarding_complete, 'payouts', p.payouts_enabled) as m
+    c.check(st, 'onboarding is finished at Stripe, with nothing left due',
+            {'payouts_enabled': True, 'details_submitted': True, 'currently_due': [], 'disabled_reason': None},
+            {'payouts_enabled': account.get('payouts_enabled'), 'details_submitted': account.get('details_submitted'),
+             'currently_due': due.get('currently_due') or [], 'disabled_reason': due.get('disabled_reason')})
+    external = [(e.get('object'), e.get('bank_name'), e.get('currency'), e.get('default_for_currency'))
+                for e in (account.get('external_accounts') or {}).get('data', [])]
+    c.say(f'c2 external accounts: {json.dumps(external, default=str)}')
+    mirrored = c.sql('c2-mirror', f"""select jsonb_build_object('onboarding', p.onboarding_complete,
+  'payouts', p.payouts_enabled, 'updatedAt', p.updated_at) as m
 from public.partners p where p.id = '{PARTNER_A}';""")[0]['m']
-    c.say(f"c2 partner row mirror: {json.dumps(mirrored)}")
+    c.say(f"c2 partner row mirror: {json.dumps(mirrored, default=str)}")
+    c.check(st, 'the app mirrored it from the signed connected-account delivery, not by hand',
+            {'onboarding': True, 'payouts': True},
+            {'onboarding': mirrored.get('onboarding'), 'payouts': mirrored.get('payouts')})
+    scoped = c.sql('c2-connect-events', f"""select coalesce(jsonb_agg(jsonb_build_object('type', e.event_type,
+  'scope', e.account_scope, 'state', e.state, 'account', e.payload ->> 'account') order by e.received_at), '[]'::jsonb) as e
+from public.stripe_webhook_events e
+where e.payload ->> 'account' = '{account_id}';""")[0]['e']
+    c.say(f'c2 connected-account deliveries: {json.dumps(scoped, default=str)}')
+    c.check(st, 'every delivery about the connected account is verified and filed as connect scope',
+            {'any': True, 'wrongScope': [], 'unprocessed': []},
+            {'any': len(scoped) > 0,
+             'wrongScope': [x['type'] for x in scoped if x['scope'] != 'connect'],
+             'unprocessed': [x['type'] for x in scoped if x['state'] != 'processed']})
     save_state(c, payouts_enabled=account.get('payouts_enabled'), details_submitted=account.get('details_submitted'),
                currently_due=due.get('currently_due'))
     c.save()
@@ -219,8 +251,12 @@ def stage_interrupt(c):
     ledger = c.sql('c6-ledger', f"""select jsonb_build_object('status', pp.status, 'transfer', pp.stripe_transfer_id,
   'entry_status', (select ce.status from public.commission_entries ce where ce.id = '{s['entry']}')) as l
 from public.partner_payouts pp where pp.id = '{s['payout']}';""")[0]['l']
-    c.check(st, 'the line is still pending, with no transfer id and its entry still eligible',
-            {'status': 'pending', 'transfer': None, 'entry_status': 'eligible'}, ledger)
+    # `processing` is the CLAIMED state: the line is taken by this run, which is
+    # what stops a second worker from paying it again. What matters here is that
+    # money moved at Stripe while the ledger recorded neither the transfer nor a
+    # released entry.
+    c.check(st, 'the line is claimed but unsettled: no transfer id, entry still eligible',
+            {'status': 'processing', 'transfer': None, 'entry_status': 'eligible'}, ledger)
     save_state(c, interrupted_transfer=(transferred[0]['transfer'] if transferred else None))
     c.save()
 
@@ -228,7 +264,9 @@ from public.partner_payouts pp where pp.id = '{s['payout']}';""")[0]['l']
 def stage_recover(c):
     st = 'C7'
     s = state(c)
-    tick, body = execute_payouts(c, 'recover', s['batch'])
+    # The interruption is seconds old here, so the recovery window is set to 0.
+    # The ledger refuses a window under 5 minutes where money is real.
+    tick, body = execute_payouts(c, 'recover', s['batch'], {'reclaimAfterMinutes': 0})
     c.say(f"c7 executor (recovery run): {json.dumps(body)[:600]}")
     settled = [r for r in body.get('results', []) if r.get('outcome') == 'settled']
     c.check(st, 'the recovery run binds the SAME transfer instead of sending a second one',
@@ -243,7 +281,7 @@ from public.partner_payouts pp where pp.id = '{s['payout']}';""")[0]['l']
             {'status': 'paid', 'transfer': s.get('interrupted_transfer'), 'entry_status': 'paid'},
             {'status': ledger['status'], 'transfer': ledger['transfer'], 'entry_status': ledger['entry_status']})
     # A third run must find nothing left to pay.
-    tick3, again = execute_payouts(c, 'again', s['batch'])
+    tick3, again = execute_payouts(c, 'again', s['batch'], {'reclaimAfterMinutes': 0})
     c.check(st, 'a third run pays nothing: the batch has no claimable line left',
             {'skipped': 'nothing_claimable'}, {'skipped': tick3.get('skipped')})
     payouts = c.stripe('c7-payouts', 'payouts_for_account', {'accountId': s['account']})['data']

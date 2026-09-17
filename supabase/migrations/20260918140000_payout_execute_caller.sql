@@ -48,12 +48,26 @@ begin
     return jsonb_build_object('skipped', 'not_configured');
   end if;
 
+  -- Work means a line the executor can still pay: one waiting, or one an earlier
+  -- run left mid-flight (`processing`, no transfer id) for longer than the
+  -- recovery window. Without the second half, a run interrupted between Stripe
+  -- and the ledger is never woken again and its transfer is never bound.
   select count(*) into v_claimable
     from public.partner_payouts pp
    where pp.batch_id = p_batch_id
-     and pp.status = 'pending'
      and pp.stripe_transfer_id is null
-     and pp.amount_cents > 0;
+     and pp.amount_cents > 0
+     and (
+       pp.status = 'pending'
+       or (
+         pp.status = 'processing'
+         and pp.paid_at is null
+         and pp.updated_at < now() - make_interval(mins => case
+           when p_options ->> 'reclaimAfterMinutes' ~ '^[0-9]+$'
+             then least((p_options ->> 'reclaimAfterMinutes')::integer, 1440)
+           else 15 end)
+       )
+     );
   if v_claimable = 0 then
     return jsonb_build_object('skipped', 'nothing_claimable', 'batchId', p_batch_id);
   end if;

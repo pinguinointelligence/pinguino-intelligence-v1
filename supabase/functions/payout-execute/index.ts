@@ -71,7 +71,7 @@ Deno.serve(async (request: Request) => {
   const presented = (request.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
   if (!secretEquals(presented, serviceRoleKey)) return json(403, { error: 'forbidden' });
 
-  let body: { batchId?: string; limit?: number; qaStopAfterTransfer?: boolean };
+  let body: { batchId?: string; limit?: number; qaStopAfterTransfer?: boolean; reclaimAfterMinutes?: number };
   try {
     body = request.headers.get('content-length') === '0' ? {} : await request.json();
   } catch {
@@ -103,6 +103,20 @@ Deno.serve(async (request: Request) => {
   if (body.qaStopAfterTransfer === true && batch.livemode !== false) {
     return json(400, { error: 'qa_stop_refused_in_livemode' });
   }
+
+  /* A run that died between Stripe and the ledger left its line `processing`
+     with no transfer id, and the claim only reads `pending`: the money had
+     moved and nothing would ever bind it. Reopen those first. The line keeps
+     its own idempotency key, so the transfer below presents that key and Stripe
+     returns the SAME transfer instead of sending money twice. The window is
+     the caller's, floored by the ledger where money is real. */
+  const reclaimAfterMinutes = Math.min(Math.max(Number(body.reclaimAfterMinutes ?? 15), 0), 1440);
+  const { data: reclaimed, error: reclaimError } = await admin.rpc('gellatti_reclaim_stale_payout_lines_v1', {
+    p_batch_id: batch.id,
+    p_stale_after: `${reclaimAfterMinutes} minutes`,
+    p_limit: limit,
+  });
+  if (reclaimError) return json(500, { error: 'reclaim_failed', detail: reclaimError.message });
 
   const { data: claimed, error: claimError } = await admin.rpc('gellatti_claim_payout_lines_v1', {
     p_batch_id: batch.id,
@@ -192,6 +206,8 @@ Deno.serve(async (request: Request) => {
     batch: batch.id,
     month: batch.month,
     livemode: batch.livemode,
+    // Lines an earlier run left mid-flight and this one reopened.
+    reclaimed: Number(reclaimed ?? 0),
     claimed: lines.length,
     transferred,
     settled,

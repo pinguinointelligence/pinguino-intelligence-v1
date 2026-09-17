@@ -95,3 +95,64 @@ describe('a Transfer is not a bank payout', () => {
     expect(EXECUTOR).toContain('gellatti_partner_id: line.partner_id');
   });
 });
+
+describe('an executor that died between Stripe and the ledger', () => {
+  /* Measured on the QA branch (2026-09-17, sandbox acct_1UGdTdAi07MMapq2): the
+     run was stopped deliberately after `transfers.create` succeeded and before
+     the settle. Stripe held a real transfer; the line stayed `processing` with
+     no transfer id; and every later run answered `nothing_claimable`, because
+     the claim reads `pending` only. The money had moved and nothing would ever
+     bind it. */
+  const RECLAIM = read('supabase', 'migrations', '20260918150000_payout_reclaim_stale_lines.sql');
+  const RECLAIM_RB = read('supabase', 'rollbacks', '20260918150000_payout_reclaim_stale_lines.rollback.sql');
+
+  it('reopens only a line that is mid-flight and carries no transfer id', () => {
+    expect(RECLAIM).toContain("and pp.status = 'processing'");
+    expect(RECLAIM).toContain('and pp.stripe_transfer_id is null');
+    expect(RECLAIM).toContain('and pp.paid_at is null');
+    expect(RECLAIM).toContain('and pp.updated_at < p_now - coalesce(p_stale_after');
+  });
+
+  it('gives it back to the claim instead of deciding anything itself', () => {
+    // The eligibility rules stay in one place: this only flips the status back.
+    expect(RECLAIM).toContain("set status = 'pending', updated_at = p_now");
+    expect(RECLAIM).not.toContain('stripe_transfer_id =');
+    expect(RECLAIM).not.toMatch(/\bdelete\b/i);
+    expect(RECLAIM).not.toContain('idempotency_key =');
+  });
+
+  it('keeps the same idempotency key, so the retry rebinds and never pays twice', () => {
+    // The key lives on the line and is never rewritten, here or in the executor.
+    expect(EXECUTOR).toContain('{ idempotencyKey: line.idempotency_key }');
+    expect(EXECUTOR.indexOf("admin.rpc('gellatti_reclaim_stale_payout_lines_v1'")).toBeLessThan(
+      EXECUTOR.indexOf("admin.rpc('gellatti_claim_payout_lines_v1'"),
+    );
+  });
+
+  it('obeys the same release gate and refuses a short window where money is real', () => {
+    expect(RECLAIM).toContain('perform public.gellatti_assert_payout_allowed_v1(v_livemode)');
+    expect(RECLAIM).toContain("raise exception 'reclaim_window_too_short_for_livemode'");
+    expect(RECLAIM).toContain("if v_livemode and coalesce(p_stale_after, interval '0') < interval '5 minutes'");
+  });
+
+  it('two workers cannot reopen the same line', () => {
+    expect(RECLAIM).toContain('for update of pp skip locked');
+  });
+
+  it('writes an audit row that moves no money', () => {
+    expect(RECLAIM).toContain("'payout.line_reclaimed_stale'");
+    expect(RECLAIM).toContain("'amountImpactCents', 0");
+  });
+
+  it('is operator-only, and the rollback drops the function without touching a row', () => {
+    expect(RECLAIM).toContain(
+      'revoke all on function public.gellatti_reclaim_stale_payout_lines_v1(uuid, interval, integer, timestamptz)',
+    );
+    expect(RECLAIM_RB).toContain('drop function if exists public.gellatti_reclaim_stale_payout_lines_v1');
+    expect(RECLAIM_RB).not.toMatch(/\b(update|delete|truncate|insert)\b/i);
+  });
+
+  it('the run says how many lines it reopened', () => {
+    expect(EXECUTOR).toContain('reclaimed: Number(reclaimed ?? 0)');
+  });
+});

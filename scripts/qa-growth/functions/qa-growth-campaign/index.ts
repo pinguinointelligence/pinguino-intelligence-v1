@@ -25,6 +25,8 @@ const EXPECTED_ACCOUNT = 'acct_1UGdTdAi07MMapq2';
 const QA_ENDPOINT = 'we_1UGdYfAi07MMapq2rQwaGFpG';
 const STRIP_KEYS = new Set(['client_secret', 'hosted_invoice_url', 'invoice_pdf', 'receipt_url', 'secret']);
 
+const V2_VERSION = '2026-08-26.dahlia';
+
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body, null, 1), { status, headers: { 'Content-Type': 'application/json' } });
 
@@ -219,6 +221,105 @@ Deno.serve(async (req) => {
       case 'dispute_get':
         result = await stripe.disputes.retrieve(String(p.disputeId));
         break;
+      case 'connect_endpoint_provision': {
+        /* Connected-account events are delivered to a DIFFERENT destination with
+           its OWN signing secret. This creates that destination for the sandbox
+           and hands the secret to the QA project's Vault; the response carries
+           only public identifiers and the secret's shape, never the secret. */
+        const created = await stripe.webhookEndpoints.create({
+          url: `${Deno.env.get('SUPABASE_URL')}/functions/v1/stripe-webhook`,
+          enabled_events: ['account.updated', 'capability.updated', 'payout.created', 'payout.paid', 'payout.failed'],
+          connect: true,
+          api_version: (Deno.env.get('STRIPE_API_VERSION') ?? '2025-06-30.basil') as Stripe.LatestApiVersion,
+          description: 'QA ONLY: connected-account destination for qa-growth-e2e. Never staging or production.',
+        }, idem());
+        const signing = created.secret ?? '';
+        await sql`select vault.create_secret(${signing}, ${'qa_stripe_connect_webhook_secret'},
+          ${'QA ONLY: signing secret of the Connect destination for the growth sandbox'})`;
+        result = {
+          id: created.id, url: created.url, connect: true, status: created.status,
+          apiVersion: created.api_version, livemode: created.livemode,
+          enabledEvents: created.enabled_events,
+          secretStored: 'vault:qa_stripe_connect_webhook_secret',
+          secretShape: { length: signing.length, prefix: signing.slice(0, 6) },
+        };
+        break;
+      }
+      case 'connect_v2_account_create': {
+        /* This sandbox signed up for Connect AFTER Stripe moved new platforms to
+           Accounts v2, so /v1/accounts refuses to create. The account is created
+           through /v2/core/accounts with the Recipient configuration: it receives
+           transfers from the platform and pays out, and it can take no payments.
+           The id is still acct_..., which is what the ledger stores. */
+        const body2 = {
+          contact_email: String(p.email),
+          display_name: String(p.displayName ?? 'QA Partner'),
+          identity: { country: String(p.country ?? 'es'), entity_type: String(p.entityType ?? 'individual') },
+          configuration: {
+            recipient: {
+              capabilities: {
+                // The only Recipient capability this lane needs: it lets the
+                // account RECEIVE /v1/transfers into its Stripe balance.
+                stripe_balance: { stripe_transfers: { requested: true } },
+              },
+            },
+          },
+          dashboard: String(p.dashboard ?? 'express'),
+          defaults: { currency: String(p.currency ?? 'eur'), responsibilities: { fees_collector: 'application', losses_collector: 'application' } },
+          metadata: { gellatti_partner_id: String(p.partnerId ?? ''), environment: 'qa', qa_run: run },
+          include: ['configuration.recipient', 'identity', 'requirements', 'defaults'],
+        };
+        result = await stripe.rawRequest('POST', '/v2/core/accounts', body2, { apiVersion: V2_VERSION, ...idem() });
+        break;
+      }
+      case 'connect_v2_account_get':
+        result = await stripe.rawRequest('GET', `/v2/core/accounts/${String(p.accountId)}` +
+          '?include[]=configuration.recipient&include[]=identity&include[]=requirements&include[]=defaults',
+          {}, { apiVersion: V2_VERSION });
+        break;
+      case 'connect_v2_account_update':
+        result = await stripe.rawRequest('POST', `/v2/core/accounts/${String(p.accountId)}`,
+          { ...(p.params as Record<string, unknown>), include: ['configuration.recipient', 'identity', 'requirements'] },
+          { apiVersion: V2_VERSION, ...idem() });
+        break;
+      case 'connect_v2_account_link':
+        // Hosted onboarding for a v2 account.
+        result = await stripe.rawRequest('POST', '/v2/core/account_links', {
+          account: String(p.accountId),
+          use_case: {
+            type: 'account_onboarding',
+            account_onboarding: {
+              configurations: ['recipient'],
+              return_url: String(p.returnUrl),
+              refresh_url: String(p.refreshUrl),
+            },
+          },
+        }, { apiVersion: V2_VERSION, ...idem() });
+        break;
+      case 'connect_probe': {
+        // Read-only: is this sandbox signed up for Connect at all, and what does
+        // the platform account itself say? Every call is wrapped so the answer is
+        // the ERROR, not a 500.
+        const probe: Record<string, unknown> = {};
+        try {
+          const list = await stripe.accounts.list({ limit: 1 });
+          probe.accountsList = { ok: true, count: list.data.length, ids: list.data.map((a) => a.id) };
+        } catch (error) {
+          const e = error as { code?: string; type?: string; statusCode?: number; message?: string };
+          probe.accountsList = { ok: false, type: e.type, code: e.code, status: e.statusCode, message: e.message };
+        }
+        const self = await stripe.accounts.retrieve();
+        probe.platform = {
+          id: self.id, country: self.country, defaultCurrency: self.default_currency,
+          chargesEnabled: self.charges_enabled, payoutsEnabled: self.payouts_enabled,
+          detailsSubmitted: self.details_submitted, type: self.type,
+          capabilities: self.capabilities ?? null,
+          controller: (self as unknown as { controller?: unknown }).controller ?? null,
+          displayName: self.settings?.dashboard?.display_name ?? null,
+        };
+        result = probe;
+        break;
+      }
       case 'connect_account_create':
         // The SAME shape admin-control provisions, plus the explicit capability
         // the payout lane actually needs: transfers in, nothing to charge with.
@@ -260,7 +361,24 @@ Deno.serve(async (req) => {
         });
         break;
       case 'balance_get':
-        result = await stripe.balance.retrieve();
+        // With an accountId this reads the CONNECTED account's own balance —
+        // where a Transfer lands, and where a bank payout is paid FROM.
+        result = p.accountId
+          ? await stripe.balance.retrieve({}, { stripeAccount: String(p.accountId) })
+          : await stripe.balance.retrieve();
+        break;
+      case 'connect_payout_create':
+        /* The third object in the chain, deliberately separate from the ledger:
+           the connected account pays ITSELF out to its bank. Gellatti's executor
+           never does this (Stripe does it on the account's own schedule) — this
+           action exists only so the campaign can show that a Transfer, a bank
+           payout and the application's settlement status are three different
+           things with three different states. */
+        result = await stripe.payouts.create({
+          amount: Number(p.amount),
+          currency: String(p.currency ?? 'eur'),
+          metadata: { environment: 'qa', qa_run: run },
+        }, { stripeAccount: String(p.accountId), ...idem() });
         break;
       case 'platform_funding_charge':
         // Test-mode funding: this payment method lands directly in the AVAILABLE
