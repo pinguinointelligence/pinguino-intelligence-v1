@@ -21,6 +21,7 @@ vi.mock('@/features/mapper-search-runtime', async (importOriginal) => {
   const runtime = createTestMapperSearchRuntime();
   return {
     ...actual,
+    loadMapperSearchRuntime: async () => runtime,
     planMapperCatalogSearch: async (
       text: string,
       options: Parameters<typeof actual.planMapperCatalogSearch>[1] = {},
@@ -77,6 +78,9 @@ import { parseIntent } from './homeIntentParsing';
 import { useHomeDraftStore, type IntentChip } from './homeDraftStore';
 import { useHomeIntentIngredients } from './useHomeIntentIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
+
+/** The real 27 963-alias SA-10 runtime resolves several inputs per test; CI runners are slow. */
+const REAL_RUNTIME_TIMEOUT_MS = 60_000;
 
 const BANANA_ID = 'PI-ING-000345';
 const safeRow = (overrides: Record<string, unknown>): Record<string, unknown> => ({
@@ -150,7 +154,7 @@ beforeEach(() => {
   useRecipeStore.setState({ items: [], toppings: [], baseOrder: [], priority_mode: 'AUTO' });
 });
 
-describe('served G anonymous capability fallback', () => {
+describe('served G anonymous capability fallback', { timeout: REAL_RUNTIME_TIMEOUT_MS }, () => {
   it.each([
     ['HOME-BANANA-P1-01', 'banan'],
     ['HOME-BANANA-P1-02', 'bananowe'],

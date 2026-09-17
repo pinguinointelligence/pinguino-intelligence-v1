@@ -31,9 +31,11 @@ import { useRecipeStore } from '@/stores/recipeStore';
 import { useHomeDraftStore, type IntentChip } from './homeDraftStore';
 import type { IntentRole } from './homeIntentParsing';
 import {
+  SCOPE_BY_PROFILE,
   hydrateExactScannedProduct,
   hydrateIngredient,
   resolveChipTerm,
+  sameConceptScope,
   type ExactScannedProductIdentity,
 } from './homeIntentResolutionService';
 
@@ -80,12 +82,35 @@ export function useHomeIntentIngredients() {
         { profile: useHomeDraftStore.getState().profile },
       );
       switch (resolution.kind) {
+        case 'covered':
+          // One phrase, one product: the owning chip carries it.
+          useHomeDraftStore.getState().removeChip(chip.id);
+          return { chipId: chip.id, status: 'duplicate' };
         case 'resolved':
+          if (
+            useHomeDraftStore
+              .getState()
+              .chips.some(
+                (other) => other.id !== chip.id && other.productId === resolution.row.ingredient_id,
+              )
+          ) {
+            // The same product the customer already named: never a second chip or line.
+            useHomeDraftStore.getState().removeChip(chip.id);
+            return { chipId: chip.id, status: 'duplicate' };
+          }
           resolveChip(chip.id, {
+            ...(resolution.label ? { label: resolution.label } : {}),
             productId: resolution.row.ingredient_id,
             productName: resolution.row.ingredient_name_display,
             ambiguous: false,
             candidates: undefined,
+            resolvedBy: resolution.provenance
+              ? {
+                  authority: resolution.provenance.authority,
+                  conceptKey: resolution.provenance.conceptKey,
+                  scope: resolution.provenance.scope ?? null,
+                }
+              : undefined,
           });
           return { chipId: chip.id, status: 'added' };
         case 'ambiguous':
@@ -110,8 +135,39 @@ export function useHomeIntentIngredients() {
 
   /** Materialise and classify one exact identity before any visible recipe is built. */
   const prepareResolvedChip = useCallback(
-    async (chip: IntentChip): Promise<PreparedIntentIngredient | null> => {
+    async (input: IntentChip): Promise<PreparedIntentIngredient | null> => {
+      let chip = input;
       if (chip.productId === null || chip.ambiguous) return null;
+      // A frozen concept default chosen before the profile was known is re-chosen for the
+      // profile's SA-04 scope (e.g. Sorbet) before it can become a recipe line.
+      const profile = useHomeDraftStore.getState().profile;
+      const scopeNow = profile ? SCOPE_BY_PROFILE[profile] : null;
+      if (
+        chip.resolvedBy?.authority === 'SA03_CONCEPT_DEFAULT' &&
+        !sameConceptScope(chip.resolvedBy.scope, scopeNow)
+      ) {
+        const rescoped = await resolveChipTerm(
+          { label: chip.label, concept: chip.concept, segment: chip.segment },
+          undefined,
+          { profile },
+        );
+        if (rescoped.kind !== 'resolved') {
+          resolveChip(chip.id, { productId: null, productName: null, resolvedBy: undefined });
+          return null;
+        }
+        const patch = {
+          productId: rescoped.row.ingredient_id,
+          productName: rescoped.row.ingredient_name_display,
+          resolvedBy: {
+            authority: rescoped.provenance?.authority ?? 'LITERAL_CATALOGUE',
+            conceptKey: rescoped.provenance?.conceptKey,
+            scope: rescoped.provenance?.scope ?? null,
+          },
+        } as const;
+        resolveChip(chip.id, patch);
+        chip = { ...chip, ...patch };
+      }
+      if (chip.productId === null) return null;
       const ingredient = await hydrateIngredient(chip.productId);
       if (!ingredient) return null;
       const recipe = useRecipeStore.getState();
@@ -140,7 +196,7 @@ export function useHomeIntentIngredients() {
         }),
       };
     },
-    [],
+    [resolveChip],
   );
 
   /**

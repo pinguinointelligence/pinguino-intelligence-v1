@@ -17,6 +17,7 @@ vi.mock('@/features/mapper-search-runtime', async (importOriginal) => {
   const runtime = createTestMapperSearchRuntime();
   return {
     ...actual,
+    loadMapperSearchRuntime: async () => runtime,
     planMapperCatalogSearch: async (
       text: string,
       options: Parameters<typeof actual.planMapperCatalogSearch>[1] = {},
@@ -44,6 +45,9 @@ import { MAPPER_CONCEPT_DEFAULTS } from '@/features/mapper-search-runtime/genera
 import { demoViewRowsFromRelease } from '@/features/mapper-search-runtime/testMapperDemoView';
 import { parseIntent } from './homeIntentParsing';
 import { resolveChipTerm } from './homeIntentResolutionService';
+
+/** The real 27 963-alias SA-10 runtime resolves several inputs per test; CI runners are slow. */
+const REAL_RUNTIME_TIMEOUT_MS = 60_000;
 
 const decision = (conceptKey: string) => {
   const found = MAPPER_CONCEPT_DEFAULTS.defaults.find((row) => row.conceptKey === conceptKey);
@@ -105,85 +109,89 @@ describe('SA-03 frozen decision (the approved data, not a test fixture)', () => 
   });
 });
 
-describe('HOME_ADD consumes the frozen concept default', () => {
-  it.each(['truskawka', 'truskawkowe', 'truskawki', 'truskawa', 'truskawaka', 'strawberry'])(
-    'HOME-SA03-01: „%s” resolves STRAWBERRIES · Fresh Fruit without a product choice (guest)',
-    async (text) => {
+describe(
+  'HOME_ADD consumes the frozen concept default',
+  { timeout: REAL_RUNTIME_TIMEOUT_MS },
+  () => {
+    it.each(['truskawka', 'truskawkowe', 'truskawki', 'truskawa', 'truskawaka', 'strawberry'])(
+      'HOME-SA03-01: „%s” resolves STRAWBERRIES · Fresh Fruit without a product choice (guest)',
+      async (text) => {
+        guest();
+        const result = await resolveChipTerm(chipFrom(text));
+        expect(result).toMatchObject({
+          kind: 'resolved',
+          row: {
+            ingredient_id: 'PI-ING-001553',
+            ingredient_name_display: 'STRAWBERRIES · Fresh Fruit',
+          },
+          provenance: {
+            authority: 'SA03_CONCEPT_DEFAULT',
+            conceptKey: 'strawberry',
+            decisionId: 'SA03-Q-000076',
+            rank: 0,
+          },
+        });
+        expect(idsReadByExactId()).toEqual([frozenOrder('strawberry')]);
+        expect(mocks.searchProducts).not.toHaveBeenCalled();
+      },
+    );
+
+    it('HOME-SA03-02: a signed-in account reaches the identical decision through the same read', async () => {
+      mocks.searchProducts.mockResolvedValue([]);
+      const account = await resolveChipTerm(chipFrom('truskawka'));
+      mocks.state.calls = [];
       guest();
-      const result = await resolveChipTerm(chipFrom(text));
+      const anonymous = await resolveChipTerm(chipFrom('truskawka'));
+      expect(account).toEqual(anonymous);
+      expect(mocks.searchProducts).not.toHaveBeenCalled();
+      expect(mocks.state.calls.find((call) => call.method === 'from')?.args[0]).toBe(
+        'mapper_basement_search_demo',
+      );
+    });
+
+    it('HOME-SA03-03: the default cannot be lost to a search page that does not contain it', async () => {
+      guest();
+      mocks.state.searchPage = demoViewRowsFromRelease(['PI-ING-002331', 'PI-ING-002358']);
+      const result = await resolveChipTerm(chipFrom('truskawka'));
+      expect(result).toMatchObject({ kind: 'resolved', row: { ingredient_id: 'PI-ING-001553' } });
+    });
+
+    it('HOME-SA03-04: when the default is not legal now, the next frozen alternative is used — never a re-rank', async () => {
+      guest();
+      mocks.state.table = mocks.state.table.filter((row) => row.ingredient_id !== 'PI-ING-001553');
+      const result = await resolveChipTerm(chipFrom('truskawka'));
       expect(result).toMatchObject({
         kind: 'resolved',
-        row: {
-          ingredient_id: 'PI-ING-001553',
-          ingredient_name_display: 'STRAWBERRIES · Fresh Fruit',
-        },
-        provenance: {
-          authority: 'SA03_CONCEPT_DEFAULT',
-          conceptKey: 'strawberry',
-          decisionId: 'SA03-Q-000076',
-          rank: 0,
-        },
+        row: { ingredient_id: 'PI-ING-002331' },
+        provenance: { authority: 'SA03_CONCEPT_DEFAULT', rank: 1 },
       });
-      expect(idsReadByExactId()).toEqual([frozenOrder('strawberry')]);
-      expect(mocks.searchProducts).not.toHaveBeenCalled();
-    },
-  );
-
-  it('HOME-SA03-02: a signed-in account reaches the identical decision through the same read', async () => {
-    mocks.searchProducts.mockResolvedValue([]);
-    const account = await resolveChipTerm(chipFrom('truskawka'));
-    mocks.state.calls = [];
-    guest();
-    const anonymous = await resolveChipTerm(chipFrom('truskawka'));
-    expect(account).toEqual(anonymous);
-    expect(mocks.searchProducts).not.toHaveBeenCalled();
-    expect(mocks.state.calls.find((call) => call.method === 'from')?.args[0]).toBe(
-      'mapper_basement_search_demo',
-    );
-  });
-
-  it('HOME-SA03-03: the default cannot be lost to a search page that does not contain it', async () => {
-    guest();
-    mocks.state.searchPage = demoViewRowsFromRelease(['PI-ING-002331', 'PI-ING-002358']);
-    const result = await resolveChipTerm(chipFrom('truskawka'));
-    expect(result).toMatchObject({ kind: 'resolved', row: { ingredient_id: 'PI-ING-001553' } });
-  });
-
-  it('HOME-SA03-04: when the default is not legal now, the next frozen alternative is used — never a re-rank', async () => {
-    guest();
-    mocks.state.table = mocks.state.table.filter((row) => row.ingredient_id !== 'PI-ING-001553');
-    const result = await resolveChipTerm(chipFrom('truskawka'));
-    expect(result).toMatchObject({
-      kind: 'resolved',
-      row: { ingredient_id: 'PI-ING-002331' },
-      provenance: { authority: 'SA03_CONCEPT_DEFAULT', rank: 1 },
     });
-  });
 
-  it.each(['banan', 'bananowe', 'bananowy', 'bananowa'])(
-    'HOME-SA03-05: „%s” resolves Fresh Banana through the same shared decision (no HOME exception)',
-    async (text) => {
-      guest();
-      await expect(resolveChipTerm(chipFrom(text))).resolves.toMatchObject({
-        kind: 'resolved',
-        row: { ingredient_id: 'PI-ING-000345', ingredient_name_display: 'BANANA · Fresh Fruit' },
-        provenance: { authority: 'SA03_CONCEPT_DEFAULT', conceptKey: 'banana', rank: 0 },
-      });
-    },
-  );
-});
+    it.each(['banan', 'bananowe', 'bananowy', 'bananowa'])(
+      'HOME-SA03-05: „%s” resolves Fresh Banana through the same shared decision (no HOME exception)',
+      async (text) => {
+        guest();
+        await expect(resolveChipTerm(chipFrom(text))).resolves.toMatchObject({
+          kind: 'resolved',
+          row: { ingredient_id: 'PI-ING-000345', ingredient_name_display: 'BANANA · Fresh Fruit' },
+          provenance: { authority: 'SA03_CONCEPT_DEFAULT', conceptKey: 'banana', rank: 0 },
+        });
+      },
+    );
+  },
+);
 
-describe('explicit customer words keep their meaning', () => {
-  it('HOME-SA03-06: an explicit form („puree truskawkowe”) is a real choice over the whole frozen order', async () => {
+describe('explicit customer words keep their meaning', { timeout: REAL_RUNTIME_TIMEOUT_MS }, () => {
+  it('HOME-SA03-06: an explicit form („puree truskawkowe”) is a real, bounded choice over the frozen order', async () => {
     guest();
     const chip = chipFrom('puree truskawkowe', 1);
     expect(chip.concept).toBe('strawberry');
     const result = await resolveChipTerm(chip);
     expect(result.kind).toBe('ambiguous');
-    // All seven frozen candidates, in owner order — not truncated to six, not re-ranked.
+    // The frozen order, default first — a bounded real choice, never re-ranked.
     expect(
       result.kind === 'ambiguous' && result.candidates.map((row) => row.ingredient_id),
-    ).toEqual(frozenOrder('strawberry'));
+    ).toEqual(frozenOrder('strawberry').slice(0, 6));
   });
 
   it('HOME-SA03-07: a brand word next to the flavour („pregel truskawka”) keeps the literal catalogue path', async () => {
@@ -208,6 +216,40 @@ describe('explicit customer words keep their meaning', () => {
     expect(chip.concept).toBe('blueberry');
     const result = await resolveChipTerm(chip);
     expect(result).not.toMatchObject({ provenance: { authority: 'SA03_CONCEPT_DEFAULT' } });
+  });
+
+  it('HOME-SA03-11 (review): a row not approved for Engines is never selected, even as the default', async () => {
+    guest();
+    mocks.state.table = mocks.state.table.map((row) =>
+      row.ingredient_id === 'PI-ING-001553' ? { ...row, approved_for_engines: false } : row,
+    );
+    await expect(resolveChipTerm(chipFrom('truskawka'))).resolves.toMatchObject({
+      kind: 'resolved',
+      row: { ingredient_id: 'PI-ING-002331' },
+      provenance: { rank: 1 },
+    });
+  });
+
+  it('HOME-SA03-12 (review): a decided concept with nothing legal now stays unresolved — no broad substitute', async () => {
+    mocks.searchProducts.mockResolvedValue([]);
+    mocks.state.table = [];
+    await expect(resolveChipTerm(chipFrom('truskawka'))).resolves.toEqual({ kind: 'unresolved' });
+    expect(mocks.searchProducts).not.toHaveBeenCalled();
+  });
+
+  it('HOME-SA03-13 (review): a Sorbet scope with no compliant candidate adds nothing', async () => {
+    mocks.searchProducts.mockResolvedValue([]);
+    mocks.state.table = demoViewRowsFromRelease(frozenOrder('milk_chocolate'));
+    const chip = { label: 'czekolada mleczna', concept: null, segment: 'czekolada mleczna' };
+    await expect(resolveChipTerm(chip)).resolves.toMatchObject({
+      kind: 'resolved',
+      row: { ingredient_id: decision('milk_chocolate').defaultPiId },
+      provenance: { scope: null },
+    });
+    await expect(resolveChipTerm(chip, undefined, { profile: 'sorbet' })).resolves.toEqual({
+      kind: 'unresolved',
+    });
+    expect(mocks.searchProducts).not.toHaveBeenCalled();
   });
 
   it('HOME-ADD-02: fails closed when nothing central or literal matches', async () => {

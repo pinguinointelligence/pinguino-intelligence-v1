@@ -46,6 +46,16 @@ export interface IntentChip {
    * leave the recipe quietly missing the ingredient the user asked for.
    */
   readonly candidates?: readonly { readonly id: string; readonly name: string }[];
+  /**
+   * How `productId` was chosen. A frozen SA-03 concept default records the recipe scope
+   * it was chosen for, so a profile stated later (Sorbet, Wegańskie) re-applies the
+   * SA-04 scope before the product reaches the recipe.
+   */
+  readonly resolvedBy?: {
+    readonly authority: 'SA03_CONCEPT_DEFAULT' | 'LITERAL_CATALOGUE';
+    readonly conceptKey?: string;
+    readonly scope?: string | null;
+  };
 }
 
 export interface HomeDraftState {

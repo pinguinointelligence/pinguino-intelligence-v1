@@ -47,6 +47,8 @@ export interface ChipResolutionProvenance {
   readonly conceptKey?: string;
   readonly decisionId?: string;
   readonly rank?: number;
+  /** The frozen SA-04 scope the default was chosen for (`null` = ANY). */
+  readonly scope?: string | null;
 }
 
 export type ChipResolution =
@@ -54,7 +56,11 @@ export type ChipResolution =
       readonly kind: 'resolved';
       readonly row: ResolvedChipIdentity;
       readonly provenance?: ChipResolutionProvenance;
+      /** The customer's words for the whole product when one phrase covered several chips. */
+      readonly label?: string;
     }
+  /** This chip is one word of a phrase another chip of the same idea already names. */
+  | { readonly kind: 'covered' }
   | { readonly kind: 'ambiguous'; readonly candidates: readonly SafeMapperSearchRow[] }
   | { readonly kind: 'unresolved' }
   /** The catalogue could not answer at all — honestly distinct from "no such product". */
@@ -62,8 +68,15 @@ export type ChipResolution =
 
 const LITERAL: ChipResolutionProvenance = { authority: 'LITERAL_CATALOGUE' };
 
+/** GELATO inherits the ANY order by the SA-04 freeze, so the two are the same choice. */
+export const sameConceptScope = (
+  left: string | null | undefined,
+  right: string | null | undefined,
+): boolean =>
+  (left === 'GELATO' ? null : (left ?? null)) === (right === 'GELATO' ? null : (right ?? null));
+
 /** HOME profiles that carry a frozen SA-04 recipe scope; Protein reads the ANY order. */
-const SCOPE_BY_PROFILE: Readonly<Record<IntentProfile, MapperConceptScope | null>> = {
+export const SCOPE_BY_PROFILE: Readonly<Record<IntentProfile, MapperConceptScope | null>> = {
   gelato: 'GELATO',
   sorbet: 'SORBET',
   vegan: 'VEGAN',
@@ -97,9 +110,7 @@ export async function resolveChipTerm(
     focus: {
       text: chip.label,
       hintedConceptKey: chip.concept,
-      unknownContentTokens: siblings
-        .filter((term) => term.concept === null && term.normalized !== chip.label)
-        .map((term) => term.normalized),
+      siblingTexts: siblings.map((term) => term.raw),
     },
     scope: context.profile ? SCOPE_BY_PROFILE[context.profile] : null,
     signal,
@@ -117,20 +128,25 @@ export async function resolveChipTerm(
           conceptKey: selection.conceptKey,
           decisionId: selection.decisionId,
           rank: selection.rank,
+          scope: selection.scope,
         },
+        ...(selection.phraseText ? { label: selection.phraseText } : {}),
       };
+    case 'covered':
+      return { kind: 'covered' };
     case 'clarify':
-      if (selection.rows.length > 1) return { kind: 'ambiguous', candidates: selection.rows };
-      break;
+      return { kind: 'ambiguous', candidates: selection.rows };
+    case 'no_legal_candidate':
+      // The concept is recognised and decided, but nothing is legal for it now (or for
+      // the recipe scope). Honest: no substitute from a broad name search.
+      return { kind: 'unresolved' };
     case 'aborted':
       return { kind: 'unavailable', reason: 'aborted' };
     case 'unavailable':
       return { kind: 'unavailable', reason: selection.reason };
     case 'error':
-    // The selection stage could not load; the literal path below reports its own outcome.
-    // falls through
+      return { kind: 'unavailable', reason: selection.message };
     case 'not_applicable':
-    case 'no_legal_candidate':
       break;
   }
 
