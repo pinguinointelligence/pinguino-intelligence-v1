@@ -45,6 +45,8 @@ export interface ShopCopy {
     readonly localHere: string;
     readonly noneHere: string;
     readonly noneHelper: string;
+    readonly loadError: string;
+    readonly retry: string;
   };
   readonly localPack: {
     readonly name: string;
@@ -139,6 +141,13 @@ export interface ShopCopy {
     readonly finalAmountNote: string;
     readonly testMode: string;
     readonly error: string;
+    readonly chooseCountry: string;
+    readonly blocked: {
+      readonly countriesUnavailable: string;
+      readonly countryRequired: string;
+      readonly countryNotShipped: string;
+      readonly rateUnavailable: string;
+    };
   };
   readonly admin: {
     readonly sessionReference: string;
@@ -242,6 +251,8 @@ export const shopCopyPl: ShopCopy = {
     noneHelper:
       'Nie wysyłamy tu jeszcze zestawu i nie mamy kompletnej listy lokalnych zamienników. ' +
       'Pracujemy nad tym.',
+    loadError: 'Nie udało się wczytać listy krajów.',
+    retry: 'Spróbuj ponownie',
   },
   localPack: {
     name: 'Lokalny Zestaw Startowy',
@@ -353,6 +364,14 @@ export const shopCopyPl: ShopCopy = {
     finalAmountNote: 'Kwota końcowa. Płatność kartą.',
     testMode: 'Staging: płatność w trybie testowym Stripe. Karta nie zostanie obciążona.',
     error: 'Nie udało się rozpocząć płatności. Spróbuj ponownie.',
+    chooseCountry: 'Wybierz kraj',
+    blocked: {
+      countriesUnavailable:
+        'Nie udało się wczytać listy krajów. Spróbuj ponownie przy wyborze kraju.',
+      countryRequired: 'Wybierz kraj dostawy, aby przejść do płatności.',
+      countryNotShipped: 'Do tego kraju nie wysyłamy jeszcze paczek.',
+      rateUnavailable: 'Nie mamy teraz stawki wysyłki do tego kraju.',
+    },
   },
   admin: {
     sessionReference: 'Sesja płatności (Stripe)',
@@ -454,6 +473,8 @@ export const shopCopyEn: ShopCopy = {
     noneHelper:
       'We do not ship the pack here yet, and we do not have a complete list of local ' +
       'alternatives. We are working on it.',
+    loadError: 'We could not load the list of countries.',
+    retry: 'Try again',
   },
   localPack: {
     name: 'Local Starter Pack',
@@ -559,6 +580,14 @@ export const shopCopyEn: ShopCopy = {
     finalAmountNote: 'Final amount. Card payment.',
     testMode: 'Staging: Stripe test mode. No card is charged.',
     error: 'Payment could not be started. Please try again.',
+    chooseCountry: 'Choose your country',
+    blocked: {
+      countriesUnavailable:
+        'We could not load the list of countries. Try again in the country picker.',
+      countryRequired: 'Choose the delivery country to go to payment.',
+      countryNotShipped: 'We do not ship parcels to this country yet.',
+      rateUnavailable: 'We do not have a shipping rate for this country right now.',
+    },
   },
   admin: {
     sessionReference: 'Payment session (Stripe)',

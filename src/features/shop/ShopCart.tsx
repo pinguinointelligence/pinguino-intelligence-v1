@@ -7,6 +7,7 @@ import { shopOrderTotals } from './shopShipping';
 import { getShippingRate, type ShopShippingRate } from '@/services/shopCountries';
 import { selectedShopCountry, useShopCountryStore } from './shopCountryStore';
 import { shopContentTitle } from './shopContentTitle';
+import { shopCheckoutBlock } from './shopCheckoutReadiness';
 import type { ShopCartLine } from './shopCartStore';
 
 /**
@@ -122,6 +123,14 @@ export function ShopCart({
     };
   }, [country]);
   const shippingRate = country?.physicalAvailable ? (ratesByCountry[country.iso2] ?? null) : null;
+  const countriesError = useShopCountryStore((state) => state.error != null);
+  const checkoutBlock = shopCheckoutBlock({
+    countriesError,
+    country,
+    rate: country?.physicalAvailable ? ratesByCountry[country.iso2] : undefined,
+  });
+  const blockMessage =
+    checkoutBlock && checkoutBlock !== 'rateLoading' ? c.cart.blocked[checkoutBlock] : null;
   const totals = shopOrderTotals(
     entries.reduce((sum, entry) => sum + entry.product.priceCents * entry.line.quantity, 0),
     shippingRate?.priceCents ?? 0,
@@ -235,19 +244,39 @@ export function ShopCart({
             ) : null}
 
             {authed ? (
-              <button
-                type="button"
-                onClick={onCheckout}
-                disabled={checkoutPending}
-                className={cn(
-                  applicationPrimaryClasses(),
-                  'mt-4 w-full',
-                  'disabled:cursor-wait disabled:border-[var(--g-line-strong)] disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]',
-                )}
-                data-testid="shop-checkout"
-              >
-                {checkoutPending ? c.cart.redirecting : c.cart.checkout}
-              </button>
+              <>
+                {blockMessage ? (
+                  <p
+                    className="mt-4 text-[12px] leading-snug text-[var(--g-text-secondary)]"
+                    data-testid="shop-checkout-blocked"
+                  >
+                    {blockMessage}{' '}
+                    {checkoutBlock !== 'rateUnavailable' ? (
+                      <a
+                        href="#shop-country"
+                        className="pro-focus-ring text-ink underline underline-offset-[3px]"
+                        data-testid="shop-checkout-choose-country"
+                      >
+                        {c.cart.chooseCountry}
+                      </a>
+                    ) : null}
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={onCheckout}
+                  disabled={checkoutPending || checkoutBlock !== null}
+                  className={cn(
+                    applicationPrimaryClasses(),
+                    'mt-4 w-full',
+                    checkoutPending ? 'disabled:cursor-wait' : 'disabled:cursor-not-allowed',
+                    'disabled:border-[var(--g-line-strong)] disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]',
+                  )}
+                  data-testid="shop-checkout"
+                >
+                  {checkoutPending ? c.cart.redirecting : c.cart.checkout}
+                </button>
+              </>
             ) : (
               <>
                 <p className="mt-4 text-[12px] text-[var(--g-text-secondary)]">

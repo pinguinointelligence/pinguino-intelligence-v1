@@ -70,6 +70,9 @@ export function ShopCatalog() {
   });
   const startCheckout = () => {
     if (starting.current || checkout.isPending) return;
+    /* The cart disables payment until a shippable country is chosen; this keeps an
+       empty country from ever reaching the checkout function. */
+    if (!checkoutCountry?.physicalAvailable) return;
     starting.current = true;
     setCheckoutError(null);
     checkout.mutate();
