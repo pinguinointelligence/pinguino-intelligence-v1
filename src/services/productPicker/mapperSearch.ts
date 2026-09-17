@@ -27,7 +27,9 @@ import {
 import {
   approvedConceptOrder,
   conceptDefaultIntent,
+  conceptLineage,
   loadMapperConceptDefaults,
+  loadMapperSearchRuntime,
   planMapperCatalogSearch,
   type ConceptDefaultFocus,
   type MapperConceptScope,
@@ -225,6 +227,13 @@ export type ConceptDefaultSelection =
       rank: number;
       scope: MapperConceptScope | null;
       recognisedBy: 'central' | 'parser';
+      /** The multi-word central mention this selection covers („syrop klonowy”). */
+      phraseText: string | null;
+    }
+  | {
+      /** Part of a multi-word mention another term of the same input owns. */
+      kind: 'covered';
+      phraseText: string;
     }
   | {
       /** A decision exists but the input states a requirement; offer the frozen order. */
@@ -234,7 +243,13 @@ export type ConceptDefaultSelection =
       reason: 'explicit_qualifier' | 'prepared_form_role';
     }
   | { kind: 'not_applicable'; reason: string }
-  | { kind: 'no_legal_candidate'; conceptKey: string; scope: MapperConceptScope | null }
+  | {
+      kind: 'no_legal_candidate';
+      conceptKey: string;
+      scope: MapperConceptScope | null;
+      /** `scope_policy`: SA-04 has no compliant candidate; `none_legal_now`: none is active/approved. */
+      reason: 'scope_policy' | 'none_legal_now';
+    }
   | { kind: 'unavailable'; reason: CatalogueUnavailableReason }
   | { kind: 'aborted' }
   | { kind: 'error'; message: string };
@@ -264,16 +279,27 @@ export async function selectApprovedConceptDefault(
   if (query.signal?.aborted) return { kind: 'aborted' };
   let plan: Awaited<ReturnType<typeof planMapperCatalogSearch>>;
   let defaults: Awaited<ReturnType<typeof loadMapperConceptDefaults>>;
+  let lineage: ReturnType<typeof conceptLineage>;
   try {
-    [plan, defaults] = await Promise.all([
-      planMapperCatalogSearch(query.text, { localeVariant: '*', marketScope: 'GLOBAL' }),
+    const [loadedPlan, loadedDefaults, runtime] = await Promise.all([
+      planMapperCatalogSearch(query.text, {
+        localeVariant: '*',
+        marketScope: 'GLOBAL',
+        // The literal search that may follow records the gaps once; this stage must not
+        // duplicate them in the bounded review telemetry.
+        telemetry: { record() {} },
+      }),
       loadMapperConceptDefaults(),
+      loadMapperSearchRuntime(),
     ]);
+    plan = loadedPlan;
+    defaults = loadedDefaults;
+    lineage = conceptLineage(runtime.release);
   } catch (error) {
     return { kind: 'error', message: error instanceof Error ? error.message : String(error) };
   }
-  const intent = conceptDefaultIntent(plan.resolution, query.focus, defaults);
-  if (intent.kind === 'not_applicable') return intent;
+  const intent = conceptDefaultIntent(plan.resolution, query.focus, defaults, lineage);
+  if (intent.kind === 'not_applicable' || intent.kind === 'covered') return intent;
 
   const recipeTypeScope =
     plan.resolution.recipeType === 'SORBET'
@@ -281,10 +307,15 @@ export async function selectApprovedConceptDefault(
       : plan.resolution.recipeType === 'GELATO'
         ? 'GELATO'
         : null;
-  const scope = query.scope ?? recipeTypeScope;
+  const scope = query.scope ?? intent.impliedScope ?? recipeTypeScope;
   const order = approvedConceptOrder(intent.decision, scope);
   if (order.length === 0) {
-    return { kind: 'no_legal_candidate', conceptKey: intent.decision.conceptKey, scope };
+    return {
+      kind: 'no_legal_candidate',
+      conceptKey: intent.decision.conceptKey,
+      scope,
+      reason: 'scope_policy',
+    };
   }
 
   const read = await readLegalMapperRowsById(order, query.signal);
@@ -292,15 +323,31 @@ export async function selectApprovedConceptDefault(
   if (query.signal?.aborted) return { kind: 'aborted' };
 
   if (intent.kind === 'clarify') {
+    if (read.rows.length === 0) {
+      return {
+        kind: 'no_legal_candidate',
+        conceptKey: intent.decision.conceptKey,
+        scope,
+        reason: 'none_legal_now',
+      };
+    }
     return {
       kind: 'clarify',
-      rows: read.rows,
+      // The frozen order keeps the default first, so a bounded choice never loses it.
+      rows: read.rows.slice(0, CONCEPT_CLARIFY_MAX_CANDIDATES),
       conceptKey: intent.decision.conceptKey,
       reason: intent.reason,
     };
   }
   const row = read.rows[0];
-  if (!row) return { kind: 'no_legal_candidate', conceptKey: intent.decision.conceptKey, scope };
+  if (!row) {
+    return {
+      kind: 'no_legal_candidate',
+      conceptKey: intent.decision.conceptKey,
+      scope,
+      reason: 'none_legal_now',
+    };
+  }
   return {
     kind: 'selected',
     row,
@@ -310,8 +357,12 @@ export async function selectApprovedConceptDefault(
     rank: order.indexOf(row.ingredient_id),
     scope,
     recognisedBy: intent.recognisedBy,
+    phraseText: intent.phraseText,
   };
 }
+
+/** A real choice stays a short list (the HOME §23 bound); the frozen default leads it. */
+export const CONCEPT_CLARIFY_MAX_CANDIDATES = 6;
 
 /** Exact-id legality read, returned in the caller's (frozen) order. */
 async function readLegalMapperRowsById(

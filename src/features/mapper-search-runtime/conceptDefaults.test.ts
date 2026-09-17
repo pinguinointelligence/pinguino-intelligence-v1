@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   approvedConceptOrder,
   conceptDefaultIntent,
+  conceptLineage,
   indexConceptDefaults,
 } from './conceptDefaults';
 import { MAPPER_CONCEPT_DEFAULTS } from './generated/conceptDefaults';
@@ -15,15 +16,24 @@ import {
 import { MAPPER_SEARCH_RELEASE_ID } from './generated/releaseManifest';
 import { readTestMapperSearchRelease, createTestMapperSearchRuntime } from './testRelease';
 
+/** The real 27 963-alias SA-10 runtime resolves several inputs per test; CI runners are slow. */
+const REAL_RUNTIME_TIMEOUT_MS = 60_000;
+
 const index = indexConceptDefaults(MAPPER_CONCEPT_DEFAULTS);
 const runtime = createTestMapperSearchRuntime();
+const lineage = conceptLineage(runtime.release);
 const resolve = (text: string) =>
   runtime.resolve(text, { localeVariant: '*', marketScope: 'GLOBAL', telemetry: { record() {} } });
-const intent = (text: string, focus: string, hint: string | null, unknown: string[] = []) =>
+const intent = (text: string, focus: string, hint: string | null) =>
   conceptDefaultIntent(
     resolve(text),
-    { text: focus, hintedConceptKey: hint, unknownContentTokens: unknown },
+    {
+      text: focus,
+      hintedConceptKey: hint,
+      siblingTexts: text.split(/\s+/).filter(Boolean),
+    },
     index,
+    lineage,
   );
 
 describe('SA03-EXPORT: FINAL concept defaults are exported verbatim with source control', () => {
@@ -100,70 +110,147 @@ describe('SA04-SCOPE: recipe scope narrows the frozen order without re-ranking',
   });
 });
 
-describe('HOME_ADD eligibility over the REAL SA-10 resolution', () => {
-  it('HOME-ADD-SEL-01: a generic concept word consumes the default', () => {
-    expect(intent('truskawka', 'truskawka', 'strawberry')).toMatchObject({
-      kind: 'default',
-      recognisedBy: 'central',
+describe(
+  'HOME_ADD eligibility over the REAL SA-10 resolution',
+  { timeout: REAL_RUNTIME_TIMEOUT_MS },
+  () => {
+    it('HOME-ADD-SEL-01: a generic concept word consumes the default', () => {
+      expect(intent('truskawka', 'truskawka', 'strawberry')).toMatchObject({
+        kind: 'default',
+        recognisedBy: 'central',
+      });
+      expect(intent('truskawkowe gelato', 'truskawkowe', 'strawberry')).toMatchObject({
+        kind: 'default',
+      });
+      expect(intent('truskawka mango', 'mango', 'mango')).toMatchObject({
+        kind: 'default',
+        decision: { conceptKey: 'mango' },
+      });
     });
-    expect(intent('truskawkowe gelato', 'truskawkowe', 'strawberry')).toMatchObject({
-      kind: 'default',
-    });
-    expect(intent('truskawka mango', 'mango', 'mango')).toMatchObject({
-      kind: 'default',
-      decision: { conceptKey: 'mango' },
-    });
-  });
 
-  it('HOME-ADD-SEL-02: a form the release does not know yet is bridged only by the recognised concept', () => {
-    expect(intent('truskawki', 'truskawki', 'strawberry')).toMatchObject({
-      kind: 'default',
-      recognisedBy: 'parser',
+    it('HOME-ADD-SEL-02: a form the release does not know yet selects only when a near central alias confirms it', () => {
+      for (const form of ['truskawki', 'truskawa', 'truskawaka']) {
+        expect(intent(form, form, 'strawberry')).toMatchObject({
+          kind: 'default',
+          recognisedBy: 'parser',
+          decision: { conceptKey: 'strawberry' },
+        });
+      }
+      expect(intent('truskawki', 'truskawki', null)).toMatchObject({
+        kind: 'not_applicable',
+        reason: 'no_concept',
+      });
     });
-    expect(intent('truskawki', 'truskawki', null)).toMatchObject({
-      kind: 'not_applicable',
-      reason: 'no_concept',
-    });
-  });
 
-  it('HOME-ADD-SEL-03: explicit qualifiers and prepared-form roles ask instead of defaulting', () => {
-    expect(intent('puree truskawkowe', 'truskawkowe', 'strawberry')).toMatchObject({
-      kind: 'clarify',
-      reason: 'explicit_qualifier',
+    it('HOME-ADD-SEL-03: explicit form qualifiers and prepared-form roles ask; agreeing and recipe attributes do not', () => {
+      expect(intent('puree truskawkowe', 'truskawkowe', 'strawberry')).toMatchObject({
+        kind: 'clarify',
+        reason: 'explicit_qualifier',
+      });
+      // „mrożona” is not an SA-10 alias, but it is one edit from the central qualifier „mrożony”.
+      expect(intent('mrożona truskawka', 'truskawka', 'strawberry')).toMatchObject({
+        kind: 'clarify',
+        reason: 'explicit_qualifier',
+      });
+      expect(intent('sos truskawkowy', 'truskawkowy', 'strawberry')).toMatchObject({
+        kind: 'clarify',
+        reason: 'prepared_form_role',
+      });
+      // Agreeing qualifier and a recipe attribute keep the default.
+      expect(intent('świeży banan', 'banan', 'banana')).toMatchObject({ kind: 'default' });
+      expect(intent('truskawka bez cukru', 'truskawka', 'strawberry')).toMatchObject({
+        kind: 'default',
+      });
+      expect(intent('bananowe wegańskie', 'bananowe', 'banana')).toMatchObject({
+        kind: 'default',
+        impliedScope: 'VEGAN',
+      });
     });
-    expect(intent('truskawka bez cukru', 'truskawka', 'strawberry')).toMatchObject({
-      kind: 'clarify',
-    });
-    expect(intent('sos truskawkowy', 'truskawkowy', 'strawberry')).toMatchObject({
-      kind: 'clarify',
-      reason: 'prepared_form_role',
-    });
-  });
 
-  it('HOME-ADD-SEL-04: unknown content words, conflicts and filler words', () => {
-    expect(intent('pregel truskawka', 'truskawka', 'strawberry', ['pregel'])).toMatchObject({
-      kind: 'not_applicable',
-      reason: 'unknown_content_words',
+    it('HOME-ADD-SEL-04: brands, grades, head nouns and alias collisions keep their meaning', () => {
+      expect(intent('pregel truskawka', 'truskawka', 'strawberry')).toMatchObject({
+        kind: 'not_applicable',
+        reason: 'explicit_brand',
+      });
+      for (const graded of ['czekolada 70%', 'gorzka czekolada 85%', 'dark chocolate 60%']) {
+        expect(intent(graded, 'czekolada', 'chocolate')).toMatchObject({
+          kind: 'not_applicable',
+          reason: 'explicit_grade',
+        });
+      }
+      expect(intent('mleko migdałowe', 'migdałowe', 'almond')).toMatchObject({
+        kind: 'not_applicable',
+        reason: 'adjacent_context',
+      });
+      expect(intent('leche de almendras', 'almendras', 'almond')).toMatchObject({
+        kind: 'not_applicable',
+        reason: 'adjacent_context',
+      });
+      expect(intent('jagoda', 'jagoda', 'blueberry')).toMatchObject({
+        kind: 'not_applicable',
+        reason: 'concept_conflict',
+      });
     });
-    expect(intent('mrożona truskawka', 'truskawka', 'strawberry', ['mrozona'])).toMatchObject({
-      kind: 'not_applicable',
-      reason: 'unknown_content_words',
-    });
-    expect(intent('jagoda', 'jagoda', 'blueberry')).toMatchObject({
-      kind: 'not_applicable',
-      reason: 'concept_conflict',
-    });
-    // A word the caller skipped (not kept as its own term) does not block.
-    expect(intent('chcę lody truskawkowe', 'truskawkowe', 'strawberry')).toMatchObject({
-      kind: 'default',
-    });
-  });
 
-  it('HOME-ADD-SEL-05: the selection module holds no product identity of its own', () => {
-    const source = readFileSync(
-      join(process.cwd(), 'src/features/mapper-search-runtime/conceptDefaults.ts'),
-      'utf8',
-    );
-    expect(source).not.toMatch(/PI-ING-\d/);
-  });
-});
+    it('HOME-ADD-SEL-06 (review): request and filler words never block; a connector belongs to the role', () => {
+      for (const [text, focus, hint] of [
+        ['zrób mi lody bananowe', 'bananowe', 'banana'],
+        ['poproszę banana', 'banana', 'banana'],
+        ['chciałabym truskawki', 'truskawki', 'strawberry'],
+        ['dodaj truskawki', 'truskawki', 'strawberry'],
+        ['truskawka jako topping', 'truskawka', 'strawberry'],
+      ] as const) {
+        expect(intent(text, focus, hint)).toMatchObject({ kind: 'default' });
+      }
+    });
+
+    it('HOME-ADD-SEL-07 (review): a typo is confirmed by the release, a real word never is', () => {
+      // „toffee” is a Mapper product word; the parser's one-edit guess „coffee” is not used.
+      expect(intent('toffee', 'toffee', 'coffee')).toMatchObject({ kind: 'not_applicable' });
+      expect(intent('fresca', 'fresca', 'strawberry')).toMatchObject({ kind: 'not_applicable' });
+    });
+
+    it('HOME-ADD-SEL-08 (review): a coarser, specific or unknown parser key defers to the release', () => {
+      expect(intent('gorzka czekolada', 'gorzka', 'chocolate')).toMatchObject({
+        kind: 'default',
+        decision: { conceptKey: 'dark_chocolate' },
+        phraseText: 'gorzka czekolada',
+      });
+      expect(intent('wiśnia', 'wiśnia', 'cherry')).toMatchObject({
+        kind: 'default',
+        decision: { conceptKey: 'sour_cherry' },
+      });
+      expect(intent('marakuja', 'marakuja', 'passionfruit')).toMatchObject({
+        kind: 'default',
+        decision: { conceptKey: 'passion_fruit' },
+      });
+    });
+
+    it('HOME-ADD-SEL-09 (review): one multi-word product is selected once', () => {
+      expect(intent('syrop klonowy', 'syrop', null)).toMatchObject({
+        kind: 'default',
+        decision: { conceptKey: 'maple_syrup' },
+        phraseText: 'syrop klonowy',
+      });
+      expect(intent('syrop klonowy', 'klonowy', null)).toMatchObject({
+        kind: 'covered',
+        phraseText: 'syrop klonowy',
+      });
+      expect(intent('mleczna czekolada', 'czekolada', 'chocolate')).toMatchObject({
+        kind: 'covered',
+      });
+      expect(intent('mleczna czekolada', 'mleczna', null)).toMatchObject({
+        kind: 'default',
+        decision: { conceptKey: 'milk_chocolate' },
+      });
+    });
+
+    it('HOME-ADD-SEL-05: the selection module holds no product identity of its own', () => {
+      const source = readFileSync(
+        join(process.cwd(), 'src/features/mapper-search-runtime/conceptDefaults.ts'),
+        'utf8',
+      );
+      expect(source).not.toMatch(/PI-ING-\d/);
+    });
+  },
+);
