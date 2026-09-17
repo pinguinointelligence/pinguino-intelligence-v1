@@ -92,7 +92,7 @@ export function adminPartnerActionCopy(action: AdminPartnerPendingAction): Admin
     case 'connect':
       return copy(
         `Przygotować konto Connect dla ${action.partner}?`,
-        'Gellatti utworzy konto wypłat Connect dla tego partnera.',
+        'Gellatti utworzy konto wypłat. Partner potem potwierdza tożsamość i dane do wypłat w Stripe.',
         'Przygotuj konto',
         false,
         false,
