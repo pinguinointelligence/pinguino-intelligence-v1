@@ -135,23 +135,45 @@ revoke all on function public.gellatti_partner_daily_jobs_v1() from public, anon
 -- TEST MODE ONLY by default: the batch is built with p_livemode => false.
 -- A live batch additionally requires the owner release
 -- (gellatti_assert_payout_allowed_v1), so nothing here can move real money.
+-- ONE SNAPSHOT PATH. `gellatti-partner-tier-snapshots` (applied separately,
+-- daily at 02:30) already runs the catch-up and the writer through
+-- gellatti_partner_tier_snapshot_job_v1, under its own advisory lock. This job
+-- therefore does NOT write the month's snapshots a second time 15 minutes
+-- later: it checks whether the current Madrid month already has rows and, if it
+-- does, records who owns them. If that job is absent, or did not run, this job
+-- still repairs the month — both writers are `on conflict do nothing`, so the
+-- worst case of running anyway is a no-op, and the worst case of never running
+-- is every commission of the month deferred on `tier_snapshot_missing`.
 create or replace function public.gellatti_partner_monthly_jobs_v1()
 returns jsonb
-language sql
+language plpgsql
 security definer
 set search_path = public
 as $$
-  select jsonb_build_object(
-    -- catch-up BEFORE the current month, so a missed period is repaired first
-    'tierSnapshotCatchup',
-    public.gellatti_run_partner_job_v1('tier_snapshot_catchup'),
-    'tierSnapshots',
-    public.gellatti_run_partner_job_v1('tier_snapshots'),
-    'eligibility',
-    public.gellatti_run_partner_job_v1('commission_eligibility'),
-    'payoutBatch',
-    public.gellatti_run_partner_job_v1('payout_batch_test')
+declare
+  v_snapshots jsonb;
+begin
+  if to_regprocedure('public.gellatti_partner_tier_snapshot_job_v1()') is not null
+     and exists (
+       select 1 from public.partner_tier_snapshots s
+       where s.month = date_trunc('month', (now() at time zone 'Europe/Madrid'))::date
+     )
+  then
+    v_snapshots := jsonb_build_object('ranHere', false, 'owner', 'gellatti-partner-tier-snapshots');
+  else
+    v_snapshots := jsonb_build_object(
+      'ranHere', true,
+      -- catch-up BEFORE the current month, so a missed period is repaired first
+      'tierSnapshotCatchup', public.gellatti_run_partner_job_v1('tier_snapshot_catchup'),
+      'tierSnapshots', public.gellatti_run_partner_job_v1('tier_snapshots'));
+  end if;
+
+  return jsonb_build_object(
+    'tierSnapshots', v_snapshots,
+    'eligibility', public.gellatti_run_partner_job_v1('commission_eligibility'),
+    'payoutBatch', public.gellatti_run_partner_job_v1('payout_batch_test')
   );
+end;
 $$;
 
 revoke all on function public.gellatti_partner_monthly_jobs_v1() from public, anon, authenticated;

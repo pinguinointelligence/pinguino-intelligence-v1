@@ -42,10 +42,12 @@ describe.each([
   });
 
   it('drops the tables the migration created, and no other', () => {
+    /* A drop may be guarded (executed only when nothing else writes the table),
+       so the statement is matched with or without its closing quote. */
     const created = createdTables(migration);
-    expect([...rollback.matchAll(/drop table if exists public\.([a-z0-9_]+);/g)].map((m) => m[1]).sort()).toEqual(
-      [...created].sort(),
-    );
+    expect(
+      [...rollback.matchAll(/drop table if exists public\.([a-z0-9_]+)'?;?/g)].map((m) => m[1]).sort(),
+    ).toEqual([...created].sort());
   });
 
   it('changes no data row and runs as one transaction', () => {
@@ -56,6 +58,15 @@ describe.each([
 });
 
 describe('20260831203000_partner_scheduling rollback', () => {
+  it('keeps partner_job_runs while the applied tier-snapshot job still writes to it', () => {
+    /* public.partner_job_runs is created by this migration AND by the applied
+       tier-snapshot lifecycle, which writes a row on every nightly run.
+       Dropping it unconditionally would leave that job failing every night. */
+    expect(SCHEDULING_RB).toContain("to_regprocedure('public.gellatti_partner_tier_snapshot_job_v1()') is not null");
+    expect(SCHEDULING_RB).toContain("raise notice 'partner_job_runs kept");
+    expect(SCHEDULING_RB).toContain("execute 'drop table if exists public.partner_job_runs'");
+  });
+
   it('unschedules exactly the pg_cron jobs the migration schedules', () => {
     const scheduled = [...strip(SCHEDULING).matchAll(/cron\.schedule\(\s*'([a-z0-9-]+)'/g)].map((m) => m[1]).sort();
     expect(scheduled).toEqual(['gellatti-partner-daily', 'gellatti-partner-monthly']);
