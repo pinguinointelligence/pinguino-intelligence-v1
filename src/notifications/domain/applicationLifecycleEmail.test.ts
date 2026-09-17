@@ -30,6 +30,11 @@ const migration = readFileSync(
   'utf8',
 );
 
+const foundation = readFileSync(
+  new URL('../../../supabase/migrations/20260910175900_mail_origin_and_escaping.sql', import.meta.url),
+  'utf8',
+).replace(/--[^\n]*/g, '');
+
 const rollback = readFileSync(
   new URL(
     '../../../supabase/rollbacks/20260910180000_partner_application_lifecycle_email.rollback.sql',
@@ -50,16 +55,16 @@ const subjectKeysUsed = [
   ...executable.matchAll(/(?:p_subject_key|v_subject_key) := '([A-Za-z]+)'/g),
 ].map((m) => m[1] as string);
 
-const fn = (name: string): string => {
-  const start = executable.indexOf(`create or replace function public.${name}(`);
-  if (start < 0) throw new Error(`${name} is not defined in the migration`);
-  const end = executable.indexOf('$function$;', start);
-  return executable.slice(start, end);
+const fn = (sql: string, name: string): string => {
+  const start = sql.indexOf(`create or replace function public.${name}(`);
+  if (start < 0) throw new Error(`${name} is not defined here`);
+  const end = sql.indexOf('$function$;', start);
+  return sql.slice(start, end);
 };
 
-const MAIL = fn('gellatti_partner_application_email_v1');
-const STAMP = fn('gellatti_partner_application_stamp_app_v1');
-const RESOLVER = fn('gellatti_request_app_origin_v1');
+const MAIL = fn(executable, 'gellatti_partner_application_email_v1');
+const STAMP = fn(executable, 'gellatti_partner_application_stamp_app_v1');
+const RESOLVER = fn(foundation, 'gellatti_request_app_origin_v1');
 
 describe('C-APP-08 uses the existing email system, not a new one', () => {
   it('every subject_key exists in the closed taxonomy', () => {
@@ -163,9 +168,16 @@ describe('C-APP-08 decides the environment and the links on the server (owner, 2
     );
   });
 
+  it('refuses to apply without the mail foundation, and defines none of it itself', () => {
+    expect(executable).toContain("raise exception 'apply 20260910175900_mail_origin_and_escaping.sql first';");
+    expect(executable).not.toMatch(/create table if not exists public\.app_origins/);
+    expect(executable).not.toContain('create or replace function public.gellatti_request_app_origin_v1(');
+    expect(executable).not.toContain('create or replace function public.gellatti_html_escape_v1(');
+  });
+
   it('the map is the three origins shop-digital-document already trusts, and nothing else', () => {
     const rows = [
-      ...executable.matchAll(/\('(https:\/\/[a-z0-9.-]+)', '(production|staging)', '(https:\/\/[a-z0-9.-]+)'\)/g),
+      ...foundation.matchAll(/\('(https:\/\/[a-z0-9.-]+)', '(production|staging)', '(https:\/\/[a-z0-9.-]+)'\)/g),
     ].map((m) => ({ origin: m[1], environment: m[2], base: m[3] }));
     const shop = readFileSync(
       new URL('../../../supabase/functions/shop-digital-document/index.ts', import.meta.url),
@@ -182,9 +194,9 @@ describe('C-APP-08 decides the environment and the links on the server (owner, 2
   });
 
   it('the map is closed to clients', () => {
-    expect(executable).toContain('alter table public.app_origins enable row level security;');
-    expect(executable).toContain('revoke all on table public.app_origins from public, anon, authenticated;');
-    expect(executable).toContain(
+    expect(foundation).toContain('alter table public.app_origins enable row level security;');
+    expect(foundation).toContain('revoke all on table public.app_origins from public, anon, authenticated;');
+    expect(foundation).toContain(
       'revoke all on function public.gellatti_request_app_origin_v1() from public, anon, authenticated;',
     );
   });
@@ -196,18 +208,30 @@ describe('C-APP-08 decides the environment and the links on the server (owner, 2
   });
 
   it('the row is stamped by the request that creates it; an admin decision keeps it', () => {
-    expect(STAMP).toMatch(/if tg_op = 'INSERT' then\s*\n[\s\S]{0,120}v_app := public\.gellatti_request_app_origin_v1\(\);/);
     expect(STAMP).toMatch(
-      /elsif new\.status = 'submitted'\s*\n\s*and old\.status is distinct from 'submitted'\s*\n\s*and auth\.uid\(\) is not distinct from new\.user_id then/,
+      /if tg_op = 'UPDATE'\s*\n\s*and not \(new\.status = 'submitted'\s*\n\s*and old\.status is distinct from 'submitted'\s*\n\s*and auth\.uid\(\) is not distinct from new\.user_id\) then\s*\n[\s\S]{0,120}new\.app_environment := old\.app_environment;\s*\n\s*new\.app_origin_matched := old\.app_origin_matched;\s*\n\s*return new;/,
     );
-    expect(STAMP).toMatch(/new\.app_environment := old\.app_environment;\s*\n\s*new\.app_origin_matched := old\.app_origin_matched;/);
     expect(executable).toMatch(/create trigger partner_application_stamp_app\s*\n\s*before insert or update on public\.partner_applications/);
+  });
+
+  it('a resolver failure stamps staging instead of refusing the application', () => {
+    expect(STAMP).toMatch(
+      /begin\s*\n\s*v_app := public\.gellatti_request_app_origin_v1\(\);\s*\n\s*exception when others then\s*\n\s*v_app := null;\s*\n\s*end;\s*\n\s*new\.app_environment := coalesce\(v_app->>'environment', 'staging'\);\s*\n\s*new\.app_origin_matched := coalesce\(\(v_app->>'matched'\)::boolean, false\);/,
+    );
   });
 
   it('the mail follows the stamp, and only an unstamped row falls back to the request', () => {
     expect(MAIL).toMatch(
-      /if new\.app_environment is not null then\s*\n\s*v_environment := new\.app_environment;[\s\S]*?else\s*\n\s*v_environment := public\.gellatti_request_app_origin_v1\(\)->>'environment';/,
+      /if new\.app_environment is not null then\s*\n\s*v_environment := new\.app_environment;[\s\S]*?else\s*\n\s*begin\s*\n\s*v_environment := public\.gellatti_request_app_origin_v1\(\)->>'environment';\s*\n\s*exception when others then\s*\n\s*v_environment := null;\s*\n\s*end;\s*\n\s*v_environment := coalesce\(v_environment, 'staging'\);/,
     );
+  });
+
+  it('every value in the HTML body is escaped, including an admin reason', () => {
+    const html = MAIL.slice(MAIL.indexOf('p_body_html :='), MAIL.indexOf('p_body_text :='));
+    for (const value of ['v_body_lead', 'v_body_action', 'v_app_url']) {
+      expect(html).toContain(`public.gellatti_html_escape_v1(${value})`);
+      expect(html.replaceAll(`public.gellatti_html_escape_v1(${value})`, '')).not.toMatch(new RegExp(`\\b${value}\\b`));
+    }
   });
 });
 
@@ -237,19 +261,22 @@ describe('C-APP-08 says what happened (owner, 2026-09-17)', () => {
 });
 
 describe('C-APP-08 is reversible', () => {
-  it('the rollback drops both triggers, their functions, the resolver, the map and the stamp columns', () => {
+  it('the rollback drops both triggers, their functions and the stamp columns', () => {
     for (const statement of [
       'drop trigger if exists partner_application_lifecycle_email on public.partner_applications;',
       'drop function if exists public.gellatti_partner_application_email_v1();',
       'drop trigger if exists partner_application_stamp_app on public.partner_applications;',
       'drop function if exists public.gellatti_partner_application_stamp_app_v1();',
-      'drop function if exists public.gellatti_request_app_origin_v1();',
       'drop column if exists app_origin_matched,',
       'drop column if exists app_environment;',
-      'drop table if exists public.app_origins;',
     ]) {
       expect(rollback).toContain(statement);
     }
+  });
+
+  it('the rollback leaves the mail foundation to its own rollback', () => {
+    const statements = rollback.replace(/--[^\n]*/g, '');
+    expect(statements).not.toMatch(/app_origins|gellatti_request_app_origin_v1|gellatti_html_escape_v1/);
   });
 
   it('the rollback leaves the submit RPC alone, because the migration no longer changes it', () => {

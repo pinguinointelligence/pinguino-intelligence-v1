@@ -8,8 +8,9 @@
  * on the isolated QA branch 'https://gellatti.com.attacker.example' produced a
  * production-labelled mail with production links. Owner decision: the
  * environment and the links are decided on the server, never from a value the
- * client sends. The migration now reads the HTTP Origin header PostgREST
- * received and matches it exactly against the closed `app_origins` map.
+ * client sends. The migration now asks gellatti_request_app_origin_v1()
+ * (20260910175900), which reads the HTTP Origin header PostgREST received and
+ * matches it exactly against the closed `app_origins` map.
  *
  * These tests keep the body free of any environment claim, so nobody quietly
  * reintroduces the trusted-client shape.
@@ -68,8 +69,13 @@ describe('partner application environment is decided on the server', () => {
     expect(executable).not.toMatch(/gellatti_submit_partner_application_v1/);
   });
 
-  it('the migration matches the request Origin header exactly against the closed map', () => {
-    expect(executable).toContain("current_setting('request.headers', true)");
-    expect(executable).toMatch(/where o\.origin = v_origin;/);
+  it('the migration asks the server-side resolver, which matches the request Origin header exactly', () => {
+    expect(executable).toContain('public.gellatti_request_app_origin_v1()');
+    const foundation = readFileSync(
+      new URL('../../supabase/migrations/20260910175900_mail_origin_and_escaping.sql', import.meta.url),
+      'utf8',
+    ).replace(/--[^\n]*/g, '');
+    expect(foundation).toContain("current_setting('request.headers', true)");
+    expect(foundation).toMatch(/where o\.origin = v_origin;/);
   });
 });

@@ -19,9 +19,10 @@
 --                                          application (added with this rework)
 --   * `PARTNER` is already in the closed `metadata.area` vocabulary email_jobs
 --     enforces.
---   * the closed app-origin map shop-digital-document already trusts
---     (staging.pinguinoai.com, www.gellatti.com, gellatti.com). `app_origins`
---     below holds the same three rows; a contract test keeps them identical.
+--   * 20260910175900_mail_origin_and_escaping.sql: the closed `app_origins` map,
+--     the exact request-origin resolver and the HTML escape helper.
+--
+-- DEPENDS ON 20260910175900_mail_origin_and_escaping.sql (refuses without it).
 --
 -- WHY TRIGGERS RATHER THAN EDITING THE RPCs:
 --   The status is written from four places today (submit, admin decision, admin
@@ -56,8 +57,9 @@
 --     'https://gellatti.com.attacker.example' produced a production-labelled
 --     mail with production links. Now:
 --       - the HTTP Origin header PostgREST received (`request.headers`) is
---         matched EXACTLY against `public.app_origins`; nothing in the body is
---         read, and the submit RPC is no longer redefined here;
+--         matched EXACTLY against `public.app_origins` by
+--         gellatti_request_app_origin_v1(); nothing in the body is read, and the
+--         submit RPC is no longer redefined here;
 --       - every link is built from the map's `base_url`, never from the request;
 --       - an absent or unknown origin is never production.
 --     The environment is stamped on the row by the request that CREATED it (the
@@ -67,6 +69,8 @@
 --   * NO PAYOUT-SETUP MAIL. The Partner does not configure payouts, so
 --     "Dokończ konfigurację wypłat" (partnerConnectActionRequired) is no longer
 --     sent from here.
+--   * An admin's reason reaches the mail as text, never as markup
+--     (gellatti_html_escape_v1).
 --   * A MAIL SAYS WHAT HAPPENED. Admin activation and invitation acceptance
 --     insert the row already 'approved'; nobody applied, so they receive
 --     partnerActivated ("Tryb Partner jest aktywny"), never "Zgłoszenie
@@ -78,70 +82,14 @@
 --   queue failure cannot roll back an approval or a rejection. A missing mail is
 --   visible as an absent email_jobs row; a lost decision is not recoverable.
 
--- ── The closed app-origin map ────────────────────────────────────────────────
-create table if not exists public.app_origins (
-  origin text primary key,
-  environment text not null,
-  base_url text not null,
-  constraint app_origins_origin_shape check (origin ~ '^https://[a-z0-9.-]+$'),
-  constraint app_origins_base_url_shape check (base_url ~ '^https://[a-z0-9.-]+$'),
-  constraint app_origins_environment check (environment in ('production', 'staging'))
-);
-
-alter table public.app_origins enable row level security;
--- No policies and no client grants: read by SECURITY DEFINER functions only.
-revoke all on table public.app_origins from public, anon, authenticated;
-
-insert into public.app_origins (origin, environment, base_url) values
-  ('https://staging.pinguinoai.com', 'staging', 'https://staging.pinguinoai.com'),
-  ('https://www.gellatti.com', 'production', 'https://www.gellatti.com'),
-  ('https://gellatti.com', 'production', 'https://www.gellatti.com')
-on conflict (origin) do update
-  set environment = excluded.environment, base_url = excluded.base_url;
-
--- The app THIS REQUEST came from. The Origin header is set by the browser, not
--- by page script, and only an exact match against the closed map counts: a
--- suffix, a prefix or a lookalike host is unknown, and unknown is staging —
--- a production mail labelled staging is noise, a staging mail labelled
--- production hides a test in a real inbox.
-create or replace function public.gellatti_request_app_origin_v1()
- returns jsonb
- language plpgsql
- stable
- security definer
- set search_path to 'pg_catalog', 'public'
-as $function$
-declare
-  v_origin text := '';
-  v_result jsonb;
+do $dependency$
 begin
-  begin
-    v_origin := lower(rtrim(btrim(coalesce(
-      nullif(current_setting('request.headers', true), '')::jsonb ->> 'origin', ''
-    )), '/'));
-  exception when others then
-    v_origin := '';
-  end;
-
-  select jsonb_build_object('environment', o.environment, 'baseUrl', o.base_url, 'matched', true)
-    into v_result
-    from public.app_origins o
-    where o.origin = v_origin;
-
-  if v_result is null then
-    select jsonb_build_object('environment', 'staging', 'baseUrl', o.base_url, 'matched', false)
-      into v_result
-      from public.app_origins o
-      where o.environment = 'staging'
-      order by o.origin
-      limit 1;
+  if to_regprocedure('public.gellatti_request_app_origin_v1()') is null
+     or to_regprocedure('public.gellatti_html_escape_v1(text)') is null
+     or to_regclass('public.app_origins') is null then
+    raise exception 'apply 20260910175900_mail_origin_and_escaping.sql first';
   end if;
-
-  return v_result;
-end;
-$function$;
-
-revoke all on function public.gellatti_request_app_origin_v1() from public, anon, authenticated;
+end $dependency$;
 
 -- ── The environment stamp on the application row ─────────────────────────────
 alter table public.partner_applications
@@ -163,23 +111,26 @@ as $function$
 declare
   v_app jsonb;
 begin
-  if tg_op = 'INSERT' then
-    -- The request that creates the row decides, whatever a writer passed.
-    v_app := public.gellatti_request_app_origin_v1();
-  elsif new.status = 'submitted'
-        and old.status is distinct from 'submitted'
-        and auth.uid() is not distinct from new.user_id then
-    -- The applicant resubmitting from the app they use now.
-    v_app := public.gellatti_request_app_origin_v1();
-  else
-    -- An admin decision keeps the applicant's environment.
+  if tg_op = 'UPDATE'
+     and not (new.status = 'submitted'
+              and old.status is distinct from 'submitted'
+              and auth.uid() is not distinct from new.user_id) then
+    -- An admin decision, or any other write, keeps the applicant's environment.
     new.app_environment := old.app_environment;
     new.app_origin_matched := old.app_origin_matched;
     return new;
   end if;
 
-  new.app_environment := v_app->>'environment';
-  new.app_origin_matched := (v_app->>'matched')::boolean;
+  -- The request that creates the row decides, whatever a writer passed; so does
+  -- the applicant resubmitting from the app they use now. A resolver failure must
+  -- not refuse the application: it is stamped staging, the safe direction.
+  begin
+    v_app := public.gellatti_request_app_origin_v1();
+  exception when others then
+    v_app := null;
+  end;
+  new.app_environment := coalesce(v_app->>'environment', 'staging');
+  new.app_origin_matched := coalesce((v_app->>'matched')::boolean, false);
   return new;
 end;
 $function$;
@@ -272,13 +223,22 @@ begin
     v_environment := new.app_environment;
     v_environment_source := 'row';
   else
-    v_environment := public.gellatti_request_app_origin_v1()->>'environment';
+    begin
+      v_environment := public.gellatti_request_app_origin_v1()->>'environment';
+    exception when others then
+      v_environment := null;
+    end;
+    v_environment := coalesce(v_environment, 'staging');
     v_environment_source := 'request';
   end if;
 
-  select min(o.base_url) into v_base_url
-    from public.app_origins o
-    where o.environment = v_environment;
+  begin
+    select min(o.base_url) into v_base_url
+      from public.app_origins o
+      where o.environment = v_environment;
+  exception when others then
+    v_base_url := null;
+  end;
   if v_base_url is null then
     raise warning 'partner_application_email_skipped_no_app_origin for % (%)', new.id, v_environment;
     return new;
@@ -293,8 +253,9 @@ begin
       p_subject := case when v_environment = 'production' then '' else '[STAGING] ' end
         || v_subject_tail,
       p_recipient := v_email,
-      p_body_html := '<p>' || v_body_lead || '</p><p>' || v_body_action || '</p>'
-        || '<p><a href="' || v_app_url || '">Otwórz panel Partner</a></p>',
+      p_body_html := '<p>' || public.gellatti_html_escape_v1(v_body_lead) || '</p><p>'
+        || public.gellatti_html_escape_v1(v_body_action) || '</p>'
+        || '<p><a href="' || public.gellatti_html_escape_v1(v_app_url) || '">Otwórz panel Partner</a></p>',
       p_body_text := v_body_lead || chr(10) || chr(10) || v_body_action || chr(10) || chr(10)
         || v_app_url || chr(10),
       p_environment := v_environment,

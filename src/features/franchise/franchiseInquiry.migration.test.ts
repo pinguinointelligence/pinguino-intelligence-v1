@@ -5,6 +5,9 @@
  * Both migrations were applied by hand and verified live:
  *   20260906200629  franchise_inquiries.source_route + the route allowlist (A-IA-07)
  *   20260910032351  the admin e-mail to info@gellatti.com (P-LEAD-06)
+ * and one correction is written, NOT applied, waiting for owner approval:
+ *   20260917180000  the environment decided on the server, request values
+ *                   escaped (Growth QA, 2026-09-17)
  *
  * Nothing in the suite pinned either one. The client side is pinned
  * (`leadEnquiry.test.tsx`, `franchiseOrigin.test.ts`), but a later
@@ -129,14 +132,60 @@ describe('P-LEAD-06 — the admin is e-mailed at info@gellatti.com', () => {
     expect(LATEST).toContain(`'area', '${spec.area}'`);
   });
 
-  it('classifies the environment from the origin itself, defaulting to staging', () => {
-    // Staging and production share one database, so the caller's origin is the
-    // only signal. A missing or unknown origin must never read as production.
-    expect(LATEST).toContain("v_origin text := btrim(coalesce(p_inquiry->>'origin', ''));");
-    expect(LATEST).toMatch(
-      /v_environment := case when v_origin ilike '%gellatti\.com%' then 'production' else 'staging' end;/,
-    );
+  it('decides the environment on the server, never from the request body', () => {
+    // Staging and production share one database. The live 20260910032351 body
+    // read `origin` from the payload and matched `ilike '%gellatti.com%'`, which
+    // labelled 'https://gellatti.com.attacker.example' production (QA, as anon).
+    expect(LATEST).not.toContain("p_inquiry->>'origin'");
+    expect(LATEST).not.toMatch(/ilike/i);
+    expect(LATEST).toContain('v_app := public.gellatti_request_app_origin_v1();');
+    expect(LATEST).toContain("v_environment := coalesce(v_app->>'environment', 'staging');");
     expect(LATEST).toContain('p_environment := v_environment');
+  });
+
+  it('builds the admin link from the closed map, never from the request', () => {
+    expect(LATEST).toContain(
+      "v_admin_url := coalesce(v_app->>'baseUrl', 'https://staging.pinguinoai.com') || '/admin/franchise';",
+    );
+    expect(LATEST).not.toContain('https://www.gellatti.com/admin/franchise');
+  });
+
+  it('keeps the lead when the origin cannot be resolved', () => {
+    // A resolver failure falls back to staging inside its own sub-block; it can
+    // never abort the insert the visitor just made.
+    expect(LATEST).toMatch(
+      /begin v_app := public\.gellatti_request_app_origin_v1\(\); exception when others then v_app := null; end;/,
+    );
+  });
+
+  it('puts request values into the HTML only escaped', () => {
+    // The RPC is granted to anon: a name of '<a href="…">Otwórz w panelu Admin</a>'
+    // arrived at info@gellatti.com as a working link (QA, as anon).
+    const html = LATEST.slice(LATEST.indexOf('p_body_html :='), LATEST.indexOf('p_body_text :='));
+    for (const value of ['v_name', 'v_concept', 'v_source', 'v_email', 'v_admin_url']) {
+      expect(html, `${value} must be escaped`).toContain(`public.gellatti_html_escape_v1(${value})`);
+      expect(html.replaceAll(`public.gellatti_html_escape_v1(${value})`, '')).not.toMatch(
+        new RegExp(`\\b${value}\\b`),
+      );
+    }
+  });
+
+  it('sanitises the subject identifier like emailSubject ES5', () => {
+    expect(LATEST).toContain(
+      "v_label := left(btrim(regexp_replace(regexp_replace( v_name || ' · ' || v_concept, '[[:cntrl:]]+', ' ', 'g'), '\\s+', ' ', 'g')), 100);",
+    );
+    expect(LATEST).toMatch(/v_subject := '\[GELLATTI\]\[FRANCHISE\]\[INQUIRY\]\[NEW\]' \|\| case when v_environment = 'production' then '' else '\[STAGING\]' end \|\| ' ' \|\| v_label;/);
+  });
+
+  it('the correction refuses to apply without its foundation, and its rollback restores the live body byte-identical', () => {
+    const correction = read('20260917180000_franchise_inquiry_server_environment.sql');
+    expect(correction).toContain("raise exception 'apply 20260910175900_mail_origin_and_escaping.sql first';");
+    expect(correction).not.toMatch(/^\s*(grant|revoke)\b/im);
+    const rollback = readFileSync(
+      new URL('../../../supabase/rollbacks/20260917180000_franchise_inquiry_server_environment.rollback.sql', import.meta.url),
+      'utf8',
+    );
+    expect(definitionIn(rollback)).toBe(definitionIn(read('20260910032351_franchise_inquiry_admin_email.sql')));
   });
 
   it('keeps the lead when the e-mail cannot be queued', () => {

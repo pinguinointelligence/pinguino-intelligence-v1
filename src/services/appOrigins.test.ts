@@ -84,8 +84,8 @@ describe('one closed map everywhere', () => {
     ).toEqual(shared);
   });
 
-  it('equals public.app_origins as the partner lifecycle migration seeds it', () => {
-    const sql = read('supabase/migrations/20260910180000_partner_application_lifecycle_email.sql');
+  it('equals public.app_origins as the mail foundation migration seeds it', () => {
+    const sql = read('supabase/migrations/20260910175900_mail_origin_and_escaping.sql');
     expect(
       rows(sql.matchAll(/\('(https:\/\/[a-z0-9.-]+)', '(production|staging)', '(https:\/\/[a-z0-9.-]+)'\)/g)),
     ).toEqual(shared);

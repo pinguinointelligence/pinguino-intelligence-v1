@@ -12,7 +12,7 @@
  * inbox. Links and redirects are built from `base`, never from the header.
  *
  * The same three rows as `APP_ORIGINS` in shop-digital-document and as
- * `public.app_origins` (migration 20260910180000); a contract test keeps them
+ * `public.app_origins` (migration 20260910175900); a contract test keeps them
  * equal.
  */
 
