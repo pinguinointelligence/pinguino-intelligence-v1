@@ -908,9 +908,47 @@ select payload from qa_harness.observations where run_id = '{c.run}' and worker 
     c.save()
 
 
+def slice13(c: Campaign):
+    """The two clocks disagree: a renewal paid on the Stripe clock IN THE NEXT MONTH, while the
+    database (and therefore the tier snapshot writer) is still in this one."""
+    st = 'S13'
+    L = lane(c, 's13cross', 'STRIPE_PRICE_HOME_MONTHLY_STANDARD', 'home_monthly_standard', backdate=False)
+    inv = first_paid_facts(c, st, 'S13 lane', L, 999)
+    c.wait_events('s13-events-1', [inv['id']], ['invoice.paid'], timeout=120)
+    led = wait_ledger(c, 's13-ledger-1', L['sub'], lambda l: len(l['entries']) >= 1, timeout=90)
+    c.check(st, 'the first payment, in the real month, books 199', [199], [e['amount'] for e in led['entries']])
+
+    # One month forward ON THE STRIPE CLOCK ONLY. The database clock does not move.
+    target = month_shift(L['t0'], 1) + 2 * 3600
+    clock = advance(c, 's13-advance', L['clock'], target)
+    db_now = c.sql('s13-dbnow', 'select now() as now, (now() at time zone \'Europe/Madrid\')::date as madrid_day;')[0]
+    c.clocks('S13.next-month-renewal', stripe_clock=clock['frozen_time'],
+             business_time='the scheduled snapshot job still runs at the real month')
+    c.say(f"s13 clocks: stripe={datetime.datetime.utcfromtimestamp(clock['frozen_time']).isoformat()}Z db={db_now['now']} madrid={db_now['madrid_day']}")
+    renewal = [i for i in invoices(c, 's13-invoices', L['sub']) if i.get('billing_reason') == 'subscription_cycle']
+    c.check(st, 'the renewal invoice is paid on the Stripe clock, one month ahead of the database',
+            True, len(renewal) == 1 and renewal[0]['status'] == 'paid')
+    ev = c.wait_events('s13-events-2', [renewal[0]['id']], ['invoice.paid'], timeout=150)
+    notes = [(e['type'], e['state'], e['failure'], e['attempts']) for e in ev if e['type'].startswith('invoice.')]
+    c.say(f's13 renewal deliveries: {json.dumps(notes)}')
+    time.sleep(10)
+    led = ledger(c, 's13-ledger-2', L['sub'])
+    snap = c.sql('s13-snapshot-month', f"""select coalesce(jsonb_agg(jsonb_build_object('month', month, 'tier', tier) order by month), '[]'::jsonb) as s
+from public.partner_tier_snapshots where partner_id = '{PARTNER_A}';""")[0]['s']
+    c.say(f's13 partner snapshots: {json.dumps(snap, default=str)}')
+    c.check(st, 'CONTRACT: the renewal of a paid subscription books one more 199 whatever month it falls in',
+            [199, 199], [e['amount'] for e in led['entries']])
+    c.check(st, 'every renewal delivery is settled (nothing parked in received)', [],
+            [f"{t}:{s2}:{f}" for (t, s2, f, a) in notes if s2 != 'processed'])
+    json.dump({'lane': {k: L[k] for k in ('uid', 'clock', 'customer', 'sub', 'first_invoice')}, 'renewal': renewal[0]['id'],
+               'clock': clock['frozen_time'], 'dbNow': db_now['now'], 'notes': notes, 'snapshots': snap, 'ledger': led},
+              open(os.path.join(c.dir, 'ids-s13.json'), 'w'), indent=1, default=str)
+    c.save()
+
+
 if __name__ == '__main__':
     camp = Campaign(sys.argv[2] if len(sys.argv) > 2 else None)
     {'slice1': slice1, 'slice2': slice2, 'slice2b': slice2b, 'slice3': slice3, 'slice4': slice4, 'slice5': slice5,
      'u1': slice_u1, 'u2': slice_u2, 'slice6': slice5b, 'slice7': slice7, 'slice8': slice8, 'slice9': slice9,
-     'slice10': slice10, 'slice11': slice11}[sys.argv[1]](camp)
+     'slice10': slice10, 'slice11': slice11, 'slice13': slice13}[sys.argv[1]](camp)
     camp.say(f"run {camp.run}: {sum(x['pass'] for x in camp.checks)}/{len(camp.checks)} checks passed")
