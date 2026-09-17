@@ -1,35 +1,41 @@
--- A customer's OWN photograph on a direct share (owner decision 2026-09-17).
+-- A customer's OWN photograph on a direct share (owner decisions 2026-09-17).
 --
--- READY / NOT APPLIED — WAITING OWNER DB APPROVAL. Apply exactly this file, never
--- through `db push`. Rollback: supabase/rollbacks/20260917154000_direct_share_own_photo.rollback.sql
+-- Apply exactly this file, never through `db push`.
+-- Rollback: supabase/rollbacks/20260917154000_direct_share_own_photo.rollback.sql
 --
 -- Rule: a shared recipe shows the sharer's own photograph when one is attached,
--- otherwise the branded card of the shared version's profile (client authority
--- `recipeImageAuthority`, context `customer_share`). Until now nothing could
--- carry that photograph: no share, recipe or version table stores one.
+-- otherwise the delivered card of the SHARED VERSION's profile (client authority
+-- `recipeImageAuthority`, context `customer_share`).
+--
+-- Who may see the attached photograph (owner):
+--   * anyone holding a valid, active, unexpired share TOKEN — a logged-out guest
+--     included. The token is the share's own capability, exactly as in
+--     gellatti_resolve_share_v1; signing in is not an extra condition for the
+--     photograph. Recipe entitlement, gram redaction and the paywall are not
+--     touched by this and stay where they are.
+--   * without the token, only the sharer, the recipe owner or a recipient row
+--     (the `/received` route) — a share id alone gives nothing.
+--   * after a link is revoked or expires, EVERY new request is refused. There is
+--     no signed URL and no public object: the image bytes are served by the
+--     `share-photo` Edge Function, which asks gellatti_share_photo_v1 on every
+--     request and only then reads the private object with the service role.
 --
 -- What this adds — and deliberately does NOT do:
---   * A PRIVATE bucket. A direct share is not a Community publication, so its
---     photograph is never in the public `community-recipe-images` bucket and
---     never has a public URL. It is read through short-lived signed URLs.
---   * One photo per share link, attached by the person who shared it. Objects
---     live under `<share_link_id>/<generated>.<ext>`: the path carries no
---     account id, only the link id the recipient already receives.
---   * Readable by the sharer, the recipe owner and recipients who opened the
---     link — only while the link is active and not expired. Revoking the link
---     revokes the photograph; nothing is copied into the recipe or its version.
+--   * A PRIVATE bucket (never public, no client SELECT, no listing). A direct
+--     share is not a Community publication.
+--   * One photograph per link, uploaded by the sharer into
+--     `<share_link_id>/<generated>.<ext>` (no account id in the path) and
+--     attached through gellatti_set_share_photo_v1.
 --   * No existing function, table, policy, token, expiry, paywall or grant is
---     changed. `recipe_input` is never read or returned here.
---   * Logged-out visitors (`gellatti_resolve_share_v1`) get no photograph: a
---     private object cannot be signed for an anonymous token holder without a
---     server-side signer (an Edge Function), which is out of this package.
+--     changed. `recipe_input` is never returned; only its `category`, which the
+--     demo-safe projection already exposes.
 
 -- ── bucket ───────────────────────────────────────────────────────────────────
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'recipe-share-photos',
   'recipe-share-photos',
-  false,                                            -- PRIVATE: signed URLs only
+  false,                                            -- PRIVATE: bytes only via share-photo
   10485760,                                         -- 10 MiB, same as Community photos
   array['image/png', 'image/jpeg', 'image/webp']
 )
@@ -39,10 +45,10 @@ on conflict (id) do update set
   allowed_mime_types = excluded.allowed_mime_types;
 
 -- ── which photograph a link carries ─────────────────────────────────────────
--- RLS on and NO policy: clients cannot read or write this table at all. The two
--- SECURITY DEFINER functions below are the only way in. Grants are revoked as
--- well, because this project's default privileges grant DML on every new
--- public table to anon and authenticated.
+-- RLS on and NO policy: clients cannot read or write this table at all. The
+-- SECURITY DEFINER functions below (and service_role inside share-photo) are the
+-- only way in. Grants are revoked as well, because this project's default
+-- privileges grant DML on every new public table to anon and authenticated.
 create table if not exists public.recipe_share_link_photos (
   share_link_id uuid primary key references public.recipe_share_links (id) on delete cascade,
   storage_path text not null unique,
@@ -53,8 +59,7 @@ create table if not exists public.recipe_share_link_photos (
 alter table public.recipe_share_link_photos enable row level security;
 revoke all on table public.recipe_share_link_photos from public, anon, authenticated;
 
--- ── policy helpers (SECURITY DEFINER: recipients cannot read share links) ────
--- May the caller upload into this link's folder? Only its sharer, while active.
+-- ── upload: only the sharer, into an ACTIVE link's own folder ───────────────
 create or replace function public.gellatti_share_photo_folder_writable_v1(p_folder text)
 returns boolean language sql stable security definer
 set search_path = pg_catalog, public as $$
@@ -71,32 +76,8 @@ revoke all on function public.gellatti_share_photo_folder_writable_v1(text)
   from public, anon, authenticated;
 grant execute on function public.gellatti_share_photo_folder_writable_v1(text) to authenticated;
 
--- May the caller read this object? Only the photograph ATTACHED to a link that
--- is active and unexpired, and only for its sharer, its recipe owner, or a
--- recipient the link was opened by (the same membership that
--- gellatti_open_received_share_v1 accepts).
-create or replace function public.gellatti_share_photo_readable_v1(p_object_name text)
-returns boolean language sql stable security definer
-set search_path = pg_catalog, public as $$
-  select exists (
-    select 1
-    from public.recipe_share_link_photos photo
-    join public.recipe_share_links l on l.id = photo.share_link_id
-    where photo.storage_path = p_object_name
-      and l.status = 'active'
-      and (l.expires_at is null or l.expires_at > now())
-      and (
-        l.shared_by_user_id = auth.uid()
-        or l.owner_user_id = auth.uid()
-        or exists (
-          select 1 from public.recipe_share_recipients r
-          where r.share_link_id = l.id and r.recipient_user_id = auth.uid())));
-$$;
-revoke all on function public.gellatti_share_photo_readable_v1(text)
-  from public, anon, authenticated;
-grant execute on function public.gellatti_share_photo_readable_v1(text) to authenticated;
-
--- ── storage.objects policies (authenticated only, this bucket only) ─────────
+-- The ONLY client policy on this bucket. No select, update or delete policy:
+-- nobody reads these objects with a client key, the owner included.
 drop policy if exists recipe_share_photos_insert_sharer on storage.objects;
 create policy recipe_share_photos_insert_sharer on storage.objects
   for insert to authenticated
@@ -104,29 +85,6 @@ create policy recipe_share_photos_insert_sharer on storage.objects
     bucket_id = 'recipe-share-photos'
     and public.gellatti_share_photo_folder_writable_v1((storage.foldername(name))[1])
   );
-
--- The uploader always sees their own object (needed to remove it); everyone
--- else only through an attached, active link.
-drop policy if exists recipe_share_photos_select_party on storage.objects;
-create policy recipe_share_photos_select_party on storage.objects
-  for select to authenticated
-  using (
-    bucket_id = 'recipe-share-photos'
-    and (
-      owner_id = (select auth.uid())::text
-      or public.gellatti_share_photo_readable_v1(name)
-    )
-  );
-
-drop policy if exists recipe_share_photos_delete_own on storage.objects;
-create policy recipe_share_photos_delete_own on storage.objects
-  for delete to authenticated
-  using (
-    bucket_id = 'recipe-share-photos'
-    and owner_id = (select auth.uid())::text
-  );
--- No update policy: a photograph is replaced by uploading a new object and
--- attaching it, never rewritten in place. No anon policy, no public read.
 
 -- ── attach / detach (the sharer, on an active link) ─────────────────────────
 -- p_storage_path NULL or blank detaches: the recipient sees the profile card
@@ -177,43 +135,48 @@ revoke all on function public.gellatti_set_share_photo_v1(uuid, text)
   from public, anon, authenticated;
 grant execute on function public.gellatti_set_share_photo_v1(uuid, text) to authenticated;
 
--- ── read (sharer, recipe owner, or a recipient of the link) ─────────────────
--- Returns the attached object path (to sign with the caller's own JWT) and the
--- SHARED VERSION's profile — never the caller's profile and never
--- `recipe_input`. A stranger, a revoked or an expired link gets no path.
-create or replace function public.gellatti_share_photo_v1(p_share_link_id uuid)
-returns jsonb language plpgsql stable security definer
+-- ── the one access decision (asked on EVERY photograph request) ─────────────
+-- By TOKEN: anyone holding a valid token (guest or any account), the same
+-- capability gellatti_resolve_share_v1 accepts. By ID: only the sharer, the
+-- recipe owner or a recipient row, signed in. Revoked or expired → refused.
+-- Returns whether a photograph is attached and the SHARED VERSION's profile —
+-- never a storage path, never `recipe_input`.
+create or replace function public.gellatti_share_photo_v1(
+  p_share_link_id uuid default null, p_token text default null
+) returns jsonb language plpgsql stable security definer
 set search_path = pg_catalog, public as $$
 declare
   v_uid uuid := auth.uid();
+  v_token text := btrim(coalesce(p_token, ''));
   v_link public.recipe_share_links;
-  v_path text;
 begin
-  if v_uid is null then raise exception 'authentication required' using errcode = '42501'; end if;
-  select l.* into v_link from public.recipe_share_links l
-  where l.id = p_share_link_id
-    and (
-      l.shared_by_user_id = v_uid
-      or l.owner_user_id = v_uid
-      or exists (
-        select 1 from public.recipe_share_recipients r
-        where r.share_link_id = l.id and r.recipient_user_id = v_uid));
+  if v_token <> '' then
+    select * into v_link from public.recipe_share_links
+    where token_hash = extensions.digest(convert_to(v_token, 'UTF8'), 'sha256');
+  elsif p_share_link_id is not null and v_uid is not null then
+    select l.* into v_link from public.recipe_share_links l
+    where l.id = p_share_link_id
+      and (
+        l.shared_by_user_id = v_uid
+        or l.owner_user_id = v_uid
+        or exists (
+          select 1 from public.recipe_share_recipients r
+          where r.share_link_id = l.id and r.recipient_user_id = v_uid));
+  end if;
   if v_link.id is null then return jsonb_build_object('ok', false, 'reason', 'not_found'); end if;
   if v_link.status <> 'active' then return jsonb_build_object('ok', false, 'reason', 'revoked'); end if;
   if v_link.expires_at is not null and v_link.expires_at <= now() then
     return jsonb_build_object('ok', false, 'reason', 'expired');
   end if;
 
-  select photo.storage_path into v_path
-  from public.recipe_share_link_photos photo where photo.share_link_id = v_link.id;
-
   return jsonb_strip_nulls(jsonb_build_object(
     'ok', true,
     'share_link_id', v_link.id,
     'category', (select v.recipe_input -> 'category' from public.recipe_versions v
                  where v.id = v_link.recipe_version_id),
-    'own_photo_path', v_path));
+    'has_own_photo', exists (
+      select 1 from public.recipe_share_link_photos photo where photo.share_link_id = v_link.id)));
 end;
 $$;
-revoke all on function public.gellatti_share_photo_v1(uuid) from public, anon, authenticated;
-grant execute on function public.gellatti_share_photo_v1(uuid) to authenticated;
+revoke all on function public.gellatti_share_photo_v1(uuid, text) from public, anon, authenticated;
+grant execute on function public.gellatti_share_photo_v1(uuid, text) to anon, authenticated;

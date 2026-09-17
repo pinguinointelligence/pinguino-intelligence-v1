@@ -23,10 +23,6 @@ const UNAVAILABLE = 'Gellatti Community is not available in this build.';
 const COMMUNITY_IMAGE_BUCKET = 'community-recipe-images';
 /** PRIVATE: a direct-share photograph is never a public Community object. */
 const SHARE_PHOTO_BUCKET = 'recipe-share-photos';
-/** Signed read URLs are short-lived; a refresh or reopen signs a fresh one. */
-const SHARE_PHOTO_SIGNED_SECONDS = 60 * 60;
-/** PostgREST: the function does not exist (its migration is not applied). */
-const FUNCTION_NOT_DEPLOYED = 'PGRST202';
 const COMMUNITY_IMAGE_LIMIT = 10 * 1024 * 1024;
 const COMMUNITY_IMAGE_EXT: Readonly<Record<string, string>> = {
   'image/jpeg': 'jpg',
@@ -394,12 +390,12 @@ export async function openReceivedShare(shareLinkId: string) {
   });
 }
 
-// ── Own photograph on a direct share (owner decision 2026-09-17) ───────────
+// ── Own photograph on a direct share (owner decisions 2026-09-17) ──────────
 //
-// Backed by 20260917154000_direct_share_own_photo (READY / NOT APPLIED — owner
-// DB approval). Until it is applied `readSharePhoto` answers `null` and every
-// surface behaves exactly as before: the recipient sees the profile card and
-// the share dialog offers no photograph.
+// Backend: migration 20260917154000_direct_share_own_photo + Edge Function
+// `share-photo`. The photograph is private to the link: its bytes are served per
+// request after the database has decided, so a revoked or expired link refuses
+// the very next request. There are no signed URLs.
 
 export type SharePhotoRead =
   | {
@@ -407,37 +403,62 @@ export type SharePhotoRead =
       share_link_id: string;
       /** The SHARED VERSION's profile, never the reader's. */
       category?: string;
-      /** Attached object in the private bucket; absent = no own photograph. */
-      own_photo_path?: string;
+      has_own_photo: boolean;
     }
   | { ok: false; reason: ShareFailureReason };
 
 /**
- * Sharer, recipe owner or a recipient of the link only (server-side). Never
- * returns `recipe_input`. `null` = this backend has no share photographs.
+ * The sharer's view of a link they just created (the share dialog). Signed-in
+ * sharer, recipe owner or recipient only — server-side. Never returns
+ * `recipe_input` or a storage path. Any failure throws: it is not „no photo".
  */
-export async function readSharePhoto(shareLinkId: string): Promise<SharePhotoRead | null> {
-  if (!supabase) return null;
-  const { data, error } = await supabase.rpc('gellatti_share_photo_v1', {
-    p_share_link_id: shareLinkId,
-  });
-  if (error) {
-    if (error.code === FUNCTION_NOT_DEPLOYED) return null;
-    throw new Error(error.message);
-  }
-  return data as SharePhotoRead;
+export async function readSharePhoto(shareLinkId: string): Promise<SharePhotoRead> {
+  return writeRpc<SharePhotoRead>('gellatti_share_photo_v1', { p_share_link_id: shareLinkId });
 }
 
-/** A short-lived URL for an attached photograph, signed with the reader's own session. */
-export async function signedSharePhotoUrl(storagePath: string): Promise<string> {
+export type SharePhotoResult =
+  | { kind: 'photo'; blob: Blob }
+  | { kind: 'none' }
+  | { kind: 'refused'; reason: ShareFailureReason };
+
+const SHARE_PHOTO_REFUSALS: readonly ShareFailureReason[] = ['not_found', 'revoked', 'expired'];
+
+/**
+ * The attached photograph as bytes, asked afresh on every call.
+ *
+ * `{ token }` — whoever holds a valid link, a logged-out guest included.
+ * `{ shareLinkId }` — the signed-in sharer, owner or a recipient (`/received`).
+ *
+ * `none` = the link is valid and carries no own photograph (the profile card is
+ * correct). `refused` = the server said no (unknown, revoked, expired). A
+ * transport or server failure THROWS — it must never read as „no photograph".
+ */
+export async function fetchSharePhoto(
+  access: { token: string } | { shareLinkId: string },
+): Promise<SharePhotoResult> {
   if (!supabase) throw new Error(UNAVAILABLE);
-  const { data, error } = await supabase.storage
-    .from(SHARE_PHOTO_BUCKET)
-    .createSignedUrl(storagePath, SHARE_PHOTO_SIGNED_SECONDS);
-  if (error || !data?.signedUrl) {
-    throw new Error(error?.message ?? 'Nie udało się przygotować zdjęcia.');
+  const { data, error, response } = await supabase.functions.invoke('share-photo', {
+    body: access,
+  });
+  if (error) {
+    const context = (error as { context?: unknown }).context;
+    if (context instanceof Response && (context.status === 404 || context.status === 410)) {
+      const reason = await context
+        .json()
+        .then((payload: { error?: unknown }) => payload?.error)
+        .catch(() => null);
+      if (SHARE_PHOTO_REFUSALS.includes(reason as ShareFailureReason)) {
+        return { kind: 'refused', reason: reason as ShareFailureReason };
+      }
+    }
+    throw new Error('share_photo_unavailable');
   }
-  return data.signedUrl;
+  if (response?.status === 204) return { kind: 'none' };
+  if (data instanceof Blob && data.size > 0) {
+    const type = response?.headers.get('x-share-photo-type') ?? '';
+    return { kind: 'photo', blob: type.startsWith('image/') ? new Blob([data], { type }) : data };
+  }
+  throw new Error('share_photo_unavailable');
 }
 
 /**

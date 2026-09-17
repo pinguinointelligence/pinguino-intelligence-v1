@@ -89,8 +89,11 @@ export interface CommunityCopy {
     readonly photoFailed: string;
     readonly photoRetry: string;
     readonly photoSkip: string;
-    /** Recipient page: an attached photograph exists but could not be shown. */
+    readonly photoOptionsFailed: string;
+    /** Recipient page: the photograph could not be loaded (a failure, not „no photo"). */
     readonly ownPhotoUnavailable: string;
+    /** Recipient page: the server refused the photograph (revoked, expired, no access). */
+    readonly ownPhotoRefused: string;
   };
   readonly publish: {
     readonly dialogTitle: string;
@@ -231,13 +234,15 @@ export const communityCopyPl: CommunityCopy = {
     photoChoose: 'Wybierz z galerii',
     photoUploading: 'Dodaję zdjęcie…',
     photoAttached:
-      'Zdjęcie dodane. Odbiorca zobaczy je po zalogowaniu w Gellatti — nie trafia do Community.',
+      'Zdjęcie dodane. Zobaczy je każdy, kto otworzy ten link — nie trafia do Community.',
     photoRemove: 'Usuń zdjęcie',
     photoFailed:
       'Nie udało się dodać zdjęcia. Do czasu dodania własnego odbiorca zobaczy zdjęcie Gellatti.',
     photoRetry: 'Spróbuj ponownie',
     photoSkip: 'Udostępnij bez zdjęcia',
+    photoOptionsFailed: 'Nie udało się sprawdzić zdjęcia dla tego linku.',
     ownPhotoUnavailable: 'Nie udało się wczytać zdjęcia autora.',
+    ownPhotoRefused: 'To zdjęcie nie jest już dostępne.',
   },
   publish: {
     dialogTitle: 'Opublikuj w Community',
@@ -379,13 +384,15 @@ export const communityCopyEn: CommunityCopy = {
     photoChoose: 'Choose from gallery',
     photoUploading: 'Adding the photo…',
     photoAttached:
-      'Photo added. The recipient sees it after signing in to Gellatti — it is not posted to Community.',
+      'Photo added. Anyone who opens this link sees it — it is not posted to Community.',
     photoRemove: 'Remove photo',
     photoFailed:
       'The photo could not be added. Until you add your own, the recipient sees the Gellatti photo.',
     photoRetry: 'Try again',
     photoSkip: 'Share without a photo',
+    photoOptionsFailed: 'The photo options for this link could not be loaded.',
     ownPhotoUnavailable: "The author's photo could not be loaded.",
+    ownPhotoRefused: 'This photo is no longer available.',
   },
   publish: {
     dialogTitle: 'Opublikuj w Community',

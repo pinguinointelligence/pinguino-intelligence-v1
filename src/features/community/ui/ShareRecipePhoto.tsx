@@ -17,13 +17,13 @@ type Status = 'idle' | 'uploading' | 'attached' | 'failed' | 'removing';
  * the shared VERSION's profile (as the server reports it). An upload in
  * progress or a failed upload is therefore never shown as the photograph.
  *
- * The section renders nothing when the backend does not offer share photos
- * (its migration is not applied) or cannot say, so the dialog is then exactly
- * the link dialog it was before.
+ * If the options for the link cannot be read, the section says so and offers a
+ * retry — a failure is never shown as „no photo". The link itself works either way.
  */
 export function ShareRecipePhoto({ shareLinkId }: { shareLinkId: string }) {
   const copy = communityCopy.share;
-  const support = useAsyncResource(shareLinkId, () => readSharePhoto(shareLinkId));
+  const [attempt, setAttempt] = useState(0);
+  const support = useAsyncResource(`${shareLinkId}:${attempt}`, () => readSharePhoto(shareLinkId));
   const [status, setStatus] = useState<Status>('idle');
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -35,7 +35,29 @@ export function ShareRecipePhoto({ shareLinkId }: { shareLinkId: string }) {
     [preview],
   );
 
-  if (support.status !== 'ready' || support.data === null || !support.data.ok) return null;
+  if (support.status === 'loading') return null;
+  if (support.status === 'failed' || !support.data.ok) {
+    return (
+      <section
+        data-testid="share-photo"
+        className="flex flex-col gap-3 border-t border-ink/10 pt-4"
+      >
+        <span className="text-xs tracking-label uppercase text-stone-400">{copy.photoTitle}</span>
+        <p role="alert" className="text-sm leading-relaxed text-ink">
+          {copy.photoOptionsFailed}
+        </p>
+        <div>
+          <button
+            type="button"
+            className={buttonClasses('ghost', 'sm')}
+            onClick={() => setAttempt((value) => value + 1)}
+          >
+            {copy.photoRetry}
+          </button>
+        </div>
+      </section>
+    );
+  }
   const category = support.data.category ?? null;
   const busy = status === 'uploading' || status === 'removing';
 

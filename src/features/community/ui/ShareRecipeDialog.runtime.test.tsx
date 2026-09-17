@@ -84,14 +84,28 @@ describe('share dialog — own photo for the recipient', () => {
     await settle();
   };
 
-  it('SHARE-DLG-01 without the backend the dialog is the link dialog it was — no photo section', async () => {
-    service.readSharePhoto.mockResolvedValue(null);
+  it('SHARE-DLG-01 when the photo options cannot be read, the section says so and retries — the link still works', async () => {
+    service.readSharePhoto.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce({
+      ok: true,
+      share_link_id: 'link-1',
+      category: 'sorbet',
+      has_own_photo: false,
+    });
     await openWithLink();
     expect(service.createShareLink).toHaveBeenCalledWith('recipe-9', 4, null);
     expect(host.querySelector('input[readonly]')?.getAttribute('value')).toContain(
       '/share/secret-token',
     );
-    expect(host.querySelector('[data-testid="share-photo"]')).toBeNull();
+    const section = host.querySelector('[data-testid="share-photo"]')!;
+    expect(section.querySelector('[role="alert"]')?.textContent).toBe(
+      'Nie udało się sprawdzić zdjęcia dla tego linku.',
+    );
+    expect(preview()).toBeNull(); // a failure is never shown as the profile photograph
+
+    await act(async () => button('Spróbuj ponownie')!.click());
+    await settle();
+    expect(service.readSharePhoto).toHaveBeenCalledTimes(2);
+    expect(preview()!.getAttribute('src')).toBe(BRANDED_PROFILE_IMAGE.sorbet);
   });
 
   it('SHARE-DLG-02 no photo yet: the recipient would see the SHARED VERSION’s profile photograph', async () => {
@@ -99,6 +113,7 @@ describe('share dialog — own photo for the recipient', () => {
       ok: true,
       share_link_id: 'link-1',
       category: 'vegan_gelato',
+      has_own_photo: false,
     });
     await openWithLink();
     expect(service.readSharePhoto).toHaveBeenCalledWith('link-1');
@@ -113,6 +128,7 @@ describe('share dialog — own photo for the recipient', () => {
       ok: true,
       share_link_id: 'link-1',
       category: 'sorbet',
+      has_own_photo: false,
     });
     service.attachSharePhoto.mockResolvedValue(undefined);
     await openWithLink();
@@ -122,9 +138,7 @@ describe('share dialog — own photo for the recipient', () => {
     expect(service.attachSharePhoto).toHaveBeenCalledWith('link-1', file);
     expect(preview()!.getAttribute('src')).toBe('blob:own-photo');
     expect(preview()!.dataset.imageOrigin).toBe('user_photo');
-    expect(host.textContent).toContain(
-      'Zdjęcie dodane. Odbiorca zobaczy je po zalogowaniu w Gellatti',
-    );
+    expect(host.textContent).toContain('Zdjęcie dodane. Zobaczy je każdy, kto otworzy ten link');
 
     const shareButton = [...host.querySelectorAll('button')].find(
       (b) => b.textContent === 'Udostępnij',
@@ -141,6 +155,7 @@ describe('share dialog — own photo for the recipient', () => {
       ok: true,
       share_link_id: 'link-1',
       category: 'protein_gelato',
+      has_own_photo: false,
     });
     service.attachSharePhoto
       .mockRejectedValueOnce(new Error('network'))
@@ -167,6 +182,7 @@ describe('share dialog — own photo for the recipient', () => {
       ok: true,
       share_link_id: 'link-1',
       category: 'milk_gelato',
+      has_own_photo: false,
     });
     service.attachSharePhoto.mockRejectedValue(new Error('network'));
     await openWithLink();
@@ -182,6 +198,7 @@ describe('share dialog — own photo for the recipient', () => {
       ok: true,
       share_link_id: 'link-1',
       category: 'sorbet',
+      has_own_photo: false,
     });
     service.attachSharePhoto.mockResolvedValue(undefined);
     service.detachSharePhoto.mockResolvedValue(undefined);

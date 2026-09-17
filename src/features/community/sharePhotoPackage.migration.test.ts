@@ -31,6 +31,7 @@ const EXACT_ROLLBACK = read(`supabase/rollbacks/${EXACT}.rollback.sql`);
 const PHOTO_SQL = read(`supabase/migrations/${PHOTO}.sql`);
 const PHOTO_ROLLBACK = read(`supabase/rollbacks/${PHOTO}.rollback.sql`);
 const PREVIOUS = read('supabase/migrations/20260913233000_home_community_recipe_images.sql');
+const PREVIOUS_SHARE = read('supabase/migrations/20260823140000_community_creators_sharing_v1.sql');
 
 /** The `create or replace function public.<name>( … $$;` statement, verbatim. */
 function functionStatement(sql: string, name: string): string {
@@ -135,40 +136,46 @@ describe(`${PHOTO} — a private, link-scoped own photo`, () => {
     );
   });
 
-  it('MIG-SP-03 storage policies: authenticated only, this bucket only, no update and no anon', () => {
+  it('MIG-SP-03 exactly one client policy: the sharer UPLOADS into an active link folder — no read, update, delete or listing', () => {
     const policies = sql.match(/create policy [^;]*/g) ?? [];
-    expect(policies).toHaveLength(3);
-    for (const policy of policies) {
-      expect(policy).toContain('on storage.objects');
-      expect(policy).toContain('to authenticated');
-      expect(policy).toContain("bucket_id = 'recipe-share-photos'");
-    }
-    expect(sql).not.toMatch(/for update/);
-    expect(sql).not.toMatch(/\bto anon\b|\bto public\b/);
-    expect(sql).toContain(
+    expect(policies).toHaveLength(1);
+    expect(policies[0]).toContain(
+      'recipe_share_photos_insert_sharer on storage.objects for insert to authenticated',
+    );
+    expect(policies[0]).toContain("bucket_id = 'recipe-share-photos'");
+    expect(policies[0]).toContain(
       'public.gellatti_share_photo_folder_writable_v1((storage.foldername(name))[1])',
     );
-    expect(sql).toContain('public.gellatti_share_photo_readable_v1(name)');
-  });
-
-  it('MIG-SP-04 reading needs an ACTIVE, unexpired link and sharer, owner or recipient membership', () => {
-    const readable = functionStatement(PHOTO_SQL, 'gellatti_share_photo_readable_v1');
-    for (const clause of [
-      "l.status = 'active'",
-      '(l.expires_at is null or l.expires_at > now())',
-      'l.shared_by_user_id = auth.uid()',
-      'l.owner_user_id = auth.uid()',
-      'r.recipient_user_id = auth.uid()',
-      'photo.storage_path = p_object_name',
-    ]) {
-      expect(readable, clause).toContain(clause);
-    }
+    expect(sql).not.toMatch(/for (?:select|update|delete|all)\b/);
+    expect(sql).not.toMatch(/\bto anon\b[^;]*on storage|policy[^;]*\bto (?:anon|public)\b/);
     const writable = functionStatement(PHOTO_SQL, 'gellatti_share_photo_folder_writable_v1');
     expect(writable).toContain('l.shared_by_user_id = auth.uid()');
     expect(writable).toContain("l.status = 'active'");
+    expect(writable).toContain('(l.expires_at is null or l.expires_at > now())');
   });
 
-  it('MIG-SP-05 attaching requires the sharer’s own object inside that link’s folder', () => {
+  it('MIG-SP-04 the access decision: a valid TOKEN (guest included) or, by id, sharer/owner/recipient — active and unexpired', () => {
+    const access = functionStatement(PHOTO_SQL, 'gellatti_share_photo_v1');
+    for (const clause of [
+      "where token_hash = extensions.digest(convert_to(v_token, 'UTF8'), 'sha256')",
+      'elsif p_share_link_id is not null and v_uid is not null then',
+      'l.shared_by_user_id = v_uid',
+      'l.owner_user_id = v_uid',
+      'r.share_link_id = l.id and r.recipient_user_id = v_uid',
+      "if v_link.status <> 'active' then return jsonb_build_object('ok', false, 'reason', 'revoked')",
+      'if v_link.expires_at is not null and v_link.expires_at <= now() then',
+      "'reason', 'expired'",
+      "return jsonb_build_object('ok', false, 'reason', 'not_found')",
+    ]) {
+      expect(access, clause).toContain(clause);
+    }
+    // The token check mirrors the existing resolver exactly.
+    expect(code(PREVIOUS_SHARE)).toContain(
+      "where token_hash = extensions.digest(convert_to(btrim(p_token), 'UTF8'), 'sha256')",
+    );
+  });
+
+  it('MIG-SP-05 attaching requires the sharer’s own object inside that link’s folder, on an active link', () => {
     const attach = functionStatement(PHOTO_SQL, 'gellatti_set_share_photo_v1');
     expect(attach).toContain('where id = p_share_link_id and shared_by_user_id = v_uid');
     expect(attach).toContain(
@@ -179,30 +186,29 @@ describe(`${PHOTO} — a private, link-scoped own photo`, () => {
     expect(attach).toContain("raise exception 'share_link_inactive'");
   });
 
-  it('MIG-SP-06 the read RPC returns a path and the VERSION profile — never recipe_input', () => {
-    const readRpc = functionStatement(PHOTO_SQL, 'gellatti_share_photo_v1');
-    expect(readRpc).toContain("select v.recipe_input -> 'category' from public.recipe_versions v");
-    expect(readRpc.match(/recipe_input/g)).toHaveLength(1);
-    expect(readRpc).toContain("'own_photo_path', v_path");
-    expect(readRpc).toContain("'reason', 'revoked'");
-    expect(readRpc).toContain("'reason', 'expired'");
+  it('MIG-SP-06 the decision returns „has photo” and the VERSION profile — never a storage path, never recipe_input', () => {
+    const access = functionStatement(PHOTO_SQL, 'gellatti_share_photo_v1');
+    expect(access).toContain("select v.recipe_input -> 'category' from public.recipe_versions v");
+    expect(access.match(/recipe_input/g)).toHaveLength(1);
+    expect(access).toContain("'has_own_photo', exists (");
+    expect(access).not.toMatch(/storage_path|own_photo_path/);
   });
 
-  it('MIG-SP-07 every new function is SECURITY DEFINER, pinned search_path, executable by authenticated only', () => {
-    const functions = [
-      'gellatti_share_photo_folder_writable_v1(text)',
-      'gellatti_share_photo_readable_v1(text)',
-      'gellatti_set_share_photo_v1(uuid, text)',
-      'gellatti_share_photo_v1(uuid)',
+  it('MIG-SP-07 SECURITY DEFINER + pinned search_path; only the decision is executable by anon', () => {
+    const functions: ReadonlyArray<readonly [string, string]> = [
+      ['gellatti_share_photo_folder_writable_v1(text)', 'authenticated'],
+      ['gellatti_set_share_photo_v1(uuid, text)', 'authenticated'],
+      ['gellatti_share_photo_v1(uuid, text)', 'anon, authenticated'],
     ];
-    for (const fn of functions) {
+    for (const [fn, grantees] of functions) {
       const name = fn.slice(0, fn.indexOf('('));
       expect(functionStatement(PHOTO_SQL, name)).toMatch(
         /security definer\s+set search_path = pg_catalog, public as \$\$/,
       );
       expect(sql).toContain(`revoke all on function public.${fn} from public, anon, authenticated`);
-      expect(sql).toContain(`grant execute on function public.${fn} to authenticated`);
+      expect(sql).toContain(`grant execute on function public.${fn} to ${grantees};`);
     }
+    expect(sql).not.toMatch(/gellatti_share_photo_readable_v1/); // the signed-URL read path is gone
   });
 
   it('MIG-SP-08 no existing share object is touched: tokens, expiry, revocation, recipients, paywall', () => {
@@ -214,21 +220,19 @@ describe(`${PHOTO} — a private, link-scoped own photo`, () => {
     expect(sql).not.toMatch(/\b(?:update|delete from) public\.recipe_share_(?:links|recipients)\b/);
   });
 
-  it('MIG-SP-09 the rollback removes exactly what the migration created', () => {
+  it('MIG-SP-09 the rollback switches the feature off without deleting anyone’s photos or links', () => {
     const rollback = code(PHOTO_ROLLBACK);
     for (const fn of [
-      'gellatti_share_photo_v1(uuid)',
+      'gellatti_share_photo_v1(uuid, text)',
       'gellatti_set_share_photo_v1(uuid, text)',
-      'gellatti_share_photo_readable_v1(text)',
       'gellatti_share_photo_folder_writable_v1(text)',
     ]) {
       expect(rollback).toContain(`drop function if exists public.${fn}`);
     }
-    for (const policy of sql.match(/create policy (\w+) on storage\.objects/g) ?? []) {
-      const name = policy.split(' ')[2];
-      expect(rollback).toContain(`drop policy if exists ${name} on storage.objects`);
-    }
-    expect(rollback).toContain('drop table if exists public.recipe_share_link_photos');
+    expect(rollback).toContain(
+      'drop policy if exists recipe_share_photos_insert_sharer on storage.objects',
+    );
+    expect(rollback).not.toMatch(/drop table|delete from|truncate|storage\.buckets/);
     expect(rollback).not.toMatch(/recipe_share_(?:links|recipients)\b/);
   });
 

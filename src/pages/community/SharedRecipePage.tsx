@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ApplicationState } from '@/components/shared/ApplicationState';
@@ -19,32 +19,32 @@ import { resolveRecipeImage } from '@/features/community/domain/recipeImageAutho
 import { unlockBenefits } from '@/features/community/domain/unlockBenefits';
 import { withContinuation } from '@/features/community/domain/shareContinuation';
 import {
+  fetchSharePhoto,
   openReceivedShare,
   openShare,
-  readSharePhoto,
   resolveShare,
-  signedSharePhotoUrl,
+  type ShareFailureReason,
   type ShareResolution,
 } from '@/services/community';
 
 /**
- * The sharer's own photograph for a link, as a signed-in reader may see it.
- * `unreadable` = a photograph IS attached but could not be signed, which the
- * page says instead of quietly showing the profile card as if none existed.
+ * The sharer's own photograph as this reader may see it right now. A failure
+ * to load is NOT in this union: it rejects, and the page shows the error with a
+ * retry instead of quietly showing the profile card.
  */
 type OwnSharePhoto =
   | { readonly kind: 'none' }
   | { readonly kind: 'photo'; readonly url: string }
-  | { readonly kind: 'unreadable' };
+  | { readonly kind: 'refused'; readonly reason: ShareFailureReason };
 
-async function loadOwnSharePhoto(shareLinkId: string): Promise<OwnSharePhoto> {
-  const read = await readSharePhoto(shareLinkId);
-  if (!read || !read.ok || !read.own_photo_path) return { kind: 'none' };
-  try {
-    return { kind: 'photo', url: await signedSharePhotoUrl(read.own_photo_path) };
-  } catch {
-    return { kind: 'unreadable' };
-  }
+async function loadOwnSharePhoto(
+  access: { token: string } | { shareLinkId: string },
+): Promise<OwnSharePhoto> {
+  const result = await fetchSharePhoto(access);
+  // The bytes arrived from the server for THIS request; the object URL is only
+  // this tab's handle on them (released when the page lets go of it).
+  if (result.kind === 'photo') return { kind: 'photo', url: URL.createObjectURL(result.blob) };
+  return result;
 }
 
 /**
@@ -96,15 +96,25 @@ export function SharedRecipePage() {
         ? { ok: false, reason: 'not_found' }
         : null;
 
-  // The sharer's own photograph is private to the link: it is looked up only
-  // for a SIGNED-IN reader the server has already let in (sharer, owner or a
-  // recipient row), by share id alone — never through `recipe_input`. A
-  // logged-out visitor cannot be given a private object without a server-side
-  // signer, so they see the profile card.
-  const photoLinkId = state?.ok && access.isSignedIn ? state.share_link_id : null;
-  const ownPhoto = useAsyncResource<OwnSharePhoto>(`photo:${photoLinkId ?? ''}`, () =>
-    photoLinkId ? loadOwnSharePhoto(photoLinkId) : Promise.resolve({ kind: 'none' }),
+  // The sharer's own photograph (owner decisions 2026-09-17): whoever holds a
+  // valid link sees it — a logged-out guest included — and `/received` asks by
+  // share id as the signed-in recipient. The server decides on EVERY request,
+  // so a revoked or expired link is refused on the next open. Never through
+  // `recipe_input`, never from a cached or signed address.
+  const [photoAttempt, setPhotoAttempt] = useState(0);
+  const photoAccess = state?.ok ? (token ? { token } : { shareLinkId: state.share_link_id }) : null;
+  const photoKey = photoAccess
+    ? `photo:${'token' in photoAccess ? photoAccess.token : photoAccess.shareLinkId}:${photoAttempt}`
+    : 'photo:none';
+  const ownPhoto = useAsyncResource<OwnSharePhoto>(photoKey, () =>
+    photoAccess ? loadOwnSharePhoto(photoAccess) : Promise.resolve({ kind: 'none' }),
   );
+  const ownPhotoUrl =
+    ownPhoto.status === 'ready' && ownPhoto.data.kind === 'photo' ? ownPhoto.data.url : null;
+  useEffect(() => {
+    if (!ownPhotoUrl) return undefined;
+    return () => URL.revokeObjectURL(ownPhotoUrl);
+  }, [ownPhotoUrl]);
   const [brokenPhotoUrl, setBrokenPhotoUrl] = useState<string | null>(null);
 
   if (state === null) {
@@ -143,22 +153,16 @@ export function SharedRecipePage() {
      `recipe_input`), never the viewer's profile or account defaults.
 
      The own photograph comes from the link's private attachment (see
-     `loadOwnSharePhoto`). Until that lookup has answered, the frame stays
-     empty instead of flashing the profile card first. */
-  const photoPending = photoLinkId !== null && ownPhoto.status === 'loading';
-  const ownPhotoUrl =
-    ownPhoto.status === 'ready' &&
-    ownPhoto.data.kind === 'photo' &&
-    ownPhoto.data.url !== brokenPhotoUrl
-      ? ownPhoto.data.url
-      : null;
-  const ownPhotoUnavailable =
-    ownPhoto.status === 'ready' &&
-    (ownPhoto.data.kind === 'unreadable' ||
-      (ownPhoto.data.kind === 'photo' && ownPhoto.data.url === brokenPhotoUrl));
+     `loadOwnSharePhoto`). Until the server has answered, the frame stays empty
+     instead of flashing the profile card first. Only a definite „no photo"
+     shows the profile card; a refusal or a failure is said, never replaced. */
+  const photoFailed =
+    ownPhoto.status === 'failed' || (ownPhotoUrl !== null && ownPhotoUrl === brokenPhotoUrl);
+  const photoRefused = ownPhoto.status === 'ready' && ownPhoto.data.kind === 'refused';
+  const photoFrameOnly = ownPhoto.status === 'loading' || photoFailed || photoRefused;
   const image = resolveRecipeImage({
     context: 'customer_share',
-    userImageUrl: ownPhotoUrl,
+    userImageUrl: photoFailed ? null : ownPhotoUrl,
     profile: state.recipe.category ?? null,
   });
 
@@ -166,40 +170,57 @@ export function SharedRecipePage() {
     <DestinationSurface eyebrow={copy.roles.sharedBy} title={state.title}>
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex flex-col gap-8">
-          {photoPending ? (
-            <div
-              aria-hidden
-              data-testid="shared-recipe-image-pending"
-              className="aspect-square w-full max-w-xl rounded-2xl bg-shell-raised"
-            />
-          ) : (
-            <div className="flex flex-col gap-2">
-              <img
-                key={image.url}
-                src={image.url}
-                alt=""
-                /* Decorative: the recipe is named by the heading right above it, so
-                   a screen reader that also announced the picture would say the
-                   same thing twice. */
+          {photoFrameOnly ? (
+            <div className="flex flex-col gap-3">
+              <div
                 aria-hidden
-                data-testid="shared-recipe-image"
-                data-image-origin={image.origin}
-                /* Square, like the approved profile photographs: a 4:3 cover crop
-                   cut the whisk and hand off the top of every card. The width cap
-                   keeps a square from pushing the recipe below the fold on desktop. */
-                className="aspect-square w-full max-w-xl rounded-2xl bg-shell-raised object-cover"
-                loading="lazy"
-                onError={ownPhotoUrl ? () => setBrokenPhotoUrl(ownPhotoUrl) : undefined}
+                data-testid="shared-recipe-image-pending"
+                className="aspect-square w-full max-w-xl rounded-2xl bg-shell-raised"
               />
-              {ownPhotoUnavailable ? (
-                <p
-                  data-testid="shared-recipe-own-photo-unavailable"
-                  className="text-xs text-stone-500"
-                >
-                  {copy.share.ownPhotoUnavailable}
+              {photoRefused ? (
+                <p data-testid="shared-recipe-own-photo-refused" className="text-sm text-stone-500">
+                  {copy.share.ownPhotoRefused}
                 </p>
+              ) : photoFailed ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <p
+                    role="alert"
+                    data-testid="shared-recipe-own-photo-unavailable"
+                    className="text-sm text-ink"
+                  >
+                    {copy.share.ownPhotoUnavailable}
+                  </p>
+                  <button
+                    type="button"
+                    className={buttonClasses('ghost', 'sm')}
+                    onClick={() => {
+                      setBrokenPhotoUrl(null);
+                      setPhotoAttempt((value) => value + 1);
+                    }}
+                  >
+                    {copy.share.photoRetry}
+                  </button>
+                </div>
               ) : null}
             </div>
+          ) : (
+            <img
+              key={image.url}
+              src={image.url}
+              alt=""
+              /* Decorative: the recipe is named by the heading right above it, so
+                 a screen reader that also announced the picture would say the
+                 same thing twice. */
+              aria-hidden
+              data-testid="shared-recipe-image"
+              data-image-origin={image.origin}
+              /* Square, like the approved profile photographs: a 4:3 cover crop
+                 cut the whisk and hand off the top of every card. The width cap
+                 keeps a square from pushing the recipe below the fold on desktop. */
+              className="aspect-square w-full max-w-xl rounded-2xl bg-shell-raised object-cover"
+              loading="lazy"
+              onError={ownPhotoUrl ? () => setBrokenPhotoUrl(ownPhotoUrl) : undefined}
+            />
           )}
 
           <AttributionByline

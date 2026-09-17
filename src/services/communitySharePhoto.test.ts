@@ -11,7 +11,8 @@ const h = vi.hoisted(() => ({
   rpcs: [] as Array<{ fn: string; args: Record<string, unknown> }>,
   uploadError: null as { message: string } | null,
   rpcResult: { data: null as unknown, error: null as { code?: string; message: string } | null },
-  signError: null as { message: string } | null,
+  invokes: [] as Array<{ name: string; body: unknown }>,
+  invokeResult: null as unknown,
 }));
 
 vi.mock('@/lib/supabase/client', () => ({
@@ -38,16 +39,15 @@ vi.mock('@/lib/supabase/client', () => ({
         }),
         createSignedUrl: async (path: string, seconds: number) => {
           h.signed.push({ bucket, path, seconds });
-          return h.signError
-            ? { data: null, error: h.signError }
-            : {
-                data: {
-                  signedUrl: `https://project.supabase.co/storage/v1/object/sign/${bucket}/${path}?token=t`,
-                },
-                error: null,
-              };
+          return { data: null, error: { message: 'signed URLs are not used for share photos' } };
         },
       }),
+    },
+    functions: {
+      invoke: async (name: string, options: { body: unknown }) => {
+        h.invokes.push({ name, body: options.body });
+        return h.invokeResult;
+      },
     },
     rpc: async (fn: string, args: Record<string, unknown>) => {
       h.rpcs.push({ fn, args });
@@ -69,7 +69,8 @@ describe('direct-share own photo — service', () => {
     h.rpcs = [];
     h.uploadError = null;
     h.rpcResult = { data: null, error: null };
-    h.signError = null;
+    h.invokes = [];
+    h.invokeResult = null;
   });
 
   it('SVC-SP-01 the Community upload is unchanged: public bucket, own folder, public URL', async () => {
@@ -133,36 +134,89 @@ describe('direct-share own photo — service', () => {
     expect(h.uploads).toEqual([]);
   });
 
-  it('SVC-SP-06 reading asks by link id only; an undeployed backend reads as „no share photos”', async () => {
-    h.rpcResult = {
-      data: null,
-      error: { code: 'PGRST202', message: 'Could not find the function' },
-    };
-    await expect(service.readSharePhoto('link-1')).resolves.toBeNull();
-    expect(h.rpcs).toEqual([
-      { fn: 'gellatti_share_photo_v1', args: { p_share_link_id: 'link-1' } },
-    ]);
-
-    h.rpcResult = { data: null, error: { code: '42501', message: 'authentication required' } };
-    await expect(service.readSharePhoto('link-1')).rejects.toThrow('authentication required');
-
+  it('SVC-SP-06 the share dialog reads by link id only; every failure throws — never „no photo”', async () => {
     const payload = {
       ok: true,
       share_link_id: 'link-1',
       category: 'sorbet',
-      own_photo_path: 'link-1/a.jpg',
+      has_own_photo: false,
     };
     h.rpcResult = { data: payload, error: null };
     await expect(service.readSharePhoto('link-1')).resolves.toEqual(payload);
+    expect(h.rpcs).toEqual([
+      { fn: 'gellatti_share_photo_v1', args: { p_share_link_id: 'link-1' } },
+    ]);
+
+    // A missing function (PGRST202) used to read as „no share photos”. It is a failure now.
+    h.rpcResult = {
+      data: null,
+      error: { code: 'PGRST202', message: 'Could not find the function' },
+    };
+    await expect(service.readSharePhoto('link-1')).rejects.toThrow('Could not find the function');
   });
 
-  it('SVC-SP-07 the signed read URL comes from the private bucket and expires within an hour', async () => {
-    const url = await service.signedSharePhotoUrl('link-1/a.jpg');
-    expect(h.signed).toEqual([
-      { bucket: 'recipe-share-photos', path: 'link-1/a.jpg', seconds: 3600 },
-    ]);
-    expect(url).toContain('/object/sign/recipe-share-photos/link-1/a.jpg');
-    h.signError = { message: 'Object not found' };
-    await expect(service.signedSharePhotoUrl('link-1/a.jpg')).rejects.toThrow('Object not found');
+  const response = (status: number, headers: Record<string, string> = {}, body?: string) =>
+    new Response(status === 204 ? null : (body ?? null), { status, headers });
+
+  it('SVC-SP-07 a guest asks with the TOKEN in the body; the bytes come back typed as the image', async () => {
+    const bytes = new Blob([new Uint8Array([0xff, 0xd8, 0xff])], {
+      type: 'application/octet-stream',
+    });
+    h.invokeResult = {
+      data: bytes,
+      error: null,
+      response: response(200, { 'x-share-photo-type': 'image/jpeg' }),
+    };
+    const result = await service.fetchSharePhoto({ token: 'tok_abc' });
+    expect(h.invokes).toEqual([{ name: 'share-photo', body: { token: 'tok_abc' } }]);
+    expect(result.kind).toBe('photo');
+    expect(result.kind === 'photo' && result.blob.type).toBe('image/jpeg');
+    expect(h.signed).toEqual([]); // no signed URL anywhere in the chain
+  });
+
+  it('SVC-SP-08 /received asks by share id; 204 means the link carries no own photo', async () => {
+    h.invokeResult = { data: '', error: null, response: response(204) };
+    await expect(service.fetchSharePhoto({ shareLinkId: 'link-1' })).resolves.toEqual({
+      kind: 'none',
+    });
+    expect(h.invokes).toEqual([{ name: 'share-photo', body: { shareLinkId: 'link-1' } }]);
+  });
+
+  it('SVC-SP-09 a server refusal is a refusal with its reason, not „no photo”', async () => {
+    for (const [status, reason] of [
+      [404, 'not_found'],
+      [410, 'revoked'],
+      [410, 'expired'],
+    ] as const) {
+      const context = response(
+        status,
+        { 'content-type': 'application/json' },
+        JSON.stringify({ error: reason }),
+      );
+      h.invokeResult = { data: null, error: Object.assign(new Error('http'), { context }) };
+      await expect(service.fetchSharePhoto({ token: 'tok_abc' })).resolves.toEqual({
+        kind: 'refused',
+        reason,
+      });
+    }
+  });
+
+  it('SVC-SP-10 transport, gateway and server failures throw — they are never „no photo”', async () => {
+    const gateway404 = response(
+      404,
+      { 'content-type': 'application/json' },
+      JSON.stringify({ code: 'NOT_FOUND', message: 'Requested function was not found' }),
+    );
+    for (const invokeResult of [
+      { data: null, error: Object.assign(new Error('http'), { context: gateway404 }) },
+      { data: null, error: Object.assign(new Error('http'), { context: response(503) }) },
+      { data: null, error: new Error('Failed to fetch') },
+      { data: '', error: null, response: response(200) }, // an empty 200 is not a photo
+    ]) {
+      h.invokeResult = invokeResult;
+      await expect(service.fetchSharePhoto({ token: 'tok_abc' })).rejects.toThrow(
+        'share_photo_unavailable',
+      );
+    }
   });
 });
