@@ -10,8 +10,9 @@
 --   :00 prepare  — one new 3000 entry per soak partner, build a batch for this
 --                  tick's synthetic month, maybe inject a correction
 --   :01 claim A, claim B — two concurrent sessions, 2 lines each
---   :01 claim C  — on fault ticks only: claims, then is killed by
---                  statement_timeout before it commits (a crashed worker)
+--   :01 claim C  — on fault ticks only: claims first (A and B wait 2 s on
+--                  those ticks), then is killed by statement_timeout before it
+--                  commits, holding the lines (a crashed worker)
 --   :02 settle   — restart path (claim what is still pending), settle every
 --                  processing line, retry the same transfer (no-op), try another
 --                  transfer (refused), maybe inject a refund after payout, then
@@ -172,6 +173,12 @@ begin
   if p_worker = 'C' and v_tick.fault <> 'claimer_aborted' then
     return jsonb_build_object('skipped', 'not_a_crash_tick', 'tick', v_tick.tick);
   end if;
+  if p_worker in ('A', 'B') and v_tick.fault = 'claimer_aborted' then
+    -- Revision 1 (from runs.params.revisions[0].fromTick): pg_cron starts A and B before C, so without
+    -- this wait they claimed every line and C died holding nothing. C now
+    -- claims first and dies holding the lines; A and B skip them.
+    perform pg_sleep(2);
+  end if;
 
   select coalesce(jsonb_agg(c.payout_id order by c.payout_id), '[]'::jsonb) into v_rows
     from public.gellatti_claim_payout_lines_v1(v_tick.batch_id, case when p_worker = 'C' then 50 else 2 end, clock_timestamp()) c;
@@ -305,6 +312,11 @@ begin
       order by d.start_time desc limit 1;
     if v_crash is null or v_crash->>'status' <> 'failed' or v_crash->>'message' not ilike '%statement timeout%' then
       v_problems := v_problems || ('claimer_did_not_crash:' || coalesce(v_crash::text, 'no_run'));
+    end if;
+    -- Revision 1: the crashed claimer must have held lines, recovered here.
+    if v_tick.tick >= (coalesce((v_run.params->'revisions'->0->>'fromTick')::integer, 0))
+       and jsonb_array_length(v_reclaimed) = 0 then
+      v_problems := v_problems || 'crashed_claimer_held_no_lines'::text;
     end if;
   end if;
 
