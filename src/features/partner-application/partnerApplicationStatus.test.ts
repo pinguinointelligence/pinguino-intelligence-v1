@@ -217,6 +217,26 @@ describe('migration safety', () => {
   });
 });
 
+/**
+ * The last `create or replace function public.<name>(…)` in one migration, up to
+ * the end of its body. The body's dollar-quote tag is read from the definition
+ * itself: applied migrations use both `$$` and `$function$`, and a lookup that
+ * only knows `$$` silently skips the others and judges an older definition.
+ */
+function lastDefinitionIn(sql: string, functionName: string): string | undefined {
+  let last: string | undefined;
+  const opener = new RegExp(`create or replace function public\\.${functionName}\\s*\\(`, 'g');
+  for (const match of sql.matchAll(opener)) {
+    const tag = /\bas\s+(\$[A-Za-z_]*\$)/.exec(sql.slice(match.index));
+    if (!tag) continue;
+    const bodyStart = match.index + tag.index + tag[0].length;
+    const close = sql.indexOf(tag[1]!, bodyStart);
+    if (close < 0) continue;
+    last = sql.slice(match.index, close + tag[1]!.length);
+  }
+  return last;
+}
+
 describe('AS3 — no LIVE definition still depends on the invalid value', () => {
   // Historical migrations are append-only history and must never be edited:
   // they record what was applied. What matters is that the LAST definition of
@@ -231,13 +251,25 @@ describe('AS3 — no LIVE definition still depends on the invalid value', () => 
     let found: { file: string; body: string } | null = null;
     for (const file of files) {
       const sql = readFileSync(join(MIGRATIONS_DIR, file), 'utf8');
-      const match = new RegExp(
-        `create or replace function public\\.${functionName}[\\s\\S]*?\\$\\$;`,
-      ).exec(sql);
-      if (match) found = { file, body: match[0] };
+      const body = lastDefinitionIn(sql, functionName);
+      if (body) found = { file, body };
     }
     if (!found) throw new Error(`no definition found for ${functionName}`);
     return found;
+  }
+
+  /** The first migration whose definition writes the legal state: the fix itself. */
+  function fixOf(functionName: string): string {
+    const files = readdirSync(MIGRATIONS_DIR)
+      .filter((name) => name.endsWith('.sql'))
+      .sort();
+    const fix = files.find((file) =>
+      lastDefinitionIn(readFileSync(join(MIGRATIONS_DIR, file), 'utf8'), functionName)?.includes(
+        "'more_information_needed'",
+      ),
+    );
+    if (!fix) throw new Error(`no migration fixes ${functionName}`);
+    return fix;
   }
 
   for (const functionName of [
@@ -254,7 +286,10 @@ describe('AS3 — no LIVE definition still depends on the invalid value', () => 
       // regression was fixed. Pinning the filename made this test fail for a
       // correct change, which is the wrong thing to assert. The semantic claim
       // below is the contract.
-      expect(latest.file).toMatch(/^202608312\d{5}_/);
+      // The resolution must land on the fix or on something newer, never on an
+      // older definition. Found by content, so neither a later correction nor a
+      // DB-DRIFT-01 rename breaks it.
+      expect(latest.file >= fixOf(functionName)).toBe(true);
       // strip comments: the fix is explained in prose above the code it replaces
       const executable = latest.body.replace(/--.*$/gm, '');
       expect(executable).not.toContain('in_review');
