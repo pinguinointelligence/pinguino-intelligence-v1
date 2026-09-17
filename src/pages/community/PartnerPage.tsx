@@ -156,7 +156,7 @@ function Overview({ data }: { data: PartnerWorkspace }) {
             {data.partner?.payoutsEnabled
               ? 'Wypłaty aktywne'
               : data.partner?.connectAccountPresent && data.partner?.onboardingComplete
-                ? 'Dane są u Stripe — trwa potwierdzanie'
+                ? 'Dane wysłane do Stripe — sprawdź, czy czegoś nie brakuje'
                 : data.partner?.connectAccountPresent
                   ? 'Potwierdź dane do wypłat w Stripe'
                   : 'Gellatti przygotowuje Twoje konto wypłat'}
@@ -596,7 +596,7 @@ function Payouts({ data }: { data: PartnerWorkspace }) {
             {data.partner?.payoutsEnabled
               ? 'Dane potwierdzone — wypłaty są aktywne.'
               : data.partner?.connectAccountPresent && data.partner?.onboardingComplete
-                ? 'Twoje dane są u Stripe. Czekamy na potwierdzenie — nic więcej nie musisz robić.'
+                ? 'Twoje dane są u Stripe. Jeśli Stripe będzie potrzebował czegoś jeszcze, zobaczysz to po otwarciu.'
                 : data.partner?.connectAccountPresent
                   ? 'Potwierdź tożsamość i dane do wypłat w Stripe. Zajmuje to kilka minut.'
                   : 'Gellatti przygotowuje Twoje konto wypłat. Damy znać, kiedy będzie gotowe.'}

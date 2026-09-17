@@ -42,14 +42,26 @@ describe('what the Partner is asked to do', () => {
     expect(STEP_LABELS).toContain("payouts: 'Potwierdź dane w Stripe'");
   });
 
-  it('distinguishes "not started" from "sent, Stripe is checking"', () => {
+  it('distinguishes "not started" from "sent to Stripe"', () => {
     /* `onboardingComplete` was already returned by the workspace RPC and never
        rendered, so a Partner who had finished the hosted flow saw the same
        sentence as one who had not started it. */
     expect(PARTNER_PAGE).toContain('data.partner?.onboardingComplete');
-    expect(PARTNER_PAGE).toContain(
-      'Twoje dane są u Stripe. Czekamy na potwierdzenie — nic więcej nie musisz robić.',
-    );
+    expect(PARTNER_PAGE).toContain('Twoje dane są u Stripe.');
+  });
+
+  it('never promises that nothing more is needed — the app cannot know that', () => {
+    /* details_submitted with payouts_enabled false does NOT mean Stripe is
+       finished: it may be asking for something else, and this project
+       deliberately stores no requirement details. So the waiting state keeps the
+       way back to Stripe open and makes no promise it cannot prove. */
+    for (const source of PARTNER_FACING) {
+      expect(source).not.toMatch(/nic więcej nie musisz robić/i);
+      expect(source).not.toMatch(/wystarczy czekać/i);
+    }
+    expect(PARTNER_PAGE).toContain('Jeśli Stripe będzie potrzebował czegoś jeszcze, zobaczysz to po otwarciu.');
+    // the action stays available in that state
+    expect(PARTNER_PAGE).toContain('data.partner?.connectAccountPresent && !data.partner.payoutsEnabled');
   });
 
   it('keeps the waiting states honest: no promise that verification is done', () => {
