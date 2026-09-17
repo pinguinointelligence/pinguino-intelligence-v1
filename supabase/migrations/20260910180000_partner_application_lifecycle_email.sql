@@ -39,6 +39,18 @@
 --   different transition and does send. Using now() would double-send on replay;
 --   using status alone would silence the second, real request.
 --
+-- CORRECTED 2026-09-17, still NOT APPLIED (review before approval found these):
+--   * The recipient is the APPLICANT, so every subject is a plain Polish sentence.
+--     emailSubject.ts ES7 keeps the bracket taxonomy for the internal mailbox; a
+--     customer never sees it. ES4 still marks a non-production send with
+--     `[STAGING] `, exactly as `buildCustomerSubject` renders it. The subject_key
+--     keeps the taxonomy for filtering and metadata.
+--   * The signed-in area is named Partner (owner decision C-APP-13, 2026-09-10):
+--     "Tryb Partner", "Otwórz panel Partner" (the app's own wording).
+--   * The environment comes from `application_data.origin`, which the app now
+--     sends on submit (src/services/partner.ts). Before that fix every mail,
+--     production included, would have been labelled staging.
+--
 -- THE MAIL MUST NOT BE ABLE TO LOSE THE DECISION. The enqueue is wrapped, so a
 --   queue failure cannot roll back an approval or a rejection. A missing mail is
 --   visible as an absent email_jobs row; a lost decision is not recoverable.
@@ -82,7 +94,7 @@ begin
     when 'approved' then
       v_subject_key := 'partnerApplicationApproved';
       v_subject_tail := 'Zgłoszenie zatwierdzone';
-      v_body_lead := 'Tryb Affiliate jest aktywny na Twoim koncie.';
+      v_body_lead := 'Tryb Partner jest aktywny na Twoim koncie.';
       v_body_action := 'Twój kod i link czekają w panelu.';
     when 'rejected' then
       v_subject_key := 'partnerApplicationRejected';
@@ -116,12 +128,12 @@ begin
     perform public.gellatti_enqueue_email_v1(
       p_idempotency_key := 'partner-application:' || new.id::text || ':' || new.status || ':' || v_stamp,
       p_subject_key := v_subject_key,
-      p_subject := '[GELLATTI][PARTNER][APPLICATION]'
-        || case when v_environment = 'production' then '' else '[STAGING]' end
-        || ' ' || v_subject_tail,
+      -- ES7 + ES4: the applicant's subject is a sentence, marked off-production.
+      p_subject := case when v_environment = 'production' then '' else '[STAGING] ' end
+        || v_subject_tail,
       p_recipient := v_email,
       p_body_html := '<p>' || v_body_lead || '</p><p>' || v_body_action || '</p>'
-        || '<p><a href="' || v_app_url || '">Otwórz panel Affiliate</a></p>',
+        || '<p><a href="' || v_app_url || '">Otwórz panel Partner</a></p>',
       p_body_text := v_body_lead || chr(10) || chr(10) || v_body_action || chr(10) || chr(10)
         || v_app_url || chr(10),
       p_environment := v_environment,
@@ -147,9 +159,8 @@ begin
         perform public.gellatti_enqueue_email_v1(
           p_idempotency_key := 'partner-connect-required:' || new.id::text || ':' || v_stamp,
           p_subject_key := 'partnerConnectActionRequired',
-          p_subject := '[GELLATTI][PARTNER][CONNECT][ACTION-REQUIRED]'
-            || case when v_environment = 'production' then '' else '[STAGING]' end
-            || ' Dokończ konfigurację wypłat',
+          p_subject := case when v_environment = 'production' then '' else '[STAGING] ' end
+            || 'Dokończ konfigurację wypłat',
           p_recipient := v_email,
           p_body_html := '<p>Zanim wypłacimy wynagrodzenie, potrzebujemy danych do wypłat.</p>'
             || '<p><a href="' || v_app_url || '">Dokończ konfigurację</a></p>',

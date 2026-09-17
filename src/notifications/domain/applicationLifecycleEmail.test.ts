@@ -18,7 +18,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { OPERATIONAL_SUBJECTS } from './emailSubject';
+import { OPERATIONAL_SUBJECTS, buildCustomerSubject } from './emailSubject';
 
 const migration = readFileSync(
   new URL(
@@ -149,5 +149,55 @@ describe('C-APP-08 is reversible', () => {
 
   it('the rollback removes the origin key the trigger needed, and nothing more', () => {
     expect(rollback).not.toMatch(/'origin',\s*nullif/);
+  });
+});
+
+describe('C-APP-08 writes to the applicant as a customer (corrected 2026-09-17)', () => {
+  /** Comments explain the old subjects by name; only executable SQL is judged. */
+  const executable = migration.replace(/--[^\n]*/g, '');
+  const subjects = [...executable.matchAll(/p_subject := ([\s\S]*?),\n/g)].map((m) =>
+    (m[1] as string).replace(/\s+/g, ' ').trim(),
+  );
+  const tails = [
+    ...[...executable.matchAll(/v_subject_tail := '([^']*)';/g)].map((m) => m[1] as string),
+    'Dokończ konfigurację wypłat',
+  ];
+  const MARK = "case when v_environment = 'production' then '' else '[STAGING] ' end";
+
+  /** What the SQL expression renders for one tail, as the database would. */
+  const render = (tail: string, environment: 'production' | 'staging') =>
+    `${environment === 'production' ? '' : '[STAGING] '}${tail}`;
+
+  it('sends every subject to the applicant, never to the internal mailbox', () => {
+    expect(subjects).toHaveLength(2);
+    expect(executable.match(/p_recipient := v_email,/g)).toHaveLength(2);
+  });
+
+  it('uses no bracket taxonomy in a customer subject (ES7)', () => {
+    for (const subject of subjects) expect(subject).not.toContain('[GELLATTI]');
+    expect(subjects).toEqual([`${MARK} || v_subject_tail`, `${MARK} || 'Dokończ konfigurację wypłat'`]);
+  });
+
+  it('renders exactly what buildCustomerSubject renders, in both environments (ES4)', () => {
+    expect(tails).toHaveLength(5);
+    for (const tail of tails) {
+      for (const environment of ['production', 'staging'] as const) {
+        expect(render(tail, environment)).toBe(buildCustomerSubject({ localizedSubject: tail, environment }));
+      }
+    }
+  });
+
+  it('names the signed-in area Partner, as the owner decided (C-APP-13)', () => {
+    expect(executable).toContain("'Tryb Partner jest aktywny na Twoim koncie.'");
+    expect(executable).toContain('Otwórz panel Partner');
+    expect(executable).not.toMatch(/Tryb Affiliate|panel Affiliate/i);
+  });
+
+  it('reads the environment from the origin the app now sends on submit', () => {
+    expect(executable).toContain("v_origin text := coalesce(new.application_data->>'origin', '');");
+    const service = readFileSync(new URL('../../services/partner.ts', import.meta.url), 'utf8');
+    expect(service).toMatch(
+      /rpc\('gellatti_submit_partner_application_v1'[\s\S]{0,200}origin:\s*typeof window === 'undefined' \? '' : window\.location\.origin/,
+    );
   });
 });
