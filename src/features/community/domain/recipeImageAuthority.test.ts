@@ -105,7 +105,7 @@ function jpegFrame(bytes: Buffer): { width: number; height: number } | null {
 describe('owner-approved share photos (2026-09-17)', () => {
   const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 
-  it('each profile names its own file — gelato, sorbet, vegan, protein, never by position', () => {
+  it('SHARE-ASSET-01 each profile names its own file — gelato, sorbet, vegan, protein, never by position', () => {
     expect(BRANDED_PROFILE_IMAGE).toEqual({
       gelato: '/brand/profile/gelato.jpg',
       sorbet: '/brand/profile/sorbet.jpg',
@@ -114,7 +114,7 @@ describe('owner-approved share photos (2026-09-17)', () => {
     });
   });
 
-  it('every file is a real square JPEG, not a renamed PNG, and light enough for a share page', () => {
+  it('SHARE-ASSET-02 every file is a real square JPEG, not a renamed PNG, and light enough for a share page', () => {
     for (const url of Object.values(BRANDED_PROFILE_IMAGE)) {
       const bytes = readFileSync(`public${url}`);
       expect(bytes.subarray(0, 4).equals(PNG_SIGNATURE), url).toBe(false);
@@ -127,7 +127,7 @@ describe('owner-approved share photos (2026-09-17)', () => {
     }
   });
 
-  it('nothing but the authority names a profile file (one mapping for HOME, PRO, mobile and recipient)', () => {
+  it('SHARE-ASSET-03 nothing but the authority names a profile file (one mapping for HOME, PRO, mobile and recipient)', () => {
     const offenders: string[] = [];
     const walk = (dir: string) => {
       for (const entry of readdirSync(dir)) {
@@ -164,7 +164,7 @@ describe('customer share from HOME and PRO — own photo, otherwise the version 
   const shareImage = (category: ProductCategory, userImageUrl?: string | null) =>
     resolveRecipeImage({ context: 'customer_share', profile: category, userImageUrl });
 
-  it('HOME × four types × no photo → that type’s delivered photograph', () => {
+  it('SHARE-AUTH-01 HOME × four types × no photo → that type’s delivered photograph', () => {
     const home: ReadonlyArray<readonly [IntentProfile, BrandedProfileKey]> = [
       ['gelato', 'gelato'],
       ['sorbet', 'sorbet'],
@@ -180,7 +180,7 @@ describe('customer share from HOME and PRO — own photo, otherwise the version 
     }
   });
 
-  it('PRO × four types × no photo → that type’s delivered photograph', () => {
+  it('SHARE-AUTH-02 PRO × four types × no photo → that type’s delivered photograph', () => {
     const pro: ReadonlyArray<readonly [VisibleProductType, BrandedProfileKey]> = [
       ['gelato', 'gelato'],
       ['sorbet', 'sorbet'],
@@ -195,7 +195,7 @@ describe('customer share from HOME and PRO — own photo, otherwise the version 
     }
   });
 
-  it('the card always matches the profile the app reopens that version as', () => {
+  it('SHARE-AUTH-03 the card always matches the profile the app reopens that version as', () => {
     expect(exhaustive).toBe(true);
     for (const category of ALL_CATEGORIES) {
       expect(brandedProfileKey(category), category).toBe(visibleTypeOf(category));
@@ -203,7 +203,7 @@ describe('customer share from HOME and PRO — own photo, otherwise the version 
     }
   });
 
-  it('the customer’s own photograph wins over the profile card', () => {
+  it('SHARE-AUTH-04 the customer’s own photograph wins over the profile card', () => {
     const own = 'https://project.supabase.co/storage/v1/object/sign/x/own.jpg?token=t';
     for (const category of ALL_CATEGORIES) {
       expect(shareImage(category, own)).toEqual({
@@ -214,7 +214,7 @@ describe('customer share from HOME and PRO — own photo, otherwise the version 
     }
   });
 
-  it('a version that started from a library recipe still gets the profile card, not the library picture', () => {
+  it('SHARE-AUTH-05 a version that started from a library recipe still gets the profile card, not the library picture', () => {
     const decision = resolveRecipeImage({
       context: 'customer_share',
       libraryFlavorCode: 'FL-000001',
@@ -225,13 +225,13 @@ describe('customer share from HOME and PRO — own photo, otherwise the version 
     expect(decision.isPlaceholder).toBe(true);
   });
 
-  it('outside a customer share the library picture is untouched', () => {
+  it('SHARE-AUTH-06 outside a customer share the library picture is untouched', () => {
     const decision = resolveRecipeImage({ libraryFlavorCode: 'FL-000001', profile: 'sorbet' });
     expect(decision.origin).toBe('library_recipe');
     expect(decision.url).toMatch(/^\/recipes\/FL-000001/);
   });
 
-  it('a placeholder is never reported as the customer’s own photograph', () => {
+  it('SHARE-AUTH-07 a placeholder is never reported as the customer’s own photograph', () => {
     for (const category of ALL_CATEGORIES) {
       for (const blank of [null, undefined, '', '   ']) {
         const decision = shareImage(category, blank);
@@ -261,7 +261,7 @@ describe('§24 — Community takes the maker’s OWN photograph, and only that',
     expect(communityPhotoAccepted('   ')).toBe(false);
   });
 
-  it('accepts a photograph the maker uploaded to the Community photo bucket', () => {
+  it('COMM-GUARD-01 accepts a photograph the maker uploaded to the Community photo bucket', () => {
     expect(
       communityPhotoAccepted(
         'https://tunabqqrwabacxjcxxkz.supabase.co/storage/v1/object/public/community-recipe-images/5f0c7b1e-2d7a-4c1e-9d2b-0f6f3f0f9a11/8a1f2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d.jpg',
@@ -269,7 +269,7 @@ describe('§24 — Community takes the maker’s OWN photograph, and only that',
     ).toBe(true);
   });
 
-  it('refuses our branded cards and library pictures in absolute form', () => {
+  it('COMM-GUARD-02 refuses our branded cards and library pictures in absolute form', () => {
     for (const origin of ['https://staging.pinguinoai.com', 'https://gellatti.com']) {
       for (const url of Object.values(BRANDED_PROFILE_IMAGE)) {
         expect(communityPhotoAccepted(`${origin}${url}`), `${origin}${url}`).toBe(false);
@@ -278,7 +278,7 @@ describe('§24 — Community takes the maker’s OWN photograph, and only that',
     }
   });
 
-  it('refuses an asset with an upload path smuggled into the query, the fragment or dot segments', () => {
+  it('COMM-GUARD-03 refuses an asset with an upload path smuggled into the query, the fragment or dot segments', () => {
     const upload =
       '/storage/v1/object/public/community-recipe-images/5f0c7b1e-2d7a-4c1e-9d2b-0f6f3f0f9a11/a.jpg';
     for (const url of [
@@ -293,7 +293,7 @@ describe('§24 — Community takes the maker’s OWN photograph, and only that',
     }
   });
 
-  it('refuses anything that is not an https upload object: relative, other buckets, other paths', () => {
+  it('COMM-GUARD-04 refuses anything that is not an https upload object: relative, other buckets, other paths', () => {
     for (const url of [
       '/storage/v1/object/public/community-recipe-images/owner/a.jpg',
       'http://tunabqqrwabacxjcxxkz.supabase.co/storage/v1/object/public/community-recipe-images/owner/a.jpg',
