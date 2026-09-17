@@ -32,6 +32,7 @@ import { useHomeDraftStore, type IntentChip } from './homeDraftStore';
 import type { IntentRole } from './homeIntentParsing';
 import {
   SCOPE_BY_PROFILE,
+  chipTermOf,
   hydrateExactScannedProduct,
   hydrateIngredient,
   resolveChipTerm,
@@ -76,11 +77,9 @@ export function useHomeIntentIngredients() {
       // generic idea consumes the frozen concept default while explicit words around
       // it (a form, a brand) keep their meaning. A known profile narrows the frozen
       // order by its SA-04 recipe scope.
-      const resolution = await resolveChipTerm(
-        { label: chip.label, concept: chip.concept, segment: chip.segment },
-        signal,
-        { profile: useHomeDraftStore.getState().profile },
-      );
+      const resolution = await resolveChipTerm(chipTermOf(chip), signal, {
+        profile: useHomeDraftStore.getState().profile,
+      });
       // A cancelled resolution (the idea changed, the chip was removed) must not write a
       // late answer onto the draft.
       if (signal?.aborted) return { chipId: chip.id, status: 'unavailable' };
@@ -149,11 +148,7 @@ export function useHomeIntentIngredients() {
         chip.resolvedBy?.authority === 'SA03_CONCEPT_DEFAULT' &&
         !sameConceptScope(chip.resolvedBy.scope, scopeNow)
       ) {
-        const rescoped = await resolveChipTerm(
-          { label: chip.label, concept: chip.concept, segment: chip.segment },
-          undefined,
-          { profile },
-        );
+        const rescoped = await resolveChipTerm(chipTermOf(chip), undefined, { profile });
         if (rescoped.kind !== 'resolved') {
           resolveChip(chip.id, { productId: null, productName: null, resolvedBy: undefined });
           return null;

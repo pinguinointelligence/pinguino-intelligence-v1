@@ -9,7 +9,14 @@ import { supabase } from '@/lib/supabase/client';
  * returns is short-lived and never stored here: every "Download PDF" asks for a fresh one.
  */
 
+/** The market-less base guide (v1.1, English). Kept for its existing orders; no longer offered. */
 export const INFOPAK_DOCUMENT_KEY = 'GELATO_BASE_INGREDIENTS';
+
+/**
+ * The 0 € document on offer: one PDF per market and language, listing the seven Starter Pack
+ * items with that market's local equivalents (owner correction 2026-09-17).
+ */
+export const STARTER_LOCAL_DOCUMENT_KEY = 'STARTER_PACK_LOCAL_GUIDE';
 
 export type DocumentAvailabilityState = 'OFF' | 'TEST_ACCOUNTS_ONLY' | 'ON';
 
@@ -18,6 +25,25 @@ export interface DocumentAvailability {
   state: DocumentAvailabilityState;
   /** Whether THIS caller may place an order now (false while signed out). */
   orderable: boolean;
+}
+
+/** One language variant of a market document, as the server answers for THIS caller. */
+export interface DocumentVariant {
+  language: string;
+  state: DocumentAvailabilityState;
+  orderable: boolean;
+}
+
+/** A market with at least one variant that is not OFF. */
+export interface DocumentMarket {
+  countryIso2: string;
+  variants: DocumentVariant[];
+}
+
+/** Which market document to order: a market and one of its languages. */
+export interface DocumentMarketChoice {
+  countryIso2: string;
+  language: string;
 }
 
 export interface DocumentDownload {
@@ -31,6 +57,8 @@ export interface DocumentOrderResult {
   orderNumber: string;
   created: boolean;
   documentVersion: string;
+  countryIso2: string | null;
+  language: string | null;
   download: DocumentDownload;
   emailQueued: boolean;
 }
@@ -45,6 +73,7 @@ export interface MyDocumentOrder {
   documentKey: string;
   documentVersion: string;
   language: string;
+  countryIso2: string | null;
   emailStatus: string | null;
 }
 
@@ -58,6 +87,8 @@ export interface AdminDocumentOrder {
   documentKey: string;
   documentVersion: string;
   documentSha256: string;
+  countryIso2: string | null;
+  language: string | null;
   qaAccount: boolean;
   emailStatus: string | null;
 }
@@ -106,11 +137,40 @@ export async function getDocumentAvailability(documentKey: string): Promise<Docu
   };
 }
 
-export async function orderDocument(documentKey: string): Promise<DocumentOrderResult> {
+const isState = (value: unknown): value is DocumentAvailabilityState =>
+  value === 'ON' || value === 'TEST_ACCOUNTS_ONLY' || value === 'OFF';
+
+/** Markets (and their language variants) that currently offer this document. */
+export async function getDocumentMarkets(documentKey: string): Promise<DocumentMarket[]> {
+  if (!supabase) throw new DocumentOrderError('backend_unavailable');
+  const { data, error } = await supabase.rpc('gellatti_shop_document_markets_v1', {
+    p_document_key: documentKey,
+  });
+  if (error) throw new DocumentOrderError('availability_unavailable');
+  const rows = (Array.isArray(data) ? data : []) as Array<Record<string, unknown>>;
+  return rows
+    .map((row) => ({
+      countryIso2: String(row.countryIso2 ?? ''),
+      variants: (Array.isArray(row.variants) ? row.variants : [])
+        .map((variant: Record<string, unknown>) => ({
+          language: String(variant.language ?? ''),
+          state: isState(variant.state) ? variant.state : ('OFF' as const),
+          orderable: variant.orderable === true,
+        }))
+        .filter((variant) => variant.language !== '' && variant.state !== 'OFF'),
+    }))
+    .filter((market) => /^[A-Z]{2}$/.test(market.countryIso2) && market.variants.length > 0);
+}
+
+export async function orderDocument(
+  documentKey: string,
+  market?: DocumentMarketChoice,
+): Promise<DocumentOrderResult> {
   const result = await invoke<DocumentOrderResult | null>(
     {
       action: 'order',
       documentKey,
+      ...(market ? { countryIso2: market.countryIso2, language: market.language } : {}),
       /* Only picks which of the app's own addresses a notification links to; the
          function checks it against a closed list and ignores anything else. */
       origin: typeof window === 'undefined' ? '' : window.location.origin,
@@ -146,14 +206,23 @@ export async function getAdminDocumentOrders(): Promise<AdminDocumentOrder[]> {
   return (data ?? []) as unknown as AdminDocumentOrder[];
 }
 
-/** The account's active order for a document (the list comes newest first), if it has one. */
+/**
+ * The account's active order for a document (the list comes newest first), if it has one.
+ * For a market document, only an order for that market and language counts.
+ */
 export function findActiveDocumentOrder(
   orders: readonly MyDocumentOrder[] | undefined,
   documentKey: string,
+  market?: DocumentMarketChoice | null,
 ): MyDocumentOrder | null {
   return (
-    orders?.find((order) => order.documentKey === documentKey && order.status !== 'cancelled') ??
-    null
+    orders?.find(
+      (order) =>
+        order.documentKey === documentKey &&
+        order.status !== 'cancelled' &&
+        (!market ||
+          (order.countryIso2 === market.countryIso2 && order.language === market.language)),
+    ) ?? null
   );
 }
 

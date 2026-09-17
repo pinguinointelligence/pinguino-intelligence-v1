@@ -45,6 +45,8 @@ export interface ShopCopy {
     readonly localHere: string;
     readonly noneHere: string;
     readonly noneHelper: string;
+    /** No parcel here, but the free per-country PDF exists. */
+    readonly noneHelperDocument: string;
     readonly loadError: string;
     readonly retry: string;
   };
@@ -195,6 +197,17 @@ export interface ShopCopy {
     readonly orderRow: string;
     readonly language: string;
     readonly accountHint: string;
+    /** No country chosen yet: the PDF is made per country. */
+    readonly chooseCountry: string;
+    readonly chooseCountryLink: string;
+    /** `{country}` is replaced with the chosen country's name. */
+    readonly notReady: string;
+    readonly changeCountry: string;
+    readonly countryLabel: string;
+    readonly languageLabel: string;
+    readonly adminMarket: string;
+    /** Locale used to name countries and languages in this copy (Intl.DisplayNames). */
+    readonly displayLocale: string;
     readonly adminTitle: string;
     readonly adminEmpty: string;
     readonly adminQa: string;
@@ -282,6 +295,8 @@ export const shopCopyPl: ShopCopy = {
     noneHelper:
       'Nie wysyłamy tu jeszcze zestawu i nie mamy kompletnej listy lokalnych zamienników. ' +
       'Pracujemy nad tym.',
+    noneHelperDocument:
+      'Nie wysyłamy tu jeszcze zestawu. Niżej zamówisz za 0 € PDF z lokalnymi odpowiednikami jego siedmiu składników.',
     loadError: 'Nie udało się wczytać listy krajów.',
     retry: 'Spróbuj ponownie',
   },
@@ -432,21 +447,20 @@ export const shopCopyPl: ShopCopy = {
     formatPrice: 'PDF · 0 €',
     cta: 'Zamów za 0 €',
     ctaBusy: 'Zamawiam…',
-    lede: 'Darmowy infopak PDF: jakie podstawowe składniki kupić do bazy lodów i gdzie je znaleźć w Twoim kraju.',
+    lede: 'Darmowy infopak PDF dla Twojego kraju: gdzie kupić siedem składników Starter Packu.',
     description: [
       'To infopak w formacie PDF z informacjami o zakupach. Nie jest to paczka składników ani zbiór receptur z gramaturami.',
-      'Infopak obejmuje sześć podstawowych składników bazy gelato: mleko, śmietankę, mleko odtłuszczone w proszku, cukier, dekstrozę i gumę tara. ' +
-        'Dla mleka, śmietanki, mleka w proszku, dekstrozy i gumy tara podaje produkty wskazane w zatwierdzonej tabeli Gellatti dla Twojego kraju: ' +
-        'markę, nazwę, opakowanie, kod kreskowy (jeśli produkt go ma) i odnośniki do miejsc, gdzie produkt znaleziono. ' +
-        'Dla cukru podaje prostą regułę wyboru zamiast marki, a tam, gdzie potwierdziliśmy lokalną nazwę, także tę nazwę.',
-      'Część produktów sprzedają sklepy za granicą albo dystrybutorzy dla firm. Infopak wyraźnie to oznacza. ' +
+      'Infopak obejmuje siedem składników Starter Packu: dekstrozę, mleko odtłuszczone w proszku, śmietankę w proszku, fruktozę, inulinę, suszone żółtko jaja i stabilizator. ' +
+        'Dla każdego podaje lokalny odpowiednik w wybranym kraju: markę, nazwę, opakowanie, kod kreskowy (jeśli produkt go ma) i miejsca, gdzie produkt znaleziono.',
+      'Stabilizator Gellatti zastępuje lokalna guma roślinna, opisana jako alternatywa, a nie ta sama mieszanka. ' +
+        'Część produktów sprzedają sklepy za granicą albo dystrybutorzy dla firm; infopak wyraźnie to oznacza. ' +
         'Dostępność, ceny i dostawa mogą się zmieniać i nie są gwarantowane.',
     ],
     detailsTitle: 'Szczegóły',
     details: [
       'Format: PDF.',
-      'Język dokumentu: angielski.',
-      'Zakres: 75 krajów w jednym pliku; swój kraj znajdziesz w klikalnym spisie.',
+      'Kraj: ten, który wybierasz powyżej.',
+      'Język: język wybranego kraju; w krajach z kilkoma językami wybierasz wersję.',
       'Dostawa: pobranie po złożeniu zamówienia za 0 €, bez karty i bez kosztów wysyłki.',
       'Plik znajdziesz też w: Konto → Zamówienia.',
     ],
@@ -466,6 +480,14 @@ export const shopCopyPl: ShopCopy = {
     orderRow: 'Składniki bazy lodów · PDF · 0 €',
     language: 'PDF po angielsku',
     accountHint: 'Plik możesz pobrać ponownie w każdej chwili.',
+    chooseCountry: 'Wybierz kraj, a zamówisz PDF przygotowany dla Twojego kraju.',
+    chooseCountryLink: 'Wybierz kraj',
+    notReady: 'PDF dla kraju: {country} jeszcze przygotowujemy.',
+    changeCountry: 'Zmień kraj',
+    countryLabel: 'Kraj',
+    languageLabel: 'Język PDF',
+    adminMarket: 'Kraj · język',
+    displayLocale: 'pl',
     adminTitle: 'Dokumenty cyfrowe · 0 €',
     adminEmpty: 'Nie ma jeszcze zamówień dokumentów.',
     adminQa: 'Konto QA',
@@ -551,6 +573,8 @@ export const shopCopyEn: ShopCopy = {
     noneHelper:
       'We do not ship the pack here yet, and we do not have a complete list of local ' +
       'alternatives. We are working on it.',
+    noneHelperDocument:
+      "We don't ship the pack here yet. Below you can order, for €0, a PDF with local equivalents of its seven ingredients.",
     loadError: 'We could not load the list of countries.',
     retry: 'Try again',
   },
@@ -695,21 +719,20 @@ export const shopCopyEn: ShopCopy = {
     formatPrice: 'PDF · €0',
     cta: 'Get it for €0',
     ctaBusy: 'Ordering…',
-    lede: 'Free PDF shopping guide: the basic ingredients to buy for a gelato base, and where to find them in your country.',
+    lede: 'Free PDF shopping guide for your country: where to buy the seven Starter Pack ingredients.',
     description: [
       'This is a PDF shopping guide. It is information, not a parcel of ingredients and not a recipe collection with gram amounts.',
-      'It covers the six basic ingredients of a gelato base: milk, cream, skim milk powder, sugar, dextrose and tara gum. ' +
-        "For milk, cream, skim milk powder, dextrose and tara gum, it lists the products in Gellatti's approved table for your country: " +
-        'brand, name, pack size, the barcode where the product has one, and links to where each product was found. ' +
-        'For sugar it gives a simple buying rule instead of a brand, plus the local name where we have confirmed one.',
-      'Some products are sold by shops abroad or by distributors to businesses, and the guide marks them clearly. ' +
+      'It covers the seven Starter Pack ingredients: dextrose, skim milk powder, cream powder, fructose, inulin, dried egg yolk and a stabilizer. ' +
+        'For each one it lists a local equivalent in the country you choose: brand, name, pack size, the barcode where the product has one, and where the product was found.',
+      'The Gellatti Stabilizer is replaced by a local plant gum, described as an alternative rather than the same blend. ' +
+        'Some products are sold by shops abroad or by distributors to businesses, and the guide marks them clearly. ' +
         'Availability, prices and delivery can change and are not guaranteed.',
     ],
     detailsTitle: 'Details',
     details: [
       'Format: PDF.',
-      'Document language: English.',
-      'Coverage: 75 countries in one file; find yours in the linked index.',
+      'Country: the one you choose above.',
+      'Language: the language of the chosen country; where a country has several, you pick the version.',
       'Delivery: download after placing the €0 order, with no card and no shipping costs.',
       'Also in: Account → Orders.',
     ],
@@ -729,6 +752,14 @@ export const shopCopyEn: ShopCopy = {
     orderRow: 'Gelato Base Ingredients · PDF · €0',
     language: 'PDF in English',
     accountHint: 'You can download the file again at any time.',
+    chooseCountry: 'Choose your country to order the PDF made for it.',
+    chooseCountryLink: 'Choose country',
+    notReady: 'The PDF for {country} is still being prepared.',
+    changeCountry: 'Change country',
+    countryLabel: 'Country',
+    languageLabel: 'PDF language',
+    adminMarket: 'Country · language',
+    displayLocale: 'en',
     adminTitle: 'Digital documents · €0',
     adminEmpty: 'No document orders yet.',
     adminQa: 'QA account',

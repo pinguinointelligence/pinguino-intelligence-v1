@@ -77,12 +77,13 @@ export function AdminShopDocumentsPanel() {
       ) : null}
       {rows.length > 0 ? (
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse text-sm">
+          <table className="w-full min-w-[820px] border-collapse text-sm">
             <thead>
               <tr>
                 <th className={head}>{shopCopy.orders.number}</th>
                 <th className={head}>{shopCopy.orders.placed}</th>
                 <th className={head}>E-mail</th>
+                <th className={head}>{shopCopy.infopak.adminMarket}</th>
                 <th className={head}>{shopCopy.infopak.adminVersion}</th>
                 <th className={head}>{shopCopy.infopak.adminMail}</th>
                 <th className={head}>PDF</th>
@@ -103,6 +104,9 @@ export function AdminShopDocumentsPanel() {
                     {order.createdAt.slice(0, 16).replace('T', ' ')}
                   </td>
                   <td className={cell}>{order.email}</td>
+                  <td className={cn(cell, 'font-mono text-xs')}>
+                    {order.countryIso2 ? `${order.countryIso2} · ${order.language ?? ''}` : '—'}
+                  </td>
                   <td className={cn(cell, 'font-mono text-xs')}>
                     {order.documentVersion} · {order.documentSha256.slice(0, 8)}
                   </td>

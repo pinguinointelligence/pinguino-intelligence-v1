@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   INFOPAK_INTENT_TTL_MS,
-  hasInfopakIntent,
+  peekInfopakIntent,
   rememberInfopakIntent,
   takeInfopakIntent,
 } from './infopakIntent';
@@ -15,28 +15,43 @@ const memoryStorage = () => {
   };
 };
 
+const BELGIUM_DUTCH = { countryIso2: 'BE', language: 'nl' };
+
 describe('the "Zamów za 0 €" intent survives sign-in exactly once', () => {
-  it('is taken once and never repeats', () => {
+  it('remembers which market and language was clicked, and is taken once', () => {
     const storage = memoryStorage();
-    rememberInfopakIntent(1_000, storage);
-    expect(hasInfopakIntent(2_000, storage)).toBe(true);
-    expect(takeInfopakIntent(2_000, storage)).toBe(true);
-    expect(takeInfopakIntent(3_000, storage)).toBe(false);
-    expect(hasInfopakIntent(3_000, storage)).toBe(false);
+    rememberInfopakIntent(BELGIUM_DUTCH, 1_000, storage);
+    expect(peekInfopakIntent(2_000, storage)).toEqual(BELGIUM_DUTCH);
+    expect(takeInfopakIntent(2_000, storage)).toEqual(BELGIUM_DUTCH);
+    expect(takeInfopakIntent(3_000, storage)).toBeNull();
+    expect(peekInfopakIntent(3_000, storage)).toBeNull();
+  });
+
+  it('keeps script subtags such as zh-Hant', () => {
+    const storage = memoryStorage();
+    rememberInfopakIntent({ countryIso2: 'TW', language: 'zh-Hant' }, 0, storage);
+    expect(takeInfopakIntent(1, storage)).toEqual({ countryIso2: 'TW', language: 'zh-Hant' });
   });
 
   it('expires, and an expired intent is cleared rather than acted on', () => {
     const storage = memoryStorage();
-    rememberInfopakIntent(0, storage);
-    expect(takeInfopakIntent(INFOPAK_INTENT_TTL_MS + 1, storage)).toBe(false);
+    rememberInfopakIntent(BELGIUM_DUTCH, 0, storage);
+    expect(takeInfopakIntent(INFOPAK_INTENT_TTL_MS + 1, storage)).toBeNull();
     expect(storage.getItem('gellatti.shop.infopakIntent')).toBeNull();
   });
 
-  it('ignores garbage and missing storage', () => {
+  it('drops an intent without a market (older build) or garbage, and tolerates missing storage', () => {
     const storage = memoryStorage();
-    storage.setItem('gellatti.shop.infopakIntent', 'not-a-time');
-    expect(takeInfopakIntent(1, storage)).toBe(false);
-    expect(takeInfopakIntent(1, null)).toBe(false);
-    expect(() => rememberInfopakIntent(1, null)).not.toThrow();
+    storage.setItem('gellatti.shop.infopakIntent', '1000');
+    expect(takeInfopakIntent(2_000, storage)).toBeNull();
+    storage.setItem(
+      'gellatti.shop.infopakIntent',
+      JSON.stringify({ at: 1_000, countryIso2: 'be', language: 'NL' }),
+    );
+    expect(takeInfopakIntent(2_000, storage)).toBeNull();
+    storage.setItem('gellatti.shop.infopakIntent', 'not-json');
+    expect(takeInfopakIntent(2_000, storage)).toBeNull();
+    expect(takeInfopakIntent(1, null)).toBeNull();
+    expect(() => rememberInfopakIntent(BELGIUM_DUTCH, 1, null)).not.toThrow();
   });
 });

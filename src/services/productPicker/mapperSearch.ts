@@ -26,12 +26,14 @@ import {
 } from '@/data/ingredients/mapperVerificationStatus';
 import {
   approvedConceptOrder,
+  attachedFormText,
   conceptDefaultIntent,
   conceptLineage,
   loadMapperConceptDefaults,
   loadMapperSearchRuntime,
   planMapperCatalogSearch,
   type ConceptDefaultFocus,
+  type ConceptDefaultNeighbour,
   type MapperConceptScope,
 } from '@/features/mapper-search-runtime';
 import { normalizeSearchText, rankSearchHits } from '@/features/ingredient-builder/ingredientSearch';
@@ -258,6 +260,14 @@ export interface ConceptDefaultQuery {
   /** The whole input the focus came from, so explicit words around it keep their meaning. */
   text: string;
   focus: ConceptDefaultFocus;
+  /**
+   * The listed elements said right before/after `text`. A form joined to it by a central
+   * grammar linker („sok z cytryny”) belongs to it; see `attachedFormText`.
+   */
+  neighbours?: {
+    readonly before?: ConceptDefaultNeighbour | null;
+    readonly after?: ConceptDefaultNeighbour | null;
+  };
   /** Frozen SA-04 recipe scope when the profile is already known; `null` = ANY. */
   scope?: MapperConceptScope | null;
   signal?: AbortSignal;
@@ -281,20 +291,24 @@ export async function selectApprovedConceptDefault(
   let defaults: Awaited<ReturnType<typeof loadMapperConceptDefaults>>;
   let lineage: ReturnType<typeof conceptLineage>;
   try {
-    const [loadedPlan, loadedDefaults, runtime] = await Promise.all([
-      planMapperCatalogSearch(query.text, {
-        localeVariant: '*',
-        marketScope: 'GLOBAL',
-        // The literal search that may follow records the gaps once; this stage must not
-        // duplicate them in the bounded review telemetry.
-        telemetry: { record() {} },
-      }),
+    const [loadedDefaults, runtime] = await Promise.all([
       loadMapperConceptDefaults(),
       loadMapperSearchRuntime(),
     ]);
-    plan = loadedPlan;
     defaults = loadedDefaults;
     lineage = conceptLineage(runtime.release);
+    // The literal search that may follow records the gaps once; this stage must not
+    // duplicate them in the bounded review telemetry.
+    const options = { localeVariant: '*', marketScope: 'GLOBAL', telemetry: { record() {} } };
+    const text = query.neighbours
+      ? attachedFormText(
+          query.text,
+          query.neighbours,
+          (element) => runtime.resolve(element, options),
+          lineage,
+        )
+      : query.text;
+    plan = await planMapperCatalogSearch(text, options);
   } catch (error) {
     return { kind: 'error', message: error instanceof Error ? error.message : String(error) };
   }

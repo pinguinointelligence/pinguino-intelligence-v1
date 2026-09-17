@@ -39,6 +39,9 @@ export interface IntentTerm {
    * — keep their meaning after the utterance is split into separate chips.
    */
   readonly segment: string;
+  /** The whole utterance, and the position of `segment` among its listed elements. */
+  readonly utterance: string;
+  readonly segmentIndex: number;
 }
 
 export interface ParsedIntent {
@@ -379,10 +382,30 @@ const STOP_WORDS = new Set([
 const SEGMENT_SPLIT = /\s*(?:,|;|\band\b|\boraz\b|\bplus\b|\bwith\b|\bi\b|\bz\b)\s*/;
 
 export function intentSegments(text: string): readonly string[] {
-  return text
-    .split(SEGMENT_SPLIT)
-    .map((part) => part.trim())
-    .filter(Boolean);
+  return intentSegmentParts(text).map((part) => part.text);
+}
+
+export interface IntentSegmentPart {
+  readonly text: string;
+  /** The separator said between the previous element and this one („ z ”, „, ”), if any. */
+  readonly separatorBefore: string | null;
+}
+
+/** The listed elements with the separators between them, so a caller can see what joined them. */
+export function intentSegmentParts(text: string): readonly IntentSegmentPart[] {
+  const pieces = text.split(new RegExp(`(${SEGMENT_SPLIT.source})`));
+  const parts: IntentSegmentPart[] = [];
+  let separator: string | null = null;
+  for (let index = 0; index < pieces.length; index += 2) {
+    const piece = (pieces[index] ?? '').trim();
+    if (piece) {
+      parts.push({ text: piece, separatorBefore: parts.length === 0 ? null : separator });
+      separator = null;
+    }
+    const next = pieces[index + 1];
+    if (next !== undefined) separator = (separator ?? '') + next;
+  }
+  return parts;
 }
 
 export function parseIntent(text: string): ParsedIntent {
@@ -394,7 +417,7 @@ export function parseIntent(text: string): ParsedIntent {
 
   /* Each segment carries its OWN role. A term never inherits a word that was said
      about a different product. */
-  for (const segment of intentSegments(text)) {
+  for (const [segmentIndex, segment] of intentSegments(text).entries()) {
     const normalized = normalizeIntentText(segment);
     if (!normalized) continue;
     const statedRole = detectStatedRole(segment);
@@ -411,6 +434,8 @@ export function parseIntent(text: string): ParsedIntent {
           role: statedRole,
           fuzzy: false,
           segment,
+          utterance: text,
+          segmentIndex,
         });
         remaining = remaining.replace(phrase, ' ');
       }
@@ -434,6 +459,8 @@ export function parseIntent(text: string): ParsedIntent {
         role: statedRole,
         fuzzy: exact === null && concept !== null,
         segment,
+        utterance: text,
+        segmentIndex,
       });
     }
   }
