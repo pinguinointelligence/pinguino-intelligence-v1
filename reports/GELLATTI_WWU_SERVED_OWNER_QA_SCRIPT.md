@@ -167,7 +167,7 @@ Use these throwaway codes: **QAWWU01**, **QAWWU02**. **A created code stays rese
   - After step 3: the link is listed with **Kopiuj link**, status **Aktywny** (hover "Link jest włączony."), and **Kliknięcia: 0**.
   - After step 4: **Kliknięcia: 1**. A second visit from the same browser may not count twice (clicks are de-duplicated).
   - After step 5: *Pierwszy link* is done ("Masz link gotowy do udostępnienia."), and the guide shows **2 z 3 gotowe**.
-  - Only **Kliknięcia** is shown per link. Unique visitors and active subscriptions per link wait for migration `20260910200000` (NOT APPLIED), so their absence is expected.
+  - Only **Kliknięcia** is shown per link. **Rejestracje**, **Klienci** and **Aktywne subskrypcje** per link, and the active-subscriptions count per code, wait for migration `20260910200000` (NOT APPLIED), so their absence is expected.
 - **PASS:** as above.
 - **FAIL:** a raw status (`ACTIVE`), no copy button, or the step not updating.
 - **Mutates:** 1 link, plus click records.
