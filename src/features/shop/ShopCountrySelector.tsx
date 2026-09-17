@@ -87,7 +87,11 @@ export function ShopCountrySelector({ className }: { className?: string }) {
       </div>
 
       <p className="mt-1 text-[13px] leading-[1.45] text-[var(--g-text-secondary)]">
-        {mode === 'none' && selected != null ? c.country.noneHelper : c.country.helper}
+        {mode === 'none' && selected != null
+          ? country?.documentAvailable
+            ? c.country.noneHelperDocument
+            : c.country.noneHelper
+          : c.country.helper}
       </p>
 
       <select

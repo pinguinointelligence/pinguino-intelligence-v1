@@ -6,9 +6,10 @@
  *
  *  - The caller is authenticated from the JWT. The user id and e-mail are never read from
  *    the body, and the anon key alone is not a user.
- *  - The client names a document key from a closed list. Price (0), entitlement,
- *    availability (OFF / TEST_ACCOUNTS_ONLY / ON), document version and file are resolved
- *    by `gellatti_shop_document_order_v1`, which only the service role may call.
+ *  - The client names a document key from a closed list and, for a market document (the
+ *    per-country Starter Pack guide), a market and language. Price (0), entitlement,
+ *    availability (OFF / TEST_ACCOUNTS_ONLY / ON), document version and file are resolved by
+ *    `gellatti_shop_document_order_v1` / `_v2`, which only the service role may call.
  *  - Idempotent: the database allows one active order per account per document version,
  *    so a double click, a parallel request or a retry returns the same order.
  *  - A download is a short-lived signed URL for the file pinned in THAT order, issued only
@@ -39,7 +40,17 @@ const json = (status: number, body: Record<string, unknown>) =>
     headers: { ...CORS, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
   });
 
-const DOCUMENT_KEYS: ReadonlySet<string> = new Set(['GELATO_BASE_INGREDIENTS']);
+/**
+ * The closed list of documents. A market document is ordered for one market and one of its
+ * languages; the base guide has no market. Which markets and languages exist is decided by the
+ * registry, never by this list.
+ */
+const DOCUMENTS: Readonly<Record<string, { perMarket: boolean }>> = {
+  GELATO_BASE_INGREDIENTS: { perMarket: false },
+  STARTER_PACK_LOCAL_GUIDE: { perMarket: true },
+};
+const MARKET = /^[A-Z]{2}$/;
+const LANGUAGE = /^[a-z]{2,3}(-[A-Z][a-z]{3})?$/;
 const SIGNED_URL_TTL_SECONDS = 300;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -71,6 +82,8 @@ interface OrderResult {
   created: boolean;
   documentKey: string;
   documentVersion: string;
+  countryIso2: string | null;
+  language: string | null;
   emailJobId: string | null;
   qaAccount: boolean;
   qaRecipient: string | null;
@@ -120,6 +133,15 @@ async function signedDownload(
   };
 }
 
+/** A country or language named in Polish for the notification ("BE" → "Belgia"). */
+function polishName(type: 'region' | 'language', code: string): string {
+  try {
+    return new Intl.DisplayNames(['pl'], { type }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 async function queueNotification(
   admin: ServiceClient,
   order: OrderResult,
@@ -136,6 +158,9 @@ async function queueNotification(
     };
   }
   const accountUrl = `${app.base}/account?section=orders&order=${order.orderId}`;
+  const documentLine = order.countryIso2
+    ? `(PDF dla kraju: ${polishName('region', order.countryIso2)}, język: ${polishName('language', order.language ?? '')})`
+    : '(PDF w języku angielskim)';
   const marker = `${app.environment === 'production' ? '' : '[STAGING] '}${order.qaAccount ? '[QA] ' : ''}`;
   const qaLine = order.qaAccount
     ? `Powiadomienie testowe dla konta QA ${customerEmail} (tryb TEST_ACCOUNTS_ONLY).`
@@ -147,14 +172,14 @@ async function queueNotification(
     p_recipient: recipient,
     p_body_html:
       `<p>Zamówienie ${order.orderNumber} przyjęte. Twój infopak „Gellatti — Składniki bazy lodów” ` +
-      `(PDF w języku angielskim) jest gotowy.</p>` +
+      `${documentLine} jest gotowy.</p>` +
       `<p><a href="${accountUrl}">Pobierz PDF w koncie</a></p>` +
       `<p>Plik zawsze znajdziesz w: Konto → Zamówienia.</p>` +
       (qaLine ? `<p>${qaLine}</p>` : '') +
       `<p><a href="https://www.gellatti.com">www.gellatti.com</a></p>`,
     p_body_text:
       `Zamówienie ${order.orderNumber} przyjęte. Twój infopak „Gellatti — Składniki bazy lodów” ` +
-      `(PDF w języku angielskim) jest gotowy.\n\nPobierz PDF w koncie: ${accountUrl}\n\n` +
+      `${documentLine} jest gotowy.\n\nPobierz PDF w koncie: ${accountUrl}\n\n` +
       `Plik zawsze znajdziesz w: Konto → Zamówienia.\n\n` +
       (qaLine ? `${qaLine}\n\n` : '') +
       `www.gellatti.com\n`,
@@ -192,7 +217,14 @@ Deno.serve(async (req) => {
   if (userError || !userData?.user) return json(401, { error: 'unauthorized' });
   const user = userData.user;
 
-  let body: { action?: unknown; documentKey?: unknown; orderId?: unknown; origin?: unknown };
+  let body: {
+    action?: unknown;
+    documentKey?: unknown;
+    orderId?: unknown;
+    origin?: unknown;
+    countryIso2?: unknown;
+    language?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
@@ -207,13 +239,35 @@ Deno.serve(async (req) => {
 
   if (body.action === 'order') {
     const documentKey = String(body.documentKey ?? '');
-    if (!DOCUMENT_KEYS.has(documentKey)) return json(400, { error: 'unknown_document' });
+    const document = DOCUMENTS[documentKey];
+    if (!document) return json(400, { error: 'unknown_document' });
 
-    const { data, error } = await admin.rpc('gellatti_shop_document_order_v1', {
-      p_user_id: user.id,
-      p_email: user.email ?? '',
-      p_document_key: documentKey,
-    });
+    let market: { countryIso2: string; language: string } | null = null;
+    if (document.perMarket) {
+      /* The market and language only pick a registry row; the database decides whether that row
+         exists, is offered and may be ordered by this account. */
+      const countryIso2 = String(body.countryIso2 ?? '')
+        .trim()
+        .toUpperCase();
+      const language = String(body.language ?? '').trim();
+      if (!MARKET.test(countryIso2) || !LANGUAGE.test(language)) {
+        return json(400, { error: 'market_required' });
+      }
+      market = { countryIso2, language };
+    }
+    const { data, error } = market
+      ? await admin.rpc('gellatti_shop_document_order_v2', {
+          p_user_id: user.id,
+          p_email: user.email ?? '',
+          p_document_key: documentKey,
+          p_country_iso2: market.countryIso2,
+          p_language: market.language,
+        })
+      : await admin.rpc('gellatti_shop_document_order_v1', {
+          p_user_id: user.id,
+          p_email: user.email ?? '',
+          p_document_key: documentKey,
+        });
     if (error) return json(500, { error: 'order_failed' });
     const order = data as OrderResult | null;
     if (!order || order.error) {
@@ -247,6 +301,8 @@ Deno.serve(async (req) => {
       orderNumber: order.orderNumber,
       created: order.created,
       documentVersion: order.documentVersion,
+      countryIso2: order.countryIso2 ?? null,
+      language: order.language ?? null,
       download: link.download,
       emailQueued: mail.queued,
       emailReason: mail.reason ?? null,
