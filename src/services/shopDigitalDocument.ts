@@ -146,6 +146,17 @@ export async function getAdminDocumentOrders(): Promise<AdminDocumentOrder[]> {
   return (data ?? []) as unknown as AdminDocumentOrder[];
 }
 
+/** The account's active order for a document (the list comes newest first), if it has one. */
+export function findActiveDocumentOrder(
+  orders: readonly MyDocumentOrder[] | undefined,
+  documentKey: string,
+): MyDocumentOrder | null {
+  return (
+    orders?.find((order) => order.documentKey === documentKey && order.status !== 'cancelled') ??
+    null
+  );
+}
+
 /** Opens a fresh, short-lived download link in the current tab. */
 export function openDocumentDownload(download: DocumentDownload): void {
   if (typeof window !== 'undefined') window.location.assign(download.url);

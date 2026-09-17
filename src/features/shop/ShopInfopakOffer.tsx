@@ -8,8 +8,10 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import {
   DocumentOrderError,
   INFOPAK_DOCUMENT_KEY,
+  findActiveDocumentOrder,
   getDocumentAvailability,
   getDocumentDownload,
+  getMyDocumentOrders,
   openDocumentDownload,
   orderDocument,
   type DocumentAvailabilityState,
@@ -190,8 +192,21 @@ export function ShopInfopakOffer() {
     staleTime: 30_000,
   });
 
+  /* After a refresh or on a later visit the account's own order is shown with its
+     download, instead of offering the same guide again. Same cache as Konto → Zamówienia. */
+  const myDocuments = useQuery({
+    queryKey: ['shop-documents', 'mine'],
+    queryFn: getMyDocumentOrders,
+    enabled: signedIn,
+  });
+  const existing = signedIn
+    ? findActiveDocumentOrder(myDocuments.data, INFOPAK_DOCUMENT_KEY)
+    : null;
+
   const [orderId, setOrderId] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const readyOrderId = orderId ?? existing?.id ?? null;
+  const readyOrderNumber = orderNumber ?? existing?.orderNumber ?? null;
   const [notice, setNotice] = useState<InfopakNotice | null>(null);
   const [downloading, setDownloading] = useState(false);
   /* Closes the double-click window before React re-renders; the server is idempotent too. */
@@ -229,22 +244,24 @@ export function ShopInfopakOffer() {
   };
 
   /* Signed in after clicking "Zamów za 0 €": continue that order once. The server
-     decides for THIS account; a refusal comes back through the mutation. */
+     decides for THIS account; a refusal comes back through the mutation. An account
+     that already has the guide just sees it ready. */
   const availableForAccount = availability.data;
+  const documentsKnown = myDocuments.isFetched;
   useEffect(() => {
-    if (!signedIn || !availableForAccount || placing.current || orderId) return;
-    if (!takeInfopakIntent()) return;
+    if (!signedIn || !availableForAccount || !documentsKnown || placing.current) return;
+    if (!takeInfopakIntent() || readyOrderId) return;
     placing.current = true;
     mutate();
-  }, [signedIn, availableForAccount, orderId, mutate]);
+  }, [signedIn, availableForAccount, documentsKnown, readyOrderId, mutate]);
 
   const download = async () => {
-    if (!orderId) return;
+    if (!readyOrderId) return;
     setDownloading(true);
     setNotice(null);
     try {
       /* A fresh short-lived link every time; nothing keeps an expired one around. */
-      openDocumentDownload(await getDocumentDownload(orderId));
+      openDocumentDownload(await getDocumentDownload(readyOrderId));
     } catch (error) {
       setNotice(
         error instanceof DocumentOrderError && error.code === 'document_file_missing'
@@ -263,7 +280,7 @@ export function ShopInfopakOffer() {
       signedIn={signedIn}
       ordering={place.isPending}
       downloading={downloading}
-      orderNumber={orderNumber}
+      orderNumber={readyOrderNumber}
       notice={notice}
       onOrder={startOrder}
       onDownload={() => void download()}

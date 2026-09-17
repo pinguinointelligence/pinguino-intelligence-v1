@@ -3,6 +3,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { shopCopyEn, shopCopyPl } from '@/copy/shop';
 import {
+  INFOPAK_DOCUMENT_KEY,
+  findActiveDocumentOrder,
+  type MyDocumentOrder,
+} from '@/services/shopDigitalDocument';
+import {
   INFOPAK_IMAGE_SRC,
   ShopInfopakOfferView,
   type ShopInfopakOfferViewProps,
@@ -95,6 +100,48 @@ describe('the infopak offer says what it is', () => {
   it('uses the committed cover image', () => {
     expect(render()).toContain(`src="${INFOPAK_IMAGE_SRC}"`);
     expect(existsSync(`public${INFOPAK_IMAGE_SRC}`)).toBe(true);
+  });
+});
+
+describe('an account that already has the guide', () => {
+  const order = (overrides: Partial<MyDocumentOrder>): MyDocumentOrder => ({
+    id: '00000000-0000-4000-8000-000000000001',
+    orderNumber: 'G-20260917-AAA111',
+    status: 'paid',
+    createdAt: '2026-09-17T12:00:00Z',
+    totalCents: 0,
+    currency: 'EUR',
+    documentKey: 'GELATO_BASE_INGREDIENTS',
+    documentVersion: '1.1',
+    language: 'en',
+    emailStatus: 'queued',
+    ...overrides,
+  });
+
+  it('finds its order for this guide, newest first, and ignores cancelled or other documents', () => {
+    expect(findActiveDocumentOrder(undefined, INFOPAK_DOCUMENT_KEY)).toBeNull();
+    expect(findActiveDocumentOrder([], INFOPAK_DOCUMENT_KEY)).toBeNull();
+    expect(
+      findActiveDocumentOrder(
+        [
+          order({ id: 'other', documentKey: 'SOME_OTHER_GUIDE' }),
+          order({ id: 'cancelled', status: 'cancelled' }),
+          order({ id: 'newest' }),
+          order({ id: 'older', createdAt: '2026-09-16T12:00:00Z' }),
+        ],
+        INFOPAK_DOCUMENT_KEY,
+      )?.id,
+    ).toBe('newest');
+  });
+
+  it('is shown ready with its download after a refresh, not offered again', () => {
+    const offer = readFileSync('src/features/shop/ShopInfopakOffer.tsx', 'utf8');
+    expect(offer).toContain("queryKey: ['shop-documents', 'mine']");
+    expect(offer).toContain(
+      'const readyOrderNumber = orderNumber ?? existing?.orderNumber ?? null;',
+    );
+    expect(offer).toContain('orderNumber={readyOrderNumber}');
+    expect(offer).toContain('getDocumentDownload(readyOrderId)');
   });
 });
 

@@ -2,9 +2,9 @@
  * "I clicked Zamów za 0 € while signed out" — remembered across the sign-in step.
  *
  * Signing in with a password happens in a dialog on the same page. A provider sign-in
- * leaves the page and comes back. Either way the customer's intent must survive, so it is
- * kept per tab (sessionStorage) with a short lifetime, and it is consumed exactly once: the
- * order never repeats on a later visit.
+ * leaves the site and comes back to its home page, so the intent waits there and continues
+ * when the shop is opened again. Either way it is kept per tab (sessionStorage) with a
+ * short lifetime, and it is consumed exactly once: the order never repeats on a later visit.
  */
 
 const KEY = 'gellatti.shop.infopakIntent';
