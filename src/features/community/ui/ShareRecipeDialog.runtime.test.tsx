@@ -210,4 +210,77 @@ describe('share dialog — own photo for the recipient', () => {
     expect(preview()!.getAttribute('src')).toBe(BRANDED_PROFILE_IMAGE.sorbet);
     expect(preview()!.dataset.imageOrigin).toBe('branded_profile');
   });
+
+  it('SHARE-DLG-07 a failed REPLACEMENT keeps the attached photo: the recipient still sees it, and the dialog says so', async () => {
+    service.readSharePhoto.mockResolvedValue({
+      ok: true,
+      share_link_id: 'link-1',
+      category: 'sorbet',
+      has_own_photo: false,
+    });
+    PreviewURL.createObjectURL
+      .mockImplementationOnce(() => 'blob:first')
+      .mockImplementationOnce(() => 'blob:second');
+    service.attachSharePhoto
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('network'))
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce(undefined);
+    await openWithLink();
+    await choose(new File(['first'], 'first.jpg', { type: 'image/jpeg' }));
+    const second = new File(['second'], 'second.jpg', { type: 'image/jpeg' });
+    await choose(second);
+
+    const alert = () => host.querySelector('[data-testid="share-photo"] [role="alert"]');
+    expect(alert()?.textContent).toBe(
+      'Nie udało się dodać nowego zdjęcia. Odbiorca nadal widzi poprzednie.',
+    );
+    expect(preview()!.getAttribute('src')).toBe('blob:first');
+    expect(preview()!.dataset.imageOrigin).toBe('user_photo');
+    expect(button('Udostępnij bez zdjęcia')).toBeUndefined(); // nothing claims the photo is gone
+    expect(button('Usuń zdjęcie')).toBeDefined();
+
+    await act(async () => button('Zostaw obecne zdjęcie')!.click());
+    expect(alert()).toBeNull();
+    expect(host.textContent).toContain('Zdjęcie dodane. Zobaczy je każdy, kto otworzy ten link');
+    expect(preview()!.getAttribute('src')).toBe('blob:first');
+
+    await choose(second);
+    await act(async () => button('Spróbuj ponownie')!.click());
+    await settle();
+    expect(service.attachSharePhoto).toHaveBeenCalledTimes(4);
+    expect(service.attachSharePhoto).toHaveBeenLastCalledWith('link-1', second);
+    expect(alert()).toBeNull();
+    expect(preview()!.getAttribute('src')).toBe('blob:second');
+    expect(PreviewURL.revokeObjectURL).toHaveBeenCalledWith('blob:first');
+    expect(service.detachSharePhoto).not.toHaveBeenCalled();
+  });
+
+  it('SHARE-DLG-08 a failed REMOVAL says so and keeps the photo; trying again removes it', async () => {
+    service.readSharePhoto.mockResolvedValue({
+      ok: true,
+      share_link_id: 'link-1',
+      category: 'sorbet',
+      has_own_photo: false,
+    });
+    service.attachSharePhoto.mockResolvedValue(undefined);
+    service.detachSharePhoto
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce(undefined);
+    await openWithLink();
+    await choose(new File(['ice'], 'lody.jpg', { type: 'image/jpeg' }));
+    await act(async () => button('Usuń zdjęcie')!.click());
+    await settle();
+
+    const alert = () => host.querySelector('[data-testid="share-photo"] [role="alert"]');
+    expect(alert()?.textContent).toBe('Nie udało się usunąć zdjęcia. Odbiorca nadal je widzi.');
+    expect(preview()!.dataset.imageOrigin).toBe('user_photo');
+
+    await act(async () => button('Spróbuj ponownie')!.click());
+    await settle();
+    expect(service.detachSharePhoto).toHaveBeenCalledTimes(2);
+    expect(alert()).toBeNull();
+    expect(preview()!.getAttribute('src')).toBe(BRANDED_PROFILE_IMAGE.sorbet);
+    expect(preview()!.dataset.imageOrigin).toBe('branded_profile');
+  });
 });
