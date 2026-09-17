@@ -7,28 +7,32 @@ import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import {
   DocumentOrderError,
-  INFOPAK_DOCUMENT_KEY,
+  STARTER_LOCAL_DOCUMENT_KEY,
   findActiveDocumentOrder,
-  getDocumentAvailability,
   getDocumentDownload,
+  getDocumentMarkets,
   getMyDocumentOrders,
   openDocumentDownload,
   orderDocument,
-  type DocumentAvailabilityState,
+  type DocumentMarketChoice,
 } from '@/services/shopDigitalDocument';
-import { rememberInfopakIntent, takeInfopakIntent } from './infopakIntent';
+import { peekInfopakIntent, rememberInfopakIntent, takeInfopakIntent } from './infopakIntent';
+import { useShopCountryStore } from './shopCountryStore';
+import { languageDisplayName } from './shopDisplayNames';
 
 /**
  * The free PDF shopping guide — a document, not a parcel.
  *
- * It sits after "Kup osobno" and before the cart, independent of the country picker and
- * of the Starter Pack mode: the guide covers all 75 markets in one file. The benefit leads
- * ("co kupić i gdzie"), the price is present but quiet, and the document language is
- * stated plainly. The order is confirmed only together with a working download; a missing
- * file or a refusal is said as such, never as "ready".
+ * ONE 0 € offer (owner correction 2026-09-17): the PDF is made for the country chosen in the
+ * Shop's own country picker, in that country's language, and lists the seven Starter Pack items
+ * with local equivalents. A country with several languages offers each version.
  *
- * Whether the offer is visible at all, and whether THIS account may order it, is answered
- * by the server (OFF / TEST_ACCOUNTS_ONLY / ON). Hiding the button authorises nothing.
+ * It sits after "Kup osobno" and before the cart. The benefit leads ("co kupić i gdzie"), the
+ * price is present but quiet. The order is confirmed only together with a working download;
+ * a missing file or a refusal is said as such, never as "ready".
+ *
+ * Which markets and languages exist, and whether THIS account may order one, is answered by the
+ * server per document (OFF / TEST_ACCOUNTS_ONLY / ON). Hiding the button authorises nothing.
  */
 
 export const INFOPAK_IMAGE_SRC = '/shop/infopak-pl.png';
@@ -38,8 +42,17 @@ const label =
 
 export type InfopakNotice = 'notAvailable' | 'fileMissing' | 'failed' | 'downloadFailed';
 
+/** Where the customer stands for the country chosen above. */
+export type InfopakMarketState = 'CHOOSE_COUNTRY' | 'NOT_READY' | 'READY';
+
 export interface ShopInfopakOfferViewProps {
-  state: DocumentAvailabilityState;
+  /** False while no market offers the document: nothing is shown at all. */
+  offered: boolean;
+  marketState: InfopakMarketState;
+  countryName: string | null;
+  languages: readonly string[];
+  language: string | null;
+  onLanguage: (language: string) => void;
   signedIn: boolean;
   ordering: boolean;
   downloading: boolean;
@@ -50,7 +63,12 @@ export interface ShopInfopakOfferViewProps {
 }
 
 export function ShopInfopakOfferView({
-  state,
+  offered,
+  marketState,
+  countryName,
+  languages,
+  language,
+  onLanguage,
   signedIn,
   ordering,
   downloading,
@@ -59,7 +77,7 @@ export function ShopInfopakOfferView({
   onOrder,
   onDownload,
 }: ShopInfopakOfferViewProps) {
-  if (state === 'OFF') return null;
+  if (!offered) return null;
   return (
     <section
       id="shop-infopak"
@@ -115,41 +133,106 @@ export function ShopInfopakOfferView({
           </ul>
 
           <div className="mt-5">
-            {orderNumber ? (
-              <div role="status" data-testid="shop-infopak-ready">
-                <p className="text-[14px] font-semibold text-[var(--g-ink)]">{c.infopak.ready}</p>
-                <p className="mt-1 font-mono text-[12px] text-[var(--g-text-secondary)]">
-                  {orderNumber}
-                </p>
-                <button
-                  type="button"
-                  onClick={onDownload}
-                  disabled={downloading}
-                  className={applicationPrimaryClasses('mt-3')}
-                  data-testid="shop-infopak-download"
+            {marketState === 'CHOOSE_COUNTRY' ? (
+              <p
+                className="text-[13px] text-[var(--g-ink)]"
+                data-testid="shop-infopak-country-state"
+              >
+                {c.infopak.chooseCountry}{' '}
+                <a
+                  href="#shop-country"
+                  className="pro-focus-ring text-ink underline underline-offset-[3px]"
+                  data-testid="shop-infopak-choose-country"
                 >
-                  {downloading ? c.infopak.downloadBusy : c.infopak.download}
-                </button>
-                <p className="mt-2 text-[12px] text-[var(--g-text-secondary)]">
-                  {c.infopak.accountHint}
-                </p>
-              </div>
+                  {c.infopak.chooseCountryLink}
+                </a>
+              </p>
+            ) : marketState === 'NOT_READY' ? (
+              <p
+                className="text-[13px] text-[var(--g-ink)]"
+                data-testid="shop-infopak-country-state"
+              >
+                {c.infopak.notReady.replace('{country}', countryName ?? '')}{' '}
+                <a
+                  href="#shop-country"
+                  className="pro-focus-ring text-ink underline underline-offset-[3px]"
+                  data-testid="shop-infopak-choose-country"
+                >
+                  {c.infopak.changeCountry}
+                </a>
+              </p>
             ) : (
               <>
-                {signedIn ? null : (
-                  <p className="text-[12px] text-[var(--g-text-secondary)]">
-                    {c.infopak.signInFirst}
-                  </p>
-                )}
-                <button
-                  type="button"
-                  onClick={onOrder}
-                  disabled={ordering}
-                  className={applicationPrimaryClasses('mt-2')}
-                  data-testid="shop-infopak-order"
-                >
-                  {ordering ? c.infopak.ctaBusy : c.infopak.cta}
-                </button>
+                <p className="text-[13px] text-[var(--g-ink)]" data-testid="shop-infopak-country">
+                  <span className="text-[var(--g-text-secondary)]">{c.infopak.countryLabel}: </span>
+                  {countryName}
+                  {languages.length === 1 && language ? (
+                    <span className="text-[var(--g-text-secondary)]">
+                      {' · '}
+                      {languageDisplayName(language)}
+                    </span>
+                  ) : null}
+                </p>
+                {languages.length > 1 ? (
+                  <label className="mt-3 block text-[13px] text-[var(--g-ink)]">
+                    <span className={cn(label, 'block')}>{c.infopak.languageLabel}</span>
+                    <select
+                      value={language ?? ''}
+                      onChange={(event) => onLanguage(event.target.value)}
+                      disabled={ordering}
+                      className="mt-1.5 min-h-10 rounded-[8px] border border-[var(--g-line)] bg-white px-3 text-[14px]"
+                      data-testid="shop-infopak-language"
+                    >
+                      {languages.map((code) => (
+                        <option key={code} value={code}>
+                          {languageDisplayName(code)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+
+                <div className="mt-4">
+                  {orderNumber ? (
+                    <div role="status" data-testid="shop-infopak-ready">
+                      <p className="text-[14px] font-semibold text-[var(--g-ink)]">
+                        {c.infopak.ready}
+                      </p>
+                      <p className="mt-1 font-mono text-[12px] text-[var(--g-text-secondary)]">
+                        {orderNumber}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={onDownload}
+                        disabled={downloading}
+                        className={applicationPrimaryClasses('mt-3')}
+                        data-testid="shop-infopak-download"
+                      >
+                        {downloading ? c.infopak.downloadBusy : c.infopak.download}
+                      </button>
+                      <p className="mt-2 text-[12px] text-[var(--g-text-secondary)]">
+                        {c.infopak.accountHint}
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {signedIn ? null : (
+                        <p className="text-[12px] text-[var(--g-text-secondary)]">
+                          {c.infopak.signInFirst}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={onOrder}
+                        disabled={ordering}
+                        className={applicationPrimaryClasses('mt-2')}
+                        data-testid="shop-infopak-order"
+                      >
+                        {ordering ? c.infopak.ctaBusy : c.infopak.cta}
+                      </button>
+                    </>
+                  )}
+                </div>
               </>
             )}
             {notice ? (
@@ -179,44 +262,64 @@ const noticeFor = (error: unknown): InfopakNotice => {
   return 'failed';
 };
 
+const sameMarket = (a: DocumentMarketChoice | null, b: DocumentMarketChoice | null) =>
+  !!a && !!b && a.countryIso2 === b.countryIso2 && a.language === b.language;
+
 export function ShopInfopakOffer() {
   const queryClient = useQueryClient();
   const authStatus = useAuthStore((state) => state.status);
   const openAuthModal = useAuthModalStore((state) => state.open);
   const signedIn = authStatus === 'authed';
+  const selectedIso = useShopCountryStore((state) => state.selected);
+  const countries = useShopCountryStore((state) => state.countries);
 
-  const availability = useQuery({
-    queryKey: ['shop-document-availability', INFOPAK_DOCUMENT_KEY, authStatus],
-    queryFn: () => getDocumentAvailability(INFOPAK_DOCUMENT_KEY),
+  const markets = useQuery({
+    queryKey: ['shop-document-markets', STARTER_LOCAL_DOCUMENT_KEY, authStatus],
+    queryFn: () => getDocumentMarkets(STARTER_LOCAL_DOCUMENT_KEY),
     enabled: authStatus !== 'loading',
     staleTime: 30_000,
   });
+  const market = markets.data?.find((entry) => entry.countryIso2 === selectedIso) ?? null;
+  const languages = market?.variants.map((variant) => variant.language) ?? [];
 
-  /* After a refresh or on a later visit the account's own order is shown with its
-     download, instead of offering the same guide again. Same cache as Konto → Zamówienia. */
+  /* A remembered sign-in intent names the language that was clicked; start there. */
+  const [chosenLanguage, setChosenLanguage] = useState<string | null>(
+    () => peekInfopakIntent()?.language ?? null,
+  );
+  const language =
+    chosenLanguage && languages.includes(chosenLanguage) ? chosenLanguage : (languages[0] ?? null);
+  const variant = market?.variants.find((entry) => entry.language === language) ?? null;
+  const choice: DocumentMarketChoice | null =
+    market && language ? { countryIso2: market.countryIso2, language } : null;
+
+  /* After a refresh or on a later visit the account's own order for THIS market and language
+     is shown with its download. Same cache as Konto → Zamówienia. */
   const myDocuments = useQuery({
     queryKey: ['shop-documents', 'mine'],
     queryFn: getMyDocumentOrders,
     enabled: signedIn,
   });
-  const existing = signedIn
-    ? findActiveDocumentOrder(myDocuments.data, INFOPAK_DOCUMENT_KEY)
-    : null;
+  const existing =
+    signedIn && choice
+      ? findActiveDocumentOrder(myDocuments.data, STARTER_LOCAL_DOCUMENT_KEY, choice)
+      : null;
 
-  const [orderId, setOrderId] = useState<string | null>(null);
-  const [orderNumber, setOrderNumber] = useState<string | null>(null);
-  const readyOrderId = orderId ?? existing?.id ?? null;
-  const readyOrderNumber = orderNumber ?? existing?.orderNumber ?? null;
+  const [placed, setPlaced] = useState<
+    (DocumentMarketChoice & { orderId: string; orderNumber: string }) | null
+  >(null);
+  const placedHere = placed && sameMarket(placed, choice) ? placed : null;
+  const readyOrderId = placedHere?.orderId ?? existing?.id ?? null;
+  const readyOrderNumber = placedHere?.orderNumber ?? existing?.orderNumber ?? null;
+
   const [notice, setNotice] = useState<InfopakNotice | null>(null);
   const [downloading, setDownloading] = useState(false);
   /* Closes the double-click window before React re-renders; the server is idempotent too. */
   const placing = useRef(false);
 
   const place = useMutation({
-    mutationFn: () => orderDocument(INFOPAK_DOCUMENT_KEY),
-    onSuccess: (result) => {
-      setOrderId(result.orderId);
-      setOrderNumber(result.orderNumber);
+    mutationFn: (target: DocumentMarketChoice) => orderDocument(STARTER_LOCAL_DOCUMENT_KEY, target),
+    onSuccess: (result, target) => {
+      setPlaced({ ...target, orderId: result.orderId, orderNumber: result.orderNumber });
       setNotice(null);
       void queryClient.invalidateQueries({ queryKey: ['shop-documents', 'mine'] });
     },
@@ -228,32 +331,41 @@ export function ShopInfopakOffer() {
   const { mutate } = place;
 
   const startOrder = () => {
-    if (placing.current || place.isPending) return;
+    if (placing.current || place.isPending || !choice) return;
     if (!signedIn) {
-      rememberInfopakIntent();
+      rememberInfopakIntent(choice);
       openAuthModal();
       return;
     }
-    if (availability.data && !availability.data.orderable) {
+    if (variant && !variant.orderable) {
       setNotice('notAvailable');
       return;
     }
     placing.current = true;
     setNotice(null);
-    mutate();
+    mutate(choice);
   };
 
-  /* Signed in after clicking "Zamów za 0 €": continue that order once. The server
-     decides for THIS account; a refusal comes back through the mutation. An account
-     that already has the guide just sees it ready. */
-  const availableForAccount = availability.data;
+  /* Signed in after clicking "Zamów za 0 €": continue THAT market's order once. The server
+     decides for this account; a refusal comes back through the mutation. An account that
+     already has that document just sees it ready. */
+  const knownMarkets = markets.data;
   const documentsKnown = myDocuments.isFetched;
+  const knownDocuments = myDocuments.data;
   useEffect(() => {
-    if (!signedIn || !availableForAccount || !documentsKnown || placing.current) return;
-    if (!takeInfopakIntent() || readyOrderId) return;
+    if (!signedIn || !knownMarkets || !documentsKnown || placing.current) return;
+    const intent = takeInfopakIntent();
+    if (!intent) return;
+    const offeredHere = knownMarkets.some(
+      (entry) =>
+        entry.countryIso2 === intent.countryIso2 &&
+        entry.variants.some((item) => item.language === intent.language),
+    );
+    if (!offeredHere) return;
+    if (findActiveDocumentOrder(knownDocuments, STARTER_LOCAL_DOCUMENT_KEY, intent)) return;
     placing.current = true;
-    mutate();
-  }, [signedIn, availableForAccount, documentsKnown, readyOrderId, mutate]);
+    mutate(intent);
+  }, [signedIn, knownMarkets, documentsKnown, knownDocuments, mutate]);
 
   const download = async () => {
     if (!readyOrderId) return;
@@ -273,10 +385,26 @@ export function ShopInfopakOffer() {
     }
   };
 
-  if (!availability.data) return null;
+  if (!markets.data) return null;
+  const countryName = selectedIso
+    ? (countries.find((country) => country.iso2 === selectedIso)?.name ?? selectedIso)
+    : null;
+  const marketState: InfopakMarketState = !selectedIso
+    ? 'CHOOSE_COUNTRY'
+    : market
+      ? 'READY'
+      : 'NOT_READY';
   return (
     <ShopInfopakOfferView
-      state={availability.data.state}
+      offered={markets.data.length > 0}
+      marketState={marketState}
+      countryName={countryName}
+      languages={languages}
+      language={language}
+      onLanguage={(code) => {
+        setChosenLanguage(code);
+        setNotice(null);
+      }}
       signedIn={signedIn}
       ordering={place.isPending}
       downloading={downloading}

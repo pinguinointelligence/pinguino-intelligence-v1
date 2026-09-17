@@ -21,13 +21,20 @@ const MIGRATION = stripComments(
   readFileSync('supabase/migrations/20260917113631_shop_digital_document_orders.sql', 'utf8'),
 );
 const SERVICE = stripComments(readFileSync('src/services/shopDigitalDocument.ts', 'utf8'));
+const MARKET_MIGRATION = stripComments(
+  readFileSync('supabase/migrations/20260917153851_shop_document_per_market_language.sql', 'utf8'),
+);
 
 describe('shop-digital-document: a document order, not a parcel', () => {
   it('has no payment, address, shipping, stock, country or commission path', () => {
     expect(FUNCTION).not.toMatch(/stripe|checkout\.sessions|payment_intent/i);
     expect(FUNCTION).not.toMatch(/commission|attribution|partner/i);
     expect(FUNCTION).not.toMatch(/shop_customer_addresses|shipping_|address/i);
-    expect(FUNCTION).not.toMatch(/shop_country_local_readiness|countryIso2|shop_shipping_rates/i);
+    // The market of a per-country document only picks which PDF; it is never a shipping or
+    // Starter Pack readiness gate (owner correction 2026-09-17).
+    expect(FUNCTION).not.toMatch(
+      /shop_country_local_readiness|shop_shipping_rates|shipping_country/i,
+    );
     expect(FUNCTION).not.toMatch(/\b900\b|\b1900\b/);
   });
 
@@ -39,9 +46,20 @@ describe('shop-digital-document: a document order, not a parcel', () => {
   });
 
   it('lets the database decide entitlement, price and version for a closed list of documents', () => {
-    expect(FUNCTION).toContain("new Set(['GELATO_BASE_INGREDIENTS'])");
+    expect(FUNCTION).toMatch(/GELATO_BASE_INGREDIENTS: \{ perMarket: false \}/);
+    expect(FUNCTION).toMatch(/STARTER_PACK_LOCAL_GUIDE: \{ perMarket: true \}/);
     expect(FUNCTION).toContain("admin.rpc('gellatti_shop_document_order_v1'");
+    expect(FUNCTION).toContain("admin.rpc('gellatti_shop_document_order_v2'");
     expect(FUNCTION).toContain("admin.rpc('gellatti_shop_document_download_v1'");
+  });
+
+  it('orders a market document only with a well-formed market and language, which merely pick a registry row', () => {
+    expect(FUNCTION).toContain('const MARKET = /^[A-Z]{2}$/;');
+    expect(FUNCTION).toContain('const LANGUAGE = /^[a-z]{2,3}(-[A-Z][a-z]{3})?$/;');
+    expect(FUNCTION).toContain("json(400, { error: 'market_required' })");
+    expect(FUNCTION).toMatch(
+      /p_country_iso2: market\.countryIso2,\s*p_language: market\.language,/,
+    );
   });
 
   it('signs only the path pinned in the order, briefly, and stores no link', () => {
@@ -149,5 +167,57 @@ describe('migration: compatible with clients that predate the type', () => {
 
   it('never turns the guide into a catalogue product', () => {
     expect(MIGRATION).not.toMatch(/insert\s+into\s+public\.shop_products/i);
+  });
+});
+
+describe('migration: one document per market and language', () => {
+  it('makes "current" unique per document, market and language, and keeps versions unique the same way', () => {
+    expect(MARKET_MIGRATION).toMatch(
+      /create unique index if not exists shop_digital_documents_current_idx\s+on public\.shop_digital_documents \(document_key, coalesce\(country_iso2, ''\), language\)\s+where is_current;/,
+    );
+    expect(MARKET_MIGRATION).toMatch(
+      /shop_digital_documents_key_market_language_version_idx\s+on public\.shop_digital_documents \(document_key, coalesce\(country_iso2, ''\), language, version\);/,
+    );
+    expect(MARKET_MIGRATION).toContain(
+      "check (country_iso2 is null or country_iso2 ~ '^[A-Z]{2}$')",
+    );
+    expect(MARKET_MIGRATION).toContain("check (language ~ '^[a-z]{2,3}(-[A-Z][a-z]{3})?$')");
+  });
+
+  it('pins market and language as part of the immutable file identity', () => {
+    expect(MARKET_MIGRATION).toContain('or new.country_iso2 is distinct from old.country_iso2');
+    expect(MARKET_MIGRATION).toContain('or new.language is distinct from old.language then');
+  });
+
+  it('keeps the base guide on v1 and never lets v1 pick a market document', () => {
+    expect(MARKET_MIGRATION).toContain(
+      'where d.document_key = p_document_key and d.is_current and d.country_iso2 is null',
+    );
+    expect(MARKET_MIGRATION).toContain(
+      'where document_key = p_document_key and is_current and country_iso2 is null;',
+    );
+  });
+
+  it('gives the market order to the service role only and the market list to the browser', () => {
+    expect(MARKET_MIGRATION).toContain(
+      'revoke all on function public.gellatti_shop_document_order_v2(uuid, text, text, text, text) from public, anon, authenticated;',
+    );
+    expect(MARKET_MIGRATION).toContain(
+      'grant execute on function public.gellatti_shop_document_order_v2(uuid, text, text, text, text) to service_role;',
+    );
+    expect(MARKET_MIGRATION).toContain(
+      'revoke all on function public.shop_document_place_order(uuid, text, uuid) from public, anon, authenticated;',
+    );
+    expect(MARKET_MIGRATION).toContain(
+      'grant execute on function public.gellatti_shop_document_markets_v1(text) to anon, authenticated;',
+    );
+    expect(MARKET_MIGRATION).toContain(
+      "and d.country_iso2 is not null and d.availability <> 'OFF'",
+    );
+  });
+
+  it('keeps one active order per account per document row', () => {
+    expect(MARKET_MIGRATION).toContain('on conflict (user_id, document_id)');
+    expect(MARKET_MIGRATION).not.toMatch(/insert\s+into\s+public\.shop_products/i);
   });
 });

@@ -3,10 +3,11 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { shopCopyEn, shopCopyPl } from '@/copy/shop';
 import {
-  INFOPAK_DOCUMENT_KEY,
+  STARTER_LOCAL_DOCUMENT_KEY,
   findActiveDocumentOrder,
   type MyDocumentOrder,
 } from '@/services/shopDigitalDocument';
+import { withDocumentMarkets, type ShopCountry } from '@/services/shopCountries';
 import {
   INFOPAK_IMAGE_SRC,
   ShopInfopakOfferView,
@@ -14,7 +15,12 @@ import {
 } from './ShopInfopakOffer';
 
 const base: ShopInfopakOfferViewProps = {
-  state: 'TEST_ACCOUNTS_ONLY',
+  offered: true,
+  marketState: 'READY',
+  countryName: 'Polska',
+  languages: ['pl'],
+  language: 'pl',
+  onLanguage: () => {},
   signedIn: false,
   ordering: false,
   downloading: false,
@@ -35,20 +41,41 @@ describe('the infopak offer says what it is', () => {
     expect(html).toContain('PDF · 0 €');
     expect(html).toContain('Zamów za 0 €');
     expect(html.indexOf('Składniki bazy lodów')).toBeLessThan(html.indexOf('PDF · 0 €'));
-    expect(html).toContain('Język dokumentu: angielski.');
   });
 
-  it('keeps "75 countries" as a detail, never in the name, subtitle or button', () => {
-    for (const copy of [shopCopyPl, shopCopyEn]) {
-      for (const text of [
-        copy.infopak.name,
-        copy.infopak.subtitle,
-        copy.infopak.cta,
-        copy.infopak.formatPrice,
-      ]) {
-        expect(text).not.toMatch(/75/);
-      }
-      expect(copy.infopak.details.join(' ')).toMatch(/75/);
+  it('describes the seven Starter Pack items for the chosen country, never "75 countries in one file"', () => {
+    const items = new Map([
+      [
+        shopCopyPl,
+        [
+          'dekstrozę',
+          'mleko odtłuszczone w proszku',
+          'śmietankę w proszku',
+          'fruktozę',
+          'inulinę',
+          'suszone żółtko jaja',
+          'stabilizator',
+        ],
+      ],
+      [
+        shopCopyEn,
+        [
+          'dextrose',
+          'skim milk powder',
+          'cream powder',
+          'fructose',
+          'inulin',
+          'dried egg yolk',
+          'stabilizer',
+        ],
+      ],
+    ]);
+    for (const [copy, names] of items) {
+      const text = [copy.infopak.lede, ...copy.infopak.description, ...copy.infopak.details].join(
+        ' ',
+      );
+      expect(text).not.toMatch(/75/);
+      for (const name of names) expect(copy.infopak.description.join(' ')).toContain(name);
     }
   });
 
@@ -87,8 +114,8 @@ describe('the infopak offer says what it is', () => {
     );
   });
 
-  it('renders nothing while the server says OFF', () => {
-    expect(render({ state: 'OFF' })).toBe('');
+  it('renders nothing while no market offers the document', () => {
+    expect(render({ offered: false })).toBe('');
   });
 
   it('asks a signed-out visitor to sign in and still offers the button', () => {
@@ -103,45 +130,125 @@ describe('the infopak offer says what it is', () => {
   });
 });
 
-describe('an account that already has the guide', () => {
-  const order = (overrides: Partial<MyDocumentOrder>): MyDocumentOrder => ({
-    id: '00000000-0000-4000-8000-000000000001',
-    orderNumber: 'G-20260917-AAA111',
-    status: 'paid',
-    createdAt: '2026-09-17T12:00:00Z',
-    totalCents: 0,
-    currency: 'EUR',
-    documentKey: 'GELATO_BASE_INGREDIENTS',
-    documentVersion: '1.1',
-    language: 'en',
-    emailStatus: 'queued',
-    ...overrides,
+describe('one offer, made per country and language', () => {
+  it('asks for a country first and never offers an order without one', () => {
+    const html = render({
+      marketState: 'CHOOSE_COUNTRY',
+      countryName: null,
+      languages: [],
+      language: null,
+    });
+    expect(html).toContain('Wybierz kraj, a zamówisz PDF przygotowany dla Twojego kraju.');
+    expect(html).toContain('href="#shop-country"');
+    expect(html).not.toContain('data-testid="shop-infopak-order"');
   });
 
-  it('finds its order for this guide, newest first, and ignores cancelled or other documents', () => {
-    expect(findActiveDocumentOrder(undefined, INFOPAK_DOCUMENT_KEY)).toBeNull();
-    expect(findActiveDocumentOrder([], INFOPAK_DOCUMENT_KEY)).toBeNull();
-    expect(
-      findActiveDocumentOrder(
-        [
-          order({ id: 'other', documentKey: 'SOME_OTHER_GUIDE' }),
-          order({ id: 'cancelled', status: 'cancelled' }),
-          order({ id: 'newest' }),
-          order({ id: 'older', createdAt: '2026-09-16T12:00:00Z' }),
-        ],
-        INFOPAK_DOCUMENT_KEY,
-      )?.id,
-    ).toBe('newest');
+  it('says honestly when the chosen country has no PDF yet', () => {
+    const html = render({
+      marketState: 'NOT_READY',
+      countryName: 'Japonia',
+      languages: [],
+      language: null,
+    });
+    expect(html).toContain('PDF dla kraju: Japonia jeszcze przygotowujemy.');
+    expect(html).not.toContain('data-testid="shop-infopak-order"');
   });
 
-  it('is shown ready with its download after a refresh, not offered again', () => {
-    const offer = readFileSync('src/features/shop/ShopInfopakOffer.tsx', 'utf8');
-    expect(offer).toContain("queryKey: ['shop-documents', 'mine']");
-    expect(offer).toContain(
-      'const readyOrderNumber = orderNumber ?? existing?.orderNumber ?? null;',
+  it('names the country and language, and lets a multilingual country pick its version', () => {
+    const single = render();
+    expect(single).toContain('Polska');
+    expect(single).toContain('polski');
+    expect(single).not.toContain('data-testid="shop-infopak-language"');
+    const belgium = render({ countryName: 'België', languages: ['fr', 'nl'], language: 'nl' });
+    expect(belgium).toContain('data-testid="shop-infopak-language"');
+    expect(belgium).toContain('niderlandzki');
+    expect(belgium).toContain('francuski');
+  });
+
+  it('finds the account order for THAT market and language only', () => {
+    const order = (overrides: Partial<MyDocumentOrder>): MyDocumentOrder => ({
+      id: 'id',
+      orderNumber: 'G-20260917-AAA111',
+      status: 'paid',
+      createdAt: '2026-09-17T12:00:00Z',
+      totalCents: 0,
+      currency: 'EUR',
+      documentKey: STARTER_LOCAL_DOCUMENT_KEY,
+      documentVersion: '1.0',
+      language: 'nl',
+      countryIso2: 'BE',
+      emailStatus: 'queued',
+      ...overrides,
+    });
+    const orders = [
+      order({
+        id: 'base-guide',
+        documentKey: 'GELATO_BASE_INGREDIENTS',
+        countryIso2: null,
+        language: 'en',
+      }),
+      order({ id: 'be-cancelled', status: 'cancelled' }),
+      order({ id: 'be-nl' }),
+      order({ id: 'be-fr', language: 'fr' }),
+    ];
+    const key = STARTER_LOCAL_DOCUMENT_KEY;
+    expect(findActiveDocumentOrder(orders, key, { countryIso2: 'BE', language: 'nl' })?.id).toBe(
+      'be-nl',
     );
-    expect(offer).toContain('orderNumber={readyOrderNumber}');
-    expect(offer).toContain('getDocumentDownload(readyOrderId)');
+    expect(findActiveDocumentOrder(orders, key, { countryIso2: 'BE', language: 'fr' })?.id).toBe(
+      'be-fr',
+    );
+    expect(findActiveDocumentOrder(orders, key, { countryIso2: 'PL', language: 'pl' })).toBeNull();
+    expect(
+      findActiveDocumentOrder(undefined, key, { countryIso2: 'BE', language: 'nl' }),
+    ).toBeNull();
+  });
+
+  it('adds document markets to the one country list without inventing shipping', () => {
+    const country = (over: Partial<ShopCountry>): ShopCountry => ({
+      iso2: 'PL',
+      name: 'Polska',
+      physicalAvailable: true,
+      localIntended: false,
+      localLive: false,
+      missingComponents: [],
+      componentsRequired: 7,
+      componentsReady: 0,
+      ...over,
+    });
+    const merged = withDocumentMarkets(
+      [country({}), country({ iso2: 'US', name: 'United States', physicalAvailable: false })],
+      [
+        {
+          countryIso2: 'PL',
+          variants: [{ language: 'pl', state: 'TEST_ACCOUNTS_ONLY', orderable: false }],
+        },
+        {
+          countryIso2: 'JP',
+          variants: [{ language: 'ja', state: 'TEST_ACCOUNTS_ONLY', orderable: false }],
+        },
+      ],
+    );
+    expect(merged.map((entry) => entry.iso2).sort()).toEqual(['JP', 'PL', 'US']);
+    const japan = merged.find((entry) => entry.iso2 === 'JP');
+    expect(japan).toMatchObject({
+      physicalAvailable: false,
+      localLive: false,
+      documentAvailable: true,
+    });
+    expect(japan?.name).toBe('日本');
+    expect(merged.find((entry) => entry.iso2 === 'PL')?.documentAvailable).toBe(true);
+    expect(merged.find((entry) => entry.iso2 === 'US')?.documentAvailable).toBe(false);
+  });
+
+  it('continues the clicked market after sign-in and keeps one order per market', () => {
+    const offer = readFileSync('src/features/shop/ShopInfopakOffer.tsx', 'utf8');
+    expect(offer).toContain('rememberInfopakIntent(choice)');
+    expect(offer).toContain('orderDocument(STARTER_LOCAL_DOCUMENT_KEY, target)');
+    expect(offer).toContain(
+      'findActiveDocumentOrder(knownDocuments, STARTER_LOCAL_DOCUMENT_KEY, intent)',
+    );
+    expect(offer).toContain("queryKey: ['shop-documents', 'mine']");
   });
 });
 
@@ -154,5 +261,11 @@ describe('placement', () => {
     expect(singles).toBeGreaterThan(-1);
     expect(offer).toBeGreaterThan(singles);
     expect(cart).toBeGreaterThan(offer);
+  });
+
+  it('is the only 0 € path: the Starter Pack local button leads to it, not to a second product', () => {
+    const catalog = readFileSync('src/features/shop/ShopCatalog.tsx', 'utf8');
+    expect(catalog).toContain("getElementById('shop-infopak')");
+    expect(catalog).not.toContain("navigate('/shop/local-starter-pack')");
   });
 });
