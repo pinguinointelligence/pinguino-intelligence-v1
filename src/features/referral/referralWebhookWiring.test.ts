@@ -278,10 +278,12 @@ describe('refer-a-friend — refunds, replays and a failing recorder', () => {
 
   it('a failing recorder is retryable, never swallowed', async () => {
     const db = new RewardFakeDb(world());
-    db.rpc = async (fn: string, args: Record<string, unknown>) => {
+    // The fake's own rpc never errors, so its inferred type has `error: null`;
+    // DbClient allows an error, which is exactly the path under test.
+    db.rpc = (async (fn: string, args: Record<string, unknown>) => {
       db.calls.push({ fn, args });
       return { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } };
-    };
+    }) as unknown as RewardFakeDb['rpc'];
     const outcome = applyEventEffects(
       { db, refetch: refetch(invoice()) },
       event('invoice.paid', 'evt_13', { id: 'in_ref_1' }),
