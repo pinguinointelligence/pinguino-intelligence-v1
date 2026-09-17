@@ -23,12 +23,16 @@ const mocks = vi.hoisted(() => ({
   resolveShare: vi.fn(),
   openShare: vi.fn(),
   openReceivedShare: vi.fn(),
+  readSharePhoto: vi.fn(),
+  signedSharePhotoUrl: vi.fn(),
 }));
 
 vi.mock('@/services/community', () => ({
   resolveShare: mocks.resolveShare,
   openShare: mocks.openShare,
   openReceivedShare: mocks.openReceivedShare,
+  readSharePhoto: mocks.readSharePhoto,
+  signedSharePhotoUrl: mocks.signedSharePhotoUrl,
 }));
 vi.mock('@/access/useAccess', () => ({
   useAccess: () => ({
@@ -81,6 +85,10 @@ describe('shared recipe picture — own photo, otherwise the shared version prof
     mocks.resolveShare.mockReset();
     mocks.openShare.mockReset();
     mocks.openReceivedShare.mockReset();
+    mocks.readSharePhoto.mockReset();
+    mocks.signedSharePhotoUrl.mockReset();
+    // Default: the share-photo backend is not deployed.
+    mocks.readSharePhoto.mockResolvedValue(null);
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
@@ -150,5 +158,104 @@ describe('shared recipe picture — own photo, otherwise the shared version prof
     const image = await open('/share/token-2');
     expect(useRecipeStore.getState().category).toBe('protein_gelato');
     expect(image!.getAttribute('src')).toBe(BRANDED_PROFILE_IMAGE.sorbet);
+  });
+
+  const SIGNED =
+    'https://project.supabase.co/storage/v1/object/sign/recipe-share-photos/share-1/own.jpg?token=t';
+  const attached = {
+    ok: true,
+    share_link_id: 'share-1',
+    category: 'sorbet',
+    own_photo_path: 'share-1/own.jpg',
+  };
+
+  it('SHARE-IMG-04 a signed-in recipient sees the sharer’s own photograph, looked up by share id only', async () => {
+    mocks.signedIn = true;
+    mocks.openShare.mockResolvedValue(preview('sorbet', 'full'));
+    mocks.readSharePhoto.mockResolvedValue(attached);
+    mocks.signedSharePhotoUrl.mockResolvedValue(SIGNED);
+    const image = await open('/share/token-3');
+    expect(image!.getAttribute('src')).toBe(SIGNED);
+    expect(image!.dataset.imageOrigin).toBe('user_photo');
+    expect(mocks.readSharePhoto).toHaveBeenCalledWith('share-1');
+    expect(mocks.signedSharePhotoUrl).toHaveBeenCalledWith('share-1/own.jpg');
+  });
+
+  it('SHARE-IMG-05 after a refresh and on reopening from „Udostępnione” the own photograph is there again', async () => {
+    mocks.signedIn = true;
+    mocks.openShare.mockResolvedValue(preview('vegan_gelato', 'full'));
+    mocks.openReceivedShare.mockResolvedValue(preview('vegan_gelato', 'full'));
+    mocks.readSharePhoto.mockResolvedValue({ ...attached, category: 'vegan_gelato' });
+    mocks.signedSharePhotoUrl.mockResolvedValue(SIGNED);
+
+    expect((await open('/share/token-4'))!.dataset.imageOrigin).toBe('user_photo');
+    await act(async () => root.unmount());
+    root = createRoot(host); // a full reload: nothing survives in memory
+    expect((await open('/share/token-4'))!.getAttribute('src')).toBe(SIGNED);
+    expect((await open('/received/share-1'))!.getAttribute('src')).toBe(SIGNED);
+    expect(mocks.openReceivedShare).toHaveBeenCalledWith('share-1');
+    expect(mocks.signedSharePhotoUrl).toHaveBeenCalledTimes(3); // signed afresh every time
+  });
+
+  it('SHARE-IMG-06 a demo (unpaid) recipient sees it too — the photo never needs the full recipe', async () => {
+    mocks.signedIn = true;
+    mocks.openShare.mockResolvedValue(preview('sorbet', 'shared_recipe_demo'));
+    mocks.readSharePhoto.mockResolvedValue(attached);
+    mocks.signedSharePhotoUrl.mockResolvedValue(SIGNED);
+    const image = await open('/share/token-5');
+    expect(image!.dataset.imageOrigin).toBe('user_photo');
+    expect(mocks.readSharePhoto.mock.calls).toEqual([['share-1']]);
+  });
+
+  it('SHARE-IMG-07 logged out: no private lookup at all, the version profile photograph', async () => {
+    mocks.resolveShare.mockResolvedValue(preview('sorbet', 'shared_recipe_demo'));
+    const image = await open('/share/token-6');
+    expect(image!.getAttribute('src')).toBe(BRANDED_PROFILE_IMAGE.sorbet);
+    expect(mocks.readSharePhoto).not.toHaveBeenCalled();
+  });
+
+  it('SHARE-IMG-08 backend not deployed or nothing attached: the profile photograph, nothing claimed', async () => {
+    mocks.signedIn = true;
+    mocks.openShare.mockResolvedValue(preview('protein_gelato', 'full'));
+    mocks.readSharePhoto.mockResolvedValueOnce(null);
+    expect((await open('/share/token-7'))!.getAttribute('src')).toBe(BRANDED_PROFILE_IMAGE.protein);
+    mocks.readSharePhoto.mockResolvedValueOnce({
+      ok: true,
+      share_link_id: 'share-1',
+      category: 'protein_gelato',
+    });
+    expect((await open('/share/token-8'))!.getAttribute('src')).toBe(BRANDED_PROFILE_IMAGE.protein);
+    expect(host.querySelector('[data-testid="shared-recipe-own-photo-unavailable"]')).toBeNull();
+    expect(mocks.signedSharePhotoUrl).not.toHaveBeenCalled();
+  });
+
+  it('SHARE-IMG-09 an attached photograph that cannot be signed or loaded is said, not silently replaced', async () => {
+    mocks.signedIn = true;
+    mocks.openShare.mockResolvedValue(preview('sorbet', 'full'));
+    mocks.readSharePhoto.mockResolvedValue(attached);
+    mocks.signedSharePhotoUrl.mockRejectedValueOnce(new Error('Object not found'));
+    let image = await open('/share/token-9');
+    expect(image!.dataset.imageOrigin).toBe('branded_profile');
+    expect(
+      host.querySelector('[data-testid="shared-recipe-own-photo-unavailable"]')?.textContent,
+    ).toBe('Nie udało się wczytać zdjęcia autora.');
+
+    mocks.signedSharePhotoUrl.mockResolvedValueOnce(SIGNED);
+    image = await open('/share/token-10');
+    expect(image!.dataset.imageOrigin).toBe('user_photo');
+    await act(async () => image!.dispatchEvent(new Event('error')));
+    image = host.querySelector<HTMLImageElement>('[data-testid="shared-recipe-image"]');
+    expect(image!.dataset.imageOrigin).toBe('branded_profile');
+    expect(
+      host.querySelector('[data-testid="shared-recipe-own-photo-unavailable"]'),
+    ).not.toBeNull();
+  });
+
+  it('SHARE-IMG-10 a revoked link shows no picture and asks for no photograph', async () => {
+    mocks.signedIn = true;
+    mocks.openShare.mockResolvedValue({ ok: false, reason: 'revoked' });
+    const image = await open('/share/token-11');
+    expect(image).toBeNull();
+    expect(mocks.readSharePhoto).not.toHaveBeenCalled();
   });
 });

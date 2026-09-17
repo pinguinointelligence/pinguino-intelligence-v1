@@ -78,6 +78,19 @@ export interface CommunityCopy {
     readonly revoked: string;
     readonly expired: string;
     readonly openedByYou: string;
+    /** Direct-share own photograph (owner decision 2026-09-17). */
+    readonly photoTitle: string;
+    readonly photoFallbackNote: string;
+    readonly photoTake: string;
+    readonly photoChoose: string;
+    readonly photoUploading: string;
+    readonly photoAttached: string;
+    readonly photoRemove: string;
+    readonly photoFailed: string;
+    readonly photoRetry: string;
+    readonly photoSkip: string;
+    /** Recipient page: an attached photograph exists but could not be shown. */
+    readonly ownPhotoUnavailable: string;
   };
   readonly publish: {
     readonly dialogTitle: string;
@@ -211,6 +224,20 @@ export const communityCopyPl: CommunityCopy = {
     revoked: 'Ten link został wyłączony. Poproś o nowy, jeśli nadal potrzebujesz dostępu.',
     expired: 'Ten link wygasł. Poproś o nowy.',
     openedByYou: 'Otwarto',
+    photoTitle: 'Zdjęcie dla odbiorcy',
+    photoFallbackNote:
+      'Bez własnego zdjęcia odbiorca zobaczy zdjęcie Gellatti dla tego rodzaju lodów.',
+    photoTake: 'Zrób zdjęcie',
+    photoChoose: 'Wybierz z galerii',
+    photoUploading: 'Dodaję zdjęcie…',
+    photoAttached:
+      'Zdjęcie dodane. Odbiorca zobaczy je po zalogowaniu w Gellatti — nie trafia do Community.',
+    photoRemove: 'Usuń zdjęcie',
+    photoFailed:
+      'Nie udało się dodać zdjęcia. Do czasu dodania własnego odbiorca zobaczy zdjęcie Gellatti.',
+    photoRetry: 'Spróbuj ponownie',
+    photoSkip: 'Udostępnij bez zdjęcia',
+    ownPhotoUnavailable: 'Nie udało się wczytać zdjęcia autora.',
   },
   publish: {
     dialogTitle: 'Opublikuj w Community',
@@ -345,6 +372,20 @@ export const communityCopyEn: CommunityCopy = {
     revoked: 'Osoba, która wysłała ten link, wycofała go.',
     expired: 'Ten link wygasł.',
     openedByYou: 'Opened',
+    photoTitle: 'Photo for the recipient',
+    photoFallbackNote:
+      'Without your own photo, the recipient sees the Gellatti photo for this kind of ice cream.',
+    photoTake: 'Take a photo',
+    photoChoose: 'Choose from gallery',
+    photoUploading: 'Adding the photo…',
+    photoAttached:
+      'Photo added. The recipient sees it after signing in to Gellatti — it is not posted to Community.',
+    photoRemove: 'Remove photo',
+    photoFailed:
+      'The photo could not be added. Until you add your own, the recipient sees the Gellatti photo.',
+    photoRetry: 'Try again',
+    photoSkip: 'Share without a photo',
+    ownPhotoUnavailable: "The author's photo could not be loaded.",
   },
   publish: {
     dialogTitle: 'Opublikuj w Community',

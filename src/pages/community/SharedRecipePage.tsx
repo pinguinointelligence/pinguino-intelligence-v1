@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ApplicationState } from '@/components/shared/ApplicationState';
@@ -21,9 +21,31 @@ import { withContinuation } from '@/features/community/domain/shareContinuation'
 import {
   openReceivedShare,
   openShare,
+  readSharePhoto,
   resolveShare,
+  signedSharePhotoUrl,
   type ShareResolution,
 } from '@/services/community';
+
+/**
+ * The sharer's own photograph for a link, as a signed-in reader may see it.
+ * `unreadable` = a photograph IS attached but could not be signed, which the
+ * page says instead of quietly showing the profile card as if none existed.
+ */
+type OwnSharePhoto =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'photo'; readonly url: string }
+  | { readonly kind: 'unreadable' };
+
+async function loadOwnSharePhoto(shareLinkId: string): Promise<OwnSharePhoto> {
+  const read = await readSharePhoto(shareLinkId);
+  if (!read || !read.ok || !read.own_photo_path) return { kind: 'none' };
+  try {
+    return { kind: 'photo', url: await signedSharePhotoUrl(read.own_photo_path) };
+  } catch {
+    return { kind: 'unreadable' };
+  }
+}
 
 /**
  * `/share/:token` — the direct-share landing page (§14).
@@ -74,6 +96,17 @@ export function SharedRecipePage() {
         ? { ok: false, reason: 'not_found' }
         : null;
 
+  // The sharer's own photograph is private to the link: it is looked up only
+  // for a SIGNED-IN reader the server has already let in (sharer, owner or a
+  // recipient row), by share id alone — never through `recipe_input`. A
+  // logged-out visitor cannot be given a private object without a server-side
+  // signer, so they see the profile card.
+  const photoLinkId = state?.ok && access.isSignedIn ? state.share_link_id : null;
+  const ownPhoto = useAsyncResource<OwnSharePhoto>(`photo:${photoLinkId ?? ''}`, () =>
+    photoLinkId ? loadOwnSharePhoto(photoLinkId) : Promise.resolve({ kind: 'none' }),
+  );
+  const [brokenPhotoUrl, setBrokenPhotoUrl] = useState<string | null>(null);
+
   if (state === null) {
     return (
       <DestinationSurface title={copy.share.dialogTitle}>
@@ -109,12 +142,23 @@ export function SharedRecipePage() {
      `recipe.category` (the demo-safe projection of that immutable
      `recipe_input`), never the viewer's profile or account defaults.
 
-     The share payload carries no photograph field yet — `SharePreview` has no
-     photo and no share/recipe/version table stores one — so today every shared
-     recipe resolves to its branded profile card. The own-photo rule is wired
-     and tested in the authority; it lights up when the payload carries one. */
+     The own photograph comes from the link's private attachment (see
+     `loadOwnSharePhoto`). Until that lookup has answered, the frame stays
+     empty instead of flashing the profile card first. */
+  const photoPending = photoLinkId !== null && ownPhoto.status === 'loading';
+  const ownPhotoUrl =
+    ownPhoto.status === 'ready' &&
+    ownPhoto.data.kind === 'photo' &&
+    ownPhoto.data.url !== brokenPhotoUrl
+      ? ownPhoto.data.url
+      : null;
+  const ownPhotoUnavailable =
+    ownPhoto.status === 'ready' &&
+    (ownPhoto.data.kind === 'unreadable' ||
+      (ownPhoto.data.kind === 'photo' && ownPhoto.data.url === brokenPhotoUrl));
   const image = resolveRecipeImage({
     context: 'customer_share',
+    userImageUrl: ownPhotoUrl,
     profile: state.recipe.category ?? null,
   });
 
@@ -122,21 +166,41 @@ export function SharedRecipePage() {
     <DestinationSurface eyebrow={copy.roles.sharedBy} title={state.title}>
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex flex-col gap-8">
-          <img
-            src={image.url}
-            alt=""
-            /* Decorative: the recipe is named by the heading right above it, so
-               a screen reader that also announced the picture would say the
-               same thing twice. */
-            aria-hidden
-            data-testid="shared-recipe-image"
-            data-image-origin={image.origin}
-            /* Square, like the approved profile photographs: a 4:3 cover crop
-               cut the whisk and hand off the top of every card. The width cap
-               keeps a square from pushing the recipe below the fold on desktop. */
-            className="aspect-square w-full max-w-xl rounded-2xl bg-shell-raised object-cover"
-            loading="lazy"
-          />
+          {photoPending ? (
+            <div
+              aria-hidden
+              data-testid="shared-recipe-image-pending"
+              className="aspect-square w-full max-w-xl rounded-2xl bg-shell-raised"
+            />
+          ) : (
+            <div className="flex flex-col gap-2">
+              <img
+                key={image.url}
+                src={image.url}
+                alt=""
+                /* Decorative: the recipe is named by the heading right above it, so
+                   a screen reader that also announced the picture would say the
+                   same thing twice. */
+                aria-hidden
+                data-testid="shared-recipe-image"
+                data-image-origin={image.origin}
+                /* Square, like the approved profile photographs: a 4:3 cover crop
+                   cut the whisk and hand off the top of every card. The width cap
+                   keeps a square from pushing the recipe below the fold on desktop. */
+                className="aspect-square w-full max-w-xl rounded-2xl bg-shell-raised object-cover"
+                loading="lazy"
+                onError={ownPhotoUrl ? () => setBrokenPhotoUrl(ownPhotoUrl) : undefined}
+              />
+              {ownPhotoUnavailable ? (
+                <p
+                  data-testid="shared-recipe-own-photo-unavailable"
+                  className="text-xs text-stone-500"
+                >
+                  {copy.share.ownPhotoUnavailable}
+                </p>
+              ) : null}
+            </div>
+          )}
 
           <AttributionByline
             creatorDisplayName={state.created_by.display_name}
