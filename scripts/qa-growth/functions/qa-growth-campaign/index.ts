@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(nonce)) {
     return json(401, { error: 'nonce_required' });
   }
-  let body: { run?: string; step?: string; action?: string; params?: Record<string, any> };
+  let body: { run?: string; step?: string; action?: string; params?: Record<string, unknown> };
   try {
     body = await req.json();
   } catch {
@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
         return json(400, { error: 'unknown_action' });
     }
 
-    const clean = sanitize(result) as Record<string, any>;
+    const clean = sanitize(result) as Record<string, unknown>;
     const liveFlags = JSON.stringify(clean).match(/"livemode":\s*true/g);
     if (liveFlags) return json(500, { error: 'livemode_object_returned', step });
     await sql`
