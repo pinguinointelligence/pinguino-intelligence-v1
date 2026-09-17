@@ -658,8 +658,9 @@ describe('Production workspace touch-first UI', () => {
     expect(html).not.toContain('Dodaj brakujące');
   });
 
-  // §2 OWNER RULE — a POSITIVE heat fact is a one-time reminder with an OK.
-  it('gates Start on one OK for verified positive heat information', () => {
+  // Owner addendum 2026-09-17 replaces §2's one-time OK: a POSITIVE heat fact is one
+  // step of the preparation plan. No separate reminder card, no OK, no Start gate.
+  it('shows heat as a plan step and never gates Start on an acknowledgement', () => {
     const heatInformation = [
       {
         code: 'HEAT_TREATMENT_INDICATED',
@@ -670,80 +671,61 @@ describe('Production workspace touch-first UI', () => {
         productName: 'DARK CHOCOLATE 55%',
       },
     ];
-    const render = (acknowledged: boolean) =>
-      renderToStaticMarkup(
-        <ProductionCockpit
-          production={
-            {
-              session: null,
-              progress: null,
-              prerequisite: null,
-              practicalReady: acknowledged,
-              source: session.source,
-              plannedInput: input,
-              heatInformation,
-              heatInformationAcknowledged: acknowledged,
-              acknowledgeHeatInformation: vi.fn(),
-              startNewSession: vi.fn(),
-            } as unknown as ProductionWorkspaceView
-          }
-          onOpenPreview={vi.fn()}
-          onRecalculate={vi.fn()}
-          onReturnToRecipe={vi.fn()}
-        />,
-      );
-
-    const pending = render(false);
-    expect(pending).toContain('Pamiętaj o obróbce');
-    expect(pending).toContain('Najpierw potwierdź informację');
-    expect(pending).toContain('grid-cols-[minmax(0,1fr)_auto]');
-    expect(pending).toMatch(
-      /<button(?=[^>]*data-testid="acknowledge-production-heat-information")(?=[^>]*self-start)(?=[^>]*min-h-11)/,
-    );
-    expect(pending).not.toMatch(
-      /<button(?=[^>]*data-testid="acknowledge-production-heat-information")(?=[^>]*mt-3)/,
-    );
-    expect(pending).toMatch(
-      /<button(?=[^>]*data-testid="start-production-session")(?=[^>]*\sdisabled="")/,
-    );
-    const confirmed = render(true);
-    expect(confirmed).not.toContain('data-testid="production-heat-information"');
-    expect(confirmed).not.toContain('Informacja potwierdzona');
-    // OWNER §21 (2026-09-11): the first start says ROBIMY.
-    expect(confirmed).toContain('ROBIMY');
-    expect(confirmed).not.toContain('Rozpocznij partię');
-    expect(confirmed).not.toMatch(
-      /<button(?=[^>]*data-testid="start-production-session")(?=[^>]*\sdisabled="")/,
-    );
-  });
-
-  it('places the positive heat acknowledgement on its desktop ingredient row without replacing the mobile card', () => {
-    const confirm = vi.fn();
     const html = renderToStaticMarkup(
-      <IngredientRow
-        item={result.items[0]!}
-        totalBatchG={result.total_batch_g}
-        actions={recipeActions}
-        mode="recipe"
-        productionProcessReminder={{ disabled: false, onConfirm: confirm }}
+      <ProductionCockpit
+        production={
+          {
+            session: null,
+            progress: null,
+            prerequisite: null,
+            practicalReady: true,
+            source: session.source,
+            plannedInput: input,
+            heatInformation,
+            startNewSession: vi.fn(),
+          } as unknown as ProductionWorkspaceView
+        }
+        onOpenPreview={vi.fn()}
+        onRecalculate={vi.fn()}
+        onReturnToRecipe={vi.fn()}
       />,
     );
 
-    expect(html).toContain('data-testid="production-inline-process-reminder"');
-    expect(html).toContain('data-testid="acknowledge-production-heat-information-inline"');
-    expect(html).toContain('Pamiętaj o obróbce');
-    // V2.1 §17: the acknowledgement lives INSIDE the desktop ingredient line
-    // (never as a second row under it), and stays hidden below the workbench
-    // breakpoint so the mobile card remains the phone's own affordance.
-    expect(html).toContain('pro-workbench-desktop-only min-w-0 flex-1 items-center gap-2');
+    expect(html).not.toContain('Pamiętaj o obróbce');
+    expect(html).not.toContain('Najpierw potwierdź informację');
+    expect(html).not.toContain('data-testid="production-heat-information"');
+    expect(html).not.toContain('acknowledge-production-heat-information');
+    // OWNER §21 (2026-09-11): the first start says ROBIMY.
+    expect(html).toContain('ROBIMY');
+    expect(html).not.toMatch(
+      /<button(?=[^>]*data-testid="start-production-session")(?=[^>]*\sdisabled="")/,
+    );
 
-    const cockpitSource = readFileSync(
-      resolve(import.meta.dirname, 'ProductionCockpit.tsx'),
+    const hookSource = readFileSync(
+      resolve(import.meta.dirname, 'useProductionWorkspace.ts'),
       'utf8',
     );
-    expect(cockpitSource).toContain('data-testid="production-heat-information"');
-    expect(cockpitSource).toContain('pro-workbench-mobile-only');
-    expect(cockpitSource).toContain('acknowledge-production-heat-information');
+    // Start depends on prerequisites and degassing only; no acknowledgement is faked or sent.
+    expect(hookSource).toContain(
+      'const canStartProduction = productionPrerequisite === null && degassingAcknowledged;',
+    );
+    expect(hookSource).not.toContain('heatInformationAcknowledged');
+    expect(hookSource).not.toContain('acknowledgeHeatInformation');
+  });
+
+  it('keeps no heat OK anywhere in the desktop ingredient rows or the cockpit', () => {
+    for (const file of [
+      '../ingredient-builder/IngredientRow.tsx',
+      '../ingredient-builder/IngredientBuilder.tsx',
+      'ProductionCockpit.tsx',
+      '../home-creator/ui/HomePreparation.tsx',
+    ]) {
+      const source = readFileSync(resolve(import.meta.dirname, file), 'utf8');
+      expect(source, file).not.toContain('production-inline-process-reminder');
+      expect(source, file).not.toContain('acknowledge-production-heat-information');
+      expect(source, file).not.toContain('home-production-heat-information');
+      expect(source, file).not.toContain('Pamiętaj o obróbce');
+    }
   });
 
   it('renders one persisted degassing card and blocks Start until confirmation', () => {
