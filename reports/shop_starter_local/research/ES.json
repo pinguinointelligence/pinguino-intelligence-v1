@@ -1,393 +1,395 @@
 {
-  "iso2": "ES",
-  "country": "Spain",
-  "agent": "research-eu-south",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T15:45:00Z",
-  "items": {
-    "CRP": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "nata en polvo",
-        "crema de leche en polvo",
-        "nata deshidratada",
-        "nata liofilizada",
-        "polvo de nata"
+ "iso2": "ES",
+ "country": "Spain",
+ "agent": "research-eu-south",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T15:45:00Z",
+ "items": {
+  "CRP": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "nata en polvo",
+    "crema de leche en polvo",
+    "nata deshidratada",
+    "nata liofilizada",
+    "polvo de nata"
+   ],
+   "queries": [
+    "nata en polvo 42% materia grasa comprar",
+    "\"nata en polvo\" heladería 42% grasa ingredientes nata deshidratada",
+    "Sosa ingredients nata en polvo cream powder",
+    "\"crema de leche en polvo\" OR \"nata en polvo\" 40% materia grasa tienda online España kg",
+    "\"nata en polvo\" 1 kg materia grasa proteína ficha repostería profesional tienda",
+    "cocinista nata en polvo",
+    "\"cream powder\" 42% fat Spain buy \"nata en polvo\" spray dried",
+    "\"polvo de nata\" OR \"nata liofilizada\" OR \"nata deshidratada\" comprar tienda online",
+    "\"nata en polvo\" comprar -montar materia grasa (Brave)",
+    "\"nata en polvo\" heladería OR repostería tienda online 1 kg (Brave)",
+    "Natpols Sosa nata liofilizada comprar (Brave)",
+    "\"nata en polvo\" 42% (Brave)"
+   ],
+   "sources_tried": [
+    "meincupcake.de (German baking shop; delivery list includes Spanien - cross-border)",
+    "ahorramas.com (only liquid cream)",
+    "supermercado.eroski.es / capraboacasa.com / dia.es (liquid or vegetable cream only)",
+    "balkanicaonline.es (Dr. Oetker whipping powder - reject)",
+    "naturitas.es site search 'nata en polvo' (no cream powder found)",
+    "sosa.cat (Natpols freeze-dried cream powder, 2 kg, fat not printed)",
+    "100x100ingredients.com / 100x100chef.com ('cream flavour powder 75% fat' - flavouring line, shop page 404)",
+    "almacenesusabiaga.com (nata en polvo 75% fat, 25 kg sack, quote only - pack too large, B2B)",
+    "lopezmira.com (B2B dairy cream powder, fat not printed)",
+    "dulkado.com ice-cream ingredients (no cream powder)",
+    "distribucionesplata.com (liquid cream / Sosa freeze-dried fruit only)",
+    "fitsa-group.com (industrial 42% cream powder manufacturer, no retail)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Cake-Masters Basics",
+     "product_name": "Sahnepulver 100g",
+     "pack": "100 g",
+     "gtin": "4250712308666",
+     "identifier_confirmed": true,
+     "url": "https://www.meincupcake.de/shop/sahnepulver-100g.html",
+     "source_type": "RETAILER",
+     "seller": "MEINCUPCAKE Shop (Germany)",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "cross-border: seller's delivery-country list includes the market (check_quotes.py found=true)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.meincupcake.de/shop/info/lieferung-und-versandkosten.html",
+      "quotes": [
+       "Wir liefern zu den oben genannten Konditionen in folgende",
+       "Estland, Finnland, Frankreich, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn."
       ],
-      "queries": [
-        "nata en polvo 42% materia grasa comprar",
-        "\"nata en polvo\" heladería 42% grasa ingredientes nata deshidratada",
-        "Sosa ingredients nata en polvo cream powder",
-        "\"crema de leche en polvo\" OR \"nata en polvo\" 40% materia grasa tienda online España kg",
-        "\"nata en polvo\" 1 kg materia grasa proteína ficha repostería profesional tienda",
-        "cocinista nata en polvo",
-        "\"cream powder\" 42% fat Spain buy \"nata en polvo\" spray dried",
-        "\"polvo de nata\" OR \"nata liofilizada\" OR \"nata deshidratada\" comprar tienda online",
-        "\"nata en polvo\" comprar -montar materia grasa (Brave)",
-        "\"nata en polvo\" heladería OR repostería tienda online 1 kg (Brave)",
-        "Natpols Sosa nata liofilizada comprar (Brave)",
-        "\"nata en polvo\" 42% (Brave)"
+      "found": [
+       true,
+       true
       ],
-      "sources_tried": [
-        "meincupcake.de (German baking shop; delivery list includes Spanien - cross-border)",
-        "ahorramas.com (only liquid cream)",
-        "supermercado.eroski.es / capraboacasa.com / dia.es (liquid or vegetable cream only)",
-        "balkanicaonline.es (Dr. Oetker whipping powder - reject)",
-        "naturitas.es site search 'nata en polvo' (no cream powder found)",
-        "sosa.cat (Natpols freeze-dried cream powder, 2 kg, fat not printed)",
-        "100x100ingredients.com / 100x100chef.com ('cream flavour powder 75% fat' - flavouring line, shop page 404)",
-        "almacenesusabiaga.com (nata en polvo 75% fat, 25 kg sack, quote only - pack too large, B2B)",
-        "lopezmira.com (B2B dairy cream powder, fat not printed)",
-        "dulkado.com ice-cream ingredients (no cream powder)",
-        "distribucionesplata.com (liquid cream / Sosa freeze-dried fruit only)",
-        "fitsa-group.com (industrial 42% cream powder manufacturer, no retail)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Cake-Masters Basics",
-          "product_name": "Sahnepulver 100g",
-          "pack": "100 g",
-          "gtin": "4250712308666",
-          "identifier_confirmed": true,
-          "url": "https://www.meincupcake.de/shop/sahnepulver-100g.html",
-          "source_type": "RETAILER",
-          "seller": "MEINCUPCAKE Shop (Germany)",
-          "page_market": "DE",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "cross-border: seller's delivery-country list includes the market (check_quotes.py found=true)",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://www.meincupcake.de/shop/info/lieferung-und-versandkosten.html",
-            "quotes": [
-              "Wir liefern zu den oben genannten Konditionen in folgende",
-              "Estland, Finnland, Frankreich, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn."
-            ],
-            "found": [
-              true,
-              true
-            ],
-            "context": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, … Italien, … Portugal, … Spanien, Tschechische Republik, Ungarn."
-          },
-          "composition": {
-            "fat_g": 42.0,
-            "protein_g": 19.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet. Nährwerte/100 g: Fett 42 g (ges. 27.1 g), Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0.75 g",
-            "from": "retailer page (Zutaten + Nährwertangaben); Lebensmittelunternehmen Cake-Masters, Herzlake",
-            "carbs_g": 29.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Spray-dried dairy cream, fat 42 g/100 g = reference 42 %; protein 19 g, sugars (lactose) 29 g. Stock shown: 'Mehr als 5 Stück'. GTIN is on the German seller's page; the page is not bound to ES (cross-border).",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a9d2ca4d39ebddd3.json",
-          "checked_at_utc": "2026-09-17T15:52:35Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        },
-        {
-          "rank": 2,
-          "brand": "López Mira",
-          "product_name": "Nata en Polvo – Crema Láctea Deshidratada",
-          "pack": "not stated",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://lopezmira.com/nuestros-productos/materias-primas/lacteos/nata-en-polvo/",
-          "source_type": "RETAILER",
-          "seller": "López Mira (raw-material distributor, Jijona, Alicante, Spain; B2B catalogue, no online purchase)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "none on page (generic .com; Spanish address in footer only)",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "not printed; page describes 'producto lácteo deshidratado' with the creaminess of fresh cream",
-            "from": "page description"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "Dairy cream powder (right type) but fat %, ingredients and pack are not printed on the page; B2B raw-material catalogue.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/eef3eb1168c4c5fb.json",
-          "checked_at_utc": "2026-09-17T15:43:04Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": "No Spanish retail listing of 38-48 % dairy cream powder found; Spanish 'nata en polvo' results are whipping-cream mixes (reject) or professional/B2B products (Sosa Natpols 2 kg freeze-dried cream with SMP + E450, fat not printed; Almacenes Usabiaga 75 % fat in 25 kg sacks). Rank 1 is a German shop whose delivery list includes Spain."
+      "context": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, … Italien, … Portugal, … Spanien, Tschechische Republik, Ungarn."
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet. Nährwerte/100 g: Fett 42 g (ges. 27.1 g), Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0.75 g",
+      "from": "retailer page (Zutaten + Nährwertangaben); Lebensmittelunternehmen Cake-Masters, Herzlake",
+      "carbs_g": 29.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Spray-dried dairy cream, fat 42 g/100 g = reference 42 %; protein 19 g, sugars (lactose) 29 g. Stock shown: 'Mehr als 5 Stück'. GTIN is on the German seller's page; the page is not bound to ES (cross-border).",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a9d2ca4d39ebddd3.json",
+     "checked_at_utc": "2026-09-17T15:52:35Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     },
-    "FRU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "fructosa",
-        "fructosa en polvo",
-        "azúcar de fruta"
-      ],
-      "queries": [
-        "fructosa en polvo 500 g comprar supermercado España",
-        "Sosa fructosa en polvo comprar tienda España 1 kg",
-        "fructosa 500 g elcorteingles.es OR carrefour.es OR compraonline.alcampo.es",
-        "\"fructosa\" Santiveri OR Dietisa OR \"Diet Radisson\" 500 g polvo EAN"
-      ],
-      "sources_tried": [
-        "elcorteingles.es (Special Line fructosa 800 g - HTTP 403 bot wall, inconclusive)",
-        "compraonline.alcampo.es (Santiveri Fructosa Natura 750 g - HTTP 404)",
-        "supermercado.eroski.es category 'Edulcorante y fructosa' (page 1 sweeteners only)",
-        "dietcenter.es (EAN 8412170001152 shown under title 'FRUCTOSA 1KG BIOGRAN' - conflicting, not used)",
-        "farmaciasdirect.es (Santiveri Fructosa 750 g, GTIN on page, OutOfStock; also Ynsadiet Fructosa Bolsa 800 gr, GTIN 8412016357405 on page, InStock, but no composition printed - C_INSUFFICIENT_DATA, verdict 5a80a7b89932a564.json)",
-        "naturitas.es (El Granero Integral / Naturcesta fructosa 1 kg, no GTIN)",
-        "sosa.cat (fructosa 1 kg, 'No disponible temporalmente', catalogue)",
-        "especiaspedroza.es, toufood.com, hsnstore (discovery only)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Santiveri",
-          "product_name": "Santiveri Fructosa 750Gr.",
-          "pack": "750 g",
-          "gtin": "8412170001152",
-          "identifier_confirmed": true,
-          "url": "https://www.farmaciasdirect.es/products/santiveri-fructosa-750gr",
-          "source_type": "RETAILER",
-          "seller": "Farmaciasdirect (online pharmacy)",
-          "page_market": "ES",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .es",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": 100.0,
-            "ingredients": "Composición: Fructosa (100 %). Per 100 g: hidratos de carbono 100 g, azúcares 100 g, 400 kcal",
-            "from": "retailer page"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Printed composition 'Fructosa (100 %)' >= 98 % fructose. schema.org OutOfStock on this page at check time.",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d2fb1e7c35b36260.json",
-          "checked_at_utc": "2026-09-17T15:36:19Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        },
-        {
-          "rank": 2,
-          "brand": "El Granero Integral",
-          "product_name": "Fructosa 1 kg de polvo",
-          "pack": "1 kg",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.naturitas.es/p/alimentacion/endulzantes-y-mieles/sustitutivos-del-azucar/fructosa-1-kg-de-polvo-el-granero-integral",
-          "source_type": "RETAILER",
-          "seller": "Naturitas",
-          "page_market": "ES",
-          "market_by": "CCTLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "country domain .es",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Ingredientes: Fructosa. Per 100 g: hidratos de carbono 99.800 g, azúcares 99.800 g",
-            "from": "retailer page"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Single-ingredient fructose, sugars 99.8 g/100 g. Page shows only retailer SKU LP-0035706 (no GTIN), so identity is not proven. schema.org InStock.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/72735bef8f9a9570.json",
-          "checked_at_utc": "2026-09-17T15:35:05Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": "Rank 1 was out of stock at check time; rank 2 (no GTIN) and Ynsadiet 800 g (GTIN, composition not printed) were in stock."
-    },
-    "INU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "inulina",
-        "inulina en polvo",
-        "inulina de achicoria"
-      ],
-      "queries": [
-        "inulina en polvo achicoria comprar España",
-        "HSN inulina en polvo 500g hsnstore",
-        "inulina polvo farmaciasdirect.es OR planetahuerto.es OR herbolariosaludnatural OR mifarma.es",
-        "inulina en polvo achicoria comprar (Brave)"
-      ],
-      "sources_tried": [
-        "farmasana.es (Salud Viva 200 g, EAN in data sheet, InStock)",
-        "canarias.integramed.es (Inulina en polvo 250 g, GTIN on page, OutOfStock)",
-        "farmaciastop.es (Salud Viva 200 g, gtin13 field holds 11-digit '18660000001')",
-        "herbolarionavarro.es (Salud Viva 200 g, no GTIN)",
-        "shop.veritas.es (HTTP 403 bot wall, inconclusive)",
-        "carrefour.es (HSN inulina - HTTP 403 bot wall, inconclusive)",
-        "hsnstore.com (HTTP 403 bot wall, inconclusive)",
-        "naturitas.es, foody.es, paleobull.com, promofarma.com (marketplace) - discovery only"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Salud Viva",
-          "product_name": "Inulina De Achicoria En Polvo 200g",
-          "pack": "200 g",
-          "gtin": "0018660000001",
-          "identifier_confirmed": true,
-          "url": "https://farmasana.es/18722-inulina-de-achicoria-en-polvo-200g.html",
-          "source_type": "RETAILER",
-          "seller": "Farmasana (parafarmacia)",
-          "page_market": "ES",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .es",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Ingredientes: 100% Inulina natural soluble procedente de la raíz de achicoria *Procedente de agricultura ecológica",
-            "from": "retailer page"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % chicory inulin powder (fibre % not printed separately). Identifier caution: farmasana prints ean13 0018660000001, but farmaciastop.es prints the same product's gtin13 as 11-digit '18660000001' - owner should confirm the barcode on the pack.",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a7e7846754ec486d.json",
-          "checked_at_utc": "2026-09-17T15:39:46Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        },
-        {
-          "rank": 2,
-          "brand": "not printed (Integramed shop listing)",
-          "product_name": "Inulina en polvo. 250 g",
-          "pack": "250 g",
-          "gtin": "8412347005310",
-          "identifier_confirmed": true,
-          "url": "https://canarias.integramed.es/inicio/1073-inulina-en-polvo-250-g-8412347005310.html",
-          "source_type": "RETAILER",
-          "seller": "Integramed (Canarias store)",
-          "page_market": "ES",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .es",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Ingredientes: 100% polvo de inulina de achicoria (Cichorium Intybus) orgánico. Presentación: 250 g en polvo",
-            "from": "retailer page"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % organic chicory inulin powder. Page shows 'Fuera de Stock' (schema OutOfStock) at check time; brand field empty.",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/be8eeef9f6b638cc.json",
-          "checked_at_utc": "2026-09-17T15:36:53Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": ""
-    },
-    "YOL": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "yema de huevo en polvo",
-        "yema en polvo",
-        "yema de huevo deshidratada"
-      ],
-      "queries": [
-        "yema de huevo en polvo deshidratada comprar pastelería",
-        "yema de huevo en polvo 100% comprar online España tienda 500 g",
-        "Sermand yema de huevo en polvo 500 g"
-      ],
-      "sources_tried": [
-        "myprotein.es (Yema de huevo en polvo 500 g / 1 kg, GTINs in JSON-LD, both variants inStock:false)",
-        "sermand.com (Spanish manufacturer shop, GTINs in JSON-LD, in stock)",
-        "catereasy.es (discovery only)",
-        "amazon.es (marketplace - not used)",
-        "sanmiguelhuevos.com (discovery only: title 'Huevo Deshidratado (en polvo)' - whole egg, not checked)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Myprotein",
-          "product_name": "Yema de huevo en polvo - 500g - Sin Sabor",
-          "pack": "500 g",
-          "gtin": "5055534303733",
-          "identifier_confirmed": true,
-          "url": "https://www.myprotein.es/p/nutricion-deportiva/yema-de-huevo-en-polvo/10529352/",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Myprotein (THG) Spain site",
-          "page_market": "ES",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .es",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": 59.0,
-            "protein_g": 32.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Sin Sabor: Yema de Huevo en Polvo (100%). Per 100 g: grasas 59 g (saturadas 20 g), hidratos 2.1 g (azúcares 2.1 g), proteínas 32 g, sal 2.5 g",
-            "from": "official shop page"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % egg yolk powder; fat 59 / protein 32 vs reference 56.5 / 34.5. JSON-LD pairs gtin13 5055534303733 with weight 500 g; variant data shows inStock:false at check time (1 kg variant GTIN 5055534303726 also out of stock).",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/63dc5e6360240411.json",
-          "checked_at_utc": "2026-09-17T15:34:37Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        },
-        {
-          "rank": 2,
-          "brand": "Sermand",
-          "product_name": "Yema de Huevo en Polvo Natural - 2kg",
-          "pack": "2 kg",
-          "gtin": "8436577690108",
-          "identifier_confirmed": true,
-          "url": "https://sermand.com/products/yema-de-huevo-en-polvo-natural-sin-gluten-ni-lactosa",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Sermand Nutrición (Totana, Murcia, Spain)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "explicit shipping statement on the product page, check_quotes.py found=true: 'Entrega 48–72h DHL en toda España'",
-          "cross_border": false,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://sermand.com/products/yema-de-huevo-en-polvo-natural-sin-gluten-ni-lactosa",
-            "quote": "Entrega 48–72h DHL en toda España",
-            "found": true
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "page: 'Obtenida a partir de yema de huevo fresca deshidratada'; collection page: products pasteurised, no additives stated for the range; no ingredient list or nutrition table printed",
-            "from": "manufacturer shop page"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Pasteurised dried egg yolk from the producer. Smaller variants exist (350 g, 1 kg) but both carry the same GTIN 8436577690115 in the page data, so only the 2 kg GTIN is unambiguous. Nutrition not printed on the page.",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/690a899d6408daa9.json",
-          "checked_at_utc": "2026-09-17T15:34:40Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": "Myprotein 500 g/1 kg variants were out of stock on myprotein.es (and on .pt/.it/.gr/.com.cy) at check time; Sermand (rank 2) was in stock. Sermand's Shopify country selector also lists Portugal, Italy, Malta and Greece."
+    {
+     "rank": 2,
+     "brand": "López Mira",
+     "product_name": "Nata en Polvo – Crema Láctea Deshidratada",
+     "pack": "not stated",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://lopezmira.com/nuestros-productos/materias-primas/lacteos/nata-en-polvo/",
+     "source_type": "RETAILER",
+     "seller": "López Mira (raw-material distributor, Jijona, Alicante, Spain; B2B catalogue, no online purchase)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "none on page (generic .com; Spanish address in footer only)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "not printed; page describes 'producto lácteo deshidratado' with the creaminess of fresh cream",
+      "from": "page description"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "Dairy cream powder (right type) but fat %, ingredients and pack are not printed on the page; B2B raw-material catalogue.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/eef3eb1168c4c5fb.json",
+     "checked_at_utc": "2026-09-17T15:43:04Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
     }
+   ],
+   "notes": "No Spanish retail listing of 38-48 % dairy cream powder found; Spanish 'nata en polvo' results are whipping-cream mixes (reject) or professional/B2B products (Sosa Natpols 2 kg freeze-dried cream with SMP + E450, fat not printed; Almacenes Usabiaga 75 % fat in 25 kg sacks). Rank 1 is a German shop whose delivery list includes Spain."
+  },
+  "FRU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "fructosa",
+    "fructosa en polvo",
+    "azúcar de fruta"
+   ],
+   "queries": [
+    "fructosa en polvo 500 g comprar supermercado España",
+    "Sosa fructosa en polvo comprar tienda España 1 kg",
+    "fructosa 500 g elcorteingles.es OR carrefour.es OR compraonline.alcampo.es",
+    "\"fructosa\" Santiveri OR Dietisa OR \"Diet Radisson\" 500 g polvo EAN"
+   ],
+   "sources_tried": [
+    "elcorteingles.es (Special Line fructosa 800 g - HTTP 403 bot wall, inconclusive)",
+    "compraonline.alcampo.es (Santiveri Fructosa Natura 750 g - HTTP 404)",
+    "supermercado.eroski.es category 'Edulcorante y fructosa' (page 1 sweeteners only)",
+    "dietcenter.es (EAN 8412170001152 shown under title 'FRUCTOSA 1KG BIOGRAN' - conflicting, not used)",
+    "farmaciasdirect.es (Santiveri Fructosa 750 g, GTIN on page, OutOfStock; also Ynsadiet Fructosa Bolsa 800 gr, GTIN 8412016357405 on page, InStock, but no composition printed - C_INSUFFICIENT_DATA, verdict 5a80a7b89932a564.json)",
+    "naturitas.es (El Granero Integral / Naturcesta fructosa 1 kg, no GTIN)",
+    "sosa.cat (fructosa 1 kg, 'No disponible temporalmente', catalogue)",
+    "especiaspedroza.es, toufood.com, hsnstore (discovery only)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Santiveri",
+     "product_name": "Santiveri Fructosa 750Gr.",
+     "pack": "750 g",
+     "gtin": "8412170001152",
+     "identifier_confirmed": true,
+     "url": "https://www.farmaciasdirect.es/products/santiveri-fructosa-750gr",
+     "source_type": "RETAILER",
+     "seller": "Farmaciasdirect (online pharmacy)",
+     "page_market": "ES",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .es",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": 100.0,
+      "ingredients": "Composición: Fructosa (100 %). Per 100 g: hidratos de carbono 100 g, azúcares 100 g, 400 kcal",
+      "from": "retailer page"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Printed composition 'Fructosa (100 %)' >= 98 % fructose. schema.org OutOfStock on this page at check time.",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d2fb1e7c35b36260.json",
+     "checked_at_utc": "2026-09-17T15:36:19Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
+     "brand": "El Granero Integral",
+     "product_name": "Fructosa 1 kg de polvo",
+     "pack": "1 kg",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.naturitas.es/p/alimentacion/endulzantes-y-mieles/sustitutivos-del-azucar/fructosa-1-kg-de-polvo-el-granero-integral",
+     "source_type": "RETAILER",
+     "seller": "Naturitas",
+     "page_market": "ES",
+     "market_by": "CCTLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "country domain .es",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredientes: Fructosa. Per 100 g: hidratos de carbono 99.800 g, azúcares 99.800 g",
+      "from": "retailer page"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Single-ingredient fructose, sugars 99.8 g/100 g. Page shows only retailer SKU LP-0035706 (no GTIN), so identity is not proven. schema.org InStock.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/72735bef8f9a9570.json",
+     "checked_at_utc": "2026-09-17T15:35:05Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "Rank 1 was out of stock at check time; rank 2 (no GTIN) and Ynsadiet 800 g (GTIN, composition not printed) were in stock."
+  },
+  "INU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "inulina",
+    "inulina en polvo",
+    "inulina de achicoria"
+   ],
+   "queries": [
+    "inulina en polvo achicoria comprar España",
+    "HSN inulina en polvo 500g hsnstore",
+    "inulina polvo farmaciasdirect.es OR planetahuerto.es OR herbolariosaludnatural OR mifarma.es",
+    "inulina en polvo achicoria comprar (Brave)"
+   ],
+   "sources_tried": [
+    "farmasana.es (Salud Viva 200 g, EAN in data sheet, InStock)",
+    "canarias.integramed.es (Inulina en polvo 250 g, GTIN on page, OutOfStock)",
+    "farmaciastop.es (Salud Viva 200 g, gtin13 field holds 11-digit '18660000001')",
+    "herbolarionavarro.es (Salud Viva 200 g, no GTIN)",
+    "shop.veritas.es (HTTP 403 bot wall, inconclusive)",
+    "carrefour.es (HSN inulina - HTTP 403 bot wall, inconclusive)",
+    "hsnstore.com (HTTP 403 bot wall, inconclusive)",
+    "naturitas.es, foody.es, paleobull.com, promofarma.com (marketplace) - discovery only"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Salud Viva",
+     "product_name": "Inulina De Achicoria En Polvo 200g",
+     "pack": "200 g",
+     "gtin": "0018660000001",
+     "identifier_confirmed": true,
+     "url": "https://farmasana.es/18722-inulina-de-achicoria-en-polvo-200g.html",
+     "source_type": "RETAILER",
+     "seller": "Farmasana (parafarmacia)",
+     "page_market": "ES",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .es",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredientes: 100% Inulina natural soluble procedente de la raíz de achicoria *Procedente de agricultura ecológica",
+      "from": "retailer page"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % chicory inulin powder (fibre % not printed separately). Identifier caution: farmasana prints ean13 0018660000001, but farmaciastop.es prints the same product's gtin13 as 11-digit '18660000001' - owner should confirm the barcode on the pack.",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a7e7846754ec486d.json",
+     "checked_at_utc": "2026-09-17T15:39:46Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
+     "brand": "not printed (Integramed shop listing)",
+     "product_name": "Inulina en polvo. 250 g",
+     "pack": "250 g",
+     "gtin": "8412347005310",
+     "identifier_confirmed": true,
+     "url": "https://canarias.integramed.es/inicio/1073-inulina-en-polvo-250-g-8412347005310.html",
+     "source_type": "RETAILER",
+     "seller": "Integramed (Canarias store)",
+     "page_market": "ES",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .es",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredientes: 100% polvo de inulina de achicoria (Cichorium Intybus) orgánico. Presentación: 250 g en polvo",
+      "from": "retailer page"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % organic chicory inulin powder. Page shows 'Fuera de Stock' (schema OutOfStock) at check time; brand field empty.",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/be8eeef9f6b638cc.json",
+     "checked_at_utc": "2026-09-17T15:36:53Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": ""
+  },
+  "YOL": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "yema de huevo en polvo",
+    "yema en polvo",
+    "yema de huevo deshidratada"
+   ],
+   "queries": [
+    "yema de huevo en polvo deshidratada comprar pastelería",
+    "yema de huevo en polvo 100% comprar online España tienda 500 g",
+    "Sermand yema de huevo en polvo 500 g"
+   ],
+   "sources_tried": [
+    "myprotein.es (Yema de huevo en polvo 500 g / 1 kg, GTINs in JSON-LD, both variants inStock:false)",
+    "sermand.com (Spanish manufacturer shop, GTINs in JSON-LD, in stock)",
+    "catereasy.es (discovery only)",
+    "amazon.es (marketplace - not used)",
+    "sanmiguelhuevos.com (discovery only: title 'Huevo Deshidratado (en polvo)' - whole egg, not checked)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Myprotein",
+     "product_name": "Yema de huevo en polvo - 500g - Sin Sabor",
+     "pack": "500 g",
+     "gtin": "5055534303733",
+     "identifier_confirmed": true,
+     "url": "https://www.myprotein.es/p/nutricion-deportiva/yema-de-huevo-en-polvo/10529352/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Myprotein (THG) Spain site",
+     "page_market": "ES",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .es",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": 59.0,
+      "protein_g": 32.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Sin Sabor: Yema de Huevo en Polvo (100%). Per 100 g: grasas 59 g (saturadas 20 g), hidratos 2.1 g (azúcares 2.1 g), proteínas 32 g, sal 2.5 g",
+      "from": "official shop page"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % egg yolk powder; fat 59 / protein 32 vs reference 56.5 / 34.5. JSON-LD pairs gtin13 5055534303733 with weight 500 g; variant data shows inStock:false at check time (1 kg variant GTIN 5055534303726 also out of stock).",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/63dc5e6360240411.json",
+     "checked_at_utc": "2026-09-17T15:34:37Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
+     "brand": "Sermand",
+     "product_name": "Yema de Huevo en Polvo Natural - 2kg",
+     "pack": "2 kg",
+     "gtin": "8436577690108",
+     "identifier_confirmed": true,
+     "url": "https://sermand.com/products/yema-de-huevo-en-polvo-natural-sin-gluten-ni-lactosa",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Sermand Nutrición (Totana, Murcia, Spain)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "explicit shipping statement on the product page, check_quotes.py found=true: 'Entrega 48–72h DHL en toda España'",
+     "cross_border": false,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://sermand.com/products/yema-de-huevo-en-polvo-natural-sin-gluten-ni-lactosa",
+      "quote": "Entrega 48–72h DHL en toda España",
+      "found": true
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "page: 'Obtenida a partir de yema de huevo fresca deshidratada'; collection page: products pasteurised, no additives stated for the range; no ingredient list or nutrition table printed",
+      "from": "manufacturer shop page"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Pasteurised dried egg yolk from the producer. Smaller variants exist (350 g, 1 kg) but both carry the same GTIN 8436577690115 in the page data, so only the 2 kg GTIN is unambiguous. Nutrition not printed on the page.",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/690a899d6408daa9.json",
+     "checked_at_utc": "2026-09-17T15:34:40Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "Myprotein 500 g/1 kg variants were out of stock on myprotein.es (and on .pt/.it/.gr/.com.cy) at check time; Sermand (rank 2) was in stock. Sermand's Shopify country selector also lists Portugal, Italy, Malta and Greece."
   }
+ }
 }

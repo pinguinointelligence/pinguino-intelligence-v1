@@ -22,12 +22,14 @@
   "tag_alternative": "Lokalt alternativ",
   "tag_unconfirmed": "Ikke bekræftet",
   "tag_abroad_unconfirmed": "Butik i udlandet",
+  "tag_large_pack": "Stor pakke",
   "legend": {
     "from_abroad": "en butik i udlandet, hvis egen leveringsliste nævner dette land",
     "b2b": "sælges til virksomheder eller i store pakninger — ikke et almindeligt detailtilbud",
     "other_composition": "samme type produkt med en anden sammensætning (angivet ved siden af)",
     "alternative": "en erstatning for et andet Gellatti-produkt",
-    "abroad_unconfirmed": "en butik i udlandet; levering til dette land er ikke bekræftet"
+    "abroad_unconfirmed": "en butik i udlandet; levering til dette land er ikke bekræftet",
+    "large_pack": "sælges i pakker på 5 kg eller mere"
   },
   "starter_amount": "I Starter Pack: {g} g",
   "option": "Mulighed {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Et lokalt alternativ til Gellatti-blandingen, ikke den samme blanding. Bland det med de tørre ingredienser, og varm basen op til 75–80 °C.",
   "missing": "Endnu intet godkendt produkt i dette land.",
   "out_of_stock": "Butikken viste varen som udsolgt den {date}.",
+  "delivery_unconfirmed": "Levering til {country} er ikke bekræftet — spørg sælgeren.",
+  "extra_title": "Også værd at vide",
   "notes_title": "Godt at vide",
   "notes": [
     {"h": "Tilgængelighed", "p": "Vi tjekkede de undersøgte produkter på butikkers og producenters websites den 17. september 2026. Dextrose, skummetmælkspulver og stabilisatoren kommer fra Gellattis landetabel af 12. september 2026 og blev ikke tjekket igen. Tilgængelighed, priser og levering kan ændre sig og er ikke garanteret."},

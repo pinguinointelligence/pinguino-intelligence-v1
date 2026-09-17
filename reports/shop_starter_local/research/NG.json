@@ -1,296 +1,370 @@
 {
-  "iso2": "NG",
-  "country": "Nigeria",
-  "agent": "research-south-asia-oceania-africa",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:30:00Z",
-  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site-search pages. Several Shopify stores answered HTTP 429 'Verifying your connection' on this egress (not bypassed).",
-  "items": {
-    "CRP": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "cream powder",
-        "dried cream powder"
-      ],
-      "queries": [
-        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on medplusnig.com, oja.ng, supermart.ng, healthplusnigeria.com",
-        "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on supermart.ng, healthplusnigeria.com, oja.ng, alphapharmacy.com.ng",
-        "inulin powder buy online Nigeria Lagos store prebiotic fibre (WebSearch)",
-        "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
-        "hoosierhillfarm.com product sitemap + policies/shipping-policy + pages/faqs (international shipping)",
-        "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
-        "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
-      ],
-      "sources_tried": [
-        "supermart.ng (online supermarket, Shopify search) - fuzzy results for 'fructose' (416), 'inulin' (47), 'egg yolk powder' (42) contained no matching product; 'cream powder' search hit HTTP 429 challenge",
-        "healthplusnigeria.com (pharmacy chain, Shopify search) - no products for any of the four terms",
-        "medplusnig.com (pharmacy chain) - 1.6k product URLs scanned, no match",
-        "oja.ng (online grocer) - sitemap + site search for all four terms: no products",
-        "alphapharmacy.com.ng (pharmacy) - HTTP 403, inconclusive",
-        "jumia.com.ng / konga.com (marketplaces) - not used",
-        "no readable Nigerian baking/professional ingredient supplier could be identified without a working web search",
-        "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
-        "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
-        "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
-        "hoosierhillfarm.com (US, Heavy Cream Powder): FAQ states 'Do you ship internationally? At this time, we do not ship internationally.' - rejected as a cross-border path",
-        "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
-        "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Nigeria - rejected as a cross-border path"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": null,
-          "product_name": "Sahnepulver sprühgetrocknet",
-          "pack": "100 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
-          "source_type": "RETAILER",
-          "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
-          "page_market": "DE",
-          "market_by": "CCTLD",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
-          "cross_border": true,
-          "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). NG is NOT named, so this is a lead, not a confirmation.",
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:21:06Z",
-            "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
-            "source": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g"
-          },
-          "composition": {
-            "fat_g": 42.0,
-            "protein_g": 19.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
-            "from": "page label \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\"; nutrition per 100 g: Fett 42 g (davon gesättigte Fettsäuren 27,1 g), Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "spray-dried dairy cream, 42 % fat = the PI-ING-000260 reference exactly (fat 42, protein 20, lactose 30)",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3df84b49991636c0.json",
-          "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
-          "checked_at_utc": "2026-09-17T18:21:06Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": "No dairy cream powder found. | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name Nigeria among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF."
-    },
-    "FRU": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "fructose",
-        "fruit sugar"
-      ],
-      "queries": [
-        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on medplusnig.com, oja.ng, supermart.ng, healthplusnigeria.com",
-        "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on supermart.ng, healthplusnigeria.com, oja.ng, alphapharmacy.com.ng",
-        "inulin powder buy online Nigeria Lagos store prebiotic fibre (WebSearch)",
-        "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
-        "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline"
-      ],
-      "sources_tried": [
-        "supermart.ng (online supermarket, Shopify search) - fuzzy results for 'fructose' (416), 'inulin' (47), 'egg yolk powder' (42) contained no matching product; 'cream powder' search hit HTTP 429 challenge",
-        "healthplusnigeria.com (pharmacy chain, Shopify search) - no products for any of the four terms",
-        "medplusnig.com (pharmacy chain) - 1.6k product URLs scanned, no match",
-        "oja.ng (online grocer) - sitemap + site search for all four terms: no products",
-        "alphapharmacy.com.ng (pharmacy) - HTTP 403, inconclusive",
-        "jumia.com.ng / konga.com (marketplaces) - not used",
-        "no readable Nigerian baking/professional ingredient supplier could be identified without a working web search",
-        "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
-        "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
-        "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Nigeria - rejected as a cross-border path",
-        "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
-        "vitacost.com: /international-shipping and /shipping-information redirect to the home page; no delivery-country list found"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Louis François",
-          "product_name": "Fructose - 1 kg - Louis François",
-          "pack": "1 kg",
-          "gtin": "3700434800807",
-          "identifier_confirmed": true,
-          "url": "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html",
-          "source_type": "RETAILER",
-          "seller": "Meilleur du Chef (meilleurduchef.com, France)",
-          "page_market": null,
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "none - generic .com, French-language shop; the destination market would be reached cross-border",
-          "cross_border": true,
-          "ships_to_evidence": "cross-border LEAD only: the product page prints 'Prices include taxes - Remove 5.5% outside EU.' (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/meilleurduchef_outside_eu.json) and the delivery page says only 'DPD Predict and Pickup, So Colissimo, Chronopost and DB Schenker for national and international deliveries'. NG is not named anywhere, so this is a lead, not a confirmation.",
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:37:17Z",
-            "basis": "In stock (page text) / schema.org InStock",
-            "source": "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html"
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": null
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "crystalline fructose sold as a pastry ingredient; no ingredient list or nutrition table on the page",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/846a95814b76581b.json",
-          "identity_note": "gtin13 3700434800807 in the page JSON-LD (checksum valid, GTIN-13)",
-          "checked_at_utc": "2026-09-17T18:37:17Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": "No crystalline fructose found."
-    },
-    "INU": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "inulin",
-        "inulin powder"
-      ],
-      "queries": [
-        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on medplusnig.com, oja.ng, supermart.ng, healthplusnigeria.com",
-        "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on supermart.ng, healthplusnigeria.com, oja.ng, alphapharmacy.com.ng",
-        "inulin powder buy online Nigeria Lagos store prebiotic fibre (WebSearch)",
-        "hubpharmafrica.com product-sitemap scan (fructos|inulin|yolk|egg|cream-powder)",
-        "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
-        "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline"
-      ],
-      "sources_tried": [
-        "supermart.ng (online supermarket, Shopify search) - fuzzy results for 'fructose' (416), 'inulin' (47), 'egg yolk powder' (42) contained no matching product; 'cream powder' search hit HTTP 429 challenge",
-        "healthplusnigeria.com (pharmacy chain, Shopify search) - no products for any of the four terms",
-        "medplusnig.com (pharmacy chain) - 1.6k product URLs scanned, no match",
-        "oja.ng (online grocer) - sitemap + site search for all four terms: no products",
-        "alphapharmacy.com.ng (pharmacy) - HTTP 403, inconclusive",
-        "jumia.com.ng / konga.com (marketplaces) - not used",
-        "no readable Nigerian baking/professional ingredient supplier could be identified without a working web search",
-        "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
-        "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
-        "hubpharmafrica.com (Lagos online pharmacy, PCN licence LAG20247B39C9, schema.org addressCountry NG): \"NOW Inulin Prebiotic Pure Powder\", schema.org InStock - right type, but no pack size and no composition are printed",
-        "gomed.ng (Next.js product page returns an error shell, not readable)",
-        "u-buy.com.ng / ubuy.com.gh (cross-border marketplace resellers - never confirm, not used)",
-        "hubpharmafrica.com product sitemaps (3 423 product URLs) scanned: inulin only, no fructose, no egg yolk powder, no cream powder",
-        "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Nigeria - rejected as a cross-border path",
-        "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "NOW",
-          "product_name": "NOW Inulin Prebiotic Pure Powder",
-          "pack": null,
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://hubpharmafrica.com/product/now-inulin-prebiotic-pure-powder/",
-          "source_type": "RETAILER",
-          "seller": "HubPharm Africa, 17 Ademola Osinowo Street, Ikosi Ketu, Lagos, Nigeria (PCN licence LAG20247B39C9)",
-          "page_market": "NG",
-          "market_by": "SELLER_ADDRESS",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "schema.org addressCountry \"NG\" on the product page (single seller address)",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:40:55Z",
-            "basis": "schema.org InStock",
-            "source": "https://hubpharmafrica.com/product/now-inulin-prebiotic-pure-powder/"
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": "page text only: \"Inulin, a fructooligosaccharide (FOS), is a soluble prebiotic fiber that is resistant to digestion and reaches the large intestine essentially intact.\""
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "right type (pure inulin powder) but the page prints no pack size, no fibre content and no ingredient list, so A (>= 85 % inulin) versus B (short-chain FOS) cannot be decided",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a07d01c64be98c3c.json",
-          "identity_note": "no GTIN and no pack size on the page, and NOW is not the seller's own brand, so neither identity route (GTIN, or D-37 own-brand listing) can be closed",
-          "checked_at_utc": "2026-09-17T18:40:55Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": "No inulin powder found. | gap pass 2026-09-17: a Nigerian online pharmacy with a Lagos seller address lists NOW inulin powder in stock, so the market binding is proven; the page prints no pack size and no fibre content, so identity and equivalence stay open and the row is a LEAD."
-    },
-    "YOL": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "egg yolk powder",
-        "dried egg yolk"
-      ],
-      "queries": [
-        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on medplusnig.com, oja.ng, supermart.ng, healthplusnigeria.com",
-        "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on supermart.ng, healthplusnigeria.com, oja.ng, alphapharmacy.com.ng",
-        "inulin powder buy online Nigeria Lagos store prebiotic fibre (WebSearch)",
-        "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
-        "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
-        "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
-      ],
-      "sources_tried": [
-        "supermart.ng (online supermarket, Shopify search) - fuzzy results for 'fructose' (416), 'inulin' (47), 'egg yolk powder' (42) contained no matching product; 'cream powder' search hit HTTP 429 challenge",
-        "healthplusnigeria.com (pharmacy chain, Shopify search) - no products for any of the four terms",
-        "medplusnig.com (pharmacy chain) - 1.6k product URLs scanned, no match",
-        "oja.ng (online grocer) - sitemap + site search for all four terms: no products",
-        "alphapharmacy.com.ng (pharmacy) - HTTP 403, inconclusive",
-        "jumia.com.ng / konga.com (marketplaces) - not used",
-        "no readable Nigerian baking/professional ingredient supplier could be identified without a working web search",
-        "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
-        "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
-        "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
-        "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
-        "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Nigeria - rejected as a cross-border path"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": null,
-          "product_name": "Eigelbpulver",
-          "pack": "100 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
-          "source_type": "RETAILER",
-          "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
-          "page_market": "DE",
-          "market_by": "CCTLD",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
-          "cross_border": true,
-          "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). NG is NOT named, so this is a lead, not a confirmation.",
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:21:21Z",
-            "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
-            "source": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g"
-          },
-          "composition": {
-            "fat_g": 55.8,
-            "protein_g": 34.3,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.",
-            "from": "page label \"Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.\"; nutrition per 100 g: Fett 55,8 g (davon gesättigte Fettsäuren 17,6 g), Kohlenhydrate 3,6 g, davon Zucker 3,6 g, Eiweiß 34,3 g, Salz 0,3 g"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % pasteurised, spray-dried chicken egg yolk; fat 55,8 / protein 34,3 against the PI-ING-001645 reference fat 56,5 / protein 34,5",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2944f17c1f486c80.json",
-          "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
-          "checked_at_utc": "2026-09-17T18:21:21Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": "No dried egg yolk powder found. | gap pass 2026-09-17: no dried egg yolk powder is sold by any readable seller in this market; the only lead is a German shop that carries 100 % pasteurised spray-dried yolk powder but does not name Nigeria among its delivery countries. Owner decision needed as for CRP."
+ "iso2": "NG",
+ "country": "Nigeria",
+ "agent": "research-south-asia-oceania-africa",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:30:00Z",
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site-search pages. Several Shopify stores answered HTTP 429 'Verifying your connection' on this egress (not bypassed).",
+ "items": {
+  "CRP": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "cream powder",
+    "dried cream powder"
+   ],
+   "queries": [
+    "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on medplusnig.com, oja.ng, supermart.ng, healthplusnigeria.com",
+    "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on supermart.ng, healthplusnigeria.com, oja.ng, alphapharmacy.com.ng",
+    "inulin powder buy online Nigeria Lagos store prebiotic fibre (WebSearch)",
+    "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+    "hoosierhillfarm.com product sitemap + policies/shipping-policy + pages/faqs (international shipping)",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "Nigeria online shop buy \"egg powder\" baking ingredients Lagos store confectionery supplies (WebSearch)",
+    "nutrichem.com.ng /shop/ catalogue + site search 'fructose'",
+    "24hoursmarket.com site search 'egg powder'"
+   ],
+   "sources_tried": [
+    "supermart.ng (online supermarket, Shopify search) - fuzzy results for 'fructose' (416), 'inulin' (47), 'egg yolk powder' (42) contained no matching product; 'cream powder' search hit HTTP 429 challenge",
+    "healthplusnigeria.com (pharmacy chain, Shopify search) - no products for any of the four terms",
+    "medplusnig.com (pharmacy chain) - 1.6k product URLs scanned, no match",
+    "oja.ng (online grocer) - sitemap + site search for all four terms: no products",
+    "alphapharmacy.com.ng (pharmacy) - HTTP 403, inconclusive",
+    "jumia.com.ng / konga.com (marketplaces) - not used",
+    "no readable Nigerian baking/professional ingredient supplier could be identified without a working web search",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+    "hoosierhillfarm.com (US, Heavy Cream Powder): FAQ states 'Do you ship internationally? At this time, we do not ship internationally.' - rejected as a cross-border path",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Nigeria - rejected as a cross-border path",
+    "nutrichem.com.ng (Lagos bakery-ingredient supplier, 'Request Quote' catalogue): the only cream items are 'Nutriblend Whipping Cream powder WP55' and 'Nutriblend Ice cream powder mix' - whipping/ice-cream mixes, rejected type; no dairy cream powder",
+    "24hoursmarket.com (Lagos online grocer): searching 'egg powder' returns 7 unrelated results (egg-yellow food colour, spices); no cream powder either"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": null,
+     "product_name": "Sahnepulver sprühgetrocknet",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
+     "source_type": "RETAILER",
+     "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+     "cross_border": true,
+     "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). NG is NOT named, so this is a lead, not a confirmation.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:21:06Z",
+      "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+      "source": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+      "from": "page label \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\"; nutrition per 100 g: Fett 42 g (davon gesättigte Fettsäuren 27,1 g), Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "spray-dried dairy cream, 42 % fat = the PI-ING-000260 reference exactly (fat 42, protein 20, lactose 30)",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3df84b49991636c0.json",
+     "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+     "checked_at_utc": "2026-09-17T18:21:06Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "UNCONFIRMED",
+     "delivery_basis": "the country is not in the seller shipping-destination list"
     }
+   ],
+   "notes": "No dairy cream powder found. | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name Nigeria among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF. | Closing pass 2026-09-17 (close-africa): two more Nigerian channels checked (a Lagos bakery-ingredient supplier and a Lagos online grocer). Both carry only non-dairy whipping/ice-cream powder mixes, which the protocol rejects. No dairy cream powder is sold in Nigeria by any readable seller, and no cross-border seller of one names Nigeria, so the role stays LEAD_ONLY on the German shop that sells the exact reference product without naming Nigeria."
   },
-  "country_notes": " | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes."
+  "FRU": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "fructose",
+    "fruit sugar"
+   ],
+   "queries": [
+    "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on medplusnig.com, oja.ng, supermart.ng, healthplusnigeria.com",
+    "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on supermart.ng, healthplusnigeria.com, oja.ng, alphapharmacy.com.ng",
+    "inulin powder buy online Nigeria Lagos store prebiotic fibre (WebSearch)",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "\"fructose powder\" buy Nigeria online pharmacy store \".ng\" price (WebSearch)",
+    "bonamour.com.ng site search ?s=fructose ; nutrichem.com.ng site search ?s=fructose"
+   ],
+   "sources_tried": [
+    "supermart.ng (online supermarket, Shopify search) - fuzzy results for 'fructose' (416), 'inulin' (47), 'egg yolk powder' (42) contained no matching product; 'cream powder' search hit HTTP 429 challenge",
+    "healthplusnigeria.com (pharmacy chain, Shopify search) - no products for any of the four terms",
+    "medplusnig.com (pharmacy chain) - 1.6k product URLs scanned, no match",
+    "oja.ng (online grocer) - sitemap + site search for all four terms: no products",
+    "alphapharmacy.com.ng (pharmacy) - HTTP 403, inconclusive",
+    "jumia.com.ng / konga.com (marketplaces) - not used",
+    "no readable Nigerian baking/professional ingredient supplier could be identified without a working web search",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Nigeria - rejected as a cross-border path",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "vitacost.com: /international-shipping and /shipping-information redirect to the home page; no delivery-country list found",
+    "bonamour.com.ng (.ng pharmacy/supplement shop): site search 'fructose' - 'No products were found matching your selection.'",
+    "nutrichem.com.ng (Lagos bakery-ingredient supplier): site search 'fructose' - no products",
+    "drugstore.ng / drugstorenigeria.com: found in discovery as pharmacy aggregators; not used as evidence (aggregators never confirm)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Louis François",
+     "product_name": "Fructose - 1 kg - Louis François",
+     "pack": "1 kg",
+     "gtin": "3700434800807",
+     "identifier_confirmed": true,
+     "url": "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html",
+     "source_type": "RETAILER",
+     "seller": "Meilleur du Chef (meilleurduchef.com, France)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "none - generic .com, French-language shop; the destination market would be reached cross-border",
+     "cross_border": true,
+     "ships_to_evidence": "cross-border LEAD only: the product page prints 'Prices include taxes - Remove 5.5% outside EU.' (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/meilleurduchef_outside_eu.json) and the delivery page says only 'DPD Predict and Pickup, So Colissimo, Chronopost and DB Schenker for national and international deliveries'. NG is not named anywhere, so this is a lead, not a confirmation.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:37:17Z",
+      "basis": "In stock (page text) / schema.org InStock",
+      "source": "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": null
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "crystalline fructose sold as a pastry ingredient; no ingredient list or nutrition table on the page",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/846a95814b76581b.json",
+     "identity_note": "gtin13 3700434800807 in the page JSON-LD (checksum valid, GTIN-13)",
+     "checked_at_utc": "2026-09-17T18:37:17Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "UNCONFIRMED",
+     "delivery_basis": "this seller page has not been read for a delivery statement"
+    }
+   ],
+   "notes": "No crystalline fructose found. | Closing pass 2026-09-17 (close-africa): two further Nigerian sellers searched for fructose (a supplement pharmacy and a bakery-ingredient supplier) - neither lists it. Nigeria is not in gourmet-versand's 81 named delivery countries, so the cross-border route that closed FRU for Israel and Türkiye cannot serve it. Still LEAD_ONLY."
+  },
+  "INU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "inulin",
+    "inulin powder"
+   ],
+   "queries": [
+    "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on medplusnig.com, oja.ng, supermart.ng, healthplusnigeria.com",
+    "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on supermart.ng, healthplusnigeria.com, oja.ng, alphapharmacy.com.ng",
+    "inulin powder buy online Nigeria Lagos store prebiotic fibre (WebSearch)",
+    "hubpharmafrica.com product-sitemap scan (fructos|inulin|yolk|egg|cream-powder)",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "Nigeria buy \"inulin powder\" online store Lagos supplement (WebSearch)",
+    "haleandhearty.ng site search ?s=inulin (2 results) + product page verified with verify_ean_market.py (EAN 733739029447, NG)",
+    "identity_match.py --ean 733739029447 --source-url pharmacydirect.co.nz --local-url haleandhearty.ng --market NG --brand NOW --name \"Certified Organic Inulin Pure Powder\" --pack \"227 g\"",
+    "bonamour.com.ng site search ?s=inulin"
+   ],
+   "sources_tried": [
+    "supermart.ng (online supermarket, Shopify search) - fuzzy results for 'fructose' (416), 'inulin' (47), 'egg yolk powder' (42) contained no matching product; 'cream powder' search hit HTTP 429 challenge",
+    "healthplusnigeria.com (pharmacy chain, Shopify search) - no products for any of the four terms",
+    "medplusnig.com (pharmacy chain) - 1.6k product URLs scanned, no match",
+    "oja.ng (online grocer) - sitemap + site search for all four terms: no products",
+    "alphapharmacy.com.ng (pharmacy) - HTTP 403, inconclusive",
+    "jumia.com.ng / konga.com (marketplaces) - not used",
+    "no readable Nigerian baking/professional ingredient supplier could be identified without a working web search",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "hubpharmafrica.com (Lagos online pharmacy, PCN licence LAG20247B39C9, schema.org addressCountry NG): \"NOW Inulin Prebiotic Pure Powder\", schema.org InStock - right type, but no pack size and no composition are printed",
+    "gomed.ng (Next.js product page returns an error shell, not readable)",
+    "u-buy.com.ng / ubuy.com.gh (cross-border marketplace resellers - never confirm, not used)",
+    "hubpharmafrica.com product sitemaps (3 423 product URLs) scanned: inulin only, no fructose, no egg yolk powder, no cream powder",
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Nigeria - rejected as a cross-border path",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "haleandhearty.ng (Hale and Hearty Pharmacy, Lagos; .ng country domain): NOW Certified Organic Inulin 227 g, 'Availability: 4 in stock (can be backordered)' - identity confirmed by GTIN on an authoritative source page plus an attribute match (rank 1, CONFIRMED_LOCAL)",
+    "bonamour.com.ng (Lagos pharmacy/supplement shop, .ng): 'JARROW FORMULAS PREBIOTIC INULIN FOS FIBRE 180G' with an active Add-to-cart, and 'NOW ORGANIC INULIN POWDER 8OZ' shown as 'Read more' (not buyable); neither page was needed once the GTIN-confirmed listing was found",
+    "gomed.ng: search endpoint answers HTTP 404 (not readable)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "NOW",
+     "product_name": "NOW Certified Organic Inulin Probiotic Pure Powder — 227g",
+     "pack": "227 g",
+     "pack_grams": 227,
+     "moq": null,
+     "gtin": "733739029447",
+     "identifier_confirmed": true,
+     "url": "https://haleandhearty.ng/product/now-certified-organic-inulin-prebiotic-pure-powder-227g/",
+     "source_type": "RETAILER",
+     "seller": "Hale and Hearty Pharmacy (haleandhearty.ng)",
+     "page_market": "NG",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+     "market_binding_signal": "country domain .ng (verify_ean_market.py: page_market NG, market_by CCTLD); NGN prices are supporting only",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "channel": null,
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T19:53:54Z",
+      "basis": "Availability: 4 in stock (can be backordered)",
+      "source": "https://haleandhearty.ng/product/now-certified-organic-inulin-prebiotic-pure-powder-227g/"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Active Ingredients: Pure Certified Organic Inulin Powder (from Blue Agave) net.wt. 8oz (227g)",
+      "from": "identity-source page for the same GTIN 733739029447 (pharmacydirect.co.nz); the Nigerian page prints the brand's claim list but no ingredient list"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "single-ingredient organic agave inulin in a 227 g retail pack - the same NOW article that is the confirmed South African candidate; the fibre g/100 g figure is not printed on either page and the label words it 'Inulin (FOS)', which the owner may want checked",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/6a2db3e074d1ffe5.json",
+     "verifier_verification_class": "MARKET_PAGE_WITHOUT_EAN (identity supplied by identity_match.py)",
+     "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_3b88f182bd99c1fe.json",
+     "identity_source_url": "https://www.pharmacydirect.co.nz/Now-Certified-Organic-Inulin-Pure-Powder-227g",
+     "identity_note": "identity_match.py 2026-09-17: gtin13 00733739029447 as JSON-LD data on the source page, brand/name/pack all matched on the Nigerian listing, no conflicting GTIN on it, failed_checks empty -> exact_product_identity_confirmed true, market_binding_confirmed true (CCTLD .ng), local_availability_confirmed true. The Nigerian page's own title writes 'Probiotic' where the brand writes 'Prebiotic'; the product name is recorded exactly as the page prints it.",
+     "checked_at_utc": "2026-09-17T19:53:54Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "added_by": "close-africa"
+    },
+    {
+     "rank": 2,
+     "brand": "NOW",
+     "product_name": "NOW Inulin Prebiotic Pure Powder",
+     "pack": null,
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://hubpharmafrica.com/product/now-inulin-prebiotic-pure-powder/",
+     "source_type": "RETAILER",
+     "seller": "HubPharm Africa, 17 Ademola Osinowo Street, Ikosi Ketu, Lagos, Nigeria (PCN licence LAG20247B39C9)",
+     "page_market": "NG",
+     "market_by": "SELLER_ADDRESS",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "schema.org addressCountry \"NG\" on the product page (single seller address)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:40:55Z",
+      "basis": "schema.org InStock",
+      "source": "https://hubpharmafrica.com/product/now-inulin-prebiotic-pure-powder/"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "page text only: \"Inulin, a fructooligosaccharide (FOS), is a soluble prebiotic fiber that is resistant to digestion and reaches the large intestine essentially intact.\""
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "right type (pure inulin powder) but the page prints no pack size, no fibre content and no ingredient list, so A (>= 85 % inulin) versus B (short-chain FOS) cannot be decided",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a07d01c64be98c3c.json",
+     "identity_note": "no GTIN and no pack size on the page, and NOW is not the seller's own brand, so neither identity route (GTIN, or D-37 own-brand listing) can be closed",
+     "checked_at_utc": "2026-09-17T18:40:55Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "No inulin powder found. | gap pass 2026-09-17: a Nigerian online pharmacy with a Lagos seller address lists NOW inulin powder in stock, so the market binding is proven; the page prints no pack size and no fibre content, so identity and equivalence stay open and the row is a LEAD. | Closing pass 2026-09-17 (close-africa): CLOSED. A Nigerian pharmacy with a .ng country domain sells the exact NOW Certified Organic Inulin 227 g whose GTIN 733739029447 is printed as JSON-LD data on an authoritative retailer page, and identity_match.py confirms brand, name and pack with no conflicting GTIN on the Nigerian listing, so identity and market binding are both proven and the page shows 4 in stock. The earlier hubpharmafrica listing (no pack size, no composition) is kept as rank 2."
+  },
+  "YOL": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "egg yolk powder",
+    "dried egg yolk"
+   ],
+   "queries": [
+    "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on medplusnig.com, oja.ng, supermart.ng, healthplusnigeria.com",
+    "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on supermart.ng, healthplusnigeria.com, oja.ng, alphapharmacy.com.ng",
+    "inulin powder buy online Nigeria Lagos store prebiotic fibre (WebSearch)",
+    "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "24hoursmarket.com site search 'egg powder'; nutrichem.com.ng catalogue scan for egg powder"
+   ],
+   "sources_tried": [
+    "supermart.ng (online supermarket, Shopify search) - fuzzy results for 'fructose' (416), 'inulin' (47), 'egg yolk powder' (42) contained no matching product; 'cream powder' search hit HTTP 429 challenge",
+    "healthplusnigeria.com (pharmacy chain, Shopify search) - no products for any of the four terms",
+    "medplusnig.com (pharmacy chain) - 1.6k product URLs scanned, no match",
+    "oja.ng (online grocer) - sitemap + site search for all four terms: no products",
+    "alphapharmacy.com.ng (pharmacy) - HTTP 403, inconclusive",
+    "jumia.com.ng / konga.com (marketplaces) - not used",
+    "no readable Nigerian baking/professional ingredient supplier could be identified without a working web search",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Nigeria - rejected as a cross-border path",
+    "24hoursmarket.com (Lagos online grocer): 'egg powder' search returns only 'Preema egg yellow food colour powder 500 g' and spices - no egg powder",
+    "nutrichem.com.ng (Lagos bakery-ingredient supplier): catalogue is bakery improvers, cocoa, fats, cake creams, phosphates - no egg powder"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": null,
+     "product_name": "Eigelbpulver",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
+     "source_type": "RETAILER",
+     "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+     "cross_border": true,
+     "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). NG is NOT named, so this is a lead, not a confirmation.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:21:21Z",
+      "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+      "source": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g"
+     },
+     "composition": {
+      "fat_g": 55.8,
+      "protein_g": 34.3,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.",
+      "from": "page label \"Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.\"; nutrition per 100 g: Fett 55,8 g (davon gesättigte Fettsäuren 17,6 g), Kohlenhydrate 3,6 g, davon Zucker 3,6 g, Eiweiß 34,3 g, Salz 0,3 g"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % pasteurised, spray-dried chicken egg yolk; fat 55,8 / protein 34,3 against the PI-ING-001645 reference fat 56,5 / protein 34,5",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2944f17c1f486c80.json",
+     "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+     "checked_at_utc": "2026-09-17T18:21:21Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "UNCONFIRMED",
+     "delivery_basis": "the country is not in the seller shipping-destination list"
+    }
+   ],
+   "notes": "No dried egg yolk powder found. | gap pass 2026-09-17: no dried egg yolk powder is sold by any readable seller in this market; the only lead is a German shop that carries 100 % pasteurised spray-dried yolk powder but does not name Nigeria among its delivery countries. Owner decision needed as for CRP. | Closing pass 2026-09-17 (close-africa): no Nigerian seller of egg yolk powder was found in this round either (online grocer and bakery-ingredient supplier both checked). Still LEAD_ONLY on the German cross-border lead, which does not name Nigeria."
+  }
+ },
+ "country_notes": " | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes. | Closing pass 2026-09-17 by agent close-africa (egress ES) under the owner's refined rules of the same evening: a delivery claim is judged by meaning; pack weight never makes an offer business-only (pack_grams and moq recorded separately, and only a quoted seller restriction sets a TRADE_ONLY channel); identity/composition, purchase path, channel and stock are kept apart; a lead never closes a role.",
+ "contributing_agents": [
+  "close-africa"
+ ]
 }

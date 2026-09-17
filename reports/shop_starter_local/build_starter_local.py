@@ -93,17 +93,21 @@ def clean_text(value, keep_paren=False, brand=False):
 PACK_GRAMS = re.compile(r'(\d[\d.,]*)\s*(kg|g|lb|lbs|oz)\b', re.I)
 
 
-TRADE_ONLY = re.compile(r'TRADE_ONLY|B2B|WHOLESALE|RESELLER', re.I)
+TRADE_ONLY = re.compile(r'TRADE_ONLY|REGISTERED_RESELLER|WHOLESALE_ACCOUNT|B2B_ONLY', re.I)
 
 
-def is_business_offer(candidate, pack):
-    """A business offer, by channel or by pack: a trade-only shop (registered resellers, net prices) is not a consumer
-    offer even when the pack is 100 g, and a sack is not one even in a consumer shop (owner 2026-09-17)."""
-    return bool(TRADE_ONLY.search(str(candidate.get('channel') or ''))) or pack_is_b2b(pack)
+def is_business_offer(candidate):
+    """Business-only means the SELLER restricts it: registered resellers, a trade account, "sale only to businesses".
+
+    Owner correction 2026-09-17 (second round): "Wycofaj automatyczne >=5 kg → Dla firm. Waga, minimalna ilość
+    zamówienia i kanał sprzedaży są osobnymi polami." So pack weight never decides this, and a large pack in an
+    ordinary shop stays an ordinary offer that simply has a big pack.
+    """
+    return bool(TRADE_ONLY.search(str(candidate.get('channel') or '')))
 
 
-def pack_is_b2b(pack):
-    """A sack a customer cannot buy in a shop stays a business offer, however it is listed (owner 2026-09-17)."""
+def is_large_pack(pack):
+    """A size fact shown next to the mass, not a channel: 5 kg or more is a large pack."""
     m = PACK_GRAMS.search(pack or '')
     if not m:
         return False
@@ -153,7 +157,9 @@ def availability_of(candidate, stock_for_item):
     return {'state': 'UNKNOWN', 'checked_at_utc': None, 'basis': None}
 
 
-def v23_products(row, code, v23_ship):
+def v23_products(row, code, v23_ship, path=None):
+    """`path` (v23_purchase_paths.json) is another seller of the SAME owner-selected product: the product never changes,
+    only where a customer in this country can buy it."""
     if not row:
         return []
     tags = []
@@ -162,25 +168,50 @@ def v23_products(row, code, v23_ship):
         # decided per country by v23_shipping_check.py (owner 2026-09-17).
         tags.append('from_abroad' if shipping_state(row, v23_ship) == 'CONFIRMED' else 'abroad_unconfirmed')
     pack = clean_pack(row.get('pack_v23'))
-    if 'B2B' in (row.get('tags') or []) or pack_is_b2b(pack):
+    if 'B2B' in (row.get('tags') or []):
         tags.append('b2b')
+    if is_large_pack(pack):
+        tags.append('large_pack')
     if code == 'STB':
         tags.append('alternative')
     return [{
         'source': 'V23', 'rank': 1, 'brand': clean_text(row.get('brand_v23'), brand=True), 'name': clean_text(row.get('product_v23')),
         'pack': pack, 'gtin': row.get('ean_v23') or '', 'code': row.get('code') or '',
-        'links': [{'url': l['url'], 'label': host(l['url'])} for l in (row.get('links') or [])][:2],
+        'links': ([{'url': path['url'], 'label': host(path['url'])}] if (path or {}).get('state') == 'CONFIRMED' and path.get('url') else [])
+                 + [{'url': l['url'], 'label': host(l['url'])} for l in (row.get('links') or [])][:2],
         'tags': tags, 'composition': None, 'evidence_class': 'OWNER_V23', 'accepted': True,
         'availability': {'state': 'UNKNOWN', 'checked_at_utc': None, 'basis': None},
-        'shipping': shipping_state(row, v23_ship),
+        # Only an "From abroad" row has a delivery question at all; a row from the country itself has none.
+        'shipping': ('CONFIRMED' if (path or {}).get('state') == 'CONFIRMED'
+                     else shipping_state(row, v23_ship)) if 'From abroad' in (row.get('tags') or []) else None,
     }]
 
 
-def research_products(item, accepted_ranks, draft, stock_for_item):
-    """The products a customer sees for one item, in the order they should read them.
+def delivery_state(c):
+    """The delivery state recorded for this candidate (delivery_check.py writes it), else read from its evidence."""
+    return c.get('delivery_state') or (shipping_state(c) if c.get('cross_border') else 'LOCAL')
 
-    Order (owner 2026-09-17): a confirmed offer that is in stock comes before one the shop showed as out of stock; the
-    researcher's own rank decides the rest. An out-of-stock product is NOT dropped — its state is printed with the date.
+
+def can_close_role(c, cls):
+    """May this product stand as one of the seven purchase lines?
+
+    Owner correction 2026-09-17 (second round): a lead and a genuine business-only offer are additional information —
+    "Tropy i prawdziwe B2B … Nie zamykają siedmiu podstawowych pozycji detalicznego infopaku." So a line that closes a
+    role is a confirmed product, on a consumer channel, whose delivery to this country is either local or declared.
+    """
+    if cls not in CUSTOMER_CLASSES:
+        return False
+    if is_business_offer(c):
+        return False
+    return delivery_state(c) in ('LOCAL', 'CONFIRMED')
+
+
+def research_products(item, accepted_ranks, draft, stock_for_item):
+    """Two lists for one item: the purchase lines, and the clearly separated additional information.
+
+    Order inside the purchase lines (owner 2026-09-17): a confirmed offer that is in stock comes before one the shop
+    showed as out of stock; the researcher's own rank decides the rest. An out-of-stock product is never dropped —
+    its state is printed with the date.
     """
     picked = []
     for c in (item or {}).get('candidates', []):
@@ -190,50 +221,62 @@ def research_products(item, accepted_ranks, draft, stock_for_item):
         if not accepted and not (draft and cls in CUSTOMER_CLASSES | {'LEAD'}):
             continue
         picked.append((c, accepted, cls, availability_of(c, stock_for_item)))
-    picked.sort(key=lambda p: (0 if p[2] in CUSTOMER_CLASSES else 1, p[0].get('rank') or 99))
-    # Only a CONFIRMED and IN-STOCK alternative overtakes an out-of-stock first choice; an unknown stock state stays in
-    # the researcher's order, because "unknown" is not "available" (owner 2026-09-17).
-    if picked and picked[0][3]['state'] == 'OUT_OF_STOCK':
-        for i, p in enumerate(picked[1:], 1):
-            if p[2] in CUSTOMER_CLASSES and p[3]['state'] == 'IN_STOCK':
-                picked.insert(0, picked.pop(i))
+    main = [p for p in picked if can_close_role(p[0], p[2])]
+    extra = [p for p in picked if not can_close_role(p[0], p[2])]
+    main.sort(key=lambda p: p[0].get('rank') or 99)
+    extra.sort(key=lambda p: (0 if p[2] in CUSTOMER_CLASSES else 1, p[0].get('rank') or 99))
+    if main and main[0][3]['state'] == 'OUT_OF_STOCK':
+        for i, p in enumerate(main[1:], 1):
+            if p[3]['state'] == 'IN_STOCK':
+                main.insert(0, main.pop(i))
                 break
-    out = []
-    for c, accepted, cls, avail in picked[:2]:
-        tags = []
-        if c.get('cross_border'):
-            tags.append('from_abroad' if shipping_state(c) == 'CONFIRMED' else 'abroad_unconfirmed')
-        if c.get('equivalence') == 'B_SAME_TYPE_DIFFERENT_COMPOSITION':
-            tags.append('other_composition')
-        if cls == 'LEAD':
-            tags.append('unconfirmed')
-        pack = clean_pack(c.get('pack'))
-        if is_business_offer(c, pack):
-            tags.append('b2b')
-        links = [{'url': c['url'], 'label': host(c['url'])}] if c.get('url') else []
-        comp = c.get('composition') or {}
-        out.append({
-            'source': 'RESEARCH', 'rank': c.get('rank'), 'brand': clean_text(c.get('brand'), brand=True),
-            'name': clean_text(c.get('product_name')), 'pack': pack,
-            'gtin': c.get('gtin') or '', 'code': '', 'links': links, 'tags': tags,
-            'composition': {'fat_g': comp.get('fat_g')}, 'evidence_class': cls, 'accepted': accepted,
-            'availability': avail, 'shipping': shipping_state(c) if c.get('cross_border') else None,
-        })
-    return out
+    return [render_product(*p) for p in main[:2]], [render_product(*p) for p in extra[:2]]
 
 
-def market_rows(iso, v23, research_dir, acceptance, draft, stock, v23_ship):
-    rows = {}
+def render_product(c, accepted, cls, avail):
+    tags = []
+    if c.get('cross_border'):
+        tags.append('from_abroad' if delivery_state(c) == 'CONFIRMED' else 'abroad_unconfirmed')
+    if c.get('equivalence') == 'B_SAME_TYPE_DIFFERENT_COMPOSITION':
+        tags.append('other_composition')
+    # "Unconfirmed" is about the PRODUCT (identity or composition), never about delivery: the delivery is said in its
+    # own sentence, so the two are not mixed (owner 2026-09-17).
+    if cls == 'LEAD' and (c.get('equivalence') == 'C_INSUFFICIENT_DATA' or not (c.get('identifier_confirmed') or c.get('identity_basis'))):
+        tags.append('unconfirmed')
+    pack = clean_pack(c.get('pack'))
+    if is_business_offer(c):
+        tags.append('b2b')
+    if is_large_pack(pack):
+        tags.append('large_pack')
+    links = [{'url': c['url'], 'label': host(c['url'])}] if c.get('url') else []
+    comp = c.get('composition') or {}
+    return {
+        'source': 'RESEARCH', 'rank': c.get('rank'), 'brand': clean_text(c.get('brand'), brand=True),
+        'name': clean_text(c.get('product_name')), 'pack': pack,
+        'gtin': c.get('gtin') or '', 'code': '', 'links': links, 'tags': tags,
+        'composition': {'fat_g': comp.get('fat_g')}, 'evidence_class': cls, 'accepted': accepted,
+        'availability': avail, 'shipping': delivery_state(c) if c.get('cross_border') else None,
+        'closes_role': can_close_role(c, cls),
+    }
+
+
+def market_rows(iso, v23, research_dir, acceptance, draft, stock, v23_ship, v23_paths):
+    """Returns (purchase lines per role, additional information per role)."""
+    rows, extras = {}, {c: [] for c in ITEMS}
     research = load(os.path.join(research_dir, f'{iso}.json'), {}) or {}
     for code in ITEMS:
         if code in V23_ITEMS:
-            rows[code] = v23_products(v23.get(iso, {}).get(code), code, (v23_ship.get(iso) or {}).get(code))
+            products = v23_products(v23.get(iso, {}).get(code), code, (v23_ship.get(iso) or {}).get(code),
+                                    (v23_paths.get(iso) or {}).get(code))
+            # A v23 row whose delivery is not declared, or which is a business offer, is additional information too.
+            closes = [p for p in products if 'b2b' not in p['tags'] and p.get('shipping') in (None, 'CONFIRMED')]
+            rows[code], extras[code] = closes, [p for p in products if p not in closes]
         else:
             decision = (acceptance.get(iso) or {}).get(code) or {}
             ranks = set(decision.get('accepted_ranks') or []) if decision.get('decision') == 'ACCEPT' else set()
-            rows[code] = research_products((research.get('items') or {}).get(code), ranks, draft,
-                                           (stock.get(iso) or {}).get(code) or {})
-    return rows
+            rows[code], extras[code] = research_products((research.get('items') or {}).get(code), ranks, draft,
+                                                         (stock.get(iso) or {}).get(code) or {})
+    return rows, extras
 
 
 # ─────────────────────────────── html ───────────────────────────────
@@ -333,6 +376,9 @@ h1, h2, h3, p { margin: 0; }
 .pmeta > * { min-width: 0; max-width: 100%; }
 .code { font-family: var(--mono); font-size: 7.7pt; font-weight: 500; color: var(--ink); white-space: nowrap; }
 .pnote.oos { color: var(--accent-ink); }
+.xtra { margin-top: 2.2mm; padding-top: 1.8mm; border-top: .4pt dashed var(--line-strong); }
+.xt { font-size: 6.2pt; font-weight: 780; letter-spacing: .13em; text-transform: uppercase; color: var(--muted); margin-bottom: 1.2mm; }
+.on.xdot { color: var(--muted); font-weight: 600; }
 .code i { font-style: normal; font-family: var(--sans); font-size: 5.9pt; font-weight: 780; letter-spacing: .11em; text-transform: uppercase; color: var(--muted); margin-inline-end: 1mm; }
 .src { color: var(--text2); border-bottom: .5pt solid var(--line-strong); overflow-wrap: anywhere; }
 .arr { width: 5.2pt; height: 5.2pt; margin-inline-start: .9pt; vertical-align: .2pt; color: var(--accent-line); }
@@ -400,7 +446,7 @@ def fmt_num(v):
     return str(int(f)) if f == int(f) else f'{f:.1f}'
 
 
-def product_html(p, S, n):
+def product_html(p, S, n, country_name=None):
     # Product data is isolated (<bdi>, direction from its own first letter): in a right-to-left document "1 lb (454 g)"
     # or a Latin product name must not be reordered by the surrounding paragraph.
     meta = []
@@ -414,27 +460,47 @@ def product_html(p, S, n):
         meta.append(f'<a class="src" href="{html.escape(l["url"], quote=True)}"><bdi>{E(l["label"])}</bdi>{ARROW}</a>')
     tags = ''.join(f'<span class="tag">{E(S["tag_" + t])}</span>' for t in p['tags'])
     notes = []
-    if 'other_composition' in p['tags'] and p['composition'] and p['composition'].get('fat_g') is not None:
-        notes.append(f'<p class="pnote">{E(S["fat"])} {E(fmt_num(p["composition"]["fat_g"]))}%</p>')
+    if 'other_composition' in p['tags']:
+        # The engine computes a base recipe from the ROLE's reference composition, not from a catalogue product's own
+        # label (productEngineHandoff.ts:71). So a different-composition product never carries a promise of being
+        # recalculated (owner 2026-09-17).
+        if p['composition'] and p['composition'].get('fat_g') is not None:
+            notes.append(f'<p class="pnote">{E(S["fat"])} {E(fmt_num(p["composition"]["fat_g"]))}%</p>')
+        if S.get('other_composition_note'):   # printed once the locale carries it; never invented here
+            notes.append(f'<p class="pnote">{E(S["other_composition_note"])}</p>')
     # What the shop showed at the check, with its date: a product is kept, its state is not hidden (owner 2026-09-17).
     avail = p.get('availability') or {}
     if avail.get('state') == 'OUT_OF_STOCK':
         day = (avail.get('checked_at_utc') or '')[:10]
         notes.append(f'<p class="pnote oos">{E(S["out_of_stock"].replace("{date}", day))}</p>')
-    return (f'<div class="opt"><span class="on">{n}</span><div><p class="pname"><bdi>{E(p["name"] or "")}</bdi></p>'
+    # Delivery is its own sentence, never folded into a tag or into the product's identity (owner 2026-09-17).
+    if country_name and p.get('shipping') not in (None, 'CONFIRMED', 'LOCAL'):
+        notes.append(f'<p class="pnote">{E(S["delivery_unconfirmed"].replace("{country}", country_name))}</p>')
+    mark = f'<span class="on">{n}</span>' if n else '<span class="on xdot">+</span>'
+    return (f'<div class="opt">{mark}<div><p class="pname"><bdi>{E(p["name"] or "")}</bdi></p>'
             f'<div class="pmeta">{"".join(meta)}</div>'
             + (f'<div class="ptags">{tags}</div>' if tags else '') + ''.join(notes) + '</div></div>')
 
 
-def item_html(code, products, S, draft):
+def item_html(code, products, extra, S, country_name, draft):
+    """One role: the purchase lines, then — clearly separated — the additional information.
+
+    Owner correction 2026-09-17 (second round): a lead or a business-only offer may be shown as an extra link with
+    "Dostawa do [kraju] niepotwierdzona — sprawdź u sprzedawcy", but it is never described as confirmed availability,
+    checked shipping or a ready substitute, and it never closes one of the seven lines.
+    """
     it = S['items'][code]
     body = ''.join(product_html(p, S, i + 1) for i, p in enumerate(products[:2]))
     if not products:
         body = f'<p class="miss">{E(S["missing"])}</p>'
-    extra = f'<p class="pnote">{E(S["stabilizer_note"])}</p>' if code == 'STB' and products else ''
+    extra_html = ''
+    if extra:
+        rows_html = ''.join(product_html(p, S, None, country_name=country_name) for p in extra[:2])
+        extra_html = f'<div class="xtra"><p class="xt">{E(S["extra_title"])}</p>{rows_html}</div>'
+    note = f'<p class="pnote">{E(S["stabilizer_note"])}</p>' if code == 'STB' and products else ''
     return (f'<article class="item" id="item-{code}"><div class="ih"><h2 class="iname">{E(it["name"])}</h2>'
             f'<span class="igr">{E(S["starter_amount"].replace("{g}", str(STARTER_GRAMS[code])))}</span></div>'
-            f'<p class="iref">{E(it["ref"])}</p>{body}{extra}</article>')
+            f'<p class="iref">{E(it["ref"])}</p>{body}{note}{extra_html}</article>')
 
 
 def page_shell(pid, inner, S, draft, run=True, no=None, cls=''):
@@ -445,7 +511,7 @@ def page_shell(pid, inner, S, draft, run=True, no=None, cls=''):
     return f'<section class="page{cls}" id="{pid}">{banner}{header}{inner}{footer}</section>'
 
 
-def build_pages(iso, country_name, language_name, rows, S, draft, split, fit):
+def build_pages(iso, country_name, language_name, rows, extras, S, draft, split, fit):
     seven = ''.join(f'<li>{E(S["items"][c]["name"])}</li>' for c in ITEMS)
     banner = f'<div class="draft">{E(S["draft"])}</div>' if draft else ''
     cover = f'''<section class="page cover" id="cover">{banner}
@@ -464,7 +530,7 @@ def build_pages(iso, country_name, language_name, rows, S, draft, split, fit):
     for i, codes in enumerate(split):
         pid = f'items-{i + 1}'
         extra = (' tight' + (' tighter' if fit.get(pid, 0) > 1 else '')) if fit.get(pid) else ''
-        rows_html = ''.join(item_html(c, rows[c], S, draft) for c in codes)
+        rows_html = ''.join(item_html(c, rows[c], extras.get(c) or [], S, country_name, draft) for c in codes)
         item_pages.append(page_shell(pid, f'<div class="rows">{rows_html}</div>', S, draft, no=3 + i, cls=extra))
     notes = ''.join(f'<div><p class="h">{E(n["h"])}</p><p>{E(n["p"])}</p></div>' for n in S['notes'])
     notes_page = page_shell('notes', f'<div class="flow"><h1 class="h1">{E(S["notes_title"])}</h1><div class="nt">{notes}</div><p class="fine">{E(S["fine"])}</p></div>',
@@ -476,13 +542,13 @@ def build_pages(iso, country_name, language_name, rows, S, draft, split, fit):
     return cover + howto + ''.join(item_pages) + notes_page + back
 
 
-def document(iso, country_name, language_name, rows, S, draft, split, fit):
+def document(iso, country_name, language_name, rows, extras, S, draft, split, fit):
     lang = S['locale']
     return f'''<!doctype html><html lang="{lang}" dir="{S.get("dir", "ltr")}"><head><meta charset="utf-8">
 <title>Gellatti — {E(S["title"])} · {E(country_name)}</title>
 <meta name="author" content="Gellatti">
 <style>{font_css('../../fonts')}{CSS}</style></head><body>
-{build_pages(iso, country_name, language_name, rows, S, draft, split, fit)}
+{build_pages(iso, country_name, language_name, rows, extras, S, draft, split, fit)}
 {LAYOUT_JS}
 </body></html>'''
 
@@ -541,7 +607,7 @@ def display_name(kind, code, locale):
     return NAMES[f'{kind}|{code}|{locale}']
 
 
-def build_document(iso, loc, rows, missing, S, a):
+def build_document(iso, loc, rows, extras, missing, S, a):
     """One market/locale: HTML with the layout-fit loop, then the PDF. Returns (manifest entry, None) or (None, skip)."""
     out = os.path.join(BUILD, iso, loc)
     os.makedirs(out, exist_ok=True)
@@ -552,7 +618,7 @@ def build_document(iso, loc, rows, missing, S, a):
     fit = {}
     page = os.path.join(out, 'document.html')
     for attempt in range(3):
-        open(page, 'w').write(document(iso, country_name, language_name, rows, S, a.draft, split, fit))
+        open(page, 'w').write(document(iso, country_name, language_name, rows, extras, S, a.draft, split, fit))
         rep = measure(page)
         bad = [p for p in rep['pages'] if p['flowOverflowPx'] > 0 or p['pageOverflowPx'] > 0 or p['wide']]
         if not bad:
@@ -564,9 +630,12 @@ def build_document(iso, loc, rows, missing, S, a):
         return None, {'iso': iso, 'locale': loc, 'reason': 'layout_overflow', 'pages': bad}
     entry = {'iso': iso, 'locale': loc, 'country_name': country_name, 'language_name': language_name,
              'missing_items': missing, 'fit': fit,
-             'items': {c: [{k: p[k] for k in ('source', 'rank', 'brand', 'name', 'pack', 'gtin', 'evidence_class',
-                                             'accepted', 'tags', 'availability', 'shipping')}
-                           for p in rows[c]] for c in ITEMS}}
+             'items': {c: [{k: p.get(k) for k in ('source', 'rank', 'brand', 'name', 'pack', 'gtin', 'evidence_class',
+                                                  'accepted', 'tags', 'availability', 'shipping', 'closes_role')}
+                           for p in rows[c]] for c in ITEMS},
+             'extra_items': {c: [{k: p.get(k) for k in ('source', 'rank', 'brand', 'name', 'pack', 'gtin', 'evidence_class',
+                                                        'accepted', 'tags', 'availability', 'shipping', 'closes_role')}
+                                 for p in (extras.get(c) or [])] for c in ITEMS}}
     if not a.no_pdf:
         name = f'Gellatti-Starter-Pack-{iso}-{loc}{"-DRAFT" if a.draft else ""}.pdf'
         pdf = os.path.join(out, name)
@@ -593,7 +662,8 @@ def main():
     v23 = json.load(open(os.path.join(HERE, 'v23_rows.json')))['countries']
     acceptance = load(os.path.join(HERE, 'acceptance.json'), {}) or {}
     stock = load(os.path.join(HERE, 'stock.json'), {}) or {}            # extract_stock.py: state at check time, with date
-    v23_ship = load(os.path.join(HERE, 'v23_shipping.json'), {}) or {}  # v23_shipping_check.py: delivery claim per country
+    v23_ship = load(os.path.join(HERE, 'v23_shipping.json'), {}) or {}  # delivery_check.py: the delivery claim per country
+    v23_paths = load(os.path.join(HERE, 'v23_purchase_paths.json'), {}) or {}  # another seller of the SAME v23 product
     strings_dir = os.path.join(HERE, 'strings')
     os.makedirs(os.path.join(BUILD, 'fonts'), exist_ok=True)
     for d in (os.path.join(a.node_modules, '@fontsource-variable/manrope/files'), os.path.join(a.node_modules, '@fontsource/ibm-plex-mono/files')):
@@ -610,7 +680,7 @@ def main():
     preload_display_names(pairs)
     tasks = []
     for iso in isos:
-        rows = market_rows(iso, v23, os.path.join(HERE, 'research'), acceptance, a.draft, stock, v23_ship)
+        rows, extras = market_rows(iso, v23, os.path.join(HERE, 'research'), acceptance, a.draft, stock, v23_ship, v23_paths)
         missing = [c for c in ITEMS if not rows[c]]
         locales = markets[iso]['locales']
         if a.locale:
@@ -623,18 +693,18 @@ def main():
             if not os.path.exists(spath):
                 manifest['skipped'].append({'iso': iso, 'locale': loc, 'reason': 'no_strings_for_locale'})
                 continue
-            tasks.append((iso, loc, rows, missing, json.load(open(spath))))
+            tasks.append((iso, loc, rows, extras, missing, json.load(open(spath))))
 
     def run(task):
-        iso, loc, rows, missing, S = task
+        iso, loc, rows, extras, missing, S = task
         try:
-            return build_document(iso, loc, rows, missing, S, a)
+            return build_document(iso, loc, rows, extras, missing, S, a)
         except Exception as e:  # one failing document (e.g. a Chrome run that keeps hanging) never stops the others
             return None, {'iso': iso, 'locale': loc, 'reason': 'build_error', 'error': f'{type(e).__name__}: {e}'[:300]}
 
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=max(1, a.jobs)) as pool:
-        for (iso, loc, rows, missing, S), (entry, skip) in zip(tasks, pool.map(run, tasks)):
+        for (iso, loc, rows, extras, missing, S), (entry, skip) in zip(tasks, pool.map(run, tasks)):
             if skip:
                 manifest['skipped'].append(skip)
                 print(f'{iso}/{loc}: SKIPPED {skip["reason"]} {skip.get("error", "")}', flush=True)

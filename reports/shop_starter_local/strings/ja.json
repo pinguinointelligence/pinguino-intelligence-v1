@@ -22,12 +22,14 @@
   "tag_alternative": "現地の代替品",
   "tag_unconfirmed": "未確認",
   "tag_abroad_unconfirmed": "海外ショップ",
+  "tag_large_pack": "大容量",
   "legend": {
     "from_abroad": "自社の配送対象国にこの国を挙げている海外のショップ",
     "b2b": "事業者向け、または大容量での販売で、通常の小売商品ではありません",
     "other_composition": "同じ種類の製品で、組成が異なるもの（組成は横に記載）",
     "alternative": "Gellattiの別の製品の代替品",
-    "abroad_unconfirmed": "海外のショップ。この国への配送は未確認"
+    "abroad_unconfirmed": "海外のショップ。この国への配送は未確認",
+    "large_pack": "5 kg 以上の包装で販売"
   },
   "starter_amount": "Starter Pack内：{g} g",
   "option": "候補{n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Gellattiブレンドの現地での代替品で、同じブレンドではありません。粉類と混ぜ、ベースを75–80 °Cに加熱してください。",
   "missing": "この国では、まだ承認済みの製品がありません。",
   "out_of_stock": "{date}時点で、ショップでは在庫切れと表示されていました。",
+  "delivery_unconfirmed": "{country}への配送は未確認です。販売者にご確認ください。",
+  "extra_title": "参考情報",
   "notes_title": "知っておきたいこと",
   "notes": [
     {"h": "入手状況", "p": "調査した製品は、2026年9月17日にショップとメーカーのウェブサイトで確認しました。デキストロース、脱脂粉乳、安定剤は2026年9月12日のGellattiの国別表によるもので、再確認はしていません。入手状況、価格、配送は変わる可能性があり、保証されるものではありません。"},

@@ -12,8 +12,9 @@ For every document in build/starter_local/manifest[_draft].json:
   7. the PDF carries at least as many link annotations as products with links;
   8. no researcher placeholder ("not printed", "not stated", …) is printed as if it were a name;
   9. a product the shop showed as out of stock carries the localized "out of stock on <date>" line;
- 10. publishable only: each of the seven roles has at least one product the owner accepted — a LEAD candidate that was
-     never accepted cannot close the publication condition (owner 2026-09-17).
+ 10. publishable only: each of the seven roles has at least one product the owner accepted AND able to close it —
+     a confirmed product, on a retail channel, delivered locally or with a declared delivery. A lead, a business-only
+     offer and an unconfirmed delivery are additional information and never close a role (owner 2026-09-17).
 Writes build/starter_local/validation[_draft].json and exits non-zero on any failure.
 usage: validate_starter_local.py [--draft]
 """
@@ -91,7 +92,8 @@ def main():
         if a.draft:
             checks['seven_roles_accepted'] = True
         else:
-            checks['seven_roles_accepted'] = all(any(p.get('accepted') for p in doc['items'][code]) for code in ITEMS)
+            checks['seven_roles_accepted'] = all(any(p.get('accepted') and p.get('closes_role', True) for p in doc['items'][code])
+                                                 for code in ITEMS)
         banner = norm(S['draft']).split(' ')[0]
         checks['draft_banner'] = (banner in flat) if a.draft else (norm(S['draft']) not in flat)
         checks['links'] = link_count(pdf) >= min(with_links, 1)

@@ -1,383 +1,410 @@
 {
-  "iso2": "DO",
-  "country": "Dominican Republic",
-  "agent": "research-americas",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:02:00Z",
-  "items": {
-    "CRP": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "crema de leche en polvo",
-        "crema en polvo",
-        "nata en polvo",
-        "cream powder",
-        "heavy cream powder"
+ "iso2": "DO",
+ "country": "Dominican Republic",
+ "agent": "research-americas",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:02:00Z",
+ "items": {
+  "CRP": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "crema de leche en polvo",
+    "crema en polvo",
+    "nata en polvo",
+    "cream powder",
+    "heavy cream powder"
+   ],
+   "queries": [
+    "site search sirena.do (VTEX public catalog search): crema en polvo",
+    "site search sirena.do (VTEX public catalog search): heavy cream",
+    "site search supermercadosnacional.com: crema en polvo",
+    "site search supermercadosnacional.com: heavy cream",
+    "site search jumbo.com.do: crema en polvo",
+    "site catalog bioeva.com (WooCommerce store API): crema",
+    "site search superbravo.com.do: crema en polvo",
+    "site search farmaciacarol.com: crema en polvo",
+    "site catalog gourmet-versand.com: Sahnepulver / Rahmpulver / Milchpulver (0 dairy powders)",
+    "site search pati-versand.de: Sahnepulver (Cake-Masters Sahnepulver 100g, SAHNE 42% Fett - EU-only delivery)",
+    "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose"
+   ],
+   "sources_tried": [
+    "sirena.do (La Sirena, online grocer; only milk powders, Coffee Mate non-dairy creamer, spices - rejected types)",
+    "supermercadosnacional.com (Supermercados Nacional, online grocer; only milk powders / infant formulas - rejected types)",
+    "jumbo.com.do (Jumbo RD, online grocer; only whole/goat milk powders and formulas - rejected types)",
+    "superbravo.com.do (Supermercados Bravo; brochure/promo site, no online product catalog)",
+    "plazalama.com.do (Plaza Lama; Instaleap JS-only storefront, no server-rendered search - inconclusive)",
+    "pricesmart.com/es-do (PriceSmart DO; search results JS-only - inconclusive)",
+    "bioeva.com (Dominican health-food/supplement brand shop; no cream powder)",
+    "farmaciacarol.com (Farmacia Carol; SharePoint corporate site, no online product catalog)",
+    "farmacialoshidalgos.com.do (no connection)",
+    "delcaribeshop.com (food-service distributor; store selector lists only Costa Rica and Panama, no Dominican store)",
+    "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
+    "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
+    "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)",
+    "bulksupplements.com catalogue searched 2026-09-17 ('cream powder', 'egg yolk'): the shop sells neither, so its confirmed delivery statement cannot serve CRP or YOL",
+    "gourmet-versand.com (DE) catalogue searched 2026-09-17 ('Sahnepulver', 'Eigelbpulver', 'Eigelb Pulver'): 0 products - no cream powder and no egg yolk powder",
+    "modernistpantry.com/pages/international-shipping (US; does sell cream and egg yolk powders): names no destination at all - 'To see whether we can ship to your country just add the products to cart and go to the checkout page' - and a cart is forbidden by the protocol, so it cannot confirm a country",
+    "ketostore.nz (the one local NZ cream powder found): 'International Shipping Policy We currently do not ship outside of New Zealand.' - not available to any other market",
+    "bulksupplements.com delivery statement read in full 2026-09-17: the Dominican Republic is NOT among the nations it names (the list runs 'Czechia Denmark Ecuador El Salvador Estonia'), so that seller cannot serve DO even though its region picker offers a Dominican market"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Ingredients Bar",
+     "product_name": "Cream Powder",
+     "pack": "200 g (same listing also offers 500 g, 1.5 kg and 4 kg; SKU 0370)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Ingredients Bar (United Kingdom)",
+     "page_market": "GB",
+     "market_by": "OTHER_MARKET:GB",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "NONE for DO (UK shop, GBP only - currency never binds). The seller states international delivery but names no country, so this is a LEAD purchase path, not VERIFIED_CROSS_BORDER.",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "basis": "GENERIC_INTERNATIONAL_STATEMENT",
+      "statement_page": "https://ingredientsbar.com/payment-delivery/",
+      "heading_above": "Delivery & Payment > Delivery Information",
+      "quotes": [
+       {
+        "url": "https://ingredientsbar.com/payment-delivery/",
+        "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
+        "file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_ib_no_country.json"
+       }
       ],
-      "queries": [
-        "site search sirena.do (VTEX public catalog search): crema en polvo",
-        "site search sirena.do (VTEX public catalog search): heavy cream",
-        "site search supermercadosnacional.com: crema en polvo",
-        "site search supermercadosnacional.com: heavy cream",
-        "site search jumbo.com.do: crema en polvo",
-        "site catalog bioeva.com (WooCommerce store API): crema",
-        "site search superbravo.com.do: crema en polvo",
-        "site search farmaciacarol.com: crema en polvo",
-        "site catalog gourmet-versand.com: Sahnepulver / Rahmpulver / Milchpulver (0 dairy powders)",
-        "site search pati-versand.de: Sahnepulver (Cake-Masters Sahnepulver 100g, SAHNE 42% Fett - EU-only delivery)",
-        "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose"
-      ],
-      "sources_tried": [
-        "sirena.do (La Sirena, online grocer; only milk powders, Coffee Mate non-dairy creamer, spices - rejected types)",
-        "supermercadosnacional.com (Supermercados Nacional, online grocer; only milk powders / infant formulas - rejected types)",
-        "jumbo.com.do (Jumbo RD, online grocer; only whole/goat milk powders and formulas - rejected types)",
-        "superbravo.com.do (Supermercados Bravo; brochure/promo site, no online product catalog)",
-        "plazalama.com.do (Plaza Lama; Instaleap JS-only storefront, no server-rendered search - inconclusive)",
-        "pricesmart.com/es-do (PriceSmart DO; search results JS-only - inconclusive)",
-        "bioeva.com (Dominican health-food/supplement brand shop; no cream powder)",
-        "farmaciacarol.com (Farmacia Carol; SharePoint corporate site, no online product catalog)",
-        "farmacialoshidalgos.com.do (no connection)",
-        "delcaribeshop.com (food-service distributor; store selector lists only Costa Rica and Panama, no Dominican store)",
-        "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
-        "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
-        "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Ingredients Bar",
-          "product_name": "Cream Powder",
-          "pack": "200 g (same listing also offers 500 g, 1.5 kg and 4 kg; SKU 0370)",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Ingredients Bar (United Kingdom)",
-          "page_market": "GB",
-          "market_by": "OTHER_MARKET:GB",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "NONE for DO (UK shop, GBP only - currency never binds). The seller states international delivery but names no country, so this is a LEAD purchase path, not VERIFIED_CROSS_BORDER.",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "quotes": [
-              {
-                "url": "https://ingredientsbar.com/payment-delivery/",
-                "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
-                "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json"
-              }
-            ],
-            "found": true,
-            "country_named": false,
-            "note": "Generic international-delivery statement only; DO is not named, so owner rule 2 (2026-09-17) keeps this a LEAD."
-          },
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:44:41Z",
-            "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
-            "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
-          },
-          "composition": {
-            "fat_g": 75.0,
-            "protein_g": 8.5,
-            "fibre_g": 0.0,
-            "fructose_pct": null,
-            "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition Facts Per 100g: Energy 3094kJ/750kcal, Fat 75 g of which saturated fatty acid 51 g, Carbohydrates 12 g of which sugars 12 g, Protein 8.5 g, Dietary Fibre 0 g, Salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
-            "from": "product page, 'Ingredients & Nutrition' tab (quote file ~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json)",
-            "sugars_g": 12.0
-          },
-          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
-          "equivalence_note": "Real spray-dried dairy cream powder ('made from dehydrated cream, free from additives'), printed fat 75 g/100 g - outside the 38-48 % A band (reference 42 %). Ingredients are cream + milk protein + lactose, i.e. the permitted CRP ingredient family. Recorded under owner rule 3 (2026-09-17): a dairy cream powder outside 38-48 % fat is a valid candidate for owner decision.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ecfec281ebb0f887.json",
-          "extra_evidence_files": [
-            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json",
-            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
-          ],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T18:44:41Z"
-        }
-      ],
-      "notes": "No spray-dried dairy cream powder found at any readable Dominican grocer, health shop or distributor; only milk powders and a non-dairy coffee creamer (rejected). Weak BRAK: no Dominican baking/pastry supplier with an online catalog could be discovered and two large retailers are JS-only. WebSearch budget exhausted before DO research started; all discovery via on-site shop searches only. | 2026-09-17: BRAK lifted to LEAD_ONLY under owner rule 3. The Dominican BRAK stands (only milk powders and a non-dairy coffee creamer at the readable grocers). New candidate: Ingredients Bar (UK) Cream Powder, real spray-dried dairy cream powder, printed fat 75 g/100 g and full ingredient list, retail 200 g pack, IN_STOCK. Kept a LEAD because the seller's delivery page only states that international delivery is charged at checkout and never names the country (owner rule 2). GOURMET VERSAND, whose country selector does name the Dominican Republic (and which supplies the FRU and INU rows here), sells no cream powder."
-    },
-    "FRU": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "fructosa",
-        "fructosa en polvo",
-        "azúcar de fruta",
-        "endulzante",
-        "fructose"
-      ],
-      "queries": [
-        "site search sirena.do (VTEX public catalog search): fructosa",
-        "site search sirena.do (VTEX public catalog search): fructose",
-        "site search sirena.do (VTEX public catalog search): multifoods",
-        "site search supermercadosnacional.com: fructosa",
-        "site search supermercadosnacional.com: fructose",
-        "site search supermercadosnacional.com: endulzante",
-        "site search jumbo.com.do: fructosa",
-        "site catalog bioeva.com (WooCommerce store API): fructosa",
-        "site search superbravo.com.do: fructosa",
-        "site search farmaciacarol.com: fructosa",
-        "pricesmart.com/es-do/busqueda?q=fructosa (JS-only)",
-        "site search gourmet-versand.com: Fruktose",
-        "shipping-cost country selector gourmet-versand.com/index.php?site=versand&language=en: Dominican Republic",
-        "shipping-country list bulksupplements.com/policies/shipping-policy: Dominican Republic (NOT listed)"
-      ],
-      "sources_tried": [
-        "sirena.do (La Sirena; 'Fructosa Multifood 14 Oz' with EAN as page data, sold by Grupo Ramos S.A - RD) - candidate 1",
-        "supermercadosnacional.com (no fructose; search matched only Fructis shampoos; sweeteners are stevia/monk fruit/erythritol/sucralose)",
-        "jumbo.com.do (no fructose; only Fructis hair products)",
-        "bioeva.com (Dominican health-food brand shop; no fructose)",
-        "superbravo.com.do (no online product catalog)",
-        "pricesmart.com/es-do (search JS-only - inconclusive)",
-        "plazalama.com.do (Instaleap JS-only storefront - inconclusive)",
-        "farmaciacarol.com (no online product catalog)",
-        "modernistpantry.com (US; international shipping only quoted at checkout - no verifiable ships-to-DO statement, not used)",
-        "do.iherb.com (HTTP 403 bot wall - inconclusive, not bypassed)",
-        "gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html (German retailer; Sosa Fruktose Pulver 1 kg, gtin13 8414933026259 as page data, 'Zutaten: Fructosepulver', carbohydrates 100 g of which sugars 100 g, schema.org InStock + 'SOFORT LIEFERBAR') + its shipping-cost country selector names the Dominican Republic - candidate 1",
-        "bulksupplements.com/policies/shipping-policy (its nation list does NOT include the Dominican Republic - not usable for DO)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Sosa Ingredients",
-          "product_name": "Sosa Fruktose Pulver, 1 kg, Pe - dose",
-          "pack": "1 kg (Pe-Dose), Artikelnummer 22941",
-          "gtin": "8414933026259",
-          "identifier_confirmed": true,
-          "url": "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html",
-          "source_type": "RETAILER",
-          "seller": "GOURMET VERSAND (Heinsberg, Germany)",
-          "page_market": null,
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "NONE for DO (generic .com, German seller) - cross-border; the seller's shipping-cost country selector names this country (see ships_to_evidence)",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "quotes": [
-              {
-                "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
-                "quote": "Shipment to the following country:",
-                "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_intro.json"
-              },
-              {
-                "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
-                "quote": "Denmark Dominican Republic Estonia Finland France",
-                "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_DO.json"
-              }
-            ],
-            "found": true,
-            "country_named": true
-          },
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:44:41Z",
-            "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data, plus the printed status 'SOFORT LIEFERBAR'",
-            "source": "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html"
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Zutaten: Fructosepulver. Fruktose. Naehrwerttabelle pro 100 g: Brennwert 1700 kJ / 400 kcal, Kohlenhydrate 100 g davon Zucker 100 g, Eiweiss 0,01 g, Salz 0,13 g; Hersteller Sosa Ingredients S.L.U., Navarcles (ES)",
-            "from": "product page ('Zutaten' and 'Naehrwerttabelle' blocks)",
-            "sugars_g": 100.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g (reference 99.8 % fructose).",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5aaceb8aa7195ef2.json",
-          "extra_evidence_files": [
-            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_DO.json",
-            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_intro.json"
-          ],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T18:44:41Z"
-        },
-        {
-          "rank": 2,
-          "brand": "Multifoods",
-          "product_name": "Fructosa Multifood 14 Oz",
-          "pack": "14 oz (approx. 397 g)",
-          "gtin": "7463516172044",
-          "identifier_confirmed": true,
-          "url": "https://www.sirena.do/multifood-fructosa-14-oz-1707264/p",
-          "source_type": "RETAILER",
-          "seller": "La Sirena (Grupo Ramos S.A - RD)",
-          "page_market": "DO",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .do (CCTLD)",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": "not shown - the page (and the shop's VTEX product data) only describes it as 'Endulzante natural en polvo con bajo índice glucémico ideal como sustituto del azúcar en bebidas y postres.'"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "Fructose sold as a powdered sweetener, but no ingredient list, purity or nutrition table is printed, so A/B cannot be decided (a fructose/sweetener blend cannot be excluded). Would become CONFIRMED_LOCAL if the label shows fructose as the only ingredient.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e42c22d5f3d941b9.json",
-          "extra_evidence_files": [],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:56:31Z",
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:44:41Z",
-            "basis": "\"availability\":\"http://schema.org/InStock\" in the VTEX page's own product data",
-            "source": "https://www.sirena.do/multifood-fructosa-14-oz-1707264/p"
-          }
-        }
-      ],
-      "notes": "Identity (EAN 7463516172044 as VTEX page data) and market binding (.do) are both proven; the only gap is composition (C), so the class stays LEAD. WebSearch budget exhausted before DO research started; all discovery via on-site shop searches only. | 2026-09-17: result lifted from LEAD_ONLY to VERIFIED_CROSS_BORDER. The local La Sirena 'Fructosa Multifood 14 Oz' is IN_STOCK and kept at rank 2, but it still prints no composition (C). New rank 1 is Sosa Fruktose Pulver 1 kg at GOURMET VERSAND: GTIN as page data, single-ingredient fructose with a printed nutrition table (sugars 100 g/100 g), in stock, and the Dominican Republic is named in the seller's own shipping-cost country selector."
-    },
-    "INU": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "inulina",
-        "inulina de agave",
-        "inulina de achicoria",
-        "fibra prebiótica",
-        "inulin"
-      ],
-      "queries": [
-        "site search sirena.do (VTEX public catalog search): inulina",
-        "site search sirena.do (VTEX public catalog search): inulin",
-        "site search sirena.do (VTEX public catalog search): prebiotica / prebiotic",
-        "site search sirena.do (VTEX public catalog search): now foods",
-        "site search supermercadosnacional.com: inulina",
-        "site search supermercadosnacional.com: inulin",
-        "site search supermercadosnacional.com: fibra prebiotica",
-        "site search jumbo.com.do: inulina",
-        "site catalog bioeva.com (WooCommerce store API): inulina / fibra",
-        "site search superbravo.com.do: inulina",
-        "site search farmaciacarol.com: inulina",
-        "site search gourmet-versand.com: Inulin",
-        "shipping-cost country selector gourmet-versand.com/index.php?site=versand&language=en: Dominican Republic"
-      ],
-      "sources_tried": [
-        "sirena.do (no inulin; 'Fibra En Polvo Bioeva 380 Gramos' EAN 7467849561551 described only as 'fibra natural soluble' - fibre type not stated)",
-        "supermercadosnacional.com ('Fibra Prebiotica Bioeva 380 Gr': description and per-serving values (fibra 4 g) but no ingredient list and no mention of inulin - type unproven, not kept; verdict ~/.cache/gellatti-evidence/verify/8dbfc04571053cf3.json)",
-        "bioeva.com (Dominican brand shop; 'BioEva Fibra (380g)' SKU 000460 prints no ingredients in page text, nutrition only as image - type unproven; verdict ~/.cache/gellatti-evidence/verify/be601fea4a83bea9.json; no product named inulina)",
-        "jumbo.com.do (no inulin)",
-        "superbravo.com.do (no online product catalog)",
-        "farmaciacarol.com (no online product catalog)",
-        "farmacialoshidalgos.com.do (no connection)",
-        "pricesmart.com/es-do and plazalama.com.do (JS-only storefronts - inconclusive)",
-        "do.iherb.com (HTTP 403 bot wall - inconclusive, not bypassed)",
-        "gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html (German retailer; Sosa Inulin Cold 500 g, gtin13 8414933008774 as page data, 'Zutaten: Ballaststoff Inulin', carbohydrates 7 g of which sugars 7 g, schema.org InStock + 'SOFORT LIEFERBAR') + its country selector names the Dominican Republic - candidate 1",
-        "bulksupplements.com/policies/shipping-policy (nation list does NOT include the Dominican Republic - not usable for DO)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Sosa Ingredients",
-          "product_name": "Sosa Inulin Cold (Ballaststoff) (50063), 500 g, Pe - dose",
-          "pack": "500 g (Pe-Dose), Artikelnummer 34575",
-          "gtin": "8414933008774",
-          "identifier_confirmed": true,
-          "url": "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html",
-          "source_type": "RETAILER",
-          "seller": "GOURMET VERSAND (Heinsberg, Germany)",
-          "page_market": null,
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "NONE for DO (generic .com, German seller) - cross-border; the seller's shipping-cost country selector names this country (see ships_to_evidence)",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "quotes": [
-              {
-                "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
-                "quote": "Shipment to the following country:",
-                "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_intro.json"
-              },
-              {
-                "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
-                "quote": "Denmark Dominican Republic Estonia Finland France",
-                "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_DO.json"
-              }
-            ],
-            "found": true,
-            "country_named": true
-          },
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:44:41Z",
-            "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data, plus the printed status 'SOFORT LIEFERBAR'",
-            "source": "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html"
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Zutaten: Ballaststoff Inulin. Inulin. Naehrwerttabelle pro 100 g: Brennwert 839 kJ / 208 kcal, Kohlenhydrate 7 g davon Zucker 7 g, Salz 0,1 g (no fibre line printed); Hersteller Sosa Ingredients S.L.U., Navarcles (ES)",
-            "from": "product page ('Zutaten' and 'Naehrwerttabelle' blocks)",
-            "sugars_g": 7.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Single-ingredient inulin (cold-soluble), sugars 7 g/100 g (reference: sugars 8 g); the fibre value is not printed on the page.",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2165007b8590d24d.json",
-          "extra_evidence_files": [
-            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_DO.json",
-            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_intro.json"
-          ],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T18:44:41Z"
-        }
-      ],
-      "notes": "No product identifiable as inulin powder. The Dominican brand BioEva sells a 380 g 'fibra prebiótica / fibra natural soluble' powder at Nacional, La Sirena and its own shop, but no page states the fibre type or ingredients, so it cannot be classed as inulin (possible owner check: the physical label). WebSearch budget exhausted before DO research started; all discovery via on-site shop searches only. | 2026-09-17: BRAK lifted to VERIFIED_CROSS_BORDER. The local BRAK stands: BioEva's 380 g 'fibra prebiotica' still never states the fibre type, so it cannot be classed as inulin (physical-label check still open for the owner). The new candidate is Sosa Inulin Cold 500 g at GOURMET VERSAND - single-ingredient inulin, GTIN as page data, in stock - with the Dominican Republic named in the seller's own shipping-cost country selector."
-    },
-    "YOL": {
-      "result": "BRAK",
-      "local_terms": [
-        "yema de huevo en polvo",
-        "yema deshidratada",
-        "huevo en polvo",
-        "egg yolk powder"
-      ],
-      "queries": [
-        "site search sirena.do (VTEX public catalog search): yema",
-        "site search sirena.do (VTEX public catalog search): huevo en polvo",
-        "site search sirena.do (VTEX public catalog search): egg yolk",
-        "site search supermercadosnacional.com: yema",
-        "site search supermercadosnacional.com: huevo en polvo",
-        "site search supermercadosnacional.com: egg yolk",
-        "site search jumbo.com.do: yema de huevo",
-        "site catalog bioeva.com (WooCommerce store API): yema / huevo",
-        "site search superbravo.com.do: yema",
-        "site search farmaciacarol.com: yema"
-      ],
-      "sources_tried": [
-        "sirena.do (no egg powder of any kind)",
-        "supermercadosnacional.com (no egg powder; 'yema' matched only turrón)",
-        "jumbo.com.do (only liquid pasteurised egg white Don Papito and Just Egg substitute - rejected types)",
-        "bioeva.com (no egg products)",
-        "superbravo.com.do (no online product catalog)",
-        "farmaciacarol.com (no online product catalog)",
-        "pricesmart.com/es-do and plazalama.com.do (JS-only storefronts - inconclusive)",
-        "delcaribeshop.com (food-service distributor that lists yolk powder in Costa Rica; its store selector has no Dominican Republic store)",
-        "modernistpantry.com (US; its egg yolk powder is 'Available to US customers only' - no cross-border path)",
-        "gourmet-versand.com (DE; catalogue searched for Eipulver / Vollei / Trockenei / Eigelb - no egg yolk powder; its country selector DOES name this market, so a yolk powder there would have been usable)",
-        "msk-ingredients.com (UK; full product sitemap, 6597 URLs: no egg yolk powder)",
-        "souschef.co.uk (UK; all 7 product sitemaps, 6274 URLs: no egg yolk powder)",
-        "bulksupplements.com (US; sells no egg yolk powder)",
-        "judeesfromscratch.com/policies/shipping-policy (maker of an 11 oz Egg Yolk Powder; no international statement)",
-        "gosupps.com (US reseller advertising Judee's Egg Yolk Powder with express international delivery; shipping pages HTTP 403 - blocked, inconclusive)",
-        "modernistpantry.com egg yolk powder (US customers only)"
-      ],
-      "candidates": [],
-      "notes": "No dried egg yolk found at any readable Dominican retailer. Weak BRAK: no Dominican baking/pastry supplier with an online catalog could be discovered without web search, and two large retailers are JS-only. WebSearch budget exhausted before DO research started; all discovery via on-site shop searches only. | Re-checked 2026-09-17: still BRAK. A cross-border path was searched for specifically: GOURMET VERSAND (the one shop whose delivery-country selector names the Dominican Republic) sells no egg yolk powder, and neither do MSK Ingredients, Sous Chef or BulkSupplements. The US shops that do sell dried egg yolk are US-only (Modernist Pantry), make no international statement (Judee's) or are bot-walled (GoSupps, which advertises express international delivery for Judee's Egg Yolk Powder - worth a manual owner check)."
+      "found": true,
+      "country_named": false,
+      "why_it_does_not_cover_this_country": "Re-read in full 2026-09-17 (close-americas): the whole Delivery Information section names exactly one country - 'We offer free standard delivery within the United Kingdom' - and then refers to international delivery only in the abstract. There is no country list anywhere on the page, so there is no group that could contain this country either.",
+      "note": "A bare 'international delivery' sentence is not a delivery claim for any particular country (owner rule, 2026-09-17)."
+     },
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:44:41Z",
+      "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+      "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+     },
+     "composition": {
+      "fat_g": 75.0,
+      "protein_g": 8.5,
+      "fibre_g": 0.0,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition Facts Per 100g: Energy 3094kJ/750kcal, Fat 75 g of which saturated fatty acid 51 g, Carbohydrates 12 g of which sugars 12 g, Protein 8.5 g, Dietary Fibre 0 g, Salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
+      "from": "product page, 'Ingredients & Nutrition' tab (quote file ~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json)",
+      "sugars_g": 12.0
+     },
+     "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+     "equivalence_note": "Real spray-dried dairy cream powder ('made from dehydrated cream, free from additives'), printed fat 75 g/100 g - outside the 38-48 % A band (reference 42 %). Ingredients are cream + milk protein + lactose, i.e. the permitted CRP ingredient family. Recorded under owner rule 3 (2026-09-17): a dairy cream powder outside 38-48 % fat is a valid candidate for owner decision.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ecfec281ebb0f887.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json",
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T19:55:00Z",
+     "channel": "RETAIL",
+     "pack_grams": 200,
+     "moq": null,
+     "shipping_basis": "GENERIC_INTERNATIONAL_STATEMENT_NO_COUNTRY_NAMED",
+     "owner_check": "A real dairy cream powder at 75 % fat and in stock, but the seller never names a delivery country - ask Ingredients Bar in writing whether they ship here before the PDF names them.",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
+   ],
+   "notes": "No spray-dried dairy cream powder found at any readable Dominican grocer, health shop or distributor; only milk powders and a non-dairy coffee creamer (rejected). Weak BRAK: no Dominican baking/pastry supplier with an online catalog could be discovered and two large retailers are JS-only. WebSearch budget exhausted before DO research started; all discovery via on-site shop searches only. | 2026-09-17: BRAK lifted to LEAD_ONLY under owner rule 3. The Dominican BRAK stands (only milk powders and a non-dairy coffee creamer at the readable grocers). New candidate: Ingredients Bar (UK) Cream Powder, real spray-dried dairy cream powder, printed fat 75 g/100 g and full ingredient list, retail 200 g pack, IN_STOCK. Kept a LEAD because the seller's delivery page only states that international delivery is charged at checkout and never names the country (owner rule 2). GOURMET VERSAND, whose country selector does name the Dominican Republic (and which supplies the FRU and INU rows here), sells no cream powder. | Re-checked 2026-09-17 (close-americas): still LEAD_ONLY. No local dairy cream powder was found, and no cross-border seller that makes a real delivery statement naming this country sells one (bulksupplements has none in its catalogue; gourmet-versand has none; Modernist Pantry names no destinations; Keto Store NZ ships only inside New Zealand). The only candidate with a printed dairy composition remains the UK Ingredients Bar 75 % powder, whose delivery page names no country."
+  },
+  "FRU": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "fructosa",
+    "fructosa en polvo",
+    "azúcar de fruta",
+    "endulzante",
+    "fructose"
+   ],
+   "queries": [
+    "site search sirena.do (VTEX public catalog search): fructosa",
+    "site search sirena.do (VTEX public catalog search): fructose",
+    "site search sirena.do (VTEX public catalog search): multifoods",
+    "site search supermercadosnacional.com: fructosa",
+    "site search supermercadosnacional.com: fructose",
+    "site search supermercadosnacional.com: endulzante",
+    "site search jumbo.com.do: fructosa",
+    "site catalog bioeva.com (WooCommerce store API): fructosa",
+    "site search superbravo.com.do: fructosa",
+    "site search farmaciacarol.com: fructosa",
+    "pricesmart.com/es-do/busqueda?q=fructosa (JS-only)",
+    "site search gourmet-versand.com: Fruktose",
+    "shipping-cost country selector gourmet-versand.com/index.php?site=versand&language=en: Dominican Republic",
+    "shipping-country list bulksupplements.com/policies/shipping-policy: Dominican Republic (NOT listed)"
+   ],
+   "sources_tried": [
+    "sirena.do (La Sirena; 'Fructosa Multifood 14 Oz' with EAN as page data, sold by Grupo Ramos S.A - RD) - candidate 1",
+    "supermercadosnacional.com (no fructose; search matched only Fructis shampoos; sweeteners are stevia/monk fruit/erythritol/sucralose)",
+    "jumbo.com.do (no fructose; only Fructis hair products)",
+    "bioeva.com (Dominican health-food brand shop; no fructose)",
+    "superbravo.com.do (no online product catalog)",
+    "pricesmart.com/es-do (search JS-only - inconclusive)",
+    "plazalama.com.do (Instaleap JS-only storefront - inconclusive)",
+    "farmaciacarol.com (no online product catalog)",
+    "modernistpantry.com (US; international shipping only quoted at checkout - no verifiable ships-to-DO statement, not used)",
+    "do.iherb.com (HTTP 403 bot wall - inconclusive, not bypassed)",
+    "gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html (German retailer; Sosa Fruktose Pulver 1 kg, gtin13 8414933026259 as page data, 'Zutaten: Fructosepulver', carbohydrates 100 g of which sugars 100 g, schema.org InStock + 'SOFORT LIEFERBAR') + its shipping-cost country selector names the Dominican Republic - candidate 1",
+    "bulksupplements.com/policies/shipping-policy (its nation list does NOT include the Dominican Republic - not usable for DO)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Sosa Ingredients",
+     "product_name": "Sosa Fruktose Pulver, 1 kg, Pe - dose",
+     "pack": "1 kg (Pe-Dose), Artikelnummer 22941",
+     "gtin": "8414933026259",
+     "identifier_confirmed": true,
+     "url": "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html",
+     "source_type": "RETAILER",
+     "seller": "GOURMET VERSAND (Heinsberg, Germany)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "NONE for DO (generic .com, German seller) - cross-border; the seller's shipping-cost country selector names this country (see ships_to_evidence)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+        "quote": "Shipment to the following country:",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_intro.json"
+       },
+       {
+        "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+        "quote": "Denmark Dominican Republic Estonia Finland France",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_DO.json"
+       }
+      ],
+      "found": true,
+      "country_named": true
+     },
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:44:41Z",
+      "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data, plus the printed status 'SOFORT LIEFERBAR'",
+      "source": "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: Fructosepulver. Fruktose. Naehrwerttabelle pro 100 g: Brennwert 1700 kJ / 400 kcal, Kohlenhydrate 100 g davon Zucker 100 g, Eiweiss 0,01 g, Salz 0,13 g; Hersteller Sosa Ingredients S.L.U., Navarcles (ES)",
+      "from": "product page ('Zutaten' and 'Naehrwerttabelle' blocks)",
+      "sugars_g": 100.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g (reference 99.8 % fructose).",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5aaceb8aa7195ef2.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_DO.json",
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_intro.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T18:44:41Z",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    },
+    {
+     "rank": 2,
+     "brand": "Multifoods",
+     "product_name": "Fructosa Multifood 14 Oz",
+     "pack": "14 oz (approx. 397 g)",
+     "gtin": "7463516172044",
+     "identifier_confirmed": true,
+     "url": "https://www.sirena.do/multifood-fructosa-14-oz-1707264/p",
+     "source_type": "RETAILER",
+     "seller": "La Sirena (Grupo Ramos S.A - RD)",
+     "page_market": "DO",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .do (CCTLD)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "not shown - the page (and the shop's VTEX product data) only describes it as 'Endulzante natural en polvo con bajo índice glucémico ideal como sustituto del azúcar en bebidas y postres.'"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "Fructose sold as a powdered sweetener, but no ingredient list, purity or nutrition table is printed, so A/B cannot be decided (a fructose/sweetener blend cannot be excluded). Would become CONFIRMED_LOCAL if the label shows fructose as the only ingredient.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e42c22d5f3d941b9.json",
+     "extra_evidence_files": [],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T15:56:31Z",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:44:41Z",
+      "basis": "\"availability\":\"http://schema.org/InStock\" in the VTEX page's own product data",
+      "source": "https://www.sirena.do/multifood-fructosa-14-oz-1707264/p"
+     }
+    }
+   ],
+   "notes": "Identity (EAN 7463516172044 as VTEX page data) and market binding (.do) are both proven; the only gap is composition (C), so the class stays LEAD. WebSearch budget exhausted before DO research started; all discovery via on-site shop searches only. | 2026-09-17: result lifted from LEAD_ONLY to VERIFIED_CROSS_BORDER. The local La Sirena 'Fructosa Multifood 14 Oz' is IN_STOCK and kept at rank 2, but it still prints no composition (C). New rank 1 is Sosa Fruktose Pulver 1 kg at GOURMET VERSAND: GTIN as page data, single-ingredient fructose with a printed nutrition table (sugars 100 g/100 g), in stock, and the Dominican Republic is named in the seller's own shipping-cost country selector."
+  },
+  "INU": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "inulina",
+    "inulina de agave",
+    "inulina de achicoria",
+    "fibra prebiótica",
+    "inulin"
+   ],
+   "queries": [
+    "site search sirena.do (VTEX public catalog search): inulina",
+    "site search sirena.do (VTEX public catalog search): inulin",
+    "site search sirena.do (VTEX public catalog search): prebiotica / prebiotic",
+    "site search sirena.do (VTEX public catalog search): now foods",
+    "site search supermercadosnacional.com: inulina",
+    "site search supermercadosnacional.com: inulin",
+    "site search supermercadosnacional.com: fibra prebiotica",
+    "site search jumbo.com.do: inulina",
+    "site catalog bioeva.com (WooCommerce store API): inulina / fibra",
+    "site search superbravo.com.do: inulina",
+    "site search farmaciacarol.com: inulina",
+    "site search gourmet-versand.com: Inulin",
+    "shipping-cost country selector gourmet-versand.com/index.php?site=versand&language=en: Dominican Republic"
+   ],
+   "sources_tried": [
+    "sirena.do (no inulin; 'Fibra En Polvo Bioeva 380 Gramos' EAN 7467849561551 described only as 'fibra natural soluble' - fibre type not stated)",
+    "supermercadosnacional.com ('Fibra Prebiotica Bioeva 380 Gr': description and per-serving values (fibra 4 g) but no ingredient list and no mention of inulin - type unproven, not kept; verdict ~/.cache/gellatti-evidence/verify/8dbfc04571053cf3.json)",
+    "bioeva.com (Dominican brand shop; 'BioEva Fibra (380g)' SKU 000460 prints no ingredients in page text, nutrition only as image - type unproven; verdict ~/.cache/gellatti-evidence/verify/be601fea4a83bea9.json; no product named inulina)",
+    "jumbo.com.do (no inulin)",
+    "superbravo.com.do (no online product catalog)",
+    "farmaciacarol.com (no online product catalog)",
+    "farmacialoshidalgos.com.do (no connection)",
+    "pricesmart.com/es-do and plazalama.com.do (JS-only storefronts - inconclusive)",
+    "do.iherb.com (HTTP 403 bot wall - inconclusive, not bypassed)",
+    "gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html (German retailer; Sosa Inulin Cold 500 g, gtin13 8414933008774 as page data, 'Zutaten: Ballaststoff Inulin', carbohydrates 7 g of which sugars 7 g, schema.org InStock + 'SOFORT LIEFERBAR') + its country selector names the Dominican Republic - candidate 1",
+    "bulksupplements.com/policies/shipping-policy (nation list does NOT include the Dominican Republic - not usable for DO)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Sosa Ingredients",
+     "product_name": "Sosa Inulin Cold (Ballaststoff) (50063), 500 g, Pe - dose",
+     "pack": "500 g (Pe-Dose), Artikelnummer 34575",
+     "gtin": "8414933008774",
+     "identifier_confirmed": true,
+     "url": "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html",
+     "source_type": "RETAILER",
+     "seller": "GOURMET VERSAND (Heinsberg, Germany)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "NONE for DO (generic .com, German seller) - cross-border; the seller's shipping-cost country selector names this country (see ships_to_evidence)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+        "quote": "Shipment to the following country:",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_intro.json"
+       },
+       {
+        "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+        "quote": "Denmark Dominican Republic Estonia Finland France",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_DO.json"
+       }
+      ],
+      "found": true,
+      "country_named": true
+     },
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:44:41Z",
+      "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data, plus the printed status 'SOFORT LIEFERBAR'",
+      "source": "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: Ballaststoff Inulin. Inulin. Naehrwerttabelle pro 100 g: Brennwert 839 kJ / 208 kcal, Kohlenhydrate 7 g davon Zucker 7 g, Salz 0,1 g (no fibre line printed); Hersteller Sosa Ingredients S.L.U., Navarcles (ES)",
+      "from": "product page ('Zutaten' and 'Naehrwerttabelle' blocks)",
+      "sugars_g": 7.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Single-ingredient inulin (cold-soluble), sugars 7 g/100 g (reference: sugars 8 g); the fibre value is not printed on the page.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2165007b8590d24d.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_DO.json",
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_intro.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T18:44:41Z",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    }
+   ],
+   "notes": "No product identifiable as inulin powder. The Dominican brand BioEva sells a 380 g 'fibra prebiótica / fibra natural soluble' powder at Nacional, La Sirena and its own shop, but no page states the fibre type or ingredients, so it cannot be classed as inulin (possible owner check: the physical label). WebSearch budget exhausted before DO research started; all discovery via on-site shop searches only. | 2026-09-17: BRAK lifted to VERIFIED_CROSS_BORDER. The local BRAK stands: BioEva's 380 g 'fibra prebiotica' still never states the fibre type, so it cannot be classed as inulin (physical-label check still open for the owner). The new candidate is Sosa Inulin Cold 500 g at GOURMET VERSAND - single-ingredient inulin, GTIN as page data, in stock - with the Dominican Republic named in the seller's own shipping-cost country selector."
+  },
+  "YOL": {
+   "result": "BRAK",
+   "local_terms": [
+    "yema de huevo en polvo",
+    "yema deshidratada",
+    "huevo en polvo",
+    "egg yolk powder"
+   ],
+   "queries": [
+    "site search sirena.do (VTEX public catalog search): yema",
+    "site search sirena.do (VTEX public catalog search): huevo en polvo",
+    "site search sirena.do (VTEX public catalog search): egg yolk",
+    "site search supermercadosnacional.com: yema",
+    "site search supermercadosnacional.com: huevo en polvo",
+    "site search supermercadosnacional.com: egg yolk",
+    "site search jumbo.com.do: yema de huevo",
+    "site catalog bioeva.com (WooCommerce store API): yema / huevo",
+    "site search superbravo.com.do: yema",
+    "site search farmaciacarol.com: yema",
+    "\"yema de huevo en polvo\" \"República Dominicana\" comprar tienda"
+   ],
+   "sources_tried": [
+    "sirena.do (no egg powder of any kind)",
+    "supermercadosnacional.com (no egg powder; 'yema' matched only turrón)",
+    "jumbo.com.do (only liquid pasteurised egg white Don Papito and Just Egg substitute - rejected types)",
+    "bioeva.com (no egg products)",
+    "superbravo.com.do (no online product catalog)",
+    "farmaciacarol.com (no online product catalog)",
+    "pricesmart.com/es-do and plazalama.com.do (JS-only storefronts - inconclusive)",
+    "delcaribeshop.com (food-service distributor that lists yolk powder in Costa Rica; its store selector has no Dominican Republic store)",
+    "modernistpantry.com (US; its egg yolk powder is 'Available to US customers only' - no cross-border path)",
+    "gourmet-versand.com (DE; catalogue searched for Eipulver / Vollei / Trockenei / Eigelb - no egg yolk powder; its country selector DOES name this market, so a yolk powder there would have been usable)",
+    "msk-ingredients.com (UK; full product sitemap, 6597 URLs: no egg yolk powder)",
+    "souschef.co.uk (UK; all 7 product sitemaps, 6274 URLs: no egg yolk powder)",
+    "bulksupplements.com (US; sells no egg yolk powder)",
+    "judeesfromscratch.com/policies/shipping-policy (maker of an 11 oz Egg Yolk Powder; no international statement)",
+    "gosupps.com (US reseller advertising Judee's Egg Yolk Powder with express international delivery; shipping pages HTTP 403 - blocked, inconclusive)",
+    "modernistpantry.com egg yolk powder (US customers only)",
+    "delcaribeshop.com (the Central-American chain that sells dried egg yolk for CR and PA) has no Dominican storefront: /do/, /ni/, /gt/, /sv/ and /hn/ all return HTTP 404 (checked 2026-09-17)",
+    "gourmet-versand.com does name the Dominican Republic in its delivery statement, but its catalogue has no egg yolk powder at all (searched 2026-09-17)",
+    "Dominican search 2026-09-17 returned only supplier directories (quiminet, agroterra), a wholesale egg broker (eggsunlimited.com) and foreign shops (sermand.com ES, catereasy.es, donaelsa.com.pe) - none with a delivery statement naming the Dominican Republic"
+   ],
+   "candidates": [],
+   "notes": "No dried egg yolk found at any readable Dominican retailer. Weak BRAK: no Dominican baking/pastry supplier with an online catalog could be discovered without web search, and two large retailers are JS-only. WebSearch budget exhausted before DO research started; all discovery via on-site shop searches only. | Re-checked 2026-09-17: still BRAK. A cross-border path was searched for specifically: GOURMET VERSAND (the one shop whose delivery-country selector names the Dominican Republic) sells no egg yolk powder, and neither do MSK Ingredients, Sous Chef or BulkSupplements. The US shops that do sell dried egg yolk are US-only (Modernist Pantry), make no international statement (Judee's) or are bot-walled (GoSupps, which advertises express international delivery for Judee's Egg Yolk Powder - worth a manual owner check). | Re-checked 2026-09-17 (close-americas): still BRAK, and now with the cross-border routes ruled out too. The one cross-border seller whose delivery statement names the Dominican Republic (gourmet-versand) does not sell egg yolk powder, and the Central-American chain that sells it has no Dominican storefront. A human could ask Distribuidora del Caribe whether they ship to DO, or contact a Dominican importer directly; nothing on the open web closes this row."
   }
+ },
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "last_review_agent": "close-americas",
+ "last_reviewed_at_utc": "2026-09-17T19:55:00Z"
 }

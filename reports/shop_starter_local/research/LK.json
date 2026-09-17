@@ -1,183 +1,252 @@
 {
-  "iso2": "LK",
-  "country": "Sri Lanka",
-  "agent": "research-south-asia-oceania-africa",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:30:00Z",
-  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site-search pages. Several Shopify stores answered HTTP 429 'Verifying your connection' on this egress (not bypassed).",
-  "items": {
-    "CRP": {
-      "result": "BRAK",
-      "local_terms": [
-        "cream powder",
-        "ක්‍රීම් කුඩු (si)",
-        "க்ரீம் பவுடர் (ta)"
-      ],
-      "queries": [
-        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on keellssuper.com, glomark.lk, kapruka.com, cargillsonline.com, arpicosupercentre.com, healthguard.lk, spar2u.lk",
-        "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on spar2u.lk",
-        "Sinhala/Tamil terms listed for owner copy; retailer URLs are English slugs",
-        "\"cream powder\" dairy spray dried milk fat 40% buy retail Asia baking supplier 1kg"
-      ],
-      "sources_tried": [
-        "keellssuper.com (supermarket chain) - 10.5k URLs scanned, no match",
-        "glomark.lk (supermarket) - 3.8k URLs scanned, no match",
-        "kapruka.com (online department store/grocer) - sitemap partly scanned (80-file cap), no match",
-        "spar2u.lk (supermarket, Shopify search) - no products for fructose/inulin/egg yolk powder; 'cream powder' search hit HTTP 429 challenge",
-        "healthguard.lk (pharmacy chain) - HTTP 403, inconclusive",
-        "cargillsonline.com - no product sitemap; arpicosupercentre.com - sitemap 404",
-        "daraz.lk (marketplace) - not used",
-        "no readable Sri Lankan baking/professional ingredient supplier could be identified without a working web search",
-        "hoosierhillfarm.com (US; real dairy \"Heavy Cream Powder\" 72 % butterfat found, but the shipping policy names no delivery countries - no cross-border evidence)",
-        "gourmet-versand.com (searched Sahnepulver, Rahmpulver, Milchpulver, Sahne: no dairy cream powder in the catalogue - only QimiQ whip desserts, coconut cream and horseradish cream)",
-        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no cream powder)",
-        "meilleurduchef.com (FR pastry supplier; delivery page /en/boutique/livraison.html lists no Asian market)",
-        "nzmp.com (Fonterra B2B ingredients brand): \"Cream Powder 55\" IS a real spray-dried dairy cream powder - the page prints \"Our cream powder is made from a blend of fresh dairy cream and skim milk, spray-dried to create a naturally rich 55%-fat powder\" (quote verified with check_quotes.py, found=true, ~/.cache/gellatti-evidence/quotes/gap-asia/nzmp_cream55.json). B2B-ONLY industrial ingredient, no retail pack and no purchase page - recorded as the B2B route under the owner rule, never to be shown as a retail offer."
-      ],
-      "candidates": [],
-      "notes": "No dairy cream powder found. Re-checked 2026-09-17 under the new owner rule (a real spray-dried dairy cream powder outside 38-48 % fat is a valid B_SAME_TYPE_DIFFERENT_COMPOSITION candidate). Still BRAK: no dairy cream powder of any fat level was found on a page that binds to this market. The only genuine retail dairy cream powder found anywhere in this pass is Hoosier Hill Farm \"Heavy Cream Powder\" (hoosierhillfarm.com, \"made with 100% real sweet cream\", \"72% butterfat content\", 1 lb / 2 lb / 25 lb, US) - it is NOT recorded as a candidate because the seller's shipping policy (hoosierhillfarm.com/policies/shipping-policy) prints no destination countries and no international-delivery statement, so there is no verifiable purchase path into this market. Owner may want to ask them directly. Owner rule 3 (B2B stays B2B): the only genuine dairy cream powder route that exists in this region is industrial - Fonterra/NZMP \"Cream Powder 55\" (blend of fresh dairy cream and skim milk, spray-dried, 55 % fat, quote verified) and regional B2B dairy traders such as bestdairies.com (Klang, Malaysia) in 25 kg sacks. Tagged B2B, not presented as a retail offer and not recorded as a candidate because no purchase page binds it to this market. Retail shelves in the region carry non-dairy creamers, whole/full-cream milk powders and whipped-topping mixes, which the protocol rejects."
-    },
-    "FRU": {
-      "result": "BRAK",
-      "local_terms": [
-        "fructose",
-        "ෆෲක්ටෝස් (si)",
-        "ஃப்ரக்டோஸ் (ta)"
-      ],
-      "queries": [
-        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on keellssuper.com, glomark.lk, kapruka.com, cargillsonline.com, arpicosupercentre.com, healthguard.lk, spar2u.lk",
-        "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on spar2u.lk",
-        "Sinhala/Tamil terms listed for owner copy; retailer URLs are English slugs",
-        "fructose powder buy Sri Lanka online pharmacy"
-      ],
-      "sources_tried": [
-        "keellssuper.com (supermarket chain) - 10.5k URLs scanned, no match",
-        "glomark.lk (supermarket) - 3.8k URLs scanned, no match",
-        "kapruka.com (online department store/grocer) - sitemap partly scanned (80-file cap), no match",
-        "spar2u.lk (supermarket, Shopify search) - no products for fructose/inulin/egg yolk powder; 'cream powder' search hit HTTP 429 challenge",
-        "healthguard.lk (pharmacy chain) - HTTP 403, inconclusive",
-        "cargillsonline.com - no product sitemap; arpicosupercentre.com - sitemap 404",
-        "daraz.lk (marketplace) - not used",
-        "no readable Sri Lankan baking/professional ingredient supplier could be identified without a working web search",
-        "jeewakapharmacy.lk (WooCommerce search ?s=fructose - no fructose product)",
-        "unionchemistspharmacy.lk (WooCommerce search ?s=fructose - no fructose product)",
-        "healthguard.lk (HTTP 403 Access Denied, not bypassed)",
-        "keellssuper.com (search path returns a 4.7 kB JS shell, no server-side results)"
-      ],
-      "candidates": [],
-      "notes": "No crystalline fructose found. BRAK stands after two more .lk pharmacy WooCommerce searches (jeewakapharmacy.lk, unionchemistspharmacy.lk); healthguard.lk answers 403 and keellssuper.com serves a JS-only search shell. Sri Lanka is not in the GOURMET VERSAND delivery list, so no cross-border fallback could be verified."
-    },
-    "INU": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "inulin",
-        "ඉනියුලින් (si)",
-        "இனுலின் (ta)"
-      ],
-      "queries": [
-        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on keellssuper.com, glomark.lk, kapruka.com, cargillsonline.com, arpicosupercentre.com, healthguard.lk, spar2u.lk",
-        "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on spar2u.lk",
-        "Sinhala/Tamil terms listed for owner copy; retailer URLs are English slugs",
-        "inulin Sri Lanka online pharmacy",
-        "Inulin (kiki-health.com country selector + shipping policy)"
-      ],
-      "sources_tried": [
-        "keellssuper.com (supermarket chain) - 10.5k URLs scanned, no match",
-        "glomark.lk (supermarket) - 3.8k URLs scanned, no match",
-        "kapruka.com (online department store/grocer) - sitemap partly scanned (80-file cap), no match",
-        "spar2u.lk (supermarket, Shopify search) - no products for fructose/inulin/egg yolk powder; 'cream powder' search hit HTTP 429 challenge",
-        "healthguard.lk (pharmacy chain) - HTTP 403, inconclusive",
-        "cargillsonline.com - no product sitemap; arpicosupercentre.com - sitemap 404",
-        "daraz.lk (marketplace) - not used",
-        "no readable Sri Lankan baking/professional ingredient supplier could be identified without a working web search",
-        "jeewakapharmacy.lk (WooCommerce search ?s=inulin - no inulin product)",
-        "unionchemistspharmacy.lk (WooCommerce search ?s=inulin - no inulin product)",
-        "healthguard.lk (HTTP 403 Access Denied, not bypassed)",
-        "kiki-health.com (UK brand shop; organic agave inulin 250 g, GTIN 5060018515847, schema.org InStock; its Shopify country/region selector names this country but its shipping policy names none - LEAD only)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "KIKI Health",
-          "product_name": "Inulin Powder, Organic - 250g",
-          "pack": "250 g",
-          "gtin": "5060018515847",
-          "identifier_confirmed": true,
-          "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "KIKI Health (UK brand web shop)",
-          "page_market": null,
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "no local binding (UK brand shop on a generic .com); cross-border candidate only - see ships_to_evidence",
-          "cross_border": true,
-          "ships_to_evidence": "LEAD-grade only. The shop's Shopify country/region selector on the product page carries the exact option \"Sri Lanka (LKR ₨)\" (check_quotes.py found=true, ratio 1.0, 2026-09-17; ~/.cache/gellatti-evidence/quotes/gap-asia/kiki_sel_LK.json), but that is the /localization (market + currency) selector, NOT a shipping-cost country selector. The shipping policy names no country: \"For EU and International orders, postage costs vary according to your country.\" (check_quotes.py found=true; ~/.cache/gellatti-evidence/quotes/gap-asia/kiki_policy.json), and it also warns \"Some countries may require bespoke postage, please contact the KIKI team for shipping costs and further information if unable to select a delivery option at the checkout.\" Under the owner rule of 2026-09-17 a generic international-delivery statement is not confirmation, so this stays a LEAD until the owner sees a delivery option for this country at checkout.",
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:45:00Z",
-            "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") and Shopify product data variants[0].\"available\": true",
-            "source": "https://kiki-health.com/products/inulin-powder-organic-250g"
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": 93.0,
-            "fructose_pct": null,
-            "ingredients": "100% organic inulin from Blue Agave (Agave Tequilana Weber Blue)",
-            "from": "product page \"Ingredients\" block plus the printed claims \"93% soluble plant-based fibre\", \"Made from 100% Blue Agave\", \"5.4g of fibre per serving\", \"Completely pure, with no added sugars or sweeteners\""
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "pure organic agave inulin, 93 % soluble fibre (reference: fibre 89)",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/51db948e9a232bd2.json",
-          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
-          "notes": "gtin13 5060018515847 confirmed as data on this page (verify_ean_market.py: clean_hits 2, echo_hits 0, identity_basis GTIN_ON_THIS_PAGE). Added because no Sri Lankan source was found at all and Sri Lanka is not in the GOURMET VERSAND delivery selector. NOTE for the owner: the same product/shop is recorded as VERIFIED_CROSS_BORDER in DZ.json by another agent on the strength of the same country selector; this row is deliberately the more cautious reading of the 2026-09-17 cross-border rule, and the two files should be reconciled.",
-          "checked_at_utc": "2026-09-17T18:45:00Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "found_by": "gap-asia"
-        }
-      ],
-      "notes": "No inulin powder found. BRAK stands after two more .lk pharmacy WooCommerce searches (jeewakapharmacy.lk, unionchemistspharmacy.lk); healthguard.lk answers 403. Sri Lanka is not in the GOURMET VERSAND delivery list. Cross-border fallback added 2026-09-17: KIKI Health organic agave inulin 250 g (in stock, GTIN on the page). It is a LEAD, not VERIFIED_CROSS_BORDER, because the shop only shows a Shopify country/region (currency) selector and a generic international-delivery policy."
-    },
-    "YOL": {
-      "result": "BRAK",
-      "local_terms": [
-        "egg yolk powder",
-        "බිත්තර කහ මද කුඩු (si)",
-        "முட்டை மஞ்சள் கரு தூள் (ta)"
-      ],
-      "queries": [
-        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on keellssuper.com, glomark.lk, kapruka.com, cargillsonline.com, arpicosupercentre.com, healthguard.lk, spar2u.lk",
-        "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on spar2u.lk",
-        "Sinhala/Tamil terms listed for owner copy; retailer URLs are English slugs",
-        "jaune d'oeuf en poudre (cuisineaddict.com, cerf-dellier.com)",
-        "Eigelbpulver (pati-versand.de)"
-      ],
-      "sources_tried": [
-        "keellssuper.com (supermarket chain) - 10.5k URLs scanned, no match",
-        "glomark.lk (supermarket) - 3.8k URLs scanned, no match",
-        "kapruka.com (online department store/grocer) - sitemap partly scanned (80-file cap), no match",
-        "spar2u.lk (supermarket, Shopify search) - no products for fructose/inulin/egg yolk powder; 'cream powder' search hit HTTP 429 challenge",
-        "healthguard.lk (pharmacy chain) - HTTP 403, inconclusive",
-        "cargillsonline.com - no product sitemap; arpicosupercentre.com - sitemap 404",
-        "daraz.lk (marketplace) - not used",
-        "no readable Sri Lankan baking/professional ingredient supplier could be identified without a working web search",
-        "gourmet-versand.com (searched Eigelbpulver, Eigelb, Eipulver, Vollei, Trockenei: no egg powder in the catalogue - only egg-yellow food colourings)",
-        "taste-market.de (German shop with a real \"Eigelbpulver\" 100 g, ingredients \"Hühner-Eigelb\", GTIN 4262421423127 - kept out because the served HTML exposes no shipping/delivery-country page, so no cross-border evidence)",
-        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no egg yolk powder)",
-        "pati-versand.de (German baking retailer with a real \"Eigelbpulver 100g\", brand Cake-Masters Basics, ingredients \"HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET\", schema.org InStock / \"Auf Lager\") - NOT usable: its \"Rest der Welt\" zone is an explicit list of 20 European countries only (\"Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, ... Ungarn\", quote verified with check_quotes.py, ~/.cache/gellatti-evidence/quotes/gap-asia/pati_eu_only.json), no Asian market",
-        "cuisineaddict.com (FR; search \"jaune d'oeuf en poudre\" returns only egg-yellow food COLOURING E102/E129)",
-        "cerf-dellier.com (FR pastry supplier; search returns \"Désolé, nous ne trouvons aucun produit\")",
-        "bienmanger.com (FR; search path HTTP 404)",
-        "modernistpantry.com (US; /products.json and /search both HTTP 404 - no readable catalogue)",
-        "modernistpantry.com (US; \"Egg Yolk Powder\", page text \"Egg yolk powder is made of spray dried pasteurized egg yolks ... Made in the USA and contains no additives of any kind\", page shows \"in stock\") - NOT usable as cross-border evidence: the international-shipping page names no country, only \"We are currently only offering FedEx shipping for international customers. To see whether we can ship to your country just add the products to cart and go to the checkout page.\" (adding to carts is out of scope by protocol rule 8)"
-      ],
-      "candidates": [],
-      "notes": "No dried egg yolk powder found. Cross-border route for dried egg yolk was searched and closed 2026-09-17: the one European retailer with a verified 100 % spray-dried chicken egg yolk powder in a 100 g retail pack (pati-versand.de, \"Eigelbpulver 100g\") ships only to a named list of 20 European countries, and gourmet-versand.com - the one shop whose delivery-country selector does name Asian markets - has no egg powder at all. So there is currently no verifiable purchase path for dried egg yolk into this market."
-    }
+ "iso2": "LK",
+ "country": "Sri Lanka",
+ "agent": "research-south-asia-oceania-africa",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:30:00Z",
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site-search pages. Several Shopify stores answered HTTP 429 'Verifying your connection' on this egress (not bypassed).",
+ "items": {
+  "CRP": {
+   "result": "BRAK",
+   "local_terms": [
+    "cream powder",
+    "ක්‍රීම් කුඩු (si)",
+    "க்ரீம் பவுடர் (ta)"
+   ],
+   "queries": [
+    "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on keellssuper.com, glomark.lk, kapruka.com, cargillsonline.com, arpicosupercentre.com, healthguard.lk, spar2u.lk",
+    "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on spar2u.lk",
+    "Sinhala/Tamil terms listed for owner copy; retailer URLs are English slugs",
+    "\"cream powder\" dairy spray dried milk fat 40% buy retail Asia baking supplier 1kg",
+    "site:gourmet-versand.com Sahnepulver Eigelbpulver Trockeneigelb",
+    "gourmet-versand.com \"Eigelb\" Pulver Sosa oder \"Sahnepulver\" kaufen",
+    "msk-ingredients.com \"cream powder\" \"egg yolk powder\" buy online"
+   ],
+   "sources_tried": [
+    "keellssuper.com (supermarket chain) - 10.5k URLs scanned, no match",
+    "glomark.lk (supermarket) - 3.8k URLs scanned, no match",
+    "kapruka.com (online department store/grocer) - sitemap partly scanned (80-file cap), no match",
+    "spar2u.lk (supermarket, Shopify search) - no products for fructose/inulin/egg yolk powder; 'cream powder' search hit HTTP 429 challenge",
+    "healthguard.lk (pharmacy chain) - HTTP 403, inconclusive",
+    "cargillsonline.com - no product sitemap; arpicosupercentre.com - sitemap 404",
+    "daraz.lk (marketplace) - not used",
+    "no readable Sri Lankan baking/professional ingredient supplier could be identified without a working web search",
+    "hoosierhillfarm.com (US; real dairy \"Heavy Cream Powder\" 72 % butterfat found, but the shipping policy names no delivery countries - no cross-border evidence)",
+    "gourmet-versand.com (searched Sahnepulver, Rahmpulver, Milchpulver, Sahne: no dairy cream powder in the catalogue - only QimiQ whip desserts, coconut cream and horseradish cream)",
+    "souschef.co.uk (UK; full Shopify catalogue read via products.json - no cream powder)",
+    "meilleurduchef.com (FR pastry supplier; delivery page /en/boutique/livraison.html lists no Asian market)",
+    "nzmp.com (Fonterra B2B ingredients brand): \"Cream Powder 55\" IS a real spray-dried dairy cream powder - the page prints \"Our cream powder is made from a blend of fresh dairy cream and skim milk, spray-dried to create a naturally rich 55%-fat powder\" (quote verified with check_quotes.py, found=true, ~/.cache/gellatti-evidence/quotes/gap-asia/nzmp_cream55.json). B2B-ONLY industrial ingredient, no retail pack and no purchase page - recorded as the B2B route under the owner rule, never to be shown as a retail offer.",
+    "gourmet-versand.com category /en/cat191/cream-powder-and-masses.html read in full (2026-09-17): 14 articles, all rejected types - \"cream powder vanilla declaration free cooking cream 1 kg\", \"gourmet filling cream cold cream powder 1 kg\", \"vanilla cold cream powder vegan 1 kg\", Irca Dolce Vita dessert powders, skimmed milk powder 1 kg, whole milk powder (at least 26 % fat) 1 kg, dulce de leche, tant pour tant. No spray-dried dairy cream powder in the seller that does deliver to this market",
+    "taste-market.de (DE): has real egg/milk powders but NO Sahnepulver; its own delivery page https://www.taste-market.de/Informationen/Zahlung-Versand/ states \"TASTE MARKET liefert deine Lieblingsgewuerze, Tees, Nahrungsergaenzungsmittel, Superfoods und Nuesse europaweit zu dir nach Hause\" and the international price table lists only Oesterreich, Schweiz, Belgien, Finnland, Schweden, Italien, Niederlande, Norwegen, England & Liechtenstein - Europe only, no Asian market",
+    "msk-ingredients.com (UK, sells to trade and public, guest checkout): delivery page prints only a bare \"We deliver worldwide using DHL\" with no country named (protocol rule 14 - not delivery evidence), and no dairy cream powder was found in its Spray Dried Powders / Other Powdered Ingredients categories",
+    "shop.redmanshop.com (RedMan / Phoon Huat, SG): full Shopify catalogue read via products.json (3 500 titles) - no dairy cream powder; only FULL CREAM MILK POWDER 25KG, SKIMMED MILK POWDER 25KG, EVERYDAY MILK POWDER 1.2KG and NON-DAIRY CREAMER-BUBBLETEA 25KG (rejected types)",
+    "bakingwarehouse.com (HK): full Shopify catalogue read via products.json (2 136 titles) - no cream powder at all; only Lactose Free Skimmed Milk Powder 1kg, Skimmed Milk Powder 1kg/25kg, Whole Milk Powder 25kg (rejected types)"
+   ],
+   "candidates": [],
+   "notes": "No dairy cream powder found. Re-checked 2026-09-17 under the new owner rule (a real spray-dried dairy cream powder outside 38-48 % fat is a valid B_SAME_TYPE_DIFFERENT_COMPOSITION candidate). Still BRAK: no dairy cream powder of any fat level was found on a page that binds to this market. The only genuine retail dairy cream powder found anywhere in this pass is Hoosier Hill Farm \"Heavy Cream Powder\" (hoosierhillfarm.com, \"made with 100% real sweet cream\", \"72% butterfat content\", 1 lb / 2 lb / 25 lb, US) - it is NOT recorded as a candidate because the seller's shipping policy (hoosierhillfarm.com/policies/shipping-policy) prints no destination countries and no international-delivery statement, so there is no verifiable purchase path into this market. Owner may want to ask them directly. Owner rule 3 (B2B stays B2B): the only genuine dairy cream powder route that exists in this region is industrial - Fonterra/NZMP \"Cream Powder 55\" (blend of fresh dairy cream and skim milk, spray-dried, 55 % fat, quote verified) and regional B2B dairy traders such as bestdairies.com (Klang, Malaysia) in 25 kg sacks. Tagged B2B, not presented as a retail offer and not recorded as a candidate because no purchase page binds it to this market. Retail shelves in the region carry non-dairy creamers, whole/full-cream milk powders and whipped-topping mixes, which the protocol rejects. 2026-09-17 close-asia round: the search was widened from local shops to the cross-border sellers whose delivery statements do name this market. gourmet-versand.com - the one seller whose shipping-cost country selector names this country - has a category literally called \"Cream powder and masses\" but it holds only cooking-cream and dessert mixes plus plain milk powders; taste-market.de and pati-versand.de deliver inside Europe only; msk-ingredients.com offers only a bare \"worldwide\" claim. No dairy cream powder at any fat level could be tied to this market, so CRP stays BRAK."
   },
-  "gap_followup_agent": "gap-asia",
-  "gap_followup_at_utc": "2026-09-17T18:30:00Z",
-  "gap_followup_egress_cc": "ES"
+  "FRU": {
+   "result": "BRAK",
+   "local_terms": [
+    "fructose",
+    "ෆෲක්ටෝස් (si)",
+    "ஃப்ரக்டோஸ் (ta)"
+   ],
+   "queries": [
+    "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on keellssuper.com, glomark.lk, kapruka.com, cargillsonline.com, arpicosupercentre.com, healthguard.lk, spar2u.lk",
+    "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on spar2u.lk",
+    "Sinhala/Tamil terms listed for owner copy; retailer URLs are English slugs",
+    "fructose powder buy Sri Lanka online pharmacy"
+   ],
+   "sources_tried": [
+    "keellssuper.com (supermarket chain) - 10.5k URLs scanned, no match",
+    "glomark.lk (supermarket) - 3.8k URLs scanned, no match",
+    "kapruka.com (online department store/grocer) - sitemap partly scanned (80-file cap), no match",
+    "spar2u.lk (supermarket, Shopify search) - no products for fructose/inulin/egg yolk powder; 'cream powder' search hit HTTP 429 challenge",
+    "healthguard.lk (pharmacy chain) - HTTP 403, inconclusive",
+    "cargillsonline.com - no product sitemap; arpicosupercentre.com - sitemap 404",
+    "daraz.lk (marketplace) - not used",
+    "no readable Sri Lankan baking/professional ingredient supplier could be identified without a working web search",
+    "jeewakapharmacy.lk (WooCommerce search ?s=fructose - no fructose product)",
+    "unionchemistspharmacy.lk (WooCommerce search ?s=fructose - no fructose product)",
+    "healthguard.lk (HTTP 403 Access Denied, not bypassed)",
+    "keellssuper.com (search path returns a 4.7 kB JS shell, no server-side results)",
+    "guthealth.lk full catalogue via the shop's Store API - four products only (Inulin Powder, Psyllium Powder, Vitamin C Powder, Vitamin C Capsules), no fructose",
+    "sportsnutritionhub.lk / supplementshop.lk / scsupplements.lk / supplementwarehouse.lk / yaluyalu.lk / kapruka.com / glomark.lk / cargillsonline.com - no fructose product"
+   ],
+   "candidates": [],
+   "notes": "No crystalline fructose found. BRAK stands after two more .lk pharmacy WooCommerce searches (jeewakapharmacy.lk, unionchemistspharmacy.lk); healthguard.lk answers 403 and keellssuper.com serves a JS-only search shell. Sri Lanka is not in the GOURMET VERSAND delivery list, so no cross-border fallback could be verified."
+  },
+  "INU": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "inulin",
+    "ඉනියුලින් (si)",
+    "இனுலின் (ta)",
+    "ඉනියුලින්"
+   ],
+   "queries": [
+    "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on keellssuper.com, glomark.lk, kapruka.com, cargillsonline.com, arpicosupercentre.com, healthguard.lk, spar2u.lk",
+    "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on spar2u.lk",
+    "Sinhala/Tamil terms listed for owner copy; retailer URLs are English slugs",
+    "inulin Sri Lanka online pharmacy",
+    "Inulin (kiki-health.com country selector + shipping policy)",
+    "Sri Lanka buy \"inulin powder\" OR \"fructose\" online store .lk",
+    "Sri Lanka online store buy inulin powder fructose Colombo delivery health"
+   ],
+   "sources_tried": [
+    "keellssuper.com (supermarket chain) - 10.5k URLs scanned, no match",
+    "glomark.lk (supermarket) - 3.8k URLs scanned, no match",
+    "kapruka.com (online department store/grocer) - sitemap partly scanned (80-file cap), no match",
+    "spar2u.lk (supermarket, Shopify search) - no products for fructose/inulin/egg yolk powder; 'cream powder' search hit HTTP 429 challenge",
+    "healthguard.lk (pharmacy chain) - HTTP 403, inconclusive",
+    "cargillsonline.com - no product sitemap; arpicosupercentre.com - sitemap 404",
+    "daraz.lk (marketplace) - not used",
+    "no readable Sri Lankan baking/professional ingredient supplier could be identified without a working web search",
+    "jeewakapharmacy.lk (WooCommerce search ?s=inulin - no inulin product)",
+    "unionchemistspharmacy.lk (WooCommerce search ?s=inulin - no inulin product)",
+    "healthguard.lk (HTTP 403 Access Denied, not bypassed)",
+    "kiki-health.com (UK brand shop; organic agave inulin 250 g, GTIN 5060018515847, schema.org InStock; its Shopify country/region selector names this country but its shipping policy names none - LEAD only)",
+    "sportsnutritionhub.lk, supplementshop.lk, scsupplements.lk, supplementwarehouse.lk, yaluyalu.lk, kapruka.com, glomark.lk, cargillsonline.com - searched for inulin and fructose; only sports gels/collagen whose ingredient text mentions inulin, no inulin or fructose product",
+    "guthealth.lk (CEL Lanka (pvt) Ltd, .lk) - own-brand \"Inulin Powder\", read through the shop's public WooCommerce Store API"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "GutHealth",
+     "product_name": "Inulin Powder",
+     "pack": "100 g / 200 g / 500 g (three weight variants on one listing)",
+     "pack_grams": 100,
+     "moq": null,
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://guthealth.lk/product/inulin-powder/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "GutHealth – CEL Lanka (pvt) Ltd",
+     "page_market": "LK",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "country domain .lk (verify_ean_market.py 2026-09-17: page_market LK, market_by CCTLD, market_binding_confirmed true, source_type DIRECT); the shop's own footer names the Sri Lankan operator CEL Lanka (pvt) Ltd; prices in Rs.",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "channel": null,
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:05:00Z",
+      "basis": "page prints \"In stock\" and the shop's Store API returns is_in_stock true for the listing; price range Rs. 1,200.00 – Rs. 4,500.00",
+      "source": "https://guthealth.lk/product/inulin-powder/"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "product description: \"naturally sourced from Chicory Root\", \"gentle mildly sweet calorie-free plant based prebiotic powder\", \"100 daily Servings. 500 grams\", Non-GMO, gluten-free, vegan-friendly. No ingredient list and no inulin/fibre percentage are printed, and the listing carries no SKU (\"SKU: N/A\")"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "Right type - a chicory-root inulin powder in retail packs from 100 g - but the page prints no inulin or fibre percentage, so A (>= 85 %) versus B (short-chain FOS) cannot be decided. Identity (own-brand first-party listing), the .lk market binding and In stock are all confirmed; only the composition is missing.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/b4ea428b368c64ce.json",
+     "notes": "The only Sri Lankan inulin found on a local domain. The shop sells four products in total (Inulin Powder, Psyllium Powder, Vitamin C Powder, Vitamin C Capsules). Its contact block still shows a US placeholder address from the site template, which is why the Sri Lankan binding is taken from the .lk domain and the operator name in the footer, not from that block.",
+     "owner_check": "Ask GutHealth for the inulin/fibre content per 100 g and the ingredient line; a 100 g pack at Rs. 1,200 is the closest Sri Lankan match found so far.",
+     "checked_at_utc": "2026-09-17T20:05:00Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "found_by": "close-asia"
+    },
+    {
+     "rank": 2,
+     "brand": "KIKI Health",
+     "product_name": "Inulin Powder, Organic - 250g",
+     "pack": "250 g",
+     "gtin": "5060018515847",
+     "identifier_confirmed": true,
+     "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "KIKI Health (UK brand web shop)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "no local binding (UK brand shop on a generic .com); cross-border candidate only - see ships_to_evidence",
+     "cross_border": true,
+     "ships_to_evidence": "LEAD-grade only. The shop's Shopify country/region selector on the product page carries the exact option \"Sri Lanka (LKR ₨)\" (check_quotes.py found=true, ratio 1.0, 2026-09-17; ~/.cache/gellatti-evidence/quotes/gap-asia/kiki_sel_LK.json), but that is the /localization (market + currency) selector, NOT a shipping-cost country selector. The shipping policy names no country: \"For EU and International orders, postage costs vary according to your country.\" (check_quotes.py found=true; ~/.cache/gellatti-evidence/quotes/gap-asia/kiki_policy.json), and it also warns \"Some countries may require bespoke postage, please contact the KIKI team for shipping costs and further information if unable to select a delivery option at the checkout.\" Under the owner rule of 2026-09-17 a generic international-delivery statement is not confirmation, so this stays a LEAD until the owner sees a delivery option for this country at checkout.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:45:00Z",
+      "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") and Shopify product data variants[0].\"available\": true",
+      "source": "https://kiki-health.com/products/inulin-powder-organic-250g"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": 93.0,
+      "fructose_pct": null,
+      "ingredients": "100% organic inulin from Blue Agave (Agave Tequilana Weber Blue)",
+      "from": "product page \"Ingredients\" block plus the printed claims \"93% soluble plant-based fibre\", \"Made from 100% Blue Agave\", \"5.4g of fibre per serving\", \"Completely pure, with no added sugars or sweeteners\""
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "pure organic agave inulin, 93 % soluble fibre (reference: fibre 89)",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/51db948e9a232bd2.json",
+     "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+     "notes": "gtin13 5060018515847 confirmed as data on this page (verify_ean_market.py: clean_hits 2, echo_hits 0, identity_basis GTIN_ON_THIS_PAGE). Added because no Sri Lankan source was found at all and Sri Lanka is not in the GOURMET VERSAND delivery selector. NOTE for the owner: the same product/shop is recorded as VERIFIED_CROSS_BORDER in DZ.json by another agent on the strength of the same country selector; this row is deliberately the more cautious reading of the 2026-09-17 cross-border rule, and the two files should be reconciled.",
+     "checked_at_utc": "2026-09-17T18:45:00Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "found_by": "gap-asia",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the country is offered in the seller own shipping-destination list"
+    }
+   ],
+   "notes": "No inulin powder found. BRAK stands after two more .lk pharmacy WooCommerce searches (jeewakapharmacy.lk, unionchemistspharmacy.lk); healthguard.lk answers 403. Sri Lanka is not in the GOURMET VERSAND delivery list. Cross-border fallback added 2026-09-17: KIKI Health organic agave inulin 250 g (in stock, GTIN on the page). It is a LEAD, not VERIFIED_CROSS_BORDER, because the shop only shows a Shopify country/region (currency) selector and a generic international-delivery policy. 2026-09-17 close-asia: a genuinely local option was found - guthealth.lk (CEL Lanka (pvt) Ltd) sells an own-brand chicory-root Inulin Powder in 100/200/500 g, In stock, on a .lk domain. It stays a LEAD only because the page prints no inulin/fibre percentage."
+  },
+  "YOL": {
+   "result": "BRAK",
+   "local_terms": [
+    "egg yolk powder",
+    "බිත්තර කහ මද කුඩු (si)",
+    "முட்டை மஞ்சள் கரு தூள் (ta)"
+   ],
+   "queries": [
+    "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on keellssuper.com, glomark.lk, kapruka.com, cargillsonline.com, arpicosupercentre.com, healthguard.lk, spar2u.lk",
+    "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on spar2u.lk",
+    "Sinhala/Tamil terms listed for owner copy; retailer URLs are English slugs",
+    "jaune d'oeuf en poudre (cuisineaddict.com, cerf-dellier.com)",
+    "Eigelbpulver (pati-versand.de)",
+    "modernistpantry.com egg yolk powder cream powder international shipping countries",
+    "site:gourmet-versand.com Sahnepulver Eigelbpulver Trockeneigelb"
+   ],
+   "sources_tried": [
+    "keellssuper.com (supermarket chain) - 10.5k URLs scanned, no match",
+    "glomark.lk (supermarket) - 3.8k URLs scanned, no match",
+    "kapruka.com (online department store/grocer) - sitemap partly scanned (80-file cap), no match",
+    "spar2u.lk (supermarket, Shopify search) - no products for fructose/inulin/egg yolk powder; 'cream powder' search hit HTTP 429 challenge",
+    "healthguard.lk (pharmacy chain) - HTTP 403, inconclusive",
+    "cargillsonline.com - no product sitemap; arpicosupercentre.com - sitemap 404",
+    "daraz.lk (marketplace) - not used",
+    "no readable Sri Lankan baking/professional ingredient supplier could be identified without a working web search",
+    "gourmet-versand.com (searched Eigelbpulver, Eigelb, Eipulver, Vollei, Trockenei: no egg powder in the catalogue - only egg-yellow food colourings)",
+    "taste-market.de (German shop with a real \"Eigelbpulver\" 100 g, ingredients \"Hühner-Eigelb\", GTIN 4262421423127 - kept out because the served HTML exposes no shipping/delivery-country page, so no cross-border evidence)",
+    "souschef.co.uk (UK; full Shopify catalogue read via products.json - no egg yolk powder)",
+    "pati-versand.de (German baking retailer with a real \"Eigelbpulver 100g\", brand Cake-Masters Basics, ingredients \"HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET\", schema.org InStock / \"Auf Lager\") - NOT usable: its \"Rest der Welt\" zone is an explicit list of 20 European countries only (\"Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, ... Ungarn\", quote verified with check_quotes.py, ~/.cache/gellatti-evidence/quotes/gap-asia/pati_eu_only.json), no Asian market",
+    "cuisineaddict.com (FR; search \"jaune d'oeuf en poudre\" returns only egg-yellow food COLOURING E102/E129)",
+    "cerf-dellier.com (FR pastry supplier; search returns \"Désolé, nous ne trouvons aucun produit\")",
+    "bienmanger.com (FR; search path HTTP 404)",
+    "modernistpantry.com (US; /products.json and /search both HTTP 404 - no readable catalogue)",
+    "modernistpantry.com (US; \"Egg Yolk Powder\", page text \"Egg yolk powder is made of spray dried pasteurized egg yolks ... Made in the USA and contains no additives of any kind\", page shows \"in stock\") - NOT usable as cross-border evidence: the international-shipping page names no country, only \"We are currently only offering FedEx shipping for international customers. To see whether we can ship to your country just add the products to cart and go to the checkout page.\" (adding to carts is out of scope by protocol rule 8)",
+    "modernistpantry.com \"Egg Yolk Powder\" (US, spray-dried pasteurised AAA egg yolks, Home 50 g / Professional 400 g / Commercial 50 lb): the product page itself prints \"NOTE: Available to US customers only at this time\" - excluded for every market in this set, not merely unconfirmed",
+    "taste-market.de \"Eigelbpulver\" 200 g (ingredients \"Huehner-Eigelb, spruehgetrocknet und pasteurisiert\"; per 100 g: fat 58 g, of which saturates 18 g, carbohydrate 2.1 g, of which sugars 0 g, protein 34 g, salt 0.4 g; 14 pack sizes 100 g - 25 kg): a genuine A-type product, but the seller's delivery page says it delivers \"europaweit\" and its international price table names only Oesterreich, Schweiz, Belgien, Finnland, Schweden, Italien, Niederlande, Norwegen, England & Liechtenstein - no Asian market, so it is not a cross-border option",
+    "gourmet-versand.com (the one cross-border seller whose shipping-cost country selector does name this market): category /en/cat198/patisserie-aids.html read in full - the only egg powder is \"Puratos - dried egg white powder, 2.5 kg\"; no egg YOLK powder anywhere in the catalogue",
+    "bakingwarehouse.com (HK): full catalogue via products.json - \"Dried Egg White powder 1kg - albumen powder\" and \"Chilled Pasteurized Egg yolk 1kg\" (liquid) only; no dried egg yolk powder"
+   ],
+   "candidates": [],
+   "notes": "No dried egg yolk powder found. Cross-border route for dried egg yolk was searched and closed 2026-09-17: the one European retailer with a verified 100 % spray-dried chicken egg yolk powder in a 100 g retail pack (pati-versand.de, \"Eigelbpulver 100g\") ships only to a named list of 20 European countries, and gourmet-versand.com - the one shop whose delivery-country selector does name Asian markets - has no egg powder at all. So there is currently no verifiable purchase path for dried egg yolk into this market."
+  }
+ },
+ "gap_followup_agent": "gap-asia",
+ "gap_followup_at_utc": "2026-09-17T18:30:00Z",
+ "gap_followup_egress_cc": "ES",
+ "close_open_roles_agent": "close-asia",
+ "close_open_roles_at_utc": "2026-09-17T20:05:00Z",
+ "close_open_roles_egress_cc": "ES"
 }

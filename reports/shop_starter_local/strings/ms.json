@@ -22,12 +22,14 @@
   "tag_alternative": "Alternatif tempatan",
   "tag_unconfirmed": "Belum disahkan",
   "tag_abroad_unconfirmed": "Kedai luar negara",
+  "tag_large_pack": "Pek besar",
   "legend": {
     "from_abroad": "kedai di luar negara yang senarai penghantarannya menyebut negara ini",
     "b2b": "dijual kepada perniagaan atau dalam pek besar — bukan tawaran runcit biasa",
     "other_composition": "jenis produk yang sama dengan komposisi berbeza (dinyatakan di sebelahnya)",
     "alternative": "pengganti bagi produk Gellatti yang lain",
-    "abroad_unconfirmed": "kedai di luar negara; penghantaran ke negara ini belum disahkan"
+    "abroad_unconfirmed": "kedai di luar negara; penghantaran ke negara ini belum disahkan",
+    "large_pack": "dijual dalam pek 5 kg atau lebih"
   },
   "starter_amount": "Dalam Starter Pack: {g} g",
   "option": "Pilihan {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Alternatif tempatan kepada campuran Gellatti, bukan campuran yang sama. Campurkan dengan bahan kering, kemudian panaskan adunan asas hingga 75–80 °C.",
   "missing": "Belum ada produk yang diluluskan di negara ini.",
   "out_of_stock": "Kedai menunjukkannya kehabisan stok pada {date}.",
+  "delivery_unconfirmed": "Penghantaran ke {country} belum disahkan — tanya penjual.",
+  "extra_title": "Maklumat tambahan",
   "notes_title": "Baik untuk diketahui",
   "notes": [
     {"h": "Ketersediaan", "p": "Kami menyemak produk yang dikaji di laman web kedai dan pengeluar pada 17 September 2026. Dekstrosa, susu tepung skim dan penstabil berasal daripada jadual negara Gellatti bertarikh 12 September 2026 dan tidak disemak semula. Ketersediaan, harga dan penghantaran boleh berubah dan tidak dijamin."},

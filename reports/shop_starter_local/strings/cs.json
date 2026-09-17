@@ -22,12 +22,14 @@
   "tag_alternative": "Místní alternativa",
   "tag_unconfirmed": "Nepotvrzeno",
   "tag_abroad_unconfirmed": "Zahraniční obchod",
+  "tag_large_pack": "Velké balení",
   "legend": {
     "from_abroad": "obchod v zahraničí, jehož vlastní seznam doručování uvádí tuto zemi",
     "b2b": "prodej firmám nebo ve velkých baleních — ne běžná maloobchodní nabídka",
     "other_composition": "stejný druh produktu s jiným složením (uvedeným vedle)",
     "alternative": "náhrada za jiný produkt Gellatti",
-    "abroad_unconfirmed": "obchod v zahraničí; doručení do této země není potvrzené"
+    "abroad_unconfirmed": "obchod v zahraničí; doručení do této země není potvrzené",
+    "large_pack": "prodává se v balení od 5 kg"
   },
   "starter_amount": "Ve Starter Packu: {g} g",
   "option": "Možnost {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Místní alternativa ke směsi Gellatti, nikoli stejná směs. Smíchejte ji se suchými surovinami a základ zahřejte na 75–80 °C.",
   "missing": "V této zemi zatím není schválený produkt.",
   "out_of_stock": "Obchod tento produkt {date} uváděl jako vyprodaný.",
+  "delivery_unconfirmed": "Doručení — {country}: nepotvrzeno. Ověřte u prodejce.",
+  "extra_title": "Doplňující informace",
   "notes_title": "Dobré vědět",
   "notes": [
     {"h": "Dostupnost", "p": "Vyhledané produkty jsme 17. září 2026 ověřili na webech obchodů a výrobců. Dextróza, sušené odstředěné mléko a stabilizátor pocházejí z tabulky zemí Gellatti z 12. září 2026 a znovu ověřovány nebyly. Dostupnost, ceny a doručení se mohou změnit a nejsou zaručeny."},

@@ -31,12 +31,14 @@
   "tag_alternative": "Lokalna alternatywa",
   "tag_unconfirmed": "Niepotwierdzone",
   "tag_abroad_unconfirmed": "Sklep za granicą",
+  "tag_large_pack": "Duże opakowanie",
   "legend": {
     "from_abroad": "sklep za granicą, który wymienia ten kraj na swojej liście dostaw",
     "b2b": "sprzedaż dla firm lub w dużych opakowaniach — nie zwykła oferta detaliczna",
     "other_composition": "ten sam rodzaj produktu, ale inny skład (podany obok)",
     "alternative": "zamiennik innego produktu Gellatti",
-    "abroad_unconfirmed": "sklep za granicą; dostawa do tego kraju nie jest potwierdzona"
+    "abroad_unconfirmed": "sklep za granicą; dostawa do tego kraju nie jest potwierdzona",
+    "large_pack": "sprzedawane w opakowaniu od 5 kg"
   },
   "starter_amount": "W Starter Packu: {g} g",
   "option": "Wybór {n}",
@@ -76,6 +78,9 @@
   "stabilizer_note": "Lokalna alternatywa dla mieszanki Gellatti, nie ta sama mieszanka. Wymieszaj z suchymi składnikami i podgrzej bazę do 75–80 °C.",
   "missing": "Brak zatwierdzonego produktu w tym kraju.",
   "out_of_stock": "Sklep pokazał brak towaru {date}.",
+  "delivery_unconfirmed": "Dostawa do {country} niepotwierdzona — sprawdź u sprzedawcy.",
+  "extra_title": "Warto też wiedzieć",
+  "other_composition_note": "Aplikacja liczy ilości dla składu referencyjnego, nie dla tego produktu.",
   "notes_title": "Warto wiedzieć",
   "notes": [
     {

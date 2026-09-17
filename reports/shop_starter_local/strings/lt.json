@@ -22,12 +22,14 @@
   "tag_alternative": "Vietinė alternatyva",
   "tag_unconfirmed": "Nepatvirtinta",
   "tag_abroad_unconfirmed": "Užsienio parduotuvė",
+  "tag_large_pack": "Didelė pakuotė",
   "legend": {
     "from_abroad": "užsienio parduotuvė, kurios pristatymo sąraše nurodyta ši šalis",
     "b2b": "parduodama įmonėms arba didelėmis pakuotėmis — ne įprastas mažmeninis pasiūlymas",
     "other_composition": "tos pačios rūšies produktas su kitokia sudėtimi (nurodyta šalia)",
     "alternative": "kito Gellatti produkto pakaitalas",
-    "abroad_unconfirmed": "užsienio parduotuvė; pristatymas į šią šalį nepatvirtintas"
+    "abroad_unconfirmed": "užsienio parduotuvė; pristatymas į šią šalį nepatvirtintas",
+    "large_pack": "parduodama 5 kg ar didesnėje pakuotėje"
   },
   "starter_amount": "Starter Pack rinkinyje: {g} g",
   "option": "Variantas {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Vietinė alternatyva Gellatti mišiniui, ne tas pats mišinys. Sumaišykite ją su sausais ingredientais ir pakaitinkite pagrindą iki 75–80 °C.",
   "missing": "Šioje šalyje dar nėra patvirtinto produkto.",
   "out_of_stock": "Parduotuvė {date} rodė, kad prekės nėra.",
+  "delivery_unconfirmed": "Pristatymas — {country}: nepatvirtintas. Pasiteiraukite pardavėjo.",
+  "extra_title": "Papildoma informacija",
   "notes_title": "Verta žinoti",
   "notes": [
     {"h": "Prieinamumas", "p": "Ištirtus produktus patikrinome parduotuvių ir gamintojų svetainėse 2026 m. rugsėjo 17 d. Dekstrozė, nugriebto pieno milteliai ir stabilizatorius paimti iš 2026 m. rugsėjo 12 d. Gellatti šalių lentelės ir iš naujo netikrinti. Prieinamumas, kainos ir pristatymas gali keistis ir nėra garantuojami."},

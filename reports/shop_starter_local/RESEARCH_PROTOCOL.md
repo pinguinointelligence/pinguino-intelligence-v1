@@ -78,15 +78,33 @@ Tooling: `reports/a03/tooling/` (read `README.md` first). Set `export GELLATTI_E
     LEAD and quote the wording. Save every `check_quotes.py` result file and reference its path in `ships_to_evidence`
     (a dict, never prose).
 15. **Anything the owner should look at before deciding** goes in `"owner_check": "<one sentence>"` on that candidate.
-16. **A country list is only delivery evidence when it is a delivery statement.** Two agents read the same kind of page
-    differently, so the test is objective: fetch the seller's shipping page AND one product page. If the same country
-    list appears on the product page, it is site furniture — the store's market/currency selector — and it does NOT
-    confirm delivery, however broad a "we ship worldwide" banner is (D-31: a currency never binds a market). Verified on
-    2026-09-17: furniture at bulksupplements.com, bakingwarehouse.com and kiki-health.com (whose own policy also warns
-    "Some countries may require bespoke postage … if unable to select a delivery option at the checkout"); genuine
-    delivery statements at gourmet-versand.com ("Shipment to the following country"), pati-versand.de,
-    glaeserundflaschen.de, taste-market.de, buxtrade.de and shop.cake-masters.com, whose lists are absent from product
-    pages. `reconcile_shipping_basis.py` applies this uniformly and explains every downgrade in the candidate.
+16. **A delivery claim is judged by the MEANING of the seller's own sentence** (owner, 2026-09-17, second round —
+    this replaces the earlier "does the list also appear on a product page" test, which was only a hint).
+    Read the sentence, the heading above it, the exceptions and the product scope, then decide:
+    - **It counts** when the wording is about delivery and covers the country — either by naming it in any language
+      ("Wir liefern in folgende Länder: … Polen", "Please select your shipping country … we can only ship your order to
+      addresses located in the chosen country"), or through an unambiguous GROUP the country belongs to (a priced zone
+      "European Union (EU)", "North America, Canada, Australia, South America", "EU-Zone 3: …"). A group does not need
+      every member spelled out.
+    - **It does not count** when the country appears only in a market/currency picker with no delivery wording, or when
+      the only statement is a generic "worldwide" / "we ship to Europe", or when an exception or a product-specific
+      restriction takes the country back out.
+    - Repetition is not a verdict: the same list on several pages is a reason to read it, not to reject it. A list that
+      appears only on the shipping page may equally be an EXCLUSION list — read it before using it.
+    Record the sentence, its heading, the reason it covers the country, and which exceptions were checked.
+    `delivery_check.py` holds one entry per seller with the sentence that decided it, and re-evaluates records instead
+    of restoring them wholesale — an unconfirmed delivery stays unconfirmed.
+17. **Pack weight never decides the channel** (owner, 2026-09-17, second round). Weight, minimum order quantity and
+    sales channel are three separate fields: record `pack_grams`, `moq` and `channel`. "Business only" requires a
+    confirmed seller restriction (registered-reseller login, "sale only to businesses", wholesale account) with the
+    sentence quoted; a 25 kg sack in an ordinary shop is a large pack, not a B2B channel. A genuine business offer is
+    kept as information for a professional — never counted as an ordinary retail purchase path, and never presented
+    without its restriction.
+18. **A lead may be shown, but never as a solution.** A genuinely identified product whose delivery is not confirmed,
+    and a genuine business-only offer, may appear in the PDF as clearly separated additional information carrying
+    "Delivery to <country> is not confirmed — check with the seller". It is never described as confirmed availability,
+    checked shipping or a ready substitute in the app, and it never closes one of the seven retail lines. Keep the two
+    kinds of doubt apart: an unconfirmed delivery is not the same as an unproven identity or composition.
 
 ## Output — one file per country, written as soon as that country is done
 

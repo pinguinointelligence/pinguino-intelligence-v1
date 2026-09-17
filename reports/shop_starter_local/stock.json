@@ -59,22 +59,22 @@
  },
  "AR": {
   "CRP": {
-   "https://www.ingredients-solutions.com/tienda/108838/crema_de_leche_en_polvo.php?idsp=2338": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T18:43:28Z",
-    "basis": "B2B page with an inquiry form only; no stock or availability statement is printed",
-    "rank": 1
-   },
    "https://pampacreations.com/crema-en-polvo/": {
     "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T18:43:28Z",
-    "basis": "manufacturer contact page; no stock or availability statement is printed",
-    "rank": 2
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "manufacturer product page; it carries no availability statement",
+    "rank": 1
    },
    "https://ingredientsbar.com/p/cream-powder-0370t/": {
     "state": "IN_STOCK",
     "checked_at_utc": "2026-09-17T18:43:28Z",
     "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 2
+   },
+   "https://www.ingredients-solutions.com/tienda/108838/crema_de_leche_en_polvo.php?idsp=2338": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "the listing URL now returns HTTP 404 (591 bytes) - the page has been removed",
     "rank": 3
    }
   },
@@ -94,17 +94,17 @@
   },
   "INU": {
    "https://www.farmacity.com/inufiber-inulina-pote-x-150-g/p": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T15:43:59Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['http://schema.org/InStock']",
     "rank": 1
    }
   },
   "YOL": {
    "https://www.tecnovo.com.ar/yema-polvo.html": {
     "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T18:43:28Z",
-    "basis": "manufacturer information page (25 kg B2B); no stock or availability statement is printed",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "manufacturer product page; it carries no availability statement",
     "rank": 1
    }
   }
@@ -179,35 +179,43 @@
   "FRU": {
    "https://www.mrvitamins.com.au/products/lotus-fructose-fruit-sugar-500g": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:31:50Z",
-    "basis": "page data: \"available\":true (249 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['https://schema.org/InStock']; the tokens ['Out of stock'] also appear on the page but belong to other listings shown alongside it",
     "rank": 1
    },
    "https://norwoodhealthfoods.com.au/product/lotus-fructose-powder-500g/": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:31:52Z",
-    "basis": "printed phrase next to the product: \"in stock\"",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['https://schema.org/InStock']; the visible text shows ['Add to cart']",
     "rank": 2
    }
   },
   "INU": {
    "https://orku.com.au/products/orku-chicory-root-inulin-powder-supplement-all-sizes": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:32:32Z",
-    "basis": "page data: \"available\":true (230 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['http:\\\\/\\\\/schema.org\\\\/InStock']; the tokens ['Sold out'] also appear on the page but belong to other listings shown alongside it",
     "rank": 1
    }
   },
   "YOL": {
    "https://www.henfresh.com.au/product/5547-egg-yolk-powder-500g": {
     "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T18:45:29Z",
-    "basis": "the distributor listing prints no stock or availability statement; the price itself is hidden behind a trade login",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "the listing carries no stock state and no price; nothing on the page says in stock or out of stock",
     "rank": 1
    }
   }
  },
  "BD": {
+  "FRU": {
+   "https://shopinshop.com.bd/products/urban-platter-pure-fructose-sugar-400g-14-11oz-fruit-based-finely-granulated-free-flowing-sugar": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "page prints \"Availability: In stock\" with an active Add to Cart, but immediately next to it \"Available on Pre-order Only\" and \"Delivery: 2-3 weeks\"",
+    "rank": 1
+   }
+  },
   "INU": {
    "https://www.arogga.com/product/77145/now-certified-organic-inulin-pure-powder-227g": {
     "state": "OUT_OF_STOCK",
@@ -345,11 +353,17 @@
    }
   },
   "INU": {
+   "https://www.gourmet-versand.com/en/article26461/sosa-inulin-cold-fiber-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:25:00Z",
+    "basis": "Availability NOW AVAILABLE / Quantity in stock 76; schema.org InStock",
+    "rank": 1
+   },
    "https://kiki-health.com/products/inulin-powder-organic-250g": {
     "state": "IN_STOCK",
     "checked_at_utc": "2026-09-17T16:25:06Z",
     "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
-    "rank": 1
+    "rank": 2
    }
   },
   "YOL": {
@@ -365,8 +379,8 @@
   "CRP": {
    "https://www.cerealistaexpress.com.br/creme-de-leite-em-po-granel.html": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T18:41:56Z",
-    "basis": "itemprop=\"availability\" ... content=\"http://schema.org/InStock\" in the page's own product markup",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "the listing shows the live size selector (100g / 250g / 500g / 1Kg / 5Kg) with an active 'Comprar Agora' button and a quantity field; no 'Esgotado'/'Indisponivel' token appears anywhere on the page",
     "rank": 1
    },
    "https://ingredientsbar.com/p/cream-powder-0370t/": {
@@ -378,37 +392,37 @@
   },
   "FRU": {
    "https://www.lowcucar.com.br/acucares/frutose/frutose-lowcucar-cartucho-200g": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T15:44:24Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says [' http://schema.org/InStock', 'YES']; the visible text shows ['Comprar']",
     "rank": 1
    },
    "https://www.santaluzia.com.br/adocante-em-po-frutose-sem-gluten-gerbeaud-200g-733598/p": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T15:42:38Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['http://schema.org/InStock']; the visible text shows ['Adicionar ao carrinho']",
     "rank": 2
    }
   },
   "INU": {
    "https://www.cerealistasbrasil.com.br/aditivos-e-espessantes/inulina-em-po-fibra-de-chicoria-100-pura-sem-gluten-500g-tlc-tudo-low-carb": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T15:45:40Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says [' http://schema.org/InStock', 'YES']; the visible text shows ['Comprar']",
     "rank": 1
    },
    "https://zonacerealista.com.br/products/inulina-de-chicoria-em-po-granel-250g": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T15:45:14Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['http:\\\\/\\\\/schema.org\\\\/InStock', 'https://schema.org/InStock']; the visible text shows ['Adicionar ao carrinho']",
     "rank": 2
    }
   },
   "YOL": {
    "https://www.emporioquatroestrelas.com.br/products/gema-de-ovo-em-po-100g10730-3": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:47:38Z",
-    "basis": "page data: \"available\":true (191 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['https://schema.org/InStock']; the visible text shows ['Adicionar ao carrinho']",
     "rank": 1
    }
   }
@@ -417,8 +431,8 @@
   "CRP": {
    "https://www.laguildeculinaire.com/en/products/poudre-de-creme-lourde-heavy-powder": {
     "state": "OUT_OF_STOCK",
-    "checked_at_utc": "2026-09-17T18:41:56Z",
-    "basis": "\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, plus the printed 'Out of stock' next to the 450 g weight option and 'Sold out'",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "re-checked 2026-09-17 19:4x UTC: \"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, and the visible text still reads 'Out of stock Sold out Notify me' for both the 80 g and the 450 g weight options",
     "rank": 1
    },
    "https://ingredientsbar.com/p/cream-powder-0370t/": {
@@ -431,36 +445,36 @@
   "FRU": {
    "https://bulknbits.ca/products/fruit-sugar": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:45:08Z",
-    "basis": "page data: \"available\":true (5716 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['http://schema.org/InStock']; the visible text shows ['Add to Cart']",
     "rank": 1
    },
    "https://ingredientdepot.com/products/fructose-1-kg": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:45:48Z",
-    "basis": "page data: \"available\":true (8892 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['http:\\\\/\\\\/schema.org\\\\/InStock']; the tokens ['Sold out'] also appear on the page but belong to other listings shown alongside it",
     "rank": 2
    }
   },
   "INU": {
    "https://www.vitamart.ca/products/now-inulin-powder": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:45:04Z",
-    "basis": "page data: \"available\":true (239 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['http://schema.org/InStock']; the tokens ['Sold out', 'Notify me'] also appear on the page but belong to other listings shown alongside it",
     "rank": 1
    },
    "https://well.ca/products/now-100-pure-organic-inulin-powder_89288.html": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:42:39Z",
-    "basis": "page data: og:availability\" content=\"instock\" (1775 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['InStock']; the visible text shows ['Add to Cart']",
     "rank": 2
    }
   },
   "YOL": {
    "https://www.laguildeculinaire.com/products/poudre-de-jaune-doeuf": {
-    "state": "OUT_OF_STOCK",
-    "checked_at_utc": "2026-09-17T15:43:54Z",
-    "basis": "researcher note: \"…. Other Canadian paths could not be proven: McCall's 450 g (out of stock; no brand, ingredients or GTIN) and Can…\"",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['http:\\\\/\\\\/schema.org\\\\/InStock']",
     "rank": 1
    }
   }
@@ -535,42 +549,42 @@
   "FRU": {
    "https://www.nutrigood.cl/fructosa-cristalina-1-kilo": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:44:03Z",
-    "basis": "page data: product:availability\" content=\"instock\" (1595 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['https://schema.org/InStock']; the tokens ['Agotado'] also appear on the page but belong to other listings shown alongside it",
     "rank": 1
    },
    "https://smartbrew.cl/tienda/fructosa-pura-1-kg/": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:42:39Z",
-    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (224 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['https://schema.org/InStock']; the visible text shows ['Añadir al carrito', 'disponibles']",
     "rank": 2
    }
   },
   "INU": {
    "https://lafarmacianatural.net/intestinal/252-prebiotico-inulina-polvo-227g.html": {
-    "state": "OUT_OF_STOCK",
-    "checked_at_utc": "2026-09-17T15:45:19Z",
-    "basis": "printed phrase next to the product: \"agotado\"",
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page prints no availability statement and no purchase control that could be read",
     "rank": 1
    },
    "https://www.mixgreen.cl/products/10748-inulina-organica-en-polvo-227-g-now": {
     "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T15:45:11Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page prints no availability statement and no purchase control that could be read",
     "rank": 2
    }
   },
   "YOL": {
-   "https://newweb.alimentarichile.cl/producto/yema-en-polvo-cat/": {
-    "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T18:43:28Z",
-    "basis": "\"availability\":\"http://schema.org/InStock\" in the page's own product data",
-    "rank": 1
-   },
    "https://mmpp.cl/producto/yema-de-huevo-en-polvo-yd05/": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T18:43:28Z",
-    "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data, plus the printed '5 disponibles' next to the add-to-cart button",
+    "rank": 1
+   },
+   "https://newweb.alimentarichile.cl/producto/yema-en-polvo-cat/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "\"availability\":\"http://schema.org/InStock\" in the page's own product data",
     "rank": 2
    }
   }
@@ -603,14 +617,14 @@
   "FRU": {
    "https://www.jumbocolombia.com/frukta-fructosa-x-450g-ales/p": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:40:27Z",
-    "basis": "page data: \"availability\":\"http://schema.org/InStock\" (393 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['http://schema.org/InStock']",
     "rank": 1
    },
    "https://secure.carulla.com/fructosa-pura-diety-bolsa-doy-pack-x-450-gr-755716/p": {
     "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T15:51:03Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page prints no availability statement and no purchase control that could be read",
     "rank": 2
    }
   },
@@ -637,8 +651,8 @@
   "YOL": {
    "https://www.mejoronline.co/productos/yema-de-huevo-en-polvo-500-grs/": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T18:44:01Z",
-    "basis": "\"availability\": \"https://schema.org/InStock\" in the page's own product data, with an active 'Agregar al carrito' button",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data",
     "rank": 1
    }
   }
@@ -655,36 +669,36 @@
   "FRU": {
    "https://www.bulksupplements.com/products/fructose-powder": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T16:03:43Z",
-    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (173 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "schema.org/InStock in the page's own offer data for the 250 g variant (the page also carries OutOfStock for its 25 kg variant)",
     "rank": 1
    },
    "https://delcaribeshop.com/cr/producto/fructosa-cristalina-bolsa-1-kg/": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T15:38:39Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "\"availability\":\"https://schema.org/InStock\" plus the printed '17 disponibles' next to the add-to-cart button",
     "rank": 2
    }
   },
   "INU": {
    "https://www.bulksupplements.com/products/inulin-fos-powder": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T16:03:46Z",
-    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (172 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "schema.org/InStock in the page's own offer data for the 250 g variant (the page also carries OutOfStock for its 25 kg variant)",
     "rank": 1
    },
    "https://www.macrobioticasunidas.com/products/1160/now-foods-inulina-en-polvo-8-onzas": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:40:20Z",
-    "basis": "page data: product:availability\"\n          content=\"in stock\" (951 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['https://schema.org/InStock']; the tokens ['Agotado'] also appear on the page but belong to other listings shown alongside it",
     "rank": 2
    }
   },
   "YOL": {
    "https://delcaribeshop.com/cr/producto/yema-de-huevo-en-polvo-bolsa-1-kg/": {
     "state": "OUT_OF_STOCK",
-    "checked_at_utc": "2026-09-17T18:44:01Z",
-    "basis": "\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, plus the printed badge 'Agotado'",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, and the visible text reads 'Agotado'",
     "rank": 1
    }
   }
@@ -939,11 +953,17 @@
    }
   },
   "FRU": {
+   "https://biomax.dz/product/29": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T20:25:00Z",
+    "basis": "the page carries no stock token, no price and no basket - it is a product-range page of an Algerian laboratory, not a shop page",
+    "rank": 1
+   },
    "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html": {
     "state": "IN_STOCK",
     "checked_at_utc": "2026-09-17T18:37:17Z",
     "basis": "In stock (page text) / schema.org InStock",
-    "rank": 1
+    "rank": 2
    }
   },
   "INU": {
@@ -1033,24 +1053,30 @@
    }
   },
   "INU": {
+   "https://eatgoodco.com/products/ole-inulin": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:25:00Z",
+    "basis": "schema.org InStock; page text \"Hurry up, only 2 items left in stock\"",
+    "rank": 1
+   },
    "https://kiki-health.com/products/inulin-powder-organic-250g": {
     "state": "IN_STOCK",
     "checked_at_utc": "2026-09-17T16:22:48Z",
     "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
-    "rank": 1
+    "rank": 2
    },
    "https://www.amazon.eg/dp/B01LWV9LNO": {
     "state": "UNKNOWN",
     "checked_at_utc": "2026-09-17T16:23:21Z",
     "basis": "no stock statement on the page or in the researcher note",
-    "rank": 2
+    "rank": 3
    }
   },
   "YOL": {
    "https://arkanfoodsegypt.com/ar/product/%D8%A8%D9%88%D8%AF%D8%B1-%D8%B5%D9%81%D8%A7%D8%B1-%D8%A7%D9%84%D8%A8%D9%8A%D8%B6-500-%D8%AC%D8%B1%D8%A7%D9%85/": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T18:40:51Z",
-    "basis": "schema.org InStock",
+    "checked_at_utc": "2026-09-17T20:25:00Z",
+    "basis": "schema.org InStock; page text \"Availability: 4 in stock\", 399 EGP",
     "rank": 1
    },
    "https://www.amazon.eg/dp/B0GCQ7DKK8": {
@@ -1579,17 +1605,23 @@
    }
   },
   "INU": {
+   "https://www.gourmet-versand.com/en/article26461/sosa-inulin-cold-fiber-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T19:53:54Z",
+    "basis": "Availability NOW AVAILABLE Quantity in stock 76",
+    "rank": 1
+   },
    "https://kiki-health.com/products/inulin-powder-organic-250g": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T16:31:10Z",
-    "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
-    "rank": 1
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "Product JSON-LD offer availability = https://schema.org/InStock",
+    "rank": 2
    },
    "https://www.nizat.com/%D7%90%D7%99%D7%A0%D7%95%D7%9C%D7%99%D7%9F-%D7%90%D7%91%D7%A7%D7%AA-%D7%A1%D7%99%D7%91%D7%99%D7%9D-%D7%9E%D7%A1%D7%99%D7%A1%D7%99%D7%9D-%D7%9E%D7%A2%D7%95%D7%9C%D7%A9-400-%D7%92%D7%A8%D7%9D-%D7%A2%D7%AA%D7%99%D7%93-%D7%99%D7%A8%D7%95%D7%A7-i26909": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:33:30Z",
-    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (1700 chars from the product on the page)",
-    "rank": 2
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "Product JSON-LD offer availability = https://schema.org/InStock",
+    "rank": 3
    }
   },
   "YOL": {
@@ -1889,11 +1921,17 @@
    }
   },
   "INU": {
+   "https://www.gourmet-versand.com/en/article26461/sosa-inulin-cold-fiber-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:25:00Z",
+    "basis": "Availability NOW AVAILABLE / Quantity in stock 76; schema.org InStock",
+    "rank": 1
+   },
    "https://kiki-health.com/products/inulin-powder-organic-250g": {
     "state": "IN_STOCK",
     "checked_at_utc": "2026-09-17T16:24:39Z",
     "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
-    "rank": 1
+    "rank": 2
    }
   },
   "YOL": {
@@ -1907,11 +1945,17 @@
  },
  "LK": {
   "INU": {
+   "https://guthealth.lk/product/inulin-powder/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "page prints \"In stock\" and the shop's Store API returns is_in_stock true for the listing; price range Rs. 1,200.00 – Rs. 4,500.00",
+    "rank": 1
+   },
    "https://kiki-health.com/products/inulin-powder-organic-250g": {
     "state": "IN_STOCK",
     "checked_at_utc": "2026-09-17T18:45:00Z",
     "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") and Shopify product data variants[0].\"available\": true",
-    "rank": 1
+    "rank": 2
    }
   }
  },
@@ -2173,8 +2217,8 @@
   "CRP": {
    "https://www.dirind.com/pro/crema-leche-polvo.html": {
     "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T18:42:47Z",
-    "basis": "the B2B directory listing prints no stock or availability statement at all",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "the directory entry carries no stock or availability statement of any kind",
     "rank": 1
    },
    "https://ingredientsbar.com/p/cream-powder-0370t/": {
@@ -2215,8 +2259,8 @@
   "YOL": {
    "https://www.koonol.mx/productos/yema-de-huevo-deshidratada": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T18:42:47Z",
-    "basis": "the printed line 'Disponibilidad : En Stock' on the product page",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "the listing prints 'Disponibilidad : En Stock'",
     "rank": 1
    }
   }
@@ -2257,11 +2301,17 @@
    }
   },
   "INU": {
+   "https://haleandhearty.ng/product/now-certified-organic-inulin-prebiotic-pure-powder-227g/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T19:53:54Z",
+    "basis": "Availability: 4 in stock (can be backordered)",
+    "rank": 1
+   },
    "https://hubpharmafrica.com/product/now-inulin-prebiotic-pure-powder/": {
     "state": "IN_STOCK",
     "checked_at_utc": "2026-09-17T18:40:55Z",
     "basis": "schema.org InStock",
-    "rank": 1
+    "rank": 2
    }
   },
   "YOL": {
@@ -2375,8 +2425,8 @@
   "CRP": {
    "https://ketostore.nz/products/cream-powder-750g": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T18:45:29Z",
-    "basis": "\"availability\": \"http://schema.org/InStock\" in the page's own product data, with an active 'Add to Cart' button",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "\"availability\":\"http://schema.org/InStock\" in the page's own product data",
     "rank": 1
    },
    "https://ingredientsbar.com/p/cream-powder-0370t/": {
@@ -2388,43 +2438,43 @@
   },
   "FRU": {
    "https://www.ohmywellness.co.nz/shop/product/839021/lotus-fructose-fruit-sugar-500g/": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T15:38:22Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "no machine-readable availability; the page shows an active purchase control (['Add to cart'])",
     "rank": 1
    },
    "https://www.naturitas.nz/p/food/sweeteners-and-honey/sugar-substitutes/fructose-1-kg-of-powder-el-granero-integral": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T15:37:21Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['https:\\\\/\\\\/schema.org\\\\/InStock']; the visible text shows ['In stock', 'Add to Cart']",
     "rank": 2
    }
   },
   "INU": {
    "https://www.pharmacydirect.co.nz/Now-Certified-Organic-Inulin-Pure-Powder-227g": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T15:39:22Z",
-    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (193 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['https://schema.org/InStock']; the visible text shows ['Add to cart']",
     "rank": 1
    },
    "https://www.nothingnaughty.kiwi.nz/products/inulin-250g": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T15:38:31Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['http://schema.org/InStock']; the visible text shows ['Add to cart']",
     "rank": 2
    }
   },
   "YOL": {
    "https://ketostore.nz/products/egg-yolk-powder": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T15:37:53Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['http://schema.org/InStock']; the visible text shows ['Add to Cart']",
     "rank": 1
    },
    "https://nz.myprotein.com/p/sports-nutrition/egg-yolk-powder/10529352/": {
     "state": "OUT_OF_STOCK",
-    "checked_at_utc": "2026-09-17T15:39:24Z",
-    "basis": "page data: \"availability\": \"https://schema.org/OutOfStock\" (350 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "the page's own product data says ['https://schema.org/OutOfStock', '{0}, {1}, {2}']; the visible text shows ['Out of stock']",
     "rank": 2
    }
   }
@@ -2452,6 +2502,12 @@
     "checked_at_utc": "2026-09-17T16:25:33Z",
     "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
     "rank": 1
+   },
+   "https://om.getkuwa.com/products/inulin-fos": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T20:25:00Z",
+    "basis": "schema.org OutOfStock; page text \"Sold Out\", \"Availability: Out Of Stock\", \"Please hurry! Only 0 left in stock\", SKU OINUFPFFAC",
+    "rank": 2
    }
   },
   "YOL": {
@@ -2475,30 +2531,30 @@
   "FRU": {
    "https://www.bulksupplements.com/products/fructose-powder": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T16:03:48Z",
-    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (173 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "schema.org/InStock in the page's own offer data for the 250 g variant (the page also carries OutOfStock for its 25 kg variant)",
     "rank": 1
    },
    "https://delcaribeshop.com/pa/producto/fructosa-cristalina-bolsa-1-kg/": {
     "state": "OUT_OF_STOCK",
-    "checked_at_utc": "2026-09-17T16:00:05Z",
-    "basis": "page data: \"availability\":\"http://schema.org/OutOfStock\" (5481 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, and the visible text reads 'Agotado'",
     "rank": 2
    }
   },
   "INU": {
    "https://www.bulksupplements.com/products/inulin-fos-powder": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T16:03:51Z",
-    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (172 chars from the product on the page)",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "schema.org/InStock in the page's own offer data for the 250 g variant (the page also carries OutOfStock for its 25 kg variant)",
     "rank": 1
    }
   },
   "YOL": {
    "https://delcaribeshop.com/pa/producto/yema-de-huevo-en-polvo-bolsa-1-kg/": {
     "state": "OUT_OF_STOCK",
-    "checked_at_utc": "2026-09-17T18:44:41Z",
-    "basis": "\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, plus the printed badge 'Agotado' (price also shown as '$ 0,00')",
+    "checked_at_utc": "2026-09-17T19:55:00Z",
+    "basis": "\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, and the visible text reads 'Agotado'",
     "rank": 1
    }
   }
@@ -2673,11 +2729,17 @@
    }
   },
   "INU": {
+   "https://www.gourmet-versand.com/en/article26461/sosa-inulin-cold-fiber-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:25:00Z",
+    "basis": "Availability NOW AVAILABLE / Quantity in stock 76; schema.org InStock",
+    "rank": 1
+   },
    "https://kiki-health.com/products/inulin-powder-organic-250g": {
     "state": "IN_STOCK",
     "checked_at_utc": "2026-09-17T16:24:12Z",
     "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
-    "rank": 1
+    "rank": 2
    }
   },
   "YOL": {
@@ -2873,6 +2935,14 @@
     "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
     "rank": 2
    }
+  },
+  "YOL": {
+   "https://shop.redmanshop.com/products/000000000000110011": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "page prints \"Sold out (0)\" and the product JSON returns \"available\":false for the single variant (price SGD 1,458.20)",
+    "rank": 1
+   }
   }
  },
  "SI": {
@@ -2985,19 +3055,37 @@
    }
   },
   "FRU": {
+   "https://tunisiebio.tn/produit/fructose/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:25:00Z",
+    "basis": "schema.org InStock; \"Ajouter au panier\" / \"Acheter maintenant\" active, 23.00 TND",
+    "rank": 1
+   },
+   "https://nutridiet.tn/produit/fructose/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:25:00Z",
+    "basis": "schema.org InStock; \"Ajouter au panier\" active (other products on the same page are marked \"Out of stock\", this one is not)",
+    "rank": 2
+   },
    "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html": {
     "state": "IN_STOCK",
     "checked_at_utc": "2026-09-17T18:37:17Z",
     "basis": "In stock (page text) / schema.org InStock",
-    "rank": 1
+    "rank": 3
    }
   },
   "INU": {
+   "https://tunisiebio.tn/produit/prebiotique-inuline-bio/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:25:00Z",
+    "basis": "schema.org InStock; \"Ajouter au panier\" / \"Acheter maintenant\" active, 24.30 TND",
+    "rank": 1
+   },
    "https://kiki-health.com/products/inulin-powder-organic-250g": {
     "state": "IN_STOCK",
     "checked_at_utc": "2026-09-17T16:26:00Z",
     "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
-    "rank": 1
+    "rank": 2
    }
   },
   "YOL": {
@@ -3013,8 +3101,8 @@
   "CRP": {
    "https://www.enkasut.com/tatli-krema-tozu/": {
     "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T18:40:00Z",
-    "basis": "no stock or availability wording printed; the page is a product data sheet with a generic 'SİPARİŞ VER' link",
+    "checked_at_utc": "2026-09-17T19:53:54Z",
+    "basis": "no stock or availability wording is printed; the page is a product data sheet whose only order route is the generic 'SİPARİŞ VER' link (re-checked 2026-09-17)",
     "rank": 1
    },
    "https://ingredientsbar.com/p/cream-powder-0370t/": {
@@ -3027,36 +3115,36 @@
   "FRU": {
    "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T16:17:23Z",
-    "basis": "researcher note: \"…Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.…\"",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "Availability NOW AVAILABLE Quantity in stock 2; Product JSON-LD offer availability = https://schema.org/InStock",
     "rank": 1
    },
    "https://www.hammaddeler.com/urun/fruktoz-500-g": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T16:15:41Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "Product JSON-LD offer availability = https://schema.org/InStock; active 'SEPETE EKLE / HEMEN AL' buy path",
     "rank": 2
    }
   },
   "INU": {
    "https://www.gourmet-versand.com/en/article26461/sosa-inulin-cold-fiber-50063-500-g.html": {
     "state": "IN_STOCK",
-    "checked_at_utc": "2026-09-17T16:17:24Z",
-    "basis": "researcher note: \"…e), sugars 7 g/100 g; fibre value not printed on the page. 'NOW AVAILABLE'.…\"",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "Availability NOW AVAILABLE Quantity in stock 76; Product JSON-LD offer availability = https://schema.org/InStock",
     "rank": 1
    },
    "https://www.hammaddeler.com/urun/inulin-100-g": {
-    "state": "UNKNOWN",
-    "checked_at_utc": "2026-09-17T16:15:43Z",
-    "basis": "no stock statement on the page or in the researcher note",
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "Product JSON-LD offer availability = https://schema.org/InStock; active 'SEPETE EKLE / HEMEN AL' buy path",
     "rank": 2
    }
   },
   "YOL": {
    "https://organikcimiz.com/kor-organik-500-gr-yumurta-sarisi-tozu-yt-02": {
     "state": "OUT_OF_STOCK",
-    "checked_at_utc": "2026-09-17T18:40:00Z",
-    "basis": "\"Stoğa gelince haber ver\" on the page; Product JSON-LD offer availability = https://schema.org/OutOfStock",
+    "checked_at_utc": "2026-09-17T19:53:54Z",
+    "basis": "\"Stoğa gelince haber ver\" on the page; Product JSON-LD offer availability = https://schema.org/OutOfStock (re-checked 2026-09-17)",
     "rank": 1
    },
    "https://www.hammaddeler.com/urun/yumurta-sarisi-tozu-500-g": {
@@ -3215,6 +3303,14 @@
     "state": "IN_STOCK",
     "checked_at_utc": "2026-09-17T18:30:00Z",
     "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://ovovita.com.vn/san-pham/bot-long-do-trung-500gr-tui/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") in the page's Product JSON-LD, with an active \"Thêm vào giỏ hàng\" / \"Mua ngay\" button and the price 395.000 ₫",
     "rank": 1
    }
   }

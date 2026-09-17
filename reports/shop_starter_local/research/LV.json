@@ -74,7 +74,9 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/b6f898fbe5d9b37e.json",
      "checked_at_utc": "2026-09-17T15:52:02Z",
      "notes": "identity = GTIN (itemprop gtin13) on the cross-border seller's own product page; verifier class EAN_ON_FOREIGN_MARKET_PAGE (page market DE); page states 'Sofort verfügbar, Lieferzeit: 1-3 Tage'",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
    ],
    "notes": "No Latvian retailer page for genuine dairy cream powder could be read; a price-comparison site indicates 'saldā krējuma pulveris' offers exist but was blocked (403). Cross-border proposal from Germany."
@@ -155,7 +157,9 @@
      "local_availability_confirmed": false,
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
      "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing",
-     "added_by": "coordinator (reuse of the AT/LU/IE cross-border listing; country named in the seller delivery table)"
+     "added_by": "coordinator (reuse of the AT/LU/IE cross-border listing; country named in the seller delivery table)",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     },
     {
      "rank": 2,
@@ -379,7 +383,9 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/74b3de1c6b293383.json",
      "checked_at_utc": "2026-09-17T16:11:31Z",
      "notes": "identity = GTIN (itemprop gtin13) on the cross-border seller's own product page; verifier class EAN_ON_FOREIGN_MARKET_PAGE (page market DE); page states 'Sofort verfügbar, Lieferzeit: 1-3 Tage'; offered as the in-stock alternative because the local listing is out of stock",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
    ],
    "notes": "Both listings found are sold out. Rank 2 is an in-stock, GTIN-proven cross-border A-equivalent from Germany."

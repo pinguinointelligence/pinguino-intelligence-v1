@@ -22,12 +22,14 @@
   "tag_alternative": "Paikallinen vaihtoehto",
   "tag_unconfirmed": "Vahvistamaton",
   "tag_abroad_unconfirmed": "Ulkomainen kauppa",
+  "tag_large_pack": "Suuri pakkaus",
   "legend": {
     "from_abroad": "ulkomainen kauppa, jonka oma toimitusluettelo mainitsee tämän maan",
     "b2b": "myydään yrityksille tai suurissa pakkauksissa — ei tavallinen vähittäistarjous",
     "other_composition": "samantyyppinen tuote eri koostumuksella (ilmoitettu vieressä)",
     "alternative": "korvike toiselle Gellatti-tuotteelle",
-    "abroad_unconfirmed": "ulkomainen kauppa; toimitusta tähän maahan ei ole vahvistettu"
+    "abroad_unconfirmed": "ulkomainen kauppa; toimitusta tähän maahan ei ole vahvistettu",
+    "large_pack": "myydään vähintään 5 kg:n pakkauksessa"
   },
   "starter_amount": "Starter Packissa: {g} g",
   "option": "Vaihtoehto {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Paikallinen vaihtoehto Gellatti-seokselle, ei sama seos. Sekoita se kuiviin raaka-aineisiin ja kuumenna pohja lämpötilaan 75–80 °C.",
   "missing": "Tässä maassa ei ole vielä hyväksyttyä tuotetta.",
   "out_of_stock": "Kauppa ilmoitti tuotteen loppuneeksi {date}.",
+  "delivery_unconfirmed": "Toimitus — {country}: ei vahvistettu. Tarkista myyjältä.",
+  "extra_title": "Myös hyvä tietää",
   "notes_title": "Hyvä tietää",
   "notes": [
     {"h": "Saatavuus", "p": "Tarkistimme tutkitut tuotteet kauppojen ja valmistajien verkkosivuilta 17. syyskuuta 2026. Dekstroosi, rasvaton maitojauhe ja stabilointiaine ovat Gellattin maataulukosta 12. syyskuuta 2026, eikä niitä tarkistettu uudelleen. Saatavuus, hinnat ja toimitus voivat muuttua, eikä niitä taata."},

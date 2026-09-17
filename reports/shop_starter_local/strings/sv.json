@@ -22,12 +22,14 @@
   "tag_alternative": "Lokalt alternativ",
   "tag_unconfirmed": "Ej bekräftad",
   "tag_abroad_unconfirmed": "Butik utomlands",
+  "tag_large_pack": "Stor förpackning",
   "legend": {
     "from_abroad": "en butik utomlands vars egen leveranslista nämner det här landet",
     "b2b": "säljs till företag eller i stora förpackningar — inget vanligt konsumenterbjudande",
     "other_composition": "samma typ av produkt med en annan sammansättning (anges bredvid)",
     "alternative": "en ersättning för en annan Gellatti-produkt",
-    "abroad_unconfirmed": "en butik utomlands; leverans till det här landet är inte bekräftad"
+    "abroad_unconfirmed": "en butik utomlands; leverans till det här landet är inte bekräftad",
+    "large_pack": "säljs i förpackningar om 5 kg eller mer"
   },
   "starter_amount": "I Starter Pack: {g} g",
   "option": "Alternativ {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Ett lokalt alternativ till Gellatti-blandningen, inte samma blandning. Blanda det med de torra ingredienserna och värm basen till 75–80 °C.",
   "missing": "Ännu ingen godkänd produkt i det här landet.",
   "out_of_stock": "Butiken visade varan som slutsåld den {date}.",
+  "delivery_unconfirmed": "Leverans till {country} är inte bekräftad — fråga säljaren.",
+  "extra_title": "Också bra att veta",
   "notes_title": "Bra att veta",
   "notes": [
     {"h": "Tillgänglighet", "p": "Vi kontrollerade de undersökta produkterna på butikers och tillverkares webbplatser den 17 september 2026. Dextros, skummjölkspulver och stabiliseringsmedlet kommer från Gellattis landtabell från den 12 september 2026 och kontrollerades inte på nytt. Tillgänglighet, priser och leverans kan ändras och garanteras inte."},

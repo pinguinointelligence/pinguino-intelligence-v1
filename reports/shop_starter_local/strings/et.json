@@ -22,12 +22,14 @@
   "tag_alternative": "Kohalik alternatiiv",
   "tag_unconfirmed": "Kinnitamata",
   "tag_abroad_unconfirmed": "Välismaine pood",
+  "tag_large_pack": "Suur pakend",
   "legend": {
     "from_abroad": "välismaine pood, mille enda tarnenimekirjas on see riik",
     "b2b": "müüakse ettevõtetele või suurtes pakendites — mitte tavaline jaemüügipakkumine",
     "other_composition": "sama liiki toode, kuid erineva koostisega (näidatud kõrval)",
     "alternative": "asendus mõnele teisele Gellatti tootele",
-    "abroad_unconfirmed": "välismaine pood; tarne sellesse riiki ei ole kinnitatud"
+    "abroad_unconfirmed": "välismaine pood; tarne sellesse riiki ei ole kinnitatud",
+    "large_pack": "müüakse 5 kg ja suuremas pakendis"
   },
   "starter_amount": "Starter Packis: {g} g",
   "option": "Valik {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Kohalik alternatiiv Gellatti segule, mitte sama segu. Sega see kuivade koostisosadega ja kuumuta alus temperatuurini 75–80 °C.",
   "missing": "Selles riigis pole veel kinnitatud toodet.",
   "out_of_stock": "Pood näitas {date}, et toode on otsas.",
+  "delivery_unconfirmed": "Tarne — {country}: kinnitamata. Küsi müüjalt.",
+  "extra_title": "Lisaks tasub teada",
   "notes_title": "Hea teada",
   "notes": [
     {"h": "Saadavus", "p": "Uuritud tooteid kontrollisime poodide ja tootjate veebilehtedel 17. septembril 2026. Dekstroos, lõssipulber ja stabilisaator pärinevad Gellatti riikide tabelist 12. septembrist 2026 ja neid uuesti ei kontrollitud. Saadavus, hinnad ja tarne võivad muutuda ega ole tagatud."},

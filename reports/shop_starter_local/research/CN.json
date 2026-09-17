@@ -1,220 +1,251 @@
 {
-  "iso2": "CN",
-  "country": "China",
-  "agent": "research-east-asia",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:25:00Z",
-  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-  "items": {
-    "CRP": {
-      "result": "BRAK",
-      "local_terms": [
-        "稀奶油粉",
-        "奶油粉",
-        "乳脂粉",
-        "cream powder"
-      ],
-      "queries": [
-        "稀奶油粉 (suning)",
-        "奶油粉 (suning)",
-        "稀奶油粉 (jd)",
-        "cream powder (suning, English — 0 results)",
-        "\"cream powder\" dairy spray dried milk fat 40% buy retail Asia baking supplier 1kg"
-      ],
-      "sources_tried": [
-        "search.suning.com (苏宁易购; mix of 苏宁自营 retail and third-party stores)",
-        "search.jd.com (京东; marketplace per protocol; login/risk wall for 菊粉 and 稀奶油粉, client-side results for others)",
-        "s.taobao.com / list.tmall.com (marketplaces; login shell only)",
-        "you.163.com (网易严选; client-side search)",
-        "sams.com.cn / metro.com.cn (connection failed HTTP 000)",
-        "blb-cn.com (保龄宝, B2B fructose/inulin manufacturer; connection failed HTTP 000)",
-        "iHerb cn (Cloudflare challenge, not bypassed)",
-        "results seen on suning: cosmetics and flour only",
-        "hoosierhillfarm.com (US; real dairy \"Heavy Cream Powder\" 72 % butterfat found, but the shipping policy names no delivery countries - no cross-border evidence)",
-        "gourmet-versand.com (searched Sahnepulver, Rahmpulver, Milchpulver, Sahne: no dairy cream powder in the catalogue - only QimiQ whip desserts, coconut cream and horseradish cream)",
-        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no cream powder)",
-        "meilleurduchef.com (FR pastry supplier; delivery page /en/boutique/livraison.html lists no Asian market)",
-        "nzmp.com (Fonterra B2B ingredients brand): \"Cream Powder 55\" IS a real spray-dried dairy cream powder - the page prints \"Our cream powder is made from a blend of fresh dairy cream and skim milk, spray-dried to create a naturally rich 55%-fat powder\" (quote verified with check_quotes.py, found=true, ~/.cache/gellatti-evidence/quotes/gap-asia/nzmp_cream55.json). B2B-ONLY industrial ingredient, no retail pack and no purchase page - recorded as the B2B route under the owner rule, never to be shown as a retail offer."
-      ],
-      "candidates": [],
-      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search. Re-checked 2026-09-17 under the new owner rule (a real spray-dried dairy cream powder outside 38-48 % fat is a valid B_SAME_TYPE_DIFFERENT_COMPOSITION candidate). Still BRAK: no dairy cream powder of any fat level was found on a page that binds to this market. The only genuine retail dairy cream powder found anywhere in this pass is Hoosier Hill Farm \"Heavy Cream Powder\" (hoosierhillfarm.com, \"made with 100% real sweet cream\", \"72% butterfat content\", 1 lb / 2 lb / 25 lb, US) - it is NOT recorded as a candidate because the seller's shipping policy (hoosierhillfarm.com/policies/shipping-policy) prints no destination countries and no international-delivery statement, so there is no verifiable purchase path into this market. Owner may want to ask them directly. Owner rule 3 (B2B stays B2B): the only genuine dairy cream powder route that exists in this region is industrial - Fonterra/NZMP \"Cream Powder 55\" (blend of fresh dairy cream and skim milk, spray-dried, 55 % fat, quote verified) and regional B2B dairy traders such as bestdairies.com (Klang, Malaysia) in 25 kg sacks. Tagged B2B, not presented as a retail offer and not recorded as a candidate because no purchase page binds it to this market. Retail shelves in the region carry non-dairy creamers, whole/full-cream milk powders and whipped-topping mixes, which the protocol rejects."
-    },
-    "FRU": {
-      "result": "BRAK",
-      "local_terms": [
-        "结晶果糖",
-        "果糖粉",
-        "果糖",
-        "fructose"
-      ],
-      "queries": [
-        "结晶果糖 (suning)",
-        "果糖粉 (suning)",
-        "结晶果糖 (jd)",
-        "fructose (suning, English — only projector lamps/books)"
-      ],
-      "sources_tried": [
-        "search.suning.com (苏宁易购; mix of 苏宁自营 retail and third-party stores)",
-        "search.jd.com (京东; marketplace per protocol; login/risk wall for 菊粉 and 稀奶油粉, client-side results for others)",
-        "s.taobao.com / list.tmall.com (marketplaces; login shell only)",
-        "you.163.com (网易严选; client-side search)",
-        "sams.com.cn / metro.com.cn (connection failed HTTP 000)",
-        "blb-cn.com (保龄宝, B2B fructose/inulin manufacturer; connection failed HTTP 000)",
-        "iHerb cn (Cloudflare challenge, not bypassed)",
-        "results seen on suning: fructose-dispensing machines only",
-        "no reachable non-marketplace Chinese retailer page; gourmet-versand.com's delivery-country selector does NOT list China (checked 2026-09-17), so the Sosa cross-border route used for 10 other Asian markets is not available here"
-      ],
-      "candidates": [],
-      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search. BRAK stands. No non-marketplace Chinese retailer page reached, and no verifiable cross-border route into CN."
-    },
-    "INU": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "菊粉",
-        "菊苣粉",
-        "菊苣纤维",
-        "inulin"
-      ],
-      "queries": [
-        "菊粉 (suning)",
-        "菊粉 (jd, login/risk wall)",
-        "菊粉 (you.163.com)",
-        "菊粉 (taobao/tmall, login shell)",
-        "inulin (jd, English — client-side results)",
-        "Inulin (kiki-health.com country selector + shipping policy)"
-      ],
-      "sources_tried": [
-        "search.suning.com (苏宁易购; mix of 苏宁自营 retail and third-party stores)",
-        "search.jd.com (京东; marketplace per protocol; login/risk wall for 菊粉 and 稀奶油粉, client-side results for others)",
-        "s.taobao.com / list.tmall.com (marketplaces; login shell only)",
-        "you.163.com (网易严选; client-side search)",
-        "sams.com.cn / metro.com.cn (connection failed HTTP 000)",
-        "blb-cn.com (保龄宝, B2B fructose/inulin manufacturer; connection failed HTTP 000)",
-        "iHerb cn (Cloudflare challenge, not bypassed)",
-        "product.suning.com stock re-check 2026-09-17: the recorded listing prints \"售完\" / SoldOut",
-        "gourmet-versand.com delivery-country selector does NOT list China (checked 2026-09-17)",
-        "kiki-health.com (UK brand shop; organic agave inulin 250 g, GTIN 5060018515847, schema.org InStock; its Shopify country/region selector names this country but its shipping policy names none - LEAD only)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "美莱健 (MEILAIJIAN)",
-          "product_name": "美莱健菊粉300g益生元可溶性膳食纤维低聚果糖比利时进口菊粉原粉…",
-          "pack": "300 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://product.suning.com/0070211624/12394724031.html",
-          "source_type": "MARKETPLACE",
-          "seller": "同堂旗舰店 (third-party store on 苏宁易购, shop code 0070211624; not 苏宁自营 0000000000)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "none (generic .com; Suning is a China-only platform but no quote was checked)",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": "not shown in served HTML (title claims 比利时进口菊粉原粉 but also mentions 低聚果糖)"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "Chicory inulin powder by title; title also names oligofructose, composition unverified.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/aba214c2c3d5f90e.json",
-          "checked_at_utc": "2026-09-17T16:23:29Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "availability": {
-            "state": "OUT_OF_STOCK",
-            "checked_at_utc": "2026-09-17T18:30:00Z",
-            "basis": "page prints \"售完\" and the JSON flag \"SoldOut\"",
-            "source": "https://product.suning.com/0070211624/12394724031.html"
-          }
-        },
-        {
-          "rank": 2,
-          "brand": "KIKI Health",
-          "product_name": "Inulin Powder, Organic - 250g",
-          "pack": "250 g",
-          "gtin": "5060018515847",
-          "identifier_confirmed": true,
-          "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "KIKI Health (UK brand web shop)",
-          "page_market": null,
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "no local binding (UK brand shop on a generic .com); cross-border candidate only - see ships_to_evidence",
-          "cross_border": true,
-          "ships_to_evidence": "LEAD-grade only. The shop's Shopify country/region selector on the product page carries the exact option \"China (CNY ¥)\" (check_quotes.py found=true, ratio 1.0, 2026-09-17; ~/.cache/gellatti-evidence/quotes/gap-asia/kiki_sel_CN.json), but that is the /localization (market + currency) selector, NOT a shipping-cost country selector. The shipping policy names no country: \"For EU and International orders, postage costs vary according to your country.\" (check_quotes.py found=true; ~/.cache/gellatti-evidence/quotes/gap-asia/kiki_policy.json), and it also warns \"Some countries may require bespoke postage, please contact the KIKI team for shipping costs and further information if unable to select a delivery option at the checkout.\" Under the owner rule of 2026-09-17 a generic international-delivery statement is not confirmation, so this stays a LEAD until the owner sees a delivery option for this country at checkout.",
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:45:00Z",
-            "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") and Shopify product data variants[0].\"available\": true",
-            "source": "https://kiki-health.com/products/inulin-powder-organic-250g"
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": 93.0,
-            "fructose_pct": null,
-            "ingredients": "100% organic inulin from Blue Agave (Agave Tequilana Weber Blue)",
-            "from": "product page \"Ingredients\" block plus the printed claims \"93% soluble plant-based fibre\", \"Made from 100% Blue Agave\", \"5.4g of fibre per serving\", \"Completely pure, with no added sugars or sweeteners\""
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "pure organic agave inulin, 93 % soluble fibre (reference: fibre 89)",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/51db948e9a232bd2.json",
-          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
-          "notes": "gtin13 5060018515847 confirmed as data on this page (verify_ean_market.py: clean_hits 2, echo_hits 0, identity_basis GTIN_ON_THIS_PAGE). Added because the local Suning listing is sold out and China is not in the GOURMET VERSAND delivery selector. NOTE for the owner: the same product/shop is recorded as VERIFIED_CROSS_BORDER in DZ.json by another agent on the strength of the same country selector; this row is deliberately the more cautious reading of the 2026-09-17 cross-border rule, and the two files should be reconciled.",
-          "checked_at_utc": "2026-09-17T18:45:00Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "found_by": "gap-asia"
-        }
-      ],
-      "notes": "Only a third-party marketplace listing found. WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search. Stock re-checked 2026-09-17: the recorded Suning listing prints \"售完\" / SoldOut. China is NOT in the GOURMET VERSAND delivery-country selector, so the Sosa cross-border route used for 10 other Asian markets is not available for CN. Chinese inulin/fructose/egg-yolk powder supply is overwhelmingly on Tmall/Taobao/JD, which never confirm under D-10/D-29. Cross-border fallback added 2026-09-17: KIKI Health organic agave inulin 250 g (in stock, GTIN on the page). It is a LEAD, not VERIFIED_CROSS_BORDER, because the shop only shows a Shopify country/region (currency) selector and a generic international-delivery policy."
-    },
-    "YOL": {
-      "result": "BRAK",
-      "local_terms": [
-        "蛋黄粉",
-        "全蛋黄粉",
-        "干蛋黄粉",
-        "egg yolk powder"
-      ],
-      "queries": [
-        "蛋黄粉 (suning)",
-        "蛋黄粉 (jd)",
-        "egg yolk powder (suning, English — 0 results)",
-        "jaune d'oeuf en poudre (cuisineaddict.com, cerf-dellier.com)",
-        "Eigelbpulver (pati-versand.de)"
-      ],
-      "sources_tried": [
-        "search.suning.com (苏宁易购; mix of 苏宁自营 retail and third-party stores)",
-        "search.jd.com (京东; marketplace per protocol; login/risk wall for 菊粉 and 稀奶油粉, client-side results for others)",
-        "s.taobao.com / list.tmall.com (marketplaces; login shell only)",
-        "you.163.com (网易严选; client-side search)",
-        "sams.com.cn / metro.com.cn (connection failed HTTP 000)",
-        "blb-cn.com (保龄宝, B2B fructose/inulin manufacturer; connection failed HTTP 000)",
-        "iHerb cn (Cloudflare challenge, not bypassed)",
-        "results seen on suning: fresh/salted eggs only",
-        "gourmet-versand.com (searched Eigelbpulver, Eigelb, Eipulver, Vollei, Trockenei: no egg powder in the catalogue - only egg-yellow food colourings)",
-        "taste-market.de (German shop with a real \"Eigelbpulver\" 100 g, ingredients \"Hühner-Eigelb\", GTIN 4262421423127 - kept out because the served HTML exposes no shipping/delivery-country page, so no cross-border evidence)",
-        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no egg yolk powder)",
-        "pati-versand.de (German baking retailer with a real \"Eigelbpulver 100g\", brand Cake-Masters Basics, ingredients \"HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET\", schema.org InStock / \"Auf Lager\") - NOT usable: its \"Rest der Welt\" zone is an explicit list of 20 European countries only (\"Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, ... Ungarn\", quote verified with check_quotes.py, ~/.cache/gellatti-evidence/quotes/gap-asia/pati_eu_only.json), no Asian market",
-        "cuisineaddict.com (FR; search \"jaune d'oeuf en poudre\" returns only egg-yellow food COLOURING E102/E129)",
-        "cerf-dellier.com (FR pastry supplier; search returns \"Désolé, nous ne trouvons aucun produit\")",
-        "bienmanger.com (FR; search path HTTP 404)",
-        "modernistpantry.com (US; /products.json and /search both HTTP 404 - no readable catalogue)",
-        "modernistpantry.com (US; \"Egg Yolk Powder\", page text \"Egg yolk powder is made of spray dried pasteurized egg yolks ... Made in the USA and contains no additives of any kind\", page shows \"in stock\") - NOT usable as cross-border evidence: the international-shipping page names no country, only \"We are currently only offering FedEx shipping for international customers. To see whether we can ship to your country just add the products to cart and go to the checkout page.\" (adding to carts is out of scope by protocol rule 8)"
-      ],
-      "candidates": [],
-      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search. Cross-border route for dried egg yolk was searched and closed 2026-09-17: the one European retailer with a verified 100 % spray-dried chicken egg yolk powder in a 100 g retail pack (pati-versand.de, \"Eigelbpulver 100g\") ships only to a named list of 20 European countries, and gourmet-versand.com - the one shop whose delivery-country selector does name Asian markets - has no egg powder at all. So there is currently no verifiable purchase path for dried egg yolk into this market."
-    }
+ "iso2": "CN",
+ "country": "China",
+ "agent": "research-east-asia",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:25:00Z",
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "items": {
+  "CRP": {
+   "result": "BRAK",
+   "local_terms": [
+    "稀奶油粉",
+    "奶油粉",
+    "乳脂粉",
+    "cream powder"
+   ],
+   "queries": [
+    "稀奶油粉 (suning)",
+    "奶油粉 (suning)",
+    "稀奶油粉 (jd)",
+    "cream powder (suning, English — 0 results)",
+    "\"cream powder\" dairy spray dried milk fat 40% buy retail Asia baking supplier 1kg",
+    "site:gourmet-versand.com Sahnepulver Eigelbpulver Trockeneigelb",
+    "gourmet-versand.com \"Eigelb\" Pulver Sosa oder \"Sahnepulver\" kaufen",
+    "msk-ingredients.com \"cream powder\" \"egg yolk powder\" buy online",
+    "中国 菊粉 果糖 食品级 购买 官方商城 旗舰店 非天猫"
+   ],
+   "sources_tried": [
+    "search.suning.com (苏宁易购; mix of 苏宁自营 retail and third-party stores)",
+    "search.jd.com (京东; marketplace per protocol; login/risk wall for 菊粉 and 稀奶油粉, client-side results for others)",
+    "s.taobao.com / list.tmall.com (marketplaces; login shell only)",
+    "you.163.com (网易严选; client-side search)",
+    "sams.com.cn / metro.com.cn (connection failed HTTP 000)",
+    "blb-cn.com (保龄宝, B2B fructose/inulin manufacturer; connection failed HTTP 000)",
+    "iHerb cn (Cloudflare challenge, not bypassed)",
+    "results seen on suning: cosmetics and flour only",
+    "hoosierhillfarm.com (US; real dairy \"Heavy Cream Powder\" 72 % butterfat found, but the shipping policy names no delivery countries - no cross-border evidence)",
+    "gourmet-versand.com (searched Sahnepulver, Rahmpulver, Milchpulver, Sahne: no dairy cream powder in the catalogue - only QimiQ whip desserts, coconut cream and horseradish cream)",
+    "souschef.co.uk (UK; full Shopify catalogue read via products.json - no cream powder)",
+    "meilleurduchef.com (FR pastry supplier; delivery page /en/boutique/livraison.html lists no Asian market)",
+    "nzmp.com (Fonterra B2B ingredients brand): \"Cream Powder 55\" IS a real spray-dried dairy cream powder - the page prints \"Our cream powder is made from a blend of fresh dairy cream and skim milk, spray-dried to create a naturally rich 55%-fat powder\" (quote verified with check_quotes.py, found=true, ~/.cache/gellatti-evidence/quotes/gap-asia/nzmp_cream55.json). B2B-ONLY industrial ingredient, no retail pack and no purchase page - recorded as the B2B route under the owner rule, never to be shown as a retail offer.",
+    "gourmet-versand.com category /en/cat191/cream-powder-and-masses.html read in full (2026-09-17): 14 articles, all rejected types - \"cream powder vanilla declaration free cooking cream 1 kg\", \"gourmet filling cream cold cream powder 1 kg\", \"vanilla cold cream powder vegan 1 kg\", Irca Dolce Vita dessert powders, skimmed milk powder 1 kg, whole milk powder (at least 26 % fat) 1 kg, dulce de leche, tant pour tant. No spray-dried dairy cream powder in the seller that does deliver to this market",
+    "taste-market.de (DE): has real egg/milk powders but NO Sahnepulver; its own delivery page https://www.taste-market.de/Informationen/Zahlung-Versand/ states \"TASTE MARKET liefert deine Lieblingsgewuerze, Tees, Nahrungsergaenzungsmittel, Superfoods und Nuesse europaweit zu dir nach Hause\" and the international price table lists only Oesterreich, Schweiz, Belgien, Finnland, Schweden, Italien, Niederlande, Norwegen, England & Liechtenstein - Europe only, no Asian market",
+    "msk-ingredients.com (UK, sells to trade and public, guest checkout): delivery page prints only a bare \"We deliver worldwide using DHL\" with no country named (protocol rule 14 - not delivery evidence), and no dairy cream powder was found in its Spray Dried Powders / Other Powdered Ingredients categories",
+    "shop.redmanshop.com (RedMan / Phoon Huat, SG): full Shopify catalogue read via products.json (3 500 titles) - no dairy cream powder; only FULL CREAM MILK POWDER 25KG, SKIMMED MILK POWDER 25KG, EVERYDAY MILK POWDER 1.2KG and NON-DAIRY CREAMER-BUBBLETEA 25KG (rejected types)",
+    "bakingwarehouse.com (HK): full Shopify catalogue read via products.json (2 136 titles) - no cream powder at all; only Lactose Free Skimmed Milk Powder 1kg, Skimmed Milk Powder 1kg/25kg, Whole Milk Powder 25kg (rejected types)",
+    "gourmet-versand.com - the cross-border seller that closed FRU/INU for most of this region - does NOT list China in its shipping-cost country selector (81 options read 2026-09-17: Hong Kong, India, Indonesia, Japan, Malaysia, Philippines, Singapore, South Korea, Taiwan, Thailand, Vietnam are named; China, Pakistan, Bangladesh and Sri Lanka are not)",
+    "iherb.com / cn.iherb.com / pk.iherb.com - HTTP 403 bot wall on every request, recorded as inconclusive and not bypassed (protocol rule 6)"
+   ],
+   "candidates": [],
+   "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search. Re-checked 2026-09-17 under the new owner rule (a real spray-dried dairy cream powder outside 38-48 % fat is a valid B_SAME_TYPE_DIFFERENT_COMPOSITION candidate). Still BRAK: no dairy cream powder of any fat level was found on a page that binds to this market. The only genuine retail dairy cream powder found anywhere in this pass is Hoosier Hill Farm \"Heavy Cream Powder\" (hoosierhillfarm.com, \"made with 100% real sweet cream\", \"72% butterfat content\", 1 lb / 2 lb / 25 lb, US) - it is NOT recorded as a candidate because the seller's shipping policy (hoosierhillfarm.com/policies/shipping-policy) prints no destination countries and no international-delivery statement, so there is no verifiable purchase path into this market. Owner may want to ask them directly. Owner rule 3 (B2B stays B2B): the only genuine dairy cream powder route that exists in this region is industrial - Fonterra/NZMP \"Cream Powder 55\" (blend of fresh dairy cream and skim milk, spray-dried, 55 % fat, quote verified) and regional B2B dairy traders such as bestdairies.com (Klang, Malaysia) in 25 kg sacks. Tagged B2B, not presented as a retail offer and not recorded as a candidate because no purchase page binds it to this market. Retail shelves in the region carry non-dairy creamers, whole/full-cream milk powders and whipped-topping mixes, which the protocol rejects. 2026-09-17 close-asia round: the search was widened from local shops to the cross-border sellers whose delivery statements do name this market. gourmet-versand.com - the one seller whose shipping-cost country selector names this country - has a category literally called \"Cream powder and masses\" but it holds only cooking-cream and dessert mixes plus plain milk powders; taste-market.de and pati-versand.de deliver inside Europe only; msk-ingredients.com offers only a bare \"worldwide\" claim. No dairy cream powder at any fat level could be tied to this market, so CRP stays BRAK."
   },
-  "gap_followup_agent": "gap-asia",
-  "gap_followup_at_utc": "2026-09-17T18:30:00Z",
-  "gap_followup_egress_cc": "ES"
+  "FRU": {
+   "result": "BRAK",
+   "local_terms": [
+    "结晶果糖",
+    "果糖粉",
+    "果糖",
+    "fructose"
+   ],
+   "queries": [
+    "结晶果糖 (suning)",
+    "果糖粉 (suning)",
+    "结晶果糖 (jd)",
+    "fructose (suning, English — only projector lamps/books)",
+    "中国 菊粉 果糖 食品级 购买 官方商城 旗舰店 非天猫"
+   ],
+   "sources_tried": [
+    "search.suning.com (苏宁易购; mix of 苏宁自营 retail and third-party stores)",
+    "search.jd.com (京东; marketplace per protocol; login/risk wall for 菊粉 and 稀奶油粉, client-side results for others)",
+    "s.taobao.com / list.tmall.com (marketplaces; login shell only)",
+    "you.163.com (网易严选; client-side search)",
+    "sams.com.cn / metro.com.cn (connection failed HTTP 000)",
+    "blb-cn.com (保龄宝, B2B fructose/inulin manufacturer; connection failed HTTP 000)",
+    "iHerb cn (Cloudflare challenge, not bypassed)",
+    "results seen on suning: fructose-dispensing machines only",
+    "no reachable non-marketplace Chinese retailer page; gourmet-versand.com's delivery-country selector does NOT list China (checked 2026-09-17), so the Sosa cross-border route used for 10 other Asian markets is not available here",
+    "gourmet-versand.com - the cross-border seller that closed FRU/INU for most of this region - does NOT list China in its shipping-cost country selector (81 options read 2026-09-17: Hong Kong, India, Indonesia, Japan, Malaysia, Philippines, Singapore, South Korea, Taiwan, Thailand, Vietnam are named; China, Pakistan, Bangladesh and Sri Lanka are not)",
+    "iherb.com / cn.iherb.com / pk.iherb.com - HTTP 403 bot wall on every request, recorded as inconclusive and not bypassed (protocol rule 6)"
+   ],
+   "candidates": [],
+   "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search. BRAK stands. No non-marketplace Chinese retailer page reached, and no verifiable cross-border route into CN."
+  },
+  "INU": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "菊粉",
+    "菊苣粉",
+    "菊苣纤维",
+    "inulin"
+   ],
+   "queries": [
+    "菊粉 (suning)",
+    "菊粉 (jd, login/risk wall)",
+    "菊粉 (you.163.com)",
+    "菊粉 (taobao/tmall, login shell)",
+    "inulin (jd, English — client-side results)",
+    "Inulin (kiki-health.com country selector + shipping policy)",
+    "中国 菊粉 果糖 食品级 购买 官方商城 旗舰店 非天猫"
+   ],
+   "sources_tried": [
+    "search.suning.com (苏宁易购; mix of 苏宁自营 retail and third-party stores)",
+    "search.jd.com (京东; marketplace per protocol; login/risk wall for 菊粉 and 稀奶油粉, client-side results for others)",
+    "s.taobao.com / list.tmall.com (marketplaces; login shell only)",
+    "you.163.com (网易严选; client-side search)",
+    "sams.com.cn / metro.com.cn (connection failed HTTP 000)",
+    "blb-cn.com (保龄宝, B2B fructose/inulin manufacturer; connection failed HTTP 000)",
+    "iHerb cn (Cloudflare challenge, not bypassed)",
+    "product.suning.com stock re-check 2026-09-17: the recorded listing prints \"售完\" / SoldOut",
+    "gourmet-versand.com delivery-country selector does NOT list China (checked 2026-09-17)",
+    "kiki-health.com (UK brand shop; organic agave inulin 250 g, GTIN 5060018515847, schema.org InStock; its Shopify country/region selector names this country but its shipping policy names none - LEAD only)",
+    "gourmet-versand.com - the cross-border seller that closed FRU/INU for most of this region - does NOT list China in its shipping-cost country selector (81 options read 2026-09-17: Hong Kong, India, Indonesia, Japan, Malaysia, Philippines, Singapore, South Korea, Taiwan, Thailand, Vietnam are named; China, Pakistan, Bangladesh and Sri Lanka are not)",
+    "iherb.com / cn.iherb.com / pk.iherb.com - HTTP 403 bot wall on every request, recorded as inconclusive and not bypassed (protocol rule 6)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "美莱健 (MEILAIJIAN)",
+     "product_name": "美莱健菊粉300g益生元可溶性膳食纤维低聚果糖比利时进口菊粉原粉…",
+     "pack": "300 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://product.suning.com/0070211624/12394724031.html",
+     "source_type": "MARKETPLACE",
+     "seller": "同堂旗舰店 (third-party store on 苏宁易购, shop code 0070211624; not 苏宁自营 0000000000)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "none (generic .com; Suning is a China-only platform but no quote was checked)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "not shown in served HTML (title claims 比利时进口菊粉原粉 but also mentions 低聚果糖)"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "Chicory inulin powder by title; title also names oligofructose, composition unverified.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/aba214c2c3d5f90e.json",
+     "checked_at_utc": "2026-09-17T16:23:29Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "OUT_OF_STOCK",
+      "checked_at_utc": "2026-09-17T18:30:00Z",
+      "basis": "page prints \"售完\" and the JSON flag \"SoldOut\"",
+      "source": "https://product.suning.com/0070211624/12394724031.html"
+     }
+    },
+    {
+     "rank": 2,
+     "brand": "KIKI Health",
+     "product_name": "Inulin Powder, Organic - 250g",
+     "pack": "250 g",
+     "gtin": "5060018515847",
+     "identifier_confirmed": true,
+     "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "KIKI Health (UK brand web shop)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "no local binding (UK brand shop on a generic .com); cross-border candidate only - see ships_to_evidence",
+     "cross_border": true,
+     "ships_to_evidence": "LEAD-grade only. The shop's Shopify country/region selector on the product page carries the exact option \"China (CNY ¥)\" (check_quotes.py found=true, ratio 1.0, 2026-09-17; ~/.cache/gellatti-evidence/quotes/gap-asia/kiki_sel_CN.json), but that is the /localization (market + currency) selector, NOT a shipping-cost country selector. The shipping policy names no country: \"For EU and International orders, postage costs vary according to your country.\" (check_quotes.py found=true; ~/.cache/gellatti-evidence/quotes/gap-asia/kiki_policy.json), and it also warns \"Some countries may require bespoke postage, please contact the KIKI team for shipping costs and further information if unable to select a delivery option at the checkout.\" Under the owner rule of 2026-09-17 a generic international-delivery statement is not confirmation, so this stays a LEAD until the owner sees a delivery option for this country at checkout.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:45:00Z",
+      "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") and Shopify product data variants[0].\"available\": true",
+      "source": "https://kiki-health.com/products/inulin-powder-organic-250g"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": 93.0,
+      "fructose_pct": null,
+      "ingredients": "100% organic inulin from Blue Agave (Agave Tequilana Weber Blue)",
+      "from": "product page \"Ingredients\" block plus the printed claims \"93% soluble plant-based fibre\", \"Made from 100% Blue Agave\", \"5.4g of fibre per serving\", \"Completely pure, with no added sugars or sweeteners\""
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "pure organic agave inulin, 93 % soluble fibre (reference: fibre 89)",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/51db948e9a232bd2.json",
+     "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+     "notes": "gtin13 5060018515847 confirmed as data on this page (verify_ean_market.py: clean_hits 2, echo_hits 0, identity_basis GTIN_ON_THIS_PAGE). Added because the local Suning listing is sold out and China is not in the GOURMET VERSAND delivery selector. NOTE for the owner: the same product/shop is recorded as VERIFIED_CROSS_BORDER in DZ.json by another agent on the strength of the same country selector; this row is deliberately the more cautious reading of the 2026-09-17 cross-border rule, and the two files should be reconciled.",
+     "checked_at_utc": "2026-09-17T18:45:00Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "found_by": "gap-asia",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the country is offered in the seller own shipping-destination list"
+    }
+   ],
+   "notes": "Only a third-party marketplace listing found. WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search. Stock re-checked 2026-09-17: the recorded Suning listing prints \"售完\" / SoldOut. China is NOT in the GOURMET VERSAND delivery-country selector, so the Sosa cross-border route used for 10 other Asian markets is not available for CN. Chinese inulin/fructose/egg-yolk powder supply is overwhelmingly on Tmall/Taobao/JD, which never confirm under D-10/D-29. Cross-border fallback added 2026-09-17: KIKI Health organic agave inulin 250 g (in stock, GTIN on the page). It is a LEAD, not VERIFIED_CROSS_BORDER, because the shop only shows a Shopify country/region (currency) selector and a generic international-delivery policy. 2026-09-17 close-asia: unchanged. Chinese inulin is plentiful but every purchase path found is a marketplace (Tmall/JD/Suning/1688) or a B2B chemical supplier; you.163.com returned an empty search page and sams.cn refused the connection."
+  },
+  "YOL": {
+   "result": "BRAK",
+   "local_terms": [
+    "蛋黄粉",
+    "全蛋黄粉",
+    "干蛋黄粉",
+    "egg yolk powder"
+   ],
+   "queries": [
+    "蛋黄粉 (suning)",
+    "蛋黄粉 (jd)",
+    "egg yolk powder (suning, English — 0 results)",
+    "jaune d'oeuf en poudre (cuisineaddict.com, cerf-dellier.com)",
+    "Eigelbpulver (pati-versand.de)",
+    "modernistpantry.com egg yolk powder cream powder international shipping countries",
+    "site:gourmet-versand.com Sahnepulver Eigelbpulver Trockeneigelb",
+    "中国 菊粉 果糖 食品级 购买 官方商城 旗舰店 非天猫"
+   ],
+   "sources_tried": [
+    "search.suning.com (苏宁易购; mix of 苏宁自营 retail and third-party stores)",
+    "search.jd.com (京东; marketplace per protocol; login/risk wall for 菊粉 and 稀奶油粉, client-side results for others)",
+    "s.taobao.com / list.tmall.com (marketplaces; login shell only)",
+    "you.163.com (网易严选; client-side search)",
+    "sams.com.cn / metro.com.cn (connection failed HTTP 000)",
+    "blb-cn.com (保龄宝, B2B fructose/inulin manufacturer; connection failed HTTP 000)",
+    "iHerb cn (Cloudflare challenge, not bypassed)",
+    "results seen on suning: fresh/salted eggs only",
+    "gourmet-versand.com (searched Eigelbpulver, Eigelb, Eipulver, Vollei, Trockenei: no egg powder in the catalogue - only egg-yellow food colourings)",
+    "taste-market.de (German shop with a real \"Eigelbpulver\" 100 g, ingredients \"Hühner-Eigelb\", GTIN 4262421423127 - kept out because the served HTML exposes no shipping/delivery-country page, so no cross-border evidence)",
+    "souschef.co.uk (UK; full Shopify catalogue read via products.json - no egg yolk powder)",
+    "pati-versand.de (German baking retailer with a real \"Eigelbpulver 100g\", brand Cake-Masters Basics, ingredients \"HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET\", schema.org InStock / \"Auf Lager\") - NOT usable: its \"Rest der Welt\" zone is an explicit list of 20 European countries only (\"Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, ... Ungarn\", quote verified with check_quotes.py, ~/.cache/gellatti-evidence/quotes/gap-asia/pati_eu_only.json), no Asian market",
+    "cuisineaddict.com (FR; search \"jaune d'oeuf en poudre\" returns only egg-yellow food COLOURING E102/E129)",
+    "cerf-dellier.com (FR pastry supplier; search returns \"Désolé, nous ne trouvons aucun produit\")",
+    "bienmanger.com (FR; search path HTTP 404)",
+    "modernistpantry.com (US; /products.json and /search both HTTP 404 - no readable catalogue)",
+    "modernistpantry.com (US; \"Egg Yolk Powder\", page text \"Egg yolk powder is made of spray dried pasteurized egg yolks ... Made in the USA and contains no additives of any kind\", page shows \"in stock\") - NOT usable as cross-border evidence: the international-shipping page names no country, only \"We are currently only offering FedEx shipping for international customers. To see whether we can ship to your country just add the products to cart and go to the checkout page.\" (adding to carts is out of scope by protocol rule 8)",
+    "modernistpantry.com \"Egg Yolk Powder\" (US, spray-dried pasteurised AAA egg yolks, Home 50 g / Professional 400 g / Commercial 50 lb): the product page itself prints \"NOTE: Available to US customers only at this time\" - excluded for every market in this set, not merely unconfirmed",
+    "taste-market.de \"Eigelbpulver\" 200 g (ingredients \"Huehner-Eigelb, spruehgetrocknet und pasteurisiert\"; per 100 g: fat 58 g, of which saturates 18 g, carbohydrate 2.1 g, of which sugars 0 g, protein 34 g, salt 0.4 g; 14 pack sizes 100 g - 25 kg): a genuine A-type product, but the seller's delivery page says it delivers \"europaweit\" and its international price table names only Oesterreich, Schweiz, Belgien, Finnland, Schweden, Italien, Niederlande, Norwegen, England & Liechtenstein - no Asian market, so it is not a cross-border option",
+    "gourmet-versand.com (the one cross-border seller whose shipping-cost country selector does name this market): category /en/cat198/patisserie-aids.html read in full - the only egg powder is \"Puratos - dried egg white powder, 2.5 kg\"; no egg YOLK powder anywhere in the catalogue",
+    "bakingwarehouse.com (HK): full catalogue via products.json - \"Dried Egg White powder 1kg - albumen powder\" and \"Chilled Pasteurized Egg yolk 1kg\" (liquid) only; no dried egg yolk powder",
+    "gourmet-versand.com - the cross-border seller that closed FRU/INU for most of this region - does NOT list China in its shipping-cost country selector (81 options read 2026-09-17: Hong Kong, India, Indonesia, Japan, Malaysia, Philippines, Singapore, South Korea, Taiwan, Thailand, Vietnam are named; China, Pakistan, Bangladesh and Sri Lanka are not)",
+    "iherb.com / cn.iherb.com / pk.iherb.com - HTTP 403 bot wall on every request, recorded as inconclusive and not bypassed (protocol rule 6)"
+   ],
+   "candidates": [],
+   "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search. Cross-border route for dried egg yolk was searched and closed 2026-09-17: the one European retailer with a verified 100 % spray-dried chicken egg yolk powder in a 100 g retail pack (pati-versand.de, \"Eigelbpulver 100g\") ships only to a named list of 20 European countries, and gourmet-versand.com - the one shop whose delivery-country selector does name Asian markets - has no egg powder at all. So there is currently no verifiable purchase path for dried egg yolk into this market."
+  }
+ },
+ "gap_followup_agent": "gap-asia",
+ "gap_followup_at_utc": "2026-09-17T18:30:00Z",
+ "gap_followup_egress_cc": "ES",
+ "close_open_roles_agent": "close-asia",
+ "close_open_roles_at_utc": "2026-09-17T20:05:00Z",
+ "close_open_roles_egress_cc": "ES"
 }

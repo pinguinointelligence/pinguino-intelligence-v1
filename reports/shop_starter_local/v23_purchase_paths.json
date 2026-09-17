@@ -1,0 +1,826 @@
+{
+ "AE": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Other (saudi arabia, dubai, brunei... 39-85US",
+    "covers_country_because": "the priced international rate table names \"dubai\" by name inside the 39-85US destination row. Dubai is an emirate/city of the United Arab Emirates, so a UAE delivery address is priced by this row; the shop's own checkout market list separately carries \"United Arab Emirates (USD $)\", which corroborates but is NOT the basis here. NOTE FOR OWNER: the country itself is not spelled out and the row is the open-ended \"Other (...\" bucket - if you read the rule as requiring the country name or a named group, downgrade this one row to UNCONFIRMED; SA in the same row is named outright and is unaffected.",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-AE.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z",
+   "coordinator_note": "Read strictly: the rates row names the city \"dubai\", not the United Arab Emirates, and sits in an open \"Other (...)\" bucket. A city is not the country delivery declaration, so this stays unconfirmed; the seller quote is kept and the owner can decide otherwise (row AE-STB)."
+  }
+ },
+ "AU": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "saporepuro.com",
+   "url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+   "product_name": "Tara Seed Flour - Tara Gum - Origin: Peru - E417 - Packaged in Italy (variant \"50gr\", sku SPGT50)",
+   "gtin": "8055728540170",
+   "identity": {
+    "basis": "GTIN printed as data on the seller's own product page (Shopify variant barcode + JSON-LD gtin13)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "variant \"50gr\", sku SPGT50, barcode 8055728540170",
+    "matched_attributes": "manufacturer's own store; exact v23 item"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://saporepuro.com/en/policies/shipping-policy",
+    "heading": "Shipping Policy - section \"8) North America, Canada, Australia, South America, and Islands\"",
+    "quote": "North America, Canada, Australia, South America, and Islands",
+    "covers_country_because": "Australia is named outright as a priced zone (0-10 kg EUR 65.00 / 10.01-25 kg EUR 95.00 / over 25 kg EUR 145.00). Independently, bakingwarehouse.com's international rate table names \"Australia, New Zealand, Indonesia US$25-80\" for the same item - a second, verified path (see NZ/ID entries, verdict file identity-NZ.json).",
+    "exceptions_checked": "saporepuro.com FAQ (/en/pages/faq) answers \"Do you ship internationally? A: Yes, we ship throughout Europe. Contact us for custom quotes.\" - looser than, and in tension with, the priced policy; the numbered Shipping Policy zone table is the shop's priced declaration and names Australia explicitly. Section 9 only assigns customs duties to the recipient (DAP). No product restriction on this item. Recorded so the owner can see both sentences."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"http://schema.org/InStock\"; Shopify product JSON variant \"50gr\", sku SPGT50, barcode 8055728540170, price EUR 8.80",
+    "source": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/verify-AU-saporepuro.json (GTIN on page, source_type DIRECT) + ~/.cache/gellatti-evidence/quotes/v23-purchase-paths/saporepuro-zone8.json (delivery quote, ratio 1.0)",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "BD": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "BH": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "No seller declares a GCC zone. bakingwarehouse.com's priced table names Qatar, \"saudi arabia\" and \"dubai\" but not Bahrain, and the \"Other (...\" bucket is open-ended, not a group. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "CN": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "bakingwarehouse.com lists \"China (CNY)\" in its market/currency selector, but the selector is not a delivery statement and the priced table does not name China; the only bucket left is the open-ended \"Other (saudi arabia, dubai, brunei...\", which is a catch-all, not an unambiguous group. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "CR": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "OWNER DECISION MAY APPLY: saporepuro.com zone 8 reads \"North America, Canada, Australia, South America, and Islands\". Costa Rica is in Central America; because the zone lists Canada separately next to \"North America\", \"North America\" cannot be read unambiguously as the full continent incl. Central America, so I did not close it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "DO": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "OWNER DECISION MAY APPLY: saporepuro.com zone 8 ends with \"and Islands\" (Italian original: \"Isole\"). The Dominican Republic is an island state, but \"Isole\" in this table sits next to the Canary-Islands zone and reads as the carriers' island surcharge wording, not as a named group of island countries, so it was not counted. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "DZ": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "EG": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "GH": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "ID": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Australia, New Zealand, Indonesia US$25-80",
+    "covers_country_because": "the priced international rate table names \"Indonesia\" by name in the \"Destination country\" column (row \"Australia, New Zealand, Indonesia\"), with a fee of US$25-80 (approx 1-8kg).",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-ID.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "IL": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "IN": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "bakingwarehouse.com lists \"India (INR)\" in its market/currency selector, but the selector is not a delivery statement and the priced table does not name India; the leftover bucket is the open-ended \"Other (saudi arabia, dubai, brunei...\". Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "IS": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  },
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "Dextrose Powder Unflavoured 1 kg - HSN Raw Series  [v23 selection, unchanged]",
+   "gtin": "5060326271725",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "hsnstore.eu's international-shipping page was NOT touched, per instruction. Instead: (a) HSN's other national storefronts were tried on different paths - hsnstore.pt/en/shipping-costs, hsnstore.be/en/international-shipping-costs, hsnstore.pl/en/international-shipping-costs, hsnstore.gr/international-shipping-costs, hsnstore.eu/frequently-asked-questions-faqs and even the product page hsnstore.eu/brands/raw-series/dextrose-powder: every host and every path answers HTTP 403 to both curl and the fetch tool, i.e. the whole hsnstore.* family is behind a bot wall. NOT bypassed, so HSN's own delivery declaration is inconclusive, not negative. A web-search snippet claims HSN ships to Iceland, but a search summary is not evidence (it paraphrases the very page that is blocked). (b) Another seller of the same item: nutriland.ro sells \"Dextrose, powder, 1kg, HSN\" but declares only domestic Romanian delivery (\"FREE Shipping for orders over 300 Lei\", \"EasyBox & GLS delivery to over 3800 lockers in the country\") - no Iceland. (c) carrefour.es (the other v23 link) is a Spain-only grocery delivery. (d) No Icelandic seller of the HSN Raw Series 1 kg dextrose was found; the other 1 kg dextrose sellers that surfaced (msk-ingredients.com, bulksupplements.com, modernistpantry.com, eBay) are different brands, i.e. a different product, which the owner's rule does not allow. SUGGESTED NEXT STEP FOR THE OWNER: open hsnstore.eu/international-shipping-costs in a normal browser - if Iceland is listed there with a price, this row closes immediately on the v23 seller.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "JP": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Japan 36-66(approx.2-8kg)",
+    "covers_country_because": "the priced international rate table gives Japan its own row, \"Japan 36-66(approx.2-8kg)\".",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-JP.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "KE": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "KR": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea,",
+    "covers_country_because": "the priced international rate table names \"South Korea\" by name in the \"Destination country\" column, with a fee of US$33-57 (approx 2-8kg); no exception or product restriction removes it.",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-KR.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "KW": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "No seller declares a GCC zone. bakingwarehouse.com's priced table names Qatar, \"saudi arabia\" and \"dubai\" but not Kuwait; \"Other (...\" is a catch-all. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "LK": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "MA": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "MY": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea,",
+    "covers_country_because": "the priced international rate table names \"Malaysia\" by name in the \"Destination country\" column, with a fee of US$33-57 (approx 2-8kg); no exception or product restriction removes it.",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-MY.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "NG": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "NO": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Austria, Belgium, Denmark, Finland, France, Germany, Netherlands, Netherlands, Norway, Poland, Portugal, Qatar, Spain, Switzerland, UK, Sweden, Switzerland, United Kingdom..",
+    "covers_country_because": "the priced international rate table names \"Norway\" by name inside the US$39-83 (approx 1-5kg) destination row; the row is a priced destination list, not a currency selector.",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-NO.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "NZ": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Australia, New Zealand, Indonesia US$25-80",
+    "covers_country_because": "the priced international rate table names \"New Zealand\" by name in the \"Destination country\" column (row \"Australia, New Zealand, Indonesia\"), with a fee of US$25-80 (approx 1-8kg).",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-NZ.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "OM": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "No seller declares a GCC zone. bakingwarehouse.com's priced table names Qatar, \"saudi arabia\" and \"dubai\" but not Oman; \"Other (...\" is a catch-all. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "PA": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "OWNER DECISION MAY APPLY: same as CR - saporepuro.com zone 8 \"North America, Canada, Australia, South America, and Islands\"; Panama is Central American and the zone's wording is ambiguous, so it was not counted. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "PH": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea,",
+    "covers_country_because": "the priced international rate table names \"Philippines\" by name in the \"Destination country\" column, with a fee of US$33-57 (approx 2-8kg); no exception or product restriction removes it.",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-PH.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "PK": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "QA": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Austria, Belgium, Denmark, Finland, France, Germany, Netherlands, Netherlands, Norway, Poland, Portugal, Qatar, Spain, Switzerland, UK, Sweden, Switzerland, United Kingdom..",
+    "covers_country_because": "the priced international rate table names \"Qatar\" by name inside the US$39-83 (approx 1-5kg) destination row; the row is a priced destination list, not a currency selector.",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-QA.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "SA": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Other (saudi arabia, dubai, brunei... 39-85US",
+    "covers_country_because": "the priced international rate table names \"saudi arabia\" by name inside the 39-85US destination row.",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-SA.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "SG": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea,",
+    "covers_country_because": "the priced international rate table names \"Singapore\" by name in the \"Destination country\" column, with a fee of US$33-57 (approx 2-8kg); no exception or product restriction removes it.",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-SG.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "TH": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea,",
+    "covers_country_because": "the priced international rate table names \"Thailand\" by name in the \"Destination country\" column, with a fee of US$33-57 (approx 2-8kg); no exception or product restriction removes it.",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-TH.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "TN": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "TR": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "TW": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea,",
+    "covers_country_because": "the priced international rate table names \"Taiwan\" by name in the \"Destination country\" column, with a fee of US$33-57 (approx 2-8kg); no exception or product restriction removes it.",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-TW.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "VN": {
+  "STB": {
+   "state": "CONFIRMED",
+   "seller": "bakingwarehouse.com",
+   "url": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro",
+   "product_name": "Tara Gum 50gr. | Saporepuro",
+   "gtin": null,
+   "identity": {
+    "basis": "GTIN_ON_SOURCE + ATTRIBUTE_MATCH (owner rule D-29, identity route 2; identity_match.py verdict)",
+    "source_url": "https://saporepuro.com/en/products/tara-seed-flour-tara-gum-origin-peru-e417-packaged-in-italy-1",
+    "source_gtin": "8055728540170",
+    "local_page_identifier": "barcode \"X001GI7BRD\" - the seller's own Amazon-style code; the GTIN is not printed on the local page",
+    "matched_attributes": "brand SaporePuro + name \"Tara Gum\" + pack 50gr, single variant, no conflicting GTIN"
+   },
+   "channel": "RETAIL",
+   "delivery": {
+    "url": "https://bakingwarehouse.com/pages/worldwide-shipping",
+    "heading": "SHIPPING RATES & Fee - INTERNATIONAL  (table columns: \"Destination country\" | \"fee\")",
+    "quote": "Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea,",
+    "covers_country_because": "the priced international rate table names \"Vietnam\" by name in the \"Destination country\" column, with a fee of US$33-57 (approx 2-8kg); no exception or product restriction removes it.",
+    "exceptions_checked": "Same page: \"Frozen ,Freshly item and Liquid , gas fuel, pressure gas could not be shipped\" (quote verified) - the v23 item is a dry 50 g powder, so no product restriction applies. /policies/shipping-policy (\"International - Speed post / Fedex. shipping costs calculated on check out page\") and /policies/terms-of-service (\"Turnaround & shipping for Oversea\") carry no country exclusion; /pages/delivery is Hong Kong-only and excludes only HK remote districts. Every other page in the shop's own sitemap (about-us, package-information, disclaimer, product-conditions, free-delivery, purchase-product, faqs-usage-guide, buy-for-you-service) and the zh-language copy of this page were checked: no further country is named and nothing takes these destinations back out."
+   },
+   "availability": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T20:05:00Z",
+    "basis": "product page JSON-LD \"availability\": \"https://schema.org/InStock\"; Shopify product JSON: single variant, sku 4074, price HKD 140.00",
+    "source": "https://bakingwarehouse.com/products/tara-gum-50gr-saporepuro"
+   },
+   "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-VN.json",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ },
+ "ZA": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "seller": null,
+   "url": null,
+   "product_name": "SaporePuro Farina di semi di tara (E417) 50 g  [v23 selection, unchanged]",
+   "gtin": "8055728540170",
+   "channel": null,
+   "delivery": null,
+   "availability": null,
+   "verifier_verdict_file": null,
+   "tried": "Not named by any seller of this item, in any language, and no unambiguous group covering it. Sellers of this exact item that exist at all were enumerated and each one's own delivery wording was read: (1) saporepuro.com - priced zones are Italy / EU / UK / Switzerland / Canary Islands / \"North America, Canada, Australia, South America, and Islands\" only; (2) gelatostore.it - same company (Gioia Group s.r.l., Turin) and a byte-for-byte equivalent zone table, so it adds no destination; (3) bakingwarehouse.com (HK) - its real declaration is the priced table at /pages/worldwide-shipping (heading \"SHIPPING RATES & Fee - INTERNATIONAL\"), which names only Malaysia, Singapore, Philippines, Taiwan, Thailand, Vietnam, South Korea, Canada, Australia, New Zealand, Indonesia, a European row incl. Norway and Qatar, USA, Japan, and \"Other (saudi arabia, dubai, brunei...\"; (4) ankorstore.com - wholesale marketplace, self-described \"The all-in-one B2B platform for brands and independent retailers\", i.e. a registered-trade channel, and European in scope; (5) Amazon EU listings of the same ASIN (B09JSVCHP7 on amazon.it/de/nl/se/es/fr) - marketplace, no seller delivery declaration for this market on the page; (6) gosupps.com (advertises \"Express International Delivery\" for this item) - the host answers HTTP 403 to every request, a bot wall, NOT bypassed, so it is inconclusive; (7) ebay.it store \"gelatostoretorino\" (SaporePuro's own eBay shop) - eBay answers HTTP 403, bot wall, NOT bypassed. No local seller of the SaporePuro 50 g item was found in this country.",
+   "checked_at_utc": "2026-09-17T20:05:00Z"
+  }
+ }
+}

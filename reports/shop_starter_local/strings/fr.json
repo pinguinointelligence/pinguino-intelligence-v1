@@ -22,12 +22,14 @@
   "tag_alternative": "Alternative locale",
   "tag_unconfirmed": "Non confirmé",
   "tag_abroad_unconfirmed": "Boutique étrangère",
+  "tag_large_pack": "Grand format",
   "legend": {
     "from_abroad": "une boutique à l’étranger dont la liste de livraison mentionne ce pays",
     "b2b": "vendu aux entreprises ou en grands conditionnements — pas une offre de détail ordinaire",
     "other_composition": "le même type de produit avec une autre composition (indiquée à côté)",
     "alternative": "un substitut d’un autre produit Gellatti",
-    "abroad_unconfirmed": "une boutique à l’étranger ; la livraison dans ce pays n’est pas confirmée"
+    "abroad_unconfirmed": "une boutique à l’étranger ; la livraison dans ce pays n’est pas confirmée",
+    "large_pack": "vendu en conditionnement de 5 kg ou plus"
   },
   "starter_amount": "Dans le Starter Pack : {g} g",
   "option": "Option {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Une alternative locale au mélange Gellatti, pas le même mélange. Mélangez-la aux ingrédients secs et chauffez la base à 75–80 °C.",
   "missing": "Pas encore de produit validé dans ce pays.",
   "out_of_stock": "La boutique l’indiquait en rupture de stock le {date}.",
+  "delivery_unconfirmed": "Livraison — {country} : non confirmée. Renseignez-vous auprès du vendeur.",
+  "extra_title": "Aussi bon à savoir",
   "notes_title": "Bon à savoir",
   "notes": [
     {"h": "Disponibilité", "p": "Nous avons vérifié les produits recherchés sur les sites de boutiques et de fabricants le 17 septembre 2026. Le dextrose, le lait écrémé en poudre et le stabilisant proviennent du tableau des pays Gellatti du 12 septembre 2026 et n’ont pas été revérifiés. La disponibilité, les prix et la livraison peuvent changer et ne sont pas garantis."},

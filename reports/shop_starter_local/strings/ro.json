@@ -22,12 +22,14 @@
   "tag_alternative": "Alternativă locală",
   "tag_unconfirmed": "Neconfirmat",
   "tag_abroad_unconfirmed": "Magazin străin",
+  "tag_large_pack": "Ambalaj mare",
   "legend": {
     "from_abroad": "un magazin din străinătate a cărui listă de livrare menționează această țară",
     "b2b": "vândut firmelor sau în ambalaje mari — nu este o ofertă obișnuită de retail",
     "other_composition": "același tip de produs, cu altă compoziție (indicată alături)",
     "alternative": "un înlocuitor pentru alt produs Gellatti",
-    "abroad_unconfirmed": "un magazin din străinătate; livrarea în această țară nu este confirmată"
+    "abroad_unconfirmed": "un magazin din străinătate; livrarea în această țară nu este confirmată",
+    "large_pack": "se vinde în ambalaje de 5 kg sau mai mari"
   },
   "starter_amount": "În Starter Pack: {g} g",
   "option": "Opțiunea {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "O alternativă locală la amestecul Gellatti, nu același amestec. Amestecă-o cu ingredientele uscate și încălzește baza la 75–80 °C.",
   "missing": "Încă nu există un produs aprobat în această țară.",
   "out_of_stock": "Magazinul l-a afișat ca epuizat la data de {date}.",
+  "delivery_unconfirmed": "Livrarea în {country} nu este confirmată — verificați la vânzător.",
+  "extra_title": "Informații suplimentare",
   "notes_title": "Bine de știut",
   "notes": [
     {"h": "Disponibilitate", "p": "Am verificat produsele cercetate pe site-urile magazinelor și ale producătorilor la data de 17 septembrie 2026. Dextroza, laptele praf degresat și stabilizatorul provin din tabelul de țări Gellatti din 12 septembrie 2026 și nu au fost verificate din nou. Disponibilitatea, prețurile și livrarea se pot schimba și nu sunt garantate."},

@@ -57,6 +57,10 @@ Konto B i finance admin: **wstrzymane** do czasu dokumentów krajowych (test ma 
 
 ### M5. Wyniki researchu i pokrycie (2026-09-17, wieczór)
 
+> **Liczby w M5 i M9 są z wcześniejszych godzin tej samej nocy.** Zostały zastąpione przez M10 po zmianie reguły dowodu
+> dostawy (znaczenie zdania zamiast układu strony), wycofaniu automatu „≥ 5 kg → Dla firm" i policzeniu pełnych 525
+> kombinacji. Zostawiam je jako zapis kolejnych stanów, nie jako aktualny wynik.
+
 Research zakończony dla 75/75 krajów. Każdy wiersz to `PROPOSAL_AWAITING_OWNER_ACCEPTANCE`; do PDF klienta nie trafiło nic.
 
 | Pozycja | Potwierdzony lokalnie | Potwierdzony z zagranicy (cytat polityki wysyłki) | Trop (niepotwierdzony) | BRAK |
@@ -120,16 +124,60 @@ Dowody nowych rozliczeń: `~/.cache/gellatti-evidence/quotes/coordinator-v23/` (
 ### M8. Ocena śmietanki 72 % (USA) — pełny raport: `reports/shop_starter_local/US_CREAM_POWDER_72_EVALUATION.md`
 
 Ocena wyłącznie czytająca: żadnej zmiany kodu, żadnego zapisu do bazy, wszystkie zapytania to `SELECT`.
+**Pierwsza wersja tej oceny (wieczór) była napisana na nieaktualnym katalogu roboczym z 25 sierpnia — 1 373 commity za
+staging — i na etykiecie ze strony producenta, której nie da się użyć. Poniżej wersja po dwóch sprawdzeniach właściciela.**
 
-- **Tożsamość: potwierdzona.** Hoosier Hill Farm Heavy Cream Powder 1 lb, GTIN 850054854513 jako dane przy własnym wariancie (454 g), `addressCountry US`, sklep deklaruje wysyłkę tylko w USA. Klasa `CONFIRMED_LOCAL` jest prawidłowa.
-- **Skład: strona drukuje tylko dwa fakty** — „72% butterfat” w tekście i skład „Cream, Nonfat Dry Milk, Natural Vitamin E & Vitamin C Ester”. **Brak tabeli wartości odżywczych i brak informacji o alergenach** na całej stronie (745 KB). Białko, laktoza, sucha masa beztłuszczowa i sól pozostają nieznane, a deklarowane odtłuszczone mleko w proszku sprawia, że oszacowanie „czysta śmietanka w proszku” byłoby błędne, nie tylko niedokładne.
-- **Profil w danych Gellatti: nie istnieje.** W żywej tabeli Mappera nie ma profilu mlecznej śmietanki w proszku 60–75 % (pasmo 58–80 % tłuszczu to orzechy, lecytyny, mieszanki stabilizujące i jedna baza mascarpone), a rodzina silnika `cream_powder` w ogóle nie istnieje — to znany brak zapisany w `GLOBAL_BASE_PRODUCT_ARCHITECTURE_AUDIT.md`.
-- **Istniejący mechanizm zamiany dziś:** zaproponowałby produkt 72 % przy jednym progu roli (`fat >= 20`), sortował kandydatów alfabetycznie i zamieniał **gram za gram, bez świadomości tłuszczu**, a przy nieudanym przeliczeniu odmawiał komunikatem `hard:<metryka>`. To znaczy: bez nowego profilu produkt nie nadaje się jako składnik silnika.
-- **Wniosek:** **tak** jako oznaczona lokalna alternatywa zakupowa w PDF („inny skład — 72 % zamiast 42 %”, z podanym tłuszczem), **nie** jako składnik silnika. `canonical_ingredient_id` zostaje pusty; produkt **nie** może być podstawiony pod `PI-ING-000260`.
-- **To nie jest przypadek jednostkowy:** 9 z 51 wierszy śmietanki w 8 rynkach (US ×2, AE, CA, CY, GR, MT, TR, SE) to śmietanki o tłuszczu 53,5–75 %. Jeden neutralny profil obsłużyłby kilka rynków; łatka tylko dla USA nie obsłuży żadnego innego. Kandydat CY/GR/MT/TR (75 %) ma pełną tabelę na 100 g, ale jego klasa dowodu to na razie trop.
-- **Tara zostaje rozdzielona:** `PI-ING-002114` (mieszanka Gellatti) i `PI-ING-000492` (sama guma tara) to dwa różne wiersze o różnych wynikach w silniku; guma tara jest też na liście wysokiego ryzyka Live Overlay, więc żadna lokalna guma nie jest wiązana automatycznie po nazwie.
-- **Rozbieżność do wyjaśnienia (nie zmieniana):** wiersz odniesienia `PI-ING-000260` ma inne wartości w pliku repo (`mapper_basement.csv`: woda 0 / sucha masa 100 / NFMS 58 / popiół 0 / `Verified`) niż w żywej tabeli (woda 3 / 97 / 55 / 5 / `Estimated / PI Calculated`), a neutralny `PI-ING-002242` istnieje tylko w bazie.
-- **Operacje, które byłyby potrzebne — wszystkie NIEZATWIERDZONE** (szczegóły w raporcie): wiersz `country_local_products` dla US/`GEL-CRP-500` z pustym `canonical_ingredient_id`; decyzja właściciela w wierszu `US-CRP-1`; zdobycie specyfikacji producenta (bez niej strona silnika jest zablokowana); usunięcie 7 testowych wierszy `shop_country_components` dla USA przed czymkolwiek publicznym; **nowy, neutralny** profil wysokotłuszczowej śmietanki w proszku (migracja pisana ręcznie, nigdy edycja `PI-ING-000260`); ranking zamienników według bliskości składu zamiast alfabetu i pokazanie różnicy składu w oknie zamiany.
+**Tożsamość: potwierdzona.** Hoosier Hill Farm Heavy Cream Powder 1 lb, GTIN 850054854513 jako dane przy własnym
+wariancie (454 g), `addressCountry US`; sklep deklaruje wysyłkę tylko w USA.
+
+**Etykieta: przeczytana ze zdjęć (to jest research, nie praca nad skanerem) i ODRZUCONA jako źródło.** Galeria ma
+10 zdjęć; tablica wartości odżywczych jest na `Heavy_Cream_Powder_Side.webp` (2048 × 2048, dodane 2026-09-16), a nie na
+grafice marketingowej wskazanej w pytaniu. Tablica nie nadaje się do użycia, bo przeczy sama sobie:
+„Total Fat 0g — 3 %" **nad** „Saturated Fat 5g — 10 %"; „About 151 servings × 6 g" = 906 g, czyli żadne z opakowań na tej
+stronie (454 / 907 / 11 340 g); wiersz „Vitamin 3.45mg" bez nazwy witaminy; „Calcium 28mg" przy 0 %; przypis o Daily Value
+złożony z nie-słów („…tnis 'yvw.foion loevs a butorix in a eslvitig of aozdmenneg akro…"); adres „HOOSIER HILL FARM,
+MIDDLETHIN, IN" zamiast Middlebury. Zdjęcie nie jest przypisane do żadnego wariantu. Kontrola na innym produkcie tego
+samego producenta (Butter Powder) przechodzi wszystkie te testy, więc to nie jest wada metody odczytu.
+
+**Skład: nadal niepełny.** Zostaje wyłącznie zdanie „72 % butterfat" z tekstu strony i lista składników („Cream, nonfat
+dry milk, natural vitamin E and vitamin C Ester"). Białko, węglowodany/laktoza, sucha masa beztłuszczowa, woda, sól i
+wartość energetyczna pozostają nieustalone. **Niczego nie wyliczono z samego procentu tłuszczu** — żadnej wody, laktozy,
+suchej masy, PAC ani POD. Producent nie publikuje karty technicznej (przeszukany sitemap, 16 stron, wyszukiwarka na
+stronie, brak PDF).
+
+**Dane w aplikacji: sprostowanie.** Wbrew pierwszej wersji oceny **nie ma rozbieżności** między plikiem repo a bazą dla
+`PI-ING-000260`: na staging `b0455b24` żywa tabela `mapper_basement` ma 2 541 wierszy, a `docs/ingredients/validation/
+mapper_basement.csv` ma te same 2 541 rekordów (ten sam skrót zbioru identyfikatorów, `md5 4ae515e3…` po obu stronach) i
+ten sam wiersz `PI-ING-000260` pole po polu (woda 3 / sucha masa 97 / tłuszcz 42 / NFMS 55 / białko 20 / laktoza 30 /
+POD 4,8 / PAC 30,585). „2 147 rekordów" pochodziło z niezacommitowanej lokalnej zmiany w tamtym starym katalogu. **Nic
+nie wymagało kopiowania CSV na bazę i nic takiego nie zostało zrobione.**
+
+**Mechanizm zamiany: zarzut „gram za gram, bez świadomości tłuszczu" WYCOFANY.** Ścieżka na staging:
+`IngredientRow.tsx:566` → `IngredientBuilder.tsx:461` → `createSubstitutionPreviewWithServerAuthority()` →
+`buildSubstitutionPreview()` (`applyPipeline.ts:8837`). Podmiana zastępuje **cały obiekt składnika** (wszystkie 16 pól
+składu, `structuredClone`), dziedziczy tylko planowane gramy, potem uruchamia `buildOptimizePreview()` i weryfikuje
+`detectViolations(calculateRecipe(...))`; `fat` jest tam metryką pierwszej klasy, a odmowa ma postać `hard:fat`.
+Mechanizm, który odmawia komunikatem `hard:fat`, nie jest nieświadomy tłuszczu. Prawdziwy brak jest gdzie indziej:
+**interfejs** pokazuje jedno ogólne zdanie odmowy i nie nazywa metryki. Brak rodziny `cream_powder` w `CorrectionFamily`
+dotyczy wyłącznie słownika dźwigni korekcyjnych i nie blokuje użycia produktu.
+
+**Prawdziwa luka techniczna** (`src/data/products/productEngineHandoff.ts:71`): `prepareProductEngineIngredient()`
+*pożycza skład produktu referencyjnego* — „the product itself carries no water / total_solids / sugar-type breakdown, so
+it cannot become a full EngineIngredient on its own". Żadna istniejąca ścieżka nie pozwala policzyć bazy z **własnego**
+składu produktu; produkt może nieść najwyżej własne PAC/POD, a jedyna ścieżka czytająca etykietę produktu
+(`labelOnlyCatalogToppingIngredient`) dotyczy TOPPINGU, nie bazy. Dlatego podstawienie produktu 72 % pod
+`PI-ING-000260` byłoby **błędem rachunkowym**, nie tylko złamaniem konwencji: silnik policzyłby 42 % tłuszczu.
+Do właściciela danych/Engine idą więc dwie rzeczy: (a) nie istnieje profil mlecznej śmietanki w proszku ~72 %, (b) pytanie
+strukturalne, czy produkt może w ogóle wnosić własny skład do receptury bazowej. Bez drugiego Mappera, bez nowego
+klasyfikatora i bez jednego arbitralnego profilu dla wszystkich proszków 53–75 %.
+
+**Wniosek.** Zakupowo: produkt może być pokazany jako lokalna alternatywa z oznaczeniem „inny skład" i podanym
+tłuszczem — decyzja właściciela, wiersz `US-CRP-1`. Technicznie: **jawny brak gotowości**; PDF nie może przy tym
+produkcie obiecywać, że aplikacja przeliczy recepturę na jego składzie. Jedno nie zastępuje drugiego.
+
+**Przy okazji ustalone:** testowe wiersze Lokalnego Zestawu Startowego w USA są od dziś **wykluczone strukturalnie**
+przez `public.shop_is_reserved_test_url` z migracji `20260917111101`, a nie tylko „do usunięcia"; PR-y #336 i #328
+pozostają otwarte, więc zależność sekwencyjna dla ewentualnego nowego profilu nadal obowiązuje.
 
 ### M9. Domykanie braków w kontrolowanych grupach — wynik (2026-09-17, noc)
 
@@ -190,6 +238,132 @@ zamiast 82 (bakingwarehouse 17 i bulksupplements 35 to szablon, nie lista dostaw
   redmanshop, healthguard.lk, naheed.pk, chaldal, laranitadelapaz.com.mx, ingredientesonline.com.br, qualifirst,
   chefsarmoury, gosupps. Wyczerpany limit wyszukiwarki i ściana botowa nie są dowodem, że produktu nie ma.
 
+### M10. Druga korekta właściciela (2026-09-17, noc): treść dowodu, kanał, tropy, pełne 525 kombinacji
+
+**1. Dostawa — znaczenie zdania, nie układ strony.** Poprzednia heurystyka („ta sama lista jest też na stronie produktu
+→ to szablon sklepu") była testem układu, nie treści. Zastąpiona przez `delivery_check.py`: jeden wpis na sprzedawcę z
+**cytatem, który rozstrzyga**, i z powodem. Deklaracja liczy się, gdy jej treść dotyczy dostawy i obejmuje kraj —
+przez nazwanie go w dowolnym języku **albo** przez jednoznaczną grupę, do której należy (strefa cenowa „European Union
+(EU)", „North America, Canada, Australia, South America", „EU-Zone 3: …") — o ile wyjątek ani ograniczenie produktowe go
+nie wyłącza. Sam selektor rynku/waluty bez słów o dostawie nie liczy się; ogólne „worldwide"/„Europe" też nie.
+
+Wynik ponownej oceny **rekordów zależnych od tych reguł** (nie hurtowego przywrócenia): v23 **97 potwierdzonych /
+38 niepotwierdzonych** (poprzednio 31/104 przy teście układu i 82/53 przy pierwszym, zbyt luźnym podejściu).
+- `bulksupplements.com` liczy się: „Please select your shipping country. Buy from the country of your choice. **Remember
+  that we can only ship your order to addresses located in the chosen country.**" — to zdanie o dostawie, a lista pod nim
+  wymienia 71 z naszych 75 rynków (pozostałe 4 były nazwane lokalnie: Danmark, România, Slovenija, Hong Kong SAR — po
+  poprawieniu tabeli nazw też się znalazły).
+- `saporepuro.com` liczy się przez strefy cenowe: „4) European Union (EU)", „5) United Kingdom (UK)", „6) Switzerland",
+  „8) North America, Canada, Australia, South America, and Islands" → potwierdza 35 wierszy, ale **nie** Azję, Afrykę,
+  Bliski Wschód, Norwegię ani Islandię (20 wierszy zostaje niepotwierdzonych).
+- `bakingwarehouse.com` nie liczy się: ma tylko baner „Door to Door worldwide shipping" i selektor „Country (waluta)" —
+  17 wierszy zostaje niepotwierdzonych. `hsnstore.eu` odpowiada 403 (nieobchodzone) — 1 wiersz niepotwierdzony.
+- iHerb liczy się przez stronę wysyłki dla konkretnego kraju (`/shipping/<kraj>`), także gdy w źródłach v23 jest tylko
+  subdomena krajowa (`mx.iherb.com` → `/shipping/mx`).
+
+**2. Masa opakowania nie ustala kanału.** Automat „≥ 5 kg → Dla firm" wycofany. Teraz: masa jest faktem o opakowaniu
+(oznaczenie „Duże opakowanie" obok podanej masy), a „Tylko dla firm" wymaga **potwierdzonego ograniczenia sprzedawcy**.
+Uzgodnienie po stabilnych ID, bez ręcznej korekty licznika: **7 kandydatów z researchu** ma ograniczenie sprzedawcy —
+`BG-CRP-1`, `GR-CRP-1`, `HR-CRP-1`, `IS-CRP-1`, `IS-YOL-1`, `MT-CRP-1`, `RO-CRP-1` (wszystkie: shop.cake-masters.com,
+„Verkauf nur an registrierte, gewerbliche Wiederverkäufer") — oraz **1 wiersz v23** oznaczony B2B przez właściciela
+(`US-STB`). Wcześniejsza liczba 8 brała dodatkowo turecki worek 25 kg (Enka Süt): to duże opakowanie, nie kanał.
+
+**3. Tropy w PDF jako wydzielona informacja dodatkowa.** Nowa sekcja „Warto też wiedzieć" pod pozycją, z kropką zamiast
+numeru wyboru, ze zlokalizowanym zdaniem „Dostawa do {kraj} niepotwierdzona — sprawdź u sprzedawcy". Zasady w kodzie:
+- siedem pozycji zamyka **tylko** produkt potwierdzony, w kanale detalicznym, z dostawą lokalną albo zadeklarowaną;
+- trop i oferta tylko dla firm trafiają do informacji dodatkowej i **nie** zamykają pozycji;
+- „niepotwierdzony" jako oznaczenie dotyczy wyłącznie tożsamości/składu — brak deklaracji dostawy ma własne zdanie, więc
+  jedno nie udaje drugiego;
+- nic w tej sekcji nie mówi o potwierdzonej dostępności, sprawdzonej wysyłce ani gotowym zamienniku w aplikacji.
+
+**5. Pełne 525 kombinacji (75 × 7), wymiary rozdzielone** — `readiness_matrix.py`, arkusz `05_MACIERZ_525`:
+
+| | |
+|---|---|
+| Kombinacje kraj × rola | **525** |
+| Zamknięte zakupowo (produkt potwierdzony + kanał detaliczny + dostawa lokalna albo zadeklarowana) | **339** |
+| Otwarte | **186** |
+| Kraje z siedmioma zamkniętymi rolami | **24**: AT BE CH CY CZ DE DK EE ES FI FR GB HU IE IT LT LU LV NL PL PT SE SI SK |
+| …z tego zaakceptowane przez właściciela | **0** |
+| …z tego, gdzie każdy zamykający produkt odpowiada składem referencji roli | **23** |
+
+Wymiary liczone niezależnie (kombinacja bywa otwarta na kilku naraz — nie sumować): produkt zidentyfikowany 482,
+zaproponowany 14, brak 29 · zakup: lokalny 212, zagraniczny zadeklarowany 156, zagraniczny niezadeklarowany 128,
+brak 29 · kanał: detaliczny 488, tylko dla firm 8, nieznany 29 · stan towaru: w sprzedaży 198, brak 21, nieznany 306 ·
+technicznie: skład zgodny z referencją roli 456, wymaga własnego profilu 13, nieustalone 56 · decyzja właściciela:
+brak 300, wybór v23 225.
+
+**To jest wynik, którego nie widać w 108 poprawnych szkicach.** Najtwardszy wniosek: **stabilizator z v23** ma
+niezadeklarowaną dostawę w 37 krajach (SaporePuro wysyła do UE, UK, Szwajcarii, Ameryki Północnej, Ameryki Południowej i
+Australii), więc kraje „kompletne na czterech nowych rolach" nie są kompletne na siedmiu. Akceptacja tożsamości produktu
+w v23 nie jest potwierdzeniem jego dostawy — to dwa różne wymiary i tak są teraz liczone.
+
+### M12. Stan po drugiej korekcie — wynik liczony na pełnych 525 kombinacjach
+
+Wszystkie cztery grupy domykające skończyły, plus osobny tor ścieżek zakupu dla produktu v23. Nic nie zostało
+zaakceptowane; `acceptance.json` nadal nie istnieje.
+
+| | Przed drugą korektą | Po |
+|---|---|---|
+| Kandydaci w arkuszu | 416 | **428** |
+| Kombinacje zamknięte zakupowo (z 525) | 339 | **385** |
+| Kombinacje otwarte | 186 | **140** |
+| Kraje z kompletem siedmiu ról | 24 | **26** (AT BE CH CY CZ DE DK EE ES FI FR GB HU IE IT LT LU LV NL NO NZ PL PT SE SI SK) |
+| Dostawa v23 potwierdzona / niepotwierdzona | 31 / 104 | **100 / 35** |
+| Zaakceptowane przez właściciela | 0 | **0** |
+
+**Dlaczego kombinacja jest otwarta (140):** dostawa niezadeklarowana przez sprzedawcę **87**, brak produktu **26**,
+tożsamość albo skład nieudowodnione **14**, kanał tylko dla firm **8**, inne 5. Otwarte według ról: śmietanka 47,
+żółtko 39, stabilizator 24, fruktoza 13, dekstroza 12, inulina 5.
+
+**Najważniejszy wniosek tej rundy:** głównym blokerem **nie jest brak produktu, tylko brak deklaracji dostawy**.
+87 ze 140 otwartych kombinacji ma realny, zidentyfikowany produkt — brakuje zdania sprzedawcy, że wysyła do tego kraju.
+
+**Zamknięte w tej rundzie:** NZ śmietanka (53,3 % tłuszczu — odczytane z tablicy na zdjęciu producenta), TW i VN żółtko
+(etykieta producenta), NG inulina (lokalnie), IL inulina, BH/KW/QA inulina (gourmet-versand), EG inulina (lokalnie),
+TR śmietanka (Enka Süt — po wycofaniu automatu B2B okazała się ofertą bez ograniczeń sprzedawcy, worek 25 kg jako
+„duże opakowanie"), oraz **14 ścieżek zakupu stabilizatora v23** (AU ID JP KR MY NO NZ PH QA SA SG TH TW VN) przez
+tabelę „SHIPPING RATES & Fee - INTERNATIONAL" sklepu bakingwarehouse.com — produkt z v23 bez zmian, zmienia się tylko
+miejsce zakupu.
+
+**Kraje jedną rolą od kompletu (9):** BG, BR, CA, GR, HR, RO, TW, VN — wszystkie śmietanka w proszku; US — sam
+stabilizator (wiersz v23 oznaczony przez właściciela jako B2B). **Dwie role (17):** AR AU CL CO HK ID JP KR MX MY PH QA
+SA SG UY (śmietanka + żółtko), MT (dekstroza + śmietanka), TR (żółtko + stabilizator).
+
+**Sprostowania wewnątrz tej rundy** (reguła „znaczenie, nie układ" działa w obie strony):
+- `bulksupplements.com` **ma** prawdziwą deklarację — zamkniętą listę „We currently ship to the following nations: …"
+  na stronie polityki, nieobecną na stronach produktów. Jej treść wyklucza jednak 12 naszych rynków (m.in. Panamę,
+  Grecję, Tajlandię, Katar, Kuwejt, Oman), więc dekstroza spadła z 74 do 63 zamkniętych — to poprawka w dół, nie w górę.
+- `bakingwarehouse.com` **ma** deklarację na osobnej stronie (tabela cen wysyłki per kraj) — 13 krajów potwierdzonych,
+  ale nie AE: wiersz wymienia miasto „dubai" w otwartym worku „Other (…)", a miasto nie jest deklaracją dla kraju.
+  Zapisane jako decyzja właściciela, nie jako potwierdzenie.
+- 8 kandydatów (inulina KIKI Health w BH, DZ, EG, IL, KW, OM, QA, TN) **przywróconych** do „potwierdzony z zagranicy":
+  ich listę krajów poprzedza nagłówek „Your shipping estimates — Country", czyli zdanie o dostawie. Zastrzeżenie
+  sprzedawcy („Some countries may require bespoke postage…") zapisane przy każdym z nich.
+- Ostrzeżenie jednego z badaczy, że lista bulksupplements to „tylko USA", sprawdziłam osobno — dotyczyło innej strony
+  tego sklepu; wiążąca jest zamknięta lista na stronie polityki.
+
+**Szkice:** 108/108 przechodzi walidację na końcowych danych (bez sentineli, linia braku towaru tam, gdzie stan to
+potwierdza, siedem ról zamykanych wyłącznie produktem potwierdzonym w kanale detalicznym z dostawą lokalną albo
+zadeklarowaną). Stan magazynowy zapisany dla 443 kandydatów.
+
+### M11. Konieczne zastosowania — pokazane osobno, **żadne nie wykonane**
+
+Ta wiadomość właściciela nie daje zgody na wspólną bazę, Storage, funkcje Edge, usuwanie wierszy testowych, `ON` ani
+`main`/produkcję. Poniżej jest wszystko, co **musiałoby** zostać zastosowane, żeby domknąć infopak — każda pozycja
+osobno, z dokładną operacją, żeby dało się ją zatwierdzić albo odrzucić pojedynczo.
+
+| # | Operacja | Co dokładnie | Stan |
+|---|---|---|---|
+| 1 | Akceptacja produktów | Wpisy TAK/NIE właściciela w `01_DO_DECYZJI` (albo arkusze `06_REKOMENDACJE` i `07_WYJATKI`), import przez `build_review.py --import` → `acceptance.json`. Bez tego build publikacyjny odmawia każdego wariantu. | **niewykonane, czeka na właściciela** |
+| 2 | Pliki PDF do prywatnego bucketa | `publish_starter_local.py --plan` (odmawia szkiców i wariantów bez 7/7), potem `--upload`: `supabase storage cp` do `shop-documents/starter-pack-local/1.0/<kraj>/<locale>-<sha>.pdf`. | niewykonane |
+| 3 | Wiersze rejestru dokumentów | `publish/registry.sql`: `insert … on conflict do nothing`, `availability = 'TEST_ACCOUNTS_ONLY'`, konta QA, odbiorca `info@gellatti.com`, `is_current = true`, `country_iso2` + `language` + `version`. Kontrola przed i po: `publish/verify.sql`. | niewykonane |
+| 4 | Wyłączenie starej oferty bazy | Jeden `update public.shop_digital_documents set availability = 'OFF' where document_key = 'GELATO_BASE_INGREDIENTS' and country_iso2 is null and version = '1.1'`. Nie dotyka zamówienia `G-20260917-9F038F` ani jego pliku: pobranie nie czyta dostępności (sprawdzone). | niewykonane, **opcjonalne** |
+| 5 | Profil wysokotłuszczowej śmietanki w proszku | Migracja pisana ręcznie, **neutralny** nowy profil (nigdy edycja `PI-ING-000260`), po rozstrzygnięciu pytania strukturalnego z M8 i po PR #336/#328. Do właściciela danych/Engine, nie do SHOP. | niewykonane, **zależne od decyzji** |
+| 6 | Testowe wiersze LSP w USA | Od dziś wykluczone strukturalnie przez `shop_is_reserved_test_url` (migracja `20260917111101`). Fizyczne usunięcie 7 wierszy pozostaje osobną decyzją porządkową. | niewykonane, **nie jest już pilne** |
+| 7 | QA na staging po publikacji | Konto A, konto B (brak dostępu do zamówienia A), finance admin, wyścig równoległych zamówień, mail do kontrolowanego odbiornika. Wymaga logowań właściciela. | niewykonane |
+| 8 | Publiczne `ON` i wydanie `main`/produkcja | Jeden końcowy pakiet, osobna wyraźna zgoda. | niewykonane |
+
 ## Stan ukończenia (2026-09-17, po korekcie wieczornej): mechanizm gotowy, treść czeka na akceptację
 
 Poprzednia wersja tej tabeli opisywała stan przed wykonaniem pakietu K. Stan na teraz, wyłącznie `staging` + wspólna baza:
@@ -202,8 +376,8 @@ Poprzednia wersja tej tabeli opisywała stan przed wykonaniem pakietu K. Stan na
 | Naprawa 401 przy wyborze kraju (K6) i zabezpieczenie testowego LSP (K4) | **Wdrożone** | `20260917111101_shop_public_offer_read_and_qa_fixture_guard`; serwowana strona bez logowania: `shop_country_local_readiness` 200, `gellatti_shop_document_availability_v1` 200 |
 | Zdjęcia 7 fizycznych produktów (PR #400) | **Wdrożone na staging, sprawdzone na serwowanej stronie** | staging `a378a4f4`; 7/7 kart z własnym zdjęciem, sha serwowanych plików = pliki z PR, 0 błędów konsoli. Akceptacja wizualna właściciela: **brak** |
 | PDF bazy v1.1 (stary, angielski, 6 ról) | **Zbudowany, w prywatnym storage, zamówiony przez konto A** | sha `f9226284…`, plik obecny; pobranie nie zależy od dostępności, więc historyczne zamówienie zostaje sprawne także po wyłączeniu oferty |
-| PDF-y per kraj (7 ról Starter Packu) | **108 szkiców przechodzi walidację; 0 pozycji zaakceptowanych** | `build/starter_local/validation_draft.json` 108/108; `acceptance.json` nie istnieje; build publikacyjny odmawia wariantu bez akceptacji wszystkich 7 ról |
-| Dane krajowe (research 4 nowych ról) | **75/75 krajów zbadane; 121 z 300 kombinacji otwarte** | `gap_counters.py`; powody rozdzielone: brak kandydata, tylko trop, kanał B2B, inny skład |
+| PDF-y per kraj (7 ról Starter Packu) | **Szkice przechodzą walidację; 0 pozycji zaakceptowanych** | `acceptance.json` nie istnieje; build publikacyjny odmawia wariantu, w którym któraś z 7 ról nie ma produktu **zaakceptowanego i zdolnego ją zamknąć** (potwierdzony, detaliczny, z dostawą lokalną albo zadeklarowaną) |
+| Kompletność siedmiu ról (75 × 7 = 525) | **339 kombinacji zamkniętych zakupowo, 186 otwartych; 24 kraje mają komplet siedmiu ról** | `readiness_matrix.py`, arkusz `05_MACIERZ_525`; wymiary rozdzielone (produkt, zakup, kanał, stan, technika, decyzja) |
 | Testowe wiersze Lokalnego Zestawu Startowego w USA | **Nadal 7 wierszy testowych** | decyzja o ich usunięciu otwarta (guard z K4 blokuje ofertę, dane testowe zostają) |
 | Publiczne ON, `main`, produkcja | **Niezatwierdzone** | wymaga osobnej, wyraźnej zgody właściciela |
 

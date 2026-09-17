@@ -66,7 +66,9 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4d4168c9e494486b.json",
      "verifier_class": "PAGE_FACTS_ONLY",
      "checked_at_utc": "2026-09-17T16:06:09Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
    ],
    "notes": "No Slovenian direct retailer page with dairy cream powder found. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, on-site search and price-comparison search pages instead."
@@ -148,7 +150,9 @@
      "local_availability_confirmed": false,
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
      "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing",
-     "added_by": "coordinator (reuse of the AT/LU/IE cross-border listing; country named in the seller delivery table)"
+     "added_by": "coordinator (reuse of the AT/LU/IE cross-border listing; country named in the seller delivery table)",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
    ],
    "notes": "BRAK. No local baking/pastry supplier with a readable catalogue was found for Slovenia; the baking-supplier check is the cross-border Pati-Versand catalogue. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, on-site search and price-comparison search pages instead. | Coordinator addition 2026-09-17: glaeserundflaschen.de (DE) lists Slowenien in its delivery table (check_quotes found=true); Sweet Family Fruchtzucker 500 g (GTIN 4008671070229 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was BRAK."
@@ -264,7 +268,9 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/04934f82ee9d68b6.json",
      "verifier_class": "PAGE_FACTS_ONLY",
      "checked_at_utc": "2026-09-17T16:19:05Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
    ],
    "notes": "No Slovenian direct retailer page with dried egg yolk found. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, on-site search and price-comparison search pages instead."

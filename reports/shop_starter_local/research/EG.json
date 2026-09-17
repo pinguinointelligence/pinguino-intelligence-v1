@@ -3,7 +3,7 @@
  "country": "Egypt",
  "agent": "research-mena",
  "egress_cc": "ES",
- "researched_at_utc": "2026-09-17T16:25:08Z",
+ "researched_at_utc": "2026-09-17T20:25:00Z",
  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
  "items": {
   "CRP": {
@@ -22,7 +22,11 @@
     "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
     "hoosierhillfarm.com product sitemap + policies/shipping-policy + pages/faqs (international shipping)",
     "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
-    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "gourmet-versand.com DE+EN sitemaps (14 531 / 12 934 URLs) scanned for sahne|rahm|dotter|eigelb|eipulver|inulin|fruktose + the shipping-country statement re-read",
+    "shop.cake-masters.com sitemap (7 518 URLs) scanned for sahnepulver|eigelb|inulin|fruktose + /versand-zahlung read",
+    "specialingredients.co.uk and msk-ingredients.com sitemaps scanned for yolk|cream-powder|inulin|fructose + shipping wording read",
+    "ingredientsbar.com sitemap (130 URLs) scanned for cream|yolk|inulin|fructose + /payment-delivery/ read"
    ],
    "sources_tried": [
     "spinneys-egypt.com supermarket (only 'ice cream powder mix' and full-cream milk powder - reject)",
@@ -35,7 +39,17 @@
     "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
     "hoosierhillfarm.com (US, Heavy Cream Powder): FAQ states 'Do you ship internationally? At this time, we do not ship internationally.' - rejected as a cross-border path",
     "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
-    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Egypt - rejected as a cross-border path"
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Egypt - rejected as a cross-border path",
+    "gourmet-versand.com (DE) re-read 2026-09-17 under owner rule 16: its delivery statement (\"Shipment to the following country: ...\", 77 countries) does NOT name Egypt - the earlier \"Oman\" hit was the substring inside \"Romania\". Its German sitemap (14 531 URLs) carries Sosa Inulin Cold/Hot 500 g but NO dairy cream powder and NO egg yolk powder.",
+    "shop.cake-masters.com (DE; Cake-Masters is the food business operator printed on the hobbybaecker.de listings): carries the identical products - \"CM Basics Sahnepulver 100g\" (itemprop gtin 4250712308666, \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\", Fett 42 g / Eiweiss 19 g per 100 g, \"Auf Lager\") and \"CM Basics Eigelbpulver 100g\" - but it is a trade-only shop: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer. Unsere Angebote richten sich ausschliesslich an Unternehmer, §14 BGB. Wir schliessen keine Verträge mit Verbrauchern, § 13 BGB.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_trade_only.json), and its \"Versandkosten Ausland\" table names only EU countries plus CH, GB, NO, IS and RS (~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_foreign_countries.json).",
+    "specialingredients.co.uk (UK): inulin powder in 100 g and 250 g and fructose in 250 g retail packs, but its only delivery wording is generic - \"We do not have a local stockist but offer delivery throughout the UK and internationally\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/specialingredients_generic_international.json) - no country and no zone is named, and no delivery-country page exists (/pages/delivery, /pages/shipping etc. all 404). Its catalogue has NO dairy cream powder and NO egg yolk powder (egg white albumen powder and whole egg powder only).",
+    "www.bulksupplements.com re-read 2026-09-17: its shipping policy is entirely US-domestic - \"if you spend over $59 on a single order, shipping is FREE within the contiguous U.S\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/bulksupplements_us_only.json) - and contains no international delivery statement at all; the country list earlier rounds hit is the \"Select Your Region\" picker, i.e. site furniture, not delivery wording.",
+    "buxtrade.de (DE): sells Inulin-Pulver and Bio-Inulin-Pulver, but its shipping policy delivers only within Germany and to named EU countries plus Switzerland, Great Britain and Norway (\"Restliche europäische Länder\") - Egypt is not covered.",
+    "ingredientsbar.com (UK): \"Cream Powder | Dairy Milk High-Fat 75%\" in 200 g / 500 g / 1.5 kg / 4 kg, spray-dried dehydrated cream \"free from additives\", schema.org InStock - a genuine class-B dairy cream powder - but its delivery page says only \"International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/ingredientsbar_generic_international.json); no country and no zone is named, so under owner rule 16 it does not confirm delivery.",
+    "www.modernistpantry.com and www.hsnstore.eu: sitemaps refused (404 / HTTP 403), not readable from this egress (inconclusive, not bypassed).",
+    "msk-ingredients.com (UK) and cocinista.es (ES) catalogues scanned: fructose only; no dairy cream powder and no egg yolk powder.",
+    "spinneys-egypt.com (49 308 URLs), seoudisupermarket.com (22 465 URLs), gourmetegypt.com (4 312 URLs), eatgoodco.com (1 301 URLs) and chefaa.com (3 484 URLs) sitemaps scanned 2026-09-17 for inulin|fructose|yolk|egg powder|cream powder: the only dairy-cream-shaped hits are whipping creams, whipped-topping mixes, coffee creamers and full-cream milk powders (all rejected types), and no dried egg yolk appears outside Arkan Foods",
+    "breadfast.com (403), hyperone.com.eg, 19011.com and goodsmart.com.eg (no answer), imtenan.com and vezeeta.com (no readable sitemap): inconclusive"
    ],
    "candidates": [
     {
@@ -74,7 +88,9 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3df84b49991636c0.json",
      "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
      "checked_at_utc": "2026-09-17T18:21:06Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "UNCONFIRMED",
+     "delivery_basis": "the country is not in the seller shipping-destination list"
     }
    ],
    "notes": "Only rejected product types found (whipping/whipped-topping powders, milk powders). | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name Egypt among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF."
@@ -94,7 +110,11 @@
     "amazon.eg search: fructose",
     "\"بودرة صفار البيض\" أو \"صفار البيض المجفف\" شراء اونلاين مصر السعودية متجر (WebSearch)",
     "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
-    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline"
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "gourmet-versand.com DE+EN sitemaps (14 531 / 12 934 URLs) scanned for sahne|rahm|dotter|eigelb|eipulver|inulin|fruktose + the shipping-country statement re-read",
+    "shop.cake-masters.com sitemap (7 518 URLs) scanned for sahnepulver|eigelb|inulin|fruktose + /versand-zahlung read",
+    "specialingredients.co.uk and msk-ingredients.com sitemaps scanned for yolk|cream-powder|inulin|fructose + shipping wording read",
+    "ingredientsbar.com sitemap (130 URLs) scanned for cream|yolk|inulin|fructose + /payment-delivery/ read"
    ],
    "sources_tried": [
     "spinneys-egypt.com supermarket (found Star Diet and Rich Diet fructose 125 g / 250 g / 500 g)",
@@ -107,7 +127,18 @@
     "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Egypt - rejected as a cross-border path",
     "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
     "vitacost.com: /international-shipping and /shipping-information redirect to the home page; no delivery-country list found",
-    "spinneys-egypt.com re-read 2026-09-17: both diet-sugar pages carry schema.org InStock and an internal sku (312356 for Star Diet), but no GTIN, no ingredient list and no country signal other than the host name (generic .com), so they stay LEADs"
+    "spinneys-egypt.com re-read 2026-09-17: both diet-sugar pages carry schema.org InStock and an internal sku (312356 for Star Diet), but no GTIN, no ingredient list and no country signal other than the host name (generic .com), so they stay LEADs",
+    "gourmet-versand.com (DE) re-read 2026-09-17 under owner rule 16: its delivery statement (\"Shipment to the following country: ...\", 77 countries) does NOT name Egypt - the earlier \"Oman\" hit was the substring inside \"Romania\". Its German sitemap (14 531 URLs) carries Sosa Inulin Cold/Hot 500 g but NO dairy cream powder and NO egg yolk powder.",
+    "shop.cake-masters.com (DE; Cake-Masters is the food business operator printed on the hobbybaecker.de listings): carries the identical products - \"CM Basics Sahnepulver 100g\" (itemprop gtin 4250712308666, \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\", Fett 42 g / Eiweiss 19 g per 100 g, \"Auf Lager\") and \"CM Basics Eigelbpulver 100g\" - but it is a trade-only shop: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer. Unsere Angebote richten sich ausschliesslich an Unternehmer, §14 BGB. Wir schliessen keine Verträge mit Verbrauchern, § 13 BGB.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_trade_only.json), and its \"Versandkosten Ausland\" table names only EU countries plus CH, GB, NO, IS and RS (~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_foreign_countries.json).",
+    "specialingredients.co.uk (UK): inulin powder in 100 g and 250 g and fructose in 250 g retail packs, but its only delivery wording is generic - \"We do not have a local stockist but offer delivery throughout the UK and internationally\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/specialingredients_generic_international.json) - no country and no zone is named, and no delivery-country page exists (/pages/delivery, /pages/shipping etc. all 404). Its catalogue has NO dairy cream powder and NO egg yolk powder (egg white albumen powder and whole egg powder only).",
+    "www.bulksupplements.com re-read 2026-09-17: its shipping policy is entirely US-domestic - \"if you spend over $59 on a single order, shipping is FREE within the contiguous U.S\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/bulksupplements_us_only.json) - and contains no international delivery statement at all; the country list earlier rounds hit is the \"Select Your Region\" picker, i.e. site furniture, not delivery wording.",
+    "buxtrade.de (DE): sells Inulin-Pulver and Bio-Inulin-Pulver, but its shipping policy delivers only within Germany and to named EU countries plus Switzerland, Great Britain and Norway (\"Restliche europäische Länder\") - Egypt is not covered.",
+    "ingredientsbar.com (UK): \"Cream Powder | Dairy Milk High-Fat 75%\" in 200 g / 500 g / 1.5 kg / 4 kg, spray-dried dehydrated cream \"free from additives\", schema.org InStock - a genuine class-B dairy cream powder - but its delivery page says only \"International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/ingredientsbar_generic_international.json); no country and no zone is named, so under owner rule 16 it does not confirm delivery.",
+    "www.modernistpantry.com and www.hsnstore.eu: sitemaps refused (404 / HTTP 403), not readable from this egress (inconclusive, not bypassed).",
+    "msk-ingredients.com (UK) and cocinista.es (ES) catalogues scanned: fructose only; no dairy cream powder and no egg yolk powder.",
+    "spinneys-egypt.com (49 308 URLs), seoudisupermarket.com (22 465 URLs), gourmetegypt.com (4 312 URLs), eatgoodco.com (1 301 URLs) and chefaa.com (3 484 URLs) sitemaps scanned 2026-09-17 for inulin|fructose|yolk|egg powder|cream powder: the only dairy-cream-shaped hits are whipping creams, whipped-topping mixes, coffee creamers and full-cream milk powders (all rejected types), and no dried egg yolk appears outside Arkan Foods",
+    "breadfast.com (403), hyperone.com.eg, 19011.com and goodsmart.com.eg (no answer), imtenan.com and vezeeta.com (no readable sitemap): inconclusive",
+    "spinneys-egypt.com re-read 2026-09-17: the same Star Diet fructose is also listed as \"Star Diet Fructose Natural Sweetener - 125 Gr\" (https://spinneys-egypt.com/en/star-diet-fructose-sugar-125-gm-spinneys), schema.org InStock, 53.75 EGP, shop sku 312363 - exactly the Starter Pack size, but the page prints no GTIN and no ingredient list, and the host binds only by currency, so it changes nothing about the class"
    ],
    "candidates": [
     {
@@ -191,10 +222,10 @@
      }
     }
    ],
-   "notes": "Egyptian diet-sugar brands are on sale at Spinneys Egypt, but no page shows a GTIN, a composition or a binding country signal."
+   "notes": "Egyptian diet-sugar brands are on sale at Spinneys Egypt, but no page shows a GTIN, a composition or a binding country signal. | close-gulf 2026-09-17: a 125 g pack of the same Star Diet fructose was found in stock at Spinneys Egypt (sku 312363, 53.75 EGP); it is recorded here rather than as a third candidate. The blockers are unchanged: no GTIN and no ingredient list on any Egyptian page, and spinneys-egypt.com binds to Egypt only by currency (D-31), with no seller address or delivery sentence on the product page and a client-rendered /en/stores page."
   },
   "INU": {
-   "result": "LEAD_ONLY",
+   "result": "CONFIRMED_LOCAL",
    "local_terms": [
     "انولين",
     "إينولين",
@@ -204,18 +235,74 @@
    "queries": [
     "sitemap URL scan (inulin): elezabypharmacy.com, chefaa.com, spinneys-egypt.com, rabbitmart.com, gourmetegypt.com",
     "amazon.eg search: inulin powder",
-    "kiki-health.com product page + shipping policy (cross-border)"
+    "kiki-health.com product page + shipping policy (cross-border)",
+    "gourmet-versand.com DE+EN sitemaps (14 531 / 12 934 URLs) scanned for sahne|rahm|dotter|eigelb|eipulver|inulin|fruktose + the shipping-country statement re-read",
+    "shop.cake-masters.com sitemap (7 518 URLs) scanned for sahnepulver|eigelb|inulin|fruktose + /versand-zahlung read",
+    "specialingredients.co.uk and msk-ingredients.com sitemaps scanned for yolk|cream-powder|inulin|fructose + shipping wording read",
+    "ingredientsbar.com sitemap (130 URLs) scanned for cream|yolk|inulin|fructose + /payment-delivery/ read"
    ],
    "sources_tried": [
     "elezabypharmacy.com pharmacy (no inulin powder)",
     "chefaa.com pharmacy platform (no result)",
     "spinneys-egypt.com / rabbitmart.com / gourmetegypt.com (no result)",
     "amazon.eg marketplace (Bioglan Inulin 250 g and several unbranded 227 g / 100 g inulin powders)",
-    "kiki-health.com UK brand shop (country selector lists Egypt; GTIN on page)"
+    "kiki-health.com UK brand shop (country selector lists Egypt; GTIN on page)",
+    "gourmet-versand.com (DE) re-read 2026-09-17 under owner rule 16: its delivery statement (\"Shipment to the following country: ...\", 77 countries) does NOT name Egypt - the earlier \"Oman\" hit was the substring inside \"Romania\". Its German sitemap (14 531 URLs) carries Sosa Inulin Cold/Hot 500 g but NO dairy cream powder and NO egg yolk powder.",
+    "shop.cake-masters.com (DE; Cake-Masters is the food business operator printed on the hobbybaecker.de listings): carries the identical products - \"CM Basics Sahnepulver 100g\" (itemprop gtin 4250712308666, \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\", Fett 42 g / Eiweiss 19 g per 100 g, \"Auf Lager\") and \"CM Basics Eigelbpulver 100g\" - but it is a trade-only shop: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer. Unsere Angebote richten sich ausschliesslich an Unternehmer, §14 BGB. Wir schliessen keine Verträge mit Verbrauchern, § 13 BGB.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_trade_only.json), and its \"Versandkosten Ausland\" table names only EU countries plus CH, GB, NO, IS and RS (~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_foreign_countries.json).",
+    "specialingredients.co.uk (UK): inulin powder in 100 g and 250 g and fructose in 250 g retail packs, but its only delivery wording is generic - \"We do not have a local stockist but offer delivery throughout the UK and internationally\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/specialingredients_generic_international.json) - no country and no zone is named, and no delivery-country page exists (/pages/delivery, /pages/shipping etc. all 404). Its catalogue has NO dairy cream powder and NO egg yolk powder (egg white albumen powder and whole egg powder only).",
+    "www.bulksupplements.com re-read 2026-09-17: its shipping policy is entirely US-domestic - \"if you spend over $59 on a single order, shipping is FREE within the contiguous U.S\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/bulksupplements_us_only.json) - and contains no international delivery statement at all; the country list earlier rounds hit is the \"Select Your Region\" picker, i.e. site furniture, not delivery wording.",
+    "buxtrade.de (DE): sells Inulin-Pulver and Bio-Inulin-Pulver, but its shipping policy delivers only within Germany and to named EU countries plus Switzerland, Great Britain and Norway (\"Restliche europäische Länder\") - Egypt is not covered.",
+    "ingredientsbar.com (UK): \"Cream Powder | Dairy Milk High-Fat 75%\" in 200 g / 500 g / 1.5 kg / 4 kg, spray-dried dehydrated cream \"free from additives\", schema.org InStock - a genuine class-B dairy cream powder - but its delivery page says only \"International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/ingredientsbar_generic_international.json); no country and no zone is named, so under owner rule 16 it does not confirm delivery.",
+    "www.modernistpantry.com and www.hsnstore.eu: sitemaps refused (404 / HTTP 403), not readable from this egress (inconclusive, not bypassed).",
+    "msk-ingredients.com (UK) and cocinista.es (ES) catalogues scanned: fructose only; no dairy cream powder and no egg yolk powder.",
+    "eatgoodco.com (Eat Good, Egyptian health grocer, 1 301 URLs scanned): \"Ole Organic Inulin\" 100 g found with a GTIN in the page's own JSON-LD, ingredients and an Egyptian delivery policy",
+    "jumia.com.eg: marketplace (rule 4), not used"
    ],
    "candidates": [
     {
      "rank": 1,
+     "brand": "Olé Nutrients",
+     "product_name": "Ole Organic Inulin",
+     "pack": "100 g",
+     "pack_grams": 100,
+     "moq": null,
+     "gtin": "0653020102089",
+     "identifier_confirmed": true,
+     "url": "https://eatgoodco.com/products/ole-inulin",
+     "source_type": "RETAILER",
+     "seller": "Eat Good (eatgoodco.com)",
+     "page_market": "EG",
+     "market_by": "SELLER_DELIVERY_STATEMENT",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "the product page prints the seller's own domestic delivery policy naming Egyptian cities and an EGP shipping fee: \"Delivery Policy Cairo & Giza (Dry or Fresh Products): Orders before 12 PM: same-day delivery | after 12 PM: next-day delivery. Shipping fee: 100 EGP.\", continuing \"Outside Cairo & Giza: Prepayment required.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/eatgoodco_delivery_EG.json). Prices are in EGP, but currency alone never binds (D-31) - the binding fact is the delivery statement.",
+     "channel": "RETAIL_CONSUMER",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:25:00Z",
+      "basis": "schema.org InStock; page text \"Hurry up, only 2 items left in stock\"",
+      "source": "https://eatgoodco.com/products/ole-inulin"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Organic Inulin Powder - No GMO - No Added Colors - Preservatives Free - Plant Based - vegan",
+      "from": "page label \"ingredients Organic Inulin Powder ...\"; the same text sits inside the page's own JSON-LD next to \"gtin\":\"0653020102089\", \"name\":\"Ole Organic Inulin\" and \"weight : 100 g\". No nutrition table is printed."
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "single-ingredient organic inulin powder. The page prints no fibre percentage, so fibre_g stays null.",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1d627657fe8e8d68.json",
+     "identity_note": "verify_ean_market.py: identifier_confirmed=true, identity_basis GTIN_ON_THIS_PAGE (the GTIN is in the page's own JSON-LD Product object, not in the URL and not echoed from a search). The verifier itself reports market_by CURRENCY_ONLY for the generic .com host; the market binding used here is the seller's printed delivery statement (D-29 route \"an exact quote from the seller's own site stating delivery to ... that country\").",
+     "owner_check": "delivery is stated for Cairo & Giza same/next day and \"Outside Cairo & Giza: Prepayment required\" - reachable everywhere in Egypt, but with prepayment outside the two governorates.",
+     "checked_at_utc": "2026-09-17T20:25:00Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
      "brand": "KIKI Health",
      "product_name": "Inulin Powder, Organic - 250g",
      "pack": "250 g",
@@ -239,16 +326,25 @@
       "from": "brand product page: '93% soluble plant-based fibre', '5.4g of fibre per serving', 'Completely pure, with no added sugars or sweeteners'"
      },
      "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "pure organic agave inulin, 93 % soluble fibre | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
-     "evidence_class": "LEAD",
+     "equivalence_note": "pure organic agave inulin, 93 % soluble fibre | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed. | Restored 2026-09-17 after the owner's second correction: the seller's country list is headed 'Your shipping estimates — Country', which is a statement about delivery, so the earlier downgrade (made on a page-layout test) does not stand. The seller's own caveat is kept: 'Some countries may require bespoke postage, please contact the KIKI team for shipping costs and further information if unable to select a delivery option at the checkout.'",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d8b2285e2c07b241.json",
      "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
      "checked_at_utc": "2026-09-17T16:22:48Z",
      "identity_note": "gtin13 5060018515847 as JSON-LD data on this purchase page (verifier EAN_ON_GENERIC_TLD_PAGE); the same GTIN/product is sold locally in UAE/KSA by Life Pharmacy",
-     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+     "shipping_basis": "DELIVERY_STATEMENT_RE_EVALUATED",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the country is offered in the seller own shipping-destination list",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:25:00Z",
+      "basis": "schema.org InStock in the page's own product JSON (sku KIK122)",
+      "source": "https://kiki-health.com/products/inulin-powder-organic-250g"
+     }
     },
     {
-     "rank": 2,
+     "rank": 3,
      "brand": "Bioglan",
      "product_name": "Bioglan Inulin | Prebiotic Fibre Supplement | Chicory Root | Contributes to normal Bowel Function | 50 serves | 250g Pack",
      "pack": "250 g",
@@ -276,10 +372,17 @@
      "evidence_class": "LEAD",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0aff018998dec2c0.json",
      "verifier_verification_class": "PAGE_FACTS_ONLY",
-     "checked_at_utc": "2026-09-17T16:23:21Z"
+     "checked_at_utc": "2026-09-17T16:23:21Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "UNKNOWN",
+      "checked_at_utc": "2026-09-17T20:25:00Z",
+      "basis": "the marketplace listing could not be re-read: the host answers with a short bot-wall page instead of the product, so no stock token is available (marketplaces never confirm anyway, rule 4)",
+      "source": "https://www.amazon.eg/dp/B01LWV9LNO"
+     }
     }
    ],
-   "notes": "No Egyptian direct retailer page with inulin powder was readable; rank 1 is a UK brand shop that lists Egypt in its country selector and states international delivery."
+   "notes": "No Egyptian direct retailer page with inulin powder was readable; rank 1 is a UK brand shop that lists Egypt in its country selector and states international delivery. | close-gulf 2026-09-17: CLOSED LOCALLY. eatgoodco.com (Eat Good, Egypt) lists \"Ole Organic Inulin\" 100 g with the GTIN 0653020102089 inside the page's own JSON-LD next to the ingredient line and \"weight : 100 g\", schema.org InStock, and the page prints the seller's own domestic delivery policy naming Cairo & Giza with an EGP shipping fee - identity and market binding are therefore both first-party facts on one page."
   },
   "YOL": {
    "result": "LEAD_ONLY",
@@ -296,7 +399,11 @@
     "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
     "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
     "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
-    "arkanfoodsegypt.com product-sitemap scan (fructose|inulin|cream|قشطة|كريمة)"
+    "arkanfoodsegypt.com product-sitemap scan (fructose|inulin|cream|قشطة|كريمة)",
+    "gourmet-versand.com DE+EN sitemaps (14 531 / 12 934 URLs) scanned for sahne|rahm|dotter|eigelb|eipulver|inulin|fruktose + the shipping-country statement re-read",
+    "shop.cake-masters.com sitemap (7 518 URLs) scanned for sahnepulver|eigelb|inulin|fruktose + /versand-zahlung read",
+    "specialingredients.co.uk and msk-ingredients.com sitemaps scanned for yolk|cream-powder|inulin|fructose + shipping wording read",
+    "ingredientsbar.com sitemap (130 URLs) scanned for cream|yolk|inulin|fructose + /payment-delivery/ read"
    ],
    "sources_tried": [
     "spinneys-egypt.com / rabbitmart.com / gourmetegypt.com grocers (no result)",
@@ -309,12 +416,22 @@
     "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
     "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Egypt - rejected as a cross-border path",
     "arkanfoodsegypt.com (Egyptian food-ingredient shop, seller address \"31 Faisl Street, Giza, Egypt\"): \"بودر صفار البيض - 500 جرام\", sku 2125, schema.org InStock - a direct Egyptian retailer, so it replaces the marketplace lead at rank 1; no ingredient list is printed",
-    "arkanfoodsegypt.com product sitemaps (4 754 URLs) scanned: no fructose, no inulin, no dairy cream powder"
+    "arkanfoodsegypt.com product sitemaps (4 754 URLs) scanned: no fructose, no inulin, no dairy cream powder",
+    "gourmet-versand.com (DE) re-read 2026-09-17 under owner rule 16: its delivery statement (\"Shipment to the following country: ...\", 77 countries) does NOT name Egypt - the earlier \"Oman\" hit was the substring inside \"Romania\". Its German sitemap (14 531 URLs) carries Sosa Inulin Cold/Hot 500 g but NO dairy cream powder and NO egg yolk powder.",
+    "shop.cake-masters.com (DE; Cake-Masters is the food business operator printed on the hobbybaecker.de listings): carries the identical products - \"CM Basics Sahnepulver 100g\" (itemprop gtin 4250712308666, \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\", Fett 42 g / Eiweiss 19 g per 100 g, \"Auf Lager\") and \"CM Basics Eigelbpulver 100g\" - but it is a trade-only shop: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer. Unsere Angebote richten sich ausschliesslich an Unternehmer, §14 BGB. Wir schliessen keine Verträge mit Verbrauchern, § 13 BGB.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_trade_only.json), and its \"Versandkosten Ausland\" table names only EU countries plus CH, GB, NO, IS and RS (~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_foreign_countries.json).",
+    "specialingredients.co.uk (UK): inulin powder in 100 g and 250 g and fructose in 250 g retail packs, but its only delivery wording is generic - \"We do not have a local stockist but offer delivery throughout the UK and internationally\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/specialingredients_generic_international.json) - no country and no zone is named, and no delivery-country page exists (/pages/delivery, /pages/shipping etc. all 404). Its catalogue has NO dairy cream powder and NO egg yolk powder (egg white albumen powder and whole egg powder only).",
+    "www.bulksupplements.com re-read 2026-09-17: its shipping policy is entirely US-domestic - \"if you spend over $59 on a single order, shipping is FREE within the contiguous U.S\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/bulksupplements_us_only.json) - and contains no international delivery statement at all; the country list earlier rounds hit is the \"Select Your Region\" picker, i.e. site furniture, not delivery wording.",
+    "buxtrade.de (DE): sells Inulin-Pulver and Bio-Inulin-Pulver, but its shipping policy delivers only within Germany and to named EU countries plus Switzerland, Great Britain and Norway (\"Restliche europäische Länder\") - Egypt is not covered.",
+    "ingredientsbar.com (UK): \"Cream Powder | Dairy Milk High-Fat 75%\" in 200 g / 500 g / 1.5 kg / 4 kg, spray-dried dehydrated cream \"free from additives\", schema.org InStock - a genuine class-B dairy cream powder - but its delivery page says only \"International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/ingredientsbar_generic_international.json); no country and no zone is named, so under owner rule 16 it does not confirm delivery.",
+    "www.modernistpantry.com and www.hsnstore.eu: sitemaps refused (404 / HTTP 403), not readable from this egress (inconclusive, not bypassed).",
+    "msk-ingredients.com (UK) and cocinista.es (ES) catalogues scanned: fructose only; no dairy cream powder and no egg yolk powder.",
+    "spinneys-egypt.com (49 308 URLs), seoudisupermarket.com (22 465 URLs), gourmetegypt.com (4 312 URLs), eatgoodco.com (1 301 URLs) and chefaa.com (3 484 URLs) sitemaps scanned 2026-09-17 for inulin|fructose|yolk|egg powder|cream powder: the only dairy-cream-shaped hits are whipping creams, whipped-topping mixes, coffee creamers and full-cream milk powders (all rejected types), and no dried egg yolk appears outside Arkan Foods",
+    "breadfast.com (403), hyperone.com.eg, 19011.com and goodsmart.com.eg (no answer), imtenan.com and vezeeta.com (no readable sitemap): inconclusive"
    ],
    "candidates": [
     {
      "rank": 1,
-     "brand": null,
+     "brand": "Whip Up",
      "product_name": "بودر صفار البيض - 500 جرام",
      "pack": "500 g",
      "gtin": null,
@@ -324,15 +441,15 @@
      "seller": "Arkan Foods Egypt, 31 Faisl Street, Giza, Egypt",
      "page_market": "EG",
      "market_by": "SELLER_ADDRESS",
-     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "identity_basis": "NOT_PROVEN",
      "market_binding_signal": "seller's own address printed on the site: 'Adress 31 Faisl Street, Giza, Egypt' (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/arkanfoods_seller_address_EG.json); prices in EGP (currency never binds on its own)",
      "cross_border": false,
      "ships_to_evidence": null,
      "availability": {
       "state": "IN_STOCK",
-      "checked_at_utc": "2026-09-17T18:40:51Z",
-      "basis": "schema.org InStock",
-      "source": "https://arkanfoodsegypt.com/ar/product/%D8%A8%D9%88%D8%AF%D8%B1-%D8%B5%D9%81%D8%A7%D8%B1-%D8%A7%D9%84%D8%A8%D9%8A%D8%B6-500-%D8%AC%D8%B1%D8%A7%D9%85/"
+      "checked_at_utc": "2026-09-17T20:25:00Z",
+      "basis": "schema.org InStock; page text \"Availability: 4 in stock\", 399 EGP",
+      "source": "https://arkanfoodsegypt.com/product/whip-up-egg-powder-yolk-egg-500-gr/"
      },
      "composition": {
       "fat_g": null,
@@ -346,9 +463,13 @@
      "equivalence_note": "page text: \"مسحوق صفار بيض عالي الجودة، مثالي للخبز والطبخ وصناعة الحلويات\" - right product type (egg yolk powder for baking), but no ingredient list and no nutrition table are printed",
      "evidence_class": "LEAD",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a7cc1658c4cec44d.json",
-     "identity_note": "no GTIN on the page; first-party listing of the Egyptian seller (sku 2125, exact name, 500 g pack). identifier_confirmed stays false (D-37).",
+     "identity_note": "corrected 2026-09-17 (close-gulf): the English listing of the same article, https://arkanfoodsegypt.com/product/whip-up-egg-powder-yolk-egg-500-gr/ (same shop sku 2125), names the brand - \"Whip Up Egg Powder ( Yolk Egg ) - 500 Gr\". Because \"Whip Up\" is a product brand and not demonstrably the retailer's own brand, the D-37 own-brand route is no longer asserted and identity_basis drops from FIRST_PARTY_OWN_BRAND_LISTING to NOT_PROVEN. No GTIN is printed on either language version; the shop also sells \"Whip Up Egg Powder (Whole Egg) 500 Gr\", which is a different product and is not used.",
      "checked_at_utc": "2026-09-17T18:40:51Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "pack_grams": 500,
+     "moq": null,
+     "channel": "RETAIL_CONSUMER",
+     "owner_check": "a real Egyptian retailer with dried egg yolk in stock; what is missing is the printed composition and any identifier - a label photo would settle both."
     },
     {
      "rank": 2,
@@ -384,8 +505,8 @@
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
      "availability": {
       "state": "UNKNOWN",
-      "checked_at_utc": "2026-09-17T18:45:00Z",
-      "basis": null,
+      "checked_at_utc": "2026-09-17T20:25:00Z",
+      "basis": "the marketplace listing could not be re-read: the host answers with a short bot-wall page instead of the product, so no stock token is available (marketplaces never confirm anyway, rule 4)",
       "source": "https://www.amazon.eg/dp/B0GCQ7DKK8"
      },
      "availability_note": "amazon.eg answered with a 4 411-byte bot-wall response on 2026-09-17, so no stock token could be read"
@@ -426,11 +547,13 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2944f17c1f486c80.json",
      "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
      "checked_at_utc": "2026-09-17T18:21:21Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "UNCONFIRMED",
+     "delivery_basis": "the country is not in the seller shipping-destination list"
     }
    ],
-   "notes": "gap pass 2026-09-17: rank 1 is now a direct Egyptian retailer (Arkan Foods, Giza) with the right product type in stock; only the printed composition is missing, so the row stays a LEAD. The marketplace listing is kept below it, and the German 100 % yolk powder is kept last as a composition reference."
+   "notes": "gap pass 2026-09-17: rank 1 is now a direct Egyptian retailer (Arkan Foods, Giza) with the right product type in stock; only the printed composition is missing, so the row stays a LEAD. The marketplace listing is kept below it, and the German 100 % yolk powder is kept last as a composition reference. | close-gulf 2026-09-17: the Arkan Foods row was re-read on its English page - brand \"Whip Up\", same sku 2125, 4 in stock. Its identity basis was corrected down to NOT_PROVEN because the brand is not the retailer's own. Arkan Foods' full catalogue was scanned for a dairy cream powder as well: it has whipping creams, cream soups and a pastry-cream mix, but no spray-dried dairy cream powder."
   }
  },
- "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; alternative search engines served CAPTCHAs/firewalls (not bypassed). Discovery used retailer sitemaps and Amazon.eg search pages. Bot walls / unreadable from the ES egress: jumia.com.eg (Cloudflare), vezeeta.com (Cloudflare), carrefouregypt.com (not attempted; Carrefour UAE/KSA/Qatar product pages all returned empty bot-protected responses), seifonline.com (no answer); breadfast.com sitemap 403; gourmetegypt.com, hyperone.com.eg, metro-markets.com sitemaps gave no product URLs. | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes."
+ "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; alternative search engines served CAPTCHAs/firewalls (not bypassed). Discovery used retailer sitemaps and Amazon.eg search pages. Bot walls / unreadable from the ES egress: jumia.com.eg (Cloudflare), vezeeta.com (Cloudflare), carrefouregypt.com (not attempted; Carrefour UAE/KSA/Qatar product pages all returned empty bot-protected responses), seifonline.com (no answer); breadfast.com sitemap 403; gourmetegypt.com, hyperone.com.eg, metro-markets.com sitemaps gave no product URLs. | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes. | close-gulf pass 2026-09-17 (egress ES) under the owner rules of 2026-09-17 second round (rule 16 delivery by meaning, rule 17 pack weight never decides the channel, rule 18 a lead is never a solution): INU closed locally (Ole Organic Inulin 100 g at eatgoodco.com: GTIN in the page JSON-LD plus the seller's own Cairo & Giza delivery policy); FRU, CRP and YOL stay leads."
 }

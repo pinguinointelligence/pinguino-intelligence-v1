@@ -22,12 +22,14 @@
   "tag_alternative": "Lokale Alternative",
   "tag_unconfirmed": "Unbestätigt",
   "tag_abroad_unconfirmed": "Shop im Ausland",
+  "tag_large_pack": "Großpackung",
   "legend": {
     "from_abroad": "ein Shop im Ausland, dessen eigene Lieferliste dieses Land nennt",
     "b2b": "Verkauf an Firmen oder in Großpackungen — kein gewöhnliches Einzelhandelsangebot",
     "other_composition": "gleiche Produktart mit anderer Zusammensetzung (daneben angegeben)",
     "alternative": "ein Ersatz für ein anderes Gellatti-Produkt",
-    "abroad_unconfirmed": "ein Shop im Ausland; die Lieferung in dieses Land ist nicht bestätigt"
+    "abroad_unconfirmed": "ein Shop im Ausland; die Lieferung in dieses Land ist nicht bestätigt",
+    "large_pack": "wird in Packungen ab 5 kg verkauft"
   },
   "starter_amount": "Im Starter Pack: {g} g",
   "option": "Option {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Eine lokale Alternative zur Gellatti-Mischung, nicht dieselbe Mischung. Vermische sie mit den trockenen Zutaten und erhitze die Basis auf 75–80 °C.",
   "missing": "In diesem Land noch kein freigegebenes Produkt.",
   "out_of_stock": "Der Shop zeigte das Produkt am {date} als nicht vorrätig.",
+  "delivery_unconfirmed": "Lieferung — {country}: nicht bestätigt. Beim Verkäufer nachfragen.",
+  "extra_title": "Auch gut zu wissen",
   "notes_title": "Gut zu wissen",
   "notes": [
     {"h": "Verfügbarkeit", "p": "Wir haben die recherchierten Produkte am 17. September 2026 auf Websites von Shops und Herstellern geprüft. Dextrose, Magermilchpulver und der Stabilisator stammen aus der Gellatti-Ländertabelle vom 12. September 2026 und wurden nicht erneut geprüft. Verfügbarkeit, Preise und Lieferung können sich ändern und sind nicht garantiert."},

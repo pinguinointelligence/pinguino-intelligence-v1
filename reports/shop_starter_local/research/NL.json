@@ -1,391 +1,399 @@
 {
-  "iso2": "NL",
-  "country": "Netherlands",
-  "agent": "research-eu-west",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:33:04Z",
-  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-  "items": {
-    "CRP": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "roompoeder",
-        "slagroompoeder (reject: whipped topping)",
-        "room in poedervorm",
-        "cream powder"
-      ],
-      "queries": [
-        "roompoeder (baktotaal.nl, jumbo.com, deleukstetaartenshop.nl, taartdecoratie.nl, naturalspices.nl, sosa.nl)"
-      ],
-      "sources_tried": [
-        "baktotaal.nl categories Roompoeders + Slagroom en Melkpoeders (only pastry-cream mixes, plant-based whipping, whole/skim milk powder — rejected types)",
-        "jumbo.com search \"roompoeder\" (no results)",
-        "deleukstetaartenshop.nl (only Enchanted Cream mix / roomvullingen — rejected)",
-        "taartdecoratie.nl (0 results)",
-        "naturalspices.nl (bakproducten/hulpstoffen: no cream powder)",
-        "sosa.nl / bakkerijgrondstoffen.nl (client-side apps, no readable search — inconclusive)",
-        "ah.nl (bot protection, not attempted beyond homepage)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Cake-Masters Basics",
-          "product_name": "Sahnepulver 100g",
-          "pack": "100 g",
-          "gtin": "4250712308666",
-          "identifier_confirmed": true,
-          "url": "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g",
-          "source_type": "RETAILER",
-          "seller": "Backfun (backfun.de), Herzlake DE",
-          "page_market": "DE",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
-          "market_binding_signal": "none for this market (page .de); delivery-country list names Niederlande",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "method": "check_quotes.py",
-            "policy_url": "https://www.backfun.de/versand-bestellabwicklung",
-            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande",
-            "found": true,
-            "http": "200",
-            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/052a9b3cc9fe8b90.json"
-          },
-          "composition": {
-            "fat_g": 42.0,
-            "protein_g": 19.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
-            "from": "page label (backfun.de: Zutaten + Nährwertangaben Fett 42 g, Eiweiß 19 g, Kohlenhydrate 29 g)"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "spray-dried cream 42 % fat = reference",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f28b6b571212d151.json",
-          "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T16:06:25Z",
-          "exact_product_identity_confirmed": true,
-          "market_binding_confirmed": false,
-          "local_availability_confirmed": false,
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing"
-        },
-        {
-          "rank": 2,
-          "brand": "Cake-Masters Basics",
-          "product_name": "Sahnepulver 100g",
-          "pack": "100 g",
-          "gtin": "4250712308666",
-          "identifier_confirmed": true,
-          "url": "https://www.meincupcake.de/shop/sahnepulver-100g.html",
-          "source_type": "RETAILER",
-          "seller": "MEINCUPCAKE Shop (meincupcake.de), Herzlake DE",
-          "page_market": "DE",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
-          "market_binding_signal": "none for this market (page .de); delivery-country list names Niederlande",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "method": "check_quotes.py",
-            "policy_url": "https://www.meincupcake.de/shop/popup/Versand-und-Zahlungsbedingungen.html",
-            "quote": "Wir liefern zu den oben genannten Konditionen in folgende L&auml;nder: Belgien, D&auml;nemark, Estland, Finnland, Frankreich, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande",
-            "found": true,
-            "http": "200",
-            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/a972e8ac8dd89ee4.json"
-          },
-          "composition": {
-            "fat_g": 42.0,
-            "protein_g": 19.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
-            "from": "page label (meincupcake.de)"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "same GTIN as the Backfun listing; policy page encodes umlauts as HTML entities, quote checked in that form",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/19d6aece2e640b3b.json",
-          "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T16:06:27Z",
-          "exact_product_identity_confirmed": true,
-          "market_binding_confirmed": false,
-          "local_availability_confirmed": false,
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing"
-        }
-      ],
-      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-      "notes": "No Dutch retailer page with dairy cream powder (38–48 % fat) found. WebSearch session budget exhausted (200/200, shared session cap); NL discovery used retailer site search and category pages only."
+ "iso2": "NL",
+ "country": "Netherlands",
+ "agent": "research-eu-west",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:33:04Z",
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "items": {
+  "CRP": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "roompoeder",
+    "slagroompoeder (reject: whipped topping)",
+    "room in poedervorm",
+    "cream powder"
+   ],
+   "queries": [
+    "roompoeder (baktotaal.nl, jumbo.com, deleukstetaartenshop.nl, taartdecoratie.nl, naturalspices.nl, sosa.nl)"
+   ],
+   "sources_tried": [
+    "baktotaal.nl categories Roompoeders + Slagroom en Melkpoeders (only pastry-cream mixes, plant-based whipping, whole/skim milk powder — rejected types)",
+    "jumbo.com search \"roompoeder\" (no results)",
+    "deleukstetaartenshop.nl (only Enchanted Cream mix / roomvullingen — rejected)",
+    "taartdecoratie.nl (0 results)",
+    "naturalspices.nl (bakproducten/hulpstoffen: no cream powder)",
+    "sosa.nl / bakkerijgrondstoffen.nl (client-side apps, no readable search — inconclusive)",
+    "ah.nl (bot protection, not attempted beyond homepage)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Cake-Masters Basics",
+     "product_name": "Sahnepulver 100g",
+     "pack": "100 g",
+     "gtin": "4250712308666",
+     "identifier_confirmed": true,
+     "url": "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g",
+     "source_type": "RETAILER",
+     "seller": "Backfun (backfun.de), Herzlake DE",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+     "market_binding_signal": "none for this market (page .de); delivery-country list names Niederlande",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "method": "check_quotes.py",
+      "policy_url": "https://www.backfun.de/versand-bestellabwicklung",
+      "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande",
+      "found": true,
+      "http": "200",
+      "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/052a9b3cc9fe8b90.json"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+      "from": "page label (backfun.de: Zutaten + Nährwertangaben Fett 42 g, Eiweiß 19 g, Kohlenhydrate 29 g)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "spray-dried cream 42 % fat = reference",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f28b6b571212d151.json",
+     "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:06:25Z",
+     "exact_product_identity_confirmed": true,
+     "market_binding_confirmed": false,
+     "local_availability_confirmed": false,
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     },
-    "FRU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "fructose",
-        "vruchtensuiker"
-      ],
-      "queries": [
-        "fructose (gezondheidswinkel.nl, vitaminstore.nl, jumbo.com, mattisson.nl, naturalspices.nl, baktotaal.nl, koopjesdrogisterij.nl)"
-      ],
-      "sources_tried": [
-        "gezondheidswinkel.nl (G&W Fructose 500 gram, EAN 8714193200346 — confirmed)",
-        "vitaminstore.nl (no fructose)",
-        "jumbo.com (0 results)",
-        "mattisson.nl (no result)",
-        "baktotaal.nl sugars category (no fructose)",
-        "koopjesdrogisterij.nl (only category filters)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "G&W (Gezond & Wel)",
-          "product_name": "G&W FRUCTOSE",
-          "pack": "500 gram",
-          "gtin": "8714193200346",
-          "identifier_confirmed": true,
-          "url": "https://www.gezondheidswinkel.nl/p/gw-fructose-zak-500gr-0001047364",
-          "source_type": "RETAILER",
-          "seller": "Gezond & Wel BV, Zwolle (gezondheidswinkel.nl)",
-          "page_market": "NL",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .nl",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": 0.0,
-            "protein_g": 0.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "not printed as a list",
-            "from": "page Voedingswaarden per 100 gram: Koolhydraten 100 g, waarvan suikers 100 g (energy printed as \"740 kJ / 370 kcal\")",
-            "sugars_g": 100.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "fructose, sugars 100 g/100 g; the page energy line is internally inconsistent (740 kJ vs 370 kcal) — label check advised",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/aeaffe776c8af0f0.json",
-          "verifier_verification_class": "EAN_ON_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T16:04:36Z",
-          "exact_product_identity_confirmed": true,
-          "market_binding_confirmed": true,
-          "local_availability_confirmed": true,
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-      "notes": "WebSearch session budget exhausted (200/200, shared session cap); NL discovery used retailer site search and category pages only."
-    },
-    "INU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "inuline",
-        "inuline poeder",
-        "cichoreiwortel vezel"
-      ],
-      "queries": [
-        "inuline (vitaminstore.nl, superfoodstore.nl, koopjesdrogisterij.nl, mattisson.nl, gezondheidswinkel.nl, jumbo.com)"
-      ],
-      "sources_tried": [
-        "vitaminstore.nl (Jacob Hooy Inuline 1000 g, JSON-LD gtin13 8719265051154 — confirmed; Mattisson agave inuline 8717677963706 seen)",
-        "superfoodstore.nl (Mijnnatuurwinkel Inuline poeder 500 gram, \"EAN:\" label 8719128696652 — confirmed; Vitiv, Bountiful also listed)",
-        "koopjesdrogisterij.nl (Jacob Hooy Inuline 1000g listed)",
-        "gezondheidswinkel.nl (only psyllium+inulin fibre blend — rejected)",
-        "jumbo.com (0 results)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Jacob Hooy",
-          "product_name": "Jacob Hooy Inuline",
-          "pack": "1000 gram",
-          "gtin": "8719265051154",
-          "identifier_confirmed": true,
-          "url": "https://www.vitaminstore.nl/product/jacob-hooy-inuline-poeder-280831",
-          "source_type": "RETAILER",
-          "seller": "Vitaminstore (vitaminstore.nl)",
-          "page_market": "NL",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .nl",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Pure inuline, geen andere toevoeging. (Inuline wordt gewonnen uit de cichoreiwortel)",
-            "from": "page (Ingredienten; EAN: (1000 gram) 8719265051154)"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "pure chicory inulin by ingredient statement; fibre % not printed",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d5a90d7073eff2a9.json",
-          "verifier_verification_class": "EAN_ON_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T16:04:38Z",
-          "exact_product_identity_confirmed": true,
-          "market_binding_confirmed": true,
-          "local_availability_confirmed": true,
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        },
-        {
-          "rank": 2,
-          "brand": "Mijnnatuurwinkel",
-          "product_name": "Mijnnatuurwinkel Inuline poeder 500 gram",
-          "pack": "500 gram",
-          "gtin": "8719128696652",
-          "identifier_confirmed": true,
-          "url": "https://www.superfoodstore.nl/products/mijnnatuurwinkel-inuline-poeder-500-gram",
-          "source_type": "RETAILER",
-          "seller": "Superfoodstore.nl",
-          "page_market": "NL",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .nl",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "100% Inuline poeder",
-            "from": "page (Ingrediënten / Samenstelling)"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % inulin powder; source plant and fibre % not printed",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/aa7524b9cecbb5ee.json",
-          "verifier_verification_class": "EAN_ON_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T16:04:39Z",
-          "exact_product_identity_confirmed": true,
-          "market_binding_confirmed": true,
-          "local_availability_confirmed": true,
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-      "notes": "WebSearch session budget exhausted (200/200, shared session cap); NL discovery used retailer site search and category pages only."
-    },
-    "YOL": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "eigeelpoeder",
-        "eidooierpoeder",
-        "gedroogd eigeel"
-      ],
-      "queries": [
-        "eigeel (baktotaal.nl, deleukstetaartenshop.nl, taartdecoratie.nl)",
-        "eigeelpoeder (naturalspices.nl)",
-        "egg yolk (bakkerijgrondstoffen.nl)"
-      ],
-      "sources_tried": [
-        "baktotaal.nl (only egg replacer category; ReggeVallei brand = fillings)",
-        "deleukstetaartenshop.nl (no result)",
-        "taartdecoratie.nl (0 results)",
-        "naturalspices.nl (no result)",
-        "bakkerijgrondstoffen.nl / sosa.nl (client-side apps — inconclusive)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Taste Market",
-          "product_name": "Eigelbpulver 100 g",
-          "pack": "100 g",
-          "gtin": "4262421423127",
-          "identifier_confirmed": true,
-          "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Taste Market (taste-market.de), DE",
-          "page_market": "DE",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
-          "market_binding_signal": "none for this market (page .de); foreign shipping table lists Niederlande",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "method": "check_quotes.py",
-            "policy_url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
-            "quote": "Gewicht Österreich Schweiz Belgien Finnland Schweden Italien Niederlande Norwegen England",
-            "found": true,
-            "http": "200",
-            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/60bc7979bf05ef58.json",
-            "supporting_quote": {
-              "method": "check_quotes.py",
-              "policy_url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
-              "quote": "Für eine Lieferung außerhalb Deutschlands fallen für dein Paket (je nach Gesamtgewicht) unterschiedliche Preise an.",
-              "found": true,
-              "http": "200",
-              "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/261d21a811b040cf.json"
-            }
-          },
-          "composition": {
-            "fat_g": 58.0,
-            "protein_g": 34.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Hühner-Eigelb, sprühgetrocknet und pasteurisiert",
-            "from": "page label (Nährwertangaben pro 100 g: Fett 58 g, Kohlenhydrate 2,1 g, Eiweiß 34 g, Salz 0,4 g)",
-            "carbs_g": 2.1
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % pasteurised egg yolk powder",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d067fe9ede8cb8cc.json",
-          "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T16:06:29Z",
-          "exact_product_identity_confirmed": true,
-          "market_binding_confirmed": false,
-          "local_availability_confirmed": false,
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing"
-        },
-        {
-          "rank": 2,
-          "brand": "Cake-Masters Basics",
-          "product_name": "Eigelbpulver 100g",
-          "pack": "100 g",
-          "gtin": "4250712315510",
-          "identifier_confirmed": true,
-          "url": "https://www.meincupcake.de/shop/eigelbpulver-100g.html",
-          "source_type": "RETAILER",
-          "seller": "MEINCUPCAKE Shop (meincupcake.de), Herzlake DE",
-          "page_market": "DE",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
-          "market_binding_signal": "none for this market (page .de); delivery-country list names Niederlande",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "method": "check_quotes.py",
-            "policy_url": "https://www.meincupcake.de/shop/popup/Versand-und-Zahlungsbedingungen.html",
-            "quote": "Wir liefern zu den oben genannten Konditionen in folgende L&auml;nder: Belgien, D&auml;nemark, Estland, Finnland, Frankreich, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande",
-            "found": true,
-            "http": "200",
-            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/a972e8ac8dd89ee4.json"
-          },
-          "composition": {
-            "fat_g": 55.8,
-            "protein_g": 34.3,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.",
-            "from": "page label (Fett 55.8 g, Kohlenhydrate 3.6 g, Eiweiß 34.3 g, Salz 0.3 g)",
-            "carbs_g": 3.6
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % egg yolk powder",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a28a62693b47af40.json",
-          "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T16:06:32Z",
-          "exact_product_identity_confirmed": true,
-          "market_binding_confirmed": false,
-          "local_availability_confirmed": false,
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing"
-        }
-      ],
-      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-      "notes": "No Dutch retailer page with egg yolk powder found. WebSearch session budget exhausted (200/200, shared session cap); NL discovery used retailer site search and category pages only."
+    {
+     "rank": 2,
+     "brand": "Cake-Masters Basics",
+     "product_name": "Sahnepulver 100g",
+     "pack": "100 g",
+     "gtin": "4250712308666",
+     "identifier_confirmed": true,
+     "url": "https://www.meincupcake.de/shop/sahnepulver-100g.html",
+     "source_type": "RETAILER",
+     "seller": "MEINCUPCAKE Shop (meincupcake.de), Herzlake DE",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+     "market_binding_signal": "none for this market (page .de); delivery-country list names Niederlande",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "method": "check_quotes.py",
+      "policy_url": "https://www.meincupcake.de/shop/popup/Versand-und-Zahlungsbedingungen.html",
+      "quote": "Wir liefern zu den oben genannten Konditionen in folgende L&auml;nder: Belgien, D&auml;nemark, Estland, Finnland, Frankreich, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande",
+      "found": true,
+      "http": "200",
+      "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/a972e8ac8dd89ee4.json"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+      "from": "page label (meincupcake.de)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "same GTIN as the Backfun listing; policy page encodes umlauts as HTML entities, quote checked in that form",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/19d6aece2e640b3b.json",
+     "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:06:27Z",
+     "exact_product_identity_confirmed": true,
+     "market_binding_confirmed": false,
+     "local_availability_confirmed": false,
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
+   ],
+   "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+   "notes": "No Dutch retailer page with dairy cream powder (38–48 % fat) found. WebSearch session budget exhausted (200/200, shared session cap); NL discovery used retailer site search and category pages only."
+  },
+  "FRU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "fructose",
+    "vruchtensuiker"
+   ],
+   "queries": [
+    "fructose (gezondheidswinkel.nl, vitaminstore.nl, jumbo.com, mattisson.nl, naturalspices.nl, baktotaal.nl, koopjesdrogisterij.nl)"
+   ],
+   "sources_tried": [
+    "gezondheidswinkel.nl (G&W Fructose 500 gram, EAN 8714193200346 — confirmed)",
+    "vitaminstore.nl (no fructose)",
+    "jumbo.com (0 results)",
+    "mattisson.nl (no result)",
+    "baktotaal.nl sugars category (no fructose)",
+    "koopjesdrogisterij.nl (only category filters)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "G&W (Gezond & Wel)",
+     "product_name": "G&W FRUCTOSE",
+     "pack": "500 gram",
+     "gtin": "8714193200346",
+     "identifier_confirmed": true,
+     "url": "https://www.gezondheidswinkel.nl/p/gw-fructose-zak-500gr-0001047364",
+     "source_type": "RETAILER",
+     "seller": "Gezond & Wel BV, Zwolle (gezondheidswinkel.nl)",
+     "page_market": "NL",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .nl",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": 0.0,
+      "protein_g": 0.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "not printed as a list",
+      "from": "page Voedingswaarden per 100 gram: Koolhydraten 100 g, waarvan suikers 100 g (energy printed as \"740 kJ / 370 kcal\")",
+      "sugars_g": 100.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "fructose, sugars 100 g/100 g; the page energy line is internally inconsistent (740 kJ vs 370 kcal) — label check advised",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/aeaffe776c8af0f0.json",
+     "verifier_verification_class": "EAN_ON_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:04:36Z",
+     "exact_product_identity_confirmed": true,
+     "market_binding_confirmed": true,
+     "local_availability_confirmed": true,
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+   "notes": "WebSearch session budget exhausted (200/200, shared session cap); NL discovery used retailer site search and category pages only."
+  },
+  "INU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "inuline",
+    "inuline poeder",
+    "cichoreiwortel vezel"
+   ],
+   "queries": [
+    "inuline (vitaminstore.nl, superfoodstore.nl, koopjesdrogisterij.nl, mattisson.nl, gezondheidswinkel.nl, jumbo.com)"
+   ],
+   "sources_tried": [
+    "vitaminstore.nl (Jacob Hooy Inuline 1000 g, JSON-LD gtin13 8719265051154 — confirmed; Mattisson agave inuline 8717677963706 seen)",
+    "superfoodstore.nl (Mijnnatuurwinkel Inuline poeder 500 gram, \"EAN:\" label 8719128696652 — confirmed; Vitiv, Bountiful also listed)",
+    "koopjesdrogisterij.nl (Jacob Hooy Inuline 1000g listed)",
+    "gezondheidswinkel.nl (only psyllium+inulin fibre blend — rejected)",
+    "jumbo.com (0 results)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Jacob Hooy",
+     "product_name": "Jacob Hooy Inuline",
+     "pack": "1000 gram",
+     "gtin": "8719265051154",
+     "identifier_confirmed": true,
+     "url": "https://www.vitaminstore.nl/product/jacob-hooy-inuline-poeder-280831",
+     "source_type": "RETAILER",
+     "seller": "Vitaminstore (vitaminstore.nl)",
+     "page_market": "NL",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .nl",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Pure inuline, geen andere toevoeging. (Inuline wordt gewonnen uit de cichoreiwortel)",
+      "from": "page (Ingredienten; EAN: (1000 gram) 8719265051154)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "pure chicory inulin by ingredient statement; fibre % not printed",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d5a90d7073eff2a9.json",
+     "verifier_verification_class": "EAN_ON_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:04:38Z",
+     "exact_product_identity_confirmed": true,
+     "market_binding_confirmed": true,
+     "local_availability_confirmed": true,
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
+     "brand": "Mijnnatuurwinkel",
+     "product_name": "Mijnnatuurwinkel Inuline poeder 500 gram",
+     "pack": "500 gram",
+     "gtin": "8719128696652",
+     "identifier_confirmed": true,
+     "url": "https://www.superfoodstore.nl/products/mijnnatuurwinkel-inuline-poeder-500-gram",
+     "source_type": "RETAILER",
+     "seller": "Superfoodstore.nl",
+     "page_market": "NL",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .nl",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "100% Inuline poeder",
+      "from": "page (Ingrediënten / Samenstelling)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % inulin powder; source plant and fibre % not printed",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/aa7524b9cecbb5ee.json",
+     "verifier_verification_class": "EAN_ON_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:04:39Z",
+     "exact_product_identity_confirmed": true,
+     "market_binding_confirmed": true,
+     "local_availability_confirmed": true,
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+   "notes": "WebSearch session budget exhausted (200/200, shared session cap); NL discovery used retailer site search and category pages only."
+  },
+  "YOL": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "eigeelpoeder",
+    "eidooierpoeder",
+    "gedroogd eigeel"
+   ],
+   "queries": [
+    "eigeel (baktotaal.nl, deleukstetaartenshop.nl, taartdecoratie.nl)",
+    "eigeelpoeder (naturalspices.nl)",
+    "egg yolk (bakkerijgrondstoffen.nl)"
+   ],
+   "sources_tried": [
+    "baktotaal.nl (only egg replacer category; ReggeVallei brand = fillings)",
+    "deleukstetaartenshop.nl (no result)",
+    "taartdecoratie.nl (0 results)",
+    "naturalspices.nl (no result)",
+    "bakkerijgrondstoffen.nl / sosa.nl (client-side apps — inconclusive)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Taste Market",
+     "product_name": "Eigelbpulver 100 g",
+     "pack": "100 g",
+     "gtin": "4262421423127",
+     "identifier_confirmed": true,
+     "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Taste Market (taste-market.de), DE",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+     "market_binding_signal": "none for this market (page .de); foreign shipping table lists Niederlande",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "method": "check_quotes.py",
+      "policy_url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+      "quote": "Gewicht Österreich Schweiz Belgien Finnland Schweden Italien Niederlande Norwegen England",
+      "found": true,
+      "http": "200",
+      "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/60bc7979bf05ef58.json",
+      "supporting_quote": {
+       "method": "check_quotes.py",
+       "policy_url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+       "quote": "Für eine Lieferung außerhalb Deutschlands fallen für dein Paket (je nach Gesamtgewicht) unterschiedliche Preise an.",
+       "found": true,
+       "http": "200",
+       "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/261d21a811b040cf.json"
+      }
+     },
+     "composition": {
+      "fat_g": 58.0,
+      "protein_g": 34.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Hühner-Eigelb, sprühgetrocknet und pasteurisiert",
+      "from": "page label (Nährwertangaben pro 100 g: Fett 58 g, Kohlenhydrate 2,1 g, Eiweiß 34 g, Salz 0,4 g)",
+      "carbs_g": 2.1
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % pasteurised egg yolk powder",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d067fe9ede8cb8cc.json",
+     "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:06:29Z",
+     "exact_product_identity_confirmed": true,
+     "market_binding_confirmed": false,
+     "local_availability_confirmed": false,
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    },
+    {
+     "rank": 2,
+     "brand": "Cake-Masters Basics",
+     "product_name": "Eigelbpulver 100g",
+     "pack": "100 g",
+     "gtin": "4250712315510",
+     "identifier_confirmed": true,
+     "url": "https://www.meincupcake.de/shop/eigelbpulver-100g.html",
+     "source_type": "RETAILER",
+     "seller": "MEINCUPCAKE Shop (meincupcake.de), Herzlake DE",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+     "market_binding_signal": "none for this market (page .de); delivery-country list names Niederlande",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "method": "check_quotes.py",
+      "policy_url": "https://www.meincupcake.de/shop/popup/Versand-und-Zahlungsbedingungen.html",
+      "quote": "Wir liefern zu den oben genannten Konditionen in folgende L&auml;nder: Belgien, D&auml;nemark, Estland, Finnland, Frankreich, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande",
+      "found": true,
+      "http": "200",
+      "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/a972e8ac8dd89ee4.json"
+     },
+     "composition": {
+      "fat_g": 55.8,
+      "protein_g": 34.3,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.",
+      "from": "page label (Fett 55.8 g, Kohlenhydrate 3.6 g, Eiweiß 34.3 g, Salz 0.3 g)",
+      "carbs_g": 3.6
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % egg yolk powder",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a28a62693b47af40.json",
+     "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:06:32Z",
+     "exact_product_identity_confirmed": true,
+     "market_binding_confirmed": false,
+     "local_availability_confirmed": false,
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    }
+   ],
+   "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+   "notes": "No Dutch retailer page with egg yolk powder found. WebSearch session budget exhausted (200/200, shared session cap); NL discovery used retailer site search and category pages only."
   }
+ }
 }

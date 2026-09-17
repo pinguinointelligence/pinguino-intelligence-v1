@@ -24,7 +24,10 @@
     "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
     "hoosierhillfarm.com product sitemap + policies/shipping-policy + pages/faqs (international shipping)",
     "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
-    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "gourmet-versand.com robots.txt -> advertising/google/sitemap_de.xml (14 531 URLs) grepped for sahnepulver|rahmpulver|eigelb|eipulver|trockenei",
+    "shop.cake-masters.com /versand-zahlung: foreign shipping-cost table + sales-restriction sentence (check_quotes.py)",
+    "buxtrade.de country/region selector; modernistpantry.com sitemap and search"
    ],
    "sources_tried": [
     "razberry.co.il pastry-ingredient shop (138 products scanned, no cream powder)",
@@ -44,7 +47,11 @@
     "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
     "gourmet-versand.com (DE gourmet retailer, shipping-cost country selector names 81 countries incl. Israel): Sosa fructose powder 1 kg found with GTIN, ingredients and nutrition; its EN sitemap has NO dairy cream powder (only cooking-, filling- and coconut-cream powders) and NO egg yolk powder (only yolk-coloured food colouring)",
     "lironbereshit18.co.il powders category listed in full: 18 powders, none is a cream powder (אבקת שמנת)",
-    "tobake.co.il / chefconditor.co.il: no cream powder page could be read (chefconditor category page not server-rendered)"
+    "tobake.co.il / chefconditor.co.il: no cream powder page could be read (chefconditor category page not server-rendered)",
+    "gourmet-versand.com (ships to Israel): the German sitemap (14 531 URLs) was re-scanned - the shop has no dairy cream powder at all, so for Israel the CRP gap is the product, not the delivery",
+    "shop.cake-masters.com (Herzlake, the food business operator behind the Hobbybäcker own-brand 42 % cream powder): its foreign shipping-cost table lists 28 EU/EEA countries only (Israel absent) and the shop is trade-only - 'Verkauf nur an registrierte, gewerbliche Wiederverkäufer.' (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-africa/cake-masters-trade-only.json)",
+    "buxtrade.de: country/region selector is EU-only, Israel absent",
+    "modernistpantry.com: sitemap and search URLs answer HTTP 404 from this egress (inconclusive)"
    ],
    "candidates": [
     {
@@ -83,10 +90,12 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3df84b49991636c0.json",
      "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
      "checked_at_utc": "2026-09-17T18:21:06Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "UNCONFIRMED",
+     "delivery_basis": "the country is not in the seller shipping-destination list"
     }
    ],
-   "notes": "No dairy cream powder found at any Israeli direct retailer that could be read. Discovery surfaced only a marketplace listing on amazon.com (Hebrew locale): Healthier Comforts organic cream powder '72% butterfat', ingredients 'קרם אורגני, חלב יבש אורגני ללא שומן', 7 oz, UPC 850034864082 (verdict ~/.cache/gellatti-evidence/verify/52303ef5f329b931.json). It is a US marketplace page, delivery to Israel is not shown (the page asked for a different delivery location), and 72 % fat would be B_SAME_TYPE_DIFFERENT_COMPOSITION, so it is not kept as a candidate. | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name Israel among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF."
+   "notes": "No dairy cream powder found at any Israeli direct retailer that could be read. Discovery surfaced only a marketplace listing on amazon.com (Hebrew locale): Healthier Comforts organic cream powder '72% butterfat', ingredients 'קרם אורגני, חלב יבש אורגני ללא שומן', 7 oz, UPC 850034864082 (verdict ~/.cache/gellatti-evidence/verify/52303ef5f329b931.json). It is a US marketplace page, delivery to Israel is not shown (the page asked for a different delivery location), and 72 % fat would be B_SAME_TYPE_DIFFERENT_COMPOSITION, so it is not kept as a candidate. | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name Israel among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF. | Closing pass 2026-09-17 (close-africa): every cross-border shop that could reach Israel was re-checked. gourmet-versand ships to Israel but sells no dairy cream powder; Cake-Masters sells the exact 42 % powder but ships only inside the EU/EEA and only to registered commercial resellers (sentence quoted); Buxtrade is EU-only. Still LEAD_ONLY."
   },
   "FRU": {
    "result": "CONFIRMED_LOCAL",
@@ -181,7 +190,7 @@
    "notes": "Rank 1 is confirmed on the manufacturer's .co.il page (GTIN as data). Rank 2 has the better printed composition but no binding market signal."
   },
   "INU": {
-   "result": "LEAD_ONLY",
+   "result": "VERIFIED_CROSS_BORDER",
    "local_terms": [
     "אינולין",
     "אבקת אינולין",
@@ -192,7 +201,11 @@
     "kiki-health.com product page + shipping policy (cross-border)",
     "cookstock.co.il category אבקות ומייצבים",
     "tvuot.co.il / galam.co.il / altman.co.il site search: אינולין",
-    "razberry.co.il catalogue scan: אינולין|inulin"
+    "razberry.co.il catalogue scan: אינולין|inulin",
+    "gourmet-versand.com shipping page re-fetched and checked with check_quotes.py for the Israel line and for the delivery-statement heading; the same list checked against the product page (rule 16)",
+    "vitaminzol.co.il /collections/<inulin>/products.json (whole collection, 5 products)",
+    "healthhouse.co.il /product-category/<inulin>/",
+    "אינולין אבקה 100% עולש ברקוד חנות אונליין ישראל ערכים תזונתיים (WebSearch)"
    ],
    "sources_tried": [
     "kiki-health.com UK brand shop (GTIN on page; country selector lists Israel)",
@@ -203,11 +216,80 @@
     "biogaya.co.il health shop (bot wall)",
     "keshet-teamim.co.il (bot wall)",
     "shop.super-pharm.co.il pharmacy (bot wall)",
-    "galam.co.il / tvuot.co.il / altman.co.il (no result)"
+    "galam.co.il / tvuot.co.il / altman.co.il (no result)",
+    "gourmet-versand.com (DE gourmet retailer): Sosa Inulin Cold (fiber) 500 g - EAN 8414933008774 printed as data, 'Availability NOW AVAILABLE Quantity in stock 76'; the shipping page's delivery statement names Israel and that list is absent from the product page, so this is a verified cross-border path (rank 1)",
+    "vitaminzol.co.il (.co.il, Shopify): the entire 'inulin' collection is 5 items - a mixed-fibre powder (Biokal 300 g, 'sibim mixed of inulin type'), probiotic capsules with inulin, an L-glutamine+inulin powder, a 'Top Fiber' fibre supplement and the shop's own orange-flavoured inulin+vitamin C powder; none is a plain inulin powder with a printed fibre figure",
+    "healthhouse.co.il (.co.il) category 'inulin': page readable, no plain inulin powder product listed",
+    "prikafu.com, inulin.tevalife.com, baitbari.co.il, oilsisrael.com: discovery only, no GTIN-bearing plain inulin powder page reached"
    ],
    "candidates": [
     {
      "rank": 1,
+     "brand": "Sosa Ingredients",
+     "product_name": "Sosa Inulin Cold (fiber) (50063), 500 g, PE dose",
+     "pack": "500 g",
+     "pack_grams": 500,
+     "moq": null,
+     "gtin": "8414933008774",
+     "identifier_confirmed": true,
+     "url": "https://www.gourmet-versand.com/en/article26461/sosa-inulin-cold-fiber-50063-500-g.html",
+     "source_type": "RETAILER",
+     "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "no local binding (generic .com, German shop); cross-border to Israel - see ships_to_evidence",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+      "quotes": [
+       "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
+       "Ireland Israel Italy"
+      ],
+      "found": [
+       true,
+       true
+      ],
+      "type": "delivery statement: the seller's own shipping page asks where the order is shipped to and enumerates the destination countries; Israel is one of the 81 named countries",
+      "rule16_check": "the same country list is NOT printed on the product page (check_quotes.py found=false, ratio 0.33, ~/.cache/gellatti-evidence/quotes/close-africa/gourmet-versand-product-page-no-country-list.json), so it is a delivery statement and not the store's market/currency furniture",
+      "exceptions_checked": "the page carries no excluded-territory list and no product-specific restriction for this article; the only qualifier on the page is the refrigerated/frozen selector, which this ambient powder does not trigger",
+      "check_quotes_result_files": [
+       "~/.cache/gellatti-evidence/quotes/close-africa/gourmet-versand-delivery-statement-heading.json",
+       "~/.cache/gellatti-evidence/quotes/close-africa/gourmet-versand-IL-country-list.json",
+       "~/.cache/gellatti-evidence/quotes/close-africa/gourmet-versand-product-page-no-country-list.json"
+      ]
+     },
+     "channel": null,
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T19:53:54Z",
+      "basis": "Availability NOW AVAILABLE Quantity in stock 76",
+      "source": "https://www.gourmet-versand.com/en/article26461/sosa-inulin-cold-fiber-50063-500-g.html"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Dietary fiber inulin. Nutritional table per 100 g: carbohydrates 7 g, of which sugars 7 g, salt 0,1 g (fibre line not printed)",
+      "from": "retailer page ('EAN Code 8414933008774' printed)",
+      "sugars_g": 7.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "single-ingredient cold-soluble inulin (sugars 7 g/100 g against the reference 8); the fibre percentage is not printed on the page. Same article that serves Türkiye - non-EU destination, customs/duties may apply.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e8e3d01a6a1e6475.json",
+     "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+     "checked_at_utc": "2026-09-17T19:53:54Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "added_by": "close-africa",
+     "owner_check": "Cross-border from Germany: delivery to Israel is named in the seller's own shipping statement, but the pack is 500 g and the price/shipping cost is calculated at checkout.",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    },
+    {
+     "rank": 2,
      "brand": "KIKI Health",
      "product_name": "Inulin Powder, Organic - 250g",
      "pack": "250 g",
@@ -231,16 +313,25 @@
       "from": "brand product page: '93% soluble plant-based fibre', '5.4g of fibre per serving', 'Completely pure, with no added sugars or sweeteners'"
      },
      "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "pure organic agave inulin, 93 % soluble fibre | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
-     "evidence_class": "LEAD",
+     "equivalence_note": "pure organic agave inulin, 93 % soluble fibre | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed. | Restored 2026-09-17 after the owner's second correction: the seller's country list is headed 'Your shipping estimates — Country', which is a statement about delivery, so the earlier downgrade (made on a page-layout test) does not stand. The seller's own caveat is kept: 'Some countries may require bespoke postage, please contact the KIKI team for shipping costs and further information if unable to select a delivery option at the checkout.'",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e10a0560f724b16f.json",
      "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
      "checked_at_utc": "2026-09-17T16:31:10Z",
      "identity_note": "gtin13 5060018515847 as JSON-LD data on this purchase page (verifier EAN_ON_GENERIC_TLD_PAGE); the same GTIN/product is sold locally in UAE/KSA by Life Pharmacy",
-     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+     "shipping_basis": "DELIVERY_STATEMENT_RE_EVALUATED",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:05:00Z",
+      "basis": "Product JSON-LD offer availability = https://schema.org/InStock",
+      "source": "https://kiki-health.com/products/inulin-powder-organic-250g"
+     },
+     "channel": null,
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the country is offered in the seller own shipping-destination list"
     },
     {
-     "rank": 2,
+     "rank": 3,
      "brand": "עתיד ירוק (Atid Yarok)",
      "product_name": "אינולין אבקת סיבים מסיסים מעולש 400 גרם - עתיד ירוק",
      "pack": "400 גרם",
@@ -269,10 +360,17 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f84e6318803924dc.json",
      "verifier_verification_class": "PAGE_FACTS_ONLY",
      "checked_at_utc": "2026-09-17T15:33:30Z",
-     "identity_note": "third-party brand on a retailer page without GTIN (store SKU only); no manufacturer page found"
+     "identity_note": "third-party brand on a retailer page without GTIN (store SKU only); no manufacturer page found",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:05:00Z",
+      "basis": "Product JSON-LD offer availability = https://schema.org/InStock",
+      "source": "https://www.nizat.com/%D7%90%D7%99%D7%A0%D7%95%D7%9C%D7%99%D7%9F-%D7%90%D7%91%D7%A7%D7%AA-%D7%A1%D7%99%D7%91%D7%99%D7%9D-%D7%9E%D7%A1%D7%99%D7%A1%D7%99%D7%9D-%D7%9E%D7%A2%D7%95%D7%9C%D7%A9-400-%D7%92%D7%A8%D7%9D-%D7%A2%D7%AA%D7%99%D7%93-%D7%99%D7%A8%D7%95%D7%A7-i26909"
+     },
+     "channel": null
     }
    ],
-   "notes": "No Israeli page with an inulin GTIN could be read, so the only verified path is cross-border (rank 1, UK brand shop that lists Israel in its country selector). Best local option: Atid Yarok 400 g at Nitzat Haduvdevan (rank 2, 88 g fibre, generic .com, no GTIN). Also local: Cookstock unbranded 'אינולין (קר) 600 גרם' (https://www.cookstock.co.il/items/8311986, .co.il, chicory inulin, no composition printed; verdict ~/.cache/gellatti-evidence/verify/8818ac18cdcfcfc4.json)."
+   "notes": "No Israeli page with an inulin GTIN could be read, so the only verified path is cross-border (rank 1, UK brand shop that lists Israel in its country selector). Best local option: Atid Yarok 400 g at Nitzat Haduvdevan (rank 2, 88 g fibre, generic .com, no GTIN). Also local: Cookstock unbranded 'אינולין (קר) 600 גרם' (https://www.cookstock.co.il/items/8311986, .co.il, chicory inulin, no composition printed; verdict ~/.cache/gellatti-evidence/verify/8818ac18cdcfcfc4.json). | Closing pass 2026-09-17 (close-africa): the role now has a verified cross-border path. gourmet-versand.com sells the Sosa 500 g cold inulin with its EAN on the page and names Israel in its own shipping statement ('Shipment to the following country:' ... 'Ireland Israel Italy'), and that country list does not appear on the product page, so it is a delivery statement and not the shop's market picker. Local Israeli sellers remain leads: no Israeli page found prints a GTIN for a plain inulin powder, and the Israeli health shops checked this round (Vitamin Zol, Bait HaBriaut) sell fibre blends, capsules or flavoured inulin, which the protocol rejects."
   },
   "YOL": {
    "result": "LEAD_ONLY",
@@ -288,7 +386,9 @@
     "\"אבקת חלמון\" ביצה מפוסטר מרכיבים 100% חנות חומרי גלם קונדיטוריה (WebSearch); \"אבקת שמנת\" קנייה חנות אונליין חומרי גלם לאפייה 42% שומן (WebSearch)",
     "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
     "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
-    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "gourmet-versand.com DE sitemap (14 531 URLs) grepped for eigelb|eipulver|trockenei",
+    "lironbereshit18.co.il yolk-powder page re-read for an ingredient list / nutrition table"
    ],
    "sources_tried": [
     "cookstock.co.il baking supplier (found 100 g and 500 g pasteurised yolk powder)",
@@ -303,7 +403,10 @@
     "gourmet-versand.com (DE gourmet retailer, shipping-cost country selector names 81 countries incl. Israel): Sosa fructose powder 1 kg found with GTIN, ingredients and nutrition; its EN sitemap has NO dairy cream powder (only cooking-, filling- and coconut-cream powders) and NO egg yolk powder (only yolk-coloured food colouring)",
     "lironbereshit18.co.il (\"אבקת חלמון ביצה 100 גרם\") and tobake.co.il (\"אבקת חלמון ביצה 1 ק\\\"ג\"), both .co.il with schema.org InStock: same class as the two existing leads, still no ingredient list, so they add nothing",
     "teva-galil.co.il (Israeli egg-powder producer): egg white powder only, B2B enquiry form, no yolk powder page",
-    "razberry.co.il /products/egg-yolk-powder.json: barcode 729011818324 fails the GTIN check digit (identifiers.py CHECKSUM_FAIL)"
+    "razberry.co.il /products/egg-yolk-powder.json: barcode 729011818324 fails the GTIN check digit (identifiers.py CHECKSUM_FAIL)",
+    "gourmet-versand.com (ships to Israel): DE sitemap holds only egg WHITE powder (Puratos Trockeneiweißpulver 2,5 kg; Töufood Albümin Egg 80 g / 400 g) and yolk-coloured food colourings - no egg yolk powder",
+    "lironbereshit18.co.il (.co.il): the yolk page prints a description only ('אבקת חלמון ביצה מפוסטר – מיוצר מחלמונים אשר עברו תהליך פסטור'), no ingredient list, no nutrition table and no manufacturer or importer name",
+    "shop.cake-masters.com: carries Eigelbpulver, but ships inside the EU/EEA only and sells only to registered commercial resellers (quote saved)"
    ],
    "candidates": [
     {
@@ -425,11 +528,16 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2944f17c1f486c80.json",
      "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
      "checked_at_utc": "2026-09-17T18:21:21Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "UNCONFIRMED",
+     "delivery_basis": "the country is not in the seller shipping-destination list"
     }
    ],
-   "notes": "Right product type is sold locally in retail packs, but neither page prints ingredients, so equivalence stays C and the class stays LEAD. | gap pass 2026-09-17: both Israeli leads are confirmed in stock (schema.org InStock) and two more Israeli shops sell the same product, so availability is not the problem - no Israeli page prints the ingredient list, which is why the class stays LEAD. The razberry \"gtin\" value on the page is not a valid GTIN (checksum fails)."
+   "notes": "Right product type is sold locally in retail packs, but neither page prints ingredients, so equivalence stays C and the class stays LEAD. | gap pass 2026-09-17: both Israeli leads are confirmed in stock (schema.org InStock) and two more Israeli shops sell the same product, so availability is not the problem - no Israeli page prints the ingredient list, which is why the class stays LEAD. The razberry \"gtin\" value on the page is not a valid GTIN (checksum fails). | Closing pass 2026-09-17 (close-africa): the composition hunt the owner asked for was run and failed. No Israeli page (Cookstock, Razberry, Liron Bereshit 18, ToBake) prints an ingredient list or nutrition table for its yolk powder and none names a manufacturer or importer whose page could be read; teva-galil.co.il still lists egg white powder only. The identifier stays unproven: verify_ean_market.py accepted 729011818324 as a data token on razberry.co.il, identifiers.py types the same number CHECKSUM_FAIL, so gtin is null and identifier_confirmed is false. Cross-border alternatives were re-checked too - gourmet-versand ships to Israel but has no yolk powder, Cake-Masters has the product but neither ships to Israel nor sells to consumers. Composition unknown keeps the class at LEAD (C_INSUFFICIENT_DATA)."
   }
  },
- "country_notes": "Discovery constraint: the shared session WebSearch budget ran out (200/200) after the first queries; DuckDuckGo and Mojeek served CAPTCHAs (not bypassed) and Bing returned unrelated results to non-browser clients. Further discovery used retailers' own catalogue/search endpoints. Bot walls (HTTP 403/challenge) from the ES egress: shufersal.co.il, shop.super-pharm.co.il, keshet-teamim.co.il, carrefour.co.il, rami-levy.co.il, biogaya.co.il, shukcity.co.il, tivtaam.co.il, supherb.co.il, vitaminglobal.co.il. | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes."
+ "country_notes": "Discovery constraint: the shared session WebSearch budget ran out (200/200) after the first queries; DuckDuckGo and Mojeek served CAPTCHAs (not bypassed) and Bing returned unrelated results to non-browser clients. Further discovery used retailers' own catalogue/search endpoints. Bot walls (HTTP 403/challenge) from the ES egress: shufersal.co.il, shop.super-pharm.co.il, keshet-teamim.co.il, carrefour.co.il, rami-levy.co.il, biogaya.co.il, shukcity.co.il, tivtaam.co.il, supherb.co.il, vitaminglobal.co.il. | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes. | Closing pass 2026-09-17 by agent close-africa (egress ES) under the owner's refined rules of the same evening: a delivery claim is judged by meaning (country named, or a group that unambiguously contains it); pack weight never makes an offer business-only (pack_grams and moq are recorded separately, and only a quoted seller restriction sets a TRADE_ONLY channel); identity/composition, purchase path, channel and stock are kept apart; a lead never closes a role.",
+ "contributing_agents": [
+  "close-africa"
+ ]
 }

@@ -1,384 +1,390 @@
 {
-  "iso2": "BG",
-  "country": "Bulgaria",
-  "agent": "research-eu-central-east",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:22:12Z",
-  "items": {
-    "CRP": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "сметана на прах",
-        "суха сметана"
+ "iso2": "BG",
+ "country": "Bulgaria",
+ "agent": "research-eu-central-east",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:22:12Z",
+ "items": {
+  "CRP": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "сметана на прах",
+    "суха сметана"
+   ],
+   "queries": [
+    "shopmania.bg: сметана на прах",
+    "shopmania.bg: суха сметана",
+    "pazaruvaj.com search",
+    "sitemap grep of ebag.bg (online grocer, 54 922 URLs), benu.bg (pharmacy, 20 613), subra.bg (pharmacy, 20 273), myprotein.bg (2 474), bioshop.bg (supplements, 1 231), biostore.bg (156), sladkarstvo.bg (confectionery site, 1 206), billa.bg (1 396, articles), ozone.bg / emag.bg (marketplaces) for smetana-na-prah / mlyako-na-prah (Latin and Cyrillic)",
+    "\"Sahnepulver\" 42% Fett kaufen Online Shop 100g Süßrahm (WebSearch)",
+    "\"Sahnepulver\" Onlineshop Lieferung Griechenland Rumänien Bulgarien Versandkosten Land (WebSearch)",
+    "\"panna in polvere\" 42% grassi vendita online spedizione (WebSearch)",
+    "\"slagroompoeder\" kopen 100 gram webshop verzending Europa (WebSearch)",
+    "sosa.cat site search 'cream powder'",
+    "gourmet-versand.com site search 'Sahnepulver' / 'Sahne Pulver' (0 dairy cream powder)",
+    "specialingredients.co.uk + souschef.co.uk product sitemaps grepped for cream/dairy powder (0)",
+    "shop.cake-masters.com site search + /versand-zahlung country table"
+   ],
+   "sources_tried": [
+    "ebag.bg (online grocer): none; billa.bg: articles only",
+    "benu.bg, subra.bg (pharmacy chains): infant milk powders only",
+    "bioshop.bg, biostore.bg, myprotein.bg (health): none",
+    "sladkarstvo.bg (confectionery site, 1 206 URLs): none",
+    "ozone.bg, emag.bg (marketplaces): infant milk powder / accessories only",
+    "shopmania.bg: no results",
+    "pazaruvaj.com: Cloudflare challenge (HTTP 403) — inconclusive",
+    "pati-versand.de has a matching cream powder but its delivery list does not name Bulgarien",
+    "remedium.bg, sopharmacy.bg, aptekamedea.bg, cba.bg, zdrave.bg, dragonsuperfoods.bg, balevbio.bg (no sitemap URLs or no catalogue): not searchable",
+    "shop.cake-masters.com (Cake-Masters trade shop, Herzlake DE): CM Basics Sahnepulver 100g, SAHNE 42% Fett sprühgetrocknet, Auf Lager; its own foreign shipping-cost table names the market — VERIFIED_CROSS_BORDER but trade-only (registered commercial resellers)",
+    "torten-boutique.de and tolletorten.com (same Herzlake group, consumer shops): same 21-country delivery list as pati-versand/backfun/meincupcake — market NOT named; 'Rest der Welt' flat rate names no country",
+    "taste-market.de: full product sitemap (2 425 URLs) scanned — Eigelbpulver / Eiklarpulver / Volleipulver / Vollmilchpulver only, NO Sahnepulver; its EU zones 1-3 name no non-EU market",
+    "gourmet-versand.com: no Sahnepulver / dairy cream powder in the catalogue (confirmed again by site search)",
+    "sosa.cat: only 'TASTE COLOUR FREEZE-DRIED FRESH CREAM POWDER' (2 kg, Taste-Colour flavour/colour line, ingredients nata + leche desnatada en polvo + E450, no fat % printed) — no distributor found that sells it in a retail pack to this market",
+    "specialingredients.co.uk (1 130 products) and souschef.co.uk (6 274 products): product sitemaps hold no dairy cream powder",
+    "cerfdellier.com, cuisineaddict.com, deco-relief.fr, bienmanger.com, koro-shop.de: no 'crème en poudre' / Sahnepulver in search",
+    "ingredientsbar.com (UK): real dairy cream powder 75 % fat in retail sizes, but the delivery policy only says 'International delivery carries additional charges…' — no country named, LEAD",
+    "shop.kraeuter-mieke.de: 'Sahnepulver' 100/250/500/1000 g, 'Sofort verfügbar', but NO ingredient list or fat % printed and EU shipping only 'Auf Anfrage oder nach Auswahl im Bestellvorgang' (no country named) — not proposed",
+    "ecolebensmittel.com: 'Sahnepulver 42 % Fett 750 g' (brand FeelWell) — dropshipping shop whose article number is an Amazon ASIN (B07KZPP6JK) and the item is 'Ausverkauft (nur vorbestellen)'",
+    "gosupps.com: HTTP 403 bot wall — inconclusive",
+    "sladkatakushta.com (Sofia confectionery shop) site search 'сметана': only 'Растителна сметана PASSIONATA' (vegetable cream) and 'Микс суха сметана STELLA 1 кг' (dry cream MIX) — both rejected; riko.bg 'Сметана на прах Пасione' is a coffee creamer in monodoses — rejected"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Cake-Masters",
+     "product_name": "CM Basics Sahnepulver 100g",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Cake-Masters.com, Alexander Müller, Siemensstr. 24, 49770 Herzlake, DE (trade-only shop — footer: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\")",
+     "page_market": "DE",
+     "market_by": "ADDRESS_COUNTRY",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "cross-border: the seller's own foreign shipping-cost table prints a row for the market (\"Bulgarien 33,79 €\"), check_quotes.py found=true",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://shop.cake-masters.com/versand-zahlung",
+      "quotes": [
+       "Versandkosten Ausland: Land Versandkosten pro angefangene 25kg",
+       "Bulgarien 33,79 €",
+       "Verkauf nur an registrierte, gewerbliche Wiederverkäufer."
       ],
-      "queries": [
-        "shopmania.bg: сметана на прах",
-        "shopmania.bg: суха сметана",
-        "pazaruvaj.com search",
-        "sitemap grep of ebag.bg (online grocer, 54 922 URLs), benu.bg (pharmacy, 20 613), subra.bg (pharmacy, 20 273), myprotein.bg (2 474), bioshop.bg (supplements, 1 231), biostore.bg (156), sladkarstvo.bg (confectionery site, 1 206), billa.bg (1 396, articles), ozone.bg / emag.bg (marketplaces) for smetana-na-prah / mlyako-na-prah (Latin and Cyrillic)",
-        "\"Sahnepulver\" 42% Fett kaufen Online Shop 100g Süßrahm (WebSearch)",
-        "\"Sahnepulver\" Onlineshop Lieferung Griechenland Rumänien Bulgarien Versandkosten Land (WebSearch)",
-        "\"panna in polvere\" 42% grassi vendita online spedizione (WebSearch)",
-        "\"slagroompoeder\" kopen 100 gram webshop verzending Europa (WebSearch)",
-        "sosa.cat site search 'cream powder'",
-        "gourmet-versand.com site search 'Sahnepulver' / 'Sahne Pulver' (0 dairy cream powder)",
-        "specialingredients.co.uk + souschef.co.uk product sitemaps grepped for cream/dairy powder (0)",
-        "shop.cake-masters.com site search + /versand-zahlung country table"
+      "found": [
+       true,
+       true,
+       true
       ],
-      "sources_tried": [
-        "ebag.bg (online grocer): none; billa.bg: articles only",
-        "benu.bg, subra.bg (pharmacy chains): infant milk powders only",
-        "bioshop.bg, biostore.bg, myprotein.bg (health): none",
-        "sladkarstvo.bg (confectionery site, 1 206 URLs): none",
-        "ozone.bg, emag.bg (marketplaces): infant milk powder / accessories only",
-        "shopmania.bg: no results",
-        "pazaruvaj.com: Cloudflare challenge (HTTP 403) — inconclusive",
-        "pati-versand.de has a matching cream powder but its delivery list does not name Bulgarien",
-        "remedium.bg, sopharmacy.bg, aptekamedea.bg, cba.bg, zdrave.bg, dragonsuperfoods.bg, balevbio.bg (no sitemap URLs or no catalogue): not searchable",
-        "shop.cake-masters.com (Cake-Masters trade shop, Herzlake DE): CM Basics Sahnepulver 100g, SAHNE 42% Fett sprühgetrocknet, Auf Lager; its own foreign shipping-cost table names the market — VERIFIED_CROSS_BORDER but trade-only (registered commercial resellers)",
-        "torten-boutique.de and tolletorten.com (same Herzlake group, consumer shops): same 21-country delivery list as pati-versand/backfun/meincupcake — market NOT named; 'Rest der Welt' flat rate names no country",
-        "taste-market.de: full product sitemap (2 425 URLs) scanned — Eigelbpulver / Eiklarpulver / Volleipulver / Vollmilchpulver only, NO Sahnepulver; its EU zones 1-3 name no non-EU market",
-        "gourmet-versand.com: no Sahnepulver / dairy cream powder in the catalogue (confirmed again by site search)",
-        "sosa.cat: only 'TASTE COLOUR FREEZE-DRIED FRESH CREAM POWDER' (2 kg, Taste-Colour flavour/colour line, ingredients nata + leche desnatada en polvo + E450, no fat % printed) — no distributor found that sells it in a retail pack to this market",
-        "specialingredients.co.uk (1 130 products) and souschef.co.uk (6 274 products): product sitemaps hold no dairy cream powder",
-        "cerfdellier.com, cuisineaddict.com, deco-relief.fr, bienmanger.com, koro-shop.de: no 'crème en poudre' / Sahnepulver in search",
-        "ingredientsbar.com (UK): real dairy cream powder 75 % fat in retail sizes, but the delivery policy only says 'International delivery carries additional charges…' — no country named, LEAD",
-        "shop.kraeuter-mieke.de: 'Sahnepulver' 100/250/500/1000 g, 'Sofort verfügbar', but NO ingredient list or fat % printed and EU shipping only 'Auf Anfrage oder nach Auswahl im Bestellvorgang' (no country named) — not proposed",
-        "ecolebensmittel.com: 'Sahnepulver 42 % Fett 750 g' (brand FeelWell) — dropshipping shop whose article number is an Amazon ASIN (B07KZPP6JK) and the item is 'Ausverkauft (nur vorbestellen)'",
-        "gosupps.com: HTTP 403 bot wall — inconclusive",
-        "sladkatakushta.com (Sofia confectionery shop) site search 'сметана': only 'Растителна сметана PASSIONATA' (vegetable cream) and 'Микс суха сметана STELLA 1 кг' (dry cream MIX) — both rejected; riko.bg 'Сметана на прах Пасione' is a coffee creamer in monodoses — rejected"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Cake-Masters",
-          "product_name": "CM Basics Sahnepulver 100g",
-          "pack": "100 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Cake-Masters.com, Alexander Müller, Siemensstr. 24, 49770 Herzlake, DE (trade-only shop — footer: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\")",
-          "page_market": "DE",
-          "market_by": "ADDRESS_COUNTRY",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "cross-border: the seller's own foreign shipping-cost table prints a row for the market (\"Bulgarien 33,79 €\"), check_quotes.py found=true",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://shop.cake-masters.com/versand-zahlung",
-            "quotes": [
-              "Versandkosten Ausland: Land Versandkosten pro angefangene 25kg",
-              "Bulgarien 33,79 €",
-              "Verkauf nur an registrierte, gewerbliche Wiederverkäufer."
-            ],
-            "found": [
-              true,
-              true,
-              true
-            ],
-            "type": "seller's own foreign shipping-cost table, one row per destination country",
-            "check_quotes_result_files": [
-              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-header.json",
-              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-BG.json",
-              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-TRADEONLY.json"
-            ]
-          },
-          "channel": "TRADE_ONLY_B2B_REGISTERED_RESELLERS",
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:40:00Z",
-            "basis": "Auf Lager (page also carries schema.org/InStock)",
-            "source": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g"
-          },
-          "composition": {
-            "fat_g": 42.0,
-            "protein_g": 19.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet. Nährwertangaben 100 g: 2456 kJ / 587 kcal, Fett 42 g, davon gesättigte Fettsäuren 27,1 g, Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g. Produziert in Deutschland. Artikel-Nr.: 10866",
-            "from": "page label",
-            "carbohydrate_g": 29.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "fat 42 % = reference (PI-ING-000260: fat 42, protein 20, lactose 30); single-ingredient spray-dried dairy cream, no additives",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/134809e1b93cac25.json",
-          "checked_at_utc": "2026-09-17T18:40:00Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "added_by": "research-gap-eu",
-          "owner_check": "shop.cake-masters.com is the trade arm of the Herzlake group (same address as pati-versand.de / torten-boutique.de) and sells only to registered commercial resellers, prices net of VAT. The product and the pack are ordinary retail size (100 g) but the CHANNEL is B2B — it must not be shown as a consumer offer without the owner's decision. The group's consumer shops (pati-versand.de, backfun.de, meincupcake.de, hobbybaecker.de, torten-boutique.de, tolletorten.com) all use the same 21-country list, which excludes this market."
-        }
-      ],
-      "notes": "BRAK. No Bulgarian professional pastry supplier with a readable catalogue was found; the baking-supplier check is the cross-border Pati-Versand catalogue, which does not deliver to Bulgaria. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, retailer search APIs and price-comparison search pages instead. | Gap closed 2026-09-17 by research-gap-eu: the confirmed 42 % spray-dried cream powder is also sold by shop.cake-masters.com (the Herzlake group's TRADE shop), whose own foreign shipping-cost table prints a row for this market — so delivery here is verified in the seller's own words, unlike the group's consumer shops. Caveat for the owner: that shop states \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\" and quotes prices net of VAT, i.e. it is a B2B channel; the pack itself (100 g) is retail size. No consumer-facing seller of a 38-48 % dairy cream powder that names this market was found. A local search with a working web-search engine was added on top of the earlier sitemap sweep and still found no dairy cream powder in this market."
-    },
-    "FRU": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "фруктоза",
-        "плодова захар"
-      ],
-      "queries": [
-        "shopmania.bg: фруктоза",
-        "sitemap grep of ebag.bg (online grocer, 54 922 URLs), benu.bg (pharmacy, 20 613), subra.bg (pharmacy, 20 273), myprotein.bg (2 474), bioshop.bg (supplements, 1 231), biostore.bg (156), sladkarstvo.bg (confectionery site, 1 206), billa.bg (1 396, articles), ozone.bg / emag.bg (marketplaces) for fruktoz / фруктоз"
-      ],
-      "sources_tried": [
-        "ebag.bg (online grocer) — 'Фруктоза Dr. Keskin' — kept (LEAD)",
-        "billa.bg: articles about fructose only",
-        "emag.bg: category filter pages (marketplace) — not used",
-        "benu.bg, subra.bg (pharmacy), bioshop.bg, biostore.bg (health), sladkarstvo.bg (confectionery site): none",
-        "shopmania.bg: no results",
-        "remedium.bg, sopharmacy.bg, aptekamedea.bg, cba.bg, zdrave.bg, dragonsuperfoods.bg, balevbio.bg (no sitemap URLs or no catalogue): not searchable"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Sosa Ingredients",
-          "product_name": "Sosa fructose powder, 1 kg, PE dose",
-          "pack": "1 kg",
-          "gtin": "8414933026259",
-          "identifier_confirmed": true,
-          "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
-          "source_type": "RETAILER",
-          "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists Bulgaria (check_quotes.py found=true)",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
-            "quotes": [
-              "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
-              "Bosnia and Herzegovina Bulgaria Canada"
-            ],
-            "found": [
-              true,
-              true
-            ],
-            "type": "shipping-cost country selector listing the market",
-            "check_quotes_result_files": [
-              "~/.cache/gellatti-evidence/quotes/coordinator/gv-header.json",
-              "~/.cache/gellatti-evidence/quotes/coordinator/gv-BG.json"
-            ]
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
-            "from": "retailer page ('EAN Code 8414933026259' printed)",
-            "sugars_g": 100.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a178b879e2f32e7a.json",
-          "checked_at_utc": "2026-09-17T17:16:30Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "added_by": "coordinator (reuse of the MT/GR/CY/TR cross-border listing; country named in the seller delivery selector)"
-        },
-        {
-          "rank": 2,
-          "brand": "Dr. Keskin",
-          "product_name": "Фруктоза Dr. Keskin",
-          "pack": "not shown in page HTML",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.ebag.bg/fruktoza-dr-keskin/386143",
-          "source_type": "RETAILER",
-          "seller": "eBag.bg",
-          "page_market": "BG",
-          "market_by": "CCTLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "country domain .bg",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "not readable: the page HTML is a JavaScript shell (only the title is served)",
-            "from": "page label"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "right product type by name; pack, composition and GTIN are not in the served HTML — LEAD",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c86eebfc5b296f5f.json",
-          "verifier_class": "PAGE_FACTS_ONLY",
-          "checked_at_utc": "2026-09-17T16:16:56Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": "WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, retailer search APIs and price-comparison search pages instead. | Coordinator addition 2026-09-17: gourmet-versand.com lists Bulgaria in its delivery country selector; Sosa fructose 1 kg (GTIN 8414933026259 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was LEAD_ONLY."
-    },
-    "INU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "инулин",
-        "инулин от цикория",
-        "инулин на прах"
-      ],
-      "queries": [
-        "sitemap grep (inulin | инулин) ebag.bg, benu.bg, subra.bg, myprotein.bg, biostore.bg, emag.bg",
-        "hreflang sibling gymbeam.bg (GymBeam inulin)",
-        "shopmania.bg: инулин"
-      ],
-      "sources_tried": [
-        "myprotein.bg (brand's local shop) — kept",
-        "benu.bg (pharmacy chain) — Osavi Fibruline 240 g — kept",
-        "gymbeam.bg: Cloudflare challenge (HTTP 403) twice — inconclusive, not bypassed (verdict ~/.cache/gellatti-evidence/verify/f23191e38e12d97a.json); gymbeam.com does not list Bulgaria as a delivery country",
-        "subra.bg: 'Plantis Inulina 300 g' (no GTIN, 'Уведоми ме при наличност'), 'Mattisson BIO inulin from agave 200 g' — not verified",
-        "ebag.bg: psyllium + inulin blend (Harmony Foods) — rejected",
-        "shopmania.bg: only pet products containing inulin"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Myvitamins (Myprotein)",
-          "product_name": "Пребиотични Инулинови Фибри 30 SERVINGS - 360g",
-          "pack": "360 g",
-          "gtin": "5056104521052",
-          "identifier_confirmed": true,
-          "url": "https://www.myprotein.bg/p/vitamins/prebiotic-inulin-fibre-powder/11397387/",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Myvitamins / myprotein.bg",
-          "page_market": "BG",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .bg",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "СЪСТАВКИ: Инулин от цикория (100%); per 100 g 840 kJ / 208 kcal, fat 0 g, carbohydrate 7.5 g (sugars 7.5 g), 'Протеини 89g' [sic — the 89 g row is labelled protein on the page], salt 0.10 g",
-            "from": "page label"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % chicory inulin by ingredient list; the page labels the 89 g/100 g row as protein, an evident label error on the page (a pure inulin cannot carry 89 g protein), so fibre is not recorded as a number. GTIN sits in the JSON-LD offer named '… 30 SERVINGS - 360g'; availability InStock.",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e37802ed997a12f5.json",
-          "verifier_class": "EAN_ON_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T16:17:19Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        },
-        {
-          "rank": 2,
-          "brand": "Osavi (Olivit Sp. z o.o.)",
-          "product_name": "Osavi Инулин / Fibruline™ / - Цикория - 240 гр. - прах",
-          "pack": "240 g",
-          "gtin": "5904139922637",
-          "identifier_confirmed": true,
-          "url": "https://benu.bg/osavi-inulin-fibrulinetm-cikoriya-240-gr-prah",
-          "source_type": "RETAILER",
-          "seller": "benu.bg",
-          "page_market": "BG",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .bg",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Активни съставки: Фибри от цикория (Cichorium intybus) (4.5 g) от които Инулин (4 g) per 4.5 g dose; food supplement powder; manufacturer Olivit Sp. z o. o.; JSON-LD availability InStock",
-            "from": "page label"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "chicory inulin (Fibruline) powder: 4.5 g dose = 4.5 g chicory fibre of which 4 g inulin (≈ 89 % inulin, computed from the printed per-dose values); food-supplement presentation",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/98e7163731b0566a.json",
-          "verifier_class": "EAN_ON_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T16:17:21Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": ""
-    },
-    "YOL": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "яйчен желтък на прах",
-        "желтък на прах"
-      ],
-      "queries": [
-        "shopmania.bg: желтък на прах",
-        "shopmania.bg: яйчен желтък",
-        "sitemap grep of ebag.bg (online grocer, 54 922 URLs), benu.bg (pharmacy, 20 613), subra.bg (pharmacy, 20 273), myprotein.bg (2 474), bioshop.bg (supplements, 1 231), biostore.bg (156), sladkarstvo.bg (confectionery site, 1 206), billa.bg (1 396, articles), ozone.bg / emag.bg (marketplaces) for zheltak / желтък"
-      ],
-      "sources_tried": [
-        "ebag.bg (online grocer): none; billa.bg: articles only",
-        "benu.bg, subra.bg (pharmacy chains): none",
-        "bioshop.bg, biostore.bg, myprotein.bg (health): none",
-        "sladkarstvo.bg (confectionery site): none",
-        "ozone.bg, emag.bg (marketplaces): none",
-        "shopmania.bg: no results",
-        "pati-versand.de has a matching yolk powder but its delivery list does not name Bulgarien",
-        "remedium.bg, sopharmacy.bg, aptekamedea.bg, cba.bg, zdrave.bg, dragonsuperfoods.bg, balevbio.bg (no sitemap URLs or no catalogue): not searchable"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Taste Market",
-          "product_name": "Eigelbpulver 100 g Sprühgetrocknet (Art.-Nr. 123-100g)",
-          "pack": "100 g",
-          "gtin": "4262421423127",
-          "identifier_confirmed": true,
-          "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Taste Market GmbH (Germany)",
-          "page_market": "DE",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "cross-border: seller's EU shipping zone 3 lists Bulgarien (check_quotes.py found=true)",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
-            "quotes": [
-              "Lieferung in das EU-Ausland oder internationaler Versand",
-              "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
-            ],
-            "found": [
-              true,
-              true
-            ],
-            "check_quotes_result_files": [
-              "~/.cache/gellatti-evidence/quotes/coordinator/tm-header.json",
-              "~/.cache/gellatti-evidence/quotes/coordinator/tm-zone3.json"
-            ]
-          },
-          "composition": {
-            "fat_g": 58.0,
-            "protein_g": 34.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Zutaten: Hühner-Eigelb, sprühgetrocknet und pasteurisiert. Nährwerte/100 g: Fett 58 g (ges. 18 g), Kohlenhydrate 2,1 g, davon Zucker 0 g, Eiweiß 34 g, Salz 0,4 g",
-            "from": "shop page (Zutaten + Nährwertangaben)",
-            "carbs_g": 2.1
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 58 / protein 34 vs reference 56.5 / 34.5. Page data prints itemprop gtin13 as 14-digit '04262421423127'.",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/6af217b31822d6e2.json",
-          "checked_at_utc": "2026-09-17T17:16:36Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "added_by": "coordinator (reuse of the MT/GR/CY/PT/IT cross-border listing; country named in the seller EU shipping zone)"
-        }
-      ],
-      "notes": "BRAK. No Bulgarian professional pastry supplier with a readable catalogue was found; the baking-supplier check is the cross-border Pati-Versand catalogue, which does not deliver to Bulgaria. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, retailer search APIs and price-comparison search pages instead. | Coordinator addition 2026-09-17: taste-market.de EU-Zone3 lists Bulgarien; Taste Market Eigelbpulver 100 g (GTIN 4262421423127 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was BRAK."
+      "type": "seller's own foreign shipping-cost table, one row per destination country",
+      "check_quotes_result_files": [
+       "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-header.json",
+       "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-BG.json",
+       "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-TRADEONLY.json"
+      ]
+     },
+     "channel": "TRADE_ONLY_B2B_REGISTERED_RESELLERS",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:40:00Z",
+      "basis": "Auf Lager (page also carries schema.org/InStock)",
+      "source": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet. Nährwertangaben 100 g: 2456 kJ / 587 kcal, Fett 42 g, davon gesättigte Fettsäuren 27,1 g, Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g. Produziert in Deutschland. Artikel-Nr.: 10866",
+      "from": "page label",
+      "carbohydrate_g": 29.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "fat 42 % = reference (PI-ING-000260: fat 42, protein 20, lactose 30); single-ingredient spray-dried dairy cream, no additives",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/134809e1b93cac25.json",
+     "checked_at_utc": "2026-09-17T18:40:00Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "added_by": "research-gap-eu",
+     "owner_check": "shop.cake-masters.com is the trade arm of the Herzlake group (same address as pati-versand.de / torten-boutique.de) and sells only to registered commercial resellers, prices net of VAT. The product and the pack are ordinary retail size (100 g) but the CHANNEL is B2B — it must not be shown as a consumer offer without the owner's decision. The group's consumer shops (pati-versand.de, backfun.de, meincupcake.de, hobbybaecker.de, torten-boutique.de, tolletorten.com) all use the same 21-country list, which excludes this market.",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
+   ],
+   "notes": "BRAK. No Bulgarian professional pastry supplier with a readable catalogue was found; the baking-supplier check is the cross-border Pati-Versand catalogue, which does not deliver to Bulgaria. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, retailer search APIs and price-comparison search pages instead. | Gap closed 2026-09-17 by research-gap-eu: the confirmed 42 % spray-dried cream powder is also sold by shop.cake-masters.com (the Herzlake group's TRADE shop), whose own foreign shipping-cost table prints a row for this market — so delivery here is verified in the seller's own words, unlike the group's consumer shops. Caveat for the owner: that shop states \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\" and quotes prices net of VAT, i.e. it is a B2B channel; the pack itself (100 g) is retail size. No consumer-facing seller of a 38-48 % dairy cream powder that names this market was found. A local search with a working web-search engine was added on top of the earlier sitemap sweep and still found no dairy cream powder in this market."
   },
-  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-  "contributing_agents": [
-    "research-gap-eu"
-  ]
+  "FRU": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "фруктоза",
+    "плодова захар"
+   ],
+   "queries": [
+    "shopmania.bg: фруктоза",
+    "sitemap grep of ebag.bg (online grocer, 54 922 URLs), benu.bg (pharmacy, 20 613), subra.bg (pharmacy, 20 273), myprotein.bg (2 474), bioshop.bg (supplements, 1 231), biostore.bg (156), sladkarstvo.bg (confectionery site, 1 206), billa.bg (1 396, articles), ozone.bg / emag.bg (marketplaces) for fruktoz / фруктоз"
+   ],
+   "sources_tried": [
+    "ebag.bg (online grocer) — 'Фруктоза Dr. Keskin' — kept (LEAD)",
+    "billa.bg: articles about fructose only",
+    "emag.bg: category filter pages (marketplace) — not used",
+    "benu.bg, subra.bg (pharmacy), bioshop.bg, biostore.bg (health), sladkarstvo.bg (confectionery site): none",
+    "shopmania.bg: no results",
+    "remedium.bg, sopharmacy.bg, aptekamedea.bg, cba.bg, zdrave.bg, dragonsuperfoods.bg, balevbio.bg (no sitemap URLs or no catalogue): not searchable"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Sosa Ingredients",
+     "product_name": "Sosa fructose powder, 1 kg, PE dose",
+     "pack": "1 kg",
+     "gtin": "8414933026259",
+     "identifier_confirmed": true,
+     "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
+     "source_type": "RETAILER",
+     "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists Bulgaria (check_quotes.py found=true)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+      "quotes": [
+       "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
+       "Bosnia and Herzegovina Bulgaria Canada"
+      ],
+      "found": [
+       true,
+       true
+      ],
+      "type": "shipping-cost country selector listing the market",
+      "check_quotes_result_files": [
+       "~/.cache/gellatti-evidence/quotes/coordinator/gv-header.json",
+       "~/.cache/gellatti-evidence/quotes/coordinator/gv-BG.json"
+      ]
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
+      "from": "retailer page ('EAN Code 8414933026259' printed)",
+      "sugars_g": 100.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a178b879e2f32e7a.json",
+     "checked_at_utc": "2026-09-17T17:16:30Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "added_by": "coordinator (reuse of the MT/GR/CY/TR cross-border listing; country named in the seller delivery selector)",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    },
+    {
+     "rank": 2,
+     "brand": "Dr. Keskin",
+     "product_name": "Фруктоза Dr. Keskin",
+     "pack": "not shown in page HTML",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.ebag.bg/fruktoza-dr-keskin/386143",
+     "source_type": "RETAILER",
+     "seller": "eBag.bg",
+     "page_market": "BG",
+     "market_by": "CCTLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "country domain .bg",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "not readable: the page HTML is a JavaScript shell (only the title is served)",
+      "from": "page label"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "right product type by name; pack, composition and GTIN are not in the served HTML — LEAD",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c86eebfc5b296f5f.json",
+     "verifier_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T16:16:56Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, retailer search APIs and price-comparison search pages instead. | Coordinator addition 2026-09-17: gourmet-versand.com lists Bulgaria in its delivery country selector; Sosa fructose 1 kg (GTIN 8414933026259 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was LEAD_ONLY."
+  },
+  "INU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "инулин",
+    "инулин от цикория",
+    "инулин на прах"
+   ],
+   "queries": [
+    "sitemap grep (inulin | инулин) ebag.bg, benu.bg, subra.bg, myprotein.bg, biostore.bg, emag.bg",
+    "hreflang sibling gymbeam.bg (GymBeam inulin)",
+    "shopmania.bg: инулин"
+   ],
+   "sources_tried": [
+    "myprotein.bg (brand's local shop) — kept",
+    "benu.bg (pharmacy chain) — Osavi Fibruline 240 g — kept",
+    "gymbeam.bg: Cloudflare challenge (HTTP 403) twice — inconclusive, not bypassed (verdict ~/.cache/gellatti-evidence/verify/f23191e38e12d97a.json); gymbeam.com does not list Bulgaria as a delivery country",
+    "subra.bg: 'Plantis Inulina 300 g' (no GTIN, 'Уведоми ме при наличност'), 'Mattisson BIO inulin from agave 200 g' — not verified",
+    "ebag.bg: psyllium + inulin blend (Harmony Foods) — rejected",
+    "shopmania.bg: only pet products containing inulin"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Myvitamins (Myprotein)",
+     "product_name": "Пребиотични Инулинови Фибри 30 SERVINGS - 360g",
+     "pack": "360 g",
+     "gtin": "5056104521052",
+     "identifier_confirmed": true,
+     "url": "https://www.myprotein.bg/p/vitamins/prebiotic-inulin-fibre-powder/11397387/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Myvitamins / myprotein.bg",
+     "page_market": "BG",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .bg",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "СЪСТАВКИ: Инулин от цикория (100%); per 100 g 840 kJ / 208 kcal, fat 0 g, carbohydrate 7.5 g (sugars 7.5 g), 'Протеини 89g' [sic — the 89 g row is labelled protein on the page], salt 0.10 g",
+      "from": "page label"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % chicory inulin by ingredient list; the page labels the 89 g/100 g row as protein, an evident label error on the page (a pure inulin cannot carry 89 g protein), so fibre is not recorded as a number. GTIN sits in the JSON-LD offer named '… 30 SERVINGS - 360g'; availability InStock.",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e37802ed997a12f5.json",
+     "verifier_class": "EAN_ON_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:17:19Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
+     "brand": "Osavi (Olivit Sp. z o.o.)",
+     "product_name": "Osavi Инулин / Fibruline™ / - Цикория - 240 гр. - прах",
+     "pack": "240 g",
+     "gtin": "5904139922637",
+     "identifier_confirmed": true,
+     "url": "https://benu.bg/osavi-inulin-fibrulinetm-cikoriya-240-gr-prah",
+     "source_type": "RETAILER",
+     "seller": "benu.bg",
+     "page_market": "BG",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .bg",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Активни съставки: Фибри от цикория (Cichorium intybus) (4.5 g) от които Инулин (4 g) per 4.5 g dose; food supplement powder; manufacturer Olivit Sp. z o. o.; JSON-LD availability InStock",
+      "from": "page label"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "chicory inulin (Fibruline) powder: 4.5 g dose = 4.5 g chicory fibre of which 4 g inulin (≈ 89 % inulin, computed from the printed per-dose values); food-supplement presentation",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/98e7163731b0566a.json",
+     "verifier_class": "EAN_ON_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:17:21Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": ""
+  },
+  "YOL": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "яйчен желтък на прах",
+    "желтък на прах"
+   ],
+   "queries": [
+    "shopmania.bg: желтък на прах",
+    "shopmania.bg: яйчен желтък",
+    "sitemap grep of ebag.bg (online grocer, 54 922 URLs), benu.bg (pharmacy, 20 613), subra.bg (pharmacy, 20 273), myprotein.bg (2 474), bioshop.bg (supplements, 1 231), biostore.bg (156), sladkarstvo.bg (confectionery site, 1 206), billa.bg (1 396, articles), ozone.bg / emag.bg (marketplaces) for zheltak / желтък"
+   ],
+   "sources_tried": [
+    "ebag.bg (online grocer): none; billa.bg: articles only",
+    "benu.bg, subra.bg (pharmacy chains): none",
+    "bioshop.bg, biostore.bg, myprotein.bg (health): none",
+    "sladkarstvo.bg (confectionery site): none",
+    "ozone.bg, emag.bg (marketplaces): none",
+    "shopmania.bg: no results",
+    "pati-versand.de has a matching yolk powder but its delivery list does not name Bulgarien",
+    "remedium.bg, sopharmacy.bg, aptekamedea.bg, cba.bg, zdrave.bg, dragonsuperfoods.bg, balevbio.bg (no sitemap URLs or no catalogue): not searchable"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Taste Market",
+     "product_name": "Eigelbpulver 100 g Sprühgetrocknet (Art.-Nr. 123-100g)",
+     "pack": "100 g",
+     "gtin": "4262421423127",
+     "identifier_confirmed": true,
+     "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Taste Market GmbH (Germany)",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "cross-border: seller's EU shipping zone 3 lists Bulgarien (check_quotes.py found=true)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+      "quotes": [
+       "Lieferung in das EU-Ausland oder internationaler Versand",
+       "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
+      ],
+      "found": [
+       true,
+       true
+      ],
+      "check_quotes_result_files": [
+       "~/.cache/gellatti-evidence/quotes/coordinator/tm-header.json",
+       "~/.cache/gellatti-evidence/quotes/coordinator/tm-zone3.json"
+      ]
+     },
+     "composition": {
+      "fat_g": 58.0,
+      "protein_g": 34.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: Hühner-Eigelb, sprühgetrocknet und pasteurisiert. Nährwerte/100 g: Fett 58 g (ges. 18 g), Kohlenhydrate 2,1 g, davon Zucker 0 g, Eiweiß 34 g, Salz 0,4 g",
+      "from": "shop page (Zutaten + Nährwertangaben)",
+      "carbs_g": 2.1
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 58 / protein 34 vs reference 56.5 / 34.5. Page data prints itemprop gtin13 as 14-digit '04262421423127'.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/6af217b31822d6e2.json",
+     "checked_at_utc": "2026-09-17T17:16:36Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "added_by": "coordinator (reuse of the MT/GR/CY/PT/IT cross-border listing; country named in the seller EU shipping zone)",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    }
+   ],
+   "notes": "BRAK. No Bulgarian professional pastry supplier with a readable catalogue was found; the baking-supplier check is the cross-border Pati-Versand catalogue, which does not deliver to Bulgaria. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, retailer search APIs and price-comparison search pages instead. | Coordinator addition 2026-09-17: taste-market.de EU-Zone3 lists Bulgarien; Taste Market Eigelbpulver 100 g (GTIN 4262421423127 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was BRAK."
+  }
+ },
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "contributing_agents": [
+  "research-gap-eu"
+ ]
 }

@@ -1,257 +1,259 @@
 {
-  "iso2": "SK",
-  "country": "Slovakia",
-  "agent": "research-eu-central-east",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:10:23Z",
-  "items": {
-    "CRP": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "sušená smotana",
-        "smotana v prášku",
-        "smotanový prášok"
-      ],
-      "queries": [
-        "sitemap grep (smotana + prášok/sušená) vsetkonavarenie.sk, dortisimo.sk, mixit.sk, naturshop.sk, aktin.sk, vilgain.sk, zdravie-shop.sk, cukrarskepotreby.sk, bezgluten.sk",
-        "on-site/aggregator: heureka.sk, najnakup.sk, pricemania.sk",
-        "sitemap grep pati-versand.de: sahnepulver (cross-border)"
-      ],
-      "sources_tried": [
-        "vsetkonavarenie.sk (pastry retailer, 31 020 URLs): no cream powder",
-        "dortisimo.sk (6 445 URLs), mixit.sk (1 885), naturshop.sk (2 218), aktin.sk (4 089), vilgain.sk (3 860), zdravie-shop.sk (4 451), cukrarskepotreby.sk, bezgluten.sk: no cream powder",
-        "grizly.sk, drmax.sk, mojalekaren.sk, heureka.sk, najnakup.sk: Cloudflare challenge (HTTP 403) — inconclusive, not bypassed",
-        "pricemania.sk search: HTTP 500",
-        "pati-versand.de (DE; ships to 'Slowakische Republik') — kept"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Cake-Masters (own brand of Pati-Versand; same food-business address Siemensstraße 24, 49770 Herzlake)",
-          "product_name": "Sahnepulver 100g sprühgetrocknet",
-          "pack": "100 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/sahnepulver-100g",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Pati-Versand GmbH (DE)",
-          "page_market": "DE",
-          "market_by": "CCTLD",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "foreign page (DE); delivery country named in seller's shipping policy",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "url": "https://www.pati-versand.de/zahlung-versand",
-            "tool": "check_quotes.py",
-            "found": true,
-            "http": "200",
-            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn, Zypern.",
-            "checked_at_utc": "2026-09-17T16:08:06Z",
-            "country_named_as": "Slowakische Republik"
-          },
-          "composition": {
-            "fat_g": 42.0,
-            "protein_g": 19.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet; per 100 g: 2456 kJ / 587 kcal, fat 42 g (saturates 27.1 g), carbohydrate 29 g (sugars 29 g), protein 19 g, salt 0.75 g; Art.-Nr. 10866; 'Auf Lager'",
-            "from": "page label"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "spray-dried dairy cream, fat 42 % (reference 42), protein 19 (ref. 20), sugars/lactose 29 (ref. 30); no GTIN on the page (D-37 own-brand listing: brand, exact name, variant 42 % sprühgetrocknet, 100 g, article no.)",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ba63c987d6238203.json",
-          "verifier_class": "PAGE_FACTS_ONLY",
-          "checked_at_utc": "2026-09-17T16:06:03Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": "No Slovak direct retailer page with dairy cream powder found in the shops reachable without a bot wall."
-    },
-    "FRU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "fruktóza",
-        "ovocný cukor"
-      ],
-      "queries": [
-        "hreflang sibling of the verified CZ listing (vsenavareni.cz → vsetkonavarenie.sk)",
-        "sitemap grep (fruktoz) dortisimo.sk, mixit.sk, naturshop.sk, aktin.sk, vilgain.sk, zdravie-shop.sk, cukrarskepotreby.sk, bezgluten.sk"
-      ],
-      "sources_tried": [
-        "vsetkonavarenie.sk — Dr. Hlaváč 1 kg, GTIN on page — kept",
-        "zdravie-shop.sk — only Dibette products sweetened with fructose",
-        "other shops listed: no crystalline fructose in sitemap",
-        "grizly.sk / drmax.sk / mojalekaren.sk: HTTP 403 (inconclusive)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Dr. Hlaváč",
-          "product_name": "FRUKTÓZA – ovocný cukor, 1 kg - Dr. Hlaváč",
-          "pack": "1 kg",
-          "gtin": "8594164300691",
-          "identifier_confirmed": true,
-          "url": "https://www.vsetkonavarenie.sk/fruktoza-ovocny-cukor-1-kg-dr.-hlavac",
-          "source_type": "RETAILER",
-          "seller": "VsetkoNaVarenie.sk",
-          "page_market": "SK",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .sk",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": 100.0,
-            "ingredients": "Zloženie produktu: kryštalická fruktóza 100%; per 100 g 1700 kJ / 406.2 kcal, carbohydrate 100 g (sugars 100 g)",
-            "from": "page label"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "crystalline fructose 100 % (≥ 98 %)",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2d9eebbeb0e3013e.json",
-          "verifier_class": "EAN_ON_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T16:04:20Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": ""
-    },
-    "INU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "inulín",
-        "čakankový inulín"
-      ],
-      "queries": [
-        "hreflang siblings of the verified CZ listings (gymbeam.cz → gymbeam.sk; vsenavareni.cz → vsetkonavarenie.sk)",
-        "sitemap grep (inulin) vsetkonavarenie.sk"
-      ],
-      "sources_tried": [
-        "gymbeam.sk (own-brand shop) — kept",
-        "vsetkonavarenie.sk — Louis François 1 kg — kept"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "GymBeam",
-          "product_name": "Čakankový inulín - GymBeam",
-          "pack": "200 g",
-          "gtin": "8586028133576",
-          "identifier_confirmed": true,
-          "url": "https://gymbeam.sk/cakankovy-inulin-gymbeam.html",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "GymBeam (own-brand country shop)",
-          "page_market": "SK",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": 86.0,
-            "fructose_pct": null,
-            "ingredients": "Zloženie: Čakankový inulín; per 100 g 875 kJ / 216 kcal, fat 0 g, carbohydrate 11 g (sugars 11 g), fibre 86 g, protein 0 g, salt 0.00 g",
-            "from": "page label"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "chicory inulin powder, fibre 86 g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9657d87db3b288da.json",
-          "verifier_class": "EAN_ON_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T15:51:05Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        },
-        {
-          "rank": 2,
-          "brand": "Louis François",
-          "product_name": "Inulin 1 kg - Louis François",
-          "pack": "1 kg",
-          "gtin": "3700434802382",
-          "identifier_confirmed": true,
-          "url": "https://www.vsetkonavarenie.sk/inulin-1-kg-louis-francois",
-          "source_type": "RETAILER",
-          "seller": "VsetkoNaVarenie.sk",
-          "page_market": "SK",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .sk",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": 85.0,
-            "fructose_pct": null,
-            "ingredients": "Inulin (fibre from chicory root); per 100 g carbohydrate 12 g (sugars 12 g), fibre 85 g, salt 0.1 g; origin Francúzsko",
-            "from": "page label"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "professional chicory inulin, fibre 85 g/100 g (at the A threshold)",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/973c203be1f900fc.json",
-          "verifier_class": "EAN_ON_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T16:07:23Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": ""
-    },
-    "YOL": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "sušený žĺtok",
-        "vaječný žĺtok v prášku"
-      ],
-      "queries": [
-        "hreflang sibling of the verified CZ listing (vsenavareni.cz → vsetkonavarenie.sk)",
-        "sitemap grep (zltok) dortisimo.sk, mixit.sk, naturshop.sk, aktin.sk, vilgain.sk, zdravie-shop.sk, cukrarskepotreby.sk, bezgluten.sk"
-      ],
-      "sources_tried": [
-        "vsetkonavarenie.sk — Cake Masters 100 g, GTIN on page — kept",
-        "other shops listed: no dried yolk in sitemap",
-        "grizly.sk / drmax.sk / mojalekaren.sk: HTTP 403 (inconclusive)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Cake Masters",
-          "product_name": "Sušený vaječný žĺtok v prášku, 100 g - Cake Masters",
-          "pack": "100 g",
-          "gtin": "4250712315510",
-          "identifier_confirmed": true,
-          "url": "https://www.vsetkonavarenie.sk/suseny-vajecny-zltok-v-prasku-100-g-cake-masters",
-          "source_type": "RETAILER",
-          "seller": "VsetkoNaVarenie.sk",
-          "page_market": "SK",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .sk",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": 55.8,
-            "protein_g": 34.3,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Zloženie produktu: Pasírovaný sušený kurací vaječný žĺtok [printed wording]; per 100 g 2709 kJ / 647.3 kcal, fat 55.8 g (saturates 17.6 g), carbohydrate 3.6 g, protein 34.3 g, salt 0.3 g; origin Nemecko; producer Cake-Masters.com, Herzlake",
-            "from": "page label"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % chicken egg yolk powder; fat 55.8 / protein 34.3 vs reference 56.5 / 34.5. The SK page prints 'Pasírovaný' where the CZ/HU pages of the same GTIN print 'pasteurised'.",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/717930564bea20a0.json",
-          "verifier_class": "EAN_ON_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T16:04:08Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": ""
+ "iso2": "SK",
+ "country": "Slovakia",
+ "agent": "research-eu-central-east",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:10:23Z",
+ "items": {
+  "CRP": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "sušená smotana",
+    "smotana v prášku",
+    "smotanový prášok"
+   ],
+   "queries": [
+    "sitemap grep (smotana + prášok/sušená) vsetkonavarenie.sk, dortisimo.sk, mixit.sk, naturshop.sk, aktin.sk, vilgain.sk, zdravie-shop.sk, cukrarskepotreby.sk, bezgluten.sk",
+    "on-site/aggregator: heureka.sk, najnakup.sk, pricemania.sk",
+    "sitemap grep pati-versand.de: sahnepulver (cross-border)"
+   ],
+   "sources_tried": [
+    "vsetkonavarenie.sk (pastry retailer, 31 020 URLs): no cream powder",
+    "dortisimo.sk (6 445 URLs), mixit.sk (1 885), naturshop.sk (2 218), aktin.sk (4 089), vilgain.sk (3 860), zdravie-shop.sk (4 451), cukrarskepotreby.sk, bezgluten.sk: no cream powder",
+    "grizly.sk, drmax.sk, mojalekaren.sk, heureka.sk, najnakup.sk: Cloudflare challenge (HTTP 403) — inconclusive, not bypassed",
+    "pricemania.sk search: HTTP 500",
+    "pati-versand.de (DE; ships to 'Slowakische Republik') — kept"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Cake-Masters (own brand of Pati-Versand; same food-business address Siemensstraße 24, 49770 Herzlake)",
+     "product_name": "Sahnepulver 100g sprühgetrocknet",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/sahnepulver-100g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Pati-Versand GmbH (DE)",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "foreign page (DE); delivery country named in seller's shipping policy",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "url": "https://www.pati-versand.de/zahlung-versand",
+      "tool": "check_quotes.py",
+      "found": true,
+      "http": "200",
+      "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn, Zypern.",
+      "checked_at_utc": "2026-09-17T16:08:06Z",
+      "country_named_as": "Slowakische Republik"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet; per 100 g: 2456 kJ / 587 kcal, fat 42 g (saturates 27.1 g), carbohydrate 29 g (sugars 29 g), protein 19 g, salt 0.75 g; Art.-Nr. 10866; 'Auf Lager'",
+      "from": "page label"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "spray-dried dairy cream, fat 42 % (reference 42), protein 19 (ref. 20), sugars/lactose 29 (ref. 30); no GTIN on the page (D-37 own-brand listing: brand, exact name, variant 42 % sprühgetrocknet, 100 g, article no.)",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ba63c987d6238203.json",
+     "verifier_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T16:06:03Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
+   ],
+   "notes": "No Slovak direct retailer page with dairy cream powder found in the shops reachable without a bot wall."
+  },
+  "FRU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "fruktóza",
+    "ovocný cukor"
+   ],
+   "queries": [
+    "hreflang sibling of the verified CZ listing (vsenavareni.cz → vsetkonavarenie.sk)",
+    "sitemap grep (fruktoz) dortisimo.sk, mixit.sk, naturshop.sk, aktin.sk, vilgain.sk, zdravie-shop.sk, cukrarskepotreby.sk, bezgluten.sk"
+   ],
+   "sources_tried": [
+    "vsetkonavarenie.sk — Dr. Hlaváč 1 kg, GTIN on page — kept",
+    "zdravie-shop.sk — only Dibette products sweetened with fructose",
+    "other shops listed: no crystalline fructose in sitemap",
+    "grizly.sk / drmax.sk / mojalekaren.sk: HTTP 403 (inconclusive)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Dr. Hlaváč",
+     "product_name": "FRUKTÓZA – ovocný cukor, 1 kg - Dr. Hlaváč",
+     "pack": "1 kg",
+     "gtin": "8594164300691",
+     "identifier_confirmed": true,
+     "url": "https://www.vsetkonavarenie.sk/fruktoza-ovocny-cukor-1-kg-dr.-hlavac",
+     "source_type": "RETAILER",
+     "seller": "VsetkoNaVarenie.sk",
+     "page_market": "SK",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .sk",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": 100.0,
+      "ingredients": "Zloženie produktu: kryštalická fruktóza 100%; per 100 g 1700 kJ / 406.2 kcal, carbohydrate 100 g (sugars 100 g)",
+      "from": "page label"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "crystalline fructose 100 % (≥ 98 %)",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2d9eebbeb0e3013e.json",
+     "verifier_class": "EAN_ON_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:04:20Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": ""
+  },
+  "INU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "inulín",
+    "čakankový inulín"
+   ],
+   "queries": [
+    "hreflang siblings of the verified CZ listings (gymbeam.cz → gymbeam.sk; vsenavareni.cz → vsetkonavarenie.sk)",
+    "sitemap grep (inulin) vsetkonavarenie.sk"
+   ],
+   "sources_tried": [
+    "gymbeam.sk (own-brand shop) — kept",
+    "vsetkonavarenie.sk — Louis François 1 kg — kept"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "GymBeam",
+     "product_name": "Čakankový inulín - GymBeam",
+     "pack": "200 g",
+     "gtin": "8586028133576",
+     "identifier_confirmed": true,
+     "url": "https://gymbeam.sk/cakankovy-inulin-gymbeam.html",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "GymBeam (own-brand country shop)",
+     "page_market": "SK",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": 86.0,
+      "fructose_pct": null,
+      "ingredients": "Zloženie: Čakankový inulín; per 100 g 875 kJ / 216 kcal, fat 0 g, carbohydrate 11 g (sugars 11 g), fibre 86 g, protein 0 g, salt 0.00 g",
+      "from": "page label"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "chicory inulin powder, fibre 86 g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9657d87db3b288da.json",
+     "verifier_class": "EAN_ON_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T15:51:05Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
+     "brand": "Louis François",
+     "product_name": "Inulin 1 kg - Louis François",
+     "pack": "1 kg",
+     "gtin": "3700434802382",
+     "identifier_confirmed": true,
+     "url": "https://www.vsetkonavarenie.sk/inulin-1-kg-louis-francois",
+     "source_type": "RETAILER",
+     "seller": "VsetkoNaVarenie.sk",
+     "page_market": "SK",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .sk",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": 85.0,
+      "fructose_pct": null,
+      "ingredients": "Inulin (fibre from chicory root); per 100 g carbohydrate 12 g (sugars 12 g), fibre 85 g, salt 0.1 g; origin Francúzsko",
+      "from": "page label"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "professional chicory inulin, fibre 85 g/100 g (at the A threshold)",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/973c203be1f900fc.json",
+     "verifier_class": "EAN_ON_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:07:23Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": ""
+  },
+  "YOL": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "sušený žĺtok",
+    "vaječný žĺtok v prášku"
+   ],
+   "queries": [
+    "hreflang sibling of the verified CZ listing (vsenavareni.cz → vsetkonavarenie.sk)",
+    "sitemap grep (zltok) dortisimo.sk, mixit.sk, naturshop.sk, aktin.sk, vilgain.sk, zdravie-shop.sk, cukrarskepotreby.sk, bezgluten.sk"
+   ],
+   "sources_tried": [
+    "vsetkonavarenie.sk — Cake Masters 100 g, GTIN on page — kept",
+    "other shops listed: no dried yolk in sitemap",
+    "grizly.sk / drmax.sk / mojalekaren.sk: HTTP 403 (inconclusive)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Cake Masters",
+     "product_name": "Sušený vaječný žĺtok v prášku, 100 g - Cake Masters",
+     "pack": "100 g",
+     "gtin": "4250712315510",
+     "identifier_confirmed": true,
+     "url": "https://www.vsetkonavarenie.sk/suseny-vajecny-zltok-v-prasku-100-g-cake-masters",
+     "source_type": "RETAILER",
+     "seller": "VsetkoNaVarenie.sk",
+     "page_market": "SK",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .sk",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": 55.8,
+      "protein_g": 34.3,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zloženie produktu: Pasírovaný sušený kurací vaječný žĺtok [printed wording]; per 100 g 2709 kJ / 647.3 kcal, fat 55.8 g (saturates 17.6 g), carbohydrate 3.6 g, protein 34.3 g, salt 0.3 g; origin Nemecko; producer Cake-Masters.com, Herzlake",
+      "from": "page label"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % chicken egg yolk powder; fat 55.8 / protein 34.3 vs reference 56.5 / 34.5. The SK page prints 'Pasírovaný' where the CZ/HU pages of the same GTIN print 'pasteurised'.",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/717930564bea20a0.json",
+     "verifier_class": "EAN_ON_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:04:08Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": ""
   }
+ }
 }

@@ -1,411 +1,421 @@
 {
-  "iso2": "MT",
-  "country": "Malta",
-  "agent": "research-eu-south",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:45:00Z",
-  "items": {
-    "CRP": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "cream powder",
-        "dried cream",
-        "dairy cream powder"
+ "iso2": "MT",
+ "country": "Malta",
+ "agent": "research-eu-south",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:45:00Z",
+ "items": {
+  "CRP": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "cream powder",
+    "dried cream",
+    "dairy cream powder"
+   ],
+   "queries": [
+    "hollandandbarrett.com.mt catalogue scan 'cream powder'",
+    "scotts/browns/remedies/organika/arkadia search-endpoint probes 'cream powder' (no usable search)",
+    "\"cream powder\" 42% fat buy online shop Europe (Brave - HTTP 429)",
+    "fructose powder Malta shop (Brave; no cream-powder seller in results)",
+    "\"Sahnepulver\" 42% Fett kaufen Online Shop 100g Süßrahm (WebSearch)",
+    "\"Sahnepulver\" Onlineshop Lieferung Griechenland Rumänien Bulgarien Versandkosten Land (WebSearch)",
+    "\"panna in polvere\" 42% grassi vendita online spedizione (WebSearch)",
+    "\"slagroompoeder\" kopen 100 gram webshop verzending Europa (WebSearch)",
+    "sosa.cat site search 'cream powder'",
+    "gourmet-versand.com site search 'Sahnepulver' / 'Sahne Pulver' (0 dairy cream powder)",
+    "specialingredients.co.uk + souschef.co.uk product sitemaps grepped for cream/dairy powder (0)",
+    "shop.cake-masters.com site search + /versand-zahlung country table"
+   ],
+   "sources_tried": [
+    "scotts.com.mt (supermarket; no usable site search)",
+    "greens.com.mt (supermarket; ASP.NET postback search - not submitted)",
+    "browns.com.mt (pharmacy; search endpoints 404)",
+    "remedies.com.mt (pharmacy; search endpoints 404)",
+    "organika.com.mt (health shop; search endpoints 404)",
+    "arkadia.com.mt (supermarket; search endpoints 404)",
+    "hollandandbarrett.com.mt (health shop; WooCommerce catalogue)",
+    "maltanutrition.com (sports nutrition; nothing relevant in sitemap)",
+    "ingredientsbar.com (UK; dairy cream powder 75 % fat, generic international delivery - lead)",
+    "meincupcake.de / backfun.de (42 % Sahnepulver; delivery lists do not include Malta)",
+    "gourmet-versand.com (ships to Malta; no dairy cream powder in sitemap)",
+    "taste-market.de (ships to Malta; no cream powder)",
+    "shop.cake-masters.com (Cake-Masters trade shop, Herzlake DE): CM Basics Sahnepulver 100g, SAHNE 42% Fett sprühgetrocknet, Auf Lager; its own foreign shipping-cost table names the market — VERIFIED_CROSS_BORDER but trade-only (registered commercial resellers)",
+    "torten-boutique.de and tolletorten.com (same Herzlake group, consumer shops): same 21-country delivery list as pati-versand/backfun/meincupcake — market NOT named; 'Rest der Welt' flat rate names no country",
+    "taste-market.de: full product sitemap (2 425 URLs) scanned — Eigelbpulver / Eiklarpulver / Volleipulver / Vollmilchpulver only, NO Sahnepulver; its EU zones 1-3 name no non-EU market",
+    "gourmet-versand.com: no Sahnepulver / dairy cream powder in the catalogue (confirmed again by site search)",
+    "sosa.cat: only 'TASTE COLOUR FREEZE-DRIED FRESH CREAM POWDER' (2 kg, Taste-Colour flavour/colour line, ingredients nata + leche desnatada en polvo + E450, no fat % printed) — no distributor found that sells it in a retail pack to this market",
+    "specialingredients.co.uk (1 130 products) and souschef.co.uk (6 274 products): product sitemaps hold no dairy cream powder",
+    "cerfdellier.com, cuisineaddict.com, deco-relief.fr, bienmanger.com, koro-shop.de: no 'crème en poudre' / Sahnepulver in search",
+    "ingredientsbar.com (UK): real dairy cream powder 75 % fat in retail sizes, but the delivery policy only says 'International delivery carries additional charges…' — no country named, LEAD",
+    "shop.kraeuter-mieke.de: 'Sahnepulver' 100/250/500/1000 g, 'Sofort verfügbar', but NO ingredient list or fat % printed and EU shipping only 'Auf Anfrage oder nach Auswahl im Bestellvorgang' (no country named) — not proposed",
+    "ecolebensmittel.com: 'Sahnepulver 42 % Fett 750 g' (brand FeelWell) — dropshipping shop whose article number is an Amazon ASIN (B07KZPP6JK) and the item is 'Ausverkauft (nur vorbestellen)'",
+    "gosupps.com: HTTP 403 bot wall — inconclusive",
+    "ecolebensmittel.com: its shipping page DOES name Malta (\"…Großbritannien und Malta werden mit einer Versandkostenpauschale von 5,95 € pro Produkt berechnet.\", check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/research-gap-eu/ecolebensmittel-MT.json) but the Sahnepulver listing is out of stock and identified only by an Amazon ASIN — not proposed"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Cake-Masters",
+     "product_name": "CM Basics Sahnepulver 100g",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Cake-Masters.com, Alexander Müller, Siemensstr. 24, 49770 Herzlake, DE (trade-only shop — footer: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\")",
+     "page_market": "DE",
+     "market_by": "ADDRESS_COUNTRY",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "cross-border: the seller's own foreign shipping-cost table prints a row for the market (\"Malta 33,79 €\"), check_quotes.py found=true",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://shop.cake-masters.com/versand-zahlung",
+      "quotes": [
+       "Versandkosten Ausland: Land Versandkosten pro angefangene 25kg",
+       "Malta 33,79 €",
+       "Verkauf nur an registrierte, gewerbliche Wiederverkäufer."
       ],
-      "queries": [
-        "hollandandbarrett.com.mt catalogue scan 'cream powder'",
-        "scotts/browns/remedies/organika/arkadia search-endpoint probes 'cream powder' (no usable search)",
-        "\"cream powder\" 42% fat buy online shop Europe (Brave - HTTP 429)",
-        "fructose powder Malta shop (Brave; no cream-powder seller in results)",
-        "\"Sahnepulver\" 42% Fett kaufen Online Shop 100g Süßrahm (WebSearch)",
-        "\"Sahnepulver\" Onlineshop Lieferung Griechenland Rumänien Bulgarien Versandkosten Land (WebSearch)",
-        "\"panna in polvere\" 42% grassi vendita online spedizione (WebSearch)",
-        "\"slagroompoeder\" kopen 100 gram webshop verzending Europa (WebSearch)",
-        "sosa.cat site search 'cream powder'",
-        "gourmet-versand.com site search 'Sahnepulver' / 'Sahne Pulver' (0 dairy cream powder)",
-        "specialingredients.co.uk + souschef.co.uk product sitemaps grepped for cream/dairy powder (0)",
-        "shop.cake-masters.com site search + /versand-zahlung country table"
+      "found": [
+       true,
+       true,
+       true
       ],
-      "sources_tried": [
-        "scotts.com.mt (supermarket; no usable site search)",
-        "greens.com.mt (supermarket; ASP.NET postback search - not submitted)",
-        "browns.com.mt (pharmacy; search endpoints 404)",
-        "remedies.com.mt (pharmacy; search endpoints 404)",
-        "organika.com.mt (health shop; search endpoints 404)",
-        "arkadia.com.mt (supermarket; search endpoints 404)",
-        "hollandandbarrett.com.mt (health shop; WooCommerce catalogue)",
-        "maltanutrition.com (sports nutrition; nothing relevant in sitemap)",
-        "ingredientsbar.com (UK; dairy cream powder 75 % fat, generic international delivery - lead)",
-        "meincupcake.de / backfun.de (42 % Sahnepulver; delivery lists do not include Malta)",
-        "gourmet-versand.com (ships to Malta; no dairy cream powder in sitemap)",
-        "taste-market.de (ships to Malta; no cream powder)",
-        "shop.cake-masters.com (Cake-Masters trade shop, Herzlake DE): CM Basics Sahnepulver 100g, SAHNE 42% Fett sprühgetrocknet, Auf Lager; its own foreign shipping-cost table names the market — VERIFIED_CROSS_BORDER but trade-only (registered commercial resellers)",
-        "torten-boutique.de and tolletorten.com (same Herzlake group, consumer shops): same 21-country delivery list as pati-versand/backfun/meincupcake — market NOT named; 'Rest der Welt' flat rate names no country",
-        "taste-market.de: full product sitemap (2 425 URLs) scanned — Eigelbpulver / Eiklarpulver / Volleipulver / Vollmilchpulver only, NO Sahnepulver; its EU zones 1-3 name no non-EU market",
-        "gourmet-versand.com: no Sahnepulver / dairy cream powder in the catalogue (confirmed again by site search)",
-        "sosa.cat: only 'TASTE COLOUR FREEZE-DRIED FRESH CREAM POWDER' (2 kg, Taste-Colour flavour/colour line, ingredients nata + leche desnatada en polvo + E450, no fat % printed) — no distributor found that sells it in a retail pack to this market",
-        "specialingredients.co.uk (1 130 products) and souschef.co.uk (6 274 products): product sitemaps hold no dairy cream powder",
-        "cerfdellier.com, cuisineaddict.com, deco-relief.fr, bienmanger.com, koro-shop.de: no 'crème en poudre' / Sahnepulver in search",
-        "ingredientsbar.com (UK): real dairy cream powder 75 % fat in retail sizes, but the delivery policy only says 'International delivery carries additional charges…' — no country named, LEAD",
-        "shop.kraeuter-mieke.de: 'Sahnepulver' 100/250/500/1000 g, 'Sofort verfügbar', but NO ingredient list or fat % printed and EU shipping only 'Auf Anfrage oder nach Auswahl im Bestellvorgang' (no country named) — not proposed",
-        "ecolebensmittel.com: 'Sahnepulver 42 % Fett 750 g' (brand FeelWell) — dropshipping shop whose article number is an Amazon ASIN (B07KZPP6JK) and the item is 'Ausverkauft (nur vorbestellen)'",
-        "gosupps.com: HTTP 403 bot wall — inconclusive",
-        "ecolebensmittel.com: its shipping page DOES name Malta (\"…Großbritannien und Malta werden mit einer Versandkostenpauschale von 5,95 € pro Produkt berechnet.\", check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/research-gap-eu/ecolebensmittel-MT.json) but the Sahnepulver listing is out of stock and identified only by an Amazon ASIN — not proposed"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Cake-Masters",
-          "product_name": "CM Basics Sahnepulver 100g",
-          "pack": "100 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Cake-Masters.com, Alexander Müller, Siemensstr. 24, 49770 Herzlake, DE (trade-only shop — footer: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\")",
-          "page_market": "DE",
-          "market_by": "ADDRESS_COUNTRY",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "cross-border: the seller's own foreign shipping-cost table prints a row for the market (\"Malta 33,79 €\"), check_quotes.py found=true",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://shop.cake-masters.com/versand-zahlung",
-            "quotes": [
-              "Versandkosten Ausland: Land Versandkosten pro angefangene 25kg",
-              "Malta 33,79 €",
-              "Verkauf nur an registrierte, gewerbliche Wiederverkäufer."
-            ],
-            "found": [
-              true,
-              true,
-              true
-            ],
-            "type": "seller's own foreign shipping-cost table, one row per destination country",
-            "check_quotes_result_files": [
-              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-header.json",
-              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-MT.json",
-              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-TRADEONLY.json"
-            ]
-          },
-          "channel": "TRADE_ONLY_B2B_REGISTERED_RESELLERS",
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:40:00Z",
-            "basis": "Auf Lager (page also carries schema.org/InStock)",
-            "source": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g"
-          },
-          "composition": {
-            "fat_g": 42.0,
-            "protein_g": 19.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet. Nährwertangaben 100 g: 2456 kJ / 587 kcal, Fett 42 g, davon gesättigte Fettsäuren 27,1 g, Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g. Produziert in Deutschland. Artikel-Nr.: 10866",
-            "from": "page label",
-            "carbohydrate_g": 29.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "fat 42 % = reference (PI-ING-000260: fat 42, protein 20, lactose 30); single-ingredient spray-dried dairy cream, no additives",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/108cde3a0e356ca2.json",
-          "checked_at_utc": "2026-09-17T18:40:00Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "added_by": "research-gap-eu",
-          "owner_check": "shop.cake-masters.com is the trade arm of the Herzlake group (same address as pati-versand.de / torten-boutique.de) and sells only to registered commercial resellers, prices net of VAT. The product and the pack are ordinary retail size (100 g) but the CHANNEL is B2B — it must not be shown as a consumer offer without the owner's decision. The group's consumer shops (pati-versand.de, backfun.de, meincupcake.de, hobbybaecker.de, torten-boutique.de, tolletorten.com) all use the same 21-country list, which excludes this market."
-        },
-        {
-          "rank": 2,
-          "brand": "Ingredients Bar",
-          "product_name": "Cream Powder | Dairy Milk High-Fat 75% (Product ID 0370)",
-          "pack": "200 g / 500 g / 1.5 kg / 4 kg (size selector)",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Ingredients Bar (UK; packed in the UK, produced in Germany)",
-          "page_market": "GB",
-          "market_by": "CURRENCY_ONLY",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "none for MT: delivery page only states generic international delivery (no country list)",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://ingredientsbar.com/payment-delivery/",
-            "quotes": [
-              "International delivery carries additional charges, which are displayed at checkout based on the delivery address"
-            ],
-            "found": [
-              true
-            ],
-            "explicit_country": false
-          },
-          "composition": {
-            "fat_g": 75.0,
-            "protein_g": 8.5,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Per 100 g: Energy 3094 kJ/750 kcal, Fat 75 g (saturates 51 g), Carbohydrates 12 g (sugars 12 g), Protein 8.5 g, Fibre 0 g, Salt 2 g",
-            "from": "shop page",
-            "carbs_g": 12.0
-          },
-          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
-          "equivalence_note": "Dairy cream powder at 75 % fat (outside 38-48 %). UK seller (post-Brexit import to the EU/TR); delivery to MT not explicitly stated; several pack sizes on one page, no GTIN. schema InStock.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d6f37b59d82c23e0.json",
-          "checked_at_utc": "2026-09-17T16:41:26Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:40:00Z",
-            "basis": "schema.org/InStock in the page's Product JSON-LD offer (Product ID 0370)",
-            "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
-          }
-        }
-      ],
-      "notes": "No dairy cream powder found in Maltese shops, and no verified seller of 38-48 % cream powder listing Malta. Only lead: a UK shop (75 % fat) with generic international delivery. Discovery constrained (WebSearch budget exhausted, Brave mostly HTTP 429). | Gap closed 2026-09-17 by research-gap-eu: the confirmed 42 % spray-dried cream powder is also sold by shop.cake-masters.com (the Herzlake group's TRADE shop), whose own foreign shipping-cost table prints a row for this market — so delivery here is verified in the seller's own words, unlike the group's consumer shops. Caveat for the owner: that shop states \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\" and quotes prices net of VAT, i.e. it is a B2B channel; the pack itself (100 g) is retail size. No consumer-facing seller of a 38-48 % dairy cream powder that names this market was found. Second Malta-naming seller found (ecolebensmittel.com) but its cream-powder listing is out of stock and carries an Amazon ASIN as its article number, so it was not proposed."
+      "type": "seller's own foreign shipping-cost table, one row per destination country",
+      "check_quotes_result_files": [
+       "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-header.json",
+       "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-MT.json",
+       "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-TRADEONLY.json"
+      ]
+     },
+     "channel": "TRADE_ONLY_B2B_REGISTERED_RESELLERS",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:40:00Z",
+      "basis": "Auf Lager (page also carries schema.org/InStock)",
+      "source": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet. Nährwertangaben 100 g: 2456 kJ / 587 kcal, Fett 42 g, davon gesättigte Fettsäuren 27,1 g, Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g. Produziert in Deutschland. Artikel-Nr.: 10866",
+      "from": "page label",
+      "carbohydrate_g": 29.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "fat 42 % = reference (PI-ING-000260: fat 42, protein 20, lactose 30); single-ingredient spray-dried dairy cream, no additives",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/108cde3a0e356ca2.json",
+     "checked_at_utc": "2026-09-17T18:40:00Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "added_by": "research-gap-eu",
+     "owner_check": "shop.cake-masters.com is the trade arm of the Herzlake group (same address as pati-versand.de / torten-boutique.de) and sells only to registered commercial resellers, prices net of VAT. The product and the pack are ordinary retail size (100 g) but the CHANNEL is B2B — it must not be shown as a consumer offer without the owner's decision. The group's consumer shops (pati-versand.de, backfun.de, meincupcake.de, hobbybaecker.de, torten-boutique.de, tolletorten.com) all use the same 21-country list, which excludes this market.",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     },
-    "FRU": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "fructose",
-        "fruit sugar"
+    {
+     "rank": 2,
+     "brand": "Ingredients Bar",
+     "product_name": "Cream Powder | Dairy Milk High-Fat 75% (Product ID 0370)",
+     "pack": "200 g / 500 g / 1.5 kg / 4 kg (size selector)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Ingredients Bar (UK; packed in the UK, produced in Germany)",
+     "page_market": "GB",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "none for MT: delivery page only states generic international delivery (no country list)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://ingredientsbar.com/payment-delivery/",
+      "quotes": [
+       "International delivery carries additional charges, which are displayed at checkout based on the delivery address"
       ],
-      "queries": [
-        "fructose powder Malta shop (Brave)",
-        "hollandandbarrett.com.mt catalogue scan 'fructose' (no match)",
-        "Maltese supermarket/pharmacy search-endpoint probes 'fructose'"
+      "found": [
+       true
       ],
-      "sources_tried": [
-        "scotts.com.mt (supermarket; no usable site search)",
-        "greens.com.mt (supermarket; ASP.NET postback search - not submitted)",
-        "browns.com.mt (pharmacy; search endpoints 404)",
-        "remedies.com.mt (pharmacy; search endpoints 404)",
-        "organika.com.mt (health shop; search endpoints 404)",
-        "arkadia.com.mt (supermarket; search endpoints 404)",
-        "hollandandbarrett.com.mt (health shop; WooCommerce catalogue)",
-        "maltanutrition.com (sports nutrition; nothing relevant in sitemap)",
-        "gourmet-versand.com (country selector lists Malta - cross-border)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Sosa Ingredients",
-          "product_name": "Sosa fructose powder, 1 kg, PE dose",
-          "pack": "1 kg",
-          "gtin": "8414933026259",
-          "identifier_confirmed": true,
-          "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
-          "source_type": "RETAILER",
-          "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists the market (check_quotes.py found=true)",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
-            "quotes": [
-              "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
-              "Mali Malta Monaco"
-            ],
-            "found": [
-              true,
-              true
-            ],
-            "type": "shipping-cost country selector listing the market"
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
-            "from": "retailer page ('EAN Code 8414933026259' printed)",
-            "sugars_g": 100.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9575bdf37fc49d99.json",
-          "checked_at_utc": "2026-09-17T16:17:21Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": "Brave result for Malta suggested supermarket health aisles (Pavi/Pama) and Holland & Barrett; no fructose product page found on reachable Maltese sites."
-    },
-    "INU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "inulin",
-        "inulin powder",
-        "chicory root fibre"
-      ],
-      "queries": [
-        "hollandandbarrett.com.mt catalogue scan 'inulin'"
-      ],
-      "sources_tried": [
-        "hollandandbarrett.com.mt (Holland & Barrett Inulin Powder 200g, In stock)",
-        "scotts.com.mt (supermarket; no usable site search)",
-        "greens.com.mt (supermarket; ASP.NET postback search - not submitted)",
-        "browns.com.mt (pharmacy; search endpoints 404)",
-        "remedies.com.mt (pharmacy; search endpoints 404)",
-        "organika.com.mt (health shop; search endpoints 404)",
-        "arkadia.com.mt (supermarket; search endpoints 404)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Holland & Barrett",
-          "product_name": "Holland & Barrett Inulin Powder 200g",
-          "pack": "200 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.hollandandbarrett.com.mt/product/holland-barrett-inulin-powder-200g-2/",
-          "source_type": "RETAILER",
-          "seller": "Holland & Barrett Malta (hollandandbarrett.com.mt)",
-          "page_market": "MT",
-          "market_by": "CCTLD",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "country domain .mt",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Full ingredients: Inulin (from Chicory Root (Cichorium intybus)). Nutritional Information: each serving (15g) contains Inulin 225000mg [as printed]",
-            "from": "retailer page"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Single-ingredient chicory inulin powder. The printed per-serving figure (225000 mg in 15 g) is internally inconsistent - fibre % not usable; owner should check the pack label. No GTIN on page: identity from the Holland & Barrett own-brand listing (name, 200 g, SKU 067983). schema.org InStock.",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/78813303a17704ea.json",
-          "checked_at_utc": "2026-09-17T16:24:48Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": ""
-    },
-    "YOL": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "egg yolk powder",
-        "dried egg yolk"
-      ],
-      "queries": [
-        "hollandandbarrett.com.mt catalogue scan 'yolk' (no match)",
-        "myprotein Malta domain probes (myprotein.com.mt / .mt not resolving)",
-        "Maltese supermarket/pharmacy search-endpoint probes 'egg yolk'"
-      ],
-      "sources_tried": [
-        "scotts.com.mt (supermarket; no usable site search)",
-        "greens.com.mt (supermarket; ASP.NET postback search - not submitted)",
-        "browns.com.mt (pharmacy; search endpoints 404)",
-        "remedies.com.mt (pharmacy; search endpoints 404)",
-        "organika.com.mt (health shop; search endpoints 404)",
-        "arkadia.com.mt (supermarket; search endpoints 404)",
-        "hollandandbarrett.com.mt (health shop; WooCommerce catalogue)",
-        "maltanutrition.com (sports nutrition; nothing relevant in sitemap)",
-        "myprotein.com.mt / myprotein.mt (no site)",
-        "taste-market.de (EU-Zone 3 lists Malta - cross-border)",
-        "sermand.com (Spanish producer; country selector lists Malta - cross-border)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Taste Market",
-          "product_name": "Eigelbpulver 100 g Sprühgetrocknet (Art.-Nr. 123-100g)",
-          "pack": "100 g",
-          "gtin": "4262421423127",
-          "identifier_confirmed": true,
-          "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Taste Market GmbH (Germany)",
-          "page_market": "DE",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "cross-border: seller's EU shipping zones list the market (check_quotes.py found=true)",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
-            "quotes": [
-              "Lieferung in das EU-Ausland oder internationaler Versand",
-              "EU-Zone 2:Italien, Slowakei, Slowenien, Spanien &amp; Ungarn",
-              "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
-            ],
-            "found": [
-              true,
-              true,
-              true
-            ]
-          },
-          "composition": {
-            "fat_g": 58.0,
-            "protein_g": 34.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Zutaten: Hühner-Eigelb, sprühgetrocknet und pasteurisiert. Nährwerte/100 g: Fett 58 g (ges. 18 g), Kohlenhydrate 2,1 g, davon Zucker 0 g, Eiweiß 34 g, Salz 0,4 g",
-            "from": "shop page (Zutaten + Nährwertangaben)",
-            "carbs_g": 2.1
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 58 / protein 34 vs reference 56.5 / 34.5. Page data prints itemprop gtin13 as 14-digit '04262421423127'.",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/fb3cc37ef38c967f.json",
-          "checked_at_utc": "2026-09-17T15:57:46Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        },
-        {
-          "rank": 2,
-          "brand": "Sermand",
-          "product_name": "Yema de Huevo en Polvo Natural - 2kg",
-          "pack": "2 kg",
-          "gtin": "8436577690108",
-          "identifier_confirmed": true,
-          "url": "https://sermand.com/products/yema-de-huevo-en-polvo-natural-sin-gluten-ni-lactosa",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Sermand Nutrición (Totana, Murcia, Spain)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "cross-border: Shopify country/region selector on the product page lists Malta (check_quotes.py found=true)",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://sermand.com/products/yema-de-huevo-en-polvo-natural-sin-gluten-ni-lactosa",
-            "quotes": [
-              "País/región",
-              "Malta EUR €"
-            ],
-            "found": [
-              true,
-              true
-            ]
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "page: 'Obtenida a partir de yema de huevo fresca deshidratada'; no ingredient list or nutrition table printed",
-            "from": "manufacturer shop page"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Pasteurised dried egg yolk from the producer; 2 kg is the only variant with an unambiguous GTIN (350 g and 1 kg share GTIN 8436577690115 in page data).",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0fd0cfd21ef89dca.json",
-          "checked_at_utc": "2026-09-17T16:25:24Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": ""
+      "explicit_country": false
+     },
+     "composition": {
+      "fat_g": 75.0,
+      "protein_g": 8.5,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Per 100 g: Energy 3094 kJ/750 kcal, Fat 75 g (saturates 51 g), Carbohydrates 12 g (sugars 12 g), Protein 8.5 g, Fibre 0 g, Salt 2 g",
+      "from": "shop page",
+      "carbs_g": 12.0
+     },
+     "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+     "equivalence_note": "Dairy cream powder at 75 % fat (outside 38-48 %). UK seller (post-Brexit import to the EU/TR); delivery to MT not explicitly stated; several pack sizes on one page, no GTIN. schema InStock.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d6f37b59d82c23e0.json",
+     "checked_at_utc": "2026-09-17T16:41:26Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:40:00Z",
+      "basis": "schema.org/InStock in the page's Product JSON-LD offer (Product ID 0370)",
+      "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+     },
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
+   ],
+   "notes": "No dairy cream powder found in Maltese shops, and no verified seller of 38-48 % cream powder listing Malta. Only lead: a UK shop (75 % fat) with generic international delivery. Discovery constrained (WebSearch budget exhausted, Brave mostly HTTP 429). | Gap closed 2026-09-17 by research-gap-eu: the confirmed 42 % spray-dried cream powder is also sold by shop.cake-masters.com (the Herzlake group's TRADE shop), whose own foreign shipping-cost table prints a row for this market — so delivery here is verified in the seller's own words, unlike the group's consumer shops. Caveat for the owner: that shop states \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\" and quotes prices net of VAT, i.e. it is a B2B channel; the pack itself (100 g) is retail size. No consumer-facing seller of a 38-48 % dairy cream powder that names this market was found. Second Malta-naming seller found (ecolebensmittel.com) but its cream-powder listing is out of stock and carries an Amazon ASIN as its article number, so it was not proposed."
   },
-  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-  "contributing_agents": [
-    "research-gap-eu"
-  ]
+  "FRU": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "fructose",
+    "fruit sugar"
+   ],
+   "queries": [
+    "fructose powder Malta shop (Brave)",
+    "hollandandbarrett.com.mt catalogue scan 'fructose' (no match)",
+    "Maltese supermarket/pharmacy search-endpoint probes 'fructose'"
+   ],
+   "sources_tried": [
+    "scotts.com.mt (supermarket; no usable site search)",
+    "greens.com.mt (supermarket; ASP.NET postback search - not submitted)",
+    "browns.com.mt (pharmacy; search endpoints 404)",
+    "remedies.com.mt (pharmacy; search endpoints 404)",
+    "organika.com.mt (health shop; search endpoints 404)",
+    "arkadia.com.mt (supermarket; search endpoints 404)",
+    "hollandandbarrett.com.mt (health shop; WooCommerce catalogue)",
+    "maltanutrition.com (sports nutrition; nothing relevant in sitemap)",
+    "gourmet-versand.com (country selector lists Malta - cross-border)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Sosa Ingredients",
+     "product_name": "Sosa fructose powder, 1 kg, PE dose",
+     "pack": "1 kg",
+     "gtin": "8414933026259",
+     "identifier_confirmed": true,
+     "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
+     "source_type": "RETAILER",
+     "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists the market (check_quotes.py found=true)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+      "quotes": [
+       "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
+       "Mali Malta Monaco"
+      ],
+      "found": [
+       true,
+       true
+      ],
+      "type": "shipping-cost country selector listing the market"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
+      "from": "retailer page ('EAN Code 8414933026259' printed)",
+      "sugars_g": 100.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9575bdf37fc49d99.json",
+     "checked_at_utc": "2026-09-17T16:17:21Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    }
+   ],
+   "notes": "Brave result for Malta suggested supermarket health aisles (Pavi/Pama) and Holland & Barrett; no fructose product page found on reachable Maltese sites."
+  },
+  "INU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "inulin",
+    "inulin powder",
+    "chicory root fibre"
+   ],
+   "queries": [
+    "hollandandbarrett.com.mt catalogue scan 'inulin'"
+   ],
+   "sources_tried": [
+    "hollandandbarrett.com.mt (Holland & Barrett Inulin Powder 200g, In stock)",
+    "scotts.com.mt (supermarket; no usable site search)",
+    "greens.com.mt (supermarket; ASP.NET postback search - not submitted)",
+    "browns.com.mt (pharmacy; search endpoints 404)",
+    "remedies.com.mt (pharmacy; search endpoints 404)",
+    "organika.com.mt (health shop; search endpoints 404)",
+    "arkadia.com.mt (supermarket; search endpoints 404)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Holland & Barrett",
+     "product_name": "Holland & Barrett Inulin Powder 200g",
+     "pack": "200 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hollandandbarrett.com.mt/product/holland-barrett-inulin-powder-200g-2/",
+     "source_type": "RETAILER",
+     "seller": "Holland & Barrett Malta (hollandandbarrett.com.mt)",
+     "page_market": "MT",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "country domain .mt",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Full ingredients: Inulin (from Chicory Root (Cichorium intybus)). Nutritional Information: each serving (15g) contains Inulin 225000mg [as printed]",
+      "from": "retailer page"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Single-ingredient chicory inulin powder. The printed per-serving figure (225000 mg in 15 g) is internally inconsistent - fibre % not usable; owner should check the pack label. No GTIN on page: identity from the Holland & Barrett own-brand listing (name, 200 g, SKU 067983). schema.org InStock.",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/78813303a17704ea.json",
+     "checked_at_utc": "2026-09-17T16:24:48Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": ""
+  },
+  "YOL": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "egg yolk powder",
+    "dried egg yolk"
+   ],
+   "queries": [
+    "hollandandbarrett.com.mt catalogue scan 'yolk' (no match)",
+    "myprotein Malta domain probes (myprotein.com.mt / .mt not resolving)",
+    "Maltese supermarket/pharmacy search-endpoint probes 'egg yolk'"
+   ],
+   "sources_tried": [
+    "scotts.com.mt (supermarket; no usable site search)",
+    "greens.com.mt (supermarket; ASP.NET postback search - not submitted)",
+    "browns.com.mt (pharmacy; search endpoints 404)",
+    "remedies.com.mt (pharmacy; search endpoints 404)",
+    "organika.com.mt (health shop; search endpoints 404)",
+    "arkadia.com.mt (supermarket; search endpoints 404)",
+    "hollandandbarrett.com.mt (health shop; WooCommerce catalogue)",
+    "maltanutrition.com (sports nutrition; nothing relevant in sitemap)",
+    "myprotein.com.mt / myprotein.mt (no site)",
+    "taste-market.de (EU-Zone 3 lists Malta - cross-border)",
+    "sermand.com (Spanish producer; country selector lists Malta - cross-border)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Taste Market",
+     "product_name": "Eigelbpulver 100 g Sprühgetrocknet (Art.-Nr. 123-100g)",
+     "pack": "100 g",
+     "gtin": "4262421423127",
+     "identifier_confirmed": true,
+     "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Taste Market GmbH (Germany)",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "cross-border: seller's EU shipping zones list the market (check_quotes.py found=true)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+      "quotes": [
+       "Lieferung in das EU-Ausland oder internationaler Versand",
+       "EU-Zone 2:Italien, Slowakei, Slowenien, Spanien &amp; Ungarn",
+       "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
+      ],
+      "found": [
+       true,
+       true,
+       true
+      ]
+     },
+     "composition": {
+      "fat_g": 58.0,
+      "protein_g": 34.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: Hühner-Eigelb, sprühgetrocknet und pasteurisiert. Nährwerte/100 g: Fett 58 g (ges. 18 g), Kohlenhydrate 2,1 g, davon Zucker 0 g, Eiweiß 34 g, Salz 0,4 g",
+      "from": "shop page (Zutaten + Nährwertangaben)",
+      "carbs_g": 2.1
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 58 / protein 34 vs reference 56.5 / 34.5. Page data prints itemprop gtin13 as 14-digit '04262421423127'.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/fb3cc37ef38c967f.json",
+     "checked_at_utc": "2026-09-17T15:57:46Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    },
+    {
+     "rank": 2,
+     "brand": "Sermand",
+     "product_name": "Yema de Huevo en Polvo Natural - 2kg",
+     "pack": "2 kg",
+     "gtin": "8436577690108",
+     "identifier_confirmed": true,
+     "url": "https://sermand.com/products/yema-de-huevo-en-polvo-natural-sin-gluten-ni-lactosa",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Sermand Nutrición (Totana, Murcia, Spain)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "cross-border: Shopify country/region selector on the product page lists Malta (check_quotes.py found=true)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://sermand.com/products/yema-de-huevo-en-polvo-natural-sin-gluten-ni-lactosa",
+      "quotes": [
+       "País/región",
+       "Malta EUR €"
+      ],
+      "found": [
+       true,
+       true
+      ]
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "page: 'Obtenida a partir de yema de huevo fresca deshidratada'; no ingredient list or nutrition table printed",
+      "from": "manufacturer shop page"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Pasteurised dried egg yolk from the producer; 2 kg is the only variant with an unambiguous GTIN (350 g and 1 kg share GTIN 8436577690115 in page data).",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0fd0cfd21ef89dca.json",
+     "checked_at_utc": "2026-09-17T16:25:24Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    }
+   ],
+   "notes": ""
+  }
+ },
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "contributing_agents": [
+  "research-gap-eu"
+ ]
 }

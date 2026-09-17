@@ -1,306 +1,336 @@
 {
-  "iso2": "ZA",
-  "country": "South Africa",
-  "agent": "research-south-asia-oceania-africa",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:10:00Z",
-  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant) served bot challenges; discovery used one early Brave result page, retailer site search pages and retailer product sitemaps (keyword scan of product URLs).",
-  "items": {
-    "CRP": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "cream powder",
-        "dried cream powder",
-        "heavy cream powder",
-        "roompoeier (af)"
-      ],
-      "queries": [
-        "site search 'cream powder' on clicks.co.za, checkers.co.za, woolworths.co.za, wellnesswarehouse.com, makro.co.za, pnp.co.za, soaringfree.co.za, bakersparadise.co.za, delitedashfood.co.za",
-        "product-sitemap URL scan (cream-powder|dried-cream|heavy-cream|powdered-cream) on checkers.co.za (99k URLs), pnp.co.za (39k), clicks.co.za (29k), woolworths.co.za, makro.co.za",
-        "site search regex also matched Afrikaans 'roompoeier'",
-        "\"egg yolk powder\" South Africa buy online baking ingredient supplier (WebSearch)",
-        "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
-        "hoosierhillfarm.com product sitemap + policies/shipping-policy + pages/faqs (international shipping)",
-        "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
-        "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
-      ],
-      "sources_tried": [
-        "checkers.co.za sitemap (supermarket - only 'Crystal Valley full cream powder milk' = milk powder, rejected type)",
-        "pnp.co.za sitemap (supermarket - only 'First Choice instant full cream powder milk', rejected type)",
-        "woolworths.co.za (supermarket - no match)",
-        "makro.co.za (wholesale/marketplace - '15kg premium ice cream powder mix' rejected type; Nestle heavy cream is liquid)",
-        "clicks.co.za (pharmacy - no match)",
-        "wellnesswarehouse.com (health retailer - site search no cream powder)",
-        "bakersparadise.co.za (baking supplier - only UHT dairy cream)",
-        "delitedashfood.co.za (ingredient manufacturer shop - no match)",
-        "dischem.co.za (HTTP 403 bot wall - inconclusive), faithful-to-nature.co.za (HTTP 403 - inconclusive), cabfoods.co.za (HTTP 403 - inconclusive), natureschoice.co.za (HTTP 403 - inconclusive), soaringfree.co.za (HTTP 429 - inconclusive)",
-        "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
-        "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
-        "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
-        "hoosierhillfarm.com (US, Heavy Cream Powder): FAQ states 'Do you ship internationally? At this time, we do not ship internationally.' - rejected as a cross-border path",
-        "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
-        "gourmet-versand.com (DE gourmet retailer, shipping-cost country selector names 81 countries incl. South Africa): Sosa fructose powder 1 kg found with GTIN, ingredients and nutrition; its EN sitemap has NO dairy cream powder (only cooking-, filling- and coconut-cream powders) and NO egg yolk powder (only yolk-coloured food colouring)",
-        "sbakels.co.za (South Bakels): the \"Egg powders and albumen\" category URL redirects to the 211-product catalogue, which contains no egg powders and no cream powder",
-        "lgromer.com (Gromer Eezee Eggz) sells powdered whole eggs - rejected type; simplieggs.co.za did not answer (connection failed)",
-        "tradekey / exporthub / globaltradeplaza listings are B2B classifieds, not retail pages - not used"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": null,
-          "product_name": "Sahnepulver sprühgetrocknet",
-          "pack": "100 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
-          "source_type": "RETAILER",
-          "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
-          "page_market": "DE",
-          "market_by": "CCTLD",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
-          "cross_border": true,
-          "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). ZA is NOT named, so this is a lead, not a confirmation.",
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:21:06Z",
-            "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
-            "source": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g"
-          },
-          "composition": {
-            "fat_g": 42.0,
-            "protein_g": 19.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
-            "from": "page label \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\"; nutrition per 100 g: Fett 42 g (davon gesättigte Fettsäuren 27,1 g), Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "spray-dried dairy cream, 42 % fat = the PI-ING-000260 reference exactly (fat 42, protein 20, lactose 30)",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3df84b49991636c0.json",
-          "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
-          "checked_at_utc": "2026-09-17T18:21:06Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": "No spray-dried dairy cream powder found at any readable South African retailer. | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name South Africa among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF."
-    },
-    "FRU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "fructose",
-        "fruit sugar",
-        "vrugtesuiker (af)"
-      ],
-      "queries": [
-        "Brave web search 'fructose powder site:co.za' (one page, before the engine served a captcha)",
-        "checkers.co.za / pnp.co.za / clicks.co.za product-sitemap scan 'fructo|fruit-sugar'",
-        "site search 'fructose' on clicks.co.za, wellnesswarehouse.com, makro.co.za"
-      ],
-      "sources_tried": [
-        "delitedashfood.co.za (Delite Foods own-brand shop - CONFIRMED via D-37)",
-        "checkers.co.za (supermarket listing 'Tantalize Fruit Sugar Crystalline Fructose 500g', no GTIN - LEAD)",
-        "bakersparadise.co.za (unbranded fructose 1/5/25 kg, no GTIN)",
-        "dischem.co.za 'Nature's Choice Fructose 500g' (HTTP 403 - inconclusive; verdict ~/.cache/gellatti-evidence/verify/72caf7fedaa30f42.json)",
-        "cabfoods.co.za fructose 1 kg (HTTP 403 - inconclusive; verdict ~/.cache/gellatti-evidence/verify/5399bff04a15e5c9.json)",
-        "essentialproducts.co.za / braganingredients.co.za (25 kg bulk - not retail)",
-        "beerlab.co.za, chemlabsupplies, worldofscience.co.za (brewing/lab suppliers - not food retail)",
-        "desertcart.co.za (marketplace)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Delite Foods (Tantalize Sugar Free range)",
-          "product_name": "Fructose/Fruit Sugar",
-          "pack": "Fructose 500g Bag (listing also offers 1kg bag and 12 x 500g carton)",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://delitedashfood.co.za/shop/fructose-fruit-sugar/",
-          "source_type": "MANUFACTURER",
-          "seller": "Delite Foods",
-          "page_market": "ZA",
-          "market_by": "CCTLD",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "country domain .co.za",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": 0.0,
-            "protein_g": 0.0,
-            "fibre_g": 0.0,
-            "fructose_pct": 100.0,
-            "ingredients": "Ingredients: Fructose (Fruit Sugar); '100% Fructose/Fruit Sugar'; per 100 g carbohydrates 100 g (page prints 'of which total sugars 0,0' - label inconsistency)",
-            "from": "page ingredients + nutrition table"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "single ingredient fructose, printed as 100 %",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8502fd7506322a01.json",
-          "checked_at_utc": "2026-09-17T15:45:25Z"
-        },
-        {
-          "rank": 2,
-          "brand": "Tantalize",
-          "product_name": "Tantalize Fruit Sugar Crystalline Fructose 500g",
-          "pack": "500g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.checkers.co.za/product/tantalize-fruit-sugar-crystalline-fructose-500g-10125696EA",
-          "source_type": "RETAILER",
-          "seller": "Checkers (Sixty60)",
-          "page_market": "ZA",
-          "market_by": "CCTLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "country domain .co.za",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": "not printed in page HTML"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "crystalline fructose by name; retailer article 10125696, no GTIN; JSON-LD availability OutOfStock (delivery-address dependent)",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c98e0154602f7923.json",
-          "checked_at_utc": "2026-09-17T15:54:06Z"
-        }
-      ],
-      "notes": "Rank 1 identity rests on D-37 (own-brand listing, no GTIN printed). Rank 2 is the same brand family in a national supermarket, useful as a purchase path once a GTIN is available."
-    },
-    "INU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "inulin",
-        "inulin powder",
-        "prebiotic fibre",
-        "inulien (af)"
-      ],
-      "queries": [
-        "site search 'inulin' on clicks.co.za, checkers.co.za, woolworths.co.za, wellnesswarehouse.com, soaringfree.co.za, makro.co.za, pnp.co.za, bakersparadise.co.za, delitedashfood.co.za, healthconnection.co.za",
-        "product-sitemap URL scan 'inulin' on checkers.co.za, pnp.co.za, clicks.co.za, makro.co.za, woolworths.co.za"
-      ],
-      "sources_tried": [
-        "wellnesswarehouse.com (SA health retailer - CONFIRMED via identity_match + store-locator quote)",
-        "makro.co.za 'Life Health Inulin (230 g)' sold by marketplace seller 'Life health' (marketplace - not evidence)",
-        "clicks.co.za (only an inulin body lotion)",
-        "checkers.co.za (only a dog breath freshener)",
-        "bakersparadise.co.za ('No products were found')",
-        "dischem.co.za (HTTP 403 bot wall - inconclusive), faithful-to-nature.co.za (HTTP 403 - inconclusive), cabfoods.co.za (HTTP 403 - inconclusive), natureschoice.co.za (HTTP 403 - inconclusive), soaringfree.co.za (HTTP 429 - inconclusive)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "NOW",
-          "product_name": "NOW Inulin Pure Powder 227g",
-          "pack": "227g",
-          "gtin": "00733739029447",
-          "identifier_confirmed": true,
-          "url": "https://www.wellnesswarehouse.com/products/now-inulin-pure-powder-227g-227g-00448711477197",
-          "source_type": "RETAILER",
-          "seller": "Wellness Warehouse",
-          "page_market": "ZA",
-          "market_by": "CURRENCY_ONLY",
-          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
-          "market_binding_signal": "explicit quote on the seller's own store locator (check_quotes found): 'Find a Store Western Cape Kwa-Zulu Natal Gauteng'; page title 'Wellness Warehouse South Africa'; ZAR currency is supporting only",
-          "cross_border": false,
-          "ships_to_evidence": "https://wellnesswarehouse.com/pages/store-locator",
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Ingredients Organic Inulin (FOS) (from Blue Agave) 2.8 g. Other Ingredients: None.",
-            "from": "page ingredients text"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "single-ingredient agave inulin; fibre g/100 g not printed; the label words it 'Inulin (FOS)' - owner may want the NIP checked (A vs B)",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/bf2d83c1e216a340.json",
-          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_7cfee6aa8d9d440b.json",
-          "identity_source_url": "https://www.pharmacydirect.co.nz/Now-Certified-Organic-Inulin-Pure-Powder-227g",
-          "checked_at_utc": "2026-09-17T16:08:01Z"
-        }
-      ],
-      "notes": "The page's own 'barcode' field (00448711477197) fails the GTIN checksum (internal code), so it is not a conflicting GTIN. Wellness Warehouse (a Shopify store) returned HTTP 429 several times before it could be read."
-    },
-    "YOL": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "egg yolk powder",
-        "dried egg yolk",
-        "eiergeelpoeier (af)"
-      ],
-      "queries": [
-        "site search 'egg yolk powder' on clicks.co.za, checkers.co.za, woolworths.co.za, wellnesswarehouse.com, makro.co.za, pnp.co.za, soaringfree.co.za, bakersparadise.co.za, delitedashfood.co.za ('egg')",
-        "product-sitemap URL scan 'yolk|egg-powder' on checkers.co.za, pnp.co.za, clicks.co.za, makro.co.za, woolworths.co.za",
-        "\"egg yolk powder\" South Africa buy online baking ingredient supplier (WebSearch)",
-        "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
-        "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
-        "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
-      ],
-      "sources_tried": [
-        "checkers.co.za / pnp.co.za / woolworths.co.za (supermarkets - only fresh eggs and yolk separators)",
-        "makro.co.za (only kitchen tools)",
-        "clicks.co.za, wellnesswarehouse.com (pharmacy/health - no match)",
-        "bakersparadise.co.za, delitedashfood.co.za (baking/ingredient suppliers - no egg yolk powder)",
-        "dischem.co.za (HTTP 403 bot wall - inconclusive), faithful-to-nature.co.za (HTTP 403 - inconclusive), cabfoods.co.za (HTTP 403 - inconclusive), natureschoice.co.za (HTTP 403 - inconclusive), soaringfree.co.za (HTTP 429 - inconclusive)",
-        "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
-        "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
-        "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
-        "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
-        "gourmet-versand.com (DE gourmet retailer, shipping-cost country selector names 81 countries incl. South Africa): Sosa fructose powder 1 kg found with GTIN, ingredients and nutrition; its EN sitemap has NO dairy cream powder (only cooking-, filling- and coconut-cream powders) and NO egg yolk powder (only yolk-coloured food colouring)",
-        "sbakels.co.za (South Bakels): the \"Egg powders and albumen\" category URL redirects to the 211-product catalogue, which contains no egg powders and no cream powder",
-        "lgromer.com (Gromer Eezee Eggz) sells powdered whole eggs - rejected type; simplieggs.co.za did not answer (connection failed)",
-        "tradekey / exporthub / globaltradeplaza listings are B2B classifieds, not retail pages - not used"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": null,
-          "product_name": "Eigelbpulver",
-          "pack": "100 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
-          "source_type": "RETAILER",
-          "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
-          "page_market": "DE",
-          "market_by": "CCTLD",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
-          "cross_border": true,
-          "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). ZA is NOT named, so this is a lead, not a confirmation.",
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:21:21Z",
-            "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
-            "source": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g"
-          },
-          "composition": {
-            "fat_g": 55.8,
-            "protein_g": 34.3,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.",
-            "from": "page label \"Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.\"; nutrition per 100 g: Fett 55,8 g (davon gesättigte Fettsäuren 17,6 g), Kohlenhydrate 3,6 g, davon Zucker 3,6 g, Eiweiß 34,3 g, Salz 0,3 g"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % pasteurised, spray-dried chicken egg yolk; fat 55,8 / protein 34,3 against the PI-ING-001645 reference fat 56,5 / protein 34,5",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2944f17c1f486c80.json",
-          "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
-          "checked_at_utc": "2026-09-17T18:21:21Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": "No dried egg yolk powder in retail packs found at readable South African retailers. | gap pass 2026-09-17: no dried egg yolk powder is sold by any readable seller in this market; the only lead is a German shop that carries 100 % pasteurised spray-dried yolk powder but does not name South Africa among its delivery countries. Owner decision needed as for CRP."
+ "iso2": "ZA",
+ "country": "South Africa",
+ "agent": "research-south-asia-oceania-africa",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:10:00Z",
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant) served bot challenges; discovery used one early Brave result page, retailer site search pages and retailer product sitemaps (keyword scan of product URLs).",
+ "items": {
+  "CRP": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "cream powder",
+    "dried cream powder",
+    "heavy cream powder",
+    "roompoeier (af)"
+   ],
+   "queries": [
+    "site search 'cream powder' on clicks.co.za, checkers.co.za, woolworths.co.za, wellnesswarehouse.com, makro.co.za, pnp.co.za, soaringfree.co.za, bakersparadise.co.za, delitedashfood.co.za",
+    "product-sitemap URL scan (cream-powder|dried-cream|heavy-cream|powdered-cream) on checkers.co.za (99k URLs), pnp.co.za (39k), clicks.co.za (29k), woolworths.co.za, makro.co.za",
+    "site search regex also matched Afrikaans 'roompoeier'",
+    "\"egg yolk powder\" South Africa buy online baking ingredient supplier (WebSearch)",
+    "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+    "hoosierhillfarm.com product sitemap + policies/shipping-policy + pages/faqs (international shipping)",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "\"cream powder\" dairy spray dried South Africa buy online 500g ingredient (WebSearch)",
+    "Sunspray Food Ingredients South Africa \"cream powder\" spray dried dairy fat product range (WebSearch)",
+    "sunspray.co.za site read; adprodukte.co.za /egg-products/; bakersparadise.co.za site search"
+   ],
+   "sources_tried": [
+    "checkers.co.za sitemap (supermarket - only 'Crystal Valley full cream powder milk' = milk powder, rejected type)",
+    "pnp.co.za sitemap (supermarket - only 'First Choice instant full cream powder milk', rejected type)",
+    "woolworths.co.za (supermarket - no match)",
+    "makro.co.za (wholesale/marketplace - '15kg premium ice cream powder mix' rejected type; Nestle heavy cream is liquid)",
+    "clicks.co.za (pharmacy - no match)",
+    "wellnesswarehouse.com (health retailer - site search no cream powder)",
+    "bakersparadise.co.za (baking supplier - only UHT dairy cream)",
+    "delitedashfood.co.za (ingredient manufacturer shop - no match)",
+    "dischem.co.za (HTTP 403 bot wall - inconclusive), faithful-to-nature.co.za (HTTP 403 - inconclusive), cabfoods.co.za (HTTP 403 - inconclusive), natureschoice.co.za (HTTP 403 - inconclusive), soaringfree.co.za (HTTP 429 - inconclusive)",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+    "hoosierhillfarm.com (US, Heavy Cream Powder): FAQ states 'Do you ship internationally? At this time, we do not ship internationally.' - rejected as a cross-border path",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "gourmet-versand.com (DE gourmet retailer, shipping-cost country selector names 81 countries incl. South Africa): Sosa fructose powder 1 kg found with GTIN, ingredients and nutrition; its EN sitemap has NO dairy cream powder (only cooking-, filling- and coconut-cream powders) and NO egg yolk powder (only yolk-coloured food colouring)",
+    "sbakels.co.za (South Bakels): the \"Egg powders and albumen\" category URL redirects to the 211-product catalogue, which contains no egg powders and no cream powder",
+    "lgromer.com (Gromer Eezee Eggz) sells powdered whole eggs - rejected type; simplieggs.co.za did not answer (connection failed)",
+    "tradekey / exporthub / globaltradeplaza listings are B2B classifieds, not retail pages - not used",
+    "sunspray.co.za (South Africa's largest independent spray-drier, Johannesburg): a corporate site with no product pages, no packs, no declarations and no shop; its published range is creamers and fat powders (supplier-directory text gives a creamer fat range of 18-50 % and describes the blends as 'dairy solids, glucose and vegetable oils') - nothing that can be recorded as a product, and blends of that kind would be rejected anyway",
+    "adprodukte.co.za (A&D Food Ingredients): supplies egg and dairy powders 'to food manufacturers across South Africa since 2006'; no shop, no pack, no declaration",
+    "clover.co.za bulk ingredients: full cream milk powder (min 26 % butterfat) - rejected type",
+    "bakersparadise.co.za (SA baking shop): the host did not complete a connection from this egress (inconclusive)",
+    "gourmet-versand.com: its delivery statement DOES name South Africa (check_quotes.py found=true), but the German sitemap (14 531 URLs) holds no dairy cream powder - so for South Africa the CRP gap is the product, not the delivery",
+    "shop.cake-masters.com (the Herzlake trade shop behind the Hobbybäcker own-brand 42 % cream powder and Eigelbpulver): its foreign shipping-cost table lists 28 EU/EEA countries only, and the shop sells only to businesses - 'Verkauf nur an registrierte, gewerbliche Wiederverkäufer.' (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-africa/cake-masters-trade-only.json)",
+    "buxtrade.de: its country/region selector is EU-only, so it cannot serve this market",
+    "specialingredients.co.uk (UK, ships internationally): the catalogue has Whole Egg Powder 1 kg and Egg White Albumen Powder but NO egg yolk powder and no dairy cream powder (site search 'egg yolk', 38 results)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": null,
+     "product_name": "Sahnepulver sprühgetrocknet",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
+     "source_type": "RETAILER",
+     "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+     "cross_border": true,
+     "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). ZA is NOT named, so this is a lead, not a confirmation.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:21:06Z",
+      "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+      "source": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+      "from": "page label \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\"; nutrition per 100 g: Fett 42 g (davon gesättigte Fettsäuren 27,1 g), Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "spray-dried dairy cream, 42 % fat = the PI-ING-000260 reference exactly (fat 42, protein 20, lactose 30)",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3df84b49991636c0.json",
+     "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+     "checked_at_utc": "2026-09-17T18:21:06Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "UNCONFIRMED",
+     "delivery_basis": "the country is not in the seller shipping-destination list"
     }
+   ],
+   "notes": "No spray-dried dairy cream powder found at any readable South African retailer. | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name South Africa among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF. | Closing pass 2026-09-17 (close-africa): South Africa does have industrial spray-dried dairy powders (Sunspray, A&D Food Ingredients), but neither publishes a product page, a pack or a declaration - they are manufacturer sites with an enquiry route, so nothing can be recorded as a candidate, and the published creamer blends (dairy solids + glucose + vegetable oils) would be the wrong type. The one cross-border shop that names South Africa in a real delivery statement (gourmet-versand) sells no cream powder; the shop that sells the exact 42 % powder is trade-only and EU/EEA-only. Still LEAD_ONLY."
   },
-  "country_notes": " | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes."
+  "FRU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "fructose",
+    "fruit sugar",
+    "vrugtesuiker (af)"
+   ],
+   "queries": [
+    "Brave web search 'fructose powder site:co.za' (one page, before the engine served a captcha)",
+    "checkers.co.za / pnp.co.za / clicks.co.za product-sitemap scan 'fructo|fruit-sugar'",
+    "site search 'fructose' on clicks.co.za, wellnesswarehouse.com, makro.co.za"
+   ],
+   "sources_tried": [
+    "delitedashfood.co.za (Delite Foods own-brand shop - CONFIRMED via D-37)",
+    "checkers.co.za (supermarket listing 'Tantalize Fruit Sugar Crystalline Fructose 500g', no GTIN - LEAD)",
+    "bakersparadise.co.za (unbranded fructose 1/5/25 kg, no GTIN)",
+    "dischem.co.za 'Nature's Choice Fructose 500g' (HTTP 403 - inconclusive; verdict ~/.cache/gellatti-evidence/verify/72caf7fedaa30f42.json)",
+    "cabfoods.co.za fructose 1 kg (HTTP 403 - inconclusive; verdict ~/.cache/gellatti-evidence/verify/5399bff04a15e5c9.json)",
+    "essentialproducts.co.za / braganingredients.co.za (25 kg bulk - not retail)",
+    "beerlab.co.za, chemlabsupplies, worldofscience.co.za (brewing/lab suppliers - not food retail)",
+    "desertcart.co.za (marketplace)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Delite Foods (Tantalize Sugar Free range)",
+     "product_name": "Fructose/Fruit Sugar",
+     "pack": "Fructose 500g Bag (listing also offers 1kg bag and 12 x 500g carton)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://delitedashfood.co.za/shop/fructose-fruit-sugar/",
+     "source_type": "MANUFACTURER",
+     "seller": "Delite Foods",
+     "page_market": "ZA",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "country domain .co.za",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": 0.0,
+      "protein_g": 0.0,
+      "fibre_g": 0.0,
+      "fructose_pct": 100.0,
+      "ingredients": "Ingredients: Fructose (Fruit Sugar); '100% Fructose/Fruit Sugar'; per 100 g carbohydrates 100 g (page prints 'of which total sugars 0,0' - label inconsistency)",
+      "from": "page ingredients + nutrition table"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "single ingredient fructose, printed as 100 %",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8502fd7506322a01.json",
+     "checked_at_utc": "2026-09-17T15:45:25Z"
+    },
+    {
+     "rank": 2,
+     "brand": "Tantalize",
+     "product_name": "Tantalize Fruit Sugar Crystalline Fructose 500g",
+     "pack": "500g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.checkers.co.za/product/tantalize-fruit-sugar-crystalline-fructose-500g-10125696EA",
+     "source_type": "RETAILER",
+     "seller": "Checkers (Sixty60)",
+     "page_market": "ZA",
+     "market_by": "CCTLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "country domain .co.za",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "not printed in page HTML"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "crystalline fructose by name; retailer article 10125696, no GTIN; JSON-LD availability OutOfStock (delivery-address dependent)",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c98e0154602f7923.json",
+     "checked_at_utc": "2026-09-17T15:54:06Z"
+    }
+   ],
+   "notes": "Rank 1 identity rests on D-37 (own-brand listing, no GTIN printed). Rank 2 is the same brand family in a national supermarket, useful as a purchase path once a GTIN is available."
+  },
+  "INU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "inulin",
+    "inulin powder",
+    "prebiotic fibre",
+    "inulien (af)"
+   ],
+   "queries": [
+    "site search 'inulin' on clicks.co.za, checkers.co.za, woolworths.co.za, wellnesswarehouse.com, soaringfree.co.za, makro.co.za, pnp.co.za, bakersparadise.co.za, delitedashfood.co.za, healthconnection.co.za",
+    "product-sitemap URL scan 'inulin' on checkers.co.za, pnp.co.za, clicks.co.za, makro.co.za, woolworths.co.za"
+   ],
+   "sources_tried": [
+    "wellnesswarehouse.com (SA health retailer - CONFIRMED via identity_match + store-locator quote)",
+    "makro.co.za 'Life Health Inulin (230 g)' sold by marketplace seller 'Life health' (marketplace - not evidence)",
+    "clicks.co.za (only an inulin body lotion)",
+    "checkers.co.za (only a dog breath freshener)",
+    "bakersparadise.co.za ('No products were found')",
+    "dischem.co.za (HTTP 403 bot wall - inconclusive), faithful-to-nature.co.za (HTTP 403 - inconclusive), cabfoods.co.za (HTTP 403 - inconclusive), natureschoice.co.za (HTTP 403 - inconclusive), soaringfree.co.za (HTTP 429 - inconclusive)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "NOW",
+     "product_name": "NOW Inulin Pure Powder 227g",
+     "pack": "227g",
+     "gtin": "00733739029447",
+     "identifier_confirmed": true,
+     "url": "https://www.wellnesswarehouse.com/products/now-inulin-pure-powder-227g-227g-00448711477197",
+     "source_type": "RETAILER",
+     "seller": "Wellness Warehouse",
+     "page_market": "ZA",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+     "market_binding_signal": "explicit quote on the seller's own store locator (check_quotes found): 'Find a Store Western Cape Kwa-Zulu Natal Gauteng'; page title 'Wellness Warehouse South Africa'; ZAR currency is supporting only",
+     "cross_border": false,
+     "ships_to_evidence": "https://wellnesswarehouse.com/pages/store-locator",
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredients Organic Inulin (FOS) (from Blue Agave) 2.8 g. Other Ingredients: None.",
+      "from": "page ingredients text"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "single-ingredient agave inulin; fibre g/100 g not printed; the label words it 'Inulin (FOS)' - owner may want the NIP checked (A vs B)",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/bf2d83c1e216a340.json",
+     "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_7cfee6aa8d9d440b.json",
+     "identity_source_url": "https://www.pharmacydirect.co.nz/Now-Certified-Organic-Inulin-Pure-Powder-227g",
+     "checked_at_utc": "2026-09-17T16:08:01Z"
+    }
+   ],
+   "notes": "The page's own 'barcode' field (00448711477197) fails the GTIN checksum (internal code), so it is not a conflicting GTIN. Wellness Warehouse (a Shopify store) returned HTTP 429 several times before it could be read."
+  },
+  "YOL": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "egg yolk powder",
+    "dried egg yolk",
+    "eiergeelpoeier (af)"
+   ],
+   "queries": [
+    "site search 'egg yolk powder' on clicks.co.za, checkers.co.za, woolworths.co.za, wellnesswarehouse.com, makro.co.za, pnp.co.za, soaringfree.co.za, bakersparadise.co.za, delitedashfood.co.za ('egg')",
+    "product-sitemap URL scan 'yolk|egg-powder' on checkers.co.za, pnp.co.za, clicks.co.za, makro.co.za, woolworths.co.za",
+    "\"egg yolk powder\" South Africa buy online baking ingredient supplier (WebSearch)",
+    "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "\"egg yolk powder\" South Africa buy online baking ingredients supplier (WebSearch)",
+    "\"yolk powder\" OR \"egg yolk powder\" buy online South Africa shop 200g retail pack (WebSearch)",
+    "lgromer.com product page; eggtech.co.za; nulaid.co.za /products; adprodukte.co.za /egg-products/"
+   ],
+   "sources_tried": [
+    "checkers.co.za / pnp.co.za / woolworths.co.za (supermarkets - only fresh eggs and yolk separators)",
+    "makro.co.za (only kitchen tools)",
+    "clicks.co.za, wellnesswarehouse.com (pharmacy/health - no match)",
+    "bakersparadise.co.za, delitedashfood.co.za (baking/ingredient suppliers - no egg yolk powder)",
+    "dischem.co.za (HTTP 403 bot wall - inconclusive), faithful-to-nature.co.za (HTTP 403 - inconclusive), cabfoods.co.za (HTTP 403 - inconclusive), natureschoice.co.za (HTTP 403 - inconclusive), soaringfree.co.za (HTTP 429 - inconclusive)",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "gourmet-versand.com (DE gourmet retailer, shipping-cost country selector names 81 countries incl. South Africa): Sosa fructose powder 1 kg found with GTIN, ingredients and nutrition; its EN sitemap has NO dairy cream powder (only cooking-, filling- and coconut-cream powders) and NO egg yolk powder (only yolk-coloured food colouring)",
+    "sbakels.co.za (South Bakels): the \"Egg powders and albumen\" category URL redirects to the 211-product catalogue, which contains no egg powders and no cream powder",
+    "lgromer.com (Gromer Eezee Eggz) sells powdered whole eggs - rejected type; simplieggs.co.za did not answer (connection failed)",
+    "tradekey / exporthub / globaltradeplaza listings are B2B classifieds, not retail pages - not used",
+    "lgromer.com (Gromer Eezee Eggz, ZA): 'Powder Eggs' in 150 g / 1 / 2 / 10 / 20 kg is WHOLE egg powder - the page itself says 'mix 12.5 g of powder with 37.5 g of water to replace one large egg' - rejected type (verdict ~/.cache/gellatti-evidence/verify/d91931133415c6cd.json)",
+    "eggtech.co.za (SA dried-egg producer): not readable from this egress, verify_ean_market.py SOURCE_NOT_READABLE (inconclusive, not bypassed) - verdict ~/.cache/gellatti-evidence/verify/f5dda79b69dd15df.json",
+    "adprodukte.co.za (A&D Food Ingredients): lists 'Egg Yolk Powder' and 'Egg Yolk Powder with maltodextrin and salt', but only as supply to food manufacturers - no shop, no pack, no declaration",
+    "ovoprotein.co.za: egg white powder only",
+    "nulaid.co.za (Quantum Foods): pasteurised LIQUID egg, liquid yolk and albumin only - no powder",
+    "gourmet-versand.com: names South Africa in its delivery statement but has no egg yolk powder (only egg white powder)",
+    "shop.cake-masters.com (the Herzlake trade shop behind the Hobbybäcker own-brand 42 % cream powder and Eigelbpulver): its foreign shipping-cost table lists 28 EU/EEA countries only, and the shop sells only to businesses - 'Verkauf nur an registrierte, gewerbliche Wiederverkäufer.' (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-africa/cake-masters-trade-only.json)",
+    "buxtrade.de: its country/region selector is EU-only, so it cannot serve this market",
+    "specialingredients.co.uk (UK, ships internationally): the catalogue has Whole Egg Powder 1 kg and Egg White Albumen Powder but NO egg yolk powder and no dairy cream powder (site search 'egg yolk', 38 results)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": null,
+     "product_name": "Eigelbpulver",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
+     "source_type": "RETAILER",
+     "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+     "cross_border": true,
+     "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). ZA is NOT named, so this is a lead, not a confirmation.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:21:21Z",
+      "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+      "source": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g"
+     },
+     "composition": {
+      "fat_g": 55.8,
+      "protein_g": 34.3,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.",
+      "from": "page label \"Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.\"; nutrition per 100 g: Fett 55,8 g (davon gesättigte Fettsäuren 17,6 g), Kohlenhydrate 3,6 g, davon Zucker 3,6 g, Eiweiß 34,3 g, Salz 0,3 g"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % pasteurised, spray-dried chicken egg yolk; fat 55,8 / protein 34,3 against the PI-ING-001645 reference fat 56,5 / protein 34,5",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2944f17c1f486c80.json",
+     "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+     "checked_at_utc": "2026-09-17T18:21:21Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "UNCONFIRMED",
+     "delivery_basis": "the country is not in the seller shipping-destination list"
+    }
+   ],
+   "notes": "No dried egg yolk powder in retail packs found at readable South African retailers. | gap pass 2026-09-17: no dried egg yolk powder is sold by any readable seller in this market; the only lead is a German shop that carries 100 % pasteurised spray-dried yolk powder but does not name South Africa among its delivery countries. Owner decision needed as for CRP. | Closing pass 2026-09-17 (close-africa): South African egg yolk powder exists, but only as manufacturer supply (A&D Food Ingredients; Eggtech, whose site is unreadable from here). The retail 'powder eggs' sold online (Gromer Eezee Eggz) are whole egg powder, which the protocol rejects, and the national egg brands (Nulaid, Ovo Protein) offer liquid yolk or egg white powder. The cross-border shop that names South Africa (gourmet-versand) has no yolk powder. Still LEAD_ONLY."
+  }
+ },
+ "country_notes": " | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes. | Closing pass 2026-09-17 by agent close-africa (egress ES) under the owner's refined rules of the same evening: a delivery claim is judged by meaning; pack weight never makes an offer business-only (pack_grams and moq recorded separately, and only a quoted seller restriction sets a TRADE_ONLY channel); identity/composition, purchase path, channel and stock are kept apart; a lead never closes a role. This pass looked past supermarkets: baking/confectionery ingredient suppliers, health-food chains with their own storefronts, pharmacies, importers and producer stores.",
+ "contributing_agents": [
+  "close-africa"
+ ]
 }

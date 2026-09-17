@@ -3,7 +3,7 @@
  "country": "Algeria",
  "agent": "research-mena",
  "egress_cc": "ES",
- "researched_at_utc": "2026-09-17T16:30:02Z",
+ "researched_at_utc": "2026-09-17T20:25:00Z",
  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
  "items": {
   "CRP": {
@@ -24,7 +24,11 @@
     "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
     "hoosierhillfarm.com product sitemap + policies/shipping-policy + pages/faqs (international shipping)",
     "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
-    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "gourmet-versand.com DE+EN sitemaps (14 531 / 12 934 URLs) scanned for sahne|rahm|dotter|eigelb|eipulver|inulin|fruktose + the shipping-country statement re-read",
+    "shop.cake-masters.com sitemap (7 518 URLs) scanned for sahnepulver|eigelb|inulin|fruktose + /versand-zahlung read",
+    "specialingredients.co.uk and msk-ingredients.com sitemaps scanned for yolk|cream-powder|inulin|fructose + shipping wording read",
+    "ingredientsbar.com sitemap (130 URLs) scanned for cream|yolk|inulin|fructose + /payment-delivery/ read"
    ],
    "sources_tried": [
     "jumia.dz marketplace (Cloudflare challenge)",
@@ -38,7 +42,17 @@
     "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
     "hoosierhillfarm.com (US, Heavy Cream Powder): FAQ states 'Do you ship internationally? At this time, we do not ship internationally.' - rejected as a cross-border path",
     "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
-    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Algeria - rejected as a cross-border path"
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Algeria - rejected as a cross-border path",
+    "gourmet-versand.com (DE) re-read 2026-09-17 under owner rule 16: its delivery statement (\"Shipment to the following country: ...\", 77 countries) does NOT name Algeria - the earlier \"Oman\" hit was the substring inside \"Romania\". Its German sitemap (14 531 URLs) carries Sosa Inulin Cold/Hot 500 g but NO dairy cream powder and NO egg yolk powder.",
+    "shop.cake-masters.com (DE; Cake-Masters is the food business operator printed on the hobbybaecker.de listings): carries the identical products - \"CM Basics Sahnepulver 100g\" (itemprop gtin 4250712308666, \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\", Fett 42 g / Eiweiss 19 g per 100 g, \"Auf Lager\") and \"CM Basics Eigelbpulver 100g\" - but it is a trade-only shop: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer. Unsere Angebote richten sich ausschliesslich an Unternehmer, §14 BGB. Wir schliessen keine Verträge mit Verbrauchern, § 13 BGB.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_trade_only.json), and its \"Versandkosten Ausland\" table names only EU countries plus CH, GB, NO, IS and RS (~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_foreign_countries.json).",
+    "specialingredients.co.uk (UK): inulin powder in 100 g and 250 g and fructose in 250 g retail packs, but its only delivery wording is generic - \"We do not have a local stockist but offer delivery throughout the UK and internationally\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/specialingredients_generic_international.json) - no country and no zone is named, and no delivery-country page exists (/pages/delivery, /pages/shipping etc. all 404). Its catalogue has NO dairy cream powder and NO egg yolk powder (egg white albumen powder and whole egg powder only).",
+    "www.bulksupplements.com re-read 2026-09-17: its shipping policy is entirely US-domestic - \"if you spend over $59 on a single order, shipping is FREE within the contiguous U.S\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/bulksupplements_us_only.json) - and contains no international delivery statement at all; the country list earlier rounds hit is the \"Select Your Region\" picker, i.e. site furniture, not delivery wording.",
+    "buxtrade.de (DE): sells Inulin-Pulver and Bio-Inulin-Pulver, but its shipping policy delivers only within Germany and to named EU countries plus Switzerland, Great Britain and Norway (\"Restliche europäische Länder\") - Algeria is not covered.",
+    "ingredientsbar.com (UK): \"Cream Powder | Dairy Milk High-Fat 75%\" in 200 g / 500 g / 1.5 kg / 4 kg, spray-dried dehydrated cream \"free from additives\", schema.org InStock - a genuine class-B dairy cream powder - but its delivery page says only \"International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/ingredientsbar_generic_international.json); no country and no zone is named, so under owner rule 16 it does not confirm delivery.",
+    "www.modernistpantry.com and www.hsnstore.eu: sitemaps refused (404 / HTTP 403), not readable from this egress (inconclusive, not bypassed).",
+    "msk-ingredients.com (UK) and cocinista.es (ES) catalogues scanned: fructose only; no dairy cream powder and no egg yolk powder.",
+    "batolis.com and numilog.com (Algerian online grocers): no sitemap / no answer from this egress, inconclusive",
+    "jumia.dz: marketplace (rule 4), not used"
    ],
    "candidates": [
     {
@@ -77,7 +91,9 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3df84b49991636c0.json",
      "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
      "checked_at_utc": "2026-09-17T18:21:06Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "UNCONFIRMED",
+     "delivery_basis": "the country is not in the seller shipping-destination list"
     }
    ],
    "notes": "No dairy cream powder found on any readable source. | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name Algeria among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF."
@@ -98,7 +114,11 @@
     "domain probing for Algerian bio / parapharmacy / pastry / nutrition shops (.dz and .com guesses)",
     "item terms prepared but not searchable on any readable Algerian shop: fructose / فركتوز",
     "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
-    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline"
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "gourmet-versand.com DE+EN sitemaps (14 531 / 12 934 URLs) scanned for sahne|rahm|dotter|eigelb|eipulver|inulin|fruktose + the shipping-country statement re-read",
+    "shop.cake-masters.com sitemap (7 518 URLs) scanned for sahnepulver|eigelb|inulin|fruktose + /versand-zahlung read",
+    "specialingredients.co.uk and msk-ingredients.com sitemaps scanned for yolk|cream-powder|inulin|fructose + shipping wording read",
+    "ingredientsbar.com sitemap (130 URLs) scanned for cream|yolk|inulin|fructose + /payment-delivery/ read"
    ],
    "sources_tried": [
     "jumia.dz marketplace (Cloudflare challenge)",
@@ -111,11 +131,62 @@
     "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
     "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Algeria - rejected as a cross-border path",
     "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
-    "vitacost.com: /international-shipping and /shipping-information redirect to the home page; no delivery-country list found"
+    "vitacost.com: /international-shipping and /shipping-information redirect to the home page; no delivery-country list found",
+    "gourmet-versand.com (DE) re-read 2026-09-17 under owner rule 16: its delivery statement (\"Shipment to the following country: ...\", 77 countries) does NOT name Algeria - the earlier \"Oman\" hit was the substring inside \"Romania\". Its German sitemap (14 531 URLs) carries Sosa Inulin Cold/Hot 500 g but NO dairy cream powder and NO egg yolk powder.",
+    "shop.cake-masters.com (DE; Cake-Masters is the food business operator printed on the hobbybaecker.de listings): carries the identical products - \"CM Basics Sahnepulver 100g\" (itemprop gtin 4250712308666, \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\", Fett 42 g / Eiweiss 19 g per 100 g, \"Auf Lager\") and \"CM Basics Eigelbpulver 100g\" - but it is a trade-only shop: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer. Unsere Angebote richten sich ausschliesslich an Unternehmer, §14 BGB. Wir schliessen keine Verträge mit Verbrauchern, § 13 BGB.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_trade_only.json), and its \"Versandkosten Ausland\" table names only EU countries plus CH, GB, NO, IS and RS (~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_foreign_countries.json).",
+    "specialingredients.co.uk (UK): inulin powder in 100 g and 250 g and fructose in 250 g retail packs, but its only delivery wording is generic - \"We do not have a local stockist but offer delivery throughout the UK and internationally\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/specialingredients_generic_international.json) - no country and no zone is named, and no delivery-country page exists (/pages/delivery, /pages/shipping etc. all 404). Its catalogue has NO dairy cream powder and NO egg yolk powder (egg white albumen powder and whole egg powder only).",
+    "www.bulksupplements.com re-read 2026-09-17: its shipping policy is entirely US-domestic - \"if you spend over $59 on a single order, shipping is FREE within the contiguous U.S\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/bulksupplements_us_only.json) - and contains no international delivery statement at all; the country list earlier rounds hit is the \"Select Your Region\" picker, i.e. site furniture, not delivery wording.",
+    "buxtrade.de (DE): sells Inulin-Pulver and Bio-Inulin-Pulver, but its shipping policy delivers only within Germany and to named EU countries plus Switzerland, Great Britain and Norway (\"Restliche europäische Länder\") - Algeria is not covered.",
+    "ingredientsbar.com (UK): \"Cream Powder | Dairy Milk High-Fat 75%\" in 200 g / 500 g / 1.5 kg / 4 kg, spray-dried dehydrated cream \"free from additives\", schema.org InStock - a genuine class-B dairy cream powder - but its delivery page says only \"International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/ingredientsbar_generic_international.json); no country and no zone is named, so under owner rule 16 it does not confirm delivery.",
+    "www.modernistpantry.com and www.hsnstore.eu: sitemaps refused (404 / HTTP 403), not readable from this egress (inconclusive, not bypassed).",
+    "msk-ingredients.com (UK) and cocinista.es (ES) catalogues scanned: fructose only; no dairy cream powder and no egg yolk powder.",
+    "biomax.dz (EURL Biomax, Résidence Opéra, Ouled Fayet, Alger): product-range page for \"Fructose\" on a .dz domain - no pack, no price, no stock, no composition"
    ],
    "candidates": [
     {
      "rank": 1,
+     "brand": "Biomax",
+     "product_name": "Fructose",
+     "pack": null,
+     "pack_grams": null,
+     "moq": null,
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://biomax.dz/product/29",
+     "source_type": "MANUFACTURER",
+     "seller": "EURL Biomax, Résidence Opéra, Ouled Fayet, Alger, Algérie (address printed in the page footer)",
+     "page_market": "DZ",
+     "market_by": "CCTLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "Algerian .dz country domain (verifier: page_market DZ, market_by CCTLD) and the company's own Algiers address in the footer",
+     "channel": "MANUFACTURER_CATALOGUE_NOT_A_SHOP",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "availability": {
+      "state": "UNKNOWN",
+      "checked_at_utc": "2026-09-17T20:25:00Z",
+      "basis": "the page carries no stock token, no price and no basket - it is a product-range page of an Algerian laboratory, not a shop page",
+      "source": "https://biomax.dz/product/29"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": null
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "the page is a general description of fructose (\"Le fructose est un sucre amplement répondu dans le régime végétal...\") with no pack, no ingredient list and no nutrition table, so neither the pack nor the purity can be read.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/b6639702d427179a.json",
+     "identity_note": "no GTIN, no pack and no article number are printed, so the D-37 own-brand route does not apply either: the listing shows an Algerian company's fructose exists, not which pack a customer would buy.",
+     "owner_check": "this is the only first-party Algerian page found for fructose; it proves the product is on the Algerian market but gives no pack, price, stock or purchase path - a human would have to ask Biomax where it is sold.",
+     "checked_at_utc": "2026-09-17T20:25:00Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
      "brand": "Louis François",
      "product_name": "Fructose - 1 kg - Louis François",
      "pack": "1 kg",
@@ -150,13 +221,15 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/846a95814b76581b.json",
      "identity_note": "gtin13 3700434800807 in the page JSON-LD (checksum valid, GTIN-13)",
      "checked_at_utc": "2026-09-17T18:37:17Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "UNCONFIRMED",
+     "delivery_basis": "this seller page has not been read for a delivery statement"
     }
    ],
-   "notes": "Discovery only: a Facebook post of an Algerian shop (facebook.com/miniprixdelamosquee) lists 'sucre fructose 250DA' in a diet range - social media, no product identity or composition, not a candidate."
+   "notes": "Discovery only: a Facebook post of an Algerian shop (facebook.com/miniprixdelamosquee) lists 'sucre fructose 250DA' in a diet range - social media, no product identity or composition, not a candidate. | close-gulf 2026-09-17: the first first-party Algerian page for fructose was found - biomax.dz (EURL Biomax, Ouled Fayet, Alger). It is a laboratory's product-range page, not a shop: no pack, no price, no stock and no composition, so it is a lead that proves the product exists on the Algerian market and nothing more. Algeria is not named by any of the cross-border delivery statements checked (gourmet-versand.com, buxtrade.de, shop.cake-masters.com), and bulksupplements.com - whose region picker lists \"Algérie\" - has a purely US-domestic shipping policy."
   },
   "INU": {
-   "result": "LEAD_ONLY",
+   "result": "VERIFIED_CROSS_BORDER",
    "local_terms": [
     "inuline",
     "inuline en poudre",
@@ -169,7 +242,11 @@
     "fructose en poudre Maroc prix (WebSearch; surfaced an Algerian Facebook price post)",
     "domain probing for Algerian bio / parapharmacy / pastry / nutrition shops (.dz and .com guesses)",
     "item terms prepared but not searchable on any readable Algerian shop: inuline / إينولين",
-    "kiki-health.com product page + shipping policy (cross-border)"
+    "kiki-health.com product page + shipping policy (cross-border)",
+    "gourmet-versand.com DE+EN sitemaps (14 531 / 12 934 URLs) scanned for sahne|rahm|dotter|eigelb|eipulver|inulin|fruktose + the shipping-country statement re-read",
+    "shop.cake-masters.com sitemap (7 518 URLs) scanned for sahnepulver|eigelb|inulin|fruktose + /versand-zahlung read",
+    "specialingredients.co.uk and msk-ingredients.com sitemaps scanned for yolk|cream-powder|inulin|fructose + shipping wording read",
+    "ingredientsbar.com sitemap (130 URLs) scanned for cream|yolk|inulin|fructose + /payment-delivery/ read"
    ],
    "sources_tried": [
     "jumia.dz marketplace (Cloudflare challenge)",
@@ -178,7 +255,18 @@
     "batolis.com (empty response)",
     "chefdz.com (recipe blog, not a supplier)",
     "guessed .dz bio/parapharmacy/pastry domains (did not resolve)",
-    "kiki-health.com UK brand shop (GTIN on page; country selector lists this market)"
+    "kiki-health.com UK brand shop (GTIN on page; country selector lists this market)",
+    "gourmet-versand.com (DE) re-read 2026-09-17 under owner rule 16: its delivery statement (\"Shipment to the following country: ...\", 77 countries) does NOT name Algeria - the earlier \"Oman\" hit was the substring inside \"Romania\". Its German sitemap (14 531 URLs) carries Sosa Inulin Cold/Hot 500 g but NO dairy cream powder and NO egg yolk powder.",
+    "shop.cake-masters.com (DE; Cake-Masters is the food business operator printed on the hobbybaecker.de listings): carries the identical products - \"CM Basics Sahnepulver 100g\" (itemprop gtin 4250712308666, \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\", Fett 42 g / Eiweiss 19 g per 100 g, \"Auf Lager\") and \"CM Basics Eigelbpulver 100g\" - but it is a trade-only shop: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer. Unsere Angebote richten sich ausschliesslich an Unternehmer, §14 BGB. Wir schliessen keine Verträge mit Verbrauchern, § 13 BGB.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_trade_only.json), and its \"Versandkosten Ausland\" table names only EU countries plus CH, GB, NO, IS and RS (~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_foreign_countries.json).",
+    "specialingredients.co.uk (UK): inulin powder in 100 g and 250 g and fructose in 250 g retail packs, but its only delivery wording is generic - \"We do not have a local stockist but offer delivery throughout the UK and internationally\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/specialingredients_generic_international.json) - no country and no zone is named, and no delivery-country page exists (/pages/delivery, /pages/shipping etc. all 404). Its catalogue has NO dairy cream powder and NO egg yolk powder (egg white albumen powder and whole egg powder only).",
+    "www.bulksupplements.com re-read 2026-09-17: its shipping policy is entirely US-domestic - \"if you spend over $59 on a single order, shipping is FREE within the contiguous U.S\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/bulksupplements_us_only.json) - and contains no international delivery statement at all; the country list earlier rounds hit is the \"Select Your Region\" picker, i.e. site furniture, not delivery wording.",
+    "buxtrade.de (DE): sells Inulin-Pulver and Bio-Inulin-Pulver, but its shipping policy delivers only within Germany and to named EU countries plus Switzerland, Great Britain and Norway (\"Restliche europäische Länder\") - Algeria is not covered.",
+    "ingredientsbar.com (UK): \"Cream Powder | Dairy Milk High-Fat 75%\" in 200 g / 500 g / 1.5 kg / 4 kg, spray-dried dehydrated cream \"free from additives\", schema.org InStock - a genuine class-B dairy cream powder - but its delivery page says only \"International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/ingredientsbar_generic_international.json); no country and no zone is named, so under owner rule 16 it does not confirm delivery.",
+    "www.modernistpantry.com and www.hsnstore.eu: sitemaps refused (404 / HTTP 403), not readable from this egress (inconclusive, not bypassed).",
+    "msk-ingredients.com (UK) and cocinista.es (ES) catalogues scanned: fructose only; no dairy cream powder and no egg yolk powder.",
+    "batolis.com and numilog.com (Algerian online grocers): no sitemap / no answer from this egress, inconclusive",
+    "jumia.dz: marketplace (rule 4), not used",
+    "kiki-health.com re-read 2026-09-17 under owner rule 16: the long country list on its pages sits under the literal heading \"Currency\" and each entry carries a currency (\"Bahrain (GBP £)\", \"Algeria (DZD د.ج)\", \"Oman (GBP £)\"), so it is a currency/market picker with no delivery wording - it does not confirm delivery (D-31: a currency never binds a market). The product itself is real and in stock (GTIN 5060018515847 in the page's JSON-LD, schema.org InStock)."
    ],
    "candidates": [
     {
@@ -206,13 +294,26 @@
       "from": "brand product page: '93% soluble plant-based fibre', '5.4g of fibre per serving', 'Completely pure, with no added sugars or sweeteners'"
      },
      "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "pure organic agave inulin, 93 % soluble fibre | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
-     "evidence_class": "LEAD",
+     "equivalence_note": "pure organic agave inulin, 93 % soluble fibre | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed. | Restored 2026-09-17 after the owner's second correction: the seller's country list is headed 'Your shipping estimates — Country', which is a statement about delivery, so the earlier downgrade (made on a page-layout test) does not stand. The seller's own caveat is kept: 'Some countries may require bespoke postage, please contact the KIKI team for shipping costs and further information if unable to select a delivery option at the checkout.'",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/50d3e7c08c143de5.json",
      "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
      "checked_at_utc": "2026-09-17T16:26:27Z",
      "identity_note": "gtin13 5060018515847 as JSON-LD data on this purchase page (verifier EAN_ON_GENERIC_TLD_PAGE); the same GTIN/product is sold locally in UAE/KSA by Life Pharmacy",
-     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+     "shipping_basis": "DELIVERY_STATEMENT_RE_EVALUATED",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the country is offered in the seller own shipping-destination list",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:25:00Z",
+      "basis": "schema.org InStock in the page's own product JSON (sku KIK122)",
+      "source": "https://kiki-health.com/products/inulin-powder-organic-250g"
+     },
+     "channel": "RETAIL_CONSUMER",
+     "pack_grams": 250,
+     "moq": null,
+     "owner_check": "delivery to Algeria is NOT confirmed: the only country list on this site is a currency picker headed \"Currency\", and the shop's own policy warns that some countries may need bespoke postage if no delivery option can be selected at checkout.",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
     }
    ],
    "notes": "No local direct retailer with inulin powder was readable; cross-border brand shop used."
@@ -233,7 +334,11 @@
     "item terms prepared but not searchable on any readable Algerian shop: jaune d'oeuf en poudre / صفار البيض",
     "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
     "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
-    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "gourmet-versand.com DE+EN sitemaps (14 531 / 12 934 URLs) scanned for sahne|rahm|dotter|eigelb|eipulver|inulin|fruktose + the shipping-country statement re-read",
+    "shop.cake-masters.com sitemap (7 518 URLs) scanned for sahnepulver|eigelb|inulin|fruktose + /versand-zahlung read",
+    "specialingredients.co.uk and msk-ingredients.com sitemaps scanned for yolk|cream-powder|inulin|fructose + shipping wording read",
+    "ingredientsbar.com sitemap (130 URLs) scanned for cream|yolk|inulin|fructose + /payment-delivery/ read"
    ],
    "sources_tried": [
     "jumia.dz marketplace (Cloudflare challenge)",
@@ -246,7 +351,17 @@
     "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
     "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
     "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
-    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Algeria - rejected as a cross-border path"
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Algeria - rejected as a cross-border path",
+    "gourmet-versand.com (DE) re-read 2026-09-17 under owner rule 16: its delivery statement (\"Shipment to the following country: ...\", 77 countries) does NOT name Algeria - the earlier \"Oman\" hit was the substring inside \"Romania\". Its German sitemap (14 531 URLs) carries Sosa Inulin Cold/Hot 500 g but NO dairy cream powder and NO egg yolk powder.",
+    "shop.cake-masters.com (DE; Cake-Masters is the food business operator printed on the hobbybaecker.de listings): carries the identical products - \"CM Basics Sahnepulver 100g\" (itemprop gtin 4250712308666, \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\", Fett 42 g / Eiweiss 19 g per 100 g, \"Auf Lager\") and \"CM Basics Eigelbpulver 100g\" - but it is a trade-only shop: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer. Unsere Angebote richten sich ausschliesslich an Unternehmer, §14 BGB. Wir schliessen keine Verträge mit Verbrauchern, § 13 BGB.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_trade_only.json), and its \"Versandkosten Ausland\" table names only EU countries plus CH, GB, NO, IS and RS (~/.cache/gellatti-evidence/quotes/close-gulf/cake-masters_foreign_countries.json).",
+    "specialingredients.co.uk (UK): inulin powder in 100 g and 250 g and fructose in 250 g retail packs, but its only delivery wording is generic - \"We do not have a local stockist but offer delivery throughout the UK and internationally\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/specialingredients_generic_international.json) - no country and no zone is named, and no delivery-country page exists (/pages/delivery, /pages/shipping etc. all 404). Its catalogue has NO dairy cream powder and NO egg yolk powder (egg white albumen powder and whole egg powder only).",
+    "www.bulksupplements.com re-read 2026-09-17: its shipping policy is entirely US-domestic - \"if you spend over $59 on a single order, shipping is FREE within the contiguous U.S\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/bulksupplements_us_only.json) - and contains no international delivery statement at all; the country list earlier rounds hit is the \"Select Your Region\" picker, i.e. site furniture, not delivery wording.",
+    "buxtrade.de (DE): sells Inulin-Pulver and Bio-Inulin-Pulver, but its shipping policy delivers only within Germany and to named EU countries plus Switzerland, Great Britain and Norway (\"Restliche europäische Länder\") - Algeria is not covered.",
+    "ingredientsbar.com (UK): \"Cream Powder | Dairy Milk High-Fat 75%\" in 200 g / 500 g / 1.5 kg / 4 kg, spray-dried dehydrated cream \"free from additives\", schema.org InStock - a genuine class-B dairy cream powder - but its delivery page says only \"International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.\" (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/close-gulf/ingredientsbar_generic_international.json); no country and no zone is named, so under owner rule 16 it does not confirm delivery.",
+    "www.modernistpantry.com and www.hsnstore.eu: sitemaps refused (404 / HTTP 403), not readable from this egress (inconclusive, not bypassed).",
+    "msk-ingredients.com (UK) and cocinista.es (ES) catalogues scanned: fructose only; no dairy cream powder and no egg yolk powder.",
+    "batolis.com and numilog.com (Algerian online grocers): no sitemap / no answer from this egress, inconclusive",
+    "jumia.dz: marketplace (rule 4), not used"
    ],
    "candidates": [
     {
@@ -285,11 +400,13 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2944f17c1f486c80.json",
      "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
      "checked_at_utc": "2026-09-17T18:21:21Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "UNCONFIRMED",
+     "delivery_basis": "the country is not in the seller shipping-destination list"
     }
    ],
    "notes": "No dried egg yolk powder found on any readable source. | gap pass 2026-09-17: no dried egg yolk powder is sold by any readable seller in this market; the only lead is a German shop that carries 100 % pasteurised spray-dried yolk powder but does not name Algeria among its delivery countries. Owner decision needed as for CRP."
   }
  },
- "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; DuckDuckGo/Mojeek/Brave/Ecosia/Yandex/Qwant served CAPTCHAs or firewalls (not bypassed). Discovery used shops' own server-rendered search pages, WooCommerce Store API and sitemaps, plus domain probing. Algerian online retail is thin and the readable sources did not carry any of the items. | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes."
+ "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; DuckDuckGo/Mojeek/Brave/Ecosia/Yandex/Qwant served CAPTCHAs or firewalls (not bypassed). Discovery used shops' own server-rendered search pages, WooCommerce Store API and sitemaps, plus domain probing. Algerian online retail is thin and the readable sources did not carry any of the items. | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes. | close-gulf pass 2026-09-17 (egress ES) under the owner rules of 2026-09-17 second round (rule 16 delivery by meaning, rule 17 pack weight never decides the channel, rule 18 a lead is never a solution): no role closed; the first first-party Algerian fructose page (biomax.dz) was added as a lead."
 }

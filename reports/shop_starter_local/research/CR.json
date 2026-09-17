@@ -52,7 +52,12 @@
     "hoosierhillfarm.com/products/heavy-cream-powder (US manufacturer shop; 'Heavy Cream Powder' with printed 72 % butterfat would be type B, but the page shows no statement of shipping to Costa Rica (verifier: US seller address; shipping ETAs given 'from the Midwest') - not a local or verified cross-border purchase path, not used; verdict ~/.cache/gellatti-evidence/verify/3f104c7583393e4b.json)",
     "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
     "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
-    "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)"
+    "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)",
+    "delcaribeshop.com/cr on-site searches 'inulina' and 'crema en polvo' (2026-09-17): no dairy cream powder in the Costa Rican catalogue",
+    "bulksupplements.com catalogue searched 2026-09-17 ('cream powder', 'egg yolk'): the shop sells neither, so its confirmed delivery statement cannot serve CRP or YOL",
+    "gourmet-versand.com (DE) catalogue searched 2026-09-17 ('Sahnepulver', 'Eigelbpulver', 'Eigelb Pulver'): 0 products - no cream powder and no egg yolk powder",
+    "modernistpantry.com/pages/international-shipping (US; does sell cream and egg yolk powders): names no destination at all - 'To see whether we can ship to your country just add the products to cart and go to the checkout page' - and a cart is forbidden by the protocol, so it cannot confirm a country",
+    "ketostore.nz (the one local NZ cream powder found): 'International Shipping Policy We currently do not ship outside of New Zealand.' - not available to any other market"
    ],
    "candidates": [
     {
@@ -72,16 +77,20 @@
      "cross_border": true,
      "ships_to_evidence": {
       "tool": "check_quotes.py",
+      "basis": "GENERIC_INTERNATIONAL_STATEMENT",
+      "statement_page": "https://ingredientsbar.com/payment-delivery/",
+      "heading_above": "Delivery & Payment > Delivery Information",
       "quotes": [
        {
         "url": "https://ingredientsbar.com/payment-delivery/",
         "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
-        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json"
+        "file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_ib_no_country.json"
        }
       ],
       "found": true,
       "country_named": false,
-      "note": "Generic international-delivery statement only; CR is not named, so owner rule 2 (2026-09-17) keeps this a LEAD."
+      "why_it_does_not_cover_this_country": "Re-read in full 2026-09-17 (close-americas): the whole Delivery Information section names exactly one country - 'We offer free standard delivery within the United Kingdom' - and then refers to international delivery only in the abstract. There is no country list anywhere on the page, so there is no group that could contain this country either.",
+      "note": "A bare 'international delivery' sentence is not a delivery claim for any particular country (owner rule, 2026-09-17)."
      },
      "availability": {
       "state": "IN_STOCK",
@@ -107,13 +116,20 @@
       "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
      ],
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T18:44:01Z"
+     "checked_at_utc": "2026-09-17T19:55:00Z",
+     "channel": "RETAIL",
+     "pack_grams": 200,
+     "moq": null,
+     "shipping_basis": "GENERIC_INTERNATIONAL_STATEMENT_NO_COUNTRY_NAMED",
+     "owner_check": "A real dairy cream powder at 75 % fat and in stock, but the seller never names a delivery country - ask Ingredients Bar in writing whether they ship here before the PDF names them.",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
    ],
-   "notes": "No spray-dried dairy cream powder found at any reachable Costa Rican grocer, health shop or ingredient/food-service supplier; only whipped-topping mixes and milk powders (rejected types). The only right-type product seen (Hoosier Hill Farm, US) has no evidence of delivery to Costa Rica. Several local shops are JS-only or bot-walled (inconclusive). WebSearch budget exhausted during research; later discovery via on-site shop searches only. | 2026-09-17: BRAK lifted to LEAD_ONLY under owner rule 3. The Costa Rican BRAK stands. New candidate: Ingredients Bar (UK) Cream Powder, real spray-dried dairy cream powder, printed fat 75 g/100 g plus full ingredient list, retail 200 g pack, IN_STOCK. Kept a LEAD because the seller's delivery page only states that international delivery is charged at checkout and never names the country (owner rule 2). BulkSupplements (which does name Costa Rica, and is already the FRU/INU source here) sells no cream powder."
+   "notes": "No spray-dried dairy cream powder found at any reachable Costa Rican grocer, health shop or ingredient/food-service supplier; only whipped-topping mixes and milk powders (rejected types). The only right-type product seen (Hoosier Hill Farm, US) has no evidence of delivery to Costa Rica. Several local shops are JS-only or bot-walled (inconclusive). WebSearch budget exhausted during research; later discovery via on-site shop searches only. | 2026-09-17: BRAK lifted to LEAD_ONLY under owner rule 3. The Costa Rican BRAK stands. New candidate: Ingredients Bar (UK) Cream Powder, real spray-dried dairy cream powder, printed fat 75 g/100 g plus full ingredient list, retail 200 g pack, IN_STOCK. Kept a LEAD because the seller's delivery page only states that international delivery is charged at checkout and never names the country (owner rule 2). BulkSupplements (which does name Costa Rica, and is already the FRU/INU source here) sells no cream powder. | Re-checked 2026-09-17 (close-americas): still LEAD_ONLY. No local dairy cream powder was found, and no cross-border seller that makes a real delivery statement naming this country sells one (bulksupplements has none in its catalogue; gourmet-versand has none; Modernist Pantry names no destinations; Keto Store NZ ships only inside New Zealand). The only candidate with a printed dairy composition remains the UK Ingredients Bar 75 % powder, whose delivery page names no country."
   },
   "FRU": {
-   "result": "LEAD_ONLY",
+   "result": "VERIFIED_CROSS_BORDER",
    "local_terms": [
     "fructosa",
     "fructosa cristalina",
@@ -161,38 +177,55 @@
      "page_market": "",
      "market_by": "GENERIC_TLD",
      "identity_basis": "GTIN_ON_LOCAL_PAGE",
-     "market_binding_signal": "NONE for CR (generic .com, US seller) - cross-border; delivery to Costa Rica proven by the seller's shipping-country list and country selector (see ships_to_evidence)",
+     "market_binding_signal": "NONE for a generic .com (US seller); the cross-border purchase path is bound by the seller's own delivery statement on its shipping policy, which names this country (see ships_to_evidence)",
      "cross_border": true,
      "ships_to_evidence": {
       "tool": "check_quotes.py",
+      "basis": "DELIVERY_STATEMENT",
+      "statement_page": "https://www.bulksupplements.com/policies/shipping-policy",
+      "heading_above": "Shipping policy > International > Delivery Time",
       "quotes": [
        {
         "url": "https://www.bulksupplements.com/policies/shipping-policy",
-        "quote": "We currently ship to the following nations: Andorra Argentina Australia Austria Bahrain Bangladesh",
-        "file": "~/.cache/gellatti-evidence/verify/quote_404e167f3b43c52f.json"
+        "quote": "We currently ship to the following nations:",
+        "file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_delivery_statement.json"
        },
        {
         "url": "https://www.bulksupplements.com/policies/shipping-policy",
-        "quote": "Chile China Colombia Cook Islands Costa Rica Croatia Cyprus Czechia",
-        "file": "~/.cache/gellatti-evidence/verify/quote_8808dc7b4591cd85.json"
-       },
-       {
-        "url": "https://www.bulksupplements.com/products/fructose-powder",
-        "quote": "Please select your shipping country. Buy from the country of your choice. Remember that we can only ship your order to addresses located in the chosen country.",
-        "file": "~/.cache/gellatti-evidence/verify/quote_991bf9d127beb477.json"
-       },
-       {
-        "url": "https://www.bulksupplements.com/products/fructose-powder",
-        "quote": "Eesti / Estonia Costa Rica Hrvatska / Croatia",
-        "file": "~/.cache/gellatti-evidence/verify/quote_af35b726b5b22db7.json"
-       },
-       {
-        "url": "https://www.bulksupplements.com/pages/shipping",
-        "quote": "Central America Belize Costa Rica El Salvador Guatemala Honduras Nicaragua Panama",
-        "file": "~/.cache/gellatti-evidence/verify/quote_5186fd6154614421.json"
+        "quote": "Cook Islands Costa Rica Croatia Cyprus Czechia",
+        "file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_ships_CR.json"
        }
       ],
-      "found": true
+      "found": true,
+      "country_named": true,
+      "why_it_covers_this_country": "The sentence is a delivery declaration ('We currently ship to ...'), its object is a closed enumeration of nations, and this country is one of the enumerated names.",
+      "exceptions_checked": {
+       "checked": [
+        "USPS Disruptions block on the same policy page (South Africa suspension, Philippines suspension)",
+        "UPS Disruptions block (South Africa)",
+        "FedEx Disruptions block (Japan, Philippines - transit delays only)",
+        "Free-shipping exclusions (Alaska, Hawaii, Puerto Rico) - a US-internal price exception, not a delivery exclusion",
+        "Customs disclaimer ('not responsible for products that may be banned in your country') - a disclaimer, not a country exclusion"
+       ],
+       "quote_file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_exceptions_usps.json",
+       "any_exception_removes_this_country": false
+      },
+      "objective_test": {
+       "rule": "RESEARCH_PROTOCOL rule 16 (objective furniture test), applied to the STATEMENT and not to the list alone",
+       "shipping_page": "https://www.bulksupplements.com/policies/shipping-policy",
+       "product_pages_checked": [
+        "https://www.bulksupplements.com/products/fructose-powder",
+        "https://www.bulksupplements.com/products/inulin-fos-powder"
+       ],
+       "statement_on_product_pages": false,
+       "statement_absence_file": "~/.cache/gellatti-evidence/quotes/close-americas/absence_bs_productpage_statement.json",
+       "furniture_that_IS_on_product_pages": {
+        "quote": "Please select your shipping country. Buy from the country of your choice. Remember that we can only ship your order to addresses located in the chosen country.",
+        "file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_productpage_picker.json",
+        "note": "This is the 'Select Your Region' market/currency picker. It appears on every page and is NOT used as delivery evidence."
+       }
+      },
+      "note": "Restored 2026-09-17 under the owner's refinement: the meaning of the statement decides, not where the list sits. The earlier downgrade (shipping_basis MARKET_PICKER_NOT_A_DELIVERY_STATEMENT) had read this country out of the store's 'Select Your Region' picker; the picker is indeed furniture, but the delivery statement on /policies/shipping-policy is a separate sentence that is absent from the product pages."
      },
      "composition": {
       "fat_g": null,
@@ -203,8 +236,8 @@
       "from": "raw product page text: 'Ingredients: Fructose Free of: Added Sugar, Soy, Dairy, Yeast, Gluten, Additives' (quote_6df2ef3846a3551e.json)"
      },
      "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "Sole ingredient fructose (no numeric purity printed). GTIN 849720029065 sits next to SKU FRUC250 and the 250 g variant name in the page's own offer data; other packs on the page: 100 g 849720029102, 500 g 849720029072, 1 kg 849720029089. | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
-     "evidence_class": "LEAD",
+     "equivalence_note": "Sole ingredient fructose (no numeric purity printed). GTIN 849720029065 sits next to SKU FRUC250 and the 250 g variant name in the page's own offer data; other packs on the page: 100 g 849720029102, 500 g 849720029072, 1 kg 849720029089. | Delivery re-read 2026-09-17 (close-americas): the seller's shipping policy carries a real delivery declaration - \"We currently ship to the following nations:\" - and this country is named in it, so the cross-border purchase path is confirmed. Composition evidence is unchanged.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3e4f8b88a2cad3f9.json",
      "extra_evidence_files": [
       "~/.cache/gellatti-evidence/verify/quote_6df2ef3846a3551e.json",
@@ -212,11 +245,27 @@
       "~/.cache/gellatti-evidence/verify/quote_8808dc7b4591cd85.json",
       "~/.cache/gellatti-evidence/verify/quote_991bf9d127beb477.json",
       "~/.cache/gellatti-evidence/verify/quote_af35b726b5b22db7.json",
-      "~/.cache/gellatti-evidence/verify/quote_5186fd6154614421.json"
+      "~/.cache/gellatti-evidence/verify/quote_5186fd6154614421.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_delivery_statement.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_ships_CR.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/absence_bs_productpage_statement.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_productpage_picker.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_exceptions_usps.json"
      ],
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T16:03:43Z",
-     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+     "checked_at_utc": "2026-09-17T19:55:00Z",
+     "shipping_basis": "DELIVERY_STATEMENT_COUNTRY_NAMED",
+     "channel": "RETAIL",
+     "pack_grams": 250,
+     "moq": null,
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:05:00Z",
+      "basis": "schema.org/InStock in the page's own offer data for the 250 g variant (the page also carries OutOfStock for its 25 kg variant)",
+      "source": "https://www.bulksupplements.com/products/fructose-powder"
+     },
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     },
     {
      "rank": 2,
@@ -231,7 +280,7 @@
      "page_market": "CR",
      "market_by": "CURRENCY_ONLY",
      "identity_basis": "NOT_PROVEN",
-     "market_binding_signal": "EXPLICIT_QUOTE: 'De la Rotonda de la Guacamaya, 200 m norte, 50 m oeste. Paso Ancho, San José – Costa Rica.' ~/.cache/gellatti-evidence/verify/quote_b75b04fdf66f7c5a.json (seller's store address printed on this /cr/ shop page; the verifier alone reports CURRENCY_ONLY)",
+     "market_binding_signal": "country path /cr/ + the seller's own Costa Rican entity and CRC prices (I.V.A. incluido)",
      "cross_border": false,
      "ships_to_evidence": null,
      "composition": {
@@ -250,13 +299,22 @@
       "~/.cache/gellatti-evidence/verify/quote_b75b04fdf66f7c5a.json"
      ],
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T15:38:39Z"
+     "checked_at_utc": "2026-09-17T19:55:00Z",
+     "channel": "RETAIL",
+     "pack_grams": 1000,
+     "moq": null,
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T19:55:00Z",
+      "basis": "\"availability\":\"https://schema.org/InStock\" plus the printed '17 disponibles' next to the add-to-cart button",
+      "source": "https://delcaribeshop.com/cr/producto/fructosa-cristalina-bolsa-1-kg/"
+     }
     }
    ],
-   "notes": "Rank 1 is cross-border (US shop with GTIN identity, sole ingredient fructose, Costa Rica named in its shipping-country list and selector); it outranks the local LEAD per the ranking rule because the only local find cannot be confirmed. Rank 2 is local and in stock, but it is an unbranded distributor bag with no GTIN or brand shown (D-37 not claimed) and no composition; its Costa Rica binding is proven by the address quote. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+   "notes": "Rank 1 is cross-border (US shop with GTIN identity, sole ingredient fructose, Costa Rica named in its shipping-country list and selector); it outranks the local LEAD per the ranking rule because the only local find cannot be confirmed. Rank 2 is local and in stock, but it is an unbranded distributor bag with no GTIN or brand shown (D-37 not claimed) and no composition; its Costa Rica binding is proven by the address quote. WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17 (close-americas): now VERIFIED_CROSS_BORDER. BulkSupplements' shipping policy carries a real delivery declaration that names Costa Rica, so rank 1 is confirmed as a cross-border purchase path; the local Distribuidora del Caribe 1 kg bag is in stock (17 units) but prints no purity."
   },
   "INU": {
-   "result": "LEAD_ONLY",
+   "result": "VERIFIED_CROSS_BORDER",
    "local_terms": [
     "inulina",
     "inulina en polvo",
@@ -307,38 +365,55 @@
      "page_market": "",
      "market_by": "GENERIC_TLD",
      "identity_basis": "GTIN_ON_LOCAL_PAGE",
-     "market_binding_signal": "NONE for CR (generic .com, US seller) - cross-border; delivery to Costa Rica proven by the seller's shipping-country list and country selector (see ships_to_evidence)",
+     "market_binding_signal": "NONE for a generic .com (US seller); the cross-border purchase path is bound by the seller's own delivery statement on its shipping policy, which names this country (see ships_to_evidence)",
      "cross_border": true,
      "ships_to_evidence": {
       "tool": "check_quotes.py",
+      "basis": "DELIVERY_STATEMENT",
+      "statement_page": "https://www.bulksupplements.com/policies/shipping-policy",
+      "heading_above": "Shipping policy > International > Delivery Time",
       "quotes": [
        {
         "url": "https://www.bulksupplements.com/policies/shipping-policy",
-        "quote": "We currently ship to the following nations: Andorra Argentina Australia Austria Bahrain Bangladesh",
-        "file": "~/.cache/gellatti-evidence/verify/quote_404e167f3b43c52f.json"
+        "quote": "We currently ship to the following nations:",
+        "file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_delivery_statement.json"
        },
        {
         "url": "https://www.bulksupplements.com/policies/shipping-policy",
-        "quote": "Chile China Colombia Cook Islands Costa Rica Croatia Cyprus Czechia",
-        "file": "~/.cache/gellatti-evidence/verify/quote_8808dc7b4591cd85.json"
-       },
-       {
-        "url": "https://www.bulksupplements.com/products/inulin-fos-powder",
-        "quote": "Please select your shipping country. Buy from the country of your choice. Remember that we can only ship your order to addresses located in the chosen country.",
-        "file": "~/.cache/gellatti-evidence/verify/quote_420823b10f276f77.json"
-       },
-       {
-        "url": "https://www.bulksupplements.com/products/inulin-fos-powder",
-        "quote": "Eesti / Estonia Costa Rica Hrvatska / Croatia",
-        "file": "~/.cache/gellatti-evidence/verify/quote_ccf9981b1d0a7f4b.json"
-       },
-       {
-        "url": "https://www.bulksupplements.com/pages/shipping",
-        "quote": "Central America Belize Costa Rica El Salvador Guatemala Honduras Nicaragua Panama",
-        "file": "~/.cache/gellatti-evidence/verify/quote_5186fd6154614421.json"
+        "quote": "Cook Islands Costa Rica Croatia Cyprus Czechia",
+        "file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_ships_CR.json"
        }
       ],
-      "found": true
+      "found": true,
+      "country_named": true,
+      "why_it_covers_this_country": "The sentence is a delivery declaration ('We currently ship to ...'), its object is a closed enumeration of nations, and this country is one of the enumerated names.",
+      "exceptions_checked": {
+       "checked": [
+        "USPS Disruptions block on the same policy page (South Africa suspension, Philippines suspension)",
+        "UPS Disruptions block (South Africa)",
+        "FedEx Disruptions block (Japan, Philippines - transit delays only)",
+        "Free-shipping exclusions (Alaska, Hawaii, Puerto Rico) - a US-internal price exception, not a delivery exclusion",
+        "Customs disclaimer ('not responsible for products that may be banned in your country') - a disclaimer, not a country exclusion"
+       ],
+       "quote_file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_exceptions_usps.json",
+       "any_exception_removes_this_country": false
+      },
+      "objective_test": {
+       "rule": "RESEARCH_PROTOCOL rule 16 (objective furniture test), applied to the STATEMENT and not to the list alone",
+       "shipping_page": "https://www.bulksupplements.com/policies/shipping-policy",
+       "product_pages_checked": [
+        "https://www.bulksupplements.com/products/fructose-powder",
+        "https://www.bulksupplements.com/products/inulin-fos-powder"
+       ],
+       "statement_on_product_pages": false,
+       "statement_absence_file": "~/.cache/gellatti-evidence/quotes/close-americas/absence_bs_productpage_statement.json",
+       "furniture_that_IS_on_product_pages": {
+        "quote": "Please select your shipping country. Buy from the country of your choice. Remember that we can only ship your order to addresses located in the chosen country.",
+        "file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_productpage_picker.json",
+        "note": "This is the 'Select Your Region' market/currency picker. It appears on every page and is NOT used as delivery evidence."
+       }
+      },
+      "note": "Restored 2026-09-17 under the owner's refinement: the meaning of the statement decides, not where the list sits. The earlier downgrade (shipping_basis MARKET_PICKER_NOT_A_DELIVERY_STATEMENT) had read this country out of the store's 'Select Your Region' picker; the picker is indeed furniture, but the delivery statement on /policies/shipping-policy is a separate sentence that is absent from the product pages."
      },
      "composition": {
       "fat_g": null,
@@ -349,8 +424,8 @@
       "from": "raw product page text: 'Serving Size: 1 tsp (about 2.5g) Other Ingredients: None' (quote_c54f5d43f6e52e3b.json) and 'a remarkable prebiotic fiber extracted from the nutrient-rich chicory roots' (quote_f8ce181228e4b02b.json); the supplement-facts panel exists only as a label image"
      },
      "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "Organic chicory inulin powder with no other ingredients (sole-ingredient reading). No fibre g/100 g is printed in page text, and the page title also says 'Inulin (FOS) Powder | Fructooligosaccharide'; if the owner reads it as oligofructose it is B, still the same product type. GTIN 849720019592 sits next to SKU INU250 and the 250 g variant name in the page's own offer data; other packs: 100 g 849720019608, 500 g 849720019585, 1 kg 849720019578. | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
-     "evidence_class": "LEAD",
+     "equivalence_note": "Organic chicory inulin powder with no other ingredients (sole-ingredient reading). No fibre g/100 g is printed in page text, and the page title also says 'Inulin (FOS) Powder | Fructooligosaccharide'; if the owner reads it as oligofructose it is B, still the same product type. GTIN 849720019592 sits next to SKU INU250 and the 250 g variant name in the page's own offer data; other packs: 100 g 849720019608, 500 g 849720019585, 1 kg 849720019578. | Delivery re-read 2026-09-17 (close-americas): the seller's shipping policy carries a real delivery declaration - \"We currently ship to the following nations:\" - and this country is named in it, so the cross-border purchase path is confirmed. Composition evidence is unchanged.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/24ade90902a8a13b.json",
      "extra_evidence_files": [
       "~/.cache/gellatti-evidence/verify/quote_c54f5d43f6e52e3b.json",
@@ -359,11 +434,27 @@
       "~/.cache/gellatti-evidence/verify/quote_8808dc7b4591cd85.json",
       "~/.cache/gellatti-evidence/verify/quote_420823b10f276f77.json",
       "~/.cache/gellatti-evidence/verify/quote_ccf9981b1d0a7f4b.json",
-      "~/.cache/gellatti-evidence/verify/quote_5186fd6154614421.json"
+      "~/.cache/gellatti-evidence/verify/quote_5186fd6154614421.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_delivery_statement.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_ships_CR.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/absence_bs_productpage_statement.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_productpage_picker.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_exceptions_usps.json"
      ],
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T16:03:46Z",
-     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+     "checked_at_utc": "2026-09-17T19:55:00Z",
+     "shipping_basis": "DELIVERY_STATEMENT_COUNTRY_NAMED",
+     "channel": "RETAIL",
+     "pack_grams": 250,
+     "moq": null,
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:05:00Z",
+      "basis": "schema.org/InStock in the page's own offer data for the 250 g variant (the page also carries OutOfStock for its 25 kg variant)",
+      "source": "https://www.bulksupplements.com/products/inulin-fos-powder"
+     },
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     },
     {
      "rank": 2,
@@ -395,10 +486,16 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/6ce4484988e7a098.json",
      "extra_evidence_files": [],
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T15:40:20Z"
+     "checked_at_utc": "2026-09-17T15:40:20Z",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:05:00Z",
+      "basis": "the page's own product data says ['https://schema.org/InStock']; the tokens ['Agotado'] also appear on the page but belong to other listings shown alongside it",
+      "source": "https://www.macrobioticasunidas.com/products/1160/now-foods-inulina-en-polvo-8-onzas"
+     }
     }
    ],
-   "notes": "Rank 1 is cross-border (US shop, GTIN identity, Costa Rica named in shipping list and selector); A is a sole-ingredient reading because no fibre value is printed (see equivalence_note). Rank 2 is the only local find: a third-party brand without GTIN (identity not proven), no composition, no explicit Costa Rica binding sentence (generic .com), and the page template shows 'Existencias: Agotado'. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+   "notes": "Rank 1 is cross-border (US shop, GTIN identity, Costa Rica named in shipping list and selector); A is a sole-ingredient reading because no fibre value is printed (see equivalence_note). Rank 2 is the only local find: a third-party brand without GTIN (identity not proven), no composition, no explicit Costa Rica binding sentence (generic .com), and the page template shows 'Existencias: Agotado'. WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17 (close-americas): now VERIFIED_CROSS_BORDER on the same delivery declaration (Costa Rica is named). No Costa Rican shop searched sells inulin."
   },
   "YOL": {
    "result": "LEAD_ONLY",
@@ -434,7 +531,8 @@
     "bulksupplements.com (US; sells no egg yolk powder)",
     "judeesfromscratch.com/policies/shipping-policy (maker of an 11 oz Egg Yolk Powder; no international statement)",
     "gosupps.com (US reseller advertising Judee's Egg Yolk Powder with express international delivery; shipping pages HTTP 403 - blocked, inconclusive)",
-    "modernistpantry.com egg yolk powder (US customers only)"
+    "modernistpantry.com egg yolk powder (US customers only)",
+    "delcaribeshop.com/cr re-checked 2026-09-17: the 1 kg egg yolk powder is OUT OF STOCK (Agotado)"
    ],
    "candidates": [
     {
@@ -450,7 +548,7 @@
      "page_market": "CR",
      "market_by": "CURRENCY_ONLY",
      "identity_basis": "NOT_PROVEN",
-     "market_binding_signal": "EXPLICIT_QUOTE: 'De la Rotonda de la Guacamaya, 200 m norte, 50 m oeste. Paso Ancho, San José – Costa Rica.' ~/.cache/gellatti-evidence/verify/quote_6e5c1d813b8768a3.json (seller's store address printed on this /cr/ shop page; the verifier alone reports CURRENCY_ONLY)",
+     "market_binding_signal": "country path /cr/ + the seller's own Costa Rican entity and CRC prices",
      "cross_border": false,
      "ships_to_evidence": null,
      "composition": {
@@ -462,23 +560,30 @@
       "from": "not shown (description: mainly for the food industry; rehydrate 1 part yolk powder with 1.25 parts water; SKU 006771)"
      },
      "equivalence": "C_INSUFFICIENT_DATA",
-     "equivalence_note": "Egg yolk powder by name; no ingredient list (100 % yolk or additives), species or pasteurisation statement printed.",
+     "equivalence_note": "Egg yolk powder by name; no ingredient list (100 % yolk or additives), species or pasteurisation statement printed. | Stock, checked 2026-09-17: this listing is OUT OF STOCK (\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, and the visible text reads 'Agotado'). The product is kept; the PDF must print the state with its date.",
      "evidence_class": "LEAD",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/cc7b439c767c4be4.json",
      "extra_evidence_files": [
       "~/.cache/gellatti-evidence/verify/quote_6e5c1d813b8768a3.json"
      ],
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T15:37:50Z",
+     "checked_at_utc": "2026-09-17T19:55:00Z",
      "availability": {
       "state": "OUT_OF_STOCK",
-      "checked_at_utc": "2026-09-17T18:44:01Z",
-      "basis": "\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, plus the printed badge 'Agotado'",
+      "checked_at_utc": "2026-09-17T19:55:00Z",
+      "basis": "\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, and the visible text reads 'Agotado'",
       "source": "https://delcaribeshop.com/cr/producto/yema-de-huevo-en-polvo-bolsa-1-kg/"
-     }
+     },
+     "channel": "RETAIL",
+     "pack_grams": 1000,
+     "moq": null,
+     "owner_check": "Costa Rica's only local dried egg yolk is out of stock today (Agotado) and prints no composition."
     }
    ],
-   "notes": "LEAD: unbranded distributor bag, no GTIN or brand shown, no composition, out of stock ('Agotado') at check time. Costa Rica binding via the seller's address quote is proven. No verifiable cross-border source found (Modernist Pantry's shipping coverage can only be seen in a cart). WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17: still OUT_OF_STOCK ('Agotado' + schema.org/OutOfStock). No cross-border alternative qualified (see sources_tried)."
+   "notes": "LEAD: unbranded distributor bag, no GTIN or brand shown, no composition, out of stock ('Agotado') at check time. Costa Rica binding via the seller's address quote is proven. No verifiable cross-border source found (Modernist Pantry's shipping coverage can only be seen in a cart). WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17: still OUT_OF_STOCK ('Agotado' + schema.org/OutOfStock). No cross-border alternative qualified (see sources_tried). | Re-checked 2026-09-17 (close-americas): still LEAD_ONLY and now out of stock. The listing is locally bound (/cr/ path, Costa Rican entity, CRC prices) and retail, but it publishes no composition and carries 'Agotado' today."
   }
- }
+ },
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "last_review_agent": "close-americas",
+ "last_reviewed_at_utc": "2026-09-17T19:55:00Z"
 }

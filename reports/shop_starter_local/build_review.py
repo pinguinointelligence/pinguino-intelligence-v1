@@ -124,6 +124,9 @@ def recommendation(c):
     if TRADE_ONLY.search(str(c.get('channel') or '')):
         # A shop that sells only to registered businesses is not an ordinary retail offer, however good the product is.
         return 'DO DECYZJI: kanał tylko dla firm (nie zwykła sprzedaż detaliczna)'
+    if c.get('cross_border') and (c.get('delivery_state') or shipping_state(c)) != 'CONFIRMED':
+        # The product may be right; what is missing is the seller's own statement that it delivers to this country.
+        return 'DO DECYZJI: sprzedawca nie deklaruje dostawy do tego kraju'
     if cls in ('CONFIRMED_LOCAL', 'VERIFIED_CROSS_BORDER') and eq == 'A_EQUIVALENT':
         return 'TAK'
     if cls in ('CONFIRMED_LOCAL', 'VERIFIED_CROSS_BORDER'):
@@ -151,7 +154,7 @@ def build(out_path):
     done = [iso for iso in sorted(markets) if os.path.exists(os.path.join(HERE, 'research', f'{iso}.json'))]
     decide = [['ID', 'ISO', 'Kraj', 'Składnik', 'Wybór', 'Marka', 'Produkt (jak na stronie)', 'Opakowanie', 'EAN', 'Link', 'Sprzedawca',
                'Typ identyfikatora', 'Tożsamość i skład (klasa dowodu)', 'Skład (ze strony)', 'Dopuszczalność zamiany',
-               'Oferta dla kraju', 'Kanał sprzedaży', 'Stan magazynowy', 'Stan z dnia', 'Podstawa stanu',
+               'Oferta dla kraju', 'Kanał sprzedaży', 'Minimalne zamówienie', 'Stan magazynowy', 'Stan z dnia', 'Podstawa stanu',
                'Do sprawdzenia przez Ownera', 'Uwagi badacza', 'Sprawdzono (UTC)',
                'Rekomendacja', 'Decyzja Ownera (TAK/NIE)', 'Uwagi Ownera']]
     gaps = [['ISO', 'Kraj', 'Składnik', 'Wynik', 'Szukane terminy', 'Sprawdzone źródła', 'Uwagi']]
@@ -184,6 +187,7 @@ def build(out_path):
                                EQ_PL.get(c.get('equivalence'), c.get('equivalence') or ''), offer,
                                ('tylko dla zarejestrowanych firm (B2B)' if TRADE_ONLY.search(str(c.get('channel') or ''))
                                 else ('detaliczny' if c.get('channel') is None else str(c.get('channel')))),
+                               c.get('moq') or '',
                                STOCK_PL.get(st.get('state', 'UNKNOWN'), ''), (st.get('checked_at_utc') or '')[:10],
                                st.get('basis') or '', c.get('owner_check') or '', c.get('equivalence_note') or '', c.get('checked_at_utc') or '',
                                recommendation(c), '', ''])
@@ -225,9 +229,78 @@ def build(out_path):
              [f'Liczniki braków (cztery nowe role, 75 krajów = 300 kombinacji): {gaps_no_cand} bez żadnego kandydata; '
               f'{sum(1 for iso in sorted(markets) for code in ITEMS_R for c in [((json.load(open(os.path.join(HERE, "research", f"{iso}.json"))).get("items") or {}).get(code) or {})] if c.get("candidates") and "TAK" not in [recommendation(x) for x in c["candidates"][:2]])} '
               'z kandydatem, ale bez rekomendacji TAK. Reszta ma co najmniej jedną rekomendację TAK — rekomendacja to nadal nie jest akceptacja.']]
-    sheets = [('00_INSTRUKCJA', intro, [140], False), ('01_DO_DECYZJI', decide, [12, 5, 14, 18, 6, 16, 34, 12, 15, 40, 18, 18, 22, 34, 20, 30, 22, 14, 11, 40, 40, 30, 17, 22, 16, 24], True),
+    # ── the 525 matrix and the two decision packages (owner 2026-09-17, second round) ──
+    import importlib.util as _il
+    _spec = _il.spec_from_file_location('rm', os.path.join(HERE, 'readiness_matrix.py'))
+    RM = _il.module_from_spec(_spec)
+    _spec.loader.exec_module(RM)
+    _, cells = RM.build()
+    matrix525 = [['ISO', 'Kraj', 'Rola', 'Źródło', 'Produkt', 'Zakup dla kraju', 'Kanał', 'Stan towaru',
+                  'Powiązanie techniczne', 'Decyzja Ownera', 'Rola zamknięta zakupowo', 'Wybrany produkt']]
+    for c in cells:
+        matrix525.append([c['iso'], markets[c['iso']]['country'], ITEM_PL.get(c['role'], c['role']), c['source'],
+                          c['product'], c['purchase'], c['channel'], c['stock'], c['technical'], c['decision'],
+                          'TAK' if c['closes'] else 'NIE', (c.get('name') or '')[:80]])
+    still_open = [['ISO', 'Kraj', 'Rola', 'Dlaczego otwarte', 'Najlepszy kandydat', 'Co już sprawdzono',
+                   'Uwaga badacza / co dalej']]
+    for c in cells:
+        if c['closes']:
+            continue
+        why = []
+        if c['product'] == 'NONE':
+            why.append('brak kandydata')
+        elif c['product'] == 'PROPOSED':
+            why.append('tożsamość produktu nieudowodniona')
+        if c['purchase'] == 'CROSS_BORDER_UNCONFIRMED':
+            why.append('sprzedawca nie deklaruje dostawy do tego kraju')
+        if c['channel'] == 'BUSINESS_ONLY':
+            why.append('kanał tylko dla firm')
+        item = ({} if c['source'] == 'V23' else
+                ((json.load(open(os.path.join(HERE, 'research', f'{c["iso"]}.json'))).get('items') or {}).get(c['role']) or {}))
+        tried = '; '.join(item.get('sources_tried') or [])[:900]
+        note = (item.get('notes') or '')[:600]
+        if c['source'] == 'V23':
+            sh = (v23_ship.get(c['iso']) or {}).get(c['role']) or {}
+            tried = f"sprzedawca z tabeli v23: {sh.get('seller') or ''}; podstawa: {sh.get('basis') or ''}"[:900]
+            note = 'produkt z v23 pozostaje bez zmian — brakuje wyłącznie ścieżki zakupu do tego kraju'
+        still_open.append([c['iso'], markets[c['iso']]['country'], ITEM_PL.get(c['role'], c['role']),
+                           ', '.join(why) or 'do przejrzenia', (c.get('name') or '')[:60], tried, note])
+    clear = [['ID', 'ISO', 'Kraj', 'Składnik', 'Produkt', 'Dlaczego jednoznaczne', 'Decyzja Ownera (TAK/NIE)']]
+    exceptions = [['ID', 'ISO', 'Kraj', 'Składnik', 'Produkt', 'Co trzeba rozstrzygnąć', 'Decyzja Ownera (TAK/NIE)']]
+    for iso in sorted(markets):
+        r = json.load(open(os.path.join(HERE, 'research', f'{iso}.json')))
+        for code in ITEMS_R:
+            for c in ((r.get('items') or {}).get(code) or {}).get('candidates') or []:
+                rid = f'{iso}-{code}-{c.get("rank")}'
+                st = (stock.get(iso, {}).get(code, {}) or {}).get(c.get('url') or '', {})
+                cls, eq = c.get('evidence_class'), c.get('equivalence')
+                name = f'{c.get("brand") or ""} {c.get("product_name") or ""}'.strip()[:70]
+                if recommendation(c) == 'TAK' and st.get('state') != 'OUT_OF_STOCK':
+                    why = ('produkt potwierdzony ' + ('w tym kraju' if not c.get('cross_border') else 'z zadeklarowaną dostawą do tego kraju')
+                           + ', ten sam rodzaj produktu, kanał detaliczny'
+                           + (', w sprzedaży w dniu sprawdzenia' if st.get('state') == 'IN_STOCK' else ''))
+                    clear.append([rid, iso, markets[iso]['country'], ITEM_PL[code], name, why, ''])
+                else:
+                    q = []
+                    if TRADE_ONLY.search(str(c.get('channel') or '')):
+                        q.append('sklep sprzedaje tylko zarejestrowanym firmom — czy pokazać jako ofertę dodatkową?')
+                    if eq == 'B_SAME_TYPE_DIFFERENT_COMPOSITION':
+                        q.append('ten sam rodzaj produktu, ale inny skład — czy dopuszczasz go jako lokalną alternatywę?')
+                    if cls == 'LEAD':
+                        q.append('dowód niepełny (tożsamość, skład albo brak deklaracji dostawy do tego kraju)')
+                    if st.get('state') == 'OUT_OF_STOCK':
+                        q.append(f'sklep pokazywał brak towaru {(st.get("checked_at_utc") or "")[:10]}')
+                    if c.get('gtin') and not id_type(c.get('gtin')).startswith('GTIN'):
+                        q.append('kod na stronie nie jest poprawnym GTIN')
+                    exceptions.append([rid, iso, markets[iso]['country'], ITEM_PL[code], name,
+                                       '; '.join(q) or 'do przejrzenia', ''])
+    sheets = [('00_INSTRUKCJA', intro, [140], False), ('01_DO_DECYZJI', decide, [12, 5, 14, 18, 6, 16, 34, 12, 15, 40, 18, 18, 22, 34, 20, 30, 22, 16, 14, 11, 40, 40, 30, 17, 22, 16, 24], True),
               ('02_BRAKI', gaps, [5, 14, 18, 16, 30, 60, 40], True), ('03_V23', v23rows, [5, 14, 22, 16, 36, 16, 15, 14, 34, 60, 40, 50], True),
-              ('04_MACIERZ', matrix, [5, 16, 12, 12, 14, 22, 22, 22, 22, 40], True)]
+              ('04_MACIERZ', matrix, [5, 16, 12, 12, 14, 22, 22, 22, 22, 40], True),
+              ('05_MACIERZ_525', matrix525, [5, 16, 22, 8, 12, 26, 14, 14, 22, 20, 12, 40], True),
+              ('06_REKOMENDACJE', clear, [12, 5, 16, 20, 46, 60, 22], True),
+              ('07_WYJATKI', exceptions, [12, 5, 16, 20, 46, 70, 22], True),
+              ('08_OTWARTE', still_open, [5, 16, 22, 26, 30, 70, 60], True)]
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     write_xlsx(out_path, sheets)
     return len(done), len(decide) - 1, len(gaps) - 1

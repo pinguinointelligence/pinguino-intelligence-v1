@@ -22,12 +22,14 @@
   "tag_alternative": "Vietēja alternatīva",
   "tag_unconfirmed": "Nav apstiprināts",
   "tag_abroad_unconfirmed": "Ārzemju veikals",
+  "tag_large_pack": "Liels iepakojums",
   "legend": {
     "from_abroad": "ārzemju veikals, kura piegādes sarakstā ir minēta šī valsts",
     "b2b": "pārdod uzņēmumiem vai lielos iepakojumos — nav parasts mazumtirdzniecības piedāvājums",
     "other_composition": "tāda paša veida produkts ar citu sastāvu (norādīts blakus)",
     "alternative": "aizstājējs citam Gellatti produktam",
-    "abroad_unconfirmed": "ārzemju veikals; piegāde uz šo valsti nav apstiprināta"
+    "abroad_unconfirmed": "ārzemju veikals; piegāde uz šo valsti nav apstiprināta",
+    "large_pack": "pārdod 5 kg vai lielākā iepakojumā"
   },
   "starter_amount": "Starter Pack komplektā: {g} g",
   "option": "Variants {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Vietēja alternatīva Gellatti maisījumam, nevis tas pats maisījums. Sajauciet to ar sausajām sastāvdaļām un uzkarsējiet bāzi līdz 75–80 °C.",
   "missing": "Šajā valstī vēl nav apstiprināta produkta.",
   "out_of_stock": "Veikals {date} rādīja, ka preces nav krājumā.",
+  "delivery_unconfirmed": "Piegāde — {country}: nav apstiprināta. Noskaidrojiet pie pārdevēja.",
+  "extra_title": "Papildu informācija",
   "notes_title": "Noderīgi zināt",
   "notes": [
     {"h": "Pieejamība", "p": "Izpētītos produktus pārbaudījām veikalu un ražotāju tīmekļvietnēs 2026. gada 17. septembrī. Dekstroze, vājpiena pulveris un stabilizators nāk no Gellatti valstu tabulas, kas datēta ar 2026. gada 12. septembri, un netika pārbaudīti atkārtoti. Pieejamība, cenas un piegāde var mainīties, un tās netiek garantētas."},

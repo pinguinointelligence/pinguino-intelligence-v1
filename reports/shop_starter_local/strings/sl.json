@@ -22,12 +22,14 @@
   "tag_alternative": "Lokalna alternativa",
   "tag_unconfirmed": "Nepotrjeno",
   "tag_abroad_unconfirmed": "Trgovina v tujini",
+  "tag_large_pack": "Veliko pakiranje",
   "legend": {
     "from_abroad": "trgovina v tujini, ki na svojem seznamu dostave navaja to državo",
     "b2b": "prodaja podjetjem ali v velikih pakiranjih — ni običajna maloprodajna ponudba",
     "other_composition": "ista vrsta izdelka z drugačno sestavo (navedena zraven)",
     "alternative": "nadomestek za drug izdelek Gellatti",
-    "abroad_unconfirmed": "trgovina v tujini; dostava v to državo ni potrjena"
+    "abroad_unconfirmed": "trgovina v tujini; dostava v to državo ni potrjena",
+    "large_pack": "prodaja se v pakiranju od 5 kg naprej"
   },
   "starter_amount": "V Starter Packu: {g} g",
   "option": "Možnost {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Lokalna alternativa mešanici Gellatti, ne ista mešanica. Zmešajte jo s suhimi sestavinami in osnovo segrejte na 75–80 °C.",
   "missing": "V tej državi še ni odobrenega izdelka.",
   "out_of_stock": "Trgovina je izdelek {date} prikazovala kot razprodan.",
+  "delivery_unconfirmed": "Dostava — {country}: ni potrjena. Preverite pri prodajalcu.",
+  "extra_title": "Dodatne informacije",
   "notes_title": "Dobro je vedeti",
   "notes": [
     {"h": "Razpoložljivost", "p": "Raziskane izdelke smo 17. septembra 2026 preverili na spletnih straneh trgovin in proizvajalcev. Dekstroza, posneto mleko v prahu in stabilizator izhajajo iz Gellattijeve tabele držav z dne 12. septembra 2026 in niso bili znova preverjeni. Razpoložljivost, cene in dostava se lahko spremenijo in niso zagotovljene."},

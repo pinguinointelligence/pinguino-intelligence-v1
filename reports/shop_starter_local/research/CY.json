@@ -69,7 +69,9 @@
      "verifier_class": "PAGE_FACTS_ONLY",
      "checked_at_utc": "2026-09-17T16:47:01Z",
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "added_by": "coordinator (reuse of the PL cross-border listing; Cyprus named in the seller delivery list)"
+     "added_by": "coordinator (reuse of the PL cross-border listing; Cyprus named in the seller delivery list)",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     },
     {
      "rank": 2,
@@ -111,7 +113,9 @@
      "evidence_class": "LEAD",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a3762801f2319d81.json",
      "checked_at_utc": "2026-09-17T16:41:31Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
    ],
    "notes": "No dairy cream powder purchasable in Cyprus and no seller explicitly shipping a 38-48 % cream powder to Cyprus was found. Only lead: a UK shop (75 % fat) with generic international delivery. Discovery constrained (WebSearch budget exhausted, Brave mostly HTTP 429, Cypriot supermarket sites HTTP 403). | Coordinator addition 2026-09-17: Pati-Versand (DE) lists Zypern in its delivery countries (check_quotes found=true); the same Cake-Masters Sahnepulver 42 % own-brand listing already used for PL/CZ/SK/HU is rank 1 as VERIFIED_CROSS_BORDER. Greece and Malta are not in that list (nor in backfun.de / meincupcake.de delivery pages)."
@@ -176,7 +180,9 @@
      "evidence_class": "VERIFIED_CROSS_BORDER",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e8e9b6bbb7888a25.json",
      "checked_at_utc": "2026-09-17T16:17:19Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
    ],
    "notes": "No Cypriot retailer page reachable; cross-border only."
@@ -239,7 +245,9 @@
      "evidence_class": "VERIFIED_CROSS_BORDER",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/10353d4c0ab57daf.json",
      "checked_at_utc": "2026-09-17T16:34:33Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     },
     {
      "rank": 2,
@@ -284,7 +292,9 @@
      "evidence_class": "VERIFIED_CROSS_BORDER",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/86f4823e76397bdb.json",
      "checked_at_utc": "2026-09-17T15:57:52Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
    ],
    "notes": ""
@@ -377,7 +387,9 @@
      "evidence_class": "VERIFIED_CROSS_BORDER",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f8d7e59230b12a91.json",
      "checked_at_utc": "2026-09-17T15:57:53Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
    ],
    "notes": "Rank 1 local (myprotein.com.cy, country domain .cy) but out of stock at check time; rank 2 in stock (cross-border)."

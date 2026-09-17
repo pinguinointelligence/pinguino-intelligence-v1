@@ -1,529 +1,584 @@
 {
-  "iso2": "TR",
-  "country": "Türkiye",
-  "agent": "research-eu-south",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:50:00Z",
-  "items": {
-    "CRP": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "krema tozu",
-        "süt kreması tozu",
-        "toz krema"
+ "iso2": "TR",
+ "country": "Türkiye",
+ "agent": "research-eu-south",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:50:00Z",
+ "items": {
+  "CRP": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "krema tozu",
+    "süt kreması tozu",
+    "toz krema"
+   ],
+   "queries": [
+    "hammaddeler.com product sitemap: krema / krema tozu / süt tozu",
+    "arifoglu.com site search 'krema tozu' (0)",
+    "\"krema tozu\" % yağ süt kreması tozu satın al (Brave - HTTP 429)",
+    "\"cream powder\" 42% fat buy online shop Europe (Brave - HTTP 429)",
+    "\"Sahnepulver\" 42% Fett kaufen Online Shop 100g Süßrahm (WebSearch)",
+    "\"Sahnepulver\" Onlineshop Lieferung Griechenland Rumänien Bulgarien Versandkosten Land (WebSearch)",
+    "\"panna in polvere\" 42% grassi vendita online spedizione (WebSearch)",
+    "\"slagroompoeder\" kopen 100 gram webshop verzending Europa (WebSearch)",
+    "sosa.cat site search 'cream powder'",
+    "gourmet-versand.com site search 'Sahnepulver' / 'Sahne Pulver' (0 dairy cream powder)",
+    "specialingredients.co.uk + souschef.co.uk product sitemaps grepped for cream/dairy powder (0)",
+    "shop.cake-masters.com site search + /versand-zahlung country table",
+    "\"krema tozu\" süt kreması tozu %42 yağlı satın al toz krema gıda (WebSearch)",
+    "\"süt kreması tozu\" OR \"krema tozu\" 1 kg perakende satış gıda market spray dried (WebSearch)",
+    "\"krema tozu\" içindekiler krema \"süt kreması\" toz 250 gr pastacılık hammadde İstanbul satış (WebSearch)",
+    "online shop ships to Turkey \"cream powder\" dairy spray dried retail pack delivery country list (WebSearch)",
+    "\"süt kreması tozu\" 42 satın al kg gıda tedarik toz krema içindekiler krema (WebSearch)",
+    "Türkiye \"krema tozu\" 1 kg ambalaj süt tozu tedarikçi perakende \"%42\" spray dried krema (WebSearch)",
+    "enkasut.com/tatli-krema-tozu/ re-read for a sales restriction (firma / bayi / toptan / perakende / sadece) and for the order route",
+    "enkasut.com/yurtici-satis/ (domestic sales page)",
+    "enkagurme.com home + kategori-toz-urunler (Enka's own consumer shop: which powders it actually sells)"
+   ],
+   "sources_tried": [
+    "ingredientsbar.com (UK; dairy cream powder 75 % fat, generic international delivery - lead)",
+    "hammaddeler.com (Turkish food raw-materials shop, Smart Kimya Tic. Ltd. Şti., İzmir; product sitemap scanned): only 'Krema Ekstraktı' (maltodextrin + natural aroma - flavouring, reject), 'Toz Krema Pasta Kreması' (pastry cream mix - reject), milk powders in 25 kg",
+    "arifoglu.com (herbal/health shop; 0 results)",
+    "migros.com.tr (supermarket; JS app, not searchable without browser)",
+    "carrefoursa.com / a101.com.tr / supplementler.com (HTTP 403 bot walls, inconclusive)",
+    "gourmet-versand.com (ships to Turkey; no dairy cream powder in sitemap)",
+    "meincupcake.de / taste-market.de (no delivery to Türkiye listed)",
+    "shop.cake-masters.com (Cake-Masters trade shop, Herzlake DE): CM Basics Sahnepulver 100g, SAHNE 42% Fett sprühgetrocknet, Auf Lager; its own foreign shipping-cost table names the market — VERIFIED_CROSS_BORDER but trade-only (registered commercial resellers)",
+    "torten-boutique.de and tolletorten.com (same Herzlake group, consumer shops): same 21-country delivery list as pati-versand/backfun/meincupcake — market NOT named; 'Rest der Welt' flat rate names no country",
+    "taste-market.de: full product sitemap (2 425 URLs) scanned — Eigelbpulver / Eiklarpulver / Volleipulver / Vollmilchpulver only, NO Sahnepulver; its EU zones 1-3 name no non-EU market",
+    "gourmet-versand.com: no Sahnepulver / dairy cream powder in the catalogue (confirmed again by site search)",
+    "sosa.cat: only 'TASTE COLOUR FREEZE-DRIED FRESH CREAM POWDER' (2 kg, Taste-Colour flavour/colour line, ingredients nata + leche desnatada en polvo + E450, no fat % printed) — no distributor found that sells it in a retail pack to this market",
+    "specialingredients.co.uk (1 130 products) and souschef.co.uk (6 274 products): product sitemaps hold no dairy cream powder",
+    "cerfdellier.com, cuisineaddict.com, deco-relief.fr, bienmanger.com, koro-shop.de: no 'crème en poudre' / Sahnepulver in search",
+    "ingredientsbar.com (UK): real dairy cream powder 75 % fat in retail sizes, but the delivery policy only says 'International delivery carries additional charges…' — no country named, LEAD",
+    "shop.kraeuter-mieke.de: 'Sahnepulver' 100/250/500/1000 g, 'Sofort verfügbar', but NO ingredient list or fat % printed and EU shipping only 'Auf Anfrage oder nach Auswahl im Bestellvorgang' (no country named) — not proposed",
+    "ecolebensmittel.com: 'Sahnepulver 42 % Fett 750 g' (brand FeelWell) — dropshipping shop whose article number is an Amazon ASIN (B07KZPP6JK) and the item is 'Ausverkauft (nur vorbestellen)'",
+    "gosupps.com: HTTP 403 bot wall — inconclusive",
+    "enkasut.com (Enka Süt, Konya): 'Tatlı Krema Tozu' — spray-dried cream, İçindekiler 'Krema', yağ 42 g/100 g — but 25 kg industrial sack only (B2B)",
+    "Turkish retail 'krema tozu' / 'toz krema' products are all pastry-cream or whipped-topping mixes and are rejected: Fiero Toz Krema (şeker, nişasta, peyniraltı suyu tozu, tam hidrojenize bitkisel yağ…), Mildo Pastacılık Krema Tozu (şeker, kıvam arttırıcı, bitkisel yağ…), Pakmaya Toz Krema, Dr. Oetker Pastacı Kreması, Ovaleks Krema Tozu 1 kg (whisk with water/milk), magaza.hammaddeler.com 'Toz Krema Pasta Kreması 1 kg'",
+    "shop.cake-masters.com: its foreign shipping-cost table (29 countries) does NOT include Türkei — cannot serve Türkiye",
+    "taste-market.de: EU zones 1-3 plus Österreich/Schweiz/Finnland/Schweden/Italien/Niederlande/Norwegen/England — Türkei absent",
+    "also checked and rejected as the wrong type: Pakmaya Toz Krema 1 kg (toptan.migros.com.tr / pakmaya.com; sugar, modified potato starch, whey powder, milk powder, sodium alginate, beta-carotene), Meister Krema Tozu 1 kg (Trendyol — marketplace, LEAD at most anyway), MTROYAL Toz Krema, tedariksepetim.com 'Süt tozu ve krema' category (coffee creamers); no Turkish retail listing prints an ingredient list of cream alone",
+    "enkasut.com (Enka Süt, Konya) re-checked: no sentence restricting sales to businesses anywhere on the product page or the sales pages; the 'SİPARİŞ VER' button links to www.enkagurme.com",
+    "enkagurme.com (Enka's own consumer online shop): the 'Toz Ürünler' category holds skimmed milk powder 250 g and 500 g ('Yağsız Süt Tozu Çabuk Eriyen') - no cream powder in a retail pack, so the 25 kg sack remains the only Turkish dairy cream powder found"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Enka Süt",
+     "product_name": "Tatlı Krema Tozu",
+     "pack": "25 kg (kraft torba)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.enkasut.com/tatli-krema-tozu/",
+     "source_type": "MANUFACTURER",
+     "seller": "Enka Süt (enkasut.com), Fevzi Çakmak Mahallesi Pazarcık Sokak No:1 - 42210 Karatay / Konya / TÜRKİYE",
+     "page_market": "TR",
+     "market_by": "SELLER_ADDRESS_ON_SITE",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "Turkish manufacturer, single seller address quoted from its own İletişim page: \"Fevzi Çakmak Mahallesi Pazarcık Sokak No:1 - 42210 Karatay / Konya / TÜRKİYE\" (check_quotes.py found=true)",
+     "cross_border": false,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.enkasut.com/iletisim/",
+      "quotes": [
+       "Fevzi Çakmak Mahallesi Pazarcık Sokak No:1 - 42210 Karatay / Konya / TÜRKİYE"
       ],
-      "queries": [
-        "hammaddeler.com product sitemap: krema / krema tozu / süt tozu",
-        "arifoglu.com site search 'krema tozu' (0)",
-        "\"krema tozu\" % yağ süt kreması tozu satın al (Brave - HTTP 429)",
-        "\"cream powder\" 42% fat buy online shop Europe (Brave - HTTP 429)",
-        "\"Sahnepulver\" 42% Fett kaufen Online Shop 100g Süßrahm (WebSearch)",
-        "\"Sahnepulver\" Onlineshop Lieferung Griechenland Rumänien Bulgarien Versandkosten Land (WebSearch)",
-        "\"panna in polvere\" 42% grassi vendita online spedizione (WebSearch)",
-        "\"slagroompoeder\" kopen 100 gram webshop verzending Europa (WebSearch)",
-        "sosa.cat site search 'cream powder'",
-        "gourmet-versand.com site search 'Sahnepulver' / 'Sahne Pulver' (0 dairy cream powder)",
-        "specialingredients.co.uk + souschef.co.uk product sitemaps grepped for cream/dairy powder (0)",
-        "shop.cake-masters.com site search + /versand-zahlung country table",
-        "\"krema tozu\" süt kreması tozu %42 yağlı satın al toz krema gıda (WebSearch)",
-        "\"süt kreması tozu\" OR \"krema tozu\" 1 kg perakende satış gıda market spray dried (WebSearch)",
-        "\"krema tozu\" içindekiler krema \"süt kreması\" toz 250 gr pastacılık hammadde İstanbul satış (WebSearch)",
-        "online shop ships to Turkey \"cream powder\" dairy spray dried retail pack delivery country list (WebSearch)",
-        "\"süt kreması tozu\" 42 satın al kg gıda tedarik toz krema içindekiler krema (WebSearch)",
-        "Türkiye \"krema tozu\" 1 kg ambalaj süt tozu tedarikçi perakende \"%42\" spray dried krema (WebSearch)"
+      "found": [
+       true
       ],
-      "sources_tried": [
-        "ingredientsbar.com (UK; dairy cream powder 75 % fat, generic international delivery - lead)",
-        "hammaddeler.com (Turkish food raw-materials shop, Smart Kimya Tic. Ltd. Şti., İzmir; product sitemap scanned): only 'Krema Ekstraktı' (maltodextrin + natural aroma - flavouring, reject), 'Toz Krema Pasta Kreması' (pastry cream mix - reject), milk powders in 25 kg",
-        "arifoglu.com (herbal/health shop; 0 results)",
-        "migros.com.tr (supermarket; JS app, not searchable without browser)",
-        "carrefoursa.com / a101.com.tr / supplementler.com (HTTP 403 bot walls, inconclusive)",
-        "gourmet-versand.com (ships to Turkey; no dairy cream powder in sitemap)",
-        "meincupcake.de / taste-market.de (no delivery to Türkiye listed)",
-        "shop.cake-masters.com (Cake-Masters trade shop, Herzlake DE): CM Basics Sahnepulver 100g, SAHNE 42% Fett sprühgetrocknet, Auf Lager; its own foreign shipping-cost table names the market — VERIFIED_CROSS_BORDER but trade-only (registered commercial resellers)",
-        "torten-boutique.de and tolletorten.com (same Herzlake group, consumer shops): same 21-country delivery list as pati-versand/backfun/meincupcake — market NOT named; 'Rest der Welt' flat rate names no country",
-        "taste-market.de: full product sitemap (2 425 URLs) scanned — Eigelbpulver / Eiklarpulver / Volleipulver / Vollmilchpulver only, NO Sahnepulver; its EU zones 1-3 name no non-EU market",
-        "gourmet-versand.com: no Sahnepulver / dairy cream powder in the catalogue (confirmed again by site search)",
-        "sosa.cat: only 'TASTE COLOUR FREEZE-DRIED FRESH CREAM POWDER' (2 kg, Taste-Colour flavour/colour line, ingredients nata + leche desnatada en polvo + E450, no fat % printed) — no distributor found that sells it in a retail pack to this market",
-        "specialingredients.co.uk (1 130 products) and souschef.co.uk (6 274 products): product sitemaps hold no dairy cream powder",
-        "cerfdellier.com, cuisineaddict.com, deco-relief.fr, bienmanger.com, koro-shop.de: no 'crème en poudre' / Sahnepulver in search",
-        "ingredientsbar.com (UK): real dairy cream powder 75 % fat in retail sizes, but the delivery policy only says 'International delivery carries additional charges…' — no country named, LEAD",
-        "shop.kraeuter-mieke.de: 'Sahnepulver' 100/250/500/1000 g, 'Sofort verfügbar', but NO ingredient list or fat % printed and EU shipping only 'Auf Anfrage oder nach Auswahl im Bestellvorgang' (no country named) — not proposed",
-        "ecolebensmittel.com: 'Sahnepulver 42 % Fett 750 g' (brand FeelWell) — dropshipping shop whose article number is an Amazon ASIN (B07KZPP6JK) and the item is 'Ausverkauft (nur vorbestellen)'",
-        "gosupps.com: HTTP 403 bot wall — inconclusive",
-        "enkasut.com (Enka Süt, Konya): 'Tatlı Krema Tozu' — spray-dried cream, İçindekiler 'Krema', yağ 42 g/100 g — but 25 kg industrial sack only (B2B)",
-        "Turkish retail 'krema tozu' / 'toz krema' products are all pastry-cream or whipped-topping mixes and are rejected: Fiero Toz Krema (şeker, nişasta, peyniraltı suyu tozu, tam hidrojenize bitkisel yağ…), Mildo Pastacılık Krema Tozu (şeker, kıvam arttırıcı, bitkisel yağ…), Pakmaya Toz Krema, Dr. Oetker Pastacı Kreması, Ovaleks Krema Tozu 1 kg (whisk with water/milk), magaza.hammaddeler.com 'Toz Krema Pasta Kreması 1 kg'",
-        "shop.cake-masters.com: its foreign shipping-cost table (29 countries) does NOT include Türkei — cannot serve Türkiye",
-        "taste-market.de: EU zones 1-3 plus Österreich/Schweiz/Finnland/Schweden/Italien/Niederlande/Norwegen/England — Türkei absent",
-        "also checked and rejected as the wrong type: Pakmaya Toz Krema 1 kg (toptan.migros.com.tr / pakmaya.com; sugar, modified potato starch, whey powder, milk powder, sodium alginate, beta-carotene), Meister Krema Tozu 1 kg (Trendyol — marketplace, LEAD at most anyway), MTROYAL Toz Krema, tedariksepetim.com 'Süt tozu ve krema' category (coffee creamers); no Turkish retail listing prints an ingredient list of cream alone"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Enka Süt",
-          "product_name": "Tatlı Krema Tozu",
-          "pack": "25 kg (kraft torba)",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.enkasut.com/tatli-krema-tozu/",
-          "source_type": "MANUFACTURER",
-          "seller": "Enka Süt (enkasut.com), Fevzi Çakmak Mahallesi Pazarcık Sokak No:1 - 42210 Karatay / Konya / TÜRKİYE",
-          "page_market": "TR",
-          "market_by": "SELLER_ADDRESS_ON_SITE",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "Turkish manufacturer, single seller address quoted from its own İletişim page: \"Fevzi Çakmak Mahallesi Pazarcık Sokak No:1 - 42210 Karatay / Konya / TÜRKİYE\" (check_quotes.py found=true)",
-          "cross_border": false,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://www.enkasut.com/iletisim/",
-            "quotes": [
-              "Fevzi Çakmak Mahallesi Pazarcık Sokak No:1 - 42210 Karatay / Konya / TÜRKİYE"
-            ],
-            "found": [
-              true
-            ],
-            "type": "single seller address in Türkiye (market binding, not a delivery promise)",
-            "check_quotes_result_files": [
-              "~/.cache/gellatti-evidence/quotes/research-gap-eu/enkasut-TR-address.json"
-            ]
-          },
-          "channel": "B2B_INDUSTRIAL_PACK_ONLY",
-          "availability": {
-            "state": "UNKNOWN",
-            "checked_at_utc": "2026-09-17T18:40:00Z",
-            "basis": "no stock or availability wording printed; the page is a product data sheet with a generic 'SİPARİŞ VER' link",
-            "source": "https://www.enkasut.com/tatli-krema-tozu/"
-          },
-          "composition": {
-            "fat_g": 42.0,
-            "protein_g": 19.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "İçindekiler: Krema. Besin değerleri /100 g: enerji 586 kcal / 2438 kJ, protein 19 g, yağ 42 g, doymuş yağ 26,04 g, karbonhidrat 33 g, şekerler 33 g, tuz 1,5 g. \"Yüksek kaliteli kremanın pulverize edilerek kurutulmasıyla üretilmektedir.\" Ambalaj Şekli: Kraft torba. Raf Ömrü: 12 ay.",
-            "from": "page label",
-            "carbohydrate_g": 33.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "fat 42 % = reference, single ingredient 'Krema' (cream), spray-dried — the only genuine dairy cream powder found for Türkiye",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8220741ccc27593a.json",
-          "checked_at_utc": "2026-09-17T18:40:00Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "added_by": "research-gap-eu",
-          "owner_check": "B2B ONLY: the sole pack is a 25 kg industrial kraft sack in Enka Süt's 'Endüstriyel Ürünler' range, far above the 5 kg research limit. Identity and Turkish market binding are solid, the composition matches the reference exactly, but this must never be shown as an ordinary retail offer. It is recorded so the owner can decide whether to ask Enka for a retail pack or to accept the 75 % UK alternative."
-        },
-        {
-          "rank": 2,
-          "brand": "Ingredients Bar",
-          "product_name": "Cream Powder | Dairy Milk High-Fat 75% (Product ID 0370)",
-          "pack": "200 g / 500 g / 1.5 kg / 4 kg (size selector)",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "Ingredients Bar (UK; packed in the UK, produced in Germany)",
-          "page_market": "GB",
-          "market_by": "CURRENCY_ONLY",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "none for TR: delivery page only states generic international delivery (no country list)",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://ingredientsbar.com/payment-delivery/",
-            "quotes": [
-              "International delivery carries additional charges, which are displayed at checkout based on the delivery address"
-            ],
-            "found": [
-              true
-            ],
-            "explicit_country": false
-          },
-          "composition": {
-            "fat_g": 75.0,
-            "protein_g": 8.5,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Per 100 g: Energy 3094 kJ/750 kcal, Fat 75 g (saturates 51 g), Carbohydrates 12 g (sugars 12 g), Protein 8.5 g, Fibre 0 g, Salt 2 g",
-            "from": "shop page",
-            "carbs_g": 12.0
-          },
-          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
-          "equivalence_note": "Dairy cream powder at 75 % fat (outside 38-48 %). UK seller (post-Brexit import to the EU/TR); delivery to TR not explicitly stated; several pack sizes on one page, no GTIN. schema InStock.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8009acbd08b491f0.json",
-          "checked_at_utc": "2026-09-17T16:41:35Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "availability": {
-            "state": "IN_STOCK",
-            "checked_at_utc": "2026-09-17T18:40:00Z",
-            "basis": "schema.org/InStock in the page's Product JSON-LD offer (Product ID 0370)",
-            "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
-          }
-        }
-      ],
-      "notes": "No dairy cream powder (38-48 % fat) found for Türkiye (only lead: a UK shop, 75 % fat, generic international delivery); Turkish 'krema tozu' results are flavourings or whipped/pastry-cream mixes. Discovery constrained (WebSearch budget exhausted, Brave HTTP 429, several Turkish retailers HTTP 403). | 2026-09-17 research-gap-eu: the gap is now a channel problem, not a discovery problem. Türkiye HAS a genuine 42 % spray-dried dairy cream powder from a domestic dairy (Enka Süt, Konya) with a composition identical to the reference, but only in a 25 kg industrial sack. Every Turkish retail 'krema tozu' checked is a vegetable-fat / sugar / starch pastry-cream or whipping mix and is rejected. No cross-border seller of a real cream powder names Türkiye (Cake-Masters, taste-market, gourmet-versand all exclude it); ingredientsbar.com remains a generic-international LEAD at 75 % fat."
+      "type": "single seller address in Türkiye (market binding, not a delivery promise)",
+      "check_quotes_result_files": [
+       "~/.cache/gellatti-evidence/quotes/research-gap-eu/enkasut-TR-address.json"
+      ]
+     },
+     "channel": null,
+     "availability": {
+      "state": "UNKNOWN",
+      "checked_at_utc": "2026-09-17T19:53:54Z",
+      "basis": "no stock or availability wording is printed; the page is a product data sheet whose only order route is the generic 'SİPARİŞ VER' link (re-checked 2026-09-17)",
+      "source": "https://www.enkasut.com/tatli-krema-tozu/"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "İçindekiler: Krema. Besin değerleri /100 g: enerji 586 kcal / 2438 kJ, protein 19 g, yağ 42 g, doymuş yağ 26,04 g, karbonhidrat 33 g, şekerler 33 g, tuz 1,5 g. \"Yüksek kaliteli kremanın pulverize edilerek kurutulmasıyla üretilmektedir.\" Ambalaj Şekli: Kraft torba. Raf Ömrü: 12 ay.",
+      "from": "page label",
+      "carbohydrate_g": 33.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "fat 42 % = reference, single ingredient 'Krema' (cream), spray-dried — the only genuine dairy cream powder found for Türkiye",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8220741ccc27593a.json",
+     "checked_at_utc": "2026-09-17T18:40:00Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "added_by": "research-gap-eu",
+     "owner_check": "LARGE PACK, not a trade-only offer: the single pack is a 25 kg kraft sack (pack_grams 25000; no MOQ is printed), far above the 100 g - 1 kg retail preference. No seller restriction to businesses is printed, so it is not recorded as B2B, but there is no online retail purchase path either - the page's order button leads to Enka's consumer shop, which does not carry this item, so a buyer has to contact Enka. Identity (the producer's own page), Turkish market binding (single seller address) and the composition (İçindekiler: Krema; yağ 42 g/100 g) are all proven. The owner decides whether to ask Enka for a retail pack, print the sack with the contact route, or leave CRP out for Türkiye.",
+     "pack_grams": 25000,
+     "moq": null,
+     "channel_check": "Re-checked 2026-09-17 (close-africa): enkasut.com prints no sale restriction - no 'sadece firmalara/işletmelere satış', no reseller login, no wholesale-account gate, no minimum order. The only business wording on the page describes the range and its customers ('Enka Süt endüstriyel ürünleri Türkiye'nin %70'i ve dünyanın 20’yi aşkın ülkesinde gıda firmalarının ilk tercihi.'), not who may buy. Under the owner's rule of 2026-09-17 a large pack alone is not a business-only offer, so the earlier channel 'B2B_INDUSTRIAL_PACK_ONLY' is withdrawn and no TRADE_ONLY_B2B_REGISTERED_RESELLERS is recorded.",
+     "purchase_path": "The product page's only order route is the 'SİPARİŞ VER' button, which links to Enka's consumer shop www.enkagurme.com; that shop's 'Toz Ürünler' range is skimmed milk powder (250 g / 500 g) and does not list the cream powder. Ordering the 25 kg sack therefore runs through Enka's own sales contact printed on the page (+90 (332) 355 23 00 / iletisim@enkasut.com.tr) and the 'Yurtiçi Satış' page, which describes dealer-based distribution to 25 Turkish provinces. Checked 2026-09-17.",
+     "reclassified_by": "close-africa 2026-09-17: LEAD -> CONFIRMED_LOCAL (identity + market binding both proven on the producer’s own Turkish page); the earlier LEAD rested on treating the 25 kg pack as B2B, which the owner’s refined rule no longer allows."
     },
-    "FRU": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "fruktoz",
-        "fruktoz tozu",
-        "meyve şekeri"
+    {
+     "rank": 2,
+     "brand": "Ingredients Bar",
+     "product_name": "Cream Powder | Dairy Milk High-Fat 75% (Product ID 0370)",
+     "pack": "200 g / 500 g / 1.5 kg / 4 kg (size selector)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Ingredients Bar (UK; packed in the UK, produced in Germany)",
+     "page_market": "GB",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "none for TR: delivery page only states generic international delivery (no country list)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://ingredientsbar.com/payment-delivery/",
+      "quotes": [
+       "International delivery carries additional charges, which are displayed at checkout based on the delivery address"
       ],
-      "queries": [
-        "hammaddeler.com product sitemap 'fruktoz'",
-        "arifoglu.com site search 'fruktoz' (0)",
-        "fruktoz tozu 500 gr satın al (Brave - HTTP 429)"
+      "found": [
+       true
       ],
-      "sources_tried": [
-        "hammaddeler.com (Turkish food raw-materials shop, Smart Kimya Tic. Ltd. Şti., İzmir; product sitemap scanned) (Fruktoz 500 g, no GTIN)",
-        "arifoglu.com (0)",
-        "migros.com.tr (JS app)",
-        "carrefoursa.com / a101.com.tr (HTTP 403)",
-        "gourmet-versand.com (country selector lists Turkey - cross-border)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Sosa Ingredients",
-          "product_name": "Sosa fructose powder, 1 kg, PE dose",
-          "pack": "1 kg",
-          "gtin": "8414933026259",
-          "identifier_confirmed": true,
-          "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
-          "source_type": "RETAILER",
-          "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists the market (check_quotes.py found=true)",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
-            "quotes": [
-              "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
-              "Thailand Turkey Ukraine"
-            ],
-            "found": [
-              true,
-              true
-            ],
-            "type": "shipping-cost country selector listing the market"
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
-            "from": "retailer page ('EAN Code 8414933026259' printed)",
-            "sugars_g": 100.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d803f3424d15075a.json",
-          "checked_at_utc": "2026-09-17T16:17:23Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        },
-        {
-          "rank": 2,
-          "brand": "Takita Smart (as listed)",
-          "product_name": "Fruktoz 500 g",
-          "pack": "500 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.hammaddeler.com/urun/fruktoz-500-g",
-          "source_type": "RETAILER",
-          "seller": "hammaddeler.com (Smart Kimya Tic. Dan. Ltd. Şti., Çiğli-İzmir)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "seller's own delivery/contact pages (check_quotes.py found=true): delivery times to Turkish cities; address Çiğli-İzmir, Türkiye (currency TL is supporting only)",
-          "cross_border": false,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "quotes": [
-              {
-                "url": "https://hammaddeler.com/sayfa/sevkiyat-teslimat",
-                "quote": "Kargosu bir günde ulaşan şehirler: Adapazarı, Afyon, Ankara, Antalya, Aydın, Balıkesir, Bilecik, Bolu, Burdur, Bursa, Çanakkale, Denizli, Düzce, Edirne, Eskişehir, Isparta, İstanbul, İzmir",
-                "found": true
-              },
-              {
-                "url": "https://hammaddeler.com/iletisim",
-                "quote": "Atatürk Organize Sanayi Bölgesi Çiğli-İzmir Ülke Türkiye Şehir İzmir",
-                "found": true
-              }
-            ]
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Gıdanın Adı: Fruktoz; Bileşen Listesi: Fruktoz; 100 g için: Enerji 375 kcal, Yağ 0 g, Karbonhidrat 100 g, Şekerler 100 g, Protein 0 g, Tuz 0 g; Gıda İşletmecisi: Egepak Gıda ve Ambalaj Sanayi A.Ş.; Menşei: Türkiye",
-            "from": "retailer page (ÜRÜN BİLGİSİ)",
-            "sugars_g": 100.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Local Turkish listing (Kod 066.040.01) but no GTIN and not the seller's own brand, so identity is not proven. Non-EU destination for rank 1: customs/duties may apply.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c10bf10b9804e5fa.json",
-          "checked_at_utc": "2026-09-17T16:15:41Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": ""
-    },
-    "INU": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "inülin",
-        "inülin tozu",
-        "hindiba lifi"
-      ],
-      "queries": [
-        "hammaddeler.com product sitemap 'inulin'",
-        "arifoglu.com site search 'inülin' (0)",
-        "proteinocean.com sitemap 'inulin'",
-        "bigjoy.com.tr / badenatural.com / aksuvital.com sitemaps (no inulin product)"
-      ],
-      "sources_tried": [
-        "hammaddeler.com (Turkish food raw-materials shop, Smart Kimya Tic. Ltd. Şti., İzmir; product sitemap scanned) (İnülin 100 g, no GTIN)",
-        "proteinocean.com (Protein Ocean İnülin; no GTIN, binding only by TRY currency)",
-        "arifoglu.com (0)",
-        "bigjoy.com.tr / badenatural.com / aksuvital.com (no product)",
-        "gourmet-versand.com (country selector lists Turkey - cross-border)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Sosa Ingredients",
-          "product_name": "Sosa Inulin Cold (fiber) (50063), 500 g, PE dose",
-          "pack": "500 g",
-          "gtin": "8414933008774",
-          "identifier_confirmed": true,
-          "url": "https://www.gourmet-versand.com/en/article26461/sosa-inulin-cold-fiber-50063-500-g.html",
-          "source_type": "RETAILER",
-          "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists the market (check_quotes.py found=true)",
-          "cross_border": true,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
-            "quotes": [
-              "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
-              "Thailand Turkey Ukraine"
-            ],
-            "found": [
-              true,
-              true
-            ],
-            "type": "shipping-cost country selector listing the market"
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Ingredients: Dietary fiber inulin. Nutritional table per 100 g: carbohydrates 7 g, of which sugars 7 g, salt 0,1 g (fibre line not printed)",
-            "from": "retailer page ('EAN Code 8414933008774' printed)",
-            "sugars_g": 7.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Single-ingredient inulin (cold-soluble), sugars 7 g/100 g; fibre value not printed on the page. 'NOW AVAILABLE'.",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5965eff974c80924.json",
-          "checked_at_utc": "2026-09-17T16:17:24Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        },
-        {
-          "rank": 2,
-          "brand": "Tito Smart (as listed; 'Tito İnülin')",
-          "product_name": "İnülin 100 g",
-          "pack": "100 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.hammaddeler.com/urun/inulin-100-g",
-          "source_type": "RETAILER",
-          "seller": "hammaddeler.com (Smart Kimya Tic. Dan. Ltd. Şti., Çiğli-İzmir)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "seller's own delivery/contact pages (check_quotes.py found=true): delivery times to Turkish cities; address Çiğli-İzmir, Türkiye (currency TL is supporting only)",
-          "cross_border": false,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "quotes": [
-              {
-                "url": "https://hammaddeler.com/sayfa/sevkiyat-teslimat",
-                "quote": "Kargosu bir günde ulaşan şehirler: Adapazarı, Afyon, Ankara, Antalya, Aydın, Balıkesir, Bilecik, Bolu, Burdur, Bursa, Çanakkale, Denizli, Düzce, Edirne, Eskişehir, Isparta, İstanbul, İzmir",
-                "found": true
-              },
-              {
-                "url": "https://hammaddeler.com/iletisim",
-                "quote": "Atatürk Organize Sanayi Bölgesi Çiğli-İzmir Ülke Türkiye Şehir İzmir",
-                "found": true
-              }
-            ]
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": 88.0,
-            "fructose_pct": null,
-            "ingredients": "Gıda Katkı Maddesinin Adı: Tito İnülin; Bileşen Listesi: İnülin; kaynak: Hindiba (chicory); 100 g için: Enerji 208 kcal, Karbonhidrat 8 g, Şekerler 8 g, Lif 88 g, Protein 0 g, Tuz 0,4 g",
-            "from": "retailer page (ÜRÜN BİLGİSİ)",
-            "sugars_g": 8.0
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Chicory inulin, fibre 88 g/100 g. Local Turkish listing (Kod 222.308.41) but no GTIN and 'Tito' is a third-party brand, so identity is not proven.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7cc2b7b0c1bf2e1f.json",
-          "checked_at_utc": "2026-09-17T16:15:43Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-        }
-      ],
-      "notes": ""
-    },
-    "YOL": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "yumurta sarısı tozu",
-        "toz yumurta sarısı"
-      ],
-      "queries": [
-        "hammaddeler.com product sitemap 'yumurta sarısı tozu'",
-        "arifoglu.com site search 'yumurta sarısı' (0)",
-        "myprotein.com.tr product 10529352 (HTTP 403)",
-        "\"yumurta sarısı tozu\" pastörize satın al 500 g online (WebSearch)",
-        "organikcimiz.com products.xml (32 products) — yolk powder in 500 g / 1.5 kg / 15 kg, all OutOfStock"
-      ],
-      "sources_tried": [
-        "hammaddeler.com (Turkish food raw-materials shop, Smart Kimya Tic. Ltd. Şti., İzmir; product sitemap scanned) (Yumurta Sarısı Tozu 500 g, no GTIN)",
-        "myprotein.com.tr (HTTP 403 bot wall, inconclusive)",
-        "arifoglu.com (0)",
-        "taste-market.de / sermand.com (delivery lists do not include Türkiye)",
-        "gourmet-versand.com (ships to Turkey; no egg yolk powder)",
-        "organikcimiz.com = Kor Agro Organik Gıda A.Ş. (Kor Yumurta) own online store, Kemalpaşa/İzmir: '500 Gr. Yumurta Sarısı Tozu' SKU ET007-0004 — identity + Turkish market binding proven, but OutOfStock (also 1.5 kg and 15 kg OutOfStock)",
-        "guresonline.com / guresyumurta.com (Güres Yumurta): pasteurised LIQUID egg yolk only — rejected",
-        "taste-market.de: EU zones do not include Türkei, so the Eigelbpulver used for BG/HR/RO/GR/MT/CY cannot serve Türkiye",
-        "shop.cake-masters.com: Eigelbpulver 100 g exists but Türkei is not in its shipping-cost table"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Kor Yumurta",
-          "product_name": "500 Gr. Yumurta Sarısı Tozu",
-          "pack": "500 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://organikcimiz.com/kor-organik-500-gr-yumurta-sarisi-tozu-yt-02",
-          "source_type": "MANUFACTURER",
-          "seller": "Organikcimiz — the own online store of Kor Agro Organik Gıda A.Ş. (Kor Yumurta); Adres: 85. Yıl Cumhuriyet Mh. Hayvankıran Küme Evleri, No:15 Kemalpaşa / İZMİR",
-          "page_market": "TR",
-          "market_by": "SELLER_ADDRESS_ON_SITE",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "single Turkish seller address quoted from the shop's own İletişim page: \"Adres : 85. Yıl Cumhuriyet Mh. Hayvankıran Küme Evleri, No:15 Kemalpaşa / İZMİR\" (check_quotes.py found=true). The shop's Hakkımızda page states it is Kor Agro Organik Gıda A.Ş.'s own online store, so the listing is first-party own-brand (D-37).",
-          "cross_border": false,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "url": "https://organikcimiz.com/pages/iletisim",
-            "quotes": [
-              "Adres : 85. Yıl Cumhuriyet Mh. Hayvankıran Küme Evleri, No:15 Kemalpaşa / İZMİR"
-            ],
-            "found": [
-              true
-            ],
-            "type": "single seller address in Türkiye (market binding)",
-            "check_quotes_result_files": [
-              "~/.cache/gellatti-evidence/quotes/research-gap-eu/organikcimiz-TR-address.json"
-            ]
-          },
-          "availability": {
-            "state": "OUT_OF_STOCK",
-            "checked_at_utc": "2026-09-17T18:40:00Z",
-            "basis": "\"Stoğa gelince haber ver\" on the page; Product JSON-LD offer availability = https://schema.org/OutOfStock",
-            "source": "https://organikcimiz.com/kor-organik-500-gr-yumurta-sarisi-tozu-yt-02"
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": null
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "right type (egg yolk powder) and identity is proven on the producer's own store (SKU ET007-0004, brand Kor Yumurta, 500 g), but this page prints no ingredient list and no nutrition table. The same Kor Agro 500 g product is listed by the Turkish retailer hammaddeler.com with the full declaration \"Bileşen Listesi: Yumurta Sarısı (Tavuk)\", i.e. 100 % chicken egg yolk — see rank 2.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/de58ce454ec37f9b.json",
-          "checked_at_utc": "2026-09-17T18:40:00Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "added_by": "research-gap-eu",
-          "owner_check": "Producer's own store, so the product identity is no longer in doubt, but all three yolk-powder packs there (500 g, 1.5 kg, 15 kg) show OutOfStock today. The buyable Turkish path is the rank-2 retailer listing."
-        },
-        {
-          "rank": 2,
-          "brand": "Kor Yumurta Smart (as listed; operator Kor Agro Organik Gıda)",
-          "product_name": "Yumurta Sarısı Tozu 500 g",
-          "pack": "500 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.hammaddeler.com/urun/yumurta-sarisi-tozu-500-g",
-          "source_type": "RETAILER",
-          "seller": "hammaddeler.com (Smart Kimya Tic. Dan. Ltd. Şti., Çiğli-İzmir)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "seller's own delivery/contact pages (check_quotes.py found=true): delivery times to Turkish cities; address Çiğli-İzmir, Türkiye (currency TL is supporting only)",
-          "cross_border": false,
-          "ships_to_evidence": {
-            "tool": "check_quotes.py",
-            "quotes": [
-              {
-                "url": "https://hammaddeler.com/sayfa/sevkiyat-teslimat",
-                "quote": "Kargosu bir günde ulaşan şehirler: Adapazarı, Afyon, Ankara, Antalya, Aydın, Balıkesir, Bilecik, Bolu, Burdur, Bursa, Çanakkale, Denizli, Düzce, Edirne, Eskişehir, Isparta, İstanbul, İzmir",
-                "found": true
-              },
-              {
-                "url": "https://hammaddeler.com/iletisim",
-                "quote": "Atatürk Organize Sanayi Bölgesi Çiğli-İzmir Ülke Türkiye Şehir İzmir",
-                "found": true
-              }
-            ]
-          },
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Gıda Katkı Maddesinin Adı: Yumurta Sarısı Tozu; Bileşen Listesi: Yumurta Sarısı (Tavuk); Net Miktar: 500 g; Gıda İşletmecisi: Kor Agro Organik Gıda İnş. Enerji San. ve Tic. A.Ş.; Menşei: Türkiye; nutrition not printed",
-            "from": "retailer page (ÜRÜN BİLGİSİ)"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "100 % hen egg yolk powder (single ingredient). Local Turkish listing (Kod 111.403.30) but no GTIN and not the seller's own brand, so identity is not proven.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4ca24a07edeeded0.json",
-          "checked_at_utc": "2026-09-17T16:15:46Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "availability": {
-            "state": "UNKNOWN",
-            "checked_at_utc": "2026-09-17T18:40:00Z",
-            "basis": "no stock wording and no JSON-LD availability on the page; it shows an active 'SEPETE EKLE' / 'HEMEN AL' buy path",
-            "source": "https://www.hammaddeler.com/urun/yumurta-sarisi-tozu-500-g"
-          }
-        }
-      ],
-      "notes": "No GTIN-bearing Turkish page and no cross-border seller shipping egg yolk powder to Türkiye was verified. | 2026-09-17 research-gap-eu: still LEAD_ONLY but materially strengthened. The producer of the hammaddeler.com listing (Kor Agro Organik Gıda A.Ş. / Kor Yumurta) runs its own Turkish online store, organikcimiz.com, which lists the same 500 g yolk powder with its SKU — that fixes the product identity, which was the missing half of the earlier LEAD. Trade-off the owner must resolve: the identity-proven producer listing is out of stock and prints no ingredient list, while the purchasable retailer listing (rank 2) prints the full declaration 'Bileşen Listesi: Yumurta Sarısı (Tavuk)' but carries no GTIN."
+      "explicit_country": false
+     },
+     "composition": {
+      "fat_g": 75.0,
+      "protein_g": 8.5,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Per 100 g: Energy 3094 kJ/750 kcal, Fat 75 g (saturates 51 g), Carbohydrates 12 g (sugars 12 g), Protein 8.5 g, Fibre 0 g, Salt 2 g",
+      "from": "shop page",
+      "carbs_g": 12.0
+     },
+     "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+     "equivalence_note": "Dairy cream powder at 75 % fat (outside 38-48 %). UK seller (post-Brexit import to the EU/TR); delivery to TR not explicitly stated; several pack sizes on one page, no GTIN. schema InStock.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8009acbd08b491f0.json",
+     "checked_at_utc": "2026-09-17T16:41:35Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:40:00Z",
+      "basis": "schema.org/InStock in the page's Product JSON-LD offer (Product ID 0370)",
+      "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+     },
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
+   ],
+   "notes": "No dairy cream powder (38-48 % fat) found for Türkiye (only lead: a UK shop, 75 % fat, generic international delivery); Turkish 'krema tozu' results are flavourings or whipped/pastry-cream mixes. Discovery constrained (WebSearch budget exhausted, Brave HTTP 429, several Turkish retailers HTTP 403). | 2026-09-17 research-gap-eu: the gap is now a channel problem, not a discovery problem. Türkiye HAS a genuine 42 % spray-dried dairy cream powder from a domestic dairy (Enka Süt, Konya) with a composition identical to the reference, but only in a 25 kg industrial sack. Every Turkish retail 'krema tozu' checked is a vegetable-fat / sugar / starch pastry-cream or whipping mix and is rejected. No cross-border seller of a real cream powder names Türkiye (Cake-Masters, taste-market, gourmet-versand all exclude it); ingredientsbar.com remains a generic-international LEAD at 75 % fat. | Closing pass 2026-09-17 (close-africa): re-classified. The owner's refined rule says pack weight never makes an offer business-only and that only a quoted seller restriction sets a trade-only channel. enkasut.com prints no such restriction, so the channel label is withdrawn, pack_grams 25000 is recorded instead, and the candidate is what the evidence says it is: identity proven on the producer's own page and the market bound by its single Turkish address, i.e. CONFIRMED_LOCAL with an A-equivalent composition (İçindekiler: Krema, yağ 42 g/100 g). What is NOT proven, and is recorded separately, is a retail purchase path: Enka's consumer shop (enkagurme.com) sells only skimmed milk powder in packs, so the 25 kg sack has to be ordered through Enka's sales contact, and the page prints no stock state."
   },
-  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-  "contributing_agents": [
-    "research-gap-eu"
-  ]
+  "FRU": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "fruktoz",
+    "fruktoz tozu",
+    "meyve şekeri"
+   ],
+   "queries": [
+    "hammaddeler.com product sitemap 'fruktoz'",
+    "arifoglu.com site search 'fruktoz' (0)",
+    "fruktoz tozu 500 gr satın al (Brave - HTTP 429)"
+   ],
+   "sources_tried": [
+    "hammaddeler.com (Turkish food raw-materials shop, Smart Kimya Tic. Ltd. Şti., İzmir; product sitemap scanned) (Fruktoz 500 g, no GTIN)",
+    "arifoglu.com (0)",
+    "migros.com.tr (JS app)",
+    "carrefoursa.com / a101.com.tr (HTTP 403)",
+    "gourmet-versand.com (country selector lists Turkey - cross-border)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Sosa Ingredients",
+     "product_name": "Sosa fructose powder, 1 kg, PE dose",
+     "pack": "1 kg",
+     "gtin": "8414933026259",
+     "identifier_confirmed": true,
+     "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
+     "source_type": "RETAILER",
+     "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists the market (check_quotes.py found=true)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+      "quotes": [
+       "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
+       "Thailand Turkey Ukraine"
+      ],
+      "found": [
+       true,
+       true
+      ],
+      "type": "shipping-cost country selector listing the market"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
+      "from": "retailer page ('EAN Code 8414933026259' printed)",
+      "sugars_g": 100.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d803f3424d15075a.json",
+     "checked_at_utc": "2026-09-17T16:17:23Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:05:00Z",
+      "basis": "Availability NOW AVAILABLE Quantity in stock 2; Product JSON-LD offer availability = https://schema.org/InStock",
+      "source": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html"
+     },
+     "channel": null,
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    },
+    {
+     "rank": 2,
+     "brand": "Takita Smart (as listed)",
+     "product_name": "Fruktoz 500 g",
+     "pack": "500 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hammaddeler.com/urun/fruktoz-500-g",
+     "source_type": "RETAILER",
+     "seller": "hammaddeler.com (Smart Kimya Tic. Dan. Ltd. Şti., Çiğli-İzmir)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "seller's own delivery/contact pages (check_quotes.py found=true): delivery times to Turkish cities; address Çiğli-İzmir, Türkiye (currency TL is supporting only)",
+     "cross_border": false,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://hammaddeler.com/sayfa/sevkiyat-teslimat",
+        "quote": "Kargosu bir günde ulaşan şehirler: Adapazarı, Afyon, Ankara, Antalya, Aydın, Balıkesir, Bilecik, Bolu, Burdur, Bursa, Çanakkale, Denizli, Düzce, Edirne, Eskişehir, Isparta, İstanbul, İzmir",
+        "found": true
+       },
+       {
+        "url": "https://hammaddeler.com/iletisim",
+        "quote": "Atatürk Organize Sanayi Bölgesi Çiğli-İzmir Ülke Türkiye Şehir İzmir",
+        "found": true
+       }
+      ]
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Gıdanın Adı: Fruktoz; Bileşen Listesi: Fruktoz; 100 g için: Enerji 375 kcal, Yağ 0 g, Karbonhidrat 100 g, Şekerler 100 g, Protein 0 g, Tuz 0 g; Gıda İşletmecisi: Egepak Gıda ve Ambalaj Sanayi A.Ş.; Menşei: Türkiye",
+      "from": "retailer page (ÜRÜN BİLGİSİ)",
+      "sugars_g": 100.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Local Turkish listing (Kod 066.040.01) but no GTIN and not the seller's own brand, so identity is not proven. Non-EU destination for rank 1: customs/duties may apply.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c10bf10b9804e5fa.json",
+     "checked_at_utc": "2026-09-17T16:15:41Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:05:00Z",
+      "basis": "Product JSON-LD offer availability = https://schema.org/InStock; active 'SEPETE EKLE / HEMEN AL' buy path",
+      "source": "https://www.hammaddeler.com/urun/fruktoz-500-g"
+     },
+     "channel": null
+    }
+   ],
+   "notes": ""
+  },
+  "INU": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "inülin",
+    "inülin tozu",
+    "hindiba lifi"
+   ],
+   "queries": [
+    "hammaddeler.com product sitemap 'inulin'",
+    "arifoglu.com site search 'inülin' (0)",
+    "proteinocean.com sitemap 'inulin'",
+    "bigjoy.com.tr / badenatural.com / aksuvital.com sitemaps (no inulin product)"
+   ],
+   "sources_tried": [
+    "hammaddeler.com (Turkish food raw-materials shop, Smart Kimya Tic. Ltd. Şti., İzmir; product sitemap scanned) (İnülin 100 g, no GTIN)",
+    "proteinocean.com (Protein Ocean İnülin; no GTIN, binding only by TRY currency)",
+    "arifoglu.com (0)",
+    "bigjoy.com.tr / badenatural.com / aksuvital.com (no product)",
+    "gourmet-versand.com (country selector lists Turkey - cross-border)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Sosa Ingredients",
+     "product_name": "Sosa Inulin Cold (fiber) (50063), 500 g, PE dose",
+     "pack": "500 g",
+     "gtin": "8414933008774",
+     "identifier_confirmed": true,
+     "url": "https://www.gourmet-versand.com/en/article26461/sosa-inulin-cold-fiber-50063-500-g.html",
+     "source_type": "RETAILER",
+     "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists the market (check_quotes.py found=true)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+      "quotes": [
+       "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
+       "Thailand Turkey Ukraine"
+      ],
+      "found": [
+       true,
+       true
+      ],
+      "type": "shipping-cost country selector listing the market"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Dietary fiber inulin. Nutritional table per 100 g: carbohydrates 7 g, of which sugars 7 g, salt 0,1 g (fibre line not printed)",
+      "from": "retailer page ('EAN Code 8414933008774' printed)",
+      "sugars_g": 7.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Single-ingredient inulin (cold-soluble), sugars 7 g/100 g; fibre value not printed on the page. 'NOW AVAILABLE'.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5965eff974c80924.json",
+     "checked_at_utc": "2026-09-17T16:17:24Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:05:00Z",
+      "basis": "Availability NOW AVAILABLE Quantity in stock 76; Product JSON-LD offer availability = https://schema.org/InStock",
+      "source": "https://www.gourmet-versand.com/en/article26461/sosa-inulin-cold-fiber-50063-500-g.html"
+     },
+     "channel": null,
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    },
+    {
+     "rank": 2,
+     "brand": "Tito Smart (as listed; 'Tito İnülin')",
+     "product_name": "İnülin 100 g",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hammaddeler.com/urun/inulin-100-g",
+     "source_type": "RETAILER",
+     "seller": "hammaddeler.com (Smart Kimya Tic. Dan. Ltd. Şti., Çiğli-İzmir)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "seller's own delivery/contact pages (check_quotes.py found=true): delivery times to Turkish cities; address Çiğli-İzmir, Türkiye (currency TL is supporting only)",
+     "cross_border": false,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://hammaddeler.com/sayfa/sevkiyat-teslimat",
+        "quote": "Kargosu bir günde ulaşan şehirler: Adapazarı, Afyon, Ankara, Antalya, Aydın, Balıkesir, Bilecik, Bolu, Burdur, Bursa, Çanakkale, Denizli, Düzce, Edirne, Eskişehir, Isparta, İstanbul, İzmir",
+        "found": true
+       },
+       {
+        "url": "https://hammaddeler.com/iletisim",
+        "quote": "Atatürk Organize Sanayi Bölgesi Çiğli-İzmir Ülke Türkiye Şehir İzmir",
+        "found": true
+       }
+      ]
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": 88.0,
+      "fructose_pct": null,
+      "ingredients": "Gıda Katkı Maddesinin Adı: Tito İnülin; Bileşen Listesi: İnülin; kaynak: Hindiba (chicory); 100 g için: Enerji 208 kcal, Karbonhidrat 8 g, Şekerler 8 g, Lif 88 g, Protein 0 g, Tuz 0,4 g",
+      "from": "retailer page (ÜRÜN BİLGİSİ)",
+      "sugars_g": 8.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Chicory inulin, fibre 88 g/100 g. Local Turkish listing (Kod 222.308.41) but no GTIN and 'Tito' is a third-party brand, so identity is not proven.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7cc2b7b0c1bf2e1f.json",
+     "checked_at_utc": "2026-09-17T16:15:43Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:05:00Z",
+      "basis": "Product JSON-LD offer availability = https://schema.org/InStock; active 'SEPETE EKLE / HEMEN AL' buy path",
+      "source": "https://www.hammaddeler.com/urun/inulin-100-g"
+     },
+     "channel": null
+    }
+   ],
+   "notes": ""
+  },
+  "YOL": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "yumurta sarısı tozu",
+    "toz yumurta sarısı"
+   ],
+   "queries": [
+    "hammaddeler.com product sitemap 'yumurta sarısı tozu'",
+    "arifoglu.com site search 'yumurta sarısı' (0)",
+    "myprotein.com.tr product 10529352 (HTTP 403)",
+    "\"yumurta sarısı tozu\" pastörize satın al 500 g online (WebSearch)",
+    "organikcimiz.com products.xml (32 products) — yolk powder in 500 g / 1.5 kg / 15 kg, all OutOfStock",
+    "organikcimiz.com product page re-fetched for stock state and for an ingredient list / nutrition table (2026-09-17 evening)"
+   ],
+   "sources_tried": [
+    "hammaddeler.com (Turkish food raw-materials shop, Smart Kimya Tic. Ltd. Şti., İzmir; product sitemap scanned) (Yumurta Sarısı Tozu 500 g, no GTIN)",
+    "myprotein.com.tr (HTTP 403 bot wall, inconclusive)",
+    "arifoglu.com (0)",
+    "taste-market.de / sermand.com (delivery lists do not include Türkiye)",
+    "gourmet-versand.com (ships to Turkey; no egg yolk powder)",
+    "organikcimiz.com = Kor Agro Organik Gıda A.Ş. (Kor Yumurta) own online store, Kemalpaşa/İzmir: '500 Gr. Yumurta Sarısı Tozu' SKU ET007-0004 — identity + Turkish market binding proven, but OutOfStock (also 1.5 kg and 15 kg OutOfStock)",
+    "guresonline.com / guresyumurta.com (Güres Yumurta): pasteurised LIQUID egg yolk only — rejected",
+    "taste-market.de: EU zones do not include Türkei, so the Eigelbpulver used for BG/HR/RO/GR/MT/CY cannot serve Türkiye",
+    "shop.cake-masters.com: Eigelbpulver 100 g exists but Türkei is not in its shipping-cost table",
+    "organikcimiz.com re-checked 2026-09-17 evening: the 500 g Kor yolk powder is still OutOfStock ('Stoğa gelince haber ver') and the page still prints no ingredient list and no nutrition table - only marketing text about eggs",
+    "enkagurme.com / enkasut.com: dairy only, no egg products (checked while re-reading the CRP path)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Kor Yumurta",
+     "product_name": "500 Gr. Yumurta Sarısı Tozu",
+     "pack": "500 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://organikcimiz.com/kor-organik-500-gr-yumurta-sarisi-tozu-yt-02",
+     "source_type": "MANUFACTURER",
+     "seller": "Organikcimiz — the own online store of Kor Agro Organik Gıda A.Ş. (Kor Yumurta); Adres: 85. Yıl Cumhuriyet Mh. Hayvankıran Küme Evleri, No:15 Kemalpaşa / İZMİR",
+     "page_market": "TR",
+     "market_by": "SELLER_ADDRESS_ON_SITE",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "single Turkish seller address quoted from the shop's own İletişim page: \"Adres : 85. Yıl Cumhuriyet Mh. Hayvankıran Küme Evleri, No:15 Kemalpaşa / İZMİR\" (check_quotes.py found=true). The shop's Hakkımızda page states it is Kor Agro Organik Gıda A.Ş.'s own online store, so the listing is first-party own-brand (D-37).",
+     "cross_border": false,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://organikcimiz.com/pages/iletisim",
+      "quotes": [
+       "Adres : 85. Yıl Cumhuriyet Mh. Hayvankıran Küme Evleri, No:15 Kemalpaşa / İZMİR"
+      ],
+      "found": [
+       true
+      ],
+      "type": "single seller address in Türkiye (market binding)",
+      "check_quotes_result_files": [
+       "~/.cache/gellatti-evidence/quotes/research-gap-eu/organikcimiz-TR-address.json"
+      ]
+     },
+     "availability": {
+      "state": "OUT_OF_STOCK",
+      "checked_at_utc": "2026-09-17T19:53:54Z",
+      "basis": "\"Stoğa gelince haber ver\" on the page; Product JSON-LD offer availability = https://schema.org/OutOfStock (re-checked 2026-09-17)",
+      "source": "https://organikcimiz.com/kor-organik-500-gr-yumurta-sarisi-tozu-yt-02"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": null
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "right type (egg yolk powder) and identity is proven on the producer's own store (SKU ET007-0004, brand Kor Yumurta, 500 g), but this page prints no ingredient list and no nutrition table. The same Kor Agro 500 g product is listed by the Turkish retailer hammaddeler.com with the full declaration \"Bileşen Listesi: Yumurta Sarısı (Tavuk)\", i.e. 100 % chicken egg yolk — see rank 2.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/de58ce454ec37f9b.json",
+     "checked_at_utc": "2026-09-17T18:40:00Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "added_by": "research-gap-eu",
+     "owner_check": "Producer's own store, so the product identity is no longer in doubt, but all three yolk-powder packs there (500 g, 1.5 kg, 15 kg) show OutOfStock today. The buyable Turkish path is the rank-2 retailer listing.",
+     "pack_grams": 500,
+     "moq": null,
+     "channel": null
+    },
+    {
+     "rank": 2,
+     "brand": "Kor Yumurta Smart (as listed; operator Kor Agro Organik Gıda)",
+     "product_name": "Yumurta Sarısı Tozu 500 g",
+     "pack": "500 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hammaddeler.com/urun/yumurta-sarisi-tozu-500-g",
+     "source_type": "RETAILER",
+     "seller": "hammaddeler.com (Smart Kimya Tic. Dan. Ltd. Şti., Çiğli-İzmir)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "seller's own delivery/contact pages (check_quotes.py found=true): delivery times to Turkish cities; address Çiğli-İzmir, Türkiye (currency TL is supporting only)",
+     "cross_border": false,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://hammaddeler.com/sayfa/sevkiyat-teslimat",
+        "quote": "Kargosu bir günde ulaşan şehirler: Adapazarı, Afyon, Ankara, Antalya, Aydın, Balıkesir, Bilecik, Bolu, Burdur, Bursa, Çanakkale, Denizli, Düzce, Edirne, Eskişehir, Isparta, İstanbul, İzmir",
+        "found": true
+       },
+       {
+        "url": "https://hammaddeler.com/iletisim",
+        "quote": "Atatürk Organize Sanayi Bölgesi Çiğli-İzmir Ülke Türkiye Şehir İzmir",
+        "found": true
+       }
+      ]
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Gıda Katkı Maddesinin Adı: Yumurta Sarısı Tozu; Bileşen Listesi: Yumurta Sarısı (Tavuk); Net Miktar: 500 g; Gıda İşletmecisi: Kor Agro Organik Gıda İnş. Enerji San. ve Tic. A.Ş.; Menşei: Türkiye; nutrition not printed",
+      "from": "retailer page (ÜRÜN BİLGİSİ)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % hen egg yolk powder (single ingredient). Local Turkish listing (Kod 111.403.30) but no GTIN and not the seller's own brand, so identity is not proven.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4ca24a07edeeded0.json",
+     "checked_at_utc": "2026-09-17T16:15:46Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "UNKNOWN",
+      "checked_at_utc": "2026-09-17T18:40:00Z",
+      "basis": "no stock wording and no JSON-LD availability on the page; it shows an active 'SEPETE EKLE' / 'HEMEN AL' buy path",
+      "source": "https://www.hammaddeler.com/urun/yumurta-sarisi-tozu-500-g"
+     },
+     "pack_grams": 500,
+     "moq": null,
+     "channel": null
+    }
+   ],
+   "notes": "No GTIN-bearing Turkish page and no cross-border seller shipping egg yolk powder to Türkiye was verified. | 2026-09-17 research-gap-eu: still LEAD_ONLY but materially strengthened. The producer of the hammaddeler.com listing (Kor Agro Organik Gıda A.Ş. / Kor Yumurta) runs its own Turkish online store, organikcimiz.com, which lists the same 500 g yolk powder with its SKU — that fixes the product identity, which was the missing half of the earlier LEAD. Trade-off the owner must resolve: the identity-proven producer listing is out of stock and prints no ingredient list, while the purchasable retailer listing (rank 2) prints the full declaration 'Bileşen Listesi: Yumurta Sarısı (Tavuk)' but carries no GTIN. | Closing pass 2026-09-17 (close-africa): both halves re-checked, nothing changed. The producer's own store still shows OutOfStock and still prints no declaration; the buyable retailer listing (hammaddeler.com) still prints the full Turkish declaration 'Bileşen Listesi: Yumurta Sarısı (Tavuk)' with the food business operator 'Kor Agro Organik Gıda ... Menşei: Türkiye' but carries no GTIN and is not the seller's own brand, so its identity stays unproven and the class stays LEAD. Nothing here is a channel or delivery problem: it is one missing GTIN on the retailer page and one missing ingredient list on the producer page."
+  }
+ },
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "contributing_agents": [
+  "research-gap-eu",
+  "close-africa"
+ ],
+ "country_notes": " | Closing pass 2026-09-17 by agent close-africa (egress ES) under the owner's refined rules of the same evening: a delivery claim is judged by meaning; pack weight never makes an offer business-only (pack_grams and moq recorded separately, and only a quoted seller restriction sets a TRADE_ONLY channel); identity/composition, purchase path, channel and stock are kept apart; a lead never closes a role."
 }

@@ -22,12 +22,14 @@
   "tag_alternative": "Helyi alternatíva",
   "tag_unconfirmed": "Nem megerősített",
   "tag_abroad_unconfirmed": "Külföldi bolt",
+  "tag_large_pack": "Nagy kiszerelés",
   "legend": {
     "from_abroad": "külföldi bolt, amelynek saját szállítási listáján szerepel ez az ország",
     "b2b": "cégeknek vagy nagy kiszerelésben árusítják — nem szokásos kiskereskedelmi ajánlat",
     "other_composition": "azonos típusú termék eltérő összetétellel (mellette feltüntetve)",
     "alternative": "egy másik Gellatti-termék helyettesítője",
-    "abroad_unconfirmed": "külföldi bolt; az ebbe az országba történő szállítás nem megerősített"
+    "abroad_unconfirmed": "külföldi bolt; az ebbe az országba történő szállítás nem megerősített",
+    "large_pack": "5 kg-os vagy nagyobb kiszerelésben kapható"
   },
   "starter_amount": "A Starter Packban: {g} g",
   "option": "{n}. lehetőség",
@@ -46,6 +48,8 @@
   "stabilizer_note": "A Gellatti-keverék helyi alternatívája, nem ugyanaz a keverék. Keverd a száraz hozzávalókhoz, és melegítsd fel az alapot 75–80 °C hőmérsékletre.",
   "missing": "Ebben az országban még nincs jóváhagyott termék.",
   "out_of_stock": "A bolt {date} napján azt mutatta, hogy nincs készleten.",
+  "delivery_unconfirmed": "Kiszállítás — {country}: nem megerősített. Kérdezze meg az eladót.",
+  "extra_title": "Ezt is jó tudni",
   "notes_title": "Jó tudni",
   "notes": [
     {"h": "Elérhetőség", "p": "A kutatott termékeket 2026. szeptember 17-én ellenőriztük boltok és gyártók weboldalain. A dextróz, a sovány tejpor és a stabilizátor a Gellatti 2026. szeptember 12-i országtáblázatából származik, ezeket nem ellenőriztük újra. Az elérhetőség, az árak és a szállítás változhat, és nem garantált."},

@@ -22,12 +22,14 @@
   "tag_alternative": "當地替代",
   "tag_unconfirmed": "未確認",
   "tag_abroad_unconfirmed": "海外商店",
+  "tag_large_pack": "大包裝",
   "legend": {
     "from_abroad": "其自有配送清單中列有當地的海外商店",
     "b2b": "銷售給企業或大包裝，並非一般零售商品",
     "other_composition": "同類產品，但成分不同（已於旁邊註明）",
     "alternative": "另一款 Gellatti 產品的替代品",
-    "abroad_unconfirmed": "海外商店，能否寄送至當地未經確認"
+    "abroad_unconfirmed": "海外商店，能否寄送至當地未經確認",
+    "large_pack": "以 5 千克及以上的大包裝出售"
   },
   "starter_amount": "Starter Pack 內：{g} 克",
   "option": "選項 {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "這是 Gellatti 混合物的當地替代品，並非同一種混合物。請將其與乾性原料混合，並將基底加熱至 75–80 °C。",
   "missing": "當地暫無已核准的產品。",
   "out_of_stock": "該商店在 {date} 顯示此商品缺貨。",
+  "delivery_unconfirmed": "配送至 {country} 未經確認，請向賣家確認。",
+  "extra_title": "補充資訊",
   "notes_title": "值得了解",
   "notes": [
     {"h": "供貨情況", "p": "我們於 2026 年 9 月 17 日在商店和製造商的網站上核實了研究中的產品。葡萄糖、脫脂奶粉和穩定劑來自 2026 年 9 月 12 日的 Gellatti 國家表，未再次核實。供貨情況、價格和配送可能會變動，且不作保證。"},

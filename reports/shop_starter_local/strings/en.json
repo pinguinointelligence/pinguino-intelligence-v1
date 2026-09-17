@@ -31,12 +31,14 @@
   "tag_alternative": "Local alternative",
   "tag_unconfirmed": "Unconfirmed",
   "tag_abroad_unconfirmed": "Shop abroad",
+  "tag_large_pack": "Large pack",
   "legend": {
     "from_abroad": "a shop abroad whose own delivery list names this country",
     "b2b": "sold to businesses or in large packs — not an ordinary retail offer",
     "other_composition": "the same kind of product with a different composition (shown next to it)",
     "alternative": "a substitute for another Gellatti product",
-    "abroad_unconfirmed": "a shop abroad; delivery to this country is not confirmed"
+    "abroad_unconfirmed": "a shop abroad; delivery to this country is not confirmed",
+    "large_pack": "sold in a pack of 5 kg or more"
   },
   "starter_amount": "In the Starter Pack: {g} g",
   "option": "Option {n}",
@@ -76,6 +78,9 @@
   "stabilizer_note": "A local alternative to the Gellatti blend, not the same blend. Mix it with the dry ingredients and heat the base to 75–80 °C.",
   "missing": "No approved product in this country yet.",
   "out_of_stock": "The shop showed this as out of stock on {date}.",
+  "delivery_unconfirmed": "Delivery to {country} is not confirmed — check with the seller.",
+  "extra_title": "Also worth knowing",
+  "other_composition_note": "The app calculates amounts for the reference composition, not for this product.",
   "notes_title": "Good to know",
   "notes": [
     {

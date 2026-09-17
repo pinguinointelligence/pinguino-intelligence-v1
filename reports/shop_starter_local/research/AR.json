@@ -31,7 +31,9 @@
     "site search mayana.com.ar: crema en polvo",
     "site catalog gourmet-versand.com: Sahnepulver / Rahmpulver / Milchpulver (0 dairy powders)",
     "site search pati-versand.de: Sahnepulver (Cake-Masters Sahnepulver 100g, SAHNE 42% Fett - EU-only delivery)",
-    "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose"
+    "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose",
+    "\"crema de leche en polvo\" comprar Argentina insumos repostería online",
+    "site search boticadelpastelero.com.ar / elnuevoemporio / tiodany: crema de leche en polvo"
    ],
    "sources_tried": [
     "listado.mercadolibre.com.ar (marketplace; WebFetch HTTP 403 - not used)",
@@ -50,11 +52,129 @@
     "html.duckduckgo.com (bot challenge - not bypassed) and bing.com (unusable results) tried once before the coordinator stopped search-engine use",
     "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
     "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
-    "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)"
+    "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)",
+    "ingredients-solutions.com listing re-checked 2026-09-17: HTTP 404, page removed",
+    "pampacreations.com re-read 2026-09-17: genuine spray-dried dairy cream powder by description, but manufacturer-only - no pack, price, stock or cart, and no fat %",
+    "boticadelpastelero.com.ar, tienda.elnuevoemporio.com.ar, tiodany.com.ar on-site searches for 'crema de leche en polvo' (2026-09-17): no dairy cream powder - only dulce de leche, chocolate coatings and chantilly-type whip mixes (rejected types)",
+    "dsinsumos.com.ar (2026-09-17): connection failed (HTTP 000) - inconclusive",
+    "bulksupplements.com catalogue searched 2026-09-17 ('cream powder', 'egg yolk'): the shop sells neither, so its confirmed delivery statement cannot serve CRP or YOL",
+    "gourmet-versand.com (DE) catalogue searched 2026-09-17 ('Sahnepulver', 'Eigelbpulver', 'Eigelb Pulver'): 0 products - no cream powder and no egg yolk powder",
+    "modernistpantry.com/pages/international-shipping (US; does sell cream and egg yolk powders): names no destination at all - 'To see whether we can ship to your country just add the products to cart and go to the checkout page' - and a cart is forbidden by the protocol, so it cannot confirm a country",
+    "ketostore.nz (the one local NZ cream powder found): 'International Shipping Policy We currently do not ship outside of New Zealand.' - not available to any other market"
    ],
    "candidates": [
     {
      "rank": 1,
+     "brand": "Pampa Creations",
+     "product_name": "Crema en polvo",
+     "pack": "not shown",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://pampacreations.com/crema-en-polvo/",
+     "source_type": "MANUFACTURER",
+     "seller": "Pampa Creations (PIBERA, Berazategui, Buenos Aires)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "NONE (generic .com; Argentine factory address in the footer, not checked as a delivery quote)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "raw page: 'Producto que parte del secado en equipo spray de la crema de leche tradicional'; no fat %, no ingredient list, no pack"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "Right type (spray-dried dairy cream, manufacturer), but no fat %, ingredients or pack are printed; contact-only B2B page. | Re-read 2026-09-17 (close-americas): the printed description does establish the TYPE - 'Producto que parte del secado en equipo spray de la crema de leche tradicional. Al deshidratarse le confiere una dosis mayor de materia grasa, que la crema de leche tradicional, acompanado de solidos lacteos' - i.e. a genuine spray-dried dairy cream powder with dairy solids, not a creamer. What is still missing is the number: no fat % and no nutrition table are printed, so A/B cannot be decided.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f9340aef930d0ba1.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_pampa_creampowder.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T19:55:00Z",
+     "availability": {
+      "state": "UNKNOWN",
+      "checked_at_utc": "2026-09-17T19:55:00Z",
+      "basis": "manufacturer product page; it carries no availability statement",
+      "source": "https://pampacreations.com/crema-en-polvo/"
+     },
+     "channel": "B2B_INDUSTRIAL_PACK_ONLY",
+     "pack_grams": null,
+     "moq": null,
+     "channel_basis": "Pampa Creations is a manufacturer site (Linea de Productos / Contacto). The 'Crema en polvo' page has no pack, no price, no stock state and no cart - there is no purchase path for a private customer.",
+     "owner_check": "Pampa Creations makes a real dairy cream powder in Argentina but sells only through its sales desk; ask them for the fat % and a retail pack."
+    },
+    {
+     "rank": 2,
+     "brand": "Ingredients Bar",
+     "product_name": "Cream Powder",
+     "pack": "200 g (same listing also offers 500 g, 1.5 kg and 4 kg; SKU 0370)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Ingredients Bar (United Kingdom)",
+     "page_market": "GB",
+     "market_by": "OTHER_MARKET:GB",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "NONE for AR (UK shop, GBP only - currency never binds). The seller states international delivery but names no country, so this is a LEAD purchase path, not VERIFIED_CROSS_BORDER.",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "basis": "GENERIC_INTERNATIONAL_STATEMENT",
+      "statement_page": "https://ingredientsbar.com/payment-delivery/",
+      "heading_above": "Delivery & Payment > Delivery Information",
+      "quotes": [
+       {
+        "url": "https://ingredientsbar.com/payment-delivery/",
+        "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
+        "file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_ib_no_country.json"
+       }
+      ],
+      "found": true,
+      "country_named": false,
+      "why_it_does_not_cover_this_country": "Re-read in full 2026-09-17 (close-americas): the whole Delivery Information section names exactly one country - 'We offer free standard delivery within the United Kingdom' - and then refers to international delivery only in the abstract. There is no country list anywhere on the page, so there is no group that could contain this country either.",
+      "note": "A bare 'international delivery' sentence is not a delivery claim for any particular country (owner rule, 2026-09-17)."
+     },
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:43:28Z",
+      "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+      "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+     },
+     "composition": {
+      "fat_g": 75.0,
+      "protein_g": 8.5,
+      "fibre_g": 0.0,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition Facts Per 100g: Energy 3094kJ/750kcal, Fat 75 g of which saturated fatty acid 51 g, Carbohydrates 12 g of which sugars 12 g, Protein 8.5 g, Dietary Fibre 0 g, Salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
+      "from": "product page, 'Ingredients & Nutrition' tab (quote file ~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json)",
+      "sugars_g": 12.0
+     },
+     "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+     "equivalence_note": "Real spray-dried dairy cream powder ('made from dehydrated cream, free from additives'), printed fat 75 g/100 g - outside the 38-48 % A band (reference 42 %). Ingredients are cream + milk protein + lactose, i.e. the permitted CRP ingredient family. Recorded under owner rule 3 (2026-09-17): a dairy cream powder outside 38-48 % fat is a valid candidate for owner decision.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/772973dc46b8b32f.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json",
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T19:55:00Z",
+     "channel": "RETAIL",
+     "pack_grams": 200,
+     "moq": null,
+     "shipping_basis": "GENERIC_INTERNATIONAL_STATEMENT_NO_COUNTRY_NAMED",
+     "owner_check": "A real dairy cream powder at 75 % fat and in stock, but the seller never names a delivery country - ask Ingredients Bar in writing whether they ship here before the PDF names them.",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
+    },
+    {
+     "rank": 3,
      "brand": "Ingredients Solutions",
      "product_name": "Crema de Leche en Polvo",
      "pack": "25 kg (Bolsa/Saco/Bag-Caja/Caixa/Box : 25kg)",
@@ -83,108 +203,20 @@
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/fba8c5256b1ee352.json",
      "extra_evidence_files": [],
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T15:50:18Z",
+     "checked_at_utc": "2026-09-17T19:55:00Z",
      "availability": {
       "state": "UNKNOWN",
-      "checked_at_utc": "2026-09-17T18:43:28Z",
-      "basis": "B2B page with an inquiry form only; no stock or availability statement is printed",
-      "source": "https://www.ingredients-solutions.com/tienda/108838/crema_de_leche_en_polvo.php?idsp=2338"
-     }
-    },
-    {
-     "rank": 2,
-     "brand": "Pampa Creations",
-     "product_name": "Crema en polvo",
-     "pack": "not shown",
-     "gtin": null,
-     "identifier_confirmed": false,
-     "url": "https://pampacreations.com/crema-en-polvo/",
-     "source_type": "MANUFACTURER",
-     "seller": "Pampa Creations (PIBERA, Berazategui, Buenos Aires)",
-     "page_market": "",
-     "market_by": "GENERIC_TLD",
-     "identity_basis": "NOT_PROVEN",
-     "market_binding_signal": "NONE (generic .com; Argentine factory address in the footer, not checked as a delivery quote)",
-     "cross_border": false,
-     "ships_to_evidence": null,
-     "composition": {
-      "fat_g": null,
-      "protein_g": null,
-      "fibre_g": null,
-      "fructose_pct": null,
-      "ingredients": null,
-      "from": "raw page: 'Producto que parte del secado en equipo spray de la crema de leche tradicional'; no fat %, no ingredient list, no pack"
+      "checked_at_utc": "2026-09-17T19:55:00Z",
+      "basis": "the listing URL now returns HTTP 404 (591 bytes) - the page has been removed",
+      "source": "https://www.ingredients-solutions.com/tienda/108838/crema_de_leche_en_polvo"
      },
-     "equivalence": "C_INSUFFICIENT_DATA",
-     "equivalence_note": "Right type (spray-dried dairy cream, manufacturer), but no fat %, ingredients or pack are printed; contact-only B2B page.",
-     "evidence_class": "LEAD",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f9340aef930d0ba1.json",
-     "extra_evidence_files": [],
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T15:46:31Z",
-     "availability": {
-      "state": "UNKNOWN",
-      "checked_at_utc": "2026-09-17T18:43:28Z",
-      "basis": "manufacturer contact page; no stock or availability statement is printed",
-      "source": "https://pampacreations.com/crema-en-polvo/"
-     }
-    },
-    {
-     "rank": 3,
-     "brand": "Ingredients Bar",
-     "product_name": "Cream Powder",
-     "pack": "200 g (same listing also offers 500 g, 1.5 kg and 4 kg; SKU 0370)",
-     "gtin": null,
-     "identifier_confirmed": false,
-     "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
-     "source_type": "OFFICIAL_SHOP",
-     "seller": "Ingredients Bar (United Kingdom)",
-     "page_market": "GB",
-     "market_by": "OTHER_MARKET:GB",
-     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-     "market_binding_signal": "NONE for AR (UK shop, GBP only - currency never binds). The seller states international delivery but names no country, so this is a LEAD purchase path, not VERIFIED_CROSS_BORDER.",
-     "cross_border": true,
-     "ships_to_evidence": {
-      "tool": "check_quotes.py",
-      "quotes": [
-       {
-        "url": "https://ingredientsbar.com/payment-delivery/",
-        "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
-        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json"
-       }
-      ],
-      "found": true,
-      "country_named": false,
-      "note": "Generic international-delivery statement only; AR is not named, so owner rule 2 (2026-09-17) keeps this a LEAD."
-     },
-     "availability": {
-      "state": "IN_STOCK",
-      "checked_at_utc": "2026-09-17T18:43:28Z",
-      "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
-      "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
-     },
-     "composition": {
-      "fat_g": 75.0,
-      "protein_g": 8.5,
-      "fibre_g": 0.0,
-      "fructose_pct": null,
-      "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition Facts Per 100g: Energy 3094kJ/750kcal, Fat 75 g of which saturated fatty acid 51 g, Carbohydrates 12 g of which sugars 12 g, Protein 8.5 g, Dietary Fibre 0 g, Salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
-      "from": "product page, 'Ingredients & Nutrition' tab (quote file ~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json)",
-      "sugars_g": 12.0
-     },
-     "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
-     "equivalence_note": "Real spray-dried dairy cream powder ('made from dehydrated cream, free from additives'), printed fat 75 g/100 g - outside the 38-48 % A band (reference 42 %). Ingredients are cream + milk protein + lactose, i.e. the permitted CRP ingredient family. Recorded under owner rule 3 (2026-09-17): a dairy cream powder outside 38-48 % fat is a valid candidate for owner decision.",
-     "evidence_class": "LEAD",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/772973dc46b8b32f.json",
-     "extra_evidence_files": [
-      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json",
-      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
-     ],
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T18:43:28Z"
+     "channel": null,
+     "pack_grams": null,
+     "moq": null,
+     "owner_check": "This listing has been taken down (HTTP 404 on 2026-09-17); do not print it."
     }
    ],
-   "notes": "No retail dairy cream powder found at Argentine supermarkets, pharmacies, the pastry market or the ice-cream supplier checked (only milk powders, non-dairy creamers and chantilly/whipped-topping mixes, all rejected). Two B2B Argentine producers list spray-dried cream powder without fat % or a retail pack, so LEAD with C data. Mercado Libre was not usable (403, marketplace). WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17 under owner rule 3: both Argentine B2B pages still print no fat % and no retail pack (availability UNKNOWN). Added rank 3: Ingredients Bar (UK) Cream Powder - a real spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients cream + milk protein + lactose, retail 200 g pack, IN_STOCK - kept a LEAD because the seller only states generic international delivery and never names Argentina (owner rule 2)."
+   "notes": "No retail dairy cream powder found at Argentine supermarkets, pharmacies, the pastry market or the ice-cream supplier checked (only milk powders, non-dairy creamers and chantilly/whipped-topping mixes, all rejected). Two B2B Argentine producers list spray-dried cream powder without fat % or a retail pack, so LEAD with C data. Mercado Libre was not usable (403, marketplace). WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17 under owner rule 3: both Argentine B2B pages still print no fat % and no retail pack (availability UNKNOWN). Added rank 3: Ingredients Bar (UK) Cream Powder - a real spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients cream + milk protein + lactose, retail 200 g pack, IN_STOCK - kept a LEAD because the seller only states generic international delivery and never names Argentina (owner rule 2). | Re-checked 2026-09-17 (close-americas): still LEAD_ONLY, and the rank-1 listing is now dead (HTTP 404). Pampa Creations is confirmed to be a real dairy cream powder by its own description but has no purchase path and no printed fat %. Argentine retail baking shops sell no dairy cream powder. | Ranks re-ordered 2026-09-17 (close-americas): the Ingredients Solutions listing that used to be rank 1 now returns HTTP 404, so the live candidates lead - rank 1 Pampa Creations (an Argentine manufacturer whose own description confirms a spray-dried dairy cream powder, but with no retail purchase path and no printed fat %), rank 2 Ingredients Bar (printed 75 % dairy composition, in stock, but no delivery statement naming Argentina), rank 3 the dead listing, kept for the record."
   },
   "FRU": {
    "result": "VERIFIED_CROSS_BORDER",
@@ -240,19 +272,55 @@
      "page_market": null,
      "market_by": "GENERIC_TLD",
      "identity_basis": "GTIN_ON_LOCAL_PAGE",
-     "market_binding_signal": "NONE for AR (generic .com, US seller) - cross-border; delivery to this country is named in the seller's own shipping-country list (see ships_to_evidence)",
+     "market_binding_signal": "NONE for a generic .com (US seller); the cross-border purchase path is bound by the seller's own delivery statement on its shipping policy, which names this country (see ships_to_evidence)",
      "cross_border": true,
      "ships_to_evidence": {
       "tool": "check_quotes.py",
+      "basis": "DELIVERY_STATEMENT",
+      "statement_page": "https://www.bulksupplements.com/policies/shipping-policy",
+      "heading_above": "Shipping policy > International > Delivery Time",
       "quotes": [
        {
         "url": "https://www.bulksupplements.com/policies/shipping-policy",
+        "quote": "We currently ship to the following nations:",
+        "file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_delivery_statement.json"
+       },
+       {
+        "url": "https://www.bulksupplements.com/policies/shipping-policy",
         "quote": "We currently ship to the following nations: Andorra Argentina Australia Austria",
-        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_bs_ships_AR.json"
+        "file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_ships_AU.json"
        }
       ],
       "found": true,
-      "country_named": true
+      "country_named": true,
+      "why_it_covers_this_country": "The sentence is a delivery declaration ('We currently ship to ...'), its object is a closed enumeration of nations, and this country is one of the enumerated names.",
+      "exceptions_checked": {
+       "checked": [
+        "USPS Disruptions block on the same policy page (South Africa suspension, Philippines suspension)",
+        "UPS Disruptions block (South Africa)",
+        "FedEx Disruptions block (Japan, Philippines - transit delays only)",
+        "Free-shipping exclusions (Alaska, Hawaii, Puerto Rico) - a US-internal price exception, not a delivery exclusion",
+        "Customs disclaimer ('not responsible for products that may be banned in your country') - a disclaimer, not a country exclusion"
+       ],
+       "quote_file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_exceptions_usps.json",
+       "any_exception_removes_this_country": false
+      },
+      "objective_test": {
+       "rule": "RESEARCH_PROTOCOL rule 16 (objective furniture test), applied to the STATEMENT and not to the list alone",
+       "shipping_page": "https://www.bulksupplements.com/policies/shipping-policy",
+       "product_pages_checked": [
+        "https://www.bulksupplements.com/products/fructose-powder",
+        "https://www.bulksupplements.com/products/inulin-fos-powder"
+       ],
+       "statement_on_product_pages": false,
+       "statement_absence_file": "~/.cache/gellatti-evidence/quotes/close-americas/absence_bs_productpage_statement.json",
+       "furniture_that_IS_on_product_pages": {
+        "quote": "Please select your shipping country. Buy from the country of your choice. Remember that we can only ship your order to addresses located in the chosen country.",
+        "file": "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_productpage_picker.json",
+        "note": "This is the 'Select Your Region' market/currency picker. It appears on every page and is NOT used as delivery evidence."
+       }
+      },
+      "note": "Restored 2026-09-17 under the owner's refinement: the meaning of the statement decides, not where the list sits. The earlier downgrade (shipping_basis MARKET_PICKER_NOT_A_DELIVERY_STATEMENT) had read this country out of the store's 'Select Your Region' picker; the picker is indeed furniture, but the delivery statement on /policies/shipping-policy is a separate sentence that is absent from the product pages."
      },
      "availability": {
       "state": "IN_STOCK",
@@ -269,15 +337,25 @@
       "from": "product page text (see verifier verdict file ingredients_snippet)"
      },
      "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "Sole ingredient fructose ('Ingredients: Fructose Free of: Added Sugar, Soy, Dairy, Yeast, Gluten, Additives'); no numeric purity printed. GTIN 849720029065 sits next to SKU FRUC250 and the 250 g variant name in the page's own offer data (other packs on the page: 100 g, 500 g, 1 kg, 5 kg InStock; 25 kg OutOfStock). | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
-     "evidence_class": "LEAD",
+     "equivalence_note": "Sole ingredient fructose ('Ingredients: Fructose Free of: Added Sugar, Soy, Dairy, Yeast, Gluten, Additives'); no numeric purity printed. GTIN 849720029065 sits next to SKU FRUC250 and the 250 g variant name in the page's own offer data (other packs on the page: 100 g, 500 g, 1 kg, 5 kg InStock; 25 kg OutOfStock). | Delivery re-read 2026-09-17 (close-americas): the seller's shipping policy carries a real delivery declaration - \"We currently ship to the following nations:\" - and this country is named in it, so the cross-border purchase path is confirmed. Composition evidence is unchanged.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/02925aac13fe4ccc.json",
      "extra_evidence_files": [
-      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_bs_ships_AR.json"
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_bs_ships_AR.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_delivery_statement.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_ships_AU.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/absence_bs_productpage_statement.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_productpage_picker.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_bs_exceptions_usps.json"
      ],
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T18:43:28Z",
-     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+     "checked_at_utc": "2026-09-17T19:55:00Z",
+     "shipping_basis": "DELIVERY_STATEMENT_COUNTRY_NAMED",
+     "channel": "RETAIL",
+     "pack_grams": 250,
+     "moq": null,
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     },
     {
      "rank": 2,
@@ -335,7 +413,9 @@
       "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_intro.json"
      ],
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T18:43:28Z"
+     "checked_at_utc": "2026-09-17T18:43:28Z",
+     "delivery_state": "CONFIRMED",
+     "delivery_basis": "the seller statement quoted in this record names this country"
     }
    ],
    "notes": "No crystalline fructose found at any Argentine grocer, pharmacy, dietética brand shop, pastry market or ice-cream supplier reachable with on-site search. Fructose-honey blends and ice-cream bases were rejected. The dietética channel is mostly offline or on Mercado Libre (403 and a marketplace), so this BRAK is limited by discovery. WebSearch budget exhausted during research; later discovery via on-site shop searches only. | 2026-09-17: BRAK lifted to VERIFIED_CROSS_BORDER. The local BRAK still stands (no crystalline fructose at any reachable Argentine grocer, pharmacy or dietetica), but two direct foreign shops both prove the GTIN on their own page, print a single-ingredient fructose composition, are IN_STOCK, and name Argentina in their own delivery-country list: BulkSupplements (250 g) and GOURMET VERSAND / Sosa (1 kg)."
@@ -403,7 +483,13 @@
       "~/.cache/gellatti-evidence/verify/quote_09a29070df7e528b.json"
      ],
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T15:43:59Z"
+     "checked_at_utc": "2026-09-17T15:43:59Z",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T20:05:00Z",
+      "basis": "the page's own product data says ['http://schema.org/InStock']",
+      "source": "https://www.farmacity.com/inufiber-inulina-pote-x-150-g/p"
+     }
     }
    ],
    "notes": "GTIN 7795344012606 is this product's own data on Farmacity (productReference/ean, clean_hits 2). farmacity.com is a generic .com (verifier: CURRENCY_ONLY), so the market is bound by an explicit quote naming Farmacity pharmacies in the República Argentina. Sold by Farmacity SA. Composition comes from the Sanitas manufacturer page for the same product. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
@@ -426,7 +512,8 @@
     "site search basso-sa.com.ar: yema",
     "site search grandiet.com: yema",
     "site search mayana.com.ar: yema",
-    "manufacturer site navigation tecnovo.com.ar: Productos -> Yema en polvo, Nueva Presentación"
+    "manufacturer site navigation tecnovo.com.ar: Productos -> Yema en polvo, Nueva Presentación",
+    "\"yema de huevo en polvo\" OR \"yema en polvo\" comprar envase 500 gramos (site:com.ar)"
    ],
    "sources_tried": [
     "carrefour.com.ar / jumbo.com.ar / disco.com.ar / vea.com.ar / diaonline.supermercadosdia.com.ar / cordiez.com.ar (supermarkets; only turrón/mazapán/flan with yolk, no yolk powder)",
@@ -443,7 +530,11 @@
     "bulksupplements.com (US; ships to many of these markets but sells no egg yolk powder)",
     "judeesfromscratch.com/policies/shipping-policy (maker of an 11 oz Egg Yolk Powder; shipping policy mentions only free US shipping - no international statement)",
     "gosupps.com (US reseller advertising Judee's Egg Yolk Powder with 'Express International Delivery'; its shipping pages return HTTP 403 - blocked, inconclusive, not bypassed)",
-    "modernistpantry.com egg yolk powder (page states it is available to US customers only)"
+    "modernistpantry.com egg yolk powder (page states it is available to US customers only)",
+    "lasacaciassa.com.ar 'Yema de Huevo Deshidratada en Polvo' (Marcos Paz, Buenos Aires) read 2026-09-17: a second genuine Argentine producer, but the page states only 'Ambos envases contienen 25,00 kg' - industrial packs, no price, no cart",
+    "ciaavicola.com.ar publishes a technical specification PDF for yema en polvo, but it is a producer spec sheet with no purchase path",
+    "kokoroaromasysabores.com.ar site search (2026-09-17): HTTP 404 on the search URL - inconclusive",
+    "mercadolibre.com.ar: marketplace - never confirms"
    ],
    "candidates": [
     {
@@ -475,19 +566,28 @@
      "evidence_class": "LEAD",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/97b9612471cfaa42.json",
      "extra_evidence_files": [
-      "~/.cache/gellatti-evidence/verify/278cbded5499ec9d.json"
+      "~/.cache/gellatti-evidence/verify/278cbded5499ec9d.json",
+      "~/.cache/gellatti-evidence/quotes/close-americas/quote_tecnovo_25kg.json"
      ],
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "checked_at_utc": "2026-09-17T15:48:36Z",
+     "checked_at_utc": "2026-09-17T19:55:00Z",
      "availability": {
       "state": "UNKNOWN",
-      "checked_at_utc": "2026-09-17T18:43:28Z",
-      "basis": "manufacturer information page (25 kg B2B); no stock or availability statement is printed",
+      "checked_at_utc": "2026-09-17T19:55:00Z",
+      "basis": "manufacturer product page; it carries no availability statement",
       "source": "https://www.tecnovo.com.ar/yema-polvo.html"
-     }
+     },
+     "channel": "B2B_INDUSTRIAL_PACK_ONLY",
+     "pack_grams": 25000,
+     "moq": null,
+     "channel_basis": "Tecnovo's page describes only the industrial pack: 'Peso neto: 25 kg', cartons stacked on pallets and stretch-wrapped. No price, no cart, no retail size. Quote file ~/.cache/gellatti-evidence/quotes/close-americas/quote_tecnovo_25kg.json.",
+     "owner_check": "Tecnovo sells dried yolk only in 25 kg cartons through its sales desk - not a consumer purchase path."
     }
    ],
-   "notes": "No retail yolk powder found in Argentine supermarkets, pharmacies, poultry retail, dietética brands or the ice-cream supplier checked. The only right-type product is Tecnovo's industrial yolk powder: 25 kg, manufacturer info page, no ingredient declaration, so LEAD with C data. Tecnovo's retail pouch is whole-egg powder (rejected). WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17: no new Argentine source. A cross-border path was searched for as well and none qualified: the shops that sell dried egg yolk either restrict it to the US (Modernist Pantry), make no international statement (Judee's), or are bot-walled (GoSupps, which advertises express international delivery for Judee's Egg Yolk Powder). The three wide-shipping ingredient shops checked (gourmet-versand, MSK, Sous Chef) and BulkSupplements sell no egg yolk powder at all."
+   "notes": "No retail yolk powder found in Argentine supermarkets, pharmacies, poultry retail, dietética brands or the ice-cream supplier checked. The only right-type product is Tecnovo's industrial yolk powder: 25 kg, manufacturer info page, no ingredient declaration, so LEAD with C data. Tecnovo's retail pouch is whole-egg powder (rejected). WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17: no new Argentine source. A cross-border path was searched for as well and none qualified: the shops that sell dried egg yolk either restrict it to the US (Modernist Pantry), make no international statement (Judee's), or are bot-walled (GoSupps, which advertises express international delivery for Judee's Egg Yolk Powder). The three wide-shipping ingredient shops checked (gourmet-versand, MSK, Sous Chef) and BulkSupplements sell no egg yolk powder at all. | Re-checked 2026-09-17 (close-americas): still LEAD_ONLY. Argentina has at least two real dried-egg-yolk producers (Tecnovo, Las Acacias) but both sell only 25 kg industrial packs through a sales desk, with no price, no cart and no composition table. No Argentine retail pack was found outside marketplaces."
   }
- }
+ },
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "last_review_agent": "close-americas",
+ "last_reviewed_at_utc": "2026-09-17T19:55:00Z"
 }

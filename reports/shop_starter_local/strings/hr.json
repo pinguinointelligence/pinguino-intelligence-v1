@@ -22,12 +22,14 @@
   "tag_alternative": "Lokalna alternativa",
   "tag_unconfirmed": "Nepotvrđeno",
   "tag_abroad_unconfirmed": "Inozemna trgovina",
+  "tag_large_pack": "Veliko pakiranje",
   "legend": {
     "from_abroad": "trgovina u inozemstvu čiji vlastiti popis dostave navodi ovu zemlju",
     "b2b": "prodaja tvrtkama ili u velikim pakiranjima — nije uobičajena maloprodajna ponuda",
     "other_composition": "ista vrsta proizvoda s drugačijim sastavom (naveden pokraj)",
     "alternative": "zamjena za drugi proizvod Gellatti",
-    "abroad_unconfirmed": "trgovina u inozemstvu; dostava u ovu zemlju nije potvrđena"
+    "abroad_unconfirmed": "trgovina u inozemstvu; dostava u ovu zemlju nije potvrđena",
+    "large_pack": "prodaje se u pakiranju od 5 kg ili više"
   },
   "starter_amount": "U Starter Packu: {g} g",
   "option": "Opcija {n}",
@@ -46,6 +48,8 @@
   "stabilizer_note": "Lokalna alternativa mješavini Gellatti, nije ista mješavina. Umiješaj je sa suhim sastojcima i zagrij bazu na 75–80 °C.",
   "missing": "U ovoj zemlji još nema odobrenog proizvoda.",
   "out_of_stock": "Trgovina je proizvod {date} prikazivala kao rasprodan.",
+  "delivery_unconfirmed": "Dostava — {country}: nije potvrđena. Provjerite kod prodavača.",
+  "extra_title": "Dodatne informacije",
   "notes_title": "Dobro je znati",
   "notes": [
     {"h": "Dostupnost", "p": "Istražene proizvode provjerili smo na web-stranicama trgovina i proizvođača 17. rujna 2026. Dekstroza, obrano mlijeko u prahu i stabilizator dolaze iz Gellattijeve tablice zemalja od 12. rujna 2026. i nisu ponovno provjereni. Dostupnost, cijene i dostava mogu se promijeniti i nisu zajamčene."},
