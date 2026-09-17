@@ -50,6 +50,7 @@
   "out_of_stock": "Die winkel het dit op {date} as uit voorraad gewys.",
   "delivery_unconfirmed": "Aflewering — {country}: nie bevestig nie. Vra by die verkoper.",
   "extra_title": "Ook goed om te weet",
+  "other_composition_note": "Die app bereken hoeveelhede vir die verwysingsamestelling, nie vir hierdie produk nie.",
   "notes_title": "Goed om te weet",
   "notes": [
     {"h": "Beskikbaarheid", "p": "Ons het die nagevorste produkte op 17 September 2026 op winkel- en vervaardigerwebwerwe nagegaan. Dekstrose, afgeroomde melkpoeier en die stabiliseerder kom uit die Gellatti-landtabel van 12 September 2026 en is nie weer nagegaan nie. Beskikbaarheid, pryse en aflewering kan verander en word nie gewaarborg nie."},

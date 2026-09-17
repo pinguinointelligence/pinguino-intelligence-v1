@@ -50,6 +50,7 @@
   "out_of_stock": "Pood näitas {date}, et toode on otsas.",
   "delivery_unconfirmed": "Tarne — {country}: kinnitamata. Küsi müüjalt.",
   "extra_title": "Lisaks tasub teada",
+  "other_composition_note": "Rakendus arvutab kogused võrdluskoostise, mitte selle toote järgi.",
   "notes_title": "Hea teada",
   "notes": [
     {"h": "Saadavus", "p": "Uuritud tooteid kontrollisime poodide ja tootjate veebilehtedel 17. septembril 2026. Dekstroos, lõssipulber ja stabilisaator pärinevad Gellatti riikide tabelist 12. septembrist 2026 ja neid uuesti ei kontrollitud. Saadavus, hinnad ja tarne võivad muutuda ega ole tagatud."},

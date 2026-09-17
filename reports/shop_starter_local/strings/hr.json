@@ -50,6 +50,7 @@
   "out_of_stock": "Trgovina je proizvod {date} prikazivala kao rasprodan.",
   "delivery_unconfirmed": "Dostava — {country}: nije potvrđena. Provjerite kod prodavača.",
   "extra_title": "Dodatne informacije",
+  "other_composition_note": "Aplikacija računa količine za referentni sastav, a ne za ovaj proizvod.",
   "notes_title": "Dobro je znati",
   "notes": [
     {"h": "Dostupnost", "p": "Istražene proizvode provjerili smo na web-stranicama trgovina i proizvođača 17. rujna 2026. Dekstroza, obrano mlijeko u prahu i stabilizator dolaze iz Gellattijeve tablice zemalja od 12. rujna 2026. i nisu ponovno provjereni. Dostupnost, cijene i dostava mogu se promijeniti i nisu zajamčene."},

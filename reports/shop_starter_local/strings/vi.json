@@ -50,6 +50,7 @@
   "out_of_stock": "Cửa hàng hiển thị sản phẩm này hết hàng vào {date}.",
   "delivery_unconfirmed": "Việc giao hàng đến {country} chưa được xác nhận — hãy hỏi người bán.",
   "extra_title": "Thông tin thêm",
+  "other_composition_note": "Ứng dụng tính định lượng theo thành phần tham chiếu, không theo sản phẩm này.",
   "notes_title": "Điều nên biết",
   "notes": [
     {"h": "Tình trạng hàng", "p": "Chúng tôi đã kiểm tra các sản phẩm đã nghiên cứu trên website của cửa hàng và nhà sản xuất vào ngày 17 tháng 9 năm 2026. Đường dextrose, sữa bột tách béo và chất ổn định lấy từ bảng quốc gia Gellatti ngày 12 tháng 9 năm 2026 và không được kiểm tra lại. Tình trạng hàng, giá và giao hàng có thể thay đổi và không được đảm bảo."},

@@ -50,6 +50,7 @@
   "out_of_stock": "A bolt {date} napján azt mutatta, hogy nincs készleten.",
   "delivery_unconfirmed": "Kiszállítás — {country}: nem megerősített. Kérdezze meg az eladót.",
   "extra_title": "Ezt is jó tudni",
+  "other_composition_note": "Az alkalmazás a referencia-összetételre számolja a mennyiségeket, nem erre a termékre.",
   "notes_title": "Jó tudni",
   "notes": [
     {"h": "Elérhetőség", "p": "A kutatott termékeket 2026. szeptember 17-én ellenőriztük boltok és gyártók weboldalain. A dextróz, a sovány tejpor és a stabilizátor a Gellatti 2026. szeptember 12-i országtáblázatából származik, ezeket nem ellenőriztük újra. Az elérhetőség, az árak és a szállítás változhat, és nem garantált."},

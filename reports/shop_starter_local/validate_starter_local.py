@@ -12,7 +12,9 @@ For every document in build/starter_local/manifest[_draft].json:
   7. the PDF carries at least as many link annotations as products with links;
   8. no researcher placeholder ("not printed", "not stated", …) is printed as if it were a name;
   9. a product the shop showed as out of stock carries the localized "out of stock on <date>" line;
- 10. publishable only: each of the seven roles has at least one product the owner accepted AND able to close it —
+ 10. a product marked "different composition" carries the localized line saying the app computes amounts for the
+     reference composition — required, never optional, in any language that prints such a product;
+ 11. publishable only: each of the seven roles has at least one product the owner accepted AND able to close it —
      a confirmed product, on a retail channel, delivered locally or with a declared delivery. A lead, a business-only
      offer and an unconfirmed delivery are additional information and never close a role (owner 2026-09-17).
 Writes build/starter_local/validation[_draft].json and exits non-zero on any failure.
@@ -89,6 +91,10 @@ def main():
         oos_line = norm(S['out_of_stock'].split('{date}')[0])
         oos_products = [p for code in ITEMS for p in doc['items'][code] if (p.get('availability') or {}).get('state') == 'OUT_OF_STOCK']
         checks['out_of_stock_shown'] = (not oos_products) or (comparable(S['out_of_stock']) is False) or (oos_line and oos_line in flat)
+        diff_products = [p for code in ITEMS for p in doc['items'][code] + (doc.get('extra_items', {}).get(code) or [])
+                         if 'other_composition' in (p.get('tags') or [])]
+        note = S.get('other_composition_note')
+        checks['composition_note_present'] = (not diff_products) or bool(note and (not comparable(note) or norm(note) in flat))
         if a.draft:
             checks['seven_roles_accepted'] = True
         else:
@@ -104,7 +110,8 @@ def main():
                         'accepted_leads': [f'{code} rank {p.get("rank")}' for code in ITEMS for p in doc['items'][code]
                                            if p.get('accepted') and p.get('evidence_class') == 'LEAD'],
                         'out_of_stock_products': [f'{code} rank {p.get("rank")}' for code in ITEMS for p in doc['items'][code]
-                                                  if (p.get('availability') or {}).get('state') == 'OUT_OF_STOCK']})
+                                                  if (p.get('availability') or {}).get('state') == 'OUT_OF_STOCK'],
+                        'different_composition_products': len(diff_products)})
         print(f'{"PASS" if ok else "FAIL"} {doc["iso"]}/{doc["locale"]} ' + ' '.join(k for k, v in checks.items() if not v))
     out = os.path.join(BUILD, 'validation_draft.json' if a.draft else 'validation.json')
     json.dump({'documents': results, 'failed': failed}, open(out, 'w'), ensure_ascii=False, indent=1)

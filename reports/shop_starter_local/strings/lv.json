@@ -50,6 +50,7 @@
   "out_of_stock": "Veikals {date} rādīja, ka preces nav krājumā.",
   "delivery_unconfirmed": "Piegāde — {country}: nav apstiprināta. Noskaidrojiet pie pārdevēja.",
   "extra_title": "Papildu informācija",
+  "other_composition_note": "Lietotne aprēķina daudzumus atsauces sastāvam, nevis šim produktam.",
   "notes_title": "Noderīgi zināt",
   "notes": [
     {"h": "Pieejamība", "p": "Izpētītos produktus pārbaudījām veikalu un ražotāju tīmekļvietnēs 2026. gada 17. septembrī. Dekstroze, vājpiena pulveris un stabilizators nāk no Gellatti valstu tabulas, kas datēta ar 2026. gada 12. septembri, un netika pārbaudīti atkārtoti. Pieejamība, cenas un piegāde var mainīties, un tās netiek garantētas."},

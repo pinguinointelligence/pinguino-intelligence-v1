@@ -50,6 +50,7 @@
   "out_of_stock": "Kauppa ilmoitti tuotteen loppuneeksi {date}.",
   "delivery_unconfirmed": "Toimitus — {country}: ei vahvistettu. Tarkista myyjältä.",
   "extra_title": "Myös hyvä tietää",
+  "other_composition_note": "Sovellus laskee määrät viitekoostumukselle, ei tälle tuotteelle.",
   "notes_title": "Hyvä tietää",
   "notes": [
     {"h": "Saatavuus", "p": "Tarkistimme tutkitut tuotteet kauppojen ja valmistajien verkkosivuilta 17. syyskuuta 2026. Dekstroosi, rasvaton maitojauhe ja stabilointiaine ovat Gellattin maataulukosta 12. syyskuuta 2026, eikä niitä tarkistettu uudelleen. Saatavuus, hinnat ja toimitus voivat muuttua, eikä niitä taata."},

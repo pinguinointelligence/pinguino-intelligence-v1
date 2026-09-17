@@ -50,6 +50,7 @@
   "out_of_stock": "Kedai menunjukkannya kehabisan stok pada {date}.",
   "delivery_unconfirmed": "Penghantaran ke {country} belum disahkan — tanya penjual.",
   "extra_title": "Maklumat tambahan",
+  "other_composition_note": "Aplikasi mengira sukatan untuk komposisi rujukan, bukan untuk produk ini.",
   "notes_title": "Baik untuk diketahui",
   "notes": [
     {"h": "Ketersediaan", "p": "Kami menyemak produk yang dikaji di laman web kedai dan pengeluar pada 17 September 2026. Dekstrosa, susu tepung skim dan penstabil berasal daripada jadual negara Gellatti bertarikh 12 September 2026 dan tidak disemak semula. Ketersediaan, harga dan penghantaran boleh berubah dan tidak dijamin."},

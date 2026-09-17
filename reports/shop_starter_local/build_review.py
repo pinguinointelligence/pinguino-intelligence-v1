@@ -267,6 +267,8 @@ def build(out_path):
                            ', '.join(why) or 'do przejrzenia', (c.get('name') or '')[:60], tried, note])
     clear = [['ID', 'ISO', 'Kraj', 'Składnik', 'Produkt', 'Dlaczego jednoznaczne', 'Decyzja Ownera (TAK/NIE)']]
     exceptions = [['ID', 'ISO', 'Kraj', 'Składnik', 'Produkt', 'Co trzeba rozstrzygnąć', 'Decyzja Ownera (TAK/NIE)']]
+    technical = [['ID', 'ISO', 'Kraj', 'Składnik', 'Produkt', 'Tłuszcz / skład', 'Czego brakuje w aplikacji']]
+    purchase = json.load(open(os.path.join(HERE, 'purchase.json'))) if os.path.exists(os.path.join(HERE, 'purchase.json')) else {}
     for iso in sorted(markets):
         r = json.load(open(os.path.join(HERE, 'research', f'{iso}.json')))
         for code in ITEMS_R:
@@ -275,7 +277,17 @@ def build(out_path):
                 st = (stock.get(iso, {}).get(code, {}) or {}).get(c.get('url') or '', {})
                 cls, eq = c.get('evidence_class'), c.get('equivalence')
                 name = f'{c.get("brand") or ""} {c.get("product_name") or ""}'.strip()[:70]
-                if recommendation(c) == 'TAK' and st.get('state') != 'OUT_OF_STOCK':
+                route = ((purchase.get(iso) or {}).get(code) or {}).get(c.get('url') or '', {}).get('state', 'UNKNOWN')
+                identity_ok = bool(c.get('identifier_confirmed') or c.get('identity_basis') in
+                                   ('FIRST_PARTY_OWN_BRAND_LISTING', 'GTIN_ON_LOCAL_PAGE', 'GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH'))
+                if c.get('equivalence') == 'B_SAME_TYPE_DIFFERENT_COMPOSITION':
+                    technical.append([rid, iso, markets[iso]['country'], ITEM_PL[code], name,
+                                      comp_text(c) or '', 'brak profilu dla tego składu — aplikacja liczy ilości dla składu '
+                                      'referencyjnego roli; zależność przekazana torowi Mapper/produktów '
+                                      '(DEPENDENCY_HANDOVER_CREAM_POWDER_PROFILE.md)'])
+                if (recommendation(c) == 'TAK' and st.get('state') != 'OUT_OF_STOCK'
+                        and route == 'ONLINE_RETAIL' and identity_ok
+                        and c.get('equivalence') == 'A_EQUIVALENT'):
                     why = ('produkt potwierdzony ' + ('w tym kraju' if not c.get('cross_border') else 'z zadeklarowaną dostawą do tego kraju')
                            + ', ten sam rodzaj produktu, kanał detaliczny'
                            + (', w sprzedaży w dniu sprawdzenia' if st.get('state') == 'IN_STOCK' else ''))
@@ -294,13 +306,24 @@ def build(out_path):
                         q.append('kod na stronie nie jest poprawnym GTIN')
                     exceptions.append([rid, iso, markets[iso]['country'], ITEM_PL[code], name,
                                        '; '.join(q) or 'do przejrzenia', ''])
+    import hashlib
+    ids = [r[0] for r in clear[1:]]
+    set_hash = hashlib.sha256('\n'.join(sorted(ids)).encode()).hexdigest()[:12]
+    countries = len({i.split('-')[0] for i in ids})
+    clear.insert(1, [f'ZESTAW {set_hash}', '', '', '', f'{len(ids)} produktów w {countries} krajach',
+                     'Jeden zestaw do jednego zatwierdzenia. Każdy wiersz: produkt potwierdzony, kanał detaliczny, '
+                     'realna droga zakupu, dostawa lokalna albo zadeklarowana, ten sam rodzaj i skład co referencja roli, '
+                     'towar dostępny w dniu sprawdzenia. Wyjątki są w 07_WYJATKI, braki techniczne w 09_BRAKI_TECHNICZNE.', ''])
+    intro.append([f'Zestaw do jednego zatwierdzenia (arkusz 06_REKOMENDACJE): wersja {set_hash}, {len(ids)} produktów, '
+                  f'{countries} krajów. Wersja zmienia się przy każdej zmianie składu zestawu.'])
     sheets = [('00_INSTRUKCJA', intro, [140], False), ('01_DO_DECYZJI', decide, [12, 5, 14, 18, 6, 16, 34, 12, 15, 40, 18, 18, 22, 34, 20, 30, 22, 16, 14, 11, 40, 40, 30, 17, 22, 16, 24], True),
               ('02_BRAKI', gaps, [5, 14, 18, 16, 30, 60, 40], True), ('03_V23', v23rows, [5, 14, 22, 16, 36, 16, 15, 14, 34, 60, 40, 50], True),
               ('04_MACIERZ', matrix, [5, 16, 12, 12, 14, 22, 22, 22, 22, 40], True),
               ('05_MACIERZ_525', matrix525, [5, 16, 22, 8, 12, 26, 14, 14, 22, 20, 12, 40], True),
               ('06_REKOMENDACJE', clear, [12, 5, 16, 20, 46, 60, 22], True),
               ('07_WYJATKI', exceptions, [12, 5, 16, 20, 46, 70, 22], True),
-              ('08_OTWARTE', still_open, [5, 16, 22, 26, 30, 70, 60], True)]
+              ('08_OTWARTE', still_open, [5, 16, 22, 26, 30, 70, 60], True),
+              ('09_BRAKI_TECHNICZNE', technical, [12, 5, 16, 20, 44, 40, 70], True)]
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     write_xlsx(out_path, sheets)
     return len(done), len(decide) - 1, len(gaps) - 1

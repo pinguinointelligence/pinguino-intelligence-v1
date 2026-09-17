@@ -50,6 +50,7 @@
   "out_of_stock": "Butikken viste varen som utsolgt {date}.",
   "delivery_unconfirmed": "Levering til {country} er ikke bekreftet — spør selgeren.",
   "extra_title": "Også greit å vite",
+  "other_composition_note": "Appen beregner mengder for referansesammensetningen, ikke for dette produktet.",
   "notes_title": "Greit å vite",
   "notes": [
     {"h": "Tilgjengelighet", "p": "Vi sjekket produktene fra undersøkelsen på nettsidene til butikker og produsenter 17. september 2026. Dekstrose, skummetmelkpulver og stabilisatoren kommer fra Gellattis landtabell av 12. september 2026 og ble ikke sjekket på nytt. Tilgjengelighet, priser og levering kan endre seg og er ikke garantert."},

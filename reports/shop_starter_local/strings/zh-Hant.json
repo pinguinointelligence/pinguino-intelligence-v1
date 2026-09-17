@@ -50,6 +50,7 @@
   "out_of_stock": "該商店在 {date} 顯示此商品缺貨。",
   "delivery_unconfirmed": "配送至 {country} 未經確認，請向賣家確認。",
   "extra_title": "補充資訊",
+  "other_composition_note": "App 按基準成分計算用量，而不是按本產品的成分。",
   "notes_title": "值得了解",
   "notes": [
     {"h": "供貨情況", "p": "我們於 2026 年 9 月 17 日在商店和製造商的網站上核實了研究中的產品。葡萄糖、脫脂奶粉和穩定劑來自 2026 年 9 月 12 日的 Gellatti 國家表，未再次核實。供貨情況、價格和配送可能會變動，且不作保證。"},

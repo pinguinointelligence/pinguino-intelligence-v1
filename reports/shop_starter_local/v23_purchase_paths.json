@@ -29,7 +29,8 @@
    },
    "verifier_verdict_file": "~/.cache/gellatti-evidence/quotes/v23-purchase-paths/identity-AE.json",
    "checked_at_utc": "2026-09-17T20:05:00Z",
-   "coordinator_note": "Read strictly: the rates row names the city \"dubai\", not the United Arab Emirates, and sits in an open \"Other (...)\" bucket. A city is not the country delivery declaration, so this stays unconfirmed; the seller quote is kept and the owner can decide otherwise (row AE-STB)."
+   "coordinator_note": "Owner's instruction 2026-09-17 (third round): establish what the price list means and keep the territorial limit. The seller's rates table has one open row — 'Other (saudi arabia, dubai, brunei... 39-85US' — which names the CITY of Dubai, not the United Arab Emirates. The evidence is kept and is not dismissed because a parser expects a country name: it supports delivery to Dubai. It does not support the country-wide role, which needs a scope covering the United Arab Emirates, so AE-STB stays open with this exact reason.",
+   "delivery_scope": "CITY_ONLY_DUBAI"
   }
  },
  "AU": {

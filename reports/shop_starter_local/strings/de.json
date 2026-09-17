@@ -50,6 +50,7 @@
   "out_of_stock": "Der Shop zeigte das Produkt am {date} als nicht vorrätig.",
   "delivery_unconfirmed": "Lieferung — {country}: nicht bestätigt. Beim Verkäufer nachfragen.",
   "extra_title": "Auch gut zu wissen",
+  "other_composition_note": "Die App berechnet die Mengen für die Referenzzusammensetzung, nicht für dieses Produkt.",
   "notes_title": "Gut zu wissen",
   "notes": [
     {"h": "Verfügbarkeit", "p": "Wir haben die recherchierten Produkte am 17. September 2026 auf Websites von Shops und Herstellern geprüft. Dextrose, Magermilchpulver und der Stabilisator stammen aus der Gellatti-Ländertabelle vom 12. September 2026 und wurden nicht erneut geprüft. Verfügbarkeit, Preise und Lieferung können sich ändern und sind nicht garantiert."},

@@ -50,6 +50,7 @@
   "out_of_stock": "Obchod tento produkt {date} uvádzal ako vypredaný.",
   "delivery_unconfirmed": "Doručenie — {country}: nepotvrdené. Overte u predajcu.",
   "extra_title": "Doplňujúce informácie",
+  "other_composition_note": "Aplikácia počíta množstvá pre referenčné zloženie, nie pre tento produkt.",
   "notes_title": "Dobré vedieť",
   "notes": [
     {"h": "Dostupnosť", "p": "Vyhľadané produkty sme 17. septembra 2026 overili na weboch obchodov a výrobcov. Dextróza, sušené odtučnené mlieko a stabilizátor pochádzajú z tabuľky krajín Gellatti z 12. septembra 2026 a znova sa neoverovali. Dostupnosť, ceny a doručenie sa môžu zmeniť a nie sú zaručené."},

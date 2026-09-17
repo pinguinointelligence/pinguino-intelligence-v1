@@ -50,6 +50,7 @@
   "out_of_stock": "La boutique l’indiquait en rupture de stock le {date}.",
   "delivery_unconfirmed": "Livraison — {country} : non confirmée. Renseignez-vous auprès du vendeur.",
   "extra_title": "Aussi bon à savoir",
+  "other_composition_note": "L’application calcule les quantités pour la composition de référence, pas pour ce produit.",
   "notes_title": "Bon à savoir",
   "notes": [
     {"h": "Disponibilité", "p": "Nous avons vérifié les produits recherchés sur les sites de boutiques et de fabricants le 17 septembre 2026. Le dextrose, le lait écrémé en poudre et le stabilisant proviennent du tableau des pays Gellatti du 12 septembre 2026 et n’ont pas été revérifiés. La disponibilité, les prix et la livraison peuvent changer et ne sont pas garantis."},

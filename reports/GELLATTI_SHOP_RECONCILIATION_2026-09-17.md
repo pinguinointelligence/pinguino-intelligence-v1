@@ -347,6 +347,79 @@ SA SG UY (śmietanka + żółtko), MT (dekstroza + śmietanka), TR (żółtko + 
 potwierdza, siedem ról zamykanych wyłącznie produktem potwierdzonym w kanale detalicznym z dostawą lokalną albo
 zadeklarowaną). Stan magazynowy zapisany dla 443 kandydatów.
 
+### M13. Trzecia korekta właściciela — normalizacja zapisu, droga zakupu, rozdzielenie gotowości
+
+**1. Reguły rozstrzygnięte — bez ponownego pytania.** Oferty wyłącznie B2B i tropy z niepotwierdzoną dostawą są
+informacją dodatkową w PDF (wyraźnie oddzieloną, z uczciwym zastrzeżeniem) i nie zamykają roli detalicznej. Masa
+opakowania nie ustala kanału. Inny skład idzie do oceny, nie do automatycznych obliczeń. Dodana została odwrotna
+ochrona, o którą właściciel prosił: **brak zakazu B2B nie jest potwierdzeniem sprzedaży detalicznej** — rolę zamyka
+tylko strona z realną drogą zakupu. `purchase_path.py` czyta to z zapisanych stron (cena i/lub przycisk zakupu):
+424 kandydatów ma drogę zakupu online, 14 to karta katalogowa albo oferta „na zapytanie", 5 bez zapisanej strony.
+Skutek: **turecka śmietanka 42 % (Enka Süt) przestaje zamykać rolę** — producent nie drukuje żadnego ograniczenia
+sprzedaży, ale jedyną drogą zamówienia jest kontakt handlowy, więc to nie jest detaliczna droga zakupu.
+
+**2. Zapis opakowania znormalizowany — i to wystarczyło, żeby zamknąć Arabię Saudyjską.** `identity_match.py` czytał
+tylko `(\d+(?:[.,]\d+)?)\s*(kg|gr|g|mg|ml|cl|l|oz|lb)\b`, więc „3 Lbs" (liczba mnoga), „1361gm" (zapis „gm") i
+„1,361 g" (separator tysięcy czytany jako ułamek) nie parsowały się wcale albo dawały 1,4 g. Poprawione: jednostki mogą
+być w liczbie mnogiej i w pisowni „gm", separator tysięcy rozpoznawany po grupach trzycyfrowych (z zabezpieczeniem, że
+„0,500 kg" to pół kilo, nie 500 kg), a **to samo opakowanie zapisane dwa razy** („3 Lbs (1361gm)") przestaje być czytane
+jako dwa różne opakowania. Po poprawce dopasowanie NOW Foods / Nahdi przechodzi **bez ani jednego niespełnionego
+warunku**: GTIN 733739069337 jest daną na stronie źródłowej, marka, nazwa, opakowanie i wiązanie rynku zgadzają się,
+strona lokalna ma towar. `SA-FRU-2` = **POTWIERDZONY LOKALNIE**, a rola fruktozy dla Arabii Saudyjskiej jest zamknięta —
+bez żadnej decyzji biznesowej, wyłącznie przez poprawne odczytanie jednostek. Halwani bez zmian: brak składu pozostaje
+brakiem, nic nie zostało dopisane.
+
+**ZEA:** cennik sprzedawcy wymienia w otwartym wierszu „Other (saudi arabia, dubai, brunei…" **miasto Dubaj**, nie
+państwo. Dowód zostaje zapisany i nie jest odrzucany dlatego, że parser oczekuje nazwy kraju — potwierdza dostawę do
+Dubaju. Do zamknięcia roli ogólnokrajowej zakres jest niewystarczający, więc `AE-STB` pozostaje otwarte z tym właśnie
+uzasadnieniem (`delivery_scope: CITY_ONLY_DUBAI`).
+
+**3. Cztery poziomy gotowości, liczone osobno** (`readiness_matrix.py`):
+
+| Poziom | Wynik |
+|---|---|
+| 1. Pokrycie zakupowe — kraje z siedmioma zamkniętymi rolami | **26** |
+| 2. Dopasowanie techniczne — z tego kraje, gdzie każdy zamykający produkt odpowiada składem referencji roli | **24** |
+| 3. Decyzja właściciela — z tego kraje zaakceptowane na wszystkich rolach | **0** |
+| 4. Gotowe do publikacji (1 ∧ 2 ∧ 3) | **0** |
+
+Kraje, w których rolę zamyka produkt o innym składzie (wymaga własnego profilu): **NZ, SE, US**. Historyczna akceptacja
+v23 zostaje nietknięta i nie rozszerza się na nowe produkty: w macierzy wiersze v23 mają `OWNER_V23_SELECTION`, a wiersze
+z researchu `NONE` do czasu decyzji.
+
+**4. Zależność składu przekazana, bez drugiego Mappera.** Najpierw sprawdzone gotowe i równoległe profile: jedyne wiersze
+`cream_powder` to `PI-ING-002242` (neutralny, 42 %) i `PI-ING-000260` (Mlekovita, 42 %) — **neutralny profil już istnieje
+jako wzorzec**; w paśmie 45–53 % są wyłącznie chłodzone kremy Fabbri/Leagel, nie proszki. Nie ma profilu dla mlecznej
+śmietanki w proszku 53–75 %. Notatka przekazania: `reports/shop_starter_local/DEPENDENCY_HANDOVER_CREAM_POWDER_PROFILE.md`
+— z dowodami (`productEngineHandoff.ts:71-72`, `catalogIngredient.ts`, `applyPipeline.ts:8899-8913`), listą zablokowanych
+wierszy po stabilnych ID (NZ-CRP-1, SE-CRP-1, US-CRP-1 oraz 11 rynków z brytyjskim produktem 75 %) i czterema pytaniami
+do rozstrzygnięcia (profil → binding → skład do Engine → przeliczenie). Przekazana sesji „Plan przygotowania Gellatti
+z istniejących danych" i **przez nią przyjęta** (zapis po ich stronie: `MAPA-WDROZENIA.md §9`). Ten tor sprawdził oba
+ustalenia samodzielnie i podzielił odpowiedzialność: strona kodowa (którą drogą realny produkt wiąże się z profilem, czy
+własny skład produktu kiedykolwiek trafia do Engine, co z przeliczeniem receptury) należy do nich; **utworzenie nowych
+profili to zmiana danych katalogu i wymaga osobnej, konkretnej zgody właściciela**, której nie mają — więc do czasu
+decyzji nic nie tworzą ani nie wiążą. Przedstawią właścicielowi dwa warianty z istniejących wzorców: neutralny profil na
+pasmo składu albo przekazywanie własnego składu produktu do Engine z nazwanym właścicielem weryfikacji. Poprosili, żeby
+SHOP zachował dotychczasowe zachowanie (pozycja zakupowa, komunikat o składzie referencyjnym, bez
+`canonical_ingredient_id`, kraj „gotowy zakupowo, nie do publikacji") — i tak jest zapisane. SHOP nic tu nie implementuje.
+
+Dla USA rozdzielone zostały dwa problemy: **brak wiarygodnych danych źródłowych** (tablica ze zdjęcia jest wewnętrznie
+sprzeczna — zapisane jako obserwacje; **sposób powstania obrazu nie jest ustalony i nie jest twierdzony**; karty
+technicznej producenta nie ma) i **brak dopasowania w aplikacji**. Zdobycie specyfikacji przez napisanie do sprzedawcy
+wymagałoby osobnej zgody na wysyłkę i nie zostało zrobione.
+
+**5. Rozliczenie wszystkich otwartych kombinacji** — jedna główna przyczyna na kombinację, sumująca się dokładnie, plus
+flagi dodatkowe liczone osobno. Brakujące wcześniej kategorie to: **brak drogi zakupu**, **skład nienadrukowany** oraz
+**wiersz v23 oznaczony przez właściciela jako B2B** (poprzednia lista 87 + 26 + 14 + 8 = 135 nie obejmowała ich).
+
+**6. Jeden zestaw do zatwierdzenia.** Arkusz `06_REKOMENDACJE` zaczyna się wierszem `ZESTAW <wersja>` z liczbą produktów
+i krajów; wersja to skrót z posortowanej listy stabilnych ID i zmienia się przy każdej zmianie składu zestawu. Kryteria
+wiersza w zestawie: produkt potwierdzony, kanał detaliczny, realna droga zakupu, dostawa lokalna albo zadeklarowana,
+**ten sam rodzaj i skład co referencja roli**, towar dostępny w dniu sprawdzenia, tożsamość udowodniona. Wszystko inne
+jest w `07_WYJATKI` (z konkretnym pytaniem) albo w `09_BRAKI_TECHNICZNE` (inny skład — zależność z punktu 4).
+Zdanie o różnicy składu przestało być opcjonalne: walidator wymaga go w każdym języku, który drukuje taki produkt
+(43/43 lokalizacje mają tę linię).
+
 ### M11. Konieczne zastosowania — pokazane osobno, **żadne nie wykonane**
 
 Ta wiadomość właściciela nie daje zgody na wspólną bazę, Storage, funkcje Edge, usuwanie wierszy testowych, `ON` ani

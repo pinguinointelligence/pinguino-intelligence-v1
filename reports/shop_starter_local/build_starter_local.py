@@ -203,10 +203,14 @@ def can_close_role(c, cls):
         return False
     if is_business_offer(c):
         return False
+    # A page with no way to buy — a data sheet, a quote-on-request listing — is not a retail purchase path, even when
+    # the seller prints no restriction at all (owner 2026-09-17, third round).
+    if c.get('_purchase_route') == 'CONTACT_OR_QUOTE':
+        return False
     return delivery_state(c) in ('LOCAL', 'CONFIRMED')
 
 
-def research_products(item, accepted_ranks, draft, stock_for_item):
+def research_products(item, accepted_ranks, draft, stock_for_item, purchase_for_item=None):
     """Two lists for one item: the purchase lines, and the clearly separated additional information.
 
     Order inside the purchase lines (owner 2026-09-17): a confirmed offer that is in stock comes before one the shop
@@ -220,6 +224,7 @@ def research_products(item, accepted_ranks, draft, stock_for_item):
         cls = c.get('evidence_class')
         if not accepted and not (draft and cls in CUSTOMER_CLASSES | {'LEAD'}):
             continue
+        c['_purchase_route'] = ((purchase_for_item or {}).get(c.get('url') or '') or {}).get('state', 'UNKNOWN')
         picked.append((c, accepted, cls, availability_of(c, stock_for_item)))
     main = [p for p in picked if can_close_role(p[0], p[2])]
     extra = [p for p in picked if not can_close_role(p[0], p[2])]
@@ -256,11 +261,11 @@ def render_product(c, accepted, cls, avail):
         'gtin': c.get('gtin') or '', 'code': '', 'links': links, 'tags': tags,
         'composition': {'fat_g': comp.get('fat_g')}, 'evidence_class': cls, 'accepted': accepted,
         'availability': avail, 'shipping': delivery_state(c) if c.get('cross_border') else None,
-        'closes_role': can_close_role(c, cls),
+        'purchase_route': c.get('_purchase_route', 'UNKNOWN'), 'closes_role': can_close_role(c, cls),
     }
 
 
-def market_rows(iso, v23, research_dir, acceptance, draft, stock, v23_ship, v23_paths):
+def market_rows(iso, v23, research_dir, acceptance, draft, stock, v23_ship, v23_paths, purchase=None):
     """Returns (purchase lines per role, additional information per role)."""
     rows, extras = {}, {c: [] for c in ITEMS}
     research = load(os.path.join(research_dir, f'{iso}.json'), {}) or {}
@@ -275,7 +280,8 @@ def market_rows(iso, v23, research_dir, acceptance, draft, stock, v23_ship, v23_
             decision = (acceptance.get(iso) or {}).get(code) or {}
             ranks = set(decision.get('accepted_ranks') or []) if decision.get('decision') == 'ACCEPT' else set()
             rows[code], extras[code] = research_products((research.get('items') or {}).get(code), ranks, draft,
-                                                         (stock.get(iso) or {}).get(code) or {})
+                                                         (stock.get(iso) or {}).get(code) or {},
+                                                         ((purchase or {}).get(iso) or {}).get(code) or {})
     return rows, extras
 
 
@@ -662,6 +668,7 @@ def main():
     v23 = json.load(open(os.path.join(HERE, 'v23_rows.json')))['countries']
     acceptance = load(os.path.join(HERE, 'acceptance.json'), {}) or {}
     stock = load(os.path.join(HERE, 'stock.json'), {}) or {}            # extract_stock.py: state at check time, with date
+    purchase = load(os.path.join(HERE, 'purchase.json'), {}) or {}      # purchase_path.py: is there a route to buy at all
     v23_ship = load(os.path.join(HERE, 'v23_shipping.json'), {}) or {}  # delivery_check.py: the delivery claim per country
     v23_paths = load(os.path.join(HERE, 'v23_purchase_paths.json'), {}) or {}  # another seller of the SAME v23 product
     strings_dir = os.path.join(HERE, 'strings')
@@ -680,7 +687,7 @@ def main():
     preload_display_names(pairs)
     tasks = []
     for iso in isos:
-        rows, extras = market_rows(iso, v23, os.path.join(HERE, 'research'), acceptance, a.draft, stock, v23_ship, v23_paths)
+        rows, extras = market_rows(iso, v23, os.path.join(HERE, 'research'), acceptance, a.draft, stock, v23_ship, v23_paths, purchase)
         missing = [c for c in ITEMS if not rows[c]]
         locales = markets[iso]['locales']
         if a.locale:

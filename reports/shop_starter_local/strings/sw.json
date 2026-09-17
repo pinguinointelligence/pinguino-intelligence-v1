@@ -50,6 +50,7 @@
   "out_of_stock": "Duka lilionyesha bidhaa hii kuwa imeisha tarehe {date}.",
   "delivery_unconfirmed": "Usafirishaji hadi {country} haujathibitishwa — muulize muuzaji.",
   "extra_title": "Taarifa za ziada",
+  "other_composition_note": "Programu hukokotoa vipimo kwa muundo wa marejeo, si kwa bidhaa hii.",
   "notes_title": "Ni vizuri kujua",
   "notes": [
     {"h": "Upatikanaji", "p": "Tulikagua bidhaa zilizotafitiwa kwenye tovuti za maduka na watengenezaji tarehe 17 Septemba 2026. Dekstrosi, maziwa ya unga yaliyoondolewa mafuta na kiimarishaji vinatoka kwenye jedwali la nchi la Gellatti la tarehe 12 Septemba 2026 na havikukaguliwa tena. Upatikanaji, bei na usafirishaji vinaweza kubadilika na havihakikishwi."},

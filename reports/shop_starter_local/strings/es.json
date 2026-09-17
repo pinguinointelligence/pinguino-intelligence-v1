@@ -50,6 +50,7 @@
   "out_of_stock": "La tienda lo mostraba como agotado el {date}.",
   "delivery_unconfirmed": "El envío a {country} no está confirmado — consúltalo con el vendedor.",
   "extra_title": "Información adicional",
+  "other_composition_note": "La app calcula las cantidades para la composición de referencia, no para este producto.",
   "notes_title": "Conviene saber",
   "notes": [
     {"h": "Disponibilidad", "p": "Verificamos los productos investigados en sitios web de tiendas y fabricantes el 17 de septiembre de 2026. La dextrosa, la leche descremada en polvo y el estabilizante proceden de la tabla de países de Gellatti del 12 de septiembre de 2026 y no se volvieron a verificar. La disponibilidad, los precios y el envío pueden cambiar y no están garantizados."},

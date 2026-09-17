@@ -23,9 +23,22 @@ v = importlib.util.module_from_spec(spec); spec.loader.exec_module(v)
 sys.path.insert(0, HERE)
 from identifiers import id_type, digits  # noqa: E402
 
-UNIT = {'kg': ('g', 1000), 'g': ('g', 1), 'gr': ('g', 1), 'mg': ('g', 0.001), 'l': ('ml', 1000), 'ml': ('ml', 1), 'cl': ('ml', 10),
-        'oz': ('g', 28.3495), 'lb': ('g', 453.592)}
-PACK_RX = re.compile(r'(\d+(?:[.,]\d+)?)\s*(kg|gr|g|mg|ml|cl|l|oz|lb)\b', re.I)
+UNIT = {'kg': ('g', 1000), 'kgs': ('g', 1000), 'g': ('g', 1), 'gr': ('g', 1), 'grs': ('g', 1), 'gm': ('g', 1),
+        'gms': ('g', 1), 'mg': ('g', 0.001), 'l': ('ml', 1000), 'ml': ('ml', 1), 'cl': ('ml', 10),
+        'oz': ('g', 28.3495), 'ozs': ('g', 28.3495), 'lb': ('g', 453.592), 'lbs': ('g', 453.592)}
+# A shop writes the same pack as "3 lbs", "3 Lbs (1,361 g)" or "(1361gm)". The number may carry a thousands separator;
+# a group of exactly three digits after a separator is thousands, unless the leading group is a zero ("0,500 kg" is
+# half a kilo, not five hundred). Units may be plural or spelled "gm".
+NUMBER = r'[1-9]\d{0,2}(?:[.,]\d{3})+(?!\d)|\d+(?:[.,]\d{1,3})?(?!\d)'
+PACK_RX = re.compile(r'(' + NUMBER + r')\s*(kgs|kg|grs|gr|gms|gm|g|mg|ml|cl|l|ozs|oz|lbs|lb)\b\.?', re.I)
+THOUSANDS = re.compile(r'^[1-9]\d{0,2}(?:[.,]\d{3})+$')
+
+
+def to_number(num):
+    """'1,361' and '1.361' are 1361 when every separator is followed by exactly three digits; '1,5' is 1.5."""
+    if THOUSANDS.fullmatch(num):
+        return float(re.sub(r'[.,]', '', num))
+    return float(num.replace(',', '.'))
 
 
 def fold(s):
@@ -37,8 +50,17 @@ def packs(text):
     out = set()
     for num, unit in PACK_RX.findall(text or ''):
         fam, f = UNIT[unit.lower()]
-        out.add((fam, round(float(num.replace(',', '.')) * f, 1)))
+        out.add((fam, round(to_number(num) * f, 1)))
     return out
+
+
+def distinct_packs(ps, tol=0.01):
+    """Pack values that really differ: the same quantity in two notations collapses to one."""
+    kept = []
+    for fam, val in sorted(ps, key=lambda x: x[1]):
+        if not any(f == fam and abs(val - v) <= tol * max(val, v) for f, v in kept):
+            kept.append((fam, val))
+    return kept
 
 
 def gtins_on(h):
@@ -81,7 +103,7 @@ def main():
     for w in words:
         if w not in s_txt: fails.append(f'NAME_WORD_NOT_ON_SOURCE:{w}')
         if w not in l_txt: fails.append(f'NAME_WORD_NOT_ON_LOCAL:{w}')
-    want = packs(a.pack)
+    want = set(distinct_packs(packs(a.pack)))
     if not want: fails.append('PACK_NOT_PARSEABLE')
     else:
         def near_pack(hh):
@@ -94,7 +116,10 @@ def main():
         l_packs = packs(l_title) or packs(l_txt) or near_pack(lh)
         if not want & l_packs: fails.append('PACK_NOT_ON_LOCAL')
         fam = next(iter(want))[0]
-        if len({p for p in packs(l_title) if p[0] == fam}) > 1: fails.append('LOCAL_TITLE_OFFERS_SEVERAL_PACK_SIZES (AMBIGUOUS)')
+        # One pack written twice ("3 Lbs (1361gm)") is not two packs: cluster values within 1 % before calling a title
+        # ambiguous (owner 2026-09-17: normalise units and rounding, keep the original text).
+        if len(distinct_packs({p for p in packs(l_title) if p[0] == fam})) > 1:
+            fails.append('LOCAL_TITLE_OFFERS_SEVERAL_PACK_SIZES (AMBIGUOUS)')
     for tok in a.variant + a.formulation:
         ft = fold(tok)
         if ft not in s_txt: fails.append(f'TOKEN_NOT_ON_SOURCE:{tok}')

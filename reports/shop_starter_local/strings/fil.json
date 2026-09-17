@@ -50,6 +50,7 @@
   "out_of_stock": "Noong {date}, ipinakita ng tindahan na wala itong stock.",
   "delivery_unconfirmed": "Hindi kumpirmado ang paghahatid sa {country} — magtanong sa nagbebenta.",
   "extra_title": "Karagdagang impormasyon",
+  "other_composition_note": "Kinakalkula ng app ang dami para sa reference na komposisyon, hindi para sa produktong ito.",
   "notes_title": "Mabuting malaman",
   "notes": [
     {"h": "Pagkakaroon ng produkto", "p": "Sinuri namin ang mga produktong nasaliksik sa mga website ng tindahan at tagagawa noong 17 Setyembre 2026. Ang dextrose, pulbos na skim milk at ang stabilizer ay mula sa talahanayan ng mga bansa ng Gellatti noong 12 Setyembre 2026 at hindi na muling sinuri. Ang pagkakaroon ng produkto, presyo at paghahatid ay maaaring magbago at hindi garantisado."},

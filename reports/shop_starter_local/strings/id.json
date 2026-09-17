@@ -50,6 +50,7 @@
   "out_of_stock": "Toko menampilkannya sebagai stok habis pada {date}.",
   "delivery_unconfirmed": "Pengiriman ke {country} belum dikonfirmasi — tanyakan kepada penjual.",
   "extra_title": "Informasi tambahan",
+  "other_composition_note": "Aplikasi menghitung takaran untuk komposisi acuan, bukan untuk produk ini.",
   "notes_title": "Perlu diketahui",
   "notes": [
     {"h": "Ketersediaan", "p": "Kami memeriksa produk hasil riset di situs web toko dan produsen pada 17 September 2026. Dekstrosa, susu bubuk skim, dan penstabil berasal dari tabel negara Gellatti tanggal 12 September 2026 dan tidak diperiksa ulang. Ketersediaan, harga, dan pengiriman dapat berubah dan tidak dijamin."},

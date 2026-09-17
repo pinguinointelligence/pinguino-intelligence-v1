@@ -50,6 +50,7 @@
   "out_of_stock": "Parduotuvė {date} rodė, kad prekės nėra.",
   "delivery_unconfirmed": "Pristatymas — {country}: nepatvirtintas. Pasiteiraukite pardavėjo.",
   "extra_title": "Papildoma informacija",
+  "other_composition_note": "Programėlė apskaičiuoja kiekius pagal etaloninę sudėtį, o ne pagal šį produktą.",
   "notes_title": "Verta žinoti",
   "notes": [
     {"h": "Prieinamumas", "p": "Ištirtus produktus patikrinome parduotuvių ir gamintojų svetainėse 2026 m. rugsėjo 17 d. Dekstrozė, nugriebto pieno milteliai ir stabilizatorius paimti iš 2026 m. rugsėjo 12 d. Gellatti šalių lentelės ir iš naujo netikrinti. Prieinamumas, kainos ir pristatymas gali keistis ir nėra garantuojami."},

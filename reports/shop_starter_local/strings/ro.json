@@ -50,6 +50,7 @@
   "out_of_stock": "Magazinul l-a afișat ca epuizat la data de {date}.",
   "delivery_unconfirmed": "Livrarea în {country} nu este confirmată — verificați la vânzător.",
   "extra_title": "Informații suplimentare",
+  "other_composition_note": "Aplicația calculează cantitățile pentru compoziția de referință, nu pentru acest produs.",
   "notes_title": "Bine de știut",
   "notes": [
     {"h": "Disponibilitate", "p": "Am verificat produsele cercetate pe site-urile magazinelor și ale producătorilor la data de 17 septembrie 2026. Dextroza, laptele praf degresat și stabilizatorul provin din tabelul de țări Gellatti din 12 septembrie 2026 și nu au fost verificate din nou. Disponibilitatea, prețurile și livrarea se pot schimba și nu sunt garantate."},

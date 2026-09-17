@@ -50,6 +50,7 @@
   "out_of_stock": "Trgovina je izdelek {date} prikazovala kot razprodan.",
   "delivery_unconfirmed": "Dostava — {country}: ni potrjena. Preverite pri prodajalcu.",
   "extra_title": "Dodatne informacije",
+  "other_composition_note": "Aplikacija izračuna količine za referenčno sestavo, ne za ta izdelek.",
   "notes_title": "Dobro je vedeti",
   "notes": [
     {"h": "Razpoložljivost", "p": "Raziskane izdelke smo 17. septembra 2026 preverili na spletnih straneh trgovin in proizvajalcev. Dekstroza, posneto mleko v prahu in stabilizator izhajajo iz Gellattijeve tabele držav z dne 12. septembra 2026 in niso bili znova preverjeni. Razpoložljivost, cene in dostava se lahko spremenijo in niso zagotovljene."},

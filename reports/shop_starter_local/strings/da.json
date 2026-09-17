@@ -50,6 +50,7 @@
   "out_of_stock": "Butikken viste varen som udsolgt den {date}.",
   "delivery_unconfirmed": "Levering til {country} er ikke bekræftet — spørg sælgeren.",
   "extra_title": "Også værd at vide",
+  "other_composition_note": "Appen beregner mængder for referencesammensætningen, ikke for dette produkt.",
   "notes_title": "Godt at vide",
   "notes": [
     {"h": "Tilgængelighed", "p": "Vi tjekkede de undersøgte produkter på butikkers og producenters websites den 17. september 2026. Dextrose, skummetmælkspulver og stabilisatoren kommer fra Gellattis landetabel af 12. september 2026 og blev ikke tjekket igen. Tilgængelighed, priser og levering kan ændre sig og er ikke garanteret."},

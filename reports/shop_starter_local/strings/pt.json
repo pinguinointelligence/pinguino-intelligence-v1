@@ -50,6 +50,7 @@
   "out_of_stock": "A loja mostrou este produto como esgotado em {date}.",
   "delivery_unconfirmed": "Entrega — {country}: não confirmada. Confirme com o vendedor.",
   "extra_title": "Também é bom saber",
+  "other_composition_note": "O app calcula as quantidades para a composição de referência, não para este produto.",
   "notes_title": "Bom saber",
   "notes": [
     {"h": "Disponibilidade", "p": "Os produtos pesquisados foram verificados em sites de lojas e fabricantes em 17 de setembro de 2026. A dextrose, o leite em pó desnatado e o estabilizante vêm da tabela de países da Gellatti de 12 de setembro de 2026 e não foram verificados novamente. A disponibilidade, os preços e a entrega podem mudar e não são garantidos."},

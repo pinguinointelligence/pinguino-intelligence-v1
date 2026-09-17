@@ -96,7 +96,7 @@
    "notes": "Only rejected product types were found (whipped-topping mixes, full-cream milk powders). | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name Saudi Arabia among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF."
   },
   "FRU": {
-   "result": "VERIFIED_CROSS_BORDER",
+   "result": "CONFIRMED_LOCAL",
    "local_terms": [
     "fructose",
     "fruit sugar",
@@ -190,7 +190,7 @@
      "seller": "Nahdi Medical Co. (nahdionline.com)",
      "page_market": "SA",
      "market_by": "PATH_LOCALE",
-     "identity_basis": "NOT_PROVEN",
+     "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
      "market_binding_signal": "country path /en-sa/ (SAR prices)",
      "cross_border": false,
      "ships_to_evidence": null,
@@ -204,21 +204,18 @@
      },
      "equivalence": "A_EQUIVALENT",
      "equivalence_note": "pure crystalline fructose, no added ingredients",
-     "evidence_class": "LEAD",
+     "evidence_class": "CONFIRMED_LOCAL",
      "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/779b4720ba46a7cb.json",
      "verifier_verification_class": "PAGE_FACTS_ONLY",
      "checked_at_utc": "2026-09-17T16:04:06Z",
-     "identity_note": "TASK 2 answered 2026-09-17: the pack-notation match CANNOT be resolved with identity_match.py, and the reason is exact. The Nahdi page writes the pack only as \"3 Lbs\" and \"(1361gm)\" / \"(1,361gm)\"; the tool's PACK_RX is (\\d+(?:[.,]\\d+)?)\\s*(kg|gr|g|mg|ml|cl|l|oz|lb)\\b and needs a word boundary straight after the unit, so the plural \"Lbs\" and the \"gm\" spelling both fail to parse - packs() returns the empty set for every notation on the local page (verified directly: packs('3 Lbs')=set(), packs('(1361gm)')=set()). The Vitacost source writes \"3 lbs (1,361 g)\", which the same parser reads as 1.4 g because it treats the thousands comma as a decimal point, so PACK_NOT_ON_SOURCE fires as well once the true pack is passed. Nahdi never prints the GTIN (the raw page contains no 733739069337 and no gtin/ean/barcode field - only its own sku 103320411), so the tool's \"pack next to the GTIN\" fallback has nothing to anchor on, and nowfoods.com answers 403 so the manufacturer page could not be used instead. By meaning the match is unambiguous - 3 lb = 1361 g, the local title prints both notations, and UPC 733739069337 is the 3 lb pack - but that is a human reading, not a tool verdict, so exact_product_identity_confirmed stays false and the row stays a LEAD.",
+     "identity_note": "Resolved 2026-09-17 (owner's third correction: if the only gap is the parser, fix the parser). identity_match.py now reads plural units ('3 Lbs'), the 'gm' spelling and thousands separators ('1,361 g'), and treats one pack written twice ('3 Lbs (1361gm)') as one pack rather than two. With the original texts unchanged, the match returns exact_product_identity_confirmed=true with no failed checks: GTIN 733739069337 is data on the source page (UPC field), brand, name, pack and market binding all hold, and the local page is in stock. No business decision was needed — only the unit notation was read correctly.",
      "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_8a3a79f8c9460d98.json",
      "identity_match_result": {
       "identifier_confirmed": true,
-      "exact_product_identity_confirmed": false,
+      "exact_product_identity_confirmed": true,
       "market_binding_confirmed": true,
-      "local_availability_confirmed": false,
-      "failed_checks": [
-       "PACK_NOT_ON_LOCAL",
-       "PACK_NOT_ON_SOURCE"
-      ],
+      "local_availability_confirmed": true,
+      "failed_checks": [],
       "source_url": "https://www.vitacost.com/products/now-foods-fructose-sweetener-3-lbs-1-361-g-7762"
      },
      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
@@ -228,7 +225,7 @@
       "basis": "schema.org InStock",
       "source": "https://www.nahdionline.com/en-sa/now-foods-fructose-sweetener-3-lbs-1361gm/pdp/103320411"
      },
-     "owner_check": "the only missing field is the pack-notation match: Nahdi writes \"3 Lbs (1361gm)\" and the source writes \"3 lbs (1,361 g)\"; the tool cannot parse either spelling, so the owner would be accepting a human reading of the same pack.",
+     "owner_check": null,
      "channel": "RETAIL_CONSUMER",
      "pack_grams": 1361,
      "moq": null

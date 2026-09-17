@@ -50,6 +50,7 @@
   "out_of_stock": "De winkel gaf dit op {date} aan als niet op voorraad.",
   "delivery_unconfirmed": "Levering — {country}: niet bevestigd. Vraag het de verkoper.",
   "extra_title": "Ook goed om te weten",
+  "other_composition_note": "De app berekent hoeveelheden voor de referentiesamenstelling, niet voor dit product.",
   "notes_title": "Goed om te weten",
   "notes": [
     {"h": "Beschikbaarheid", "p": "We hebben de onderzochte producten op 17 september 2026 gecontroleerd op websites van winkels en fabrikanten. Dextrose, magere melkpoeder en de stabilisator komen uit de Gellatti-landentabel van 12 september 2026 en zijn niet opnieuw gecontroleerd. Beschikbaarheid, prijzen en levering kunnen veranderen en zijn niet gegarandeerd."},

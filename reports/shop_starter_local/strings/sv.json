@@ -50,6 +50,7 @@
   "out_of_stock": "Butiken visade varan som slutsåld den {date}.",
   "delivery_unconfirmed": "Leverans till {country} är inte bekräftad — fråga säljaren.",
   "extra_title": "Också bra att veta",
+  "other_composition_note": "Appen räknar ut mängder för referenssammansättningen, inte för den här produkten.",
   "notes_title": "Bra att veta",
   "notes": [
     {"h": "Tillgänglighet", "p": "Vi kontrollerade de undersökta produkterna på butikers och tillverkares webbplatser den 17 september 2026. Dextros, skummjölkspulver och stabiliseringsmedlet kommer från Gellattis landtabell från den 12 september 2026 och kontrollerades inte på nytt. Tillgänglighet, priser och leverans kan ändras och garanteras inte."},

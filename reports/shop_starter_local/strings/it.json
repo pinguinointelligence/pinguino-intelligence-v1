@@ -50,6 +50,7 @@
   "out_of_stock": "Il negozio lo indicava come esaurito il {date}.",
   "delivery_unconfirmed": "Consegna — {country}: non confermata. Verifica con il venditore.",
   "extra_title": "Anche utile sapere",
+  "other_composition_note": "L’app calcola le quantità per la composizione di riferimento, non per questo prodotto.",
   "notes_title": "Buono a sapersi",
   "notes": [
     {"h": "Disponibilità", "p": "Abbiamo verificato i prodotti della ricerca sui siti di negozi e produttori il 17 settembre 2026. Destrosio, latte scremato in polvere e stabilizzante provengono dalla tabella dei Paesi Gellatti del 12 settembre 2026 e non sono stati verificati di nuovo. Disponibilità, prezzi e consegna possono cambiare e non sono garantiti."},
