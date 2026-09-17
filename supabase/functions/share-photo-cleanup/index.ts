@@ -1,61 +1,65 @@
-import { createClient } from 'jsr:@supabase/supabase-js@2';
-import {
-  BUCKET,
-  CLAIM_LIMIT,
-  JSON_HEADERS,
-  planRemoval,
-  removalOutcome,
-  secretEquals,
-} from './protocol.ts';
+import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
+import { BUCKET, JSON_HEADERS } from './protocol.ts';
+import { handleCleanupRequest } from './worker.ts';
 
 /**
  * share-photo-cleanup — deletes share photos that nothing uses any more.
  *
- * Operator-only. Called by pg_cron through `gellatti_share_photo_cleanup_tick_v1`,
- * which presents the service role key from Vault — the caller shape already
- * used by email-dispatch. `verify_jwt` is not access control (the public anon
- * key is a valid project JWT), so the worker compares the bearer with its own
- * service role key before doing anything.
+ * Called by pg_cron through `gellatti_share_photo_cleanup_tick_v1`, which sends
+ * the cleanup call secret from Vault (`gellatti_share_photo_cleanup_key`) in the
+ * `x-gellatti-cleanup-key` header. The worker compares it with its own Edge
+ * secret SHARE_PHOTO_CLEANUP_KEY before it touches anything and refuses when that
+ * secret is unset, so the gateway is deployed WITHOUT a JWT check
+ * (`supabase functions deploy share-photo-cleanup --no-verify-jwt`): the checked
+ * authorisation lives here, ahead of claim, confirm, remove and settle.
  *
- * The DATABASE decides: the claim re-checks, under the lock an attach takes,
- * that each file is not attached, belongs to the sharer of an existing link and
- * is due. This worker removes exactly those names from `recipe-share-photos`
- * through the Storage API and reports back; settle records a deletion only when
- * Storage no longer has the file. It never lists a bucket, never touches
- * another bucket and logs nothing about the files.
+ * The service role key is NOT the call credential. It is used only for this
+ * worker's own calls — the database decisions and the Storage removal — and the
+ * admin client is created only after the caller has been authorised.
+ *
+ * The DATABASE decides what may be deleted: claim re-checks each file under the
+ * lock an attach takes, and confirm repeats that check in the moment before the
+ * delete. The worker removes exactly those names from `recipe-share-photos`;
+ * settle records a deletion only when Storage no longer has the file. It never
+ * lists a bucket, never touches another bucket and logs nothing about the files.
+ *
+ * Required secrets (names only): SHARE_PHOTO_CLEANUP_KEY, plus the auto-injected
+ * SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
  */
-const json = (status: number, body: Record<string, unknown>) =>
-  new Response(JSON.stringify(body), { status, headers: JSON_HEADERS });
+let client: SupabaseClient | null = null;
+const admin = (url: string, serviceRoleKey: string): SupabaseClient =>
+  (client ??= createClient(url, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  }));
 
 Deno.serve(async (req) => {
-  if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
-
   const url = Deno.env.get('SUPABASE_URL');
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  if (!url || !serviceRoleKey) return json(500, { error: 'server_not_configured' });
+  if (!url || !serviceRoleKey) {
+    return new Response(JSON.stringify({ error: 'server_not_configured' }), {
+      status: 500,
+      headers: JSON_HEADERS,
+    });
+  }
 
-  const presented = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
-  if (!secretEquals(presented, serviceRoleKey)) return json(403, { error: 'forbidden' });
-
-  const admin = createClient(url, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data: claim, error: claimError } = await admin.rpc(
-    'gellatti_share_photo_cleanup_claim_v1',
-    { p_limit: CLAIM_LIMIT },
+  return await handleCleanupRequest(
+    req,
+    { cleanupKey: Deno.env.get('SHARE_PHOTO_CLEANUP_KEY') },
+    {
+      claim: (limit) =>
+        admin(url, serviceRoleKey).rpc('gellatti_share_photo_cleanup_claim_v1', { p_limit: limit }),
+      confirm: (token, names) =>
+        admin(url, serviceRoleKey).rpc('gellatti_share_photo_cleanup_confirm_v1', {
+          p_claim_token: token,
+          p_objects: names,
+        }),
+      remove: (names) => admin(url, serviceRoleKey).storage.from(BUCKET).remove(names),
+      settle: (token, removed, error) =>
+        admin(url, serviceRoleKey).rpc('gellatti_share_photo_cleanup_settle_v1', {
+          p_claim_token: token,
+          p_removed: removed,
+          p_error: error,
+        }),
+    },
   );
-  if (claimError) return json(503, { error: 'claim_failed' });
-
-  const plan = planRemoval(claim);
-  if (!plan.token || plan.names.length === 0) return json(200, { claimed: 0 });
-
-  const { error: removeError } = await admin.storage.from(BUCKET).remove(plan.names);
-  const outcome = removalOutcome(plan, removeError);
-
-  const { data: settled, error: settleError } = await admin.rpc(
-    'gellatti_share_photo_cleanup_settle_v1',
-    { p_claim_token: plan.token, p_removed: outcome.removed, p_error: outcome.error },
-  );
-  if (settleError) return json(503, { error: 'settle_failed' });
-  return json(200, { claimed: plan.names.length, settled });
 });

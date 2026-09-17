@@ -16,13 +16,28 @@
 --
 -- MECHANISM (reused, not a second file service): the shape already live for
 -- `gellatti-email-dispatch` (20260903120000) — pg_cron → SECURITY DEFINER tick
--- → Vault (`gellatti_edge_functions_base_url` + this package's OWN key name
--- `gellatti_share_photo_cleanup_key`, so switching the cleanup on never switches
--- on email dispatch, whose key stays separate)
--- → net.http_post → an operator-only Edge worker (`share-photo-cleanup`) that
--- claims with `for update skip locked` and settles through SECURITY DEFINER
+-- → Vault → net.http_post → an operator-only Edge worker (`share-photo-cleanup`)
+-- that claims with `for update skip locked` and settles through SECURITY DEFINER
 -- functions. The worker deletes with the Storage API because storage.objects
 -- refuses a direct DELETE (trigger protect_objects_delete).
+--
+-- CALL SECRET (owner decision 2026-09-17, correction 1): the tick presents a
+-- secret that exists ONLY to invoke this cleanup — Vault
+-- `gellatti_share_photo_cleanup_key`, sent in the `x-gellatti-cleanup-key`
+-- header. The worker compares it with its own Edge secret
+-- SHARE_PHOTO_CLEANUP_KEY before it claims, removes or settles anything, and
+-- refuses when that secret is absent. The project's service role key stays on
+-- the worker side for its internal Supabase calls only; it is never the call
+-- credential, so rotating the cleanup key never touches another function.
+-- `gellatti_edge_functions_base_url` is configuration (an address), not a secret.
+-- Email dispatch keeps its own separate key and is unaffected.
+--
+-- STOP SWITCH (owner decision 2026-09-17, correction 2): `…_pause_v1` makes the
+-- claim and the tick refuse immediately, `…_status_v1` reports what is still in
+-- flight, and `…_confirm_v1` re-checks every claimed file under its lock in the
+-- moment before the worker deletes it. The rollback REFUSES to run while the
+-- cleanup is not paused or while a claim is still in flight — unscheduling the
+-- cron job alone is not proof that nothing is deleting.
 --
 -- RACE: attaching a path and claiming or sweeping it take the same
 -- transaction-scoped advisory lock on the object name, always in ascending
@@ -65,6 +80,22 @@ comment on table public.recipe_share_photo_cleanup is
   'Share photo files queued for deletion (replaced, detached, unattached after 24 h). '
   'Operator-only; the share-photo-cleanup worker deletes through the Storage API.';
 
+-- ── stop switch: one row, read by the claim and by the tick ─────────────────
+create table if not exists public.recipe_share_photo_cleanup_control (
+  id            boolean primary key default true check (id),
+  paused        boolean not null default false,
+  paused_at     timestamptz,
+  paused_reason text
+);
+insert into public.recipe_share_photo_cleanup_control (id, paused)
+values (true, false) on conflict (id) do nothing;
+alter table public.recipe_share_photo_cleanup_control enable row level security;
+revoke all on table public.recipe_share_photo_cleanup_control from public, anon, authenticated, service_role;
+
+comment on table public.recipe_share_photo_cleanup_control is
+  'Stop switch for the share photo cleanup. Paused = no claim is issued and the tick calls nothing. '
+  'The rollback refuses to run unless this is paused and no claim is in flight.';
+
 -- ── one lock key per object name, and one per link ──────────────────────────
 create or replace function public.gellatti_share_photo_object_lock_v1(p_object_name text)
 returns void language sql volatile security definer
@@ -96,6 +127,84 @@ set search_path = pg_catalog, public as $$
      );
 $$;
 revoke all on function public.gellatti_share_photo_cleanup_is_due_v1(text, integer, integer, timestamptz, timestamptz)
+  from public, anon, authenticated, service_role;
+
+-- ── operator controls: pause, resume, what is still in flight ───────────────
+/* The drain report. `in_flight` counts claims a worker may still be acting on;
+   `stale_claims` counts claims older than the 15 minute window, which no worker
+   can settle any more. A rollback is safe only at in_flight = 0. */
+create or replace function public.gellatti_share_photo_cleanup_status_v1()
+returns jsonb language sql stable security definer
+set search_path = pg_catalog, public as $$
+  select jsonb_build_object(
+    'paused', coalesce((select paused from public.recipe_share_photo_cleanup_control where id), false),
+    'paused_at', (select paused_at from public.recipe_share_photo_cleanup_control where id),
+    'in_flight', (select count(*) from public.recipe_share_photo_cleanup where status = 'claimed'),
+    'stale_claims', (select count(*) from public.recipe_share_photo_cleanup
+                      where status = 'claimed' and claimed_at < now() - interval '15 minutes'),
+    'oldest_claimed_at', (select min(claimed_at) from public.recipe_share_photo_cleanup where status = 'claimed'),
+    'queue', (select coalesce(jsonb_object_agg(status, files), '{}'::jsonb)
+                from (select status, count(*) as files from public.recipe_share_photo_cleanup group by status) counted)
+  );
+$$;
+
+create or replace function public.gellatti_share_photo_cleanup_pause_v1(p_reason text default 'operator')
+returns jsonb language plpgsql security definer
+set search_path = pg_catalog, public as $$
+begin
+  update public.recipe_share_photo_cleanup_control
+     set paused = true, paused_at = now(), paused_reason = left(coalesce(p_reason, 'operator'), 200)
+   where id;
+  return public.gellatti_share_photo_cleanup_status_v1();
+end;
+$$;
+
+create or replace function public.gellatti_share_photo_cleanup_resume_v1()
+returns jsonb language plpgsql security definer
+set search_path = pg_catalog, public as $$
+begin
+  update public.recipe_share_photo_cleanup_control
+     set paused = false, paused_at = null, paused_reason = null
+   where id;
+  return public.gellatti_share_photo_cleanup_status_v1();
+end;
+$$;
+
+/* A worker that died mid-run leaves a claim nobody will settle. This decides by
+   REALITY, not assumption: the file is gone → record the deletion; the file is
+   still there → back to the queue (where the pause keeps it). */
+create or replace function public.gellatti_share_photo_cleanup_release_stale_claims_v1()
+returns jsonb language plpgsql security definer
+set search_path = pg_catalog, public as $$
+declare
+  v_deleted integer;
+  v_requeued integer;
+begin
+  update public.recipe_share_photo_cleanup queued
+     set status = 'deleted', claim_token = null, settled_at = now(), last_error = 'released_absent'
+   where queued.status = 'claimed'
+     and queued.claimed_at < now() - interval '15 minutes'
+     and not exists (
+       select 1 from storage.objects object
+       where object.bucket_id = 'recipe-share-photos' and object.name = queued.object_name
+     );
+  get diagnostics v_deleted = row_count;
+  update public.recipe_share_photo_cleanup queued
+     set status = 'queued', claim_token = null, last_error = 'released_still_present'
+   where queued.status = 'claimed'
+     and queued.claimed_at < now() - interval '15 minutes';
+  get diagnostics v_requeued = row_count;
+  return jsonb_build_object('recorded_deleted', v_deleted, 'requeued', v_requeued);
+end;
+$$;
+
+revoke all on function public.gellatti_share_photo_cleanup_pause_v1(text)
+  from public, anon, authenticated, service_role;
+revoke all on function public.gellatti_share_photo_cleanup_resume_v1()
+  from public, anon, authenticated, service_role;
+revoke all on function public.gellatti_share_photo_cleanup_status_v1()
+  from public, anon, authenticated, service_role;
+revoke all on function public.gellatti_share_photo_cleanup_release_stale_claims_v1()
   from public, anon, authenticated, service_role;
 
 -- ── attach / detach: unchanged contract, now queues the file it releases ────
@@ -234,6 +343,11 @@ declare
   v_keep text;
   v_names text[] := '{}';
 begin
+  -- Paused: no claim is issued at all, so nothing new can reach the worker.
+  if coalesce((select paused from public.recipe_share_photo_cleanup_control where id), false) then
+    return jsonb_build_object('claim_token', null, 'objects', '[]'::jsonb, 'paused', true);
+  end if;
+
   for v_row in
     select queued.*
       from public.recipe_share_photo_cleanup queued
@@ -289,6 +403,68 @@ revoke all on function public.gellatti_share_photo_cleanup_claim_v1(integer)
   from public, anon, authenticated, service_role;
 grant execute on function public.gellatti_share_photo_cleanup_claim_v1(integer) to service_role;
 
+-- ── confirm: the last check, in the moment before the worker deletes ────────
+/* Between the claim and the delete the world can change — a rollback can put the
+   old attach function back and a file can be attached again. The worker calls
+   this immediately before removing: every name is re-checked under its own lock,
+   anything that became used (or that a pause caught) is marked `kept` and is NOT
+   returned, and only the names that come back may be deleted. */
+create or replace function public.gellatti_share_photo_cleanup_confirm_v1(
+  p_claim_token uuid, p_objects text[] default '{}'
+) returns jsonb language plpgsql security definer
+set search_path = pg_catalog, public as $$
+declare
+  v_row public.recipe_share_photo_cleanup;
+  v_keep text;
+  v_names text[] := '{}';
+begin
+  if p_claim_token is null then
+    raise exception 'share_photo_cleanup_claim_required' using errcode = '22023';
+  end if;
+  if coalesce((select paused from public.recipe_share_photo_cleanup_control where id), false) then
+    return jsonb_build_object('objects', '[]'::jsonb, 'paused', true);
+  end if;
+
+  for v_row in
+    select queued.*
+      from public.recipe_share_photo_cleanup queued
+     where queued.claim_token = p_claim_token
+       and queued.status = 'claimed'
+       and queued.object_name = any (coalesce(p_objects, '{}'))
+     order by queued.object_name
+     for update
+  loop
+    perform public.gellatti_share_photo_object_lock_v1(v_row.object_name);
+    v_keep := case
+      when exists (select 1 from public.recipe_share_link_photos ph where ph.storage_path = v_row.object_name)
+        then 'in_use'
+      when not exists (
+        select 1 from public.recipe_share_links link
+        where link.id = v_row.share_link_id and link.shared_by_user_id = v_row.owner_user_id)
+        then 'link_gone_or_other_sharer'
+      when exists (
+        select 1 from storage.objects object
+        where object.bucket_id = 'recipe-share-photos' and object.name = v_row.object_name
+          and object.owner_id is distinct from v_row.owner_user_id::text)
+        then 'other_owner'
+      else null
+    end;
+    if v_keep is null then
+      v_names := v_names || v_row.object_name;
+    else
+      update public.recipe_share_photo_cleanup
+         set status = 'kept', last_error = v_keep, claim_token = null, settled_at = now()
+       where recipe_share_photo_cleanup.object_name = v_row.object_name;
+    end if;
+  end loop;
+
+  return jsonb_build_object('objects', to_jsonb(v_names));
+end;
+$$;
+revoke all on function public.gellatti_share_photo_cleanup_confirm_v1(uuid, text[])
+  from public, anon, authenticated, service_role;
+grant execute on function public.gellatti_share_photo_cleanup_confirm_v1(uuid, text[]) to service_role;
+
 -- ── settle: a file counts as deleted only when Storage no longer has it ─────
 create or replace function public.gellatti_share_photo_cleanup_settle_v1(
   p_claim_token uuid,
@@ -340,8 +516,8 @@ security definer
 set search_path to 'public', 'extensions'
 as $$
 declare
-  v_base_url     text;
-  v_dispatch_key text;
+  v_base_url     text;   -- configuration: where the Edge Functions live
+  v_dispatch_key text;   -- the cleanup call secret, used for nothing else
   v_queued       integer;
   v_due          integer;
   v_request_id   bigint;
@@ -353,6 +529,10 @@ begin
 
   if coalesce(v_base_url, '') = '' or coalesce(v_dispatch_key, '') = '' then
     return jsonb_build_object('skipped', 'not_configured');
+  end if;
+
+  if coalesce((select paused from public.recipe_share_photo_cleanup_control where id), false) then
+    return jsonb_build_object('skipped', 'paused');
   end if;
 
   v_queued := public.gellatti_share_photo_cleanup_sweep_v1();
@@ -371,7 +551,7 @@ begin
     body    => '{}'::jsonb,
     headers => jsonb_build_object(
                  'Content-Type', 'application/json',
-                 'Authorization', 'Bearer ' || v_dispatch_key
+                 'x-gellatti-cleanup-key', v_dispatch_key
                ),
     timeout_milliseconds => 20000
   ) into v_request_id;

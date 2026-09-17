@@ -1,11 +1,43 @@
 -- Rollback for 20260917170000_share_photo_cleanup.
 --
--- Stops the schedule first, then restores `gellatti_set_share_photo_v1` exactly
--- as 20260917103413 defined it (statement copied byte for byte), then removes
--- the cleanup functions. The ledger table `recipe_share_photo_cleanup` is KEPT:
--- it is the record of which files were queued and deleted, and it has no client
--- access. No photo, link, recipient or bucket is touched; files already deleted
--- by the worker cannot be restored by a rollback.
+-- ORDER (owner decision 2026-09-17, correction 2). Restoring the old attach
+-- function while a worker still holds a claim would let a file be attached again
+-- and then deleted by that worker. So this file REFUSES to run until new work has
+-- stopped and the work already sent has finished:
+--
+--   1. select public.gellatti_share_photo_cleanup_pause_v1('rollback');
+--        the claim and the tick refuse from this moment on.
+--   2. select cron.unschedule('gellatti-share-photo-cleanup');
+--        no new invocation is scheduled (this alone proves nothing).
+--   3. select public.gellatti_share_photo_cleanup_status_v1();
+--        repeat until `in_flight` is 0. For a worker that died mid-run:
+--        select public.gellatti_share_photo_cleanup_release_stale_claims_v1();
+--        (15 minutes after the claim; it records what Storage really has).
+--   4. run this file.
+--
+-- It then restores `gellatti_set_share_photo_v1` exactly as 20260917103413
+-- defined it (statement copied byte for byte) and removes the cleanup functions.
+-- The ledger `recipe_share_photo_cleanup` and the control row are KEPT: they are
+-- the record of what was queued, kept and deleted, and have no client access.
+-- No photo, link, recipient or bucket is touched. A rollback CANNOT bring back a
+-- photo the Storage API already deleted.
+
+do $$
+declare
+  v_paused   boolean;
+  v_inflight integer;
+begin
+  select paused into v_paused from public.recipe_share_photo_cleanup_control where id;
+  select count(*) into v_inflight from public.recipe_share_photo_cleanup where status = 'claimed';
+  if not coalesce(v_paused, false) then
+    raise exception 'share_photo_cleanup_not_paused: run gellatti_share_photo_cleanup_pause_v1() first'
+      using errcode = '55000';
+  end if;
+  if v_inflight > 0 then
+    raise exception 'share_photo_cleanup_in_flight: % claim(s) still out; wait for gellatti_share_photo_cleanup_status_v1() to report in_flight 0', v_inflight
+      using errcode = '55000';
+  end if;
+end $$;
 
 do $$
 begin
@@ -15,6 +47,7 @@ end $$;
 
 drop function if exists public.gellatti_share_photo_cleanup_tick_v1();
 drop function if exists public.gellatti_share_photo_cleanup_settle_v1(uuid, text[], text);
+drop function if exists public.gellatti_share_photo_cleanup_confirm_v1(uuid, text[]);
 drop function if exists public.gellatti_share_photo_cleanup_claim_v1(integer);
 drop function if exists public.gellatti_share_photo_cleanup_sweep_v1(interval, integer);
 
@@ -63,6 +96,10 @@ revoke all on function public.gellatti_set_share_photo_v1(uuid, text)
   from public, anon, authenticated;
 grant execute on function public.gellatti_set_share_photo_v1(uuid, text) to authenticated;
 
+drop function if exists public.gellatti_share_photo_cleanup_release_stale_claims_v1();
+drop function if exists public.gellatti_share_photo_cleanup_pause_v1(text);
+drop function if exists public.gellatti_share_photo_cleanup_resume_v1();
+drop function if exists public.gellatti_share_photo_cleanup_status_v1();
 drop function if exists public.gellatti_share_photo_cleanup_is_due_v1(text, integer, integer, timestamptz, timestamptz);
 drop function if exists public.gellatti_share_photo_link_lock_v1(uuid);
 drop function if exists public.gellatti_share_photo_object_lock_v1(text);

@@ -8,8 +8,9 @@
  *   (1) the previous photo after a confirmed replacement, (2) the photo after a
  *   confirmed detach, (3) a completed upload never attached, after 24 h.
  *
- * These read the SQL (shape and scope). Behaviour, the race rules, the tick and
- * the rollback are executed in isolation (PGlite, CLN-QA-01..27, 9/9 mutants).
+ * These read the SQL (shape and scope). Behaviour, the race rules, the stop
+ * switch, the confirm step, the tick and the guarded rollback are executed in
+ * isolation (PGlite, CLN-QA-01..34, 15/15 mutants caught).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -45,8 +46,13 @@ const NEW_FUNCTIONS = [
   'gellatti_share_photo_object_lock_v1',
   'gellatti_share_photo_link_lock_v1',
   'gellatti_share_photo_cleanup_is_due_v1',
+  'gellatti_share_photo_cleanup_status_v1',
+  'gellatti_share_photo_cleanup_pause_v1',
+  'gellatti_share_photo_cleanup_resume_v1',
+  'gellatti_share_photo_cleanup_release_stale_claims_v1',
   'gellatti_share_photo_cleanup_sweep_v1',
   'gellatti_share_photo_cleanup_claim_v1',
+  'gellatti_share_photo_cleanup_confirm_v1',
   'gellatti_share_photo_cleanup_settle_v1',
   'gellatti_share_photo_cleanup_tick_v1',
 ];
@@ -83,8 +89,12 @@ describe(`${CLEANUP} — deletes only share photos nothing uses`, () => {
     expect(grants).toEqual([
       'gellatti_set_share_photo_v1 → authenticated',
       'gellatti_share_photo_cleanup_claim_v1 → service_role',
+      'gellatti_share_photo_cleanup_confirm_v1 → service_role',
       'gellatti_share_photo_cleanup_settle_v1 → service_role',
     ]);
+    expect(executable).toContain(
+      'revoke all on table public.recipe_share_photo_cleanup_control from public, anon, authenticated, service_role;',
+    );
     expect(executable).not.toMatch(/create policy|to anon/);
   });
 
@@ -182,7 +192,7 @@ describe(`${CLEANUP} — deletes only share photos nothing uses`, () => {
     expect(settle).toContain("set status = 'failed'");
   });
 
-  it('CLN-MIG-08 tick is the email-dispatch tick for this worker: Vault by name, inert until configured, no call when nothing is due', () => {
+  it('CLN-MIG-08 tick: Vault by name, inert until configured, silent while paused, and it sends the CALL SECRET — not a project key', () => {
     const tick = functionStatement(SQL, 'gellatti_share_photo_cleanup_tick_v1');
     for (const vault of EMAIL_TICK_SHAPE.vault) expect(tick).toContain(vault);
     // Its own key: switching the cleanup on must never switch on email dispatch.
@@ -192,6 +202,14 @@ describe(`${CLEANUP} — deletes only share photos nothing uses`, () => {
       tick.indexOf('gellatti_share_photo_cleanup_sweep_v1()'),
     );
     expect(tick.indexOf("'nothing_due'")).toBeLessThan(tick.indexOf('net.http_post('));
+    // The call secret travels in its own header; no Authorization, no project key.
+    expect(tick).toContain("'x-gellatti-cleanup-key', v_dispatch_key");
+    expect(tick).not.toMatch(/Authorization|service_role/);
+    // Paused: nothing is swept and nothing is called.
+    expect(tick).toContain("return jsonb_build_object('skipped', 'paused');");
+    expect(tick.indexOf("'paused'")).toBeLessThan(
+      tick.indexOf('gellatti_share_photo_cleanup_sweep_v1()'),
+    );
     expect(tick).toContain("url     => rtrim(v_base_url, '/') || '/share-photo-cleanup'");
     expect(code(SQL)).toContain(
       "select cron.schedule( 'gellatti-share-photo-cleanup', '*/15 * * * *', $cron$select public.gellatti_share_photo_cleanup_tick_v1()$cron$ );",
@@ -201,16 +219,80 @@ describe(`${CLEANUP} — deletes only share photos nothing uses`, () => {
     );
   });
 
-  it('CLN-MIG-09 rollback: unschedule first, restore the applied attach byte for byte, keep photos and the ledger', () => {
+  it('CLN-MIG-10 stop switch: paused means no claim is issued; the drain report is honest; a stale claim is settled by what Storage has', () => {
+    const claim = code(functionStatement(SQL, 'gellatti_share_photo_cleanup_claim_v1'));
+    const confirm = code(functionStatement(SQL, 'gellatti_share_photo_cleanup_confirm_v1'));
+    const status = code(functionStatement(SQL, 'gellatti_share_photo_cleanup_status_v1'));
+    const release = code(
+      functionStatement(SQL, 'gellatti_share_photo_cleanup_release_stale_claims_v1'),
+    );
+    for (const guarded of [claim, confirm]) {
+      expect(guarded).toContain(
+        'if coalesce((select paused from public.recipe_share_photo_cleanup_control where id), false) then',
+      );
+      expect(guarded.indexOf('paused')).toBeLessThan(guarded.indexOf('for update'));
+    }
+    expect(status).toContain(
+      "'in_flight', (select count(*) from public.recipe_share_photo_cleanup where status = 'claimed')",
+    );
+    expect(status).toContain("'stale_claims'");
+    expect(release).toContain("set status = 'deleted'");
+    expect(release).toContain('not exists ( select 1 from storage.objects object');
+    expect(release).toContain(
+      "set status = 'queued', claim_token = null, last_error = 'released_still_present'",
+    );
+  });
+
+  it('CLN-MIG-11 confirm repeats the claim checks under the same lock and can only shrink the list', () => {
+    const confirm = code(functionStatement(SQL, 'gellatti_share_photo_cleanup_confirm_v1'));
+    expect(confirm).toContain('where queued.claim_token = p_claim_token');
+    expect(confirm).toContain("and queued.status = 'claimed'");
+    expect(confirm).toContain('and queued.object_name = any (coalesce(p_objects');
+    expect(confirm.indexOf('gellatti_share_photo_object_lock_v1(v_row.object_name)')).toBeLessThan(
+      confirm.indexOf("then 'in_use'"),
+    );
+    for (const keep of [
+      "then 'in_use'",
+      "then 'link_gone_or_other_sharer'",
+      "then 'other_owner'",
+    ]) {
+      expect(confirm).toContain(keep);
+    }
+    expect(confirm).toContain("set status = 'kept'");
+    expect(confirm).not.toMatch(/insert into|delete from/);
+  });
+
+  it('CLN-MIG-09 rollback: refuses unless paused and drained, then unschedules, restores the applied attach byte for byte and keeps photos', () => {
     const restored = functionStatement(ROLLBACK, 'gellatti_set_share_photo_v1');
     expect(restored).toBe(functionStatement(PHOTO_SQL, 'gellatti_set_share_photo_v1'));
-    expect(ROLLBACK.indexOf("cron.unschedule('gellatti-share-photo-cleanup')")).toBeLessThan(
-      ROLLBACK.indexOf('drop function'),
-    );
+    // Order in the EXECUTABLE file: guard (not paused / still in flight) →
+    // unschedule → drop the cleanup functions → restore the applied attach.
     const executable = code(ROLLBACK);
-    // Outside the restored v1 statement (which has its own detach delete), nothing removes data.
+    expect(executable).toContain('share_photo_cleanup_not_paused');
+    expect(executable).toContain('share_photo_cleanup_in_flight');
+    expect(executable.indexOf('share_photo_cleanup_not_paused')).toBeLessThan(
+      executable.indexOf("cron.unschedule('gellatti-share-photo-cleanup')"),
+    );
+    expect(executable.indexOf('share_photo_cleanup_in_flight')).toBeLessThan(
+      executable.indexOf('drop function'),
+    );
+    expect(executable.indexOf("cron.unschedule('gellatti-share-photo-cleanup')")).toBeLessThan(
+      executable.indexOf('drop function'),
+    );
+    expect(executable.indexOf('drop function')).toBeLessThan(executable.indexOf(code(restored)));
+    // The order an operator must follow, and the honest limit of a rollback.
+    for (const step of [
+      'gellatti_share_photo_cleanup_pause_v1',
+      "cron.unschedule('gellatti-share-photo-cleanup')",
+      'gellatti_share_photo_cleanup_status_v1',
+      'gellatti_share_photo_cleanup_release_stale_claims_v1',
+      'CANNOT bring back a',
+    ]) {
+      expect(ROLLBACK, step).toContain(step);
+    }
+    // Outside the restored v1 statement (its own detach delete) nothing removes data.
     const aroundRestore = code(ROLLBACK.replace(restored, ''));
-    expect(aroundRestore).not.toMatch(/drop table|delete from|truncate|storage\./);
+    expect(aroundRestore).not.toMatch(/drop table|delete from|truncate|storage\.objects/);
     for (const name of NEW_FUNCTIONS)
       expect(executable, name).toContain(`drop function if exists public.${name}(`);
   });
