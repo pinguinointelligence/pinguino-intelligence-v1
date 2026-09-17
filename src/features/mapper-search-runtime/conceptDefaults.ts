@@ -52,6 +52,8 @@ export interface ConceptLineage {
   readonly isKnown: (key: string) => boolean;
   /** True when the keys are equal or one is an ancestor of the other. */
   readonly related: (left: string, right: string) => boolean;
+  /** True when `key` equals `ancestor` or descends from it. */
+  readonly within: (key: string, ancestor: string) => boolean;
   /** ATTRIBUTE concepts (vegan, sugar_free, …) — recipe constraints, not product forms. */
   readonly isRecipeAttribute: (key: string) => boolean;
   /** Central alias targets nearest to `word` within its typo tolerance, by channel. */
@@ -174,6 +176,7 @@ export function conceptLineage(release: MapperReleaseData): ConceptLineage {
     isKnown: (key) => parentByKey.has(key),
     related: (left, right) =>
       left === right || ancestors(left).has(right) || ancestors(right).has(left),
+    within: (key, ancestor) => key === ancestor || ancestors(key).has(ancestor),
     isRecipeAttribute: (key) => attributeKeys.has(key),
     nearest: (word) => {
       const text = fold(word);
@@ -542,4 +545,33 @@ export function conceptDefaultIntent(
     return { kind: 'clarify', decision, reason: 'prepared_form_role', impliedScope, phraseText };
   }
   return { kind: 'default', decision, recognisedBy, impliedScope, phraseText };
+}
+
+const lineMatcherByRelease = new WeakMap<
+  object,
+  (productId: string, conceptKey: string) => boolean
+>();
+
+/**
+ * Concept membership of a canonical identity, from the frozen release only: the Mapper
+ * ingredient is linked (PI→concept) to the concept or to one of its more specific child
+ * concepts (a dark chocolate line belongs to „chocolate”). Identity only — a line is never
+ * classified by its name. Used for GENERIC ideas; exact products keep identity matching.
+ */
+export function conceptMembership(
+  release: MapperReleaseData,
+): (productId: string, conceptKey: string) => boolean {
+  const cached = lineMatcherByRelease.get(release);
+  if (cached) return cached;
+  const lineage = conceptLineage(release);
+  const conceptsByPi = new Map<string, string[]>();
+  for (const link of (Array.isArray(release.conceptPiLinks)
+    ? release.conceptPiLinks
+    : []) as ReadonlyArray<{ piId: string; conceptKey: string }>) {
+    conceptsByPi.set(link.piId, [...(conceptsByPi.get(link.piId) ?? []), link.conceptKey]);
+  }
+  const member = (productId: string, conceptKey: string) =>
+    (conceptsByPi.get(productId) ?? []).some((key) => lineage.within(key, conceptKey));
+  lineMatcherByRelease.set(release, member);
+  return member;
 }

@@ -1,0 +1,73 @@
+/*
+ * DESIGN V3.0 — HOME layers (corrections VIII + XIII), measured on the frozen published
+ * preview (version 1789651385-8858): phone 390 / iPad portrait 820 = compact bottom sheet,
+ * iPad landscape 1180 / desktop = light centred modal. Only `placement="home-layer"` uses it.
+ */
+.home-layer-scrim {
+  background: rgba(16, 17, 19, 0.28);
+}
+/* ONE dimmed overlay at a time: a shell that is no longer topmost (the customer signed
+   in over this layer) stops painting its own scrim, exactly like every other placement. */
+.home-layer-scrim[data-dialog-active='false'] {
+  background: transparent;
+}
+.home-layer-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0;
+}
+.home-layer-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 640px;
+  /* the sheet never slides under the sticky header */
+  max-height: calc(100dvh - var(--home-layer-top, 64px));
+  overflow: hidden;
+  border-radius: 24px 24px 0 0;
+  background: #ffffff;
+  padding: 10px 20px calc(30px + env(safe-area-inset-bottom));
+  box-shadow: 0 -8px 24px rgba(16, 17, 19, 0.1);
+  overscroll-behavior: contain;
+}
+.home-layer-panel::before {
+  content: '';
+  flex: 0 0 auto;
+  display: block;
+  width: 36px;
+  height: 4px;
+  margin: 0 auto 10px;
+  border-radius: 2px;
+  background: #e4e0d9;
+}
+@media (min-width: 640px) {
+  .home-layer-panel {
+    padding: 12px 28px calc(24px + env(safe-area-inset-bottom));
+  }
+}
+@media (min-width: 1024px) {
+  .home-layer-scrim {
+    background: rgba(16, 17, 19, 0.18);
+  }
+  .home-layer-overlay {
+    justify-content: center;
+    padding: 16px;
+  }
+  .home-layer-panel {
+    width: 560px;
+    max-width: calc(100vw - 32px);
+    max-height: min(720px, calc(100dvh - 160px));
+    border-radius: 20px;
+    padding: 18px 24px 22px;
+    box-shadow: 0 24px 60px rgba(16, 17, 19, 0.14);
+  }
+  .home-layer-panel[data-home-layer-size='wide'] {
+    width: 880px;
+  }
+  .home-layer-panel::before {
+    display: none;
+  }
+}

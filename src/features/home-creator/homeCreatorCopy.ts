@@ -82,8 +82,26 @@ export interface HomeCreatorCopy {
     readonly createMyOwnHint: string;
     readonly adopted: string;
     readonly basedOnOriginal: string;
+    /** The form of the same flavour this suggestion uses („Puree truskawkowe”). */
+    readonly usedForm: string;
+    /** Card tail when the extra ingredients do not fit the short line. */
+    readonly alsoIncludesMore: (count: number) => string;
+    /** Said on a Community card when the search was bounded — it is a match, not THE match. */
+    readonly searchIncomplete: string;
     readonly viewOriginal: string;
     readonly byGellatti: string;
+    /** DESIGN V3.0 VIII — the suggestions layer shown while the idea is recognised. */
+    readonly suggestionsTitle: string;
+    readonly suggestionsSubtitle: string;
+    readonly suggestionsCarousel: (idea: string) => string;
+    readonly createOwnShort: string;
+    readonly skip: string;
+    readonly choose: string;
+    readonly chooseFirst: string;
+    readonly communityEyebrow: string;
+    readonly rankShort: (rank: number) => string;
+    readonly previousCards: string;
+    readonly nextCards: string;
   };
   readonly profile: {
     readonly question: string;
@@ -270,8 +288,22 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     createMyOwnHint: 'Zaczniesz od zera — będziesz autorem oryginału.',
     adopted: 'Wybrano recepturę',
     basedOnOriginal: 'Na podstawie oryginalnej receptury:',
+    usedForm: 'Używa postaci:',
+    alsoIncludesMore: (count: number) => `+${count} więcej`,
+    searchIncomplete: 'Mogą pasować też inne receptury.',
     viewOriginal: 'Zobacz oryginał',
     byGellatti: 'Gellatti',
+    suggestionsTitle: 'Znaleźliśmy pasujące receptury.',
+    suggestionsSubtitle: 'Chcesz z którejś skorzystać?',
+    suggestionsCarousel: (idea) => `Receptury do „${idea}”`,
+    createOwnShort: 'Tworzę swoją',
+    skip: 'Pomiń',
+    choose: 'Wybierz',
+    chooseFirst: 'Najpierw wybierz recepturę.',
+    communityEyebrow: 'Community · Top 100',
+    rankShort: (rank) => `miejsce ${rank}`,
+    previousCards: 'Poprzednie receptury',
+    nextCards: 'Następne receptury',
   },
   profile: {
     question: 'Jak chcesz je zrobić?',
@@ -443,8 +475,22 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     createMyOwnHint: "You'll start from scratch — and be the original author.",
     adopted: 'Recipe selected',
     basedOnOriginal: 'Based on original recipe by',
+    usedForm: 'Uses the form:',
+    alsoIncludesMore: (count: number) => `+${count} more`,
+    searchIncomplete: 'Other recipes may match too.',
     viewOriginal: 'View original',
     byGellatti: 'Gellatti',
+    suggestionsTitle: 'We found matching recipes.',
+    suggestionsSubtitle: 'Would you like to use one of them?',
+    suggestionsCarousel: (idea) => `Recipes for “${idea}”`,
+    createOwnShort: 'I’ll make my own',
+    skip: 'Skip',
+    choose: 'Choose',
+    chooseFirst: 'Choose a recipe first.',
+    communityEyebrow: 'Community · Top 100',
+    rankShort: (rank) => `rank ${rank}`,
+    previousCards: 'Previous recipes',
+    nextCards: 'Next recipes',
   },
   profile: {
     question: 'How do you want to make it?',

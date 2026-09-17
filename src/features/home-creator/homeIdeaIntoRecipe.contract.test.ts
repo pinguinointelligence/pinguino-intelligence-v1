@@ -27,6 +27,17 @@ describe('KIWI-02 — the recognised idea reaches the open recipe', () => {
     expect(page).toContain('Ta receptura nie zawiera jeszcze:');
   });
 
+  it('KIWI-07: the presence check and the add door read the SAME role precedence', () => {
+    const hook = readFileSync(
+      join(process.cwd(), 'src/features/home-creator/useHomeIntentIngredients.ts'),
+      'utf8',
+    );
+    expect(page).toContain('draftNow.usageAnswersByChipId');
+    expect(hook).toContain(
+      "useHomeDraftStore.getState().usageAnswersByChipId[chip.id] ?? chip.role ?? 'ingredient'",
+    );
+  });
+
   it('keeps ONE add door for the idea — no second insertion mechanism, no product ids', () => {
     const body = page.slice(
       page.indexOf('const addIdeaChipsToOpenRecipe'),

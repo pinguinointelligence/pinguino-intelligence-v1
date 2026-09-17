@@ -46,12 +46,24 @@ export interface RecipeCandidate {
 /** What the user asked for, after identity resolution (§22). */
 export interface RequestedIngredient {
   readonly productId: string;
+  /**
+   * Set only when the identity is the frozen SA-03 default of a GENERIC idea
+   * („truskawka”): the customer asked for the concept, so a recipe line of the same
+   * concept satisfies the request. An exact product (scan, choice, brand) has none.
+   */
+  readonly conceptKey?: string | null;
   /** §33: only a role the user STATED. `null` → the recipe may decide. */
   readonly statedRole: IntentRole | null;
   readonly displayName: string;
 }
 
 export interface RecipeMatch {
+  /**
+   * When a GENERIC idea was satisfied by another approved form of the same concept
+   * („truskawka” by „Puree truskawkowe”), the form this recipe actually uses. It is the
+   * SAME flavour in another shape — never an extra ingredient.
+   */
+  readonly usedForms?: readonly string[];
   readonly candidate: RecipeCandidate;
   /** §32: the candidate's ingredients that the user did not ask for. */
   readonly alsoIncludes: readonly string[];
@@ -60,17 +72,35 @@ export interface RecipeMatch {
 /**
  * Does this candidate satisfy EVERY requested identity, with a stated role respected?
  */
+/**
+ * Whether a recipe line belongs to a concept, answered by the central Mapper/Search
+ * authority (PI→concept links of the frozen release, by the line's canonical id — never
+ * its name). Absent → identity only.
+ */
+export type ConceptLineMatcher = (line: CandidateIngredient, conceptKey: string) => boolean;
+
+const satisfies = (
+  ingredient: CandidateIngredient,
+  wanted: RequestedIngredient,
+  conceptMatcher: ConceptLineMatcher | undefined,
+): boolean =>
+  (ingredient.productId === wanted.productId ||
+    (wanted.conceptKey != null &&
+      conceptMatcher !== undefined &&
+      conceptMatcher(ingredient, wanted.conceptKey))) &&
+  // §33: an unstated role imposes nothing; a stated role must be honoured.
+  (wanted.statedRole === null || ingredient.role === wanted.statedRole);
+
+/**
+ * Does this candidate satisfy EVERY requested identity, with a stated role respected?
+ */
 export function candidateMatches(
   candidate: RecipeCandidate,
   requested: readonly RequestedIngredient[],
+  conceptMatcher?: ConceptLineMatcher,
 ): boolean {
   return requested.every((wanted) =>
-    candidate.ingredients.some(
-      (ingredient) =>
-        ingredient.productId === wanted.productId &&
-        // §33: an unstated role imposes nothing; a stated role must be honoured.
-        (wanted.statedRole === null || ingredient.role === wanted.statedRole),
-    ),
+    candidate.ingredients.some((ingredient) => satisfies(ingredient, wanted, conceptMatcher)),
   );
 }
 
@@ -78,21 +108,50 @@ export function candidateMatches(
 export function extraIngredientsOf(
   candidate: RecipeCandidate,
   requested: readonly RequestedIngredient[],
+  conceptMatcher?: ConceptLineMatcher,
 ): readonly string[] {
-  const asked = new Set(requested.map((item) => item.productId));
   const extras: string[] = [];
   for (const ingredient of candidate.ingredients) {
-    if (!asked.has(ingredient.productId) && !extras.includes(ingredient.displayName)) {
+    const asked = requested.some((wanted) => satisfies(ingredient, wanted, conceptMatcher));
+    if (!asked && !extras.includes(ingredient.displayName)) {
       extras.push(ingredient.displayName);
     }
   }
   return extras;
 }
 
+/**
+ * The lines that satisfied a GENERIC request with another form of the same concept.
+ * Shown as the form the suggestion uses, never as an extra flavour.
+ */
+export function usedFormsOf(
+  candidate: RecipeCandidate,
+  requested: readonly RequestedIngredient[],
+  conceptMatcher?: ConceptLineMatcher,
+): readonly string[] {
+  const forms: string[] = [];
+  for (const wanted of requested) {
+    if (wanted.conceptKey == null) continue;
+    for (const ingredient of candidate.ingredients) {
+      if (ingredient.productId === wanted.productId) break;
+      if (
+        satisfies(ingredient, wanted, conceptMatcher) &&
+        !forms.includes(ingredient.displayName)
+      ) {
+        forms.push(ingredient.displayName);
+        break;
+      }
+    }
+  }
+  return forms;
+}
+
 export interface MatchQuery {
   readonly requested: readonly RequestedIngredient[];
   /** §40: when known, only candidates of this profile are considered. */
   readonly profile: IntentProfile | null;
+  /** Central concept membership for requests that came from a generic idea. */
+  readonly conceptMatcher?: ConceptLineMatcher;
 }
 
 /**
@@ -106,10 +165,11 @@ export function matchRecipes(
   if (query.requested.length === 0) return [];
   return candidates
     .filter((candidate) => query.profile === null || candidate.profile === query.profile)
-    .filter((candidate) => candidateMatches(candidate, query.requested))
+    .filter((candidate) => candidateMatches(candidate, query.requested, query.conceptMatcher))
     .map((candidate) => ({
       candidate,
-      alsoIncludes: extraIngredientsOf(candidate, query.requested),
+      alsoIncludes: extraIngredientsOf(candidate, query.requested, query.conceptMatcher),
+      usedForms: usedFormsOf(candidate, query.requested, query.conceptMatcher),
     }));
 }
 
@@ -160,12 +220,18 @@ export function highestRankedCommunityMatch(matches: readonly RecipeMatch[]): Re
 export function decideMatch(input: {
   readonly official: readonly RecipeMatch[];
   readonly community: readonly RecipeMatch[];
+  /**
+   * The Community search could not cover every approved-form combination. „No Community
+   * match” is then unproven, so §35's automatic adoption — which depends on that very
+   * absence — must not fire; the customer decides instead.
+   */
+  readonly communitySearchPartial?: boolean;
 }): MatchDecision {
   const community = highestRankedCommunityMatch(input.community);
   const official = input.official;
 
   if (official.length === 0 && community === null) return { kind: 'create_my_own' };
-  if (official.length === 1 && community === null && official[0]) {
+  if (official.length === 1 && community === null && official[0] && !input.communitySearchPartial) {
     return { kind: 'auto_adopt_official', match: official[0] };
   }
   return { kind: 'show_popup', official, community };

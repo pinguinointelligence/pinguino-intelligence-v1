@@ -37,8 +37,10 @@ describe('HOME never generates a recipe behind an unanswered question', () => {
   });
 
   it('derives the popup-open condition from the same state that renders the popup', () => {
-    expect(page).toContain('const matchPopupOpen = matchPopup !== null && !matchDismissed;');
-    expect(page).toContain('{matchPopupOpen ? (');
+    // DESIGN V3.0 VIII: the suggestions layer is ONE derived condition — it both holds
+    // generation back and renders the layer, so the two can never disagree.
+    expect(page).toContain('const matchPopupOpen = suggestionsVisible;');
+    expect(page).toContain('{suggestionsVisible ? (');
   });
 });
 

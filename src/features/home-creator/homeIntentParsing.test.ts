@@ -120,6 +120,16 @@ describe('§22 — understanding is not identity resolution', () => {
     const found = concepts('chocolate czekolada chocolate');
     expect(found.filter((c) => c === 'chocolate')).toHaveLength(1);
   });
+
+  it('KIWI-08: the same product in a DIFFERENT role is two deliberate uses, not a repetition', () => {
+    const terms = parseIntent('truskawki i truskawki jako posypka').terms;
+    expect(terms.map((term) => [term.concept, term.role])).toEqual([
+      ['strawberry', null],
+      ['strawberry', 'topping'],
+    ]);
+    // „chocolate czekolada chocolate” is still one request: same words, same role.
+    expect(parseIntent('chocolate czekolada chocolate').terms).toHaveLength(1);
+  });
 });
 
 /**

@@ -12,11 +12,18 @@ export type {
   RoleMention,
   TechnicalMention,
 } from './types';
+export { conceptDiscoveryIndex } from './conceptDiscovery';
+export type { ConceptDiscoveryIndex } from './conceptDiscovery';
+export type {
+  MapperConceptDiscoveryData,
+  MapperConceptDiscoveryLink,
+} from './conceptDiscoveryTypes';
 export {
   approvedConceptOrder,
   attachedFormText,
   conceptDefaultIntent,
   conceptLineage,
+  conceptMembership,
   indexConceptDefaults,
   loadMapperConceptDefaults,
 } from './conceptDefaults';

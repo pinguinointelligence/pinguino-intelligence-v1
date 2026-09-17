@@ -7,6 +7,7 @@ import {
   attachedFormText,
   conceptDefaultIntent,
   conceptLineage,
+  conceptMembership,
   indexConceptDefaults,
 } from './conceptDefaults';
 import { MAPPER_CONCEPT_DEFAULTS } from './generated/conceptDefaults';
@@ -108,6 +109,40 @@ describe('SA04-SCOPE: recipe scope narrows the frozen order without re-ranking',
     expect(approvedConceptOrder(milkChocolate, 'SORBET')).toEqual([]);
     expect(approvedConceptOrder(milkChocolate, 'VEGAN')).toEqual([]);
     expect(approvedConceptOrder(milkChocolate, 'GELATO')[0]).toBe(milkChocolate.defaultPiId);
+  });
+});
+
+describe('SEARCH-MEMBER — concept membership by canonical id (frozen release)', () => {
+  const member = conceptMembership(runtime.release);
+
+  it('SEARCH-MEMBER-01: every PI→concept link of the release is a member of its concept', () => {
+    const links = runtime.release.conceptPiLinks as ReadonlyArray<{
+      piId: string;
+      conceptKey: string;
+    }>;
+    expect(links.length).toBeGreaterThan(0);
+    for (const link of links) expect(member(link.piId, link.conceptKey)).toBe(true);
+    // The frozen strawberry alternatives, other forms included, all belong to strawberry.
+    const strawberry = index.get('strawberry')!;
+    for (const piId of approvedConceptOrder(strawberry, null)) {
+      expect(member(piId, 'strawberry')).toBe(true);
+    }
+  });
+
+  it('SEARCH-MEMBER-02: a child concept belongs to its parent, never the other way round', () => {
+    const agave = (
+      runtime.release.conceptPiLinks as ReadonlyArray<{ piId: string; conceptKey: string }>
+    ).find((link) => link.conceptKey === 'agave_syrup')!;
+    expect(lineage.within('agave_syrup', 'liquid_sweetener')).toBe(true);
+    expect(lineage.within('liquid_sweetener', 'agave_syrup')).toBe(false);
+    expect(member(agave.piId, 'liquid_sweetener')).toBe(true);
+  });
+
+  it('SEARCH-MEMBER-03: no link, no membership — a product is never classified by its name', () => {
+    // A Ravifruit strawberry puree the release does not link to the concept stays outside it.
+    expect(member('PI-ING-001435', 'strawberry')).toBe(false);
+    expect(member('PI-ING-000394', 'strawberry')).toBe(false);
+    expect(member('PI-ING-NOT-IN-RELEASE', 'strawberry')).toBe(false);
   });
 });
 

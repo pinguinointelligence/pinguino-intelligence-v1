@@ -1,5 +1,5 @@
 /**
- * §32–§40 — the popup's controller.
+ * §32–§40 — the suggestions layer's controller (DESIGN V3.0 VIII).
  *
  * Kept separate from `HomeCreatorPage` for one reason: a Community selection must go
  * through `useRecipeDerivation`, which is a HOOK with its own lifecycle. Calling it
@@ -14,8 +14,9 @@ import { useRecipeDerivation } from '@/features/community/useRecipeDerivation';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { presentLoadedRecipeInHome } from '../homeLoadedRecipe';
 import type { RecipeMatch } from '../homeRecipeMatching';
-import { HomeMatchPopup } from '../ui/HomeMatchPopup';
+import { HomeSuggestionsSheet } from '../ui/HomeSuggestionsSheet';
 import type { CommunityMatch } from './communityMatchService';
+import type { HomeSuggestionCard } from './homeIdeaSuggestions';
 
 type Derivation = ReturnType<typeof useRecipeDerivation>;
 
@@ -30,20 +31,30 @@ const derivationRefusalMessage = (derivation: Derivation): string | null =>
     : null;
 
 export function HomeMatchGate({
-  official,
-  community,
+  cards,
   communityMatch,
+  ideaLabel,
+  selectedId,
+  onSelect,
   onChooseOfficial,
   onCreateMyOwn,
+  onSkip,
   onDerived,
+  busy = false,
+  message = null,
 }: {
-  official: readonly RecipeMatch[];
-  community: RecipeMatch | null;
-  /** The oracle row behind `community`, carrying its canonical address. */
+  cards: readonly HomeSuggestionCard[];
+  /** The oracle row behind the Community card, carrying its canonical address. */
   communityMatch: CommunityMatch | null;
+  ideaLabel: string;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
   onChooseOfficial: (match: RecipeMatch) => void;
   onCreateMyOwn: () => void;
+  onSkip: () => void;
   onDerived: () => void;
+  busy?: boolean;
+  message?: string | null;
 }) {
   // The target is addressed by publication, exactly as the Community page does.
   const derivation = useRecipeDerivation(
@@ -70,31 +81,34 @@ export function HomeMatchGate({
   );
 
   return (
-    <HomeMatchPopup
-      official={official}
-      community={community}
-      onChooseOfficial={onChooseOfficial}
-      onChooseCommunity={() => {
+    <HomeSuggestionsSheet
+      cards={cards}
+      ideaLabel={ideaLabel}
+      selectedId={selectedId}
+      onSelect={onSelect}
+      busy={busy || derivation.state.status === 'working'}
+      message={message ?? derivationRefusalMessage(derivation)}
+      onChoose={(card) => {
+        if (card.source === 'official') {
+          onChooseOfficial(card.match);
+          return;
+        }
         if (communityMatch === null) return;
         // §37: the ORIGINAL is never modified — this creates an editable derivation
         // through the canonical authority, which records lineage and preserves the
         // root creator. HOME contributes nothing to that decision.
         //
-        // ONLY a completed derivation may close the popup. `useRecipeDerivation`
-        // returns a TYPED refusal (not entitled, source unavailable, save failed),
-        // and an earlier version of this handler called `onDerived` unconditionally —
-        // so a refused derivation closed the popup and marked the recipe ready with
-        // ZERO lines. Found in served QA: the user got an empty recipe screen and no
-        // explanation. A refusal must stay on the popup and say so.
-        // Branch on the RETURNED outcome, never on `derivation.state` after the await:
-        // that is React state captured in THIS render, so a success would read back as
-        // `idle` and the popup would close for the wrong reason — or not at all.
+        // ONLY a completed derivation may close the layer. `useRecipeDerivation`
+        // returns a TYPED refusal (not entitled, source unavailable, save failed); a
+        // refused derivation must stay on the layer and say so (served QA 2026-08-31:
+        // an unconditional close marked the recipe ready with ZERO lines).
+        // Branch on the RETURNED outcome, never on `derivation.state` after the await.
         void Promise.resolve(derivation.useThisRecipe()).then((outcome) => {
           if (outcome.status === 'done') onDerived();
         });
       }}
-      derivationMessage={derivationRefusalMessage(derivation)}
-      onCreateMyOwn={onCreateMyOwn}
+      onCreateOwn={onCreateMyOwn}
+      onSkip={onSkip}
     />
   );
 }

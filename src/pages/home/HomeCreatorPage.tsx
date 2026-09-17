@@ -45,11 +45,8 @@ import { autoPriorityAppliesToNewLine, visibleCrownLineIds } from '@/features/re
 import { useLegacyRecipeBehaviorRevalidation } from '@/features/product-intelligence';
 import { ScanFlow } from '@/features/scan-flow/ScanFlow';
 import { HomeMatchGate } from '@/features/home-creator/matching/HomeMatchGate';
-import {
-  NO_MATCH,
-  searchExistingRecipes,
-  type HomeMatchResult,
-} from '@/features/home-creator/matching/homeMatchSearch';
+import { useHomeIdeaSuggestions } from '@/features/home-creator/matching/useHomeIdeaSuggestions';
+import { ideaFingerprint, markHomeTiming } from '@/features/home-creator/homeTimingMarks';
 import { useIngredientLibrary } from '@/features/ingredient-builder/useIngredientLibrary';
 import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSave';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
@@ -140,10 +137,13 @@ export function HomeCreatorPage() {
   const [amount, setAmount] = useState<HomeAmount | null>(null);
   const [forceMachineStage, setForceMachineStage] = useState(false);
   const [resolving, setResolving] = useState(false);
-  // §35: `null` means matching has not run; NO_MATCH means it ran and found nothing,
-  // which is a normal outcome that shows no popup at all.
-  const [matchResult, setMatchResult] = useState<HomeMatchResult | null>(null);
-  const [matchDismissed, setMatchDismissed] = useState(false);
+  /** The idea text still in the composer: suggestions never open over a word being typed. */
+  const [composerHasText, setComposerHasText] = useState(false);
+  /** DESIGN V3.0 VIII — the card chosen on the suggestions layer, for ONE idea version. */
+  const [suggestionChoice, setSuggestionChoice] = useState<{
+    readonly signature: string;
+    readonly id: string;
+  } | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [recipeNotice, setRecipeNotice] = useState<string | null>(null);
@@ -304,28 +304,41 @@ export function HomeCreatorPage() {
 
   const { result, score } = useHomeRecipeResult(draft.recipeReady);
 
-  // Narrow the §35 decision ONCE. `show_popup` is the only kind that renders anything;
-  // `auto_adopt_official` and `create_my_own` both continue silently.
-  const matchPopup = useMemo(() => {
-    if (matchResult === null || matchResult.decision.kind !== 'show_popup') return null;
-    const { official, community } = matchResult.decision;
-    return {
-      official,
-      community,
-      communityMatch:
-        community === null
-          ? null
-          : (matchResult.communityMatches.find(
-              (entry) => entry.publicationId === community.candidate.id,
-            ) ?? null),
-    };
-  }, [matchResult]);
+  // Owner 2026-09-17 (B): recognise the idea and look for matching recipes while it is
+  // described — the same resolution door and the same §32–§36 sources as the CTA.
+  const suggestions = useHomeIdeaSuggestions({
+    resolveOne: intentIngredients.resolveOne,
+    enabled: !draft.recipeReady && !draft.preparationStarted,
+  });
+
+  // The layer is shown whenever the current idea version has matches the customer has not
+  // yet decided about — before the CTA (after a committed chip, never over a word still
+  // being typed) and after it (e.g. once a §23 identity answer completes the idea).
+  const suggestionsVisible =
+    suggestions.signature !== '' &&
+    suggestions.cards.length > 0 &&
+    !suggestions.isDismissed(suggestions.signature) &&
+    !draft.recipeReady &&
+    !resolving &&
+    officialAdoption?.state !== 'loading' &&
+    (draft.intentSubmitted || !composerHasText);
+  const suggestionsFrom: 'idea' | 'cta' = draft.intentSubmitted ? 'cta' : 'idea';
+  const selectedSuggestionId =
+    suggestionChoice?.signature === suggestions.signature ? suggestionChoice.id : null;
+
+  useEffect(() => {
+    if (!suggestionsVisible) return;
+    markHomeTiming('first-card', {
+      idea: ideaFingerprint(suggestions.signature),
+      from: draft.intentSubmitted ? 'cta' : 'idea',
+    });
+  }, [draft.intentSubmitted, suggestions.signature, suggestionsVisible]);
 
   /**
    * True while the customer is still being ASKED whether to start from an existing
    * recipe. Used to hold back automatic generation — see the generate effect below.
    */
-  const matchPopupOpen = matchPopup !== null && !matchDismissed;
+  const matchPopupOpen = suggestionsVisible;
 
   const proposedName = useMemo(
     () =>
@@ -346,44 +359,6 @@ export function HomeCreatorPage() {
       presentStage(stage);
     }
   }, [stagesKey, presentStage]);
-
-  /**
-   * §32–§40: run existing-recipe matching for whatever identities are RESOLVED right
-   * now. Called after `Create my recipe`, and again after a §23 identity answer.
-   *
-   * The second call is not a nicety. Matching may only use resolved identities (§22),
-   * so an intent whose ingredient was still ambiguous at submit time matches nothing —
-   * and since "which cream did you mean?" is the common case, without a re-run the
-   * popup would almost never appear. Found in served QA on 2026-08-31.
-   */
-  const runMatching = useCallback(async () => {
-    const chips = useHomeDraftStore.getState().chips;
-    const requested = chips
-      .filter((chip) => chip.productId !== null && !chip.ambiguous)
-      .map((chip) => ({
-        productId: chip.productId as string,
-        statedRole: chip.role,
-        displayName: chip.productName ?? chip.label,
-      }));
-    if (requested.length === 0) {
-      setMatchResult(NO_MATCH);
-      return;
-    }
-    const result = await searchExistingRecipes({
-      requested,
-      profile: useHomeDraftStore.getState().profile,
-    });
-    // §35: exactly one Gellatti recipe and nothing from Community — adopt it, with a way back.
-    if (result.decision.kind === 'auto_adopt_official' && userId) {
-      setMatchResult(NO_MATCH);
-      await adoptOfficialRecipe(result.decision.match.candidate.id, {
-        keepIdea: true,
-        automatic: true,
-      });
-      return;
-    }
-    setMatchResult(result);
-  }, [adoptOfficialRecipe, userId]);
 
   /**
    * Write the machine through the canonical `setMachineSelection` authority — the SAME
@@ -527,10 +502,13 @@ export function HomeCreatorPage() {
    */
   const missingIdeaProducts = useCallback(() => {
     const store = useRecipeStore.getState();
+    const draftNow = useHomeDraftStore.getState();
     return ideaProductsMissingFromRecipe(
-      useHomeDraftStore.getState().chips,
+      draftNow.chips,
       store.items,
       store.toppings,
+      // §58: the customer's own answer about how the product is used outranks the words.
+      draftNow.usageAnswersByChipId,
     );
   }, []);
 
@@ -829,6 +807,12 @@ export function HomeCreatorPage() {
       // automatic start below.
       !draft.presentedStages.includes('machine') &&
       !matchPopupOpen &&
+      // Never while the idea is still being resolved and matched after the CTA: a
+      // suggestion (or the §35 single match) may be about to become the recipe.
+      !resolving &&
+      // Nor before the Community answer for THIS version: a match arriving a moment
+      // later must not land behind a recipe that was already built.
+      suggestions.communitySettled &&
       // Never behind an official recipe that is still opening: it is about to BE the recipe.
       officialAdoption?.state !== 'loading' &&
       lastGeneratedFor.current !== key
@@ -842,6 +826,8 @@ export function HomeCreatorPage() {
     draft.profile,
     draft.recipeReady,
     matchPopupOpen,
+    resolving,
+    suggestions.communitySettled,
     officialAdoption?.state,
     machine?.id,
     amount?.totalGrams,
@@ -948,6 +934,57 @@ export function HomeCreatorPage() {
     .filter(Boolean)
     .join(' · ');
 
+  /** „Create my recipe” — also „Tworzę swoją” chosen on the suggestions layer before it. */
+  const submitIdea = () => {
+    useHomeDraftStore.getState().submitIntent();
+    // Owner 2026-09-17 (B): committed chips already resolve while the idea is described
+    // (useHomeIdeaSuggestions); the CTA finishes whatever is still unresolved.
+    setResolving(true);
+    void (async () => {
+      try {
+        markHomeTiming('cta-tap', { chips: useHomeDraftStore.getState().chips.length });
+        // §32–§40 matching runs on the RESOLVED identities (§22) — the same
+        // idea version the suggestions layer already showed, if it did. `settle` finishes
+        // every chip that still has no answer through the SAME door the layer used, so a
+        // chip is never resolved twice and an answered §23 question is never overwritten.
+        const { signature: settledIdea, result, dismissed } = await suggestions.settle();
+        // §35: exactly one Gellatti recipe and nothing from Community — adopt it, with a
+        // way back — unless the customer already saw and decided about that suggestion
+        // („Tworzę swoją” dismisses it and then presses this same door).
+        if (result.decision.kind === 'auto_adopt_official' && userId && !dismissed) {
+          suggestions.dismiss(settledIdea);
+          await adoptOfficialRecipe(result.decision.match.candidate.id, {
+            keepIdea: true,
+            automatic: true,
+          });
+        }
+      } finally {
+        setResolving(false);
+      }
+      // Owner QA 2026-09-06: this scroll used to sit OUTSIDE this async
+      // block on a 60 ms timer, so it fired while identity resolution was
+      // still in flight — carrying the customer down to the profile and
+      // machine questions before they had chosen their products, and
+      // leaving the product choice behind them at the top of the page.
+      //
+      // The flow may only advance once every element of the idea has a
+      // concrete product (§84). `resolveIdea` is the single authority for
+      // what "resolved" means; the amount gap it also reports belongs to a
+      // later step, so only the product gap holds the flow here.
+      //
+      // A recipe already on screen does not go through generation again, so the newly
+      // recognised elements join it here — through the same add door §23's answer uses.
+      await addIdeaChipsToOpenRecipe();
+      const chips = useHomeDraftStore.getState().chips;
+      const needsProductChoice = resolveIdea(chips).unresolved.some((element) =>
+        element.gaps.includes('product'),
+      );
+      if (needsProductChoice) return;
+      const next = useHomeDraftStore.getState().profile === null ? 'profile' : 'machine';
+      scrollToStage(next);
+    })();
+  };
+
   return (
     <AppShell navigationPosition="trailing" stickyHeader contentClassName="pb-24">
       <div data-testid="home-creator">
@@ -960,46 +997,9 @@ export function HomeCreatorPage() {
         ) : null}
         {flow.stages.includes('intent') ? (
           <HomeIntentSection
-            onSubmit={() => {
-              useHomeDraftStore.getState().submitIntent();
-              // §18: identity resolution starts HERE — never while the user is still
-              // describing the idea.
-              setResolving(true);
-              void (async () => {
-                try {
-                  for (const chip of useHomeDraftStore.getState().chips) {
-                    if (chip.productId !== null) continue;
-                    await intentIngredients.resolveOne(chip);
-                  }
-                  // §32–§40 matching runs on the RESOLVED identities (§22).
-                  await runMatching();
-                } finally {
-                  setResolving(false);
-                }
-                // Owner QA 2026-09-06: this scroll used to sit OUTSIDE this async
-                // block on a 60 ms timer, so it fired while identity resolution was
-                // still in flight — carrying the customer down to the profile and
-                // machine questions before they had chosen their products, and
-                // leaving the product choice behind them at the top of the page.
-                //
-                // The flow may only advance once every element of the idea has a
-                // concrete product (§84). `resolveIdea` is the single authority for
-                // what "resolved" means; the amount gap it also reports belongs to a
-                // later step, so only the product gap holds the flow here.
-                // A recipe that is already on screen does not go through generation
-                // again, so the newly recognised elements join it here — through the
-                // same add door §23's identity answer uses.
-                await addIdeaChipsToOpenRecipe();
-                const chips = useHomeDraftStore.getState().chips;
-                const needsProductChoice = resolveIdea(chips).unresolved.some((element) =>
-                  element.gaps.includes('product'),
-                );
-                if (needsProductChoice) return;
-                const next = useHomeDraftStore.getState().profile === null ? 'profile' : 'machine';
-                scrollToStage(next);
-              })();
-            }}
+            onSubmit={submitIdea}
             resolving={resolving}
+            onDraftTextChange={setComposerHasText}
             onChooseIdentity={(chip, candidate) => {
               // §23: the user answered the identity question. Record the real
               // catalogue identity, clear the question, and — if the recipe already
@@ -1014,13 +1014,10 @@ export function HomeCreatorPage() {
               if (state.recipeReady) {
                 const resolved = state.chips.find((entry) => entry.id === chip.id);
                 if (resolved) void intentIngredients.addResolvedChip(resolved).then(askAmountFor);
-              } else if (state.intentSubmitted) {
-                // The answer completed the intent, so matching can finally run on a
-                // real identity. Without this the popup never appears for any
-                // ambiguous ingredient — which is most of them.
-                setMatchDismissed(false);
-                void runMatching();
               }
+              // The answer changes the idea version, so matching re-runs on the real
+              // identity by itself (useHomeIdeaSuggestions) and a new version's
+              // suggestions are never suppressed by an earlier dismissal.
             }}
             onScan={() => setScannerOpen(true)}
           />
@@ -1271,23 +1268,38 @@ export function HomeCreatorPage() {
       {/* §36 — shown ONLY when a trustworthy match survived the strict matcher.
           No match means no modal at all: creation simply continues (§35), which is
           why there is no "nothing found" state here. */}
-      {matchPopupOpen ? (
+      {suggestionsVisible ? (
         <HomeMatchGate
-          official={matchPopup.official}
-          community={matchPopup.community}
-          communityMatch={matchPopup.communityMatch}
+          cards={suggestions.cards}
+          communityMatch={suggestions.communityMatch}
+          ideaLabel={draft.chips.map((chip) => chip.label).join(', ')}
+          selectedId={selectedSuggestionId}
+          onSelect={(id) => setSuggestionChoice({ signature: suggestions.signature, id })}
           onChooseOfficial={(match) => {
             // The customer chose a Gellatti recipe: it opens here as their working copy.
-            setMatchDismissed(true);
+            // A guest is asked to sign in first and the layer stays with the choice.
+            if (!userId) {
+              openAuthModal();
+              return;
+            }
+            suggestions.dismiss(suggestions.signature);
             void adoptOfficialRecipe(match.candidate.id, { keepIdea: true, automatic: false });
           }}
-          onCreateMyOwn={() => setMatchDismissed(true)}
+          onCreateMyOwn={() => {
+            suggestions.dismiss(suggestions.signature);
+            // „Tworzę swoją” before the CTA IS the CTA for the customer's own recipe.
+            if (suggestionsFrom === 'idea') submitIdea();
+          }}
+          onSkip={() => {
+            // Before the CTA „Pomiń” returns to the idea; after it, the own recipe continues.
+            suggestions.dismiss(suggestions.signature);
+          }}
           onDerived={() => {
             // `HomeMatchGate` has already loaded the derived recipe into the shared
             // store (the canonical derivation itself ends on the PRO route, which §13
             // bounces for a HOME subscriber), so HOME stops offering the choice, opens
             // the recipe stage and scrolls the customer to the recipe they now own.
-            setMatchDismissed(true);
+            suggestions.dismiss(suggestions.signature);
             useHomeDraftStore.getState().markRecipeReady(true);
             // Claim the generate key WITHOUT generating: the adopted recipe IS the
             // recipe, so the effect must not build one for these same answers.
