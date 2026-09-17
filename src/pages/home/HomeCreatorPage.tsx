@@ -968,6 +968,10 @@ export function HomeCreatorPage() {
       // concrete product (§84). `resolveIdea` is the single authority for
       // what "resolved" means; the amount gap it also reports belongs to a
       // later step, so only the product gap holds the flow here.
+      //
+      // A recipe already on screen does not go through generation again, so the newly
+      // recognised elements join it here — through the same add door §23's answer uses.
+      await addIdeaChipsToOpenRecipe();
       const chips = useHomeDraftStore.getState().chips;
       const needsProductChoice = resolveIdea(chips).unresolved.some((element) =>
         element.gaps.includes('product'),
