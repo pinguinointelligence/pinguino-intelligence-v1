@@ -82,6 +82,7 @@ class Campaign:
         return rows[0]['nonce']
 
     def stripe(self, step, action, params):
+        step = f'{step}{SUFFIX}'
         payload = json.dumps({'run': self.run, 'step': step, 'action': action, 'params': params}).encode()
         req = urllib.request.Request(f'{FN}/qa-growth-campaign', data=payload, method='POST',
                                      headers={'Content-Type': 'application/json', 'x-qa-nonce': self.nonce()})
@@ -241,6 +242,7 @@ def lane(c, label, price_env, offer_key, pm='pm_card_visa', anchor_hours=3, back
     """A customer user (attributed to Partner A unless partner=False), on its own Test Clock, subscribed to a REAL offer.
     backdate=True positions the next renewal `anchor_hours` ahead on the clock, inside the current month.
     before_subscribe(customer_id) runs after the customer exists and before any invoice does (fault injection)."""
+    label = f'{label}{SUFFIX}' if not label.endswith(SUFFIX) else label
     uid, email = user if user else new_customer_user(c, label)
     attr = attribute(c, label, uid) if partner else None
     t0 = int(time.time())
@@ -683,7 +685,7 @@ def slice5b(c: Campaign):
 
 
 def dispute_lane(c, st, outcome):
-    label = f's7{outcome}{SUFFIX}'
+    label = f's7{outcome}'
     L = lane(c, label, 'STRIPE_PRICE_HOME_MONTHLY_STANDARD', 'home_monthly_standard', pm='pm_card_createDispute', backdate=False)
     inv = first_paid_facts(c, st, f'{outcome}: dispute test card', L, 999)
     pi = pi_of(c, f'{label}-pi', inv['id'])
@@ -780,19 +782,19 @@ def slice9(c: Campaign):
     """Refund BEFORE accrual on real deliveries: invoice.paid receipt refused, full refund processed, invoice.paid redelivered."""
     st = 'S9'
     hold = {}
-    L = lane(c, f's9gapb{SUFFIX}', 'STRIPE_PRICE_HOME_MONTHLY_STANDARD', 'home_monthly_standard', backdate=False,
-             before_subscribe=lambda cust: hold.update(id=fault(c, f's9-hold-invoice-paid{SUFFIX}', cust, ['invoice.paid', 'invoice.payment_succeeded'])))
+    L = lane(c, 's9gapb', 'STRIPE_PRICE_HOME_MONTHLY_STANDARD', 'home_monthly_standard', backdate=False,
+             before_subscribe=lambda cust: hold.update(id=fault(c, 's9-hold-invoice-paid', cust, ['invoice.paid', 'invoice.payment_succeeded'])))
     inv = first_paid_facts(c, st, 'S9 lane', L, 999)
     time.sleep(25)
-    paid = stripe_events(c, f's9-events-paid{SUFFIX}', L['t0'] - 120, object_id=inv['id'], types=['invoice.paid', 'invoice.payment_succeeded'])
+    paid = stripe_events(c, 's9-events-paid', L['t0'] - 120, object_id=inv['id'], types=['invoice.paid', 'invoice.payment_succeeded'])
     rows = db_events_by_id(c, 's9-db-paid-held', [e['id'] for e in paid])
     c.check(st, 'invoice.paid / payment_succeeded exist in Stripe but their receipt was refused (no durable row, Stripe still pending)',
             {'stripe_events': 2, 'db_rows': 0, 'pending': True},
             {'stripe_events': len(paid), 'db_rows': len(rows), 'pending': all(e['pending_webhooks'] >= 1 for e in paid)})
     led = ledger(c, 's9-ledger-0', L['sub'])
     c.check(st, 'no commission yet (the paid invoice has not been received)', [], led['entries'])
-    pi = pi_of(c, f's9-pi{SUFFIX}', inv['id'])
-    c.stripe(f's9-refund-full{SUFFIX}', 'refund_create', {'paymentIntentId': pi})
+    pi = pi_of(c, 's9-pi', inv['id'])
+    c.stripe('s9-refund-full', 'refund_create', {'paymentIntentId': pi})
     ev = c.wait_events('s9-refund-events', [pi], ['charge.refunded'], timeout=120)
     c.say(f"s9 refund deliveries before accrual: {json.dumps([(e['type'], e['state'], e['failure']) for e in ev])}")
     # THE CONTRACT CHANGED HERE, and this is the change: a refund that arrives
@@ -803,7 +805,7 @@ def slice9(c: Campaign):
                 and str(e['failure'] or '').startswith('commission_entry_not_booked_yet') for e in ev))
     release(c, hold['id'])
     for i, e in enumerate(paid):
-        c.stripe(f's9-redeliver{SUFFIX}-{i}', 'event_resend', {'eventId': e['id']})
+        c.stripe(f's9-redeliver-{i}', 'event_resend', {'eventId': e['id']})
     led = wait_ledger(c, 's9-ledger-1', L['sub'], lambda l: len(l['entries']) >= 1, timeout=120)
     time.sleep(15)
     led = ledger(c, 's9-ledger-2', L['sub'])
