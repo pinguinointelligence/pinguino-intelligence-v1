@@ -128,7 +128,7 @@ Deno.serve(async (request: Request) => {
       continue;
     }
 
-    let transferId: string | null = null;
+    let transferId: string;
     try {
       const transfer = await stripe.transfers.create(
         {
