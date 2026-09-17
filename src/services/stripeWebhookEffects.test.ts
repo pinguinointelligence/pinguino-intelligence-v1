@@ -677,9 +677,8 @@ describe('connect account mirror + no-contract coverage', () => {
 
   it('no-contract notes are stable, prefixed strings; contracted events have none', () => {
     expect(noContractNote('payout.paid')).toBe('skipped_no_contract:no_stripe_payout_id_column');
-    expect(noContractNote('charge.dispute.funds_reinstated')).toBe(
-      'skipped_no_contract:adjustment_kind_vocabulary_lacks_reinstatement',
-    );
+    // funds_reinstated is no longer in the map: it has a writer (R6).
+    expect(noContractNote('charge.dispute.funds_reinstated')).toBeNull();
     expect(noContractNote('transfer.reversed')).toBe(
       'skipped_no_contract:adjustment_requires_single_commission_entry',
     );

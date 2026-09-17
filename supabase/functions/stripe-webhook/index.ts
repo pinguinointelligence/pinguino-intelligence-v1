@@ -180,6 +180,16 @@ Deno.serve(async (req) => {
             items.push(refund as unknown as Record<string, unknown>);
           }
           return items;
+        case 'refunds_by_payment_intent':
+          for await (const refund of stripe.refunds.list({ payment_intent: filter, limit: 100 })) {
+            items.push(refund as unknown as Record<string, unknown>);
+          }
+          return items;
+        case 'disputes_by_payment_intent':
+          for await (const dispute of stripe.disputes.list({ payment_intent: filter, limit: 100 })) {
+            items.push(dispute as unknown as Record<string, unknown>);
+          }
+          return items;
       }
     };
 

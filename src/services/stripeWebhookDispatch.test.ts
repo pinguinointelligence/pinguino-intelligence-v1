@@ -106,13 +106,19 @@ class FakeDb implements DbClient {
     const fail = <T>(data: T, error: DbError): DbResult<T> => ({ data, error });
     const clone = (row: Row): Row => ({ ...row });
 
-    const makeSelect = (filters: ReadonlyArray<[string, unknown]>): DbSelectQuery => {
-      const matches = () =>
-        this.rows(table).filter((row) => filters.every(([column, value]) => row[column] === value));
+    type Filter = [string, unknown] | [string, 'in', readonly unknown[]];
+    const makeSelect = (filters: ReadonlyArray<Filter>): DbSelectQuery => {
+      const passes = (row: Row, filter: Filter) =>
+        filter.length === 3
+          ? (filter[2] as readonly unknown[]).includes(row[filter[0]])
+          : row[filter[0]] === filter[1];
+      const matches = () => this.rows(table).filter((row) => filters.every((filter) => passes(row, filter)));
       const query = Object.assign(
         new Thenable<DbResult<Row[] | null>>(() => ok(matches().map(clone))),
         {
           eq: (column: string, value: unknown) => makeSelect([...filters, [column, value]]),
+          in: (column: string, values: readonly unknown[]) =>
+            makeSelect([...filters, [column, 'in', values] as Filter]),
           maybeSingle: () => {
             const first = matches()[0];
             return Promise.resolve(ok<Row | null>(first ? clone(first) : null));
@@ -264,9 +270,21 @@ const basilRefund = (id: string, amount: number, overrides: Row = {}): Row => ({
   ...overrides,
 });
 
+const basilDispute = (id: string, overrides: Row = {}): Row => ({
+  id,
+  object: 'dispute',
+  charge: 'ch_fake_1',
+  payment_intent: 'pi_fake_1',
+  status: 'needs_response',
+  // The money, as Stripe records it: negative = taken, positive = given back.
+  balance_transactions: [{ amount: -4900 }],
+  ...overrides,
+});
+
 interface BasilWorld {
   invoicePayments?: Row[];
   refunds?: Row[];
+  disputes?: Row[];
 }
 
 /** A list port that already walked every page, as the adapter contract requires. */
@@ -281,6 +299,10 @@ const basilLists = (world: BasilWorld) => ({
         );
       case 'refunds_by_charge':
         return (world.refunds ?? []).filter((refund) => refund.charge === filter);
+      case 'refunds_by_payment_intent':
+        return (world.refunds ?? []).filter((refund) => refund.payment_intent === filter);
+      case 'disputes_by_payment_intent':
+        return (world.disputes ?? []).filter((dispute) => dispute.payment_intent === filter);
       default:
         throw new Error(`unexpected list: ${list}`);
     }
@@ -676,14 +698,20 @@ describe('refund_reversal writer — commission_adjustments', () => {
     expect(db.rows('commission_entries')[0]?.status).toBe('reversed');
   });
 
-  it('a refund with no commission entry is an honest no-op', async () => {
+  it('a refund with nothing ever owed is an honest no-op, and says why', async () => {
+    /* No entry can mean two opposite things. This is the harmless one: the
+       invoice is not a subscription payment at all, so no entry was ever due
+       and none ever will be. The note carries the reason, because "no entry"
+       alone is exactly what hid a refunded commission before. */
     const db = new FakeDb();
     const refund = basilRefund('re_fake_9', 500, { charge: 'ch_fake_9', payment_intent: 'pi_fake_9' });
+    const shopInvoice = basilInvoice({ id: 'in_fake_9', parent: { type: 'quote_details', quote_details: {}, subscription_details: null } });
     const deps = {
       db,
       refetch: makeRefetcher({
         refund: { re_fake_9: refund },
         charge: { ch_fake_9: basilCharge({ id: 'ch_fake_9', amount: 999, payment_intent: 'pi_fake_9' }) },
+        invoice: { in_fake_9: shopInvoice },
       }),
       ...basilLists({
         invoicePayments: [
@@ -693,8 +721,74 @@ describe('refund_reversal writer — commission_adjustments', () => {
       }),
     };
     const result = await applyEventEffects(deps, event('refund.created', 'evt_fake_34', { id: 're_fake_9' }));
-    expect(result.note).toBe('skipped_no_commission_entry_for_refund');
+    expect(result.note).toBe('skipped_no_commission_entry_for_refund:no_subscription');
     expect(db.rows('commission_adjustments')).toHaveLength(0);
+  });
+
+  it('a refund whose entry is still on the way DEFERS — it is not dropped', async () => {
+    /* The other meaning of "no entry": the paid invoice IS commissionable and
+       its booking has not landed yet (queued, parked on a missing snapshot, or
+       committing in another transaction). Dropping this delivery is how a
+       refunded payment keeps its commission, so it parks for the recovery
+       worker instead. */
+    const db = new FakeDb();
+    seedCommissionWorld(db);
+    db.rows('commission_entries').length = 0; // the booking has not happened yet
+    const refund = basilRefund('re_fake_7', 1000);
+    const deps = {
+      db,
+      refetch: makeRefetcher({
+        refund: { re_fake_7: refund },
+        charge: { ch_fake_1: basilCharge({ amount_refunded: 1000 }) },
+        invoice: { in_fake_1: basilInvoice() },
+      }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], refunds: [refund] }),
+    };
+    await expect(
+      applyEventEffects(deps, event('refund.created', 'evt_fake_35', { id: 're_fake_7' })),
+    ).rejects.toThrow('commission_entry_not_booked_yet:in_fake_1');
+    expect(db.rows('commission_adjustments')).toHaveLength(0);
+  });
+
+  it('money that moved BEFORE the entry existed is applied the moment it is booked', async () => {
+    /* The race the deferral cannot see: the refund was already settled (or its
+       delivery already answered) before the booking. The writer reads the
+       refunds and disputes of the paying PaymentIntent as it books, and both
+       paths write the same key, so neither can double. */
+    const db = new FakeDb();
+    seedCommissionWorld(db);
+    db.rows('commission_entries').length = 0;
+    const deps = {
+      db,
+      refetch: makeRefetcher({ invoice: { in_fake_1: basilInvoice() } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], refunds: [basilRefund('re_fake_8', 1000)] }),
+    };
+    const result = await applyEventEffects(deps, event('invoice.paid', 'evt_fake_36', { id: 'in_fake_1' }));
+    expect(result.note).toBe('reconciled_refund:re_fake_8');
+    expect(db.rows('commission_entries')).toHaveLength(1);
+    const adjustments = db.rows('commission_adjustments');
+    expect(adjustments).toHaveLength(1);
+    expect(adjustments[0]).toMatchObject({ amount_cents: -184, kind: 'refund_reversal', source_event_key: 'obj:re_fake_8' });
+  });
+
+  it('a dispute that took the money before booking reverses the new entry at once', async () => {
+    /* Measured on the sandbox: Stripe's dispute test card opens the dispute
+       ~0.5 s after the payment, so funds_withdrawn routinely arrives before the
+       commission exists. */
+    const db = new FakeDb();
+    seedCommissionWorld(db);
+    db.rows('commission_entries').length = 0;
+    const deps = {
+      db,
+      refetch: makeRefetcher({ invoice: { in_fake_1: basilInvoice() } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], disputes: [basilDispute('dp_fake_9')] }),
+    };
+    const result = await applyEventEffects(deps, event('invoice.paid', 'evt_fake_37', { id: 'in_fake_1' }));
+    expect(result.note).toBe('reconciled_dispute:dp_fake_9');
+    const adjustments = db.rows('commission_adjustments');
+    expect(adjustments).toHaveLength(1);
+    expect(adjustments[0]).toMatchObject({ amount_cents: -900, kind: 'dispute_reversal', source_event_key: 'obj:dp_fake_9' });
+    expect(db.rows('commission_entries')[0]?.status).toBe('reversed');
   });
 });
 
@@ -752,14 +846,77 @@ describe('invoice_voided / dispute writers — full reversals', () => {
     expect(db.rows('commission_entries')[0]?.status).toBe('reversed');
   });
 
-  it('funds_reinstated is an HONEST no-op — 0018 cannot store a reinstatement kind', async () => {
+  it('funds_reinstated restores EXACTLY what that dispute reversed, once (R6)', async () => {
     const db = new FakeDb();
     seedEntryForReversal(db);
-    const result = await applyEventEffects(
-      { db, refetch: makeRefetcher({}), ...noLists },
-      event('charge.dispute.funds_reinstated', 'evt_fake_43', { id: 'dp_fake_1' }),
-    );
-    expect(result.note).toBe('skipped_no_contract:adjustment_kind_vocabulary_lacks_reinstatement');
+    db.rows('commission_entries')[0].status = 'reversed';
+    db.seed('commission_adjustments', {
+      id: 'adj-dispute-1',
+      partner_id: 'partner-1',
+      commission_entry_id: 'entry-1',
+      amount_cents: -900,
+      kind: 'dispute_reversal',
+      source_event_key: 'obj:dp_fake_1',
+    });
+    const reinstated = basilDispute('dp_fake_1', { status: 'won', balance_transactions: [{ amount: -4900 }, { amount: 4900 }] });
+    const deps = {
+      db,
+      refetch: makeRefetcher({ dispute: { dp_fake_1: reinstated }, charge: { ch_fake_1: basilCharge({}) } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+    };
+
+    const result = await applyEventEffects(deps, event('charge.dispute.funds_reinstated', 'evt_fake_43', { id: 'dp_fake_1' }));
+    expect(result.note).toBeNull();
+    const adjustments = db.rows('commission_adjustments');
+    expect(adjustments).toHaveLength(2);
+    expect(adjustments[1]).toMatchObject({
+      amount_cents: 900,
+      kind: 'dispute_reinstatement',
+      source_event_key: 'obj:dp_fake_1:reinstated',
+    });
+    // Payable again, and the hold calendar — not the dispute — decides which state.
+    expect(db.rows('commission_entries')[0]?.status).toBe('held');
+
+    const replay = await applyEventEffects(deps, event('charge.dispute.funds_reinstated', 'evt_fake_44', { id: 'dp_fake_1' }));
+    expect(replay.note).toBe('skipped_already_reinstated');
+    expect(db.rows('commission_adjustments')).toHaveLength(2);
+  });
+
+  it('a reinstatement never restores what a REFUND took', async () => {
+    const db = new FakeDb();
+    seedEntryForReversal(db);
+    db.rows('commission_entries')[0].status = 'reversed';
+    db.seed('commission_adjustments', {
+      id: 'adj-refund-1', partner_id: 'partner-1', commission_entry_id: 'entry-1',
+      amount_cents: -184, kind: 'refund_reversal', source_event_key: 'obj:re_fake_1',
+    });
+    db.seed('commission_adjustments', {
+      id: 'adj-dispute-2', partner_id: 'partner-1', commission_entry_id: 'entry-1',
+      amount_cents: -716, kind: 'dispute_reversal', source_event_key: 'obj:dp_fake_2',
+    });
+    const reinstated = basilDispute('dp_fake_2', { status: 'won', balance_transactions: [{ amount: -4900 }, { amount: 4900 }] });
+    const deps = {
+      db,
+      refetch: makeRefetcher({ dispute: { dp_fake_2: reinstated }, charge: { ch_fake_1: basilCharge({}) } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+    };
+    expect((await applyEventEffects(deps, event('charge.dispute.funds_reinstated', 'evt_fake_45', { id: 'dp_fake_2' }))).note).toBeNull();
+    const amounts = db.rows('commission_adjustments').map((row) => row.amount_cents);
+    expect(amounts).toEqual([-184, -716, 716]); // the refund's 184 stays taken
+    expect(db.rows('commission_entries')[0]?.status).toBe('held');
+  });
+
+  it('a reinstatement with no reversal of that dispute changes nothing', async () => {
+    const db = new FakeDb();
+    seedEntryForReversal(db);
+    const reinstated = basilDispute('dp_fake_3', { status: 'won', balance_transactions: [{ amount: 4900 }] });
+    const deps = {
+      db,
+      refetch: makeRefetcher({ dispute: { dp_fake_3: reinstated }, charge: { ch_fake_1: basilCharge({}) } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+    };
+    const result = await applyEventEffects(deps, event('charge.dispute.funds_reinstated', 'evt_fake_46', { id: 'dp_fake_3' }));
+    expect(result.note).toBe('skipped_no_matching_dispute_reversal');
     expect(db.rows('commission_adjustments')).toHaveLength(0);
   });
 });

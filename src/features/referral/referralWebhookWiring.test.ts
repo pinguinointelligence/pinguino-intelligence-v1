@@ -40,10 +40,14 @@ class RewardFakeDb implements DbClient {
 
   from(table: string): DbTable {
     const rows = this.tables[table] ?? [];
-    const make = (filters: Array<[string, unknown]>): DbSelectQuery => {
-      const matches = () => rows.filter((row) => filters.every(([c, v]) => row[c] === v));
+    type Filter = { column: string; value?: unknown; values?: readonly unknown[] };
+    const make = (filters: Filter[]): DbSelectQuery => {
+      const passes = (row: Row, filter: Filter) =>
+        filter.values ? filter.values.includes(row[filter.column]) : row[filter.column] === filter.value;
+      const matches = () => rows.filter((row) => filters.every((filter) => passes(row, filter)));
       return Object.assign(Promise.resolve({ data: matches(), error: null }), {
-        eq: (c: string, v: unknown) => make([...filters, [c, v]]),
+        eq: (column: string, value: unknown) => make([...filters, { column, value }]),
+        in: (column: string, values: readonly unknown[]) => make([...filters, { column, values }]),
         maybeSingle: () =>
           Promise.resolve({ data: matches()[0] ?? null, error: null } as DbResult<Row | null>),
       }) as unknown as DbSelectQuery;
@@ -230,6 +234,20 @@ describe('refer-a-friend — the reward lane runs where the commission lane cann
     const disputeRefetch = async (resource: StripeResource, id: string): Promise<Row> => {
       if (resource === 'dispute') return { id: 'dp_1', object: 'dispute', charge: 'ch_1', amount: 2900, payment_intent: 'pi_1', status: 'lost' };
       if (resource === 'charge') return { id: 'ch_1', object: 'charge', amount: 2900, payment_intent: 'pi_1' };
+      /* The commission lane now asks the invoice whether an entry was ever due
+         before it calls "no entry" an honest no-op. This world has no partner
+         attribution at all — the reward lane is the one that owns this payment. */
+      if (resource === 'invoice') {
+        return {
+          id: 'in_ref_1',
+          object: 'invoice',
+          status: 'paid',
+          amount_paid: 2900,
+          customer: 'cus_ref_1',
+          parent: { type: 'subscription_details', quote_details: null, subscription_details: { metadata: {}, subscription: 'sub_1' } },
+          status_transitions: { finalized_at: 1_781_000_000, paid_at: 1_781_000_000 },
+        };
+      }
       throw new Error(`refetch miss: ${resource} ${id}`);
     };
     const result = await applyEventEffects(

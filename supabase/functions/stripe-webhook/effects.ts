@@ -230,6 +230,69 @@ export function decideReversal(input: ReversalDecisionInput): ReversalDecision {
   return { apply: true, amountCents: -reversal, fullyReversedAfter: reversal === remaining };
 }
 
+// ── R6 reinstatement MIRROR (refundAdjustments.ts applyDisputeReinstatement) ──
+
+/** One adjustment already on the entry, as the reinstatement decision reads it. */
+export interface PriorAdjustment {
+  amountCents: number;
+  kind: string;
+  sourceEventKey: string;
+}
+
+export type ReinstatementDecision =
+  | { apply: true; amountCents: number }
+  | { apply: false; reason: 'already_reinstated' | 'no_matching_dispute_reversal' };
+
+/**
+ * R6: a dispute later won and the money put back restores EXACTLY what that
+ * dispute reversed, once.
+ *
+ * It restores the dispute's own reversal and nothing else, so money a separate
+ * refund took stays taken: that refund has its own negative adjustment and is
+ * not touched here. Withdrawal and reinstatement are different movements of the
+ * same dispute, so they carry different keys (`obj:dp_x` and `obj:dp_x:reinstated`)
+ * and can never block each other — while a replay of either is refused.
+ */
+export function decideDisputeReinstatement(input: {
+  priorAdjustments: readonly PriorAdjustment[];
+  disputeReversalKey: string;
+  reinstatementKey: string;
+}): ReinstatementDecision {
+  if (input.priorAdjustments.some((a) => a.sourceEventKey === input.reinstatementKey)) {
+    return { apply: false, reason: 'already_reinstated' };
+  }
+  const reversal = input.priorAdjustments.find(
+    (a) => a.kind === 'dispute_reversal' && a.sourceEventKey === input.disputeReversalKey,
+  );
+  if (!reversal) return { apply: false, reason: 'no_matching_dispute_reversal' };
+  const restoredAlready = input.priorAdjustments.some(
+    (a) => a.kind === 'dispute_reinstatement' && a.sourceEventKey.startsWith(`${input.disputeReversalKey}:`),
+  );
+  if (restoredAlready) return { apply: false, reason: 'already_reinstated' };
+  return { apply: true, amountCents: -reversal.amountCents };
+}
+
+/**
+ * What a reinstatement does to the entry's status.
+ *
+ * `reversed` is the ledger's way of saying "nothing left to pay". When money
+ * comes back the entry is payable again, and the hold calendar — not the
+ * dispute — decides whether it is `held` or `eligible`. A `paid` entry keeps
+ * its status: the positive adjustment nets in the next batch instead of
+ * rewriting a payout that already happened.
+ */
+export function decideStatusAfterReinstatement(input: {
+  status: string;
+  commissionCents: number;
+  adjustmentsSumAfterCents: number;
+  eligibleAtUtcMs: number;
+  nowUtcMs: number;
+}): 'held' | 'eligible' | null {
+  if (input.status !== 'reversed') return null;
+  if (input.commissionCents + input.adjustmentsSumAfterCents <= 0) return null;
+  return input.nowUtcMs >= input.eligibleAtUtcMs ? 'eligible' : 'held';
+}
+
 // ── checkout completion → billing_customers (0003) ──────────────────────────
 
 export interface CheckoutMappingRow {
@@ -880,13 +943,36 @@ export interface DisputeSnapshot {
   id: string;
   chargeId: string | null;
   paymentIntentId: string | null;
+  /** Where the CASE stands (needs_response, won, lost …) — never the money. */
+  status: string;
+  /** Sum of the negative balance transactions: what the bank actually took. */
+  withdrawnCents: number;
+  /** Sum of the positive ones: what it actually gave back. */
+  reinstatedCents: number;
 }
 
 export function extractDisputeSnapshot(dispute: Payload): DisputeSnapshot {
+  // The MONEY, read from the dispute's own balance transactions rather than
+  // inferred from `status`: a withdrawal is a negative entry and a
+  // reinstatement a positive one, and a dispute can carry both over its life.
+  // `status` says where the case stands; only these say what the bank did.
+  let withdrawnCents = 0;
+  let reinstatedCents = 0;
+  const transactions = Array.isArray(dispute.balance_transactions) ? dispute.balance_transactions : [];
+  for (const raw of transactions) {
+    const transaction = asObject(raw);
+    const amount = transaction ? asNumber(transaction.amount) : null;
+    if (amount === null) continue;
+    if (amount < 0) withdrawnCents += -amount;
+    else reinstatedCents += amount;
+  }
   return {
     id: asString(dispute.id) ?? '',
     chargeId: asId(dispute.charge),
     paymentIntentId: asId(dispute.payment_intent),
+    status: asString(dispute.status) ?? 'unknown',
+    withdrawnCents,
+    reinstatedCents,
   };
 }
 
@@ -945,7 +1031,6 @@ export const NO_CONTRACT_REASONS: Readonly<Record<string, string>> = {
   'charge.dispute.created': 'no_dispute_mirror_table',
   'charge.dispute.updated': 'no_dispute_mirror_table',
   'charge.dispute.closed': 'no_dispute_mirror_table',
-  'charge.dispute.funds_reinstated': 'adjustment_kind_vocabulary_lacks_reinstatement',
   'transfer.created': 'transfer_linkage_written_by_payout_job',
   'transfer.updated': 'transfer_linkage_written_by_payout_job',
   'transfer.reversed': 'adjustment_requires_single_commission_entry',
