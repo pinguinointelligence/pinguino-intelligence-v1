@@ -267,7 +267,8 @@ describe('customer_subscriptions + entitlements + conversion intents (0015)', ()
     const f = flat(sql());
     expect(f).toContain("scope text not null check (scope in ('home', 'pro', 'partner'))");
     expect(f).toContain("('paid_subscription', 'approved_partner', 'admin_grant', 'invite_home_trial')");
-    expect(f).toContain("on public.entitlements (user_id, scope, source_type, source_id) where status = 'active'");
+    // `create unique index`, not just the column list: a plain index would pass a bare `on …` match.
+    expect(f).toContain("create unique index if not exists entitlements_active_source_uniq on public.entitlements (user_id, scope, source_type, source_id) where status = 'active'");
   });
 
   it('entitlements: an invite trial is Home-only and time-bounded, in SQL not convention', () => {
@@ -278,7 +279,7 @@ describe('customer_subscriptions + entitlements + conversion intents (0015)', ()
   it('conversion intents: unique ACTIVE intent per subscription + unique idempotency key (§14.5)', () => {
     const f = flat(sql());
     expect(f).toContain('idempotency_key text not null unique');
-    expect(f).toContain("on public.subscription_conversion_intents (subscription_id) where status in ('pending', 'processing')");
+    expect(f).toContain("create unique index if not exists conversion_intents_active_uniq on public.subscription_conversion_intents (subscription_id) where status in ('pending', 'processing')");
     expect(f).toContain("('pending', 'processing', 'completed', 'failed', 'cancelled', 'expired')");
   });
 
@@ -325,8 +326,8 @@ describe('referral attribution + benefit uses (0017)', () => {
 
   it('attributions: unique ACTIVE owner per subscription — partial unique (§14.14)', () => {
     const f = flat(sql());
-    expect(f).toContain("on public.referral_attributions (subscription_id) where status = 'active' and subscription_id is not null");
-    expect(f).toContain("on public.referral_attributions (stripe_subscription_id) where status = 'active' and stripe_subscription_id is not null");
+    expect(f).toContain("create unique index if not exists referral_attributions_active_owner_uniq on public.referral_attributions (subscription_id) where status = 'active' and subscription_id is not null");
+    expect(f).toContain("create unique index if not exists referral_attributions_active_stripe_uniq on public.referral_attributions (stripe_subscription_id) where status = 'active' and stripe_subscription_id is not null");
   });
 
   it('attributions: evidence-vs-authority state machine + 30-day window fields', () => {
@@ -388,7 +389,7 @@ describe('commission ledger (0018)', () => {
 
   it('entries: duplicate commission key impossible — unique invoice id where not null (§14.14)', () => {
     const f = flat(sql());
-    expect(f).toContain('on public.commission_entries (stripe_invoice_id) where stripe_invoice_id is not null');
+    expect(f).toContain('create unique index if not exists commission_entries_invoice_uniq on public.commission_entries (stripe_invoice_id) where stripe_invoice_id is not null');
   });
 
   it('entries: hold state machine + provenance (tier and rule version at earn time)', () => {
@@ -400,7 +401,7 @@ describe('commission ledger (0018)', () => {
 
   it('adjustments: append-only (no touch trigger, no updated_at) + unique source event (§14.14)', () => {
     const f = flat(sql());
-    expect(f).toContain('on public.commission_adjustments (source_event_key) where source_event_key is not null');
+    expect(f).toContain('create unique index if not exists commission_adjustments_source_event_uniq on public.commission_adjustments (source_event_key) where source_event_key is not null');
     expect(f).toContain('amount_cents integer not null check (amount_cents <> 0)');
     // append-only: the adjustments table gets NO update trigger and no updated_at
     expect(/create trigger commission_adjustments_touch/i.test(sql())).toBe(false);
