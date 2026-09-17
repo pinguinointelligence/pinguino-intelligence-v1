@@ -47,3 +47,31 @@ export const SHOP_STARTER_SHOTS: readonly ShopShot[] = [
     label: c.starterPack.gallerySide,
   },
 ];
+
+/**
+ * The placeholder photo for single articles — OWNER DECISION 2026-09-12,
+ * scoped to seven articles 2026-09-17.
+ *
+ * ONE owner-supplied photo of a plain stand-up pouch (a transparent PNG), shared
+ * by the singles in `SHOP_SINGLE_PLACEHOLDER_SKUS` until each has photography of
+ * its own (`ShopProduct.imageUrl`, which always wins). It is illustrative, never
+ * the article itself, so it renders as decoration. It supersedes C3's „the
+ * reserved frame is never filled" for those seven articles ONLY, and it is never
+ * one of the Starter Pack shots above.
+ */
+export const SHOP_SINGLE_PLACEHOLDER_SRC = '/shop/single-placeholder.png';
+
+/**
+ * The seven physical singles that show the placeholder, by SKU. A single added
+ * later is NOT covered: it keeps the empty reserved frame until it has a photo
+ * of its own or the owner names it here.
+ */
+export const SHOP_SINGLE_PLACEHOLDER_SKUS: readonly string[] = [
+  'GEL-DEX-500',
+  'GEL-FRU-500',
+  'GEL-INU-500',
+  'GEL-STB-500',
+  'GEL-YOL-500',
+  'GEL-SMP-500',
+  'GEL-CRP-500',
+];

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { DialogShell } from '@/components/ui/DialogShell';
 import { SectionLabel } from '@/components/shared/SectionLabel';
@@ -21,6 +21,13 @@ import { customerErrorMessage } from '@/copy/customerError';
  * The dialog never asks for anything that could weaken the paywall. There is
  * no „show grams publicly" switch, because the demo-safe projection is built
  * server-side and is not a user preference (§9).
+ *
+ * §24 + owner decision 2026-09-17 — Community takes the maker's OWN photograph
+ * and nothing else. Without one, publishing is unavailable and says why, and
+ * „Opublikuję później" simply ends this attempt: nothing is uploaded, nothing
+ * is published or scheduled, and the saved recipe is untouched, so the
+ * customer can come back with a photo. Saving, production and private sharing
+ * never depend on a photo.
  */
 export function PublishToCommunityDialog({
   recipeId,
@@ -51,6 +58,13 @@ export function PublishToCommunityDialog({
   const [creatorStep, setCreatorStep] = useState<'invite' | 'form'>('invite');
 
   const slug = useMemo(() => slugifyTitle(title), [title]);
+  const ownPhotoHintId = useId();
+  // Every mount passes a persisted version (HOME opens this only after a
+  // successful save of a clean recipe; PRO rows and Production pass versions
+  // read back from the database). Without a real version reference we do not
+  // claim that anything is saved.
+  const savedVersionConfirmed =
+    recipeId.trim().length > 0 && Number.isInteger(versionNumber) && versionNumber >= 1;
 
   const submit = async () => {
     if (!slug) {
@@ -204,6 +218,16 @@ export function PublishToCommunityDialog({
                 </div>
               </div>
             </Field>
+            {photo ? null : (
+              <p
+                id={ownPhotoHintId}
+                data-testid="community-own-photo-required"
+                className="text-sm leading-relaxed text-stone-600"
+              >
+                {copy.publish.ownPhotoRequired}
+                {savedVersionConfirmed ? ` ${copy.publish.ownPhotoLaterSaved}` : null}
+              </p>
+            )}
             <Field label={copy.publish.categoryLabel}>
               <input
                 value={category}
@@ -233,12 +257,24 @@ export function PublishToCommunityDialog({
                 className={buttonClasses('primary')}
                 onClick={submit}
                 disabled={pending || !slug || !photo}
+                aria-describedby={photo ? undefined : ownPhotoHintId}
               >
                 {pending ? '…' : copy.actions.publishToCommunity}
               </button>
-              <button type="button" className={buttonClasses('ghost')} onClick={onClose}>
-                Anuluj
-              </button>
+              {photo ? (
+                <button type="button" className={buttonClasses('ghost')} onClick={onClose}>
+                  Anuluj
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={buttonClasses('ghost')}
+                  data-testid="community-publish-later"
+                  onClick={onClose}
+                >
+                  {copy.publish.publishLater}
+                </button>
+              )}
             </div>
           </div>
         )}

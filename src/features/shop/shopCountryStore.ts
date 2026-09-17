@@ -43,11 +43,15 @@ export const useShopCountryStore = create<ShopCountryState>()(
         set({ loading: true, error: null });
         try {
           const countries = await getShopCountries();
-          set({ countries, loaded: true, loading: false });
+          set({ countries, loaded: true, loading: false, error: null });
         } catch (cause) {
+          /* A failed read is NOT a loaded list. Marking it loaded made every later
+             `load()` return early, so one failure left the picker empty — and
+             checkout without a country — until a full page reload. The picker
+             retries on request and after a sign-in; nothing retries on its own. */
           set({
             loading: false,
-            loaded: true,
+            loaded: false,
             error: cause instanceof Error ? cause.message : 'unavailable',
           });
         }
