@@ -19,6 +19,7 @@ import {
 } from '@/services/shop';
 import { shopCopy, shopMoney } from '@/copy/shop';
 import { AdminShopOrderCard } from './AdminShopOrderCard';
+import { AdminShopDocumentsPanel } from './AdminShopDocumentsPanel';
 import { shopOrderQueue, shopOrderQueueCounts, type ShopOrderQueue } from './shopOrderQueue';
 
 const field = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
@@ -148,6 +149,7 @@ export function AdminShopSection() {
     Promise.all([
       queryClient.invalidateQueries({ queryKey: ['admin-shop-products'] }),
       queryClient.invalidateQueries({ queryKey: ['admin-shop-orders'] }),
+      queryClient.invalidateQueries({ queryKey: ['admin-shop-documents'] }),
       queryClient.invalidateQueries({ queryKey: ['shop-catalog'] }),
     ]);
 
@@ -314,6 +316,8 @@ export function AdminShopSection() {
           ))}
         </div>
       </section>
+
+      <AdminShopDocumentsPanel />
     </>
   );
 }

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ApplicationState } from '@/components/shared/ApplicationState';
@@ -19,11 +19,33 @@ import { resolveRecipeImage } from '@/features/community/domain/recipeImageAutho
 import { unlockBenefits } from '@/features/community/domain/unlockBenefits';
 import { withContinuation } from '@/features/community/domain/shareContinuation';
 import {
+  fetchSharePhoto,
   openReceivedShare,
   openShare,
   resolveShare,
+  type ShareFailureReason,
   type ShareResolution,
 } from '@/services/community';
+
+/**
+ * The sharer's own photograph as this reader may see it right now. A failure
+ * to load is NOT in this union: it rejects, and the page shows the error with a
+ * retry instead of quietly showing the profile card.
+ */
+type OwnSharePhoto =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'photo'; readonly url: string }
+  | { readonly kind: 'refused'; readonly reason: ShareFailureReason };
+
+async function loadOwnSharePhoto(
+  access: { token: string } | { shareLinkId: string },
+): Promise<OwnSharePhoto> {
+  const result = await fetchSharePhoto(access);
+  // The bytes arrived from the server for THIS request; the object URL is only
+  // this tab's handle on them (released when the page lets go of it).
+  if (result.kind === 'photo') return { kind: 'photo', url: URL.createObjectURL(result.blob) };
+  return result;
+}
 
 /**
  * `/share/:token` — the direct-share landing page (§14).
@@ -74,6 +96,27 @@ export function SharedRecipePage() {
         ? { ok: false, reason: 'not_found' }
         : null;
 
+  // The sharer's own photograph (owner decisions 2026-09-17): whoever holds a
+  // valid link sees it — a logged-out guest included — and `/received` asks by
+  // share id as the signed-in recipient. The server decides on EVERY request,
+  // so a revoked or expired link is refused on the next open. Never through
+  // `recipe_input`, never from a cached or signed address.
+  const [photoAttempt, setPhotoAttempt] = useState(0);
+  const photoAccess = state?.ok ? (token ? { token } : { shareLinkId: state.share_link_id }) : null;
+  const photoKey = photoAccess
+    ? `photo:${'token' in photoAccess ? photoAccess.token : photoAccess.shareLinkId}:${photoAttempt}`
+    : 'photo:none';
+  const ownPhoto = useAsyncResource<OwnSharePhoto>(photoKey, () =>
+    photoAccess ? loadOwnSharePhoto(photoAccess) : Promise.resolve({ kind: 'none' }),
+  );
+  const ownPhotoUrl =
+    ownPhoto.status === 'ready' && ownPhoto.data.kind === 'photo' ? ownPhoto.data.url : null;
+  useEffect(() => {
+    if (!ownPhotoUrl) return undefined;
+    return () => URL.revokeObjectURL(ownPhotoUrl);
+  }, [ownPhotoUrl]);
+  const [brokenPhotoUrl, setBrokenPhotoUrl] = useState<string | null>(null);
+
   if (state === null) {
     return (
       <DestinationSurface title={copy.share.dialogTitle}>
@@ -100,32 +143,85 @@ export function SharedRecipePage() {
 
   /* §23 — a shared recipe always shows a picture, and the customer is never
      asked to choose one. The order of preference and the asset mapping live in
-     ONE place (`recipeImageAuthority`), so replacing the branded files later is
-     a change to four files on disk and to nothing here.
+     ONE place (`recipeImageAuthority`), so replacing the branded files is a
+     change to four files on disk and to nothing here.
 
-     The share payload carries no photograph field yet — `SharePreview` has no
-     `image_url` and `saved_recipes` has no image column — so today every own
-     recipe resolves to its branded profile card, which is exactly the owner's
-     third rule. The first two rules are wired and tested; they light up the
-     moment the payload carries the field. */
-  const image = resolveRecipeImage({ profile: state.recipe.category ?? null });
+     Owner decision 2026-09-17: this is a customer's recipe shared from HOME or
+     PRO (`customer_share`) — the customer's own photograph, otherwise the
+     branded card of its profile. The profile is the SHARED VERSION's own
+     `recipe.category` (the demo-safe projection of that immutable
+     `recipe_input`), never the viewer's profile or account defaults.
+
+     The own photograph comes from the link's private attachment (see
+     `loadOwnSharePhoto`). Until the server has answered, the frame stays empty
+     instead of flashing the profile card first. Only a definite „no photo"
+     shows the profile card; a refusal or a failure is said, never replaced. */
+  const photoFailed =
+    ownPhoto.status === 'failed' || (ownPhotoUrl !== null && ownPhotoUrl === brokenPhotoUrl);
+  const photoRefused = ownPhoto.status === 'ready' && ownPhoto.data.kind === 'refused';
+  const photoFrameOnly = ownPhoto.status === 'loading' || photoFailed || photoRefused;
+  const image = resolveRecipeImage({
+    context: 'customer_share',
+    userImageUrl: photoFailed ? null : ownPhotoUrl,
+    profile: state.recipe.category ?? null,
+  });
 
   return (
     <DestinationSurface eyebrow={copy.roles.sharedBy} title={state.title}>
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex flex-col gap-8">
-          <img
-            src={image.url}
-            alt=""
-            /* Decorative: the recipe is named by the heading right above it, so
-               a screen reader that also announced the picture would say the
-               same thing twice. */
-            aria-hidden
-            data-testid="shared-recipe-image"
-            data-image-origin={image.origin}
-            className="aspect-[4/3] w-full rounded-2xl object-cover"
-            loading="lazy"
-          />
+          {photoFrameOnly ? (
+            <div className="flex flex-col gap-3">
+              <div
+                aria-hidden
+                data-testid="shared-recipe-image-pending"
+                className="aspect-square w-full max-w-xl rounded-2xl bg-shell-raised"
+              />
+              {photoRefused ? (
+                <p data-testid="shared-recipe-own-photo-refused" className="text-sm text-stone-500">
+                  {copy.share.ownPhotoRefused}
+                </p>
+              ) : photoFailed ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <p
+                    role="alert"
+                    data-testid="shared-recipe-own-photo-unavailable"
+                    className="text-sm text-ink"
+                  >
+                    {copy.share.ownPhotoUnavailable}
+                  </p>
+                  <button
+                    type="button"
+                    className={buttonClasses('ghost', 'sm')}
+                    onClick={() => {
+                      setBrokenPhotoUrl(null);
+                      setPhotoAttempt((value) => value + 1);
+                    }}
+                  >
+                    {copy.share.photoRetry}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <img
+              key={image.url}
+              src={image.url}
+              alt=""
+              /* Decorative: the recipe is named by the heading right above it, so
+                 a screen reader that also announced the picture would say the
+                 same thing twice. */
+              aria-hidden
+              data-testid="shared-recipe-image"
+              data-image-origin={image.origin}
+              /* Square, like the approved profile photographs: a 4:3 cover crop
+                 cut the whisk and hand off the top of every card. The width cap
+                 keeps a square from pushing the recipe below the fold on desktop. */
+              className="aspect-square w-full max-w-xl rounded-2xl bg-shell-raised object-cover"
+              loading="lazy"
+              onError={ownPhotoUrl ? () => setBrokenPhotoUrl(ownPhotoUrl) : undefined}
+            />
+          )}
 
           <AttributionByline
             creatorDisplayName={state.created_by.display_name}
