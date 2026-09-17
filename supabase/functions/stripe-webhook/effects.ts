@@ -860,12 +860,15 @@ export function pickLatestRuleVersion(rows: readonly CommissionRuleRow[]): Commi
 // ── adjustments (0018, append-only) ──────────────────────────────────────────
 
 /** The CLOSED commission_adjustments insert payload (0018). */
+/** R1-R6: reversals are negative, a reinstatement is positive. */
+export type CommissionAdjustmentKind = 'refund_reversal' | 'dispute_reversal' | 'dispute_reinstatement';
+
 export interface CommissionAdjustmentRow {
   partner_id: string;
   commission_entry_id: string;
   amount_cents: number;
   currency: 'eur';
-  kind: 'refund_reversal' | 'dispute_reversal';
+  kind: CommissionAdjustmentKind;
   reason: string;
   source_event_key: string;
 }
@@ -884,7 +887,7 @@ export function buildCommissionAdjustmentRow(input: {
   partnerId: string;
   commissionEntryId: string;
   amountCents: number;
-  kind: 'refund_reversal' | 'dispute_reversal';
+  kind: CommissionAdjustmentKind;
   reason: string;
   sourceEventKey: string;
 }): CommissionAdjustmentRow {

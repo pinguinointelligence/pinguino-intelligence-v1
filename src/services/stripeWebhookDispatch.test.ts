@@ -849,7 +849,7 @@ describe('invoice_voided / dispute writers — full reversals', () => {
   it('funds_reinstated restores EXACTLY what that dispute reversed, once (R6)', async () => {
     const db = new FakeDb();
     seedEntryForReversal(db);
-    db.rows('commission_entries')[0].status = 'reversed';
+    db.rows('commission_entries')[0]!.status = 'reversed';
     db.seed('commission_adjustments', {
       id: 'adj-dispute-1',
       partner_id: 'partner-1',
@@ -885,7 +885,7 @@ describe('invoice_voided / dispute writers — full reversals', () => {
   it('a reinstatement never restores what a REFUND took', async () => {
     const db = new FakeDb();
     seedEntryForReversal(db);
-    db.rows('commission_entries')[0].status = 'reversed';
+    db.rows('commission_entries')[0]!.status = 'reversed';
     db.seed('commission_adjustments', {
       id: 'adj-refund-1', partner_id: 'partner-1', commission_entry_id: 'entry-1',
       amount_cents: -184, kind: 'refund_reversal', source_event_key: 'obj:re_fake_1',

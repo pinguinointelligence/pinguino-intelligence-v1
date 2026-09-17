@@ -61,6 +61,7 @@ import {
   type CatalogOffer,
   type ChargeSnapshot,
   type CommissionRuleRow,
+  type InvoiceSnapshot,
   type RefundSnapshot,
   extractShopOrderSettlement,
 } from './effects.ts';
