@@ -24,7 +24,10 @@
         "\"クリームパウダー\" 雪印 OR 森永 OR よつ葉 1kg 業務用 通販 乳脂肪",
         "クリームパウダー 製菓 家庭用 乳脂肪 アイスクリーム 材料 粉末クリーム 無添加 通販",
         "楽天市場 クリームパウダー 乳脂肪 1kg 種類別 クリームパウダー 業務用",
-        "\"heavy cream powder\" ships to Japan OR 日本 発送 cream powder dairy (English)"
+        "\"heavy cream powder\" ships to Japan OR 日本 発送 cream powder dairy (English)",
+        "クリームパウダー (tomiz.com, cotta.jp)",
+        "生クリームパウダー (tomiz.com, cotta.jp)",
+        "\"cream powder\" dairy spray dried milk fat 40% buy retail Asia baking supplier 1kg"
       ],
       "sources_tried": [
         "tomiz.com on-site search 'クリームパウダー' (baking supplier; 4 hits: カスタードパウダー, バタークリーム風ミックス ×2, プードルアクレーム = custard/buttercream mixes, rejected)",
@@ -34,10 +37,17 @@
         "kenko.com (health online shop; connection failed HTTP 000, inconclusive)",
         "Morinaga Milk B2B site / e-expo: クリームテイストパウダーMF50 (creaming powder, milk fat 50 %, industrial B2B only, no retail listing found)",
         "Asahi Group Foods クリームパウダーCH (industrial B2B only)",
-        "Rakuten / Yahoo!ショッピング / kakaku.com (marketplace/aggregator search snippets only showed coffee creaming powders, whipped-topping and custard powders — rejected types; Yahoo! JAPAN is not reachable from EEA egress)"
+        "Rakuten / Yahoo!ショッピング / kakaku.com (marketplace/aggregator search snippets only showed coffee creaming powders, whipped-topping and custard powders — rejected types; Yahoo! JAPAN is not reachable from EEA egress)",
+        "hoosierhillfarm.com (US; real dairy \"Heavy Cream Powder\" 72 % butterfat found, but the shipping policy names no delivery countries - no cross-border evidence)",
+        "gourmet-versand.com (searched Sahnepulver, Rahmpulver, Milchpulver, Sahne: no dairy cream powder in the catalogue - only QimiQ whip desserts, coconut cream and horseradish cream)",
+        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no cream powder)",
+        "meilleurduchef.com (FR pastry supplier; delivery page /en/boutique/livraison.html lists no Asian market)",
+        "tomiz.com site search \"クリームパウダー\" (4 hits, all カスタードパウダー custard powder - rejected) and \"生クリームパウダー\" (0 hits)",
+        "cotta.jp site search \"クリームパウダー\" (2 hits: cotta サワークリームパウダー 100g - sour cream powder, rejected) and \"生クリームパウダー\" (0 hits)",
+        "nzmp.com (Fonterra B2B ingredients brand): \"Cream Powder 55\" IS a real spray-dried dairy cream powder - the page prints \"Our cream powder is made from a blend of fresh dairy cream and skim milk, spray-dried to create a naturally rich 55%-fat powder\" (quote verified with check_quotes.py, found=true, ~/.cache/gellatti-evidence/quotes/gap-asia/nzmp_cream55.json). B2B-ONLY industrial ingredient, no retail pack and no purchase page - recorded as the B2B route under the owner rule, never to be shown as a retail offer."
       ],
       "candidates": [],
-      "notes": "No retail dairy cream powder (spray-dried cream) found in Japan. Under the Japanese milk ordinance 'クリームパウダー' is an industrial dairy category (milk fat ≥ 50 %) sold B2B; consumer baking shops list only custard/whipped-topping mixes and non-dairy creaming powders, which the protocol rejects. WebSearch budget of the session was exhausted during this country (200/200 calls shared by parallel agents), so later discovery used retailers' own on-site search only."
+      "notes": "No retail dairy cream powder (spray-dried cream) found in Japan. Under the Japanese milk ordinance 'クリームパウダー' is an industrial dairy category (milk fat ≥ 50 %) sold B2B; consumer baking shops list only custard/whipped-topping mixes and non-dairy creaming powders, which the protocol rejects. WebSearch budget of the session was exhausted during this country (200/200 calls shared by parallel agents), so later discovery used retailers' own on-site search only. Re-checked 2026-09-17 under the new owner rule (a real spray-dried dairy cream powder outside 38-48 % fat is a valid B_SAME_TYPE_DIFFERENT_COMPOSITION candidate). Still BRAK: no dairy cream powder of any fat level was found on a page that binds to this market. The only genuine retail dairy cream powder found anywhere in this pass is Hoosier Hill Farm \"Heavy Cream Powder\" (hoosierhillfarm.com, \"made with 100% real sweet cream\", \"72% butterfat content\", 1 lb / 2 lb / 25 lb, US) - it is NOT recorded as a candidate because the seller's shipping policy (hoosierhillfarm.com/policies/shipping-policy) prints no destination countries and no international-delivery statement, so there is no verifiable purchase path into this market. Owner may want to ask them directly. BRAK confirmed a second way 2026-09-17: the two largest Japanese consumer baking suppliers return no dairy cream powder - tomiz.com \"クリームパウダー\" gives only カスタードパウダー (custard) and cotta.jp only サワークリームパウダー (sour cream); \"生クリームパウダー\" gives 0 hits on both. This supports the earlier finding that クリームパウダー is an industrial B2B dairy category in Japan. Owner rule 3 (B2B stays B2B): the only genuine dairy cream powder route that exists in this region is industrial - Fonterra/NZMP \"Cream Powder 55\" (blend of fresh dairy cream and skim milk, spray-dried, 55 % fat, quote verified) and regional B2B dairy traders such as bestdairies.com (Klang, Malaysia) in 25 kg sacks. Tagged B2B, not presented as a retail offer and not recorded as a candidate because no purchase page binds it to this market. Retail shelves in the region carry non-dairy creamers, whole/full-cream milk powders and whipped-topping mixes, which the protocol rejects."
     },
     "FRU": {
       "result": "CONFIRMED_LOCAL",
@@ -95,7 +105,14 @@
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f04523fc3ba5f26a.json",
           "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE (clean_hits 1, context '<p>4904001039273</p>' under JANコード)",
           "checked_at_utc": "2026-09-17T15:32:20Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "UNKNOWN",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": null,
+            "source": "https://tomiz.com/item/00006300",
+            "note": "tomiz.com prints no machine-readable stock token (cart is JS); the page only carries the disclaimer \"在庫を保証するものではありません\""
+          }
         },
         {
           "rank": 2,
@@ -130,7 +147,13 @@
           "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_8f9fc2ef51e9ba13.json",
           "notes": "identity_match.py: GTIN 4904001039273 on tomiz.com source + brand カップ印 + pack 1kg on both pages, no conflicting GTIN, failed_checks []. The 4+-letter name-word check is vacuous for Japanese (果糖 = 2 characters).",
           "checked_at_utc": "2026-09-17T15:42:45Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "schema.org InStock (\"availability\": \"https://schema.org/InStock\") plus the page label \"在庫商品\"",
+            "source": "https://www.profoods.co.jp/i/1050010"
+          }
         }
       ],
       "notes": ""
@@ -188,7 +211,14 @@
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9a813d815a065159.json",
           "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE (clean_hits 1, context '<p>4571182553890</p>' under JANコード)",
           "checked_at_utc": "2026-09-17T15:32:20Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "UNKNOWN",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": null,
+            "source": "https://tomiz.com/item/02177400",
+            "note": "tomiz.com prints no machine-readable stock token (cart is JS); the page only carries the disclaimer \"在庫を保証するものではありません\""
+          }
         },
         {
           "rank": 2,
@@ -222,7 +252,14 @@
           "evidence_class": "LEAD",
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4a1808ceaf4fb0b5.json",
           "checked_at_utc": "2026-09-17T15:43:12Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "UNKNOWN",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": null,
+            "source": "https://nichie.shop/?pid=152684791",
+            "note": "no stock token printed on the nichie.shop page"
+          }
         }
       ],
       "notes": ""
@@ -244,7 +281,11 @@
         "\"卵黄粉末\" 通販 原材料 卵黄 国産 パウダー 公式",
         "NICHIGA ニチガ 卵黄パウダー OR 乾燥卵黄 nichiga.net",
         "本間商店 OR 粉やの息子 OR TFOODS \"乾燥卵黄\" 1kg",
-        "cotta 乾燥卵黄 OR 卵黄パウダー 商品 cotta.jp"
+        "cotta 乾燥卵黄 OR 卵黄パウダー 商品 cotta.jp",
+        "乾燥卵黄 (tomiz.com, cotta.jp)",
+        "卵黄粉末 / 卵黄パウダー / 粉末卵黄 (tomiz.com, cotta.jp)",
+        "jaune d'oeuf en poudre (cuisineaddict.com, cerf-dellier.com)",
+        "Eigelbpulver (pati-versand.de)"
       ],
       "sources_tried": [
         "tomiz.com on-site search '卵黄' (only frozen 20 % sugared yolk and custard powder)",
@@ -254,7 +295,18 @@
         "konaya-oroshi.jp 乾燥卵黄 №1 (product page HTTP 404)",
         "shokuzai-pro.com (B2B catalogue for Kewpie 乾燥卵黄 No1 1kg, not a shop)",
         "askul.co.jp (HTTP 403, inconclusive)",
-        "Amazon.co.jp / Rakuten 乾燥卵黄 50 g–1 kg listings (marketplaces, not used)"
+        "Amazon.co.jp / Rakuten 乾燥卵黄 50 g–1 kg listings (marketplaces, not used)",
+        "gourmet-versand.com (searched Eigelbpulver, Eigelb, Eipulver, Vollei, Trockenei: no egg powder in the catalogue - only egg-yellow food colourings)",
+        "taste-market.de (German shop with a real \"Eigelbpulver\" 100 g, ingredients \"Hühner-Eigelb\", GTIN 4262421423127 - kept out because the served HTML exposes no shipping/delivery-country page, so no cross-border evidence)",
+        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no egg yolk powder)",
+        "tomiz.com site search \"乾燥卵黄\", \"卵黄粉末\", \"卵黄パウダー\", \"粉末卵黄\" (0 hits each)",
+        "cotta.jp site search \"乾燥卵黄\", \"卵黄粉末\", \"卵黄パウダー\", \"粉末卵黄\" (0 hits each)",
+        "pati-versand.de (German baking retailer with a real \"Eigelbpulver 100g\", brand Cake-Masters Basics, ingredients \"HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET\", schema.org InStock / \"Auf Lager\") - NOT usable: its \"Rest der Welt\" zone is an explicit list of 20 European countries only (\"Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, ... Ungarn\", quote verified with check_quotes.py, ~/.cache/gellatti-evidence/quotes/gap-asia/pati_eu_only.json), no Asian market",
+        "cuisineaddict.com (FR; search \"jaune d'oeuf en poudre\" returns only egg-yellow food COLOURING E102/E129)",
+        "cerf-dellier.com (FR pastry supplier; search returns \"Désolé, nous ne trouvons aucun produit\")",
+        "bienmanger.com (FR; search path HTTP 404)",
+        "modernistpantry.com (US; /products.json and /search both HTTP 404 - no readable catalogue)",
+        "modernistpantry.com (US; \"Egg Yolk Powder\", page text \"Egg yolk powder is made of spray dried pasteurized egg yolks ... Made in the USA and contains no additives of any kind\", page shows \"in stock\") - NOT usable as cross-border evidence: the international-shipping page names no country, only \"We are currently only offering FedEx shipping for international customers. To see whether we can ship to your country just add the products to cart and go to the checkout page.\" (adding to carts is out of scope by protocol rule 8)"
       ],
       "candidates": [
         {
@@ -287,7 +339,14 @@
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7d9bf638916a7216.json",
           "notes": "Trade/B2B case pack; no GTIN on page; generic .com so no market binding.",
           "checked_at_utc": "2026-09-17T15:43:16Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "UNKNOWN",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": null,
+            "source": "https://www.shijoh.com/shopdetail/004008000003/",
+            "note": "only a static \"カートに入れる\" button; no stock/sold-out statement printed"
+          }
         },
         {
           "rank": 2,
@@ -319,10 +378,20 @@
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9d2d7a492bb14fd1.json",
           "notes": "取寄商品, business members site; case of 10.",
           "checked_at_utc": "2026-09-17T15:43:19Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "UNKNOWN",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": null,
+            "source": "https://profoods.business/product.php?id=1520",
+            "note": "B2B wholesale portal; no stock token retrieved"
+          }
         }
       ],
-      "notes": "Only industrial Kewpie 1 kg bags (in cases) found on direct shops; small retail packs appear only on marketplaces (Rakuten/Amazon)."
+      "notes": "Only industrial Kewpie 1 kg bags (in cases) found on direct shops; small retail packs appear only on marketplaces (Rakuten/Amazon). BRAK for retail confirmed a second way 2026-09-17: tomiz.com and cotta.jp both return 0 hits for 乾燥卵黄, 卵黄粉末, 卵黄パウダー and 粉末卵黄. The two recorded candidates stay B2B wholesale (Kewpie Tamago 業務用 1 kg x 10), which is not an ordinary retail offer."
     }
-  }
+  },
+  "gap_followup_agent": "gap-asia",
+  "gap_followup_at_utc": "2026-09-17T18:30:00Z",
+  "gap_followup_egress_cc": "ES"
 }

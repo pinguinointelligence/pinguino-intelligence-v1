@@ -21,11 +21,13 @@
   "tag_other_composition": "Eltérő összetétel",
   "tag_alternative": "Helyi alternatíva",
   "tag_unconfirmed": "Nem megerősített",
+  "tag_abroad_unconfirmed": "Külföldi bolt",
   "legend": {
-    "from_abroad": "külföldi bolt, amely ebbe az országba szállít",
-    "b2b": "cégeknek vagy nagy kiszerelésben árusítják",
+    "from_abroad": "külföldi bolt, amelynek saját szállítási listáján szerepel ez az ország",
+    "b2b": "cégeknek vagy nagy kiszerelésben árusítják — nem szokásos kiskereskedelmi ajánlat",
     "other_composition": "azonos típusú termék eltérő összetétellel (mellette feltüntetve)",
-    "alternative": "egy másik Gellatti-termék helyettesítője"
+    "alternative": "egy másik Gellatti-termék helyettesítője",
+    "abroad_unconfirmed": "külföldi bolt; az ebbe az országba történő szállítás nem megerősített"
   },
   "starter_amount": "A Starter Packban: {g} g",
   "option": "{n}. lehetőség",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "A Gellatti-keverék helyi alternatívája, nem ugyanaz a keverék. Keverd a száraz hozzávalókhoz, és melegítsd fel az alapot 75–80 °C hőmérsékletre.",
   "missing": "Ebben az országban még nincs jóváhagyott termék.",
+  "out_of_stock": "A bolt {date} napján azt mutatta, hogy nincs készleten.",
   "notes_title": "Jó tudni",
   "notes": [
-    {"h": "Elérhetőség", "p": "A termékeket 2026 szeptemberében ellenőriztük a gyártók és a boltok weboldalain. Az elérhetőség, az árak és a szállítás változhat, és nem garantált."},
+    {"h": "Elérhetőség", "p": "A kutatott termékeket 2026. szeptember 17-én ellenőriztük boltok és gyártók weboldalain. A dextróz, a sovány tejpor és a stabilizátor a Gellatti 2026. szeptember 12-i országtáblázatából származik, ezeket nem ellenőriztük újra. Az elérhetőség, az árak és a szállítás változhat, és nem garantált."},
     {"h": "A címke az irányadó", "p": "Vásárlás előtt ellenőrizd a csomagoláson az összetevőket és az allergéneket. A tejszínpor és a tejpor tejet, a tojássárgája tojást tartalmaz."},
     {"h": "Stabilizátor", "p": "Ebben az országban egy helyi növényi gumi lép a Gellatti Stabilizer helyébe. Hasonlóan működik, de nem ugyanaz a keverék."}
   ],

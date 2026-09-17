@@ -1,135 +1,278 @@
 {
-  "iso2": "OM",
-  "country": "Oman",
-  "agent": "research-mena",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:30:49Z",
-  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-  "items": {
-    "CRP": {
-      "result": "BRAK",
-      "local_terms": [
-        "cream powder",
-        "heavy cream powder",
-        "بودرة القشطة",
-        "مسحوق الكريمة",
-        "قشطة بودرة"
-      ],
-      "queries": [
-        "sitemap URL-slug scan (English slug terms): cream-powder, heavy-cream(-powder), whipping-cream-powder",
-        "no Arabic slug term was used for this item in the sitemap scan",
-        "domain probing of GCC grocers/pharmacies for readable catalogues"
-      ],
-      "sources_tried": [
-        "alfair.com supermarket (no sitemap, 404)",
-        "muscatpharmacy.com pharmacy (JavaScript shell; sitemap request refused, HTTP 440)",
-        "chefmiddleeast.com GCC professional/pastry supplier (JavaScript-only catalogue, not readable)",
-        "sporter.com health/supplement retailer country page (Cloudflare challenge)"
-      ],
-      "candidates": [],
-      "notes": "No dairy cream powder found on any readable source."
-    },
-    "FRU": {
-      "result": "BRAK",
-      "local_terms": [
-        "fructose",
-        "fruit sugar",
-        "سكر الفركتوز",
-        "فركتوز"
-      ],
-      "queries": [
-        "sitemap URL-slug scan (English slug terms): fructos",
-        "sitemap URL-slug scan (Arabic slug terms, URL-encoded): فركتوز",
-        "domain probing of GCC grocers/pharmacies for readable catalogues"
-      ],
-      "sources_tried": [
-        "alfair.com supermarket (no sitemap, 404)",
-        "muscatpharmacy.com pharmacy (JavaScript shell; sitemap request refused, HTTP 440)",
-        "chefmiddleeast.com GCC professional/pastry supplier (JavaScript-only catalogue, not readable)",
-        "sporter.com health/supplement retailer country page (Cloudflare challenge)"
-      ],
-      "candidates": [],
-      "notes": "No fructose retail pack found on any readable source."
-    },
-    "INU": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "inulin",
-        "inulin powder",
-        "انولين",
-        "إينولين"
-      ],
-      "queries": [
-        "sitemap URL-slug scan (English slug terms): inulin",
-        "sitemap URL-slug scan (Arabic slug terms, URL-encoded): نولين (matches انولين/إينولين)",
-        "domain probing of GCC grocers/pharmacies for readable catalogues",
-        "kiki-health.com product page + shipping policy (cross-border)"
-      ],
-      "sources_tried": [
-        "alfair.com supermarket (no sitemap, 404)",
-        "muscatpharmacy.com pharmacy (JavaScript shell; sitemap request refused, HTTP 440)",
-        "chefmiddleeast.com GCC professional/pastry supplier (JavaScript-only catalogue, not readable)",
-        "sporter.com health/supplement retailer country page (Cloudflare challenge)",
-        "kiki-health.com UK brand shop (GTIN on page; country selector lists this market)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "KIKI Health",
-          "product_name": "Inulin Powder, Organic - 250g",
-          "pack": "250 g",
-          "gtin": "5060018515847",
-          "identifier_confirmed": true,
-          "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "KIKI Health (UK brand web shop)",
-          "page_market": null,
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "no local binding (generic .com, UK brand shop); cross-border - see ships_to_evidence",
-          "cross_border": true,
-          "ships_to_evidence": "country selector on the product page lists 'Oman (GBP £)'; shipping policy https://kiki-health.com/policies/shipping-policy checked with check_quotes.py (found=true, 2026-09-17): 'For EU and International orders, postage costs vary according to your country.' and 'International Delivery ... Royal Mail International Tracked delivery is used on all orders'",
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": 93.0,
-            "fructose_pct": null,
-            "ingredients": "Made from 100% Blue Agave (organic agave inulin)",
-            "from": "brand product page: '93% soluble plant-based fibre', '5.4g of fibre per serving', 'Completely pure, with no added sugars or sweeteners'"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "pure organic agave inulin, 93 % soluble fibre",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3d085b174646b4fa.json",
-          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
-          "checked_at_utc": "2026-09-17T16:25:33Z",
-          "identity_note": "gtin13 5060018515847 as JSON-LD data on this purchase page (verifier EAN_ON_GENERIC_TLD_PAGE); the same GTIN/product is sold locally in UAE/KSA by Life Pharmacy"
-        }
-      ],
-      "notes": "No local direct retailer with inulin powder was readable; cross-border brand shop used (the selector prices Oman in GBP)."
-    },
-    "YOL": {
-      "result": "BRAK",
-      "local_terms": [
-        "egg yolk powder",
-        "dried egg yolk",
-        "مسحوق صفار البيض",
-        "صفار البيض المجفف"
-      ],
-      "queries": [
-        "sitemap URL-slug scan (English slug terms): yolk, egg-powder, dried-egg, powdered-egg",
-        "sitemap URL-slug scan (Arabic slug terms, URL-encoded): صفار",
-        "domain probing of GCC grocers/pharmacies for readable catalogues"
-      ],
-      "sources_tried": [
-        "alfair.com supermarket (no sitemap, 404)",
-        "muscatpharmacy.com pharmacy (JavaScript shell; sitemap request refused, HTTP 440)",
-        "chefmiddleeast.com GCC professional/pastry supplier (JavaScript-only catalogue, not readable)",
-        "sporter.com health/supplement retailer country page (Cloudflare challenge)"
-      ],
-      "candidates": [],
-      "notes": "No dried egg yolk powder found on any readable source."
+ "iso2": "OM",
+ "country": "Oman",
+ "agent": "research-mena",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:30:49Z",
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "items": {
+  "CRP": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "cream powder",
+    "heavy cream powder",
+    "بودرة القشطة",
+    "مسحوق الكريمة",
+    "قشطة بودرة"
+   ],
+   "queries": [
+    "sitemap URL-slug scan (English slug terms): cream-powder, heavy-cream(-powder), whipping-cream-powder",
+    "no Arabic slug term was used for this item in the sitemap scan",
+    "domain probing of GCC grocers/pharmacies for readable catalogues",
+    "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+    "hoosierhillfarm.com product sitemap + policies/shipping-policy + pages/faqs (international shipping)",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
+   ],
+   "sources_tried": [
+    "alfair.com supermarket (no sitemap, 404)",
+    "muscatpharmacy.com pharmacy (JavaScript shell; sitemap request refused, HTTP 440)",
+    "chefmiddleeast.com GCC professional/pastry supplier (JavaScript-only catalogue, not readable)",
+    "sporter.com health/supplement retailer country page (Cloudflare challenge)",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+    "hoosierhillfarm.com (US, Heavy Cream Powder): FAQ states 'Do you ship internationally? At this time, we do not ship internationally.' - rejected as a cross-border path",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Oman - rejected as a cross-border path"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": null,
+     "product_name": "Sahnepulver sprühgetrocknet",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
+     "source_type": "RETAILER",
+     "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+     "cross_border": true,
+     "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). OM is NOT named, so this is a lead, not a confirmation.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:21:06Z",
+      "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+      "source": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+      "from": "page label \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\"; nutrition per 100 g: Fett 42 g (davon gesättigte Fettsäuren 27,1 g), Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "spray-dried dairy cream, 42 % fat = the PI-ING-000260 reference exactly (fat 42, protein 20, lactose 30)",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3df84b49991636c0.json",
+     "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+     "checked_at_utc": "2026-09-17T18:21:06Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
     }
+   ],
+   "notes": "No dairy cream powder found on any readable source. | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name Oman among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF."
   },
-  "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; DuckDuckGo/Mojeek/Brave/Ecosia/Yandex/Qwant served CAPTCHAs or firewalls (not bypassed). Discovery used retailer sitemaps (URL-slug scan with English and Arabic terms). GCC-wide sources that could not be read from the ES egress: carrefour country sites (empty bot-protected responses on UAE/KSA/Qatar), luluhypermarket.com (403 on sitemap), iherb.com country subdomains (403), sporter.com country pages (Cloudflare challenge), drnutrition.com (Cloudflare), chefmiddleeast.com professional catalogue (JavaScript-only, no readable catalogue or sitemap). Life Pharmacy and Nahdi (which carry inulin powders in UAE/KSA) have no storefront path for this market."
+  "FRU": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "fructose",
+    "fruit sugar",
+    "سكر الفركتوز",
+    "فركتوز"
+   ],
+   "queries": [
+    "sitemap URL-slug scan (English slug terms): fructos",
+    "sitemap URL-slug scan (Arabic slug terms, URL-encoded): فركتوز",
+    "domain probing of GCC grocers/pharmacies for readable catalogues",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline"
+   ],
+   "sources_tried": [
+    "alfair.com supermarket (no sitemap, 404)",
+    "muscatpharmacy.com pharmacy (JavaScript shell; sitemap request refused, HTTP 440)",
+    "chefmiddleeast.com GCC professional/pastry supplier (JavaScript-only catalogue, not readable)",
+    "sporter.com health/supplement retailer country page (Cloudflare challenge)",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Oman - rejected as a cross-border path",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "vitacost.com: /international-shipping and /shipping-information redirect to the home page; no delivery-country list found"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Louis François",
+     "product_name": "Fructose - 1 kg - Louis François",
+     "pack": "1 kg",
+     "gtin": "3700434800807",
+     "identifier_confirmed": true,
+     "url": "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html",
+     "source_type": "RETAILER",
+     "seller": "Meilleur du Chef (meilleurduchef.com, France)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "none - generic .com, French-language shop; the destination market would be reached cross-border",
+     "cross_border": true,
+     "ships_to_evidence": "cross-border LEAD only: the product page prints 'Prices include taxes - Remove 5.5% outside EU.' (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/meilleurduchef_outside_eu.json) and the delivery page says only 'DPD Predict and Pickup, So Colissimo, Chronopost and DB Schenker for national and international deliveries'. OM is not named anywhere, so this is a lead, not a confirmation.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:37:17Z",
+      "basis": "In stock (page text) / schema.org InStock",
+      "source": "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": null
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "crystalline fructose sold as a pastry ingredient; no ingredient list or nutrition table on the page",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/846a95814b76581b.json",
+     "identity_note": "gtin13 3700434800807 in the page JSON-LD (checksum valid, GTIN-13)",
+     "checked_at_utc": "2026-09-17T18:37:17Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "No fructose retail pack found on any readable source."
+  },
+  "INU": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "inulin",
+    "inulin powder",
+    "انولين",
+    "إينولين"
+   ],
+   "queries": [
+    "sitemap URL-slug scan (English slug terms): inulin",
+    "sitemap URL-slug scan (Arabic slug terms, URL-encoded): نولين (matches انولين/إينولين)",
+    "domain probing of GCC grocers/pharmacies for readable catalogues",
+    "kiki-health.com product page + shipping policy (cross-border)"
+   ],
+   "sources_tried": [
+    "alfair.com supermarket (no sitemap, 404)",
+    "muscatpharmacy.com pharmacy (JavaScript shell; sitemap request refused, HTTP 440)",
+    "chefmiddleeast.com GCC professional/pastry supplier (JavaScript-only catalogue, not readable)",
+    "sporter.com health/supplement retailer country page (Cloudflare challenge)",
+    "kiki-health.com UK brand shop (GTIN on page; country selector lists this market)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "KIKI Health",
+     "product_name": "Inulin Powder, Organic - 250g",
+     "pack": "250 g",
+     "gtin": "5060018515847",
+     "identifier_confirmed": true,
+     "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "KIKI Health (UK brand web shop)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "no local binding (generic .com, UK brand shop); cross-border - see ships_to_evidence",
+     "cross_border": true,
+     "ships_to_evidence": "country selector on the product page lists 'Oman (GBP £)'; shipping policy https://kiki-health.com/policies/shipping-policy checked with check_quotes.py (found=true, 2026-09-17): 'For EU and International orders, postage costs vary according to your country.' and 'International Delivery ... Royal Mail International Tracked delivery is used on all orders'",
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": 93.0,
+      "fructose_pct": null,
+      "ingredients": "Made from 100% Blue Agave (organic agave inulin)",
+      "from": "brand product page: '93% soluble plant-based fibre', '5.4g of fibre per serving', 'Completely pure, with no added sugars or sweeteners'"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "pure organic agave inulin, 93 % soluble fibre | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3d085b174646b4fa.json",
+     "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+     "checked_at_utc": "2026-09-17T16:25:33Z",
+     "identity_note": "gtin13 5060018515847 as JSON-LD data on this purchase page (verifier EAN_ON_GENERIC_TLD_PAGE); the same GTIN/product is sold locally in UAE/KSA by Life Pharmacy",
+     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+    }
+   ],
+   "notes": "No local direct retailer with inulin powder was readable; cross-border brand shop used (the selector prices Oman in GBP)."
+  },
+  "YOL": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "egg yolk powder",
+    "dried egg yolk",
+    "مسحوق صفار البيض",
+    "صفار البيض المجفف"
+   ],
+   "queries": [
+    "sitemap URL-slug scan (English slug terms): yolk, egg-powder, dried-egg, powdered-egg",
+    "sitemap URL-slug scan (Arabic slug terms, URL-encoded): صفار",
+    "domain probing of GCC grocers/pharmacies for readable catalogues",
+    "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
+   ],
+   "sources_tried": [
+    "alfair.com supermarket (no sitemap, 404)",
+    "muscatpharmacy.com pharmacy (JavaScript shell; sitemap request refused, HTTP 440)",
+    "chefmiddleeast.com GCC professional/pastry supplier (JavaScript-only catalogue, not readable)",
+    "sporter.com health/supplement retailer country page (Cloudflare challenge)",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Oman - rejected as a cross-border path"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": null,
+     "product_name": "Eigelbpulver",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
+     "source_type": "RETAILER",
+     "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+     "cross_border": true,
+     "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). OM is NOT named, so this is a lead, not a confirmation.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:21:21Z",
+      "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+      "source": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g"
+     },
+     "composition": {
+      "fat_g": 55.8,
+      "protein_g": 34.3,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.",
+      "from": "page label \"Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.\"; nutrition per 100 g: Fett 55,8 g (davon gesättigte Fettsäuren 17,6 g), Kohlenhydrate 3,6 g, davon Zucker 3,6 g, Eiweiß 34,3 g, Salz 0,3 g"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % pasteurised, spray-dried chicken egg yolk; fat 55,8 / protein 34,3 against the PI-ING-001645 reference fat 56,5 / protein 34,5",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2944f17c1f486c80.json",
+     "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+     "checked_at_utc": "2026-09-17T18:21:21Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "No dried egg yolk powder found on any readable source. | gap pass 2026-09-17: no dried egg yolk powder is sold by any readable seller in this market; the only lead is a German shop that carries 100 % pasteurised spray-dried yolk powder but does not name Oman among its delivery countries. Owner decision needed as for CRP."
+  }
+ },
+ "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; DuckDuckGo/Mojeek/Brave/Ecosia/Yandex/Qwant served CAPTCHAs or firewalls (not bypassed). Discovery used retailer sitemaps (URL-slug scan with English and Arabic terms). GCC-wide sources that could not be read from the ES egress: carrefour country sites (empty bot-protected responses on UAE/KSA/Qatar), luluhypermarket.com (403 on sitemap), iherb.com country subdomains (403), sporter.com country pages (Cloudflare challenge), drnutrition.com (Cloudflare), chefmiddleeast.com professional catalogue (JavaScript-only, no readable catalogue or sitemap). Life Pharmacy and Nahdi (which carry inulin powders in UAE/KSA) have no storefront path for this market. | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes."
 }

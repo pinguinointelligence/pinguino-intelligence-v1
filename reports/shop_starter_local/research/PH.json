@@ -16,7 +16,8 @@
       "queries": [
         "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on smmarkets.ph, shop.healthyoptions.com.ph, rustans.com, landers.ph, rosepharmacy.com, puregold.com.ph, mercurydrug.com",
         "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on shop.healthyoptions.com.ph, rustans.com, shopmetro.ph, rosepharmacy.com, southstardrug.com.ph",
-        "Filipino terms listed for owner copy; retailer catalogues are in English"
+        "Filipino terms listed for owner copy; retailer catalogues are in English",
+        "\"cream powder\" dairy spray dried milk fat 40% buy retail Asia baking supplier 1kg"
       ],
       "sources_tried": [
         "smmarkets.ph (SM Markets supermarket) - 17k product URLs scanned: 'SM Bonus Sour Cream Powder 50g', coconut cream powders, Birch Tree full cream powdered milk, high fructose corn syrup, monk fruit sweetener (all rejected types)",
@@ -27,13 +28,18 @@
         "landers.ph (membership store) - text sitemap scanned: no match",
         "watsons.com.ph - HTTP 403, inconclusive; mercurydrug.com, puregold.com.ph - no sitemap; metromart.com, snrshopping.com - sitemap 404",
         "chefsandbakers.com - parked domain (not the PH baking chain); PH baking-supplier domains tried (chefsandbakers.ph/.com.ph, bakersmaker.com.ph) not reachable",
-        "lazada.com.ph / shopee.ph (marketplaces) - not used"
+        "lazada.com.ph / shopee.ph (marketplaces) - not used",
+        "hoosierhillfarm.com (US; real dairy \"Heavy Cream Powder\" 72 % butterfat found, but the shipping policy names no delivery countries - no cross-border evidence)",
+        "gourmet-versand.com (searched Sahnepulver, Rahmpulver, Milchpulver, Sahne: no dairy cream powder in the catalogue - only QimiQ whip desserts, coconut cream and horseradish cream)",
+        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no cream powder)",
+        "meilleurduchef.com (FR pastry supplier; delivery page /en/boutique/livraison.html lists no Asian market)",
+        "nzmp.com (Fonterra B2B ingredients brand): \"Cream Powder 55\" IS a real spray-dried dairy cream powder - the page prints \"Our cream powder is made from a blend of fresh dairy cream and skim milk, spray-dried to create a naturally rich 55%-fat powder\" (quote verified with check_quotes.py, found=true, ~/.cache/gellatti-evidence/quotes/gap-asia/nzmp_cream55.json). B2B-ONLY industrial ingredient, no retail pack and no purchase page - recorded as the B2B route under the owner rule, never to be shown as a retail offer."
       ],
       "candidates": [],
-      "notes": "Only sour cream powder, coconut cream powder and milk powders found (rejected types)."
+      "notes": "Only sour cream powder, coconut cream powder and milk powders found (rejected types). Re-checked 2026-09-17 under the new owner rule (a real spray-dried dairy cream powder outside 38-48 % fat is a valid B_SAME_TYPE_DIFFERENT_COMPOSITION candidate). Still BRAK: no dairy cream powder of any fat level was found on a page that binds to this market. The only genuine retail dairy cream powder found anywhere in this pass is Hoosier Hill Farm \"Heavy Cream Powder\" (hoosierhillfarm.com, \"made with 100% real sweet cream\", \"72% butterfat content\", 1 lb / 2 lb / 25 lb, US) - it is NOT recorded as a candidate because the seller's shipping policy (hoosierhillfarm.com/policies/shipping-policy) prints no destination countries and no international-delivery statement, so there is no verifiable purchase path into this market. Owner may want to ask them directly. Owner rule 3 (B2B stays B2B): the only genuine dairy cream powder route that exists in this region is industrial - Fonterra/NZMP \"Cream Powder 55\" (blend of fresh dairy cream and skim milk, spray-dried, 55 % fat, quote verified) and regional B2B dairy traders such as bestdairies.com (Klang, Malaysia) in 25 kg sacks. Tagged B2B, not presented as a retail offer and not recorded as a candidate because no purchase page binds it to this market. Retail shelves in the region carry non-dairy creamers, whole/full-cream milk powders and whipped-topping mixes, which the protocol rejects."
     },
     "FRU": {
-      "result": "BRAK",
+      "result": "VERIFIED_CROSS_BORDER",
       "local_terms": [
         "fructose",
         "fruit sugar",
@@ -42,7 +48,9 @@
       "queries": [
         "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on smmarkets.ph, shop.healthyoptions.com.ph, rustans.com, landers.ph, rosepharmacy.com, puregold.com.ph, mercurydrug.com",
         "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on shop.healthyoptions.com.ph, rustans.com, shopmetro.ph, rosepharmacy.com, southstardrug.com.ph",
-        "Filipino terms listed for owner copy; retailer catalogues are in English"
+        "Filipino terms listed for owner copy; retailer catalogues are in English",
+        "Fruktose (gourmet-versand.com site search)",
+        "Fructose (gourmet-versand.com site search)"
       ],
       "sources_tried": [
         "smmarkets.ph (SM Markets supermarket) - 17k product URLs scanned: 'SM Bonus Sour Cream Powder 50g', coconut cream powders, Birch Tree full cream powdered milk, high fructose corn syrup, monk fruit sweetener (all rejected types)",
@@ -53,13 +61,55 @@
         "landers.ph (membership store) - text sitemap scanned: no match",
         "watsons.com.ph - HTTP 403, inconclusive; mercurydrug.com, puregold.com.ph - no sitemap; metromart.com, snrshopping.com - sitemap 404",
         "chefsandbakers.com - parked domain (not the PH baking chain); PH baking-supplier domains tried (chefsandbakers.ph/.com.ph, bakersmaker.com.ph) not reachable",
-        "lazada.com.ph / shopee.ph (marketplaces) - not used"
+        "lazada.com.ph / shopee.ph (marketplaces) - not used",
+        "gourmet-versand.com (German gourmet/pastry retailer, generic .com; POST site search + /de/versand.html shipping-cost country selector - the selector names the destination country, so Sosa fructose / inulin are cross-border options)"
       ],
-      "candidates": [],
-      "notes": "Only high fructose corn syrup and monk fruit sweetener found (rejected types)."
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sosa",
+          "product_name": "Sosa Fruktose Pulver",
+          "pack": "1 kg",
+          "gtin": "8414933026259",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND (Heinsberg, Germany)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "no local binding (German gourmet/pastry retailer on a generic .com); cross-border only - see ships_to_evidence",
+          "cross_border": true,
+          "ships_to_evidence": "shipping-cost country selector on the seller's own delivery page https://www.gourmet-versand.com/de/versand.html (section 'Versendung in folgendes Land:') names the destination country; exact quote \"Peru Philippinen Polen Portugal\" verified with check_quotes.py (found=true, http 200, 2026-09-17); the same page states \"Wir liefern nach Europa und weltweit in\" 77 \"verschiedene Länder.\"; quote JSON: ~/.cache/gellatti-evidence/quotes/gap-asia/gv_ship_PH.json",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+            "source": "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": 0.01,
+            "fibre_g": null,
+            "fructose_pct": 100.0,
+            "ingredients": "Fructosepulver. Fruktose.",
+            "from": "page \"Zutaten\" field + product text \"Dieses 100% - ige Fructosepulver wird aus Maissirup mit hohem Fructosegehalt gewonnen.\"; Nährwerttabelle per 100 g: Brennwert 1700 kJ / 400 kcal, Kohlenhydrate 100 g, davon Zucker 100 g, Eiweiß 0,01 g, Salz 0,13 g"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "printed as a 100 % fructose powder; carbohydrates 100 g / of which sugars 100 g per 100 g (reference: fructose 99.8)",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a590a2c52d3ab33c.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "notes": "gtin13 8414933026259 appears as JSON-LD data on this purchase page (verify_ean_market.py: clean_hits 3, echo_hits 0, embedded_hits 0, identity_basis GTIN_ON_THIS_PAGE) and again as the page's \"EAN Code\" field. Manufacturer printed: Sosa Ingredients, S.L.U., Colonia Galobart S/N, 08270 Navarcles, Barcelona, Spain; article no. 22941. Pack is 1 kg (reference pack is 125 g).",
+          "checked_at_utc": "2026-09-17T18:30:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "found_by": "gap-asia"
+        }
+      ],
+      "notes": "Only high fructose corn syrup and monk fruit sweetener found (rejected types). Closed cross-border 2026-09-17 by gap-asia: no usable local source was found, so the proposal is the Sosa article at GOURMET VERSAND (Germany), whose own shipping-cost country selector names this country (quote verified with check_quotes.py, file under ~/.cache/gellatti-evidence/quotes/gap-asia/). Owner should still prefer a local source if one turns up; a 1 kg / 500 g pack and international postage are the trade-off."
     },
     "INU": {
-      "result": "BRAK",
+      "result": "VERIFIED_CROSS_BORDER",
       "local_terms": [
         "inulin",
         "inulin powder"
@@ -67,7 +117,8 @@
       "queries": [
         "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on smmarkets.ph, shop.healthyoptions.com.ph, rustans.com, landers.ph, rosepharmacy.com, puregold.com.ph, mercurydrug.com",
         "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on shop.healthyoptions.com.ph, rustans.com, shopmetro.ph, rosepharmacy.com, southstardrug.com.ph",
-        "Filipino terms listed for owner copy; retailer catalogues are in English"
+        "Filipino terms listed for owner copy; retailer catalogues are in English",
+        "Inulin (gourmet-versand.com site search)"
       ],
       "sources_tried": [
         "smmarkets.ph (SM Markets supermarket) - 17k product URLs scanned: 'SM Bonus Sour Cream Powder 50g', coconut cream powders, Birch Tree full cream powdered milk, high fructose corn syrup, monk fruit sweetener (all rejected types)",
@@ -78,13 +129,55 @@
         "landers.ph (membership store) - text sitemap scanned: no match",
         "watsons.com.ph - HTTP 403, inconclusive; mercurydrug.com, puregold.com.ph - no sitemap; metromart.com, snrshopping.com - sitemap 404",
         "chefsandbakers.com - parked domain (not the PH baking chain); PH baking-supplier domains tried (chefsandbakers.ph/.com.ph, bakersmaker.com.ph) not reachable",
-        "lazada.com.ph / shopee.ph (marketplaces) - not used"
+        "lazada.com.ph / shopee.ph (marketplaces) - not used",
+        "gourmet-versand.com (German gourmet/pastry retailer, generic .com; POST site search + /de/versand.html shipping-cost country selector - the selector names the destination country, so Sosa fructose / inulin are cross-border options)"
       ],
-      "candidates": [],
-      "notes": "No inulin powder found at readable Philippine retailers."
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sosa",
+          "product_name": "Sosa Inulin Cold (Ballaststoff) (50063)",
+          "pack": "500 g",
+          "gtin": "8414933008774",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND (Heinsberg, Germany)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "no local binding (German gourmet/pastry retailer on a generic .com); cross-border only - see ships_to_evidence",
+          "cross_border": true,
+          "ships_to_evidence": "shipping-cost country selector on the seller's own delivery page https://www.gourmet-versand.com/de/versand.html (section 'Versendung in folgendes Land:') names the destination country; exact quote \"Peru Philippinen Polen Portugal\" verified with check_quotes.py (found=true, http 200, 2026-09-17); the same page states \"Wir liefern nach Europa und weltweit in\" 77 \"verschiedene Länder.\"; quote JSON: ~/.cache/gellatti-evidence/quotes/gap-asia/gv_ship_PH.json",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+            "source": "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ballaststoff Inulin. Inulin.",
+            "from": "page \"Zutaten\" field; Nährwerttabelle per 100 g: Brennwert 839 kJ / 208 kcal, Kohlenhydrate 7 g, davon Zucker 7 g, Salz 0,1 g (no fibre figure printed)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "printed ingredient list is inulin only (dietary fibre); the German nutrition table prints no fibre figure, sugars are 7 g/100 g which is consistent with the reference (fibre 89, sugars 8)",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3c3f5d6932e222fa.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "notes": "gtin13 8414933008774 appears as JSON-LD data on this purchase page (verify_ean_market.py identity_basis GTIN_ON_THIS_PAGE) and as the page's \"EAN Code\" field; article no. 34575. The page also prints \"Nur für den professionellen Gebrauch!\" (professional use only) although it is an ordinary consumer webshop listing. The sibling article \"Sosa Inulin Hot (Ballaststoff) (39460)\" 500 g is stocked on the same shop.",
+          "checked_at_utc": "2026-09-17T18:30:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "found_by": "gap-asia"
+        }
+      ],
+      "notes": "No inulin powder found at readable Philippine retailers. Closed cross-border 2026-09-17 by gap-asia: no usable local source was found, so the proposal is the Sosa article at GOURMET VERSAND (Germany), whose own shipping-cost country selector names this country (quote verified with check_quotes.py, file under ~/.cache/gellatti-evidence/quotes/gap-asia/). Owner should still prefer a local source if one turns up; a 1 kg / 500 g pack and international postage are the trade-off."
     },
     "YOL": {
-      "result": "BRAK",
+      "result": "LEAD_ONLY",
       "local_terms": [
         "egg yolk powder",
         "pulbos na pula ng itlog (fil)"
@@ -92,7 +185,11 @@
       "queries": [
         "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on smmarkets.ph, shop.healthyoptions.com.ph, rustans.com, landers.ph, rosepharmacy.com, puregold.com.ph, mercurydrug.com",
         "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on shop.healthyoptions.com.ph, rustans.com, shopmetro.ph, rosepharmacy.com, southstardrug.com.ph",
-        "Filipino terms listed for owner copy; retailer catalogues are in English"
+        "Filipino terms listed for owner copy; retailer catalogues are in English",
+        "jaune d'oeuf en poudre (cuisineaddict.com, cerf-dellier.com)",
+        "Eigelbpulver (pati-versand.de)",
+        "egg yolk powder Philippines buy baking supplies store online",
+        "egg yolk powder (love2bake.com.ph product search)"
       ],
       "sources_tried": [
         "smmarkets.ph (SM Markets supermarket) - 17k product URLs scanned: 'SM Bonus Sour Cream Powder 50g', coconut cream powders, Birch Tree full cream powdered milk, high fructose corn syrup, monk fruit sweetener (all rejected types)",
@@ -103,10 +200,66 @@
         "landers.ph (membership store) - text sitemap scanned: no match",
         "watsons.com.ph - HTTP 403, inconclusive; mercurydrug.com, puregold.com.ph - no sitemap; metromart.com, snrshopping.com - sitemap 404",
         "chefsandbakers.com - parked domain (not the PH baking chain); PH baking-supplier domains tried (chefsandbakers.ph/.com.ph, bakersmaker.com.ph) not reachable",
-        "lazada.com.ph / shopee.ph (marketplaces) - not used"
+        "lazada.com.ph / shopee.ph (marketplaces) - not used",
+        "gourmet-versand.com (searched Eigelbpulver, Eigelb, Eipulver, Vollei, Trockenei: no egg powder in the catalogue - only egg-yellow food colourings)",
+        "taste-market.de (German shop with a real \"Eigelbpulver\" 100 g, ingredients \"Hühner-Eigelb\", GTIN 4262421423127 - kept out because the served HTML exposes no shipping/delivery-country page, so no cross-border evidence)",
+        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no egg yolk powder)",
+        "pati-versand.de (German baking retailer with a real \"Eigelbpulver 100g\", brand Cake-Masters Basics, ingredients \"HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET\", schema.org InStock / \"Auf Lager\") - NOT usable: its \"Rest der Welt\" zone is an explicit list of 20 European countries only (\"Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, ... Ungarn\", quote verified with check_quotes.py, ~/.cache/gellatti-evidence/quotes/gap-asia/pati_eu_only.json), no Asian market",
+        "cuisineaddict.com (FR; search \"jaune d'oeuf en poudre\" returns only egg-yellow food COLOURING E102/E129)",
+        "cerf-dellier.com (FR pastry supplier; search returns \"Désolé, nous ne trouvons aucun produit\")",
+        "bienmanger.com (FR; search path HTTP 404)",
+        "modernistpantry.com (US; /products.json and /search both HTTP 404 - no readable catalogue)",
+        "modernistpantry.com (US; \"Egg Yolk Powder\", page text \"Egg yolk powder is made of spray dried pasteurized egg yolks ... Made in the USA and contains no additives of any kind\", page shows \"in stock\") - NOT usable as cross-border evidence: the international-shipping page names no country, only \"We are currently only offering FedEx shipping for international customers. To see whether we can ship to your country just add the products to cart and go to the checkout page.\" (adding to carts is out of scope by protocol rule 8)",
+        "burket.ph (B2B business marketplace; FERNA EGG YOLK POWDER, price on inquiry - used as a LEAD)",
+        "love2bake.com.ph (Philippine baking-supply shop; WooCommerce product search for \"egg yolk powder\" returned no products)",
+        "lazada.com.ph / ubuy.com.ph (marketplaces / reshippers, never confirm)"
       ],
-      "candidates": [],
-      "notes": "No dried egg yolk powder found."
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Ferna",
+          "product_name": "FERNA EGG YOLK POWDER",
+          "pack": null,
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.burket.ph/product/912/ferna-egg-yolk-powder",
+          "source_type": "MARKETPLACE",
+          "seller": "Ferna Corporation, listed on Burket (burket.ph B2B marketplace \"Business + Market\")",
+          "page_market": "PH",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .ph",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "availability": {
+            "state": "UNKNOWN",
+            "checked_at_utc": "2026-09-17T18:55:00Z",
+            "basis": null,
+            "source": "https://www.burket.ph/product/912/ferna-egg-yolk-powder"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "listing shows only the product name, the supplier (Ferna Corporation) and \"Contact supplier for price\" / \"Inquire about FERNA EGG YOLK POWDER\"; no pack size, no price, no ingredient list, no nutrition"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Right type by name (egg yolk powder from a Philippine food-ingredient manufacturer) but nothing about composition or pack is printed.",
+          "evidence_class": "LEAD",
+          "b2b_only": true,
+          "verifier_verdict_file": null,
+          "notes": "B2B inquiry listing on a business marketplace: no price, no pack and no add-to-basket. Marketplaces never confirm (protocol rule 4), so LEAD at most, and it must never be shown as a retail offer.",
+          "checked_at_utc": "2026-09-17T18:55:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "found_by": "gap-asia"
+        }
+      ],
+      "notes": "No dried egg yolk powder found. Cross-border route for dried egg yolk was searched and closed 2026-09-17: the one European retailer with a verified 100 % spray-dried chicken egg yolk powder in a 100 g retail pack (pati-versand.de, \"Eigelbpulver 100g\") ships only to a named list of 20 European countries, and gourmet-versand.com - the one shop whose delivery-country selector does name Asian markets - has no egg powder at all. So there is currently no verifiable purchase path for dried egg yolk into this market. New LEAD 2026-09-17: burket.ph (B2B business marketplace, .ph) lists \"FERNA EGG YOLK POWDER\" from Ferna Corporation, but with \"Contact supplier for price\" only - no pack, no price, no composition. Marketplaces never confirm, so LEAD at most, and it is not a retail offer. Local retail searches (love2bake.com.ph product search, Lazada PH) returned nothing usable."
     }
-  }
+  },
+  "gap_followup_agent": "gap-asia",
+  "gap_followup_at_utc": "2026-09-17T18:30:00Z",
+  "gap_followup_egress_cc": "ES"
 }

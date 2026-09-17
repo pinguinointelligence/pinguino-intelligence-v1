@@ -21,11 +21,13 @@
   "tag_other_composition": "Thành phần khác",
   "tag_alternative": "Thay thế trong nước",
   "tag_unconfirmed": "Chưa xác nhận",
+  "tag_abroad_unconfirmed": "Cửa hàng nước ngoài",
   "legend": {
-    "from_abroad": "cửa hàng ở nước ngoài có giao hàng đến quốc gia này",
-    "b2b": "bán cho doanh nghiệp hoặc đóng gói lớn",
+    "from_abroad": "cửa hàng ở nước ngoài có nêu quốc gia này trong danh sách giao hàng của họ",
+    "b2b": "bán cho doanh nghiệp hoặc đóng gói lớn — không phải chào bán lẻ thông thường",
     "other_composition": "cùng loại sản phẩm nhưng thành phần khác (ghi bên cạnh)",
-    "alternative": "sản phẩm thay thế cho một sản phẩm Gellatti khác"
+    "alternative": "sản phẩm thay thế cho một sản phẩm Gellatti khác",
+    "abroad_unconfirmed": "cửa hàng ở nước ngoài; việc giao hàng đến quốc gia này chưa được xác nhận"
   },
   "starter_amount": "Trong Starter Pack: {g} g",
   "option": "Lựa chọn {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Đây là lựa chọn thay thế trong nước cho hỗn hợp Gellatti, không phải cùng một hỗn hợp. Trộn với các nguyên liệu khô rồi đun nóng cốt đến 75–80 °C.",
   "missing": "Chưa có sản phẩm được duyệt tại quốc gia này.",
+  "out_of_stock": "Cửa hàng hiển thị sản phẩm này hết hàng vào {date}.",
   "notes_title": "Điều nên biết",
   "notes": [
-    {"h": "Tình trạng hàng", "p": "Chúng tôi đã kiểm tra các sản phẩm này trên website của nhà sản xuất và cửa hàng vào tháng 9 năm 2026. Tình trạng hàng, giá và giao hàng có thể thay đổi và không được đảm bảo."},
+    {"h": "Tình trạng hàng", "p": "Chúng tôi đã kiểm tra các sản phẩm đã nghiên cứu trên website của cửa hàng và nhà sản xuất vào ngày 17 tháng 9 năm 2026. Đường dextrose, sữa bột tách béo và chất ổn định lấy từ bảng quốc gia Gellatti ngày 12 tháng 9 năm 2026 và không được kiểm tra lại. Tình trạng hàng, giá và giao hàng có thể thay đổi và không được đảm bảo."},
     {"h": "Nhãn là ưu tiên hàng đầu", "p": "Trước khi mua, hãy kiểm tra thành phần và chất gây dị ứng trên bao bì. Bột kem sữa và sữa bột có chứa sữa; lòng đỏ trứng có chứa trứng."},
     {"h": "Chất ổn định", "p": "Tại quốc gia này, một loại gôm thực vật địa phương được dùng thay cho Gellatti Stabilizer. Loại gôm này có tác dụng tương tự nhưng không phải cùng một hỗn hợp."}
   ],

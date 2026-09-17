@@ -7,7 +7,7 @@
   "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
   "items": {
     "CRP": {
-      "result": "BRAK",
+      "result": "LEAD_ONLY",
       "local_terms": [
         "cream powder",
         "dried cream powder",
@@ -21,7 +21,11 @@
         "cream powder gelato ingredient Australia supplier \"cream powder\" 1kg bag",
         "\"cream powder\" 500g OR 1kg \"ingredients: cream\" Australia",
         "ktaw cream powder 500g",
-        "product-sitemap URL scan on 15 Australian grocers, health stores and baking suppliers (see sources_tried)"
+        "product-sitemap URL scan on 15 Australian grocers, health stores and baking suppliers (see sources_tried)",
+        "site catalog gourmet-versand.com: Sahnepulver / Rahmpulver / Milchpulver (0 dairy powders)",
+        "site search pati-versand.de: Sahnepulver (Cake-Masters Sahnepulver 100g, SAHNE 42% Fett - EU-only delivery)",
+        "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose",
+        "WebSearch (com.au/net.au/org.au): \"cream powder\" dairy spray dried buy Australia online store ingredients cream 1kg"
       ],
       "sources_tried": [
         "woolworths.com.au (only full-cream MILK powders surfaced - rejected type)",
@@ -34,10 +38,72 @@
         "hoosierhillfarm.com heavy cream powder (US, 72% butterfat, no AU shipping evidence)",
         "amazon.com.au / ebay.com.au / etsy.com/au (marketplaces - not evidence)",
         "follow-up product-sitemap scan 'yolk|cream-powder|dried-cream|heavy-cream|powdered-cream' (after WebSearch budget ran out): bulknutrients.com.au (1.7k URLs, no match), thesourcebulkfoods.com.au (516, no match), healthylife.com.au (Woolworths health store, no match), bakeanddeco.com.au (only 'whipping cream powder 500g' - rejected type)",
-        "bot-walled/unreadable on this egress (inconclusive): woolworths.com.au, chemistwarehouse.com.au, priceline.com.au, kitchenwarehouse.com.au (HTTP 403); nutritionwarehouse.com.au, nourishmeorganics.com.au, cakerswarehouse.com.au, harrisfarm.com.au (Shopify HTTP 429 challenge); honesttogoodness.com.au, theessentialingredient.com.au (no response); goodfoodwarehouse.com.au (no sitemap)"
+        "bot-walled/unreadable on this egress (inconclusive): woolworths.com.au, chemistwarehouse.com.au, priceline.com.au, kitchenwarehouse.com.au (HTTP 403); nutritionwarehouse.com.au, nourishmeorganics.com.au, cakerswarehouse.com.au, harrisfarm.com.au (Shopify HTTP 429 challenge); honesttogoodness.com.au, theessentialingredient.com.au (no response); goodfoodwarehouse.com.au (no sitemap)",
+        "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
+        "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
+        "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)",
+        "ktaw.com.au (retried 2026-09-17 with and without www: HTTP 000, the host does not complete a TLS handshake - unreadable, not classified, not bypassed)",
+        "chefsarmoury.com.au (Australian modernist-ingredient retailer; on-site search HTTP 429 - blocked, inconclusive)",
+        "theessentialingredient.com.au (HTTP 000, unreachable on this egress - inconclusive)",
+        "woolworths.com.au / a2milk / Chemist Warehouse / freshease.com.au (WebSearch 2026-09-17 surfaced only full-cream MILK powders, spray-dried but ~26 % fat - rejected type)"
       ],
-      "candidates": [],
-      "notes": "No dairy cream powder found at an Australian direct retailer. The only named 'cream powder' retail listing (KTAW Cream Powder 500g) could not be read (broken TLS certificate) and is not classified."
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Ingredients Bar",
+          "product_name": "Cream Powder",
+          "pack": "200 g (same listing also offers 500 g, 1.5 kg and 4 kg; SKU 0370)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Ingredients Bar (United Kingdom)",
+          "page_market": "GB",
+          "market_by": "OTHER_MARKET:GB",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "NONE for AU (UK shop, GBP only - currency never binds). The seller states international delivery but names no country, so this is a LEAD purchase path, not VERIFIED_CROSS_BORDER.",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "quotes": [
+              {
+                "url": "https://ingredientsbar.com/payment-delivery/",
+                "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
+                "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json"
+              }
+            ],
+            "found": true,
+            "country_named": false,
+            "note": "Generic international-delivery statement only; AU is not named, so owner rule 2 (2026-09-17) keeps this a LEAD."
+          },
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:45:29Z",
+            "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+            "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+          },
+          "composition": {
+            "fat_g": 75.0,
+            "protein_g": 8.5,
+            "fibre_g": 0.0,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition Facts Per 100g: Energy 3094kJ/750kcal, Fat 75 g of which saturated fatty acid 51 g, Carbohydrates 12 g of which sugars 12 g, Protein 8.5 g, Dietary Fibre 0 g, Salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
+            "from": "product page, 'Ingredients & Nutrition' tab (quote file ~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json)",
+            "sugars_g": 12.0
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "Real spray-dried dairy cream powder ('made from dehydrated cream, free from additives'), printed fat 75 g/100 g - outside the 38-48 % A band (reference 42 %). Ingredients are cream + milk protein + lactose, i.e. the permitted CRP ingredient family. Recorded under owner rule 3 (2026-09-17): a dairy cream powder outside 38-48 % fat is a valid candidate for owner decision.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0bb55357582b0cc7.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json",
+            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T18:45:29Z"
+        }
+      ],
+      "notes": "No dairy cream powder found at an Australian direct retailer. The only named 'cream powder' retail listing (KTAW Cream Powder 500g) could not be read (broken TLS certificate) and is not classified. | 2026-09-17: BRAK lifted to LEAD_ONLY under owner rule 3. The Australian BRAK stands: a fresh .com.au search again returned only full-cream milk powders, and the one named Australian 'cream powder' listing (KTAW 500 g) still cannot be read (broken TLS). New candidate: Ingredients Bar (UK) Cream Powder, real spray-dried dairy cream powder, printed fat 75 g/100 g and full ingredient list, retail 200 g pack, IN_STOCK. Kept a LEAD because the seller's delivery page only states that international delivery is charged at checkout and never names the country (owner rule 2). BulkSupplements and gourmet-versand both name Australia in their delivery lists but sell no cream powder."
     },
     "FRU": {
       "result": "CONFIRMED_LOCAL",
@@ -196,7 +262,15 @@
         "fluffybabybake.com.au (egg yolk powder marketed for pets - rejected)",
         "amazon.com.au / ebay.com.au / etsy.com/au (marketplaces)",
         "follow-up product-sitemap scan 'yolk|cream-powder|dried-cream|heavy-cream|powdered-cream' (after WebSearch budget ran out): bulknutrients.com.au (1.7k URLs, no match), thesourcebulkfoods.com.au (516, no match), healthylife.com.au (Woolworths health store, no match), bakeanddeco.com.au (only 'whipping cream powder 500g' - rejected type)",
-        "bot-walled/unreadable on this egress (inconclusive): woolworths.com.au, chemistwarehouse.com.au, priceline.com.au, kitchenwarehouse.com.au (HTTP 403); nutritionwarehouse.com.au, nourishmeorganics.com.au, cakerswarehouse.com.au, harrisfarm.com.au (Shopify HTTP 429 challenge); honesttogoodness.com.au, theessentialingredient.com.au (no response); goodfoodwarehouse.com.au (no sitemap)"
+        "bot-walled/unreadable on this egress (inconclusive): woolworths.com.au, chemistwarehouse.com.au, priceline.com.au, kitchenwarehouse.com.au (HTTP 403); nutritionwarehouse.com.au, nourishmeorganics.com.au, cakerswarehouse.com.au, harrisfarm.com.au (Shopify HTTP 429 challenge); honesttogoodness.com.au, theessentialingredient.com.au (no response); goodfoodwarehouse.com.au (no sitemap)",
+        "gourmet-versand.com (DE; catalogue searched for Eipulver / Vollei / Trockenei / Eigelb - no egg yolk powder)",
+        "msk-ingredients.com (UK; full product sitemap, 6597 URLs: no egg yolk powder)",
+        "souschef.co.uk (UK; all 7 product sitemaps, 6274 URLs: no egg yolk powder)",
+        "bulksupplements.com (US; sells no egg yolk powder)",
+        "judeesfromscratch.com/policies/shipping-policy (maker of an 11 oz Egg Yolk Powder; no international statement)",
+        "gosupps.com (US reseller advertising Judee's Egg Yolk Powder with express international delivery; shipping pages HTTP 403 - blocked, inconclusive)",
+        "modernistpantry.com egg yolk powder (US customers only)",
+        "bulksupplements.com and gourmet-versand.com (both name Australia in their own delivery-country lists, so a yolk powder there would have been a VERIFIED_CROSS_BORDER - neither sells one)"
       ],
       "candidates": [
         {
@@ -227,10 +301,17 @@
           "equivalence_note": "right type by name; no brand, ingredients or nutrition shown; price hidden behind login (possibly trade-only)",
           "evidence_class": "LEAD",
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5dc8f66cf4bd9bd7.json",
-          "checked_at_utc": "2026-09-17T15:32:53Z"
+          "checked_at_utc": "2026-09-17T15:32:53Z",
+          "availability": {
+            "state": "UNKNOWN",
+            "checked_at_utc": "2026-09-17T18:45:29Z",
+            "basis": "the distributor listing prints no stock or availability statement; the price itself is hidden behind a trade login",
+            "source": "https://www.henfresh.com.au/product/5547-egg-yolk-powder-500g"
+          },
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
         }
       ],
-      "notes": "Not a D-37 own-brand listing (distributor, no brand), so identity is not proven."
+      "notes": "Not a D-37 own-brand listing (distributor, no brand), so identity is not proven. | Re-checked 2026-09-17: the Henfresh listing shows no stock state at all (price behind a trade login), so availability is UNKNOWN. A cross-border route was searched for specifically, because two shops that name Australia in their delivery lists were already in hand (BulkSupplements, gourmet-versand) - neither sells egg yolk powder, and the US shops that do are US-only, silent on international shipping, or bot-walled."
     }
   },
   "discovery_method_note": "Discovery started with WebSearch; the shared session's WebSearch budget ran out during NZ, so the AU follow-up used retailer product sitemaps. Search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk."

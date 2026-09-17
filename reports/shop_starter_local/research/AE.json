@@ -18,7 +18,13 @@
       "queries": [
         "heavy cream powder buy UAE (WebSearch)",
         "sitemap URL scan (cream-powder|heavy-cream): lifepharmacy.com, nahdionline.com (uae_en/uae_ar), myaster.com, grandiose.ae, organicfoodsandcafe.com, aswaaq.ae, unioncoop.ae, choithrams.com",
-        "amazon.ae search: heavy cream powder"
+        "amazon.ae search: heavy cream powder",
+        "\"egg yolk powder\" buy online UAE Dubai baking ingredients shop (WebSearch)",
+        "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+        "hoosierhillfarm.com product sitemap + policies/shipping-policy + pages/faqs (international shipping)",
+        "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+        "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+        "caketools.ae + freshsupplies.ae sitemap scan (yolk|egg-powder|cream-powder|fructose|inulin)"
       ],
       "sources_tried": [
         "grandiose.ae supermarket (sitemap: no cream powder)",
@@ -28,7 +34,17 @@
         "chefmiddleeast.com professional supplier (no sitemap/search readable)",
         "carrefouruae.com, luluhypermarket.com, spinneys.com, waitrose.ae, kibsons.com (bot walls)",
         "cakecraftuae.com, masterbakerstudio.com baking suppliers (429 challenge)",
-        "amazon.ae marketplace (found US heavy cream powders)"
+        "amazon.ae marketplace (found US heavy cream powders)",
+        "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+        "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+        "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+        "hoosierhillfarm.com (US, Heavy Cream Powder): FAQ states 'Do you ship internationally? At this time, we do not ship internationally.' - rejected as a cross-border path",
+        "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+        "gourmet-versand.com (DE gourmet retailer, shipping-cost country selector names 81 countries incl. United Arab Emirates): Sosa fructose powder 1 kg found with GTIN, ingredients and nutrition; its EN sitemap has NO dairy cream powder (only cooking-, filling- and coconut-cream powders) and NO egg yolk powder (only yolk-coloured food colouring)",
+        "caketools.ae (Dubai baking supplier, 13 product sitemaps / 6 459 URLs scanned): only whipped-topping and pastry-cream powders and soft-ice mixes - all rejected types; no egg yolk powder, no fructose",
+        "freshsupplies.ae (Dubai bakery-ingredient supplier): sitemap holds category pages only, no product catalogue",
+        "masterbakerstudio.com (professional supplier): HTTP 429 again (blocked, inconclusive)",
+        "amazon.ae re-read 2026-09-17: 4 437-byte bot-wall response, so the stock state of the existing marketplace leads could not be read"
       ],
       "candidates": [
         {
@@ -61,13 +77,59 @@
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/578827c42ce60de9.json",
           "verifier_verification_class": "PAGE_FACTS_ONLY",
           "checked_at_utc": "2026-09-17T16:20:03Z",
-          "notes": "Also on amazon.ae: Anthony's Heavy Cream Powder 1 lb (B01A03E494), Judee's Heavy Cream Powder 11 oz / 1.5 lb (B07S93MZ7M, B087BPF56P), Z Natural Foods Heavy Cream Powder 1 lb (B09XN67ZH7) - not opened. A buyer review on the page disputes the label (mentions sodium caseinate/soy lecithin) - owner should check the pack."
+          "notes": "Also on amazon.ae: Anthony's Heavy Cream Powder 1 lb (B01A03E494), Judee's Heavy Cream Powder 11 oz / 1.5 lb (B07S93MZ7M, B087BPF56P), Z Natural Foods Heavy Cream Powder 1 lb (B09XN67ZH7) - not opened. A buyer review on the page disputes the label (mentions sodium caseinate/soy lecithin) - owner should check the pack.",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "UNKNOWN",
+            "checked_at_utc": "2026-09-17T18:45:00Z",
+            "basis": null,
+            "source": "https://www.amazon.ae/dp/B00OCV3QRW"
+          },
+          "availability_note": "amazon.ae answered with a 4 437-byte bot wall on 2026-09-17, so no stock token could be read; marketplace listing in any case"
+        },
+        {
+          "rank": 2,
+          "brand": null,
+          "product_name": "Sahnepulver sprühgetrocknet",
+          "pack": "100 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
+          "source_type": "RETAILER",
+          "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+          "cross_border": true,
+          "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). AE is NOT named, so this is a lead, not a confirmation.",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:21:06Z",
+            "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+            "source": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+            "from": "page label \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\"; nutrition per 100 g: Fett 42 g (davon gesättigte Fettsäuren 27,1 g), Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "spray-dried dairy cream, 42 % fat = the PI-ING-000260 reference exactly (fat 42, protein 20, lactose 30)",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3df84b49991636c0.json",
+          "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+          "checked_at_utc": "2026-09-17T18:21:06Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
         }
       ],
-      "notes": "No direct UAE retailer page with a dairy cream powder could be read; the only purchase path found is a marketplace offer, kept as LEAD."
+      "notes": "No direct UAE retailer page with a dairy cream powder could be read; the only purchase path found is a marketplace offer, kept as LEAD. | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name United Arab Emirates among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF."
     },
     "FRU": {
-      "result": "LEAD_ONLY",
+      "result": "VERIFIED_CROSS_BORDER",
       "local_terms": [
         "fructose",
         "fruit sugar",
@@ -78,7 +140,11 @@
         "fructose powder 500g UAE supermarket (WebSearch)",
         "sitemap URL scan (fructos|فركتوز): lifepharmacy.com, nahdionline.com, myaster.com, grandiose.ae, organicfoodsandcafe.com",
         "nahdionline.com/en-ae NOW Foods fructose pdp (404 in UAE)",
-        "amazon.ae search: fructose powder"
+        "amazon.ae search: fructose powder",
+        "\"egg yolk powder\" buy online UAE Dubai baking ingredients shop (WebSearch)",
+        "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+        "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+        "caketools.ae + freshsupplies.ae sitemap scan (yolk|egg-powder|cream-powder|fructose|inulin)"
       ],
       "sources_tried": [
         "nahdionline.com en-ae (NOW Foods Fructose listed for KSA only; UAE URL returns 404)",
@@ -87,11 +153,57 @@
         "organicfoodsandcafe.com (no result)",
         "carrefouruae.com / luluhypermarket.com / spinneys.com / kibsons.com (bot walls)",
         "noon.com marketplace (BulkSupplements fructose seen in search; page did not answer)",
-        "amazon.ae marketplace (found)"
+        "amazon.ae marketplace (found)",
+        "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+        "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+        "gourmet-versand.com (DE gourmet retailer, shipping-cost country selector names 81 countries incl. United Arab Emirates): Sosa fructose powder 1 kg found with GTIN, ingredients and nutrition; its EN sitemap has NO dairy cream powder (only cooking-, filling- and coconut-cream powders) and NO egg yolk powder (only yolk-coloured food colouring)",
+        "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+        "caketools.ae (Dubai baking supplier, 13 product sitemaps / 6 459 URLs scanned): only whipped-topping and pastry-cream powders and soft-ice mixes - all rejected types; no egg yolk powder, no fructose",
+        "freshsupplies.ae (Dubai bakery-ingredient supplier): sitemap holds category pages only, no product catalogue",
+        "masterbakerstudio.com (professional supplier): HTTP 429 again (blocked, inconclusive)",
+        "amazon.ae re-read 2026-09-17: 4 437-byte bot-wall response, so the stock state of the existing marketplace leads could not be read"
       ],
       "candidates": [
         {
           "rank": 1,
+          "brand": "Sosa",
+          "product_name": "Sosa fructose powder",
+          "pack": "1 kg (PE dose)",
+          "gtin": "8414933026259",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND, Waldfeuchter Strasse 324, 52525 Heinsberg, Germany",
+          "page_market": "DE",
+          "market_by": "SELLER_ADDRESS",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "German seller (schema.org OnlineStore addressCountry DE); the destination market is reached cross-border. The verifier classes the host itself as GENERIC_TLD.",
+          "cross_border": true,
+          "ships_to_evidence": "~/.cache/gellatti-evidence/quotes/gap-mena/gourmet-versand_shipping_AE.json - check_quotes.py found=true on https://www.gourmet-versand.com/index.php?site=versand&language=en (the seller's own shipping-cost country selector, 81 options), quote 'Ukraine United Arab Emirates Uzbekistan'",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:07:43Z",
+            "basis": "NOW AVAILABLE",
+            "source": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": 0.01,
+            "fibre_g": null,
+            "fructose_pct": 100.0,
+            "ingredients": "Fructose.",
+            "from": "page label 'Ingredients Fructose.'; nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; product text 'This 100% fructose powder is obtained from high fructose corn syrup.'"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single ingredient fructose, 100 g sugars per 100 g - at or above the >= 98 % fructose reference",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/08f87b6219d382bd.json",
+          "identity_note": "verifier: gtin13 8414933026259 in the page's own JSON-LD offer, 3 clean hits, 0 echo hits, source_type DIRECT (identity_basis GTIN_ON_THIS_PAGE)",
+          "checked_at_utc": "2026-09-17T18:07:43Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
           "brand": "Urban Platter",
           "product_name": "Urban Platter Pure Fructose Sugar, 400g / 14.11oz [Fruit-Based, Finely Granulated & Free-Flowing Sugar]",
           "pack": "400 g",
@@ -111,7 +223,7 @@
             "protein_g": null,
             "fibre_g": null,
             "fructose_pct": null,
-            "ingredients": "not printed; listing says 'Pure Fructose Sugar', item form crystal",
+            "ingredients": null,
             "from": "Amazon.ae listing"
           },
           "equivalence": "C_INSUFFICIENT_DATA",
@@ -120,7 +232,16 @@
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ef02ca5c52cec784.json",
           "verifier_verification_class": "PAGE_FACTS_ONLY",
           "checked_at_utc": "2026-09-17T16:20:23Z",
-          "notes": "Other amazon.ae offers seen in search: 'Pure Fructose Granulated Powder OU Kosher' 200 g / 1 kg (B07HHHM2XW, B07HHJGX8K), BulkSupplements Fructose Powder (B0799XXRZK)."
+          "notes": "Other amazon.ae offers seen in search: 'Pure Fructose Granulated Powder OU Kosher' 200 g / 1 kg (B07HHHM2XW, B07HHJGX8K), BulkSupplements Fructose Powder (B0799XXRZK).",
+          "composition_note": "the page prints no ingredient list - page text: listing says 'Pure Fructose Sugar', item form crystal",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "UNKNOWN",
+            "checked_at_utc": "2026-09-17T18:45:00Z",
+            "basis": null,
+            "source": "https://www.amazon.ae/dp/B07KXZDVHS"
+          },
+          "availability_note": "amazon.ae answered with a 4 437-byte bot wall on 2026-09-17, so no stock token could be read"
         }
       ],
       "notes": "No direct UAE retailer with fructose could be read."
@@ -235,7 +356,12 @@
       "queries": [
         "egg yolk powder buy Dubai (WebSearch)",
         "sitemap URL scan (yolk|egg-powder|صفار): lifepharmacy.com, nahdionline.com, myaster.com, grandiose.ae, organicfoodsandcafe.com",
-        "amazon.ae search: egg yolk powder"
+        "amazon.ae search: egg yolk powder",
+        "\"egg yolk powder\" buy online UAE Dubai baking ingredients shop (WebSearch)",
+        "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+        "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+        "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+        "caketools.ae + freshsupplies.ae sitemap scan (yolk|egg-powder|cream-powder|fructose|inulin)"
       ],
       "sources_tried": [
         "grandiose.ae (only an egg-yolk separator and snacks)",
@@ -243,7 +369,16 @@
         "casinetto.com (fresh eggs; 403)",
         "nahdionline.com (egg yolk lecithin capsules only)",
         "lifepharmacy.com / myaster.com (no result)",
-        "amazon.ae marketplace (found)"
+        "amazon.ae marketplace (found)",
+        "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+        "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+        "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+        "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+        "gourmet-versand.com (DE gourmet retailer, shipping-cost country selector names 81 countries incl. United Arab Emirates): Sosa fructose powder 1 kg found with GTIN, ingredients and nutrition; its EN sitemap has NO dairy cream powder (only cooking-, filling- and coconut-cream powders) and NO egg yolk powder (only yolk-coloured food colouring)",
+        "caketools.ae (Dubai baking supplier, 13 product sitemaps / 6 459 URLs scanned): only whipped-topping and pastry-cream powders and soft-ice mixes - all rejected types; no egg yolk powder, no fructose",
+        "freshsupplies.ae (Dubai bakery-ingredient supplier): sitemap holds category pages only, no product catalogue",
+        "masterbakerstudio.com (professional supplier): HTTP 429 again (blocked, inconclusive)",
+        "amazon.ae re-read 2026-09-17: 4 437-byte bot-wall response, so the stock state of the existing marketplace leads could not be read"
       ],
       "candidates": [
         {
@@ -276,11 +411,57 @@
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f57dbb818a015344.json",
           "verifier_verification_class": "PAGE_FACTS_ONLY",
           "checked_at_utc": "2026-09-17T16:20:06Z",
-          "notes": "Also on amazon.ae: Judee's Egg Yolk Powder 1.5 lb (B098SP69CN), Eggylicious Egg Yolk Powder 1 lb (B0DP9JMN8B) - not opened."
+          "notes": "Also on amazon.ae: Judee's Egg Yolk Powder 1.5 lb (B098SP69CN), Eggylicious Egg Yolk Powder 1 lb (B0DP9JMN8B) - not opened.",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "UNKNOWN",
+            "checked_at_utc": "2026-09-17T18:45:00Z",
+            "basis": null,
+            "source": "https://www.amazon.ae/dp/B098SP2LTV"
+          },
+          "availability_note": "amazon.ae answered with a 4 437-byte bot wall on 2026-09-17, so no stock token could be read"
+        },
+        {
+          "rank": 2,
+          "brand": null,
+          "product_name": "Eigelbpulver",
+          "pack": "100 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
+          "source_type": "RETAILER",
+          "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+          "cross_border": true,
+          "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). AE is NOT named, so this is a lead, not a confirmation.",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:21:21Z",
+            "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+            "source": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g"
+          },
+          "composition": {
+            "fat_g": 55.8,
+            "protein_g": 34.3,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.",
+            "from": "page label \"Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.\"; nutrition per 100 g: Fett 55,8 g (davon gesättigte Fettsäuren 17,6 g), Kohlenhydrate 3,6 g, davon Zucker 3,6 g, Eiweiß 34,3 g, Salz 0,3 g"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised, spray-dried chicken egg yolk; fat 55,8 / protein 34,3 against the PI-ING-001645 reference fat 56,5 / protein 34,5",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2944f17c1f486c80.json",
+          "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+          "checked_at_utc": "2026-09-17T18:21:21Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
         }
       ],
-      "notes": "No direct UAE retailer with dried egg yolk powder could be read."
+      "notes": "No direct UAE retailer with dried egg yolk powder could be read. | gap pass 2026-09-17: no dried egg yolk powder is sold by any readable seller in this market; the only lead is a German shop that carries 100 % pasteurised spray-dried yolk powder but does not name United Arab Emirates among its delivery countries. Owner decision needed as for CRP."
     }
   },
-  "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; DuckDuckGo/Mojeek/Brave/Ecosia/Yandex/Qwant served CAPTCHAs or firewalls (not bypassed). Discovery used retailer sitemaps and brand stores. Bot walls / challenges from the ES egress: carrefouruae.com (empty page), luluhypermarket.com (403), spinneys.com (403), waitrose.ae (403), kibsons.com (403 captcha), drnutrition.com (Cloudflare), ae.iherb.com (403), sporter.com country pages (Cloudflare), hollandandbarrett.ae and binsina.ae (405), noon.com (no answer), cakecraftuae.com and masterbakerstudio.com (429 challenge)."
+  "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; DuckDuckGo/Mojeek/Brave/Ecosia/Yandex/Qwant served CAPTCHAs or firewalls (not bypassed). Discovery used retailer sitemaps and brand stores. Bot walls / challenges from the ES egress: carrefouruae.com (empty page), luluhypermarket.com (403), spinneys.com (403), waitrose.ae (403), kibsons.com (403 captcha), drnutrition.com (Cloudflare), ae.iherb.com (403), sporter.com country pages (Cloudflare), hollandandbarrett.ae and binsina.ae (405), noon.com (no answer), cakecraftuae.com and masterbakerstudio.com (429 challenge). | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes."
 }

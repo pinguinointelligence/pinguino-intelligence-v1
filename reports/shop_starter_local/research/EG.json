@@ -1,264 +1,436 @@
 {
-  "iso2": "EG",
-  "country": "Egypt",
-  "agent": "research-mena",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:25:08Z",
-  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-  "items": {
-    "CRP": {
-      "result": "BRAK",
-      "local_terms": [
-        "كريمة بودرة",
-        "بودرة القشطة",
-        "مسحوق القشدة",
-        "cream powder",
-        "heavy cream powder"
-      ],
-      "queries": [
-        "sitemap URL scan (cream-powder|heavy-cream): spinneys-egypt.com, elezabypharmacy.com, chefaa.com, rabbitmart.com, gourmetegypt.com, hyperone.com.eg, metro-markets.com",
-        "amazon.eg search: heavy cream powder"
-      ],
-      "sources_tried": [
-        "spinneys-egypt.com supermarket (only 'ice cream powder mix' and full-cream milk powder - reject)",
-        "gourmetegypt.com / hyperone.com.eg / metro-markets.com / rabbitmart.com grocers (no product URLs matched)",
-        "elezabypharmacy.com / chefaa.com pharmacies (no result)",
-        "amazon.eg marketplace (only whipping-cream powders such as Dreem and full-cream milk powders - reject)",
-        "jumia.com.eg (bot wall)"
-      ],
-      "candidates": [],
-      "notes": "Only rejected product types found (whipping/whipped-topping powders, milk powders)."
-    },
-    "FRU": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "سكر فركتوز",
-        "سكر الفاكهة",
-        "فركتوز",
-        "fructose",
-        "fruit sugar"
-      ],
-      "queries": [
-        "سكر الفركتوز 500 جرام السعودية (WebSearch; surfaced Star Diet fructose on amazon.eg)",
-        "sitemap URL scan (fructos|فركتوز): spinneys-egypt.com, elezabypharmacy.com, chefaa.com, rabbitmart.com",
-        "amazon.eg search: fructose"
-      ],
-      "sources_tried": [
-        "spinneys-egypt.com supermarket (found Star Diet and Rich Diet fructose 125 g / 250 g / 500 g)",
-        "elezabypharmacy.com / chefaa.com pharmacies (no result)",
-        "rabbitmart.com / gourmetegypt.com (no result)",
-        "amazon.eg marketplace (Star Fructose 350 g - not needed, direct retailer exists)",
-        "jumia.com.eg (bot wall)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Star Diet",
-          "product_name": "Star Diet Fruit Sugar - 500 Gr",
-          "pack": "500 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://spinneys-egypt.com/en/star-diet-fructose-sugar-500-gm-spinneys",
-          "source_type": "RETAILER",
-          "seller": "Spinneys Egypt",
-          "page_market": "EG",
-          "market_by": "CURRENCY_ONLY",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "none that binds: generic .com, EGP prices only (currency never binds), no country statement on the page",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "not printed (brand, size 500 GM, SKU 312356 only)",
-            "from": "local page specifications"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "sold as fruit sugar (fructose) but no ingredients or nutrition printed",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1ddd9fae76a63353.json",
-          "verifier_verification_class": "PAGE_FACTS_ONLY",
-          "checked_at_utc": "2026-09-17T16:16:18Z",
-          "identity_note": "store SKU only, no GTIN; also listed: Star Diet fructose 125 g and 'Star Fructose Natural Sweetener' 250 g"
-        },
-        {
-          "rank": 2,
-          "brand": "Rich Diet",
-          "product_name": "Rich Diet Natural Fruit Sugar For All Diet Types & Diabetic Patients - 500 Gr",
-          "pack": "500 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://spinneys-egypt.com/en/rich-diet-sugar-fructose-500-gm",
-          "source_type": "RETAILER",
-          "seller": "Spinneys Egypt",
-          "page_market": "EG",
-          "market_by": "CURRENCY_ONLY",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "none that binds: generic .com, EGP prices only",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "not printed (size 500 GM, SKU 379392 only)",
-            "from": "local page specifications"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "natural fruit sugar, no ingredients or nutrition printed",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1dddf4e9173292eb.json",
-          "verifier_verification_class": "PAGE_FACTS_ONLY",
-          "checked_at_utc": "2026-09-17T16:16:50Z",
-          "identity_note": "store SKU only; also 125 g and 250 g packs listed"
-        }
-      ],
-      "notes": "Egyptian diet-sugar brands are on sale at Spinneys Egypt, but no page shows a GTIN, a composition or a binding country signal."
-    },
-    "INU": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "انولين",
-        "إينولين",
-        "inulin",
-        "inulin powder"
-      ],
-      "queries": [
-        "sitemap URL scan (inulin): elezabypharmacy.com, chefaa.com, spinneys-egypt.com, rabbitmart.com, gourmetegypt.com",
-        "amazon.eg search: inulin powder",
-        "kiki-health.com product page + shipping policy (cross-border)"
-      ],
-      "sources_tried": [
-        "elezabypharmacy.com pharmacy (no inulin powder)",
-        "chefaa.com pharmacy platform (no result)",
-        "spinneys-egypt.com / rabbitmart.com / gourmetegypt.com (no result)",
-        "amazon.eg marketplace (Bioglan Inulin 250 g and several unbranded 227 g / 100 g inulin powders)",
-        "kiki-health.com UK brand shop (country selector lists Egypt; GTIN on page)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "KIKI Health",
-          "product_name": "Inulin Powder, Organic - 250g",
-          "pack": "250 g",
-          "gtin": "5060018515847",
-          "identifier_confirmed": true,
-          "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "KIKI Health (UK brand web shop)",
-          "page_market": null,
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "no local binding (generic .com, UK brand shop); cross-border - see ships_to_evidence",
-          "cross_border": true,
-          "ships_to_evidence": "country selector on the product page lists 'Egypt (EGP ج.م)'; shipping policy https://kiki-health.com/policies/shipping-policy checked with check_quotes.py (found=true, 2026-09-17): 'For EU and International orders, postage costs vary according to your country.' and 'International Delivery ... Royal Mail International Tracked delivery is used on all orders'",
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": 93.0,
-            "fructose_pct": null,
-            "ingredients": "Made from 100% Blue Agave (organic agave inulin)",
-            "from": "brand product page: '93% soluble plant-based fibre', '5.4g of fibre per serving', 'Completely pure, with no added sugars or sweeteners'"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "pure organic agave inulin, 93 % soluble fibre",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d8b2285e2c07b241.json",
-          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
-          "checked_at_utc": "2026-09-17T16:22:48Z",
-          "identity_note": "gtin13 5060018515847 as JSON-LD data on this purchase page (verifier EAN_ON_GENERIC_TLD_PAGE); the same GTIN/product is sold locally in UAE/KSA by Life Pharmacy"
-        },
-        {
-          "rank": 2,
-          "brand": "Bioglan",
-          "product_name": "Bioglan Inulin | Prebiotic Fibre Supplement | Chicory Root | Contributes to normal Bowel Function | 50 serves | 250g Pack",
-          "pack": "250 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.amazon.eg/dp/B01LWV9LNO",
-          "source_type": "MARKETPLACE",
-          "seller": "Amazon.eg listing",
-          "page_market": "EG",
-          "market_by": "CCTLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "country domain .eg (marketplace - never confirms)",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "'100% Pure Inulin Powder: made from naturally sourced chicory root' (listing text)",
-            "from": "Amazon.eg listing"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "chicory inulin per listing, no fibre figure printed on this page (the same Bioglan product elsewhere declares fibre 89 g/100 g)",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0aff018998dec2c0.json",
-          "verifier_verification_class": "PAGE_FACTS_ONLY",
-          "checked_at_utc": "2026-09-17T16:23:21Z"
-        }
-      ],
-      "notes": "No Egyptian direct retailer page with inulin powder was readable; rank 1 is a UK brand shop that lists Egypt in its country selector and states international delivery."
-    },
-    "YOL": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "صفار البيض المجفف",
-        "بودرة صفار البيض",
-        "مسحوق صفار البيض",
-        "egg yolk powder"
-      ],
-      "queries": [
-        "sitemap URL scan (yolk|egg-powder|صفار): spinneys-egypt.com, elezabypharmacy.com, chefaa.com, rabbitmart.com",
-        "amazon.eg search: egg yolk powder"
-      ],
-      "sources_tried": [
-        "spinneys-egypt.com / rabbitmart.com / gourmetegypt.com grocers (no result)",
-        "elezabypharmacy.com / chefaa.com (no result)",
-        "amazon.eg marketplace (found Spicekick egg yolk powder 80 g, Egyptian origin)",
-        "spicekick.com (a different, US seasoning company - not the brand)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Spicekick",
-          "product_name": "Egg Yolk 100% Natural Powder 80g Dried Egg Yolk for Desserts Bakery",
-          "pack": "80 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.amazon.eg/dp/B0GCQ7DKK8",
-          "source_type": "MARKETPLACE",
-          "seller": "SPICEKICK (third-party seller, fulfilled by Amazon.eg)",
-          "page_market": "EG",
-          "market_by": "CCTLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "country domain .eg (marketplace - never confirms); page shows delivery to New Cairo; country of origin Egypt",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "100% natural egg yolk",
-            "from": "Amazon.eg listing ('Ingredients 100% natural egg yolk'; 'Important information - Ingredients: Egg Yolk')"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "single ingredient egg yolk powder as printed; pasteurisation not stated",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/cf956c31e356d8de.json",
-          "verifier_verification_class": "PAGE_FACTS_ONLY",
-          "checked_at_utc": "2026-09-17T16:23:17Z",
-          "identity_note": "listing shows a UPC 726529027464 in marketplace item details only (not a manufacturer/retailer page) - not used as identity"
-        }
-      ],
-      "notes": "Only a marketplace purchase path found."
+ "iso2": "EG",
+ "country": "Egypt",
+ "agent": "research-mena",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:25:08Z",
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "items": {
+  "CRP": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "كريمة بودرة",
+    "بودرة القشطة",
+    "مسحوق القشدة",
+    "cream powder",
+    "heavy cream powder"
+   ],
+   "queries": [
+    "sitemap URL scan (cream-powder|heavy-cream): spinneys-egypt.com, elezabypharmacy.com, chefaa.com, rabbitmart.com, gourmetegypt.com, hyperone.com.eg, metro-markets.com",
+    "amazon.eg search: heavy cream powder",
+    "\"بودرة صفار البيض\" أو \"صفار البيض المجفف\" شراء اونلاين مصر السعودية متجر (WebSearch)",
+    "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+    "hoosierhillfarm.com product sitemap + policies/shipping-policy + pages/faqs (international shipping)",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
+   ],
+   "sources_tried": [
+    "spinneys-egypt.com supermarket (only 'ice cream powder mix' and full-cream milk powder - reject)",
+    "gourmetegypt.com / hyperone.com.eg / metro-markets.com / rabbitmart.com grocers (no product URLs matched)",
+    "elezabypharmacy.com / chefaa.com pharmacies (no result)",
+    "amazon.eg marketplace (only whipping-cream powders such as Dreem and full-cream milk powders - reject)",
+    "jumia.com.eg (bot wall)",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+    "hoosierhillfarm.com (US, Heavy Cream Powder): FAQ states 'Do you ship internationally? At this time, we do not ship internationally.' - rejected as a cross-border path",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Egypt - rejected as a cross-border path"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": null,
+     "product_name": "Sahnepulver sprühgetrocknet",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
+     "source_type": "RETAILER",
+     "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+     "cross_border": true,
+     "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). EG is NOT named, so this is a lead, not a confirmation.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:21:06Z",
+      "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+      "source": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+      "from": "page label \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\"; nutrition per 100 g: Fett 42 g (davon gesättigte Fettsäuren 27,1 g), Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "spray-dried dairy cream, 42 % fat = the PI-ING-000260 reference exactly (fat 42, protein 20, lactose 30)",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3df84b49991636c0.json",
+     "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+     "checked_at_utc": "2026-09-17T18:21:06Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
     }
+   ],
+   "notes": "Only rejected product types found (whipping/whipped-topping powders, milk powders). | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name Egypt among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF."
   },
-  "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; alternative search engines served CAPTCHAs/firewalls (not bypassed). Discovery used retailer sitemaps and Amazon.eg search pages. Bot walls / unreadable from the ES egress: jumia.com.eg (Cloudflare), vezeeta.com (Cloudflare), carrefouregypt.com (not attempted; Carrefour UAE/KSA/Qatar product pages all returned empty bot-protected responses), seifonline.com (no answer); breadfast.com sitemap 403; gourmetegypt.com, hyperone.com.eg, metro-markets.com sitemaps gave no product URLs."
+  "FRU": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "سكر فركتوز",
+    "سكر الفاكهة",
+    "فركتوز",
+    "fructose",
+    "fruit sugar"
+   ],
+   "queries": [
+    "سكر الفركتوز 500 جرام السعودية (WebSearch; surfaced Star Diet fructose on amazon.eg)",
+    "sitemap URL scan (fructos|فركتوز): spinneys-egypt.com, elezabypharmacy.com, chefaa.com, rabbitmart.com",
+    "amazon.eg search: fructose",
+    "\"بودرة صفار البيض\" أو \"صفار البيض المجفف\" شراء اونلاين مصر السعودية متجر (WebSearch)",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline"
+   ],
+   "sources_tried": [
+    "spinneys-egypt.com supermarket (found Star Diet and Rich Diet fructose 125 g / 250 g / 500 g)",
+    "elezabypharmacy.com / chefaa.com pharmacies (no result)",
+    "rabbitmart.com / gourmetegypt.com (no result)",
+    "amazon.eg marketplace (Star Fructose 350 g - not needed, direct retailer exists)",
+    "jumia.com.eg (bot wall)",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Egypt - rejected as a cross-border path",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "vitacost.com: /international-shipping and /shipping-information redirect to the home page; no delivery-country list found",
+    "spinneys-egypt.com re-read 2026-09-17: both diet-sugar pages carry schema.org InStock and an internal sku (312356 for Star Diet), but no GTIN, no ingredient list and no country signal other than the host name (generic .com), so they stay LEADs"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Star Diet",
+     "product_name": "Star Diet Fruit Sugar - 500 Gr",
+     "pack": "500 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://spinneys-egypt.com/en/star-diet-fructose-sugar-500-gm-spinneys",
+     "source_type": "RETAILER",
+     "seller": "Spinneys Egypt",
+     "page_market": "EG",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "none that binds: generic .com, EGP prices only (currency never binds), no country statement on the page",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "local page specifications"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "sold as fruit sugar (fructose) but no ingredients or nutrition printed",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1ddd9fae76a63353.json",
+     "verifier_verification_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T16:16:18Z",
+     "identity_note": "store SKU only, no GTIN; also listed: Star Diet fructose 125 g and 'Star Fructose Natural Sweetener' 250 g",
+     "composition_note": "the page prints no ingredient list - page text: (brand, size 500 GM, SKU 312356 only)",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:45:00Z",
+      "basis": "schema.org InStock",
+      "source": "https://spinneys-egypt.com/en/star-diet-fructose-sugar-500-gm-spinneys"
+     }
+    },
+    {
+     "rank": 2,
+     "brand": "Rich Diet",
+     "product_name": "Rich Diet Natural Fruit Sugar For All Diet Types & Diabetic Patients - 500 Gr",
+     "pack": "500 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://spinneys-egypt.com/en/rich-diet-sugar-fructose-500-gm",
+     "source_type": "RETAILER",
+     "seller": "Spinneys Egypt",
+     "page_market": "EG",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "none that binds: generic .com, EGP prices only",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "local page specifications"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "natural fruit sugar, no ingredients or nutrition printed",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1dddf4e9173292eb.json",
+     "verifier_verification_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T16:16:50Z",
+     "identity_note": "store SKU only; also 125 g and 250 g packs listed",
+     "composition_note": "the page prints no ingredient list - page text: (size 500 GM, SKU 379392 only)",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:45:00Z",
+      "basis": "schema.org InStock",
+      "source": "https://spinneys-egypt.com/en/rich-diet-sugar-fructose-500-gm"
+     }
+    }
+   ],
+   "notes": "Egyptian diet-sugar brands are on sale at Spinneys Egypt, but no page shows a GTIN, a composition or a binding country signal."
+  },
+  "INU": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "انولين",
+    "إينولين",
+    "inulin",
+    "inulin powder"
+   ],
+   "queries": [
+    "sitemap URL scan (inulin): elezabypharmacy.com, chefaa.com, spinneys-egypt.com, rabbitmart.com, gourmetegypt.com",
+    "amazon.eg search: inulin powder",
+    "kiki-health.com product page + shipping policy (cross-border)"
+   ],
+   "sources_tried": [
+    "elezabypharmacy.com pharmacy (no inulin powder)",
+    "chefaa.com pharmacy platform (no result)",
+    "spinneys-egypt.com / rabbitmart.com / gourmetegypt.com (no result)",
+    "amazon.eg marketplace (Bioglan Inulin 250 g and several unbranded 227 g / 100 g inulin powders)",
+    "kiki-health.com UK brand shop (country selector lists Egypt; GTIN on page)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "KIKI Health",
+     "product_name": "Inulin Powder, Organic - 250g",
+     "pack": "250 g",
+     "gtin": "5060018515847",
+     "identifier_confirmed": true,
+     "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "KIKI Health (UK brand web shop)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "no local binding (generic .com, UK brand shop); cross-border - see ships_to_evidence",
+     "cross_border": true,
+     "ships_to_evidence": "country selector on the product page lists 'Egypt (EGP ج.م)'; shipping policy https://kiki-health.com/policies/shipping-policy checked with check_quotes.py (found=true, 2026-09-17): 'For EU and International orders, postage costs vary according to your country.' and 'International Delivery ... Royal Mail International Tracked delivery is used on all orders'",
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": 93.0,
+      "fructose_pct": null,
+      "ingredients": "Made from 100% Blue Agave (organic agave inulin)",
+      "from": "brand product page: '93% soluble plant-based fibre', '5.4g of fibre per serving', 'Completely pure, with no added sugars or sweeteners'"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "pure organic agave inulin, 93 % soluble fibre | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d8b2285e2c07b241.json",
+     "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+     "checked_at_utc": "2026-09-17T16:22:48Z",
+     "identity_note": "gtin13 5060018515847 as JSON-LD data on this purchase page (verifier EAN_ON_GENERIC_TLD_PAGE); the same GTIN/product is sold locally in UAE/KSA by Life Pharmacy",
+     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+    },
+    {
+     "rank": 2,
+     "brand": "Bioglan",
+     "product_name": "Bioglan Inulin | Prebiotic Fibre Supplement | Chicory Root | Contributes to normal Bowel Function | 50 serves | 250g Pack",
+     "pack": "250 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.amazon.eg/dp/B01LWV9LNO",
+     "source_type": "MARKETPLACE",
+     "seller": "Amazon.eg listing",
+     "page_market": "EG",
+     "market_by": "CCTLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "country domain .eg (marketplace - never confirms)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "'100% Pure Inulin Powder: made from naturally sourced chicory root' (listing text)",
+      "from": "Amazon.eg listing"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "chicory inulin per listing, no fibre figure printed on this page (the same Bioglan product elsewhere declares fibre 89 g/100 g)",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0aff018998dec2c0.json",
+     "verifier_verification_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T16:23:21Z"
+    }
+   ],
+   "notes": "No Egyptian direct retailer page with inulin powder was readable; rank 1 is a UK brand shop that lists Egypt in its country selector and states international delivery."
+  },
+  "YOL": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "صفار البيض المجفف",
+    "بودرة صفار البيض",
+    "مسحوق صفار البيض",
+    "egg yolk powder"
+   ],
+   "queries": [
+    "sitemap URL scan (yolk|egg-powder|صفار): spinneys-egypt.com, elezabypharmacy.com, chefaa.com, rabbitmart.com",
+    "amazon.eg search: egg yolk powder",
+    "\"بودرة صفار البيض\" أو \"صفار البيض المجفف\" شراء اونلاين مصر السعودية متجر (WebSearch)",
+    "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+    "arkanfoodsegypt.com product-sitemap scan (fructose|inulin|cream|قشطة|كريمة)"
+   ],
+   "sources_tried": [
+    "spinneys-egypt.com / rabbitmart.com / gourmetegypt.com grocers (no result)",
+    "elezabypharmacy.com / chefaa.com (no result)",
+    "amazon.eg marketplace (found Spicekick egg yolk powder 80 g, Egyptian origin)",
+    "spicekick.com (a different, US seasoning company - not the brand)",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Egypt - rejected as a cross-border path",
+    "arkanfoodsegypt.com (Egyptian food-ingredient shop, seller address \"31 Faisl Street, Giza, Egypt\"): \"بودر صفار البيض - 500 جرام\", sku 2125, schema.org InStock - a direct Egyptian retailer, so it replaces the marketplace lead at rank 1; no ingredient list is printed",
+    "arkanfoodsegypt.com product sitemaps (4 754 URLs) scanned: no fructose, no inulin, no dairy cream powder"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": null,
+     "product_name": "بودر صفار البيض - 500 جرام",
+     "pack": "500 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://arkanfoodsegypt.com/ar/product/%D8%A8%D9%88%D8%AF%D8%B1-%D8%B5%D9%81%D8%A7%D8%B1-%D8%A7%D9%84%D8%A8%D9%8A%D8%B6-500-%D8%AC%D8%B1%D8%A7%D9%85/",
+     "source_type": "RETAILER",
+     "seller": "Arkan Foods Egypt, 31 Faisl Street, Giza, Egypt",
+     "page_market": "EG",
+     "market_by": "SELLER_ADDRESS",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "seller's own address printed on the site: 'Adress 31 Faisl Street, Giza, Egypt' (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/arkanfoods_seller_address_EG.json); prices in EGP (currency never binds on its own)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:40:51Z",
+      "basis": "schema.org InStock",
+      "source": "https://arkanfoodsegypt.com/ar/product/%D8%A8%D9%88%D8%AF%D8%B1-%D8%B5%D9%81%D8%A7%D8%B1-%D8%A7%D9%84%D8%A8%D9%8A%D8%B6-500-%D8%AC%D8%B1%D8%A7%D9%85/"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": null
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "page text: \"مسحوق صفار بيض عالي الجودة، مثالي للخبز والطبخ وصناعة الحلويات\" - right product type (egg yolk powder for baking), but no ingredient list and no nutrition table are printed",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a7cc1658c4cec44d.json",
+     "identity_note": "no GTIN on the page; first-party listing of the Egyptian seller (sku 2125, exact name, 500 g pack). identifier_confirmed stays false (D-37).",
+     "checked_at_utc": "2026-09-17T18:40:51Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
+     "brand": "Spicekick",
+     "product_name": "Egg Yolk 100% Natural Powder 80g Dried Egg Yolk for Desserts Bakery",
+     "pack": "80 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.amazon.eg/dp/B0GCQ7DKK8",
+     "source_type": "MARKETPLACE",
+     "seller": "SPICEKICK (third-party seller, fulfilled by Amazon.eg)",
+     "page_market": "EG",
+     "market_by": "CCTLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "country domain .eg (marketplace - never confirms); page shows delivery to New Cairo; country of origin Egypt",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "100% natural egg yolk",
+      "from": "Amazon.eg listing ('Ingredients 100% natural egg yolk'; 'Important information - Ingredients: Egg Yolk')"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "single ingredient egg yolk powder as printed; pasteurisation not stated",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/cf956c31e356d8de.json",
+     "verifier_verification_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T16:23:17Z",
+     "identity_note": "listing shows a UPC 726529027464 in marketplace item details only (not a manufacturer/retailer page) - not used as identity",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "UNKNOWN",
+      "checked_at_utc": "2026-09-17T18:45:00Z",
+      "basis": null,
+      "source": "https://www.amazon.eg/dp/B0GCQ7DKK8"
+     },
+     "availability_note": "amazon.eg answered with a 4 411-byte bot-wall response on 2026-09-17, so no stock token could be read"
+    },
+    {
+     "rank": 3,
+     "brand": null,
+     "product_name": "Eigelbpulver",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
+     "source_type": "RETAILER",
+     "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+     "cross_border": true,
+     "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). EG is NOT named, so this is a lead, not a confirmation.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:21:21Z",
+      "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+      "source": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g"
+     },
+     "composition": {
+      "fat_g": 55.8,
+      "protein_g": 34.3,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.",
+      "from": "page label \"Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.\"; nutrition per 100 g: Fett 55,8 g (davon gesättigte Fettsäuren 17,6 g), Kohlenhydrate 3,6 g, davon Zucker 3,6 g, Eiweiß 34,3 g, Salz 0,3 g"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % pasteurised, spray-dried chicken egg yolk; fat 55,8 / protein 34,3 against the PI-ING-001645 reference fat 56,5 / protein 34,5",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2944f17c1f486c80.json",
+     "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+     "checked_at_utc": "2026-09-17T18:21:21Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "gap pass 2026-09-17: rank 1 is now a direct Egyptian retailer (Arkan Foods, Giza) with the right product type in stock; only the printed composition is missing, so the row stays a LEAD. The marketplace listing is kept below it, and the German 100 % yolk powder is kept last as a composition reference."
+  }
+ },
+ "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; alternative search engines served CAPTCHAs/firewalls (not bypassed). Discovery used retailer sitemaps and Amazon.eg search pages. Bot walls / unreadable from the ES egress: jumia.com.eg (Cloudflare), vezeeta.com (Cloudflare), carrefouregypt.com (not attempted; Carrefour UAE/KSA/Qatar product pages all returned empty bot-protected responses), seifonline.com (no answer); breadfast.com sitemap 403; gourmetegypt.com, hyperone.com.eg, metro-markets.com sitemaps gave no product URLs. | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes."
 }

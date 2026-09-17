@@ -21,11 +21,13 @@
   "tag_other_composition": "Altă compoziție",
   "tag_alternative": "Alternativă locală",
   "tag_unconfirmed": "Neconfirmat",
+  "tag_abroad_unconfirmed": "Magazin străin",
   "legend": {
-    "from_abroad": "un magazin din străinătate care livrează în această țară",
-    "b2b": "vândut firmelor sau în ambalaje mari",
+    "from_abroad": "un magazin din străinătate a cărui listă de livrare menționează această țară",
+    "b2b": "vândut firmelor sau în ambalaje mari — nu este o ofertă obișnuită de retail",
     "other_composition": "același tip de produs, cu altă compoziție (indicată alături)",
-    "alternative": "un înlocuitor pentru alt produs Gellatti"
+    "alternative": "un înlocuitor pentru alt produs Gellatti",
+    "abroad_unconfirmed": "un magazin din străinătate; livrarea în această țară nu este confirmată"
   },
   "starter_amount": "În Starter Pack: {g} g",
   "option": "Opțiunea {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "O alternativă locală la amestecul Gellatti, nu același amestec. Amestecă-o cu ingredientele uscate și încălzește baza la 75–80 °C.",
   "missing": "Încă nu există un produs aprobat în această țară.",
+  "out_of_stock": "Magazinul l-a afișat ca epuizat la data de {date}.",
   "notes_title": "Bine de știut",
   "notes": [
-    {"h": "Disponibilitate", "p": "Am verificat aceste produse pe site-urile producătorilor și ale magazinelor în septembrie 2026. Disponibilitatea, prețurile și livrarea se pot schimba și nu sunt garantate."},
+    {"h": "Disponibilitate", "p": "Am verificat produsele cercetate pe site-urile magazinelor și ale producătorilor la data de 17 septembrie 2026. Dextroza, laptele praf degresat și stabilizatorul provin din tabelul de țări Gellatti din 12 septembrie 2026 și nu au fost verificate din nou. Disponibilitatea, prețurile și livrarea se pot schimba și nu sunt garantate."},
     {"h": "Eticheta are prioritate", "p": "Înainte să cumperi, verifică ingredientele și alergenii de pe ambalaj. Smântâna praf și laptele praf conțin lapte, iar gălbenușul de ou conține ou."},
     {"h": "Stabilizator", "p": "În această țară, o gumă vegetală locală înlocuiește Gellatti Stabilizer. Funcționează în mod similar, dar nu este același amestec."}
   ],

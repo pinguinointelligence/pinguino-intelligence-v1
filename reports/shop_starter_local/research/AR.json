@@ -1,291 +1,493 @@
 {
-  "iso2": "AR",
-  "country": "Argentina",
-  "agent": "research-americas",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T15:58:16Z",
-  "items": {
-    "CRP": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "crema de leche en polvo",
-        "crema en polvo (láctea)",
-        "nata en polvo"
-      ],
-      "queries": [
-        "WebSearch: crema de leche en polvo 1 kg Argentina comprar",
-        "WebSearch: \"crema en polvo\" láctea \"materia grasa\" heladería Argentina",
-        "WebSearch: cream powder Argentina manufacturer spray dried cream 42% fat",
-        "WebSearch: \"crema de leche en polvo\" dietética x 500 g OR x 1 kg",
-        "WebSearch: \"crema de leche en polvo\" tienda online .com.ar",
-        "WebSearch: \"crema de leche en polvo\" 40% materia grasa x kg",
-        "WebSearch: \"crema de leche en polvo\" fraccionado dietética Argentina envíos",
-        "site search carrefour.com.ar: crema de leche en polvo / crema en polvo / cream powder",
-        "site search jumbo.com.ar, disco.com.ar, vea.com.ar: crema de leche en polvo",
-        "site search diaonline.supermercadosdia.com.ar, masonline.com.ar, cordiez.com.ar: crema de leche en polvo",
-        "site search farmacity.com, farmaonline.com, farmaciasdelpueblo.com.ar: crema de leche en polvo",
-        "category browse cocinaconvalentino.com.ar: 499 Cremas de leche; 368 Glacé, cremas y merengue en polvo",
-        "site search cocinaconvalentino.com.ar: crema de leche en polvo",
-        "site search basso-sa.com.ar: crema",
-        "site search grandiet.com: crema en polvo",
-        "site search mayana.com.ar: crema en polvo"
-      ],
-      "sources_tried": [
-        "listado.mercadolibre.com.ar (marketplace; WebFetch HTTP 403 - not used)",
-        "carrefour.com.ar (supermarket; only milk powders and 'Polvo crema chantilly Carrefour Classic' = whipped-topping mix, rejected)",
-        "jumbo.com.ar / disco.com.ar / vea.com.ar (supermarkets; milk powders and Coffee-Mate 'Crema en Polvo' non-dairy creamer, rejected)",
-        "diaonline.supermercadosdia.com.ar / masonline.com.ar / cordiez.com.ar (supermarkets; milk powders only)",
-        "farmacity.com / farmaonline.com / farmaciasdelpueblo.com.ar (pharmacies; milk powders only)",
-        "cocinaconvalentino.com.ar (pastry market; only chantilly and pastry-cream powder mixes, rejected; on-site search results are JS-loaded - inconclusive)",
-        "basso-sa.com.ar (ice-cream supplier; ice-cream bases, chantilly, stabilizers - no cream powder)",
-        "portaldelhelado.com.ar (ice-cream trade directory; led to vacalin.com, lacteoselmundo.com.ar, darier.com.ar)",
-        "vacalin.com / lacteoselmundo.com.ar (dairy suppliers; no cream powder listed)",
-        "darier.com.ar (HTTP 403 'Checking your browser' - bot wall, inconclusive, not bypassed)",
-        "ingredients-solutions.com (found: Crema de Leche en Polvo, 25 kg B2B, fat % not shown)",
-        "pampacreations.com (found: Crema en polvo, Argentine manufacturer, no pack or fat % shown)",
-        "grandiet.com / mayana.com.ar / dicomere.com.ar (dietética and bakery-ingredient brands; no cream powder)",
-        "html.duckduckgo.com (bot challenge - not bypassed) and bing.com (unusable results) tried once before the coordinator stopped search-engine use"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Ingredients Solutions",
-          "product_name": "Crema de Leche en Polvo",
-          "pack": "25 kg (Bolsa/Saco/Bag-Caja/Caixa/Box : 25kg)",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.ingredients-solutions.com/tienda/108838/crema_de_leche_en_polvo.php?idsp=2338",
-          "source_type": "MANUFACTURER",
-          "seller": "Ingredients Solutions SA (plant and sales in Gral. Rodríguez, Buenos Aires)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "NONE (generic .com; the page footer prints an Argentine plant/sales address, not checked as a delivery quote)",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": "raw page: 'Producto deshidratado por spray-dry a partir de crema de leche fresca pasteurizada'; no fat %, no ingredient list"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "Right type (spray-dried dairy cream powder) but the fat % is not printed, so A/B cannot be decided. B2B 25 kg bag with an inquiry form only (no retail pack).",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/fba8c5256b1ee352.json",
-          "extra_evidence_files": [],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:50:18Z"
-        },
-        {
-          "rank": 2,
-          "brand": "Pampa Creations",
-          "product_name": "Crema en polvo",
-          "pack": "not shown",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://pampacreations.com/crema-en-polvo/",
-          "source_type": "MANUFACTURER",
-          "seller": "Pampa Creations (PIBERA, Berazategui, Buenos Aires)",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "NONE (generic .com; Argentine factory address in the footer, not checked as a delivery quote)",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": "raw page: 'Producto que parte del secado en equipo spray de la crema de leche tradicional'; no fat %, no ingredient list, no pack"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "Right type (spray-dried dairy cream, manufacturer), but no fat %, ingredients or pack are printed; contact-only B2B page.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f9340aef930d0ba1.json",
-          "extra_evidence_files": [],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:46:31Z"
-        }
-      ],
-      "notes": "No retail dairy cream powder found at Argentine supermarkets, pharmacies, the pastry market or the ice-cream supplier checked (only milk powders, non-dairy creamers and chantilly/whipped-topping mixes, all rejected). Two B2B Argentine producers list spray-dried cream powder without fat % or a retail pack, so LEAD with C data. Mercado Libre was not usable (403, marketplace). WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+ "iso2": "AR",
+ "country": "Argentina",
+ "agent": "research-americas",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T15:58:16Z",
+ "items": {
+  "CRP": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "crema de leche en polvo",
+    "crema en polvo (láctea)",
+    "nata en polvo"
+   ],
+   "queries": [
+    "WebSearch: crema de leche en polvo 1 kg Argentina comprar",
+    "WebSearch: \"crema en polvo\" láctea \"materia grasa\" heladería Argentina",
+    "WebSearch: cream powder Argentina manufacturer spray dried cream 42% fat",
+    "WebSearch: \"crema de leche en polvo\" dietética x 500 g OR x 1 kg",
+    "WebSearch: \"crema de leche en polvo\" tienda online .com.ar",
+    "WebSearch: \"crema de leche en polvo\" 40% materia grasa x kg",
+    "WebSearch: \"crema de leche en polvo\" fraccionado dietética Argentina envíos",
+    "site search carrefour.com.ar: crema de leche en polvo / crema en polvo / cream powder",
+    "site search jumbo.com.ar, disco.com.ar, vea.com.ar: crema de leche en polvo",
+    "site search diaonline.supermercadosdia.com.ar, masonline.com.ar, cordiez.com.ar: crema de leche en polvo",
+    "site search farmacity.com, farmaonline.com, farmaciasdelpueblo.com.ar: crema de leche en polvo",
+    "category browse cocinaconvalentino.com.ar: 499 Cremas de leche; 368 Glacé, cremas y merengue en polvo",
+    "site search cocinaconvalentino.com.ar: crema de leche en polvo",
+    "site search basso-sa.com.ar: crema",
+    "site search grandiet.com: crema en polvo",
+    "site search mayana.com.ar: crema en polvo",
+    "site catalog gourmet-versand.com: Sahnepulver / Rahmpulver / Milchpulver (0 dairy powders)",
+    "site search pati-versand.de: Sahnepulver (Cake-Masters Sahnepulver 100g, SAHNE 42% Fett - EU-only delivery)",
+    "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose"
+   ],
+   "sources_tried": [
+    "listado.mercadolibre.com.ar (marketplace; WebFetch HTTP 403 - not used)",
+    "carrefour.com.ar (supermarket; only milk powders and 'Polvo crema chantilly Carrefour Classic' = whipped-topping mix, rejected)",
+    "jumbo.com.ar / disco.com.ar / vea.com.ar (supermarkets; milk powders and Coffee-Mate 'Crema en Polvo' non-dairy creamer, rejected)",
+    "diaonline.supermercadosdia.com.ar / masonline.com.ar / cordiez.com.ar (supermarkets; milk powders only)",
+    "farmacity.com / farmaonline.com / farmaciasdelpueblo.com.ar (pharmacies; milk powders only)",
+    "cocinaconvalentino.com.ar (pastry market; only chantilly and pastry-cream powder mixes, rejected; on-site search results are JS-loaded - inconclusive)",
+    "basso-sa.com.ar (ice-cream supplier; ice-cream bases, chantilly, stabilizers - no cream powder)",
+    "portaldelhelado.com.ar (ice-cream trade directory; led to vacalin.com, lacteoselmundo.com.ar, darier.com.ar)",
+    "vacalin.com / lacteoselmundo.com.ar (dairy suppliers; no cream powder listed)",
+    "darier.com.ar (HTTP 403 'Checking your browser' - bot wall, inconclusive, not bypassed)",
+    "ingredients-solutions.com (found: Crema de Leche en Polvo, 25 kg B2B, fat % not shown)",
+    "pampacreations.com (found: Crema en polvo, Argentine manufacturer, no pack or fat % shown)",
+    "grandiet.com / mayana.com.ar / dicomere.com.ar (dietética and bakery-ingredient brands; no cream powder)",
+    "html.duckduckgo.com (bot challenge - not bypassed) and bing.com (unusable results) tried once before the coordinator stopped search-engine use",
+    "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
+    "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
+    "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Ingredients Solutions",
+     "product_name": "Crema de Leche en Polvo",
+     "pack": "25 kg (Bolsa/Saco/Bag-Caja/Caixa/Box : 25kg)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.ingredients-solutions.com/tienda/108838/crema_de_leche_en_polvo.php?idsp=2338",
+     "source_type": "MANUFACTURER",
+     "seller": "Ingredients Solutions SA (plant and sales in Gral. Rodríguez, Buenos Aires)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "NONE (generic .com; the page footer prints an Argentine plant/sales address, not checked as a delivery quote)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "raw page: 'Producto deshidratado por spray-dry a partir de crema de leche fresca pasteurizada'; no fat %, no ingredient list"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "Right type (spray-dried dairy cream powder) but the fat % is not printed, so A/B cannot be decided. B2B 25 kg bag with an inquiry form only (no retail pack).",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/fba8c5256b1ee352.json",
+     "extra_evidence_files": [],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T15:50:18Z",
+     "availability": {
+      "state": "UNKNOWN",
+      "checked_at_utc": "2026-09-17T18:43:28Z",
+      "basis": "B2B page with an inquiry form only; no stock or availability statement is printed",
+      "source": "https://www.ingredients-solutions.com/tienda/108838/crema_de_leche_en_polvo.php?idsp=2338"
+     }
     },
-    "FRU": {
-      "result": "BRAK",
-      "local_terms": [
-        "fructosa",
-        "fructosa pura",
-        "fructosa en polvo",
-        "azúcar de fruta"
-      ],
-      "queries": [
-        "site search carrefour.com.ar: fructosa",
-        "site search carrefour.com.ar: fructose",
-        "site search jumbo.com.ar: fructosa / fructuosa / azucar de fruta / sweetener fructose",
-        "site search disco.com.ar, vea.com.ar, diaonline.supermercadosdia.com.ar, masonline.com.ar, cordiez.com.ar: fructosa",
-        "site search farmacity.com: fructosa / edulcorante fructosa / fructose",
-        "site search farmaonline.com, farmaciasdelpueblo.com.ar: fructosa",
-        "site search basso-sa.com.ar: fructosa",
-        "site search grandiet.com: fructosa",
-        "site search mayana.com.ar: fructosa (+ category Azúcares)",
-        "category browse dicomere.com.ar: Azúcar y mermeladas",
-        "category browse cocinaconvalentino.com.ar: 334 Azúcar"
-      ],
-      "sources_tried": [
-        "carrefour.com.ar (supermarket; 'fructosa' returned only sugar and a liquid sweetener; 'fructose' 0 results)",
-        "jumbo.com.ar / disco.com.ar / vea.com.ar (supermarkets; only a dulce de leche with stevia)",
-        "diaonline.supermercadosdia.com.ar / cordiez.com.ar (supermarkets; 0 results)",
-        "masonline.com.ar (supermarket; only 'Alimento A Base De Fructosa Con Miel La Clotilde' = fructose-honey blend, rejected)",
-        "farmacity.com / farmaonline.com / farmaciasdelpueblo.com.ar (pharmacies; 0 results)",
-        "dicomere.com.ar (dietética brand shop; sugar/sweetener category has stevia, erythritol, xylitol - no fructose)",
-        "grandiet.com (dietética brand shop; no fructose product)",
-        "basso-sa.com.ar (ice-cream supplier; only 'Núcleo Gelato Zero RFA' ice-cream base, rejected)",
-        "mayana.com.ar (bakery raw-material maker; sugars only, no fructose)",
-        "cocinaconvalentino.com.ar (pastry market; sugar category first page has no fructose; further items and on-site search are JS-loaded - inconclusive)",
-        "tiendagrandiet.com (does not resolve)"
-      ],
-      "candidates": [],
-      "notes": "No crystalline fructose found at any Argentine grocer, pharmacy, dietética brand shop, pastry market or ice-cream supplier reachable with on-site search. Fructose-honey blends and ice-cream bases were rejected. The dietética channel is mostly offline or on Mercado Libre (403 and a marketplace), so this BRAK is limited by discovery. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    {
+     "rank": 2,
+     "brand": "Pampa Creations",
+     "product_name": "Crema en polvo",
+     "pack": "not shown",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://pampacreations.com/crema-en-polvo/",
+     "source_type": "MANUFACTURER",
+     "seller": "Pampa Creations (PIBERA, Berazategui, Buenos Aires)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "NONE (generic .com; Argentine factory address in the footer, not checked as a delivery quote)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "raw page: 'Producto que parte del secado en equipo spray de la crema de leche tradicional'; no fat %, no ingredient list, no pack"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "Right type (spray-dried dairy cream, manufacturer), but no fat %, ingredients or pack are printed; contact-only B2B page.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f9340aef930d0ba1.json",
+     "extra_evidence_files": [],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T15:46:31Z",
+     "availability": {
+      "state": "UNKNOWN",
+      "checked_at_utc": "2026-09-17T18:43:28Z",
+      "basis": "manufacturer contact page; no stock or availability statement is printed",
+      "source": "https://pampacreations.com/crema-en-polvo/"
+     }
     },
-    "INU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "inulina",
-        "inulina en polvo",
-        "fibra de inulina",
-        "inulina de achicoria",
-        "inulina de agave"
+    {
+     "rank": 3,
+     "brand": "Ingredients Bar",
+     "product_name": "Cream Powder",
+     "pack": "200 g (same listing also offers 500 g, 1.5 kg and 4 kg; SKU 0370)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Ingredients Bar (United Kingdom)",
+     "page_market": "GB",
+     "market_by": "OTHER_MARKET:GB",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "NONE for AR (UK shop, GBP only - currency never binds). The seller states international delivery but names no country, so this is a LEAD purchase path, not VERIFIED_CROSS_BORDER.",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://ingredientsbar.com/payment-delivery/",
+        "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json"
+       }
       ],
-      "queries": [
-        "site search carrefour.com.ar: inulina / inulin",
-        "site search jumbo.com.ar, disco.com.ar, vea.com.ar, diaonline.supermercadosdia.com.ar, masonline.com.ar, cordiez.com.ar: inulina",
-        "site search farmacity.com: inulina / inulin / fiber",
-        "site search farmaonline.com, farmaciasdelpueblo.com.ar: inulina",
-        "site search basso-sa.com.ar: inulina",
-        "site search grandiet.com: inulina",
-        "site search mayana.com.ar: inulina",
-        "manufacturer site navigation sanitas.com.ar: División Farma -> Inufiber"
-      ],
-      "sources_tried": [
-        "farmacity.com (pharmacy; found Inufiber Inulina Pote x 150 g with GTIN in the product data; also Viasek Candifense capsules = capsules, rejected)",
-        "sanitas.com.ar (manufacturer page for Inufiber: formula and pack)",
-        "inufiber.com.ar ('Muy pronto' placeholder page)",
-        "carrefour.com.ar / jumbo.com.ar / disco.com.ar / vea.com.ar / diaonline.supermercadosdia.com.ar / masonline.com.ar / cordiez.com.ar (supermarkets; 0 inulin results)",
-        "farmaonline.com / farmaciasdelpueblo.com.ar (pharmacies; no inulin powder)",
-        "grandiet.com (dietética brand; only products containing inulin: carb blocker, meal-replacement and fibre tablets - rejected)",
-        "basso-sa.com.ar / mayana.com.ar (ice-cream and bakery suppliers; 0 results)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Sanitas (Inufiber)",
-          "product_name": "Inufiber Inulina Pote x 150 g",
-          "pack": "150 g",
-          "gtin": "7795344012606",
-          "identifier_confirmed": true,
-          "url": "https://www.farmacity.com/inufiber-inulina-pote-x-150-g/p",
-          "source_type": "RETAILER",
-          "seller": "Farmacity SA",
-          "page_market": "AR",
-          "market_by": "CURRENCY_ONLY",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "EXPLICIT_QUOTE: 'El Programa será válido en todas las farmacias Farmacity de la República Argentina y en los canales de venta digital de Farmacity.' (farmacity.com/Farmacity/terminos-y-condiciones) ~/.cache/gellatti-evidence/verify/quote_7c99a5d9589ec6cc.json",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Fórmula: Inulina. Descripción: Fibra prebiótica 100% pura",
-            "from": "manufacturer page https://www.sanitas.com.ar/productos-farma/inufiber (same product: Inufiber, 'Presentación: Pote conteniendo 150 grs.'); verdict ~/.cache/gellatti-evidence/verify/e508a183b3a02099.json; quote ~/.cache/gellatti-evidence/verify/quote_09a29070df7e528b.json"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "The manufacturer declares inulin as the only formula ingredient and describes it as 100 % pure prebiotic fibre. No g/100 g figure is printed, so fibre_g stays null, and the inulin source (chicory/agave) is not stated. The Farmacity page itself shows no composition.",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/79f419528e24ef93.json",
-          "extra_evidence_files": [
-            "~/.cache/gellatti-evidence/verify/quote_7c99a5d9589ec6cc.json",
-            "~/.cache/gellatti-evidence/verify/e508a183b3a02099.json",
-            "~/.cache/gellatti-evidence/verify/quote_09a29070df7e528b.json"
-          ],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:43:59Z"
-        }
-      ],
-      "notes": "GTIN 7795344012606 is this product's own data on Farmacity (productReference/ean, clean_hits 2). farmacity.com is a generic .com (verifier: CURRENCY_ONLY), so the market is bound by an explicit quote naming Farmacity pharmacies in the República Argentina. Sold by Farmacity SA. Composition comes from the Sanitas manufacturer page for the same product. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
-    },
-    "YOL": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "yema de huevo en polvo",
-        "yema en polvo",
-        "yema deshidratada"
-      ],
-      "queries": [
-        "site search carrefour.com.ar: yema / huevo en polvo / egg yolk powder",
-        "site search jumbo.com.ar, disco.com.ar, diaonline.supermercadosdia.com.ar, masonline.com.ar: huevo en polvo / yema en polvo",
-        "site search vea.com.ar: huevo en polvo / yema en polvo / yema",
-        "site search cordiez.com.ar: yema",
-        "site search farmacity.com: huevo en polvo / yema / egg yolk",
-        "site search farmaonline.com, farmaciasdelpueblo.com.ar: huevo en polvo / yema",
-        "site search carnave.com.ar: polvo / yema (+ category Huevo)",
-        "site search basso-sa.com.ar: yema",
-        "site search grandiet.com: yema",
-        "site search mayana.com.ar: yema",
-        "manufacturer site navigation tecnovo.com.ar: Productos -> Yema en polvo, Nueva Presentación"
-      ],
-      "sources_tried": [
-        "carrefour.com.ar / jumbo.com.ar / disco.com.ar / vea.com.ar / diaonline.supermercadosdia.com.ar / cordiez.com.ar (supermarkets; only turrón/mazapán/flan with yolk, no yolk powder)",
-        "masonline.com.ar (supermarket; only 'Clara De Huevo En Polvo Pasteurizado Carnave 24g' = egg white, rejected)",
-        "farmacity.com / farmaonline.com / farmaciasdelpueblo.com.ar (pharmacies; 0 results)",
-        "carnave.com.ar (poultry/egg retailer; no yolk powder in search or Huevo category)",
-        "basso-sa.com.ar (ice-cream supplier; only a vanilla/yolk stabilizer and 'SuperSambayón' flavour base, rejected)",
-        "grandiet.com / mayana.com.ar / dicomere.com.ar (dietética and bakery-ingredient brands; 0 results)",
-        "tecnovo.com.ar (egg processor; found 'Yema en Polvo' 25 kg B2B; its retail pouch 'Nueva Presentación' is whole-egg powder, rejected)",
-        "ovoprot.com / ovobrand.com / ovobrand.com.ar (egg processors; intro or blank pages, no product listing reachable)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "Tecnovo",
-          "product_name": "Yema en Polvo (Productos en Polvo - Yema de Huevo)",
-          "pack": "25 kg (Peso neto: 25 kg)",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.tecnovo.com.ar/yema-polvo.html",
-          "source_type": "MANUFACTURER",
-          "seller": "Tecnovo S.A. (Crespo, Entre Ríos)",
-          "page_market": "AR",
-          "market_by": "CCTLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "country domain .com.ar",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": "raw page product description: hen egg yolk separated from the albumen, filtered, homogenised, pasteurised and spray-dried; no ingredient list, no additive and no nutrient values printed"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "Right type (pasteurised spray-dried hen egg yolk), but no ingredient declaration or '100 %' statement is printed, so A vs B (e.g. an anti-caking agent) cannot be decided. B2B only: a 25 kg box and no purchase listing.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/97b9612471cfaa42.json",
-          "extra_evidence_files": [
-            "~/.cache/gellatti-evidence/verify/278cbded5499ec9d.json"
-          ],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:48:36Z"
-        }
-      ],
-      "notes": "No retail yolk powder found in Argentine supermarkets, pharmacies, poultry retail, dietética brands or the ice-cream supplier checked. The only right-type product is Tecnovo's industrial yolk powder: 25 kg, manufacturer info page, no ingredient declaration, so LEAD with C data. Tecnovo's retail pouch is whole-egg powder (rejected). WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+      "found": true,
+      "country_named": false,
+      "note": "Generic international-delivery statement only; AR is not named, so owner rule 2 (2026-09-17) keeps this a LEAD."
+     },
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:43:28Z",
+      "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+      "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+     },
+     "composition": {
+      "fat_g": 75.0,
+      "protein_g": 8.5,
+      "fibre_g": 0.0,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition Facts Per 100g: Energy 3094kJ/750kcal, Fat 75 g of which saturated fatty acid 51 g, Carbohydrates 12 g of which sugars 12 g, Protein 8.5 g, Dietary Fibre 0 g, Salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
+      "from": "product page, 'Ingredients & Nutrition' tab (quote file ~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json)",
+      "sugars_g": 12.0
+     },
+     "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+     "equivalence_note": "Real spray-dried dairy cream powder ('made from dehydrated cream, free from additives'), printed fat 75 g/100 g - outside the 38-48 % A band (reference 42 %). Ingredients are cream + milk protein + lactose, i.e. the permitted CRP ingredient family. Recorded under owner rule 3 (2026-09-17): a dairy cream powder outside 38-48 % fat is a valid candidate for owner decision.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/772973dc46b8b32f.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json",
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T18:43:28Z"
     }
+   ],
+   "notes": "No retail dairy cream powder found at Argentine supermarkets, pharmacies, the pastry market or the ice-cream supplier checked (only milk powders, non-dairy creamers and chantilly/whipped-topping mixes, all rejected). Two B2B Argentine producers list spray-dried cream powder without fat % or a retail pack, so LEAD with C data. Mercado Libre was not usable (403, marketplace). WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17 under owner rule 3: both Argentine B2B pages still print no fat % and no retail pack (availability UNKNOWN). Added rank 3: Ingredients Bar (UK) Cream Powder - a real spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients cream + milk protein + lactose, retail 200 g pack, IN_STOCK - kept a LEAD because the seller only states generic international delivery and never names Argentina (owner rule 2)."
+  },
+  "FRU": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "fructosa",
+    "fructosa pura",
+    "fructosa en polvo",
+    "azúcar de fruta"
+   ],
+   "queries": [
+    "site search carrefour.com.ar: fructosa",
+    "site search carrefour.com.ar: fructose",
+    "site search jumbo.com.ar: fructosa / fructuosa / azucar de fruta / sweetener fructose",
+    "site search disco.com.ar, vea.com.ar, diaonline.supermercadosdia.com.ar, masonline.com.ar, cordiez.com.ar: fructosa",
+    "site search farmacity.com: fructosa / edulcorante fructosa / fructose",
+    "site search farmaonline.com, farmaciasdelpueblo.com.ar: fructosa",
+    "site search basso-sa.com.ar: fructosa",
+    "site search grandiet.com: fructosa",
+    "site search mayana.com.ar: fructosa (+ category Azúcares)",
+    "category browse dicomere.com.ar: Azúcar y mermeladas",
+    "category browse cocinaconvalentino.com.ar: 334 Azúcar",
+    "site search bulksupplements.com: fructose powder (cross-border check)",
+    "shipping-country list bulksupplements.com/policies/shipping-policy: Argentina",
+    "shipping-cost country selector gourmet-versand.com/index.php?site=versand&language=en: Argentina",
+    "site search gourmet-versand.com: Fruktose"
+   ],
+   "sources_tried": [
+    "carrefour.com.ar (supermarket; 'fructosa' returned only sugar and a liquid sweetener; 'fructose' 0 results)",
+    "jumbo.com.ar / disco.com.ar / vea.com.ar (supermarkets; only a dulce de leche with stevia)",
+    "diaonline.supermercadosdia.com.ar / cordiez.com.ar (supermarkets; 0 results)",
+    "masonline.com.ar (supermarket; only 'Alimento A Base De Fructosa Con Miel La Clotilde' = fructose-honey blend, rejected)",
+    "farmacity.com / farmaonline.com / farmaciasdelpueblo.com.ar (pharmacies; 0 results)",
+    "dicomere.com.ar (dietética brand shop; sugar/sweetener category has stevia, erythritol, xylitol - no fructose)",
+    "grandiet.com (dietética brand shop; no fructose product)",
+    "basso-sa.com.ar (ice-cream supplier; only 'Núcleo Gelato Zero RFA' ice-cream base, rejected)",
+    "mayana.com.ar (bakery raw-material maker; sugars only, no fructose)",
+    "cocinaconvalentino.com.ar (pastry market; sugar category first page has no fructose; further items and on-site search are JS-loaded - inconclusive)",
+    "tiendagrandiet.com (does not resolve)",
+    "bulksupplements.com/products/fructose-powder (US own-brand shop; GTIN 849720029065 as page data next to SKU FRUC250; 'Ingredients: Fructose'; schema.org InStock) + its shipping policy 'We currently ship to the following nations: Andorra Argentina Australia Austria ...' - Argentina named",
+    "gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html (German retailer; Sosa Fruktose Pulver 1 kg, gtin13 8414933026259 as page data, 'Zutaten: Fructosepulver', 100 g sugars/100 g, SOFORT LIEFERBAR) + its shipping-cost country selector lists Argentina"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "BulkSupplements.com",
+     "product_name": "Fructose (Sugar) Powder - Powder / 250 Grams (8.8 oz)",
+     "pack": "250 g (8.8 oz), SKU FRUC250",
+     "gtin": "849720029065",
+     "identifier_confirmed": true,
+     "url": "https://www.bulksupplements.com/products/fructose-powder",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "BulkSupplements.com (United States)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "NONE for AR (generic .com, US seller) - cross-border; delivery to this country is named in the seller's own shipping-country list (see ships_to_evidence)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://www.bulksupplements.com/policies/shipping-policy",
+        "quote": "We currently ship to the following nations: Andorra Argentina Australia Austria",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_bs_ships_AR.json"
+       }
+      ],
+      "found": true,
+      "country_named": true
+     },
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:43:28Z",
+      "basis": "schema.org/InStock in the page's own offer data next to \"sku\": \"FRUC250\", \"gtin\": \"849720029065\"",
+      "source": "https://www.bulksupplements.com/products/fructose-powder"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Fructose",
+      "from": "product page text (see verifier verdict file ingredients_snippet)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Sole ingredient fructose ('Ingredients: Fructose Free of: Added Sugar, Soy, Dairy, Yeast, Gluten, Additives'); no numeric purity printed. GTIN 849720029065 sits next to SKU FRUC250 and the 250 g variant name in the page's own offer data (other packs on the page: 100 g, 500 g, 1 kg, 5 kg InStock; 25 kg OutOfStock). | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/02925aac13fe4ccc.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_bs_ships_AR.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T18:43:28Z",
+     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+    },
+    {
+     "rank": 2,
+     "brand": "Sosa Ingredients",
+     "product_name": "Sosa Fruktose Pulver, 1 kg, Pe - dose",
+     "pack": "1 kg (Pe-Dose), Artikelnummer 22941",
+     "gtin": "8414933026259",
+     "identifier_confirmed": true,
+     "url": "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html",
+     "source_type": "RETAILER",
+     "seller": "GOURMET VERSAND (Heinsberg, Germany)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "NONE for AR (generic .com, German seller) - cross-border; the seller's shipping-cost country selector names this country (see ships_to_evidence)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+        "quote": "Shipment to the following country:",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_intro.json"
+       },
+       {
+        "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+        "quote": "Albania Andorra Argentina Australia Austria",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_AR.json"
+       }
+      ],
+      "found": true,
+      "country_named": true
+     },
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:43:28Z",
+      "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data, plus the printed status 'SOFORT LIEFERBAR'",
+      "source": "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: Fructosepulver. Fruktose. Naehrwerttabelle pro 100 g: Brennwert 1700 kJ / 400 kcal, Kohlenhydrate 100 g davon Zucker 100 g, Eiweiss 0,01 g, Salz 0,13 g; Hersteller Sosa Ingredients S.L.U., Navarcles (ES)",
+      "from": "product page ('Zutaten' and 'Naehrwerttabelle' blocks)",
+      "sugars_g": 100.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g (reference 99.8 % fructose).",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3c3ce854bcebc8e3.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_AR.json",
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_gv_ships_intro.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T18:43:28Z"
+    }
+   ],
+   "notes": "No crystalline fructose found at any Argentine grocer, pharmacy, dietética brand shop, pastry market or ice-cream supplier reachable with on-site search. Fructose-honey blends and ice-cream bases were rejected. The dietética channel is mostly offline or on Mercado Libre (403 and a marketplace), so this BRAK is limited by discovery. WebSearch budget exhausted during research; later discovery via on-site shop searches only. | 2026-09-17: BRAK lifted to VERIFIED_CROSS_BORDER. The local BRAK still stands (no crystalline fructose at any reachable Argentine grocer, pharmacy or dietetica), but two direct foreign shops both prove the GTIN on their own page, print a single-ingredient fructose composition, are IN_STOCK, and name Argentina in their own delivery-country list: BulkSupplements (250 g) and GOURMET VERSAND / Sosa (1 kg)."
+  },
+  "INU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "inulina",
+    "inulina en polvo",
+    "fibra de inulina",
+    "inulina de achicoria",
+    "inulina de agave"
+   ],
+   "queries": [
+    "site search carrefour.com.ar: inulina / inulin",
+    "site search jumbo.com.ar, disco.com.ar, vea.com.ar, diaonline.supermercadosdia.com.ar, masonline.com.ar, cordiez.com.ar: inulina",
+    "site search farmacity.com: inulina / inulin / fiber",
+    "site search farmaonline.com, farmaciasdelpueblo.com.ar: inulina",
+    "site search basso-sa.com.ar: inulina",
+    "site search grandiet.com: inulina",
+    "site search mayana.com.ar: inulina",
+    "manufacturer site navigation sanitas.com.ar: División Farma -> Inufiber"
+   ],
+   "sources_tried": [
+    "farmacity.com (pharmacy; found Inufiber Inulina Pote x 150 g with GTIN in the product data; also Viasek Candifense capsules = capsules, rejected)",
+    "sanitas.com.ar (manufacturer page for Inufiber: formula and pack)",
+    "inufiber.com.ar ('Muy pronto' placeholder page)",
+    "carrefour.com.ar / jumbo.com.ar / disco.com.ar / vea.com.ar / diaonline.supermercadosdia.com.ar / masonline.com.ar / cordiez.com.ar (supermarkets; 0 inulin results)",
+    "farmaonline.com / farmaciasdelpueblo.com.ar (pharmacies; no inulin powder)",
+    "grandiet.com (dietética brand; only products containing inulin: carb blocker, meal-replacement and fibre tablets - rejected)",
+    "basso-sa.com.ar / mayana.com.ar (ice-cream and bakery suppliers; 0 results)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Sanitas (Inufiber)",
+     "product_name": "Inufiber Inulina Pote x 150 g",
+     "pack": "150 g",
+     "gtin": "7795344012606",
+     "identifier_confirmed": true,
+     "url": "https://www.farmacity.com/inufiber-inulina-pote-x-150-g/p",
+     "source_type": "RETAILER",
+     "seller": "Farmacity SA",
+     "page_market": "AR",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "EXPLICIT_QUOTE: 'El Programa será válido en todas las farmacias Farmacity de la República Argentina y en los canales de venta digital de Farmacity.' (farmacity.com/Farmacity/terminos-y-condiciones) ~/.cache/gellatti-evidence/verify/quote_7c99a5d9589ec6cc.json",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Fórmula: Inulina. Descripción: Fibra prebiótica 100% pura",
+      "from": "manufacturer page https://www.sanitas.com.ar/productos-farma/inufiber (same product: Inufiber, 'Presentación: Pote conteniendo 150 grs.'); verdict ~/.cache/gellatti-evidence/verify/e508a183b3a02099.json; quote ~/.cache/gellatti-evidence/verify/quote_09a29070df7e528b.json"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "The manufacturer declares inulin as the only formula ingredient and describes it as 100 % pure prebiotic fibre. No g/100 g figure is printed, so fibre_g stays null, and the inulin source (chicory/agave) is not stated. The Farmacity page itself shows no composition.",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/79f419528e24ef93.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/verify/quote_7c99a5d9589ec6cc.json",
+      "~/.cache/gellatti-evidence/verify/e508a183b3a02099.json",
+      "~/.cache/gellatti-evidence/verify/quote_09a29070df7e528b.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T15:43:59Z"
+    }
+   ],
+   "notes": "GTIN 7795344012606 is this product's own data on Farmacity (productReference/ean, clean_hits 2). farmacity.com is a generic .com (verifier: CURRENCY_ONLY), so the market is bound by an explicit quote naming Farmacity pharmacies in the República Argentina. Sold by Farmacity SA. Composition comes from the Sanitas manufacturer page for the same product. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+  },
+  "YOL": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "yema de huevo en polvo",
+    "yema en polvo",
+    "yema deshidratada"
+   ],
+   "queries": [
+    "site search carrefour.com.ar: yema / huevo en polvo / egg yolk powder",
+    "site search jumbo.com.ar, disco.com.ar, diaonline.supermercadosdia.com.ar, masonline.com.ar: huevo en polvo / yema en polvo",
+    "site search vea.com.ar: huevo en polvo / yema en polvo / yema",
+    "site search cordiez.com.ar: yema",
+    "site search farmacity.com: huevo en polvo / yema / egg yolk",
+    "site search farmaonline.com, farmaciasdelpueblo.com.ar: huevo en polvo / yema",
+    "site search carnave.com.ar: polvo / yema (+ category Huevo)",
+    "site search basso-sa.com.ar: yema",
+    "site search grandiet.com: yema",
+    "site search mayana.com.ar: yema",
+    "manufacturer site navigation tecnovo.com.ar: Productos -> Yema en polvo, Nueva Presentación"
+   ],
+   "sources_tried": [
+    "carrefour.com.ar / jumbo.com.ar / disco.com.ar / vea.com.ar / diaonline.supermercadosdia.com.ar / cordiez.com.ar (supermarkets; only turrón/mazapán/flan with yolk, no yolk powder)",
+    "masonline.com.ar (supermarket; only 'Clara De Huevo En Polvo Pasteurizado Carnave 24g' = egg white, rejected)",
+    "farmacity.com / farmaonline.com / farmaciasdelpueblo.com.ar (pharmacies; 0 results)",
+    "carnave.com.ar (poultry/egg retailer; no yolk powder in search or Huevo category)",
+    "basso-sa.com.ar (ice-cream supplier; only a vanilla/yolk stabilizer and 'SuperSambayón' flavour base, rejected)",
+    "grandiet.com / mayana.com.ar / dicomere.com.ar (dietética and bakery-ingredient brands; 0 results)",
+    "tecnovo.com.ar (egg processor; found 'Yema en Polvo' 25 kg B2B; its retail pouch 'Nueva Presentación' is whole-egg powder, rejected)",
+    "ovoprot.com / ovobrand.com / ovobrand.com.ar (egg processors; intro or blank pages, no product listing reachable)",
+    "gourmet-versand.com (DE; catalogue searched for Eipulver / Vollei / Trockenei / Eigelb - it sells no egg yolk powder, only egg-yellow food colours)",
+    "msk-ingredients.com (UK modernist supplier; full product sitemap, 6597 URLs: no egg yolk powder)",
+    "souschef.co.uk (UK; all 7 product sitemaps, 6274 URLs: no egg yolk powder)",
+    "bulksupplements.com (US; ships to many of these markets but sells no egg yolk powder)",
+    "judeesfromscratch.com/policies/shipping-policy (maker of an 11 oz Egg Yolk Powder; shipping policy mentions only free US shipping - no international statement)",
+    "gosupps.com (US reseller advertising Judee's Egg Yolk Powder with 'Express International Delivery'; its shipping pages return HTTP 403 - blocked, inconclusive, not bypassed)",
+    "modernistpantry.com egg yolk powder (page states it is available to US customers only)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Tecnovo",
+     "product_name": "Yema en Polvo (Productos en Polvo - Yema de Huevo)",
+     "pack": "25 kg (Peso neto: 25 kg)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.tecnovo.com.ar/yema-polvo.html",
+     "source_type": "MANUFACTURER",
+     "seller": "Tecnovo S.A. (Crespo, Entre Ríos)",
+     "page_market": "AR",
+     "market_by": "CCTLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "country domain .com.ar",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "raw page product description: hen egg yolk separated from the albumen, filtered, homogenised, pasteurised and spray-dried; no ingredient list, no additive and no nutrient values printed"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "Right type (pasteurised spray-dried hen egg yolk), but no ingredient declaration or '100 %' statement is printed, so A vs B (e.g. an anti-caking agent) cannot be decided. B2B only: a 25 kg box and no purchase listing.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/97b9612471cfaa42.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/verify/278cbded5499ec9d.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T15:48:36Z",
+     "availability": {
+      "state": "UNKNOWN",
+      "checked_at_utc": "2026-09-17T18:43:28Z",
+      "basis": "manufacturer information page (25 kg B2B); no stock or availability statement is printed",
+      "source": "https://www.tecnovo.com.ar/yema-polvo.html"
+     }
+    }
+   ],
+   "notes": "No retail yolk powder found in Argentine supermarkets, pharmacies, poultry retail, dietética brands or the ice-cream supplier checked. The only right-type product is Tecnovo's industrial yolk powder: 25 kg, manufacturer info page, no ingredient declaration, so LEAD with C data. Tecnovo's retail pouch is whole-egg powder (rejected). WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17: no new Argentine source. A cross-border path was searched for as well and none qualified: the shops that sell dried egg yolk either restrict it to the US (Modernist Pantry), make no international statement (Judee's), or are bot-walled (GoSupps, which advertises express international delivery for Judee's Egg Yolk Powder). The three wide-shipping ingredient shops checked (gourmet-versand, MSK, Sous Chef) and BulkSupplements sell no egg yolk powder at all."
   }
+ }
 }

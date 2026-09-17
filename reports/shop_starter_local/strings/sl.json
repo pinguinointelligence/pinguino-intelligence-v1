@@ -21,11 +21,13 @@
   "tag_other_composition": "Drugačna sestava",
   "tag_alternative": "Lokalna alternativa",
   "tag_unconfirmed": "Nepotrjeno",
+  "tag_abroad_unconfirmed": "Trgovina v tujini",
   "legend": {
-    "from_abroad": "trgovina v tujini, ki dostavlja v to državo",
-    "b2b": "prodaja podjetjem ali v velikih pakiranjih",
+    "from_abroad": "trgovina v tujini, ki na svojem seznamu dostave navaja to državo",
+    "b2b": "prodaja podjetjem ali v velikih pakiranjih — ni običajna maloprodajna ponudba",
     "other_composition": "ista vrsta izdelka z drugačno sestavo (navedena zraven)",
-    "alternative": "nadomestek za drug izdelek Gellatti"
+    "alternative": "nadomestek za drug izdelek Gellatti",
+    "abroad_unconfirmed": "trgovina v tujini; dostava v to državo ni potrjena"
   },
   "starter_amount": "V Starter Packu: {g} g",
   "option": "Možnost {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Lokalna alternativa mešanici Gellatti, ne ista mešanica. Zmešajte jo s suhimi sestavinami in osnovo segrejte na 75–80 °C.",
   "missing": "V tej državi še ni odobrenega izdelka.",
+  "out_of_stock": "Trgovina je izdelek {date} prikazovala kot razprodan.",
   "notes_title": "Dobro je vedeti",
   "notes": [
-    {"h": "Razpoložljivost", "p": "Izdelke smo preverili na spletnih straneh proizvajalcev in trgovin septembra 2026. Razpoložljivost, cene in dostava se lahko spremenijo in niso zagotovljene."},
+    {"h": "Razpoložljivost", "p": "Raziskane izdelke smo 17. septembra 2026 preverili na spletnih straneh trgovin in proizvajalcev. Dekstroza, posneto mleko v prahu in stabilizator izhajajo iz Gellattijeve tabele držav z dne 12. septembra 2026 in niso bili znova preverjeni. Razpoložljivost, cene in dostava se lahko spremenijo in niso zagotovljene."},
     {"h": "Deklaracija ima prednost", "p": "Pred nakupom preverite sestavine in alergene na embalaži. Smetana v prahu in mleko v prahu vsebujeta mleko, rumenjak vsebuje jajca."},
     {"h": "Stabilizator", "p": "V tej državi Gellatti Stabilizer nadomešča lokalni rastlinski gumi. Deluje podobno, vendar ni ista mešanica."}
   ],

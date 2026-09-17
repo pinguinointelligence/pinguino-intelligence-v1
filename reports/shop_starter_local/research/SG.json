@@ -20,7 +20,8 @@
         "奶油粉 (fairprice.com.sg)",
         "cream powder (coldstorage.com.sg)",
         "cream powder (bakeking.com.sg)",
-        "cream powder (phoonhuat.com)"
+        "cream powder (phoonhuat.com)",
+        "\"cream powder\" dairy spray dried milk fat 40% buy retail Asia baking supplier 1kg"
       ],
       "sources_tried": [
         "fairprice.com.sg search 'cream powder' (supermarket; only full-cream MILK powders Cowhead/Nespray/Fernleaf and Kara coconut cream powder — rejected types) verdict ~/.cache/gellatti-evidence/verify/17ba50e6aaf0b7cb.json",
@@ -32,13 +33,19 @@
         "guardian.com.sg (pharmacy; search page renders no server-side results)",
         "watsons.com.sg (pharmacy; HTTP 403 Access Denied)",
         "iHerb sg (Cloudflare challenge, not bypassed)",
-        "modernistpantry.com (US cross-border check; no cream powder listed)"
+        "modernistpantry.com (US cross-border check; no cream powder listed)",
+        "hoosierhillfarm.com (US; real dairy \"Heavy Cream Powder\" 72 % butterfat found, but the shipping policy names no delivery countries - no cross-border evidence)",
+        "gourmet-versand.com (searched Sahnepulver, Rahmpulver, Milchpulver, Sahne: no dairy cream powder in the catalogue - only QimiQ whip desserts, coconut cream and horseradish cream)",
+        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no cream powder)",
+        "meilleurduchef.com (FR pastry supplier; delivery page /en/boutique/livraison.html lists no Asian market)",
+        "redmanshop.com (Phoon Huat / RedMan own store; 2 000 rows read via products.json - no cream powder, only liquid creams, full-cream and skimmed milk powders 25 kg)",
+        "nzmp.com (Fonterra B2B ingredients brand): \"Cream Powder 55\" IS a real spray-dried dairy cream powder - the page prints \"Our cream powder is made from a blend of fresh dairy cream and skim milk, spray-dried to create a naturally rich 55%-fat powder\" (quote verified with check_quotes.py, found=true, ~/.cache/gellatti-evidence/quotes/gap-asia/nzmp_cream55.json). B2B-ONLY industrial ingredient, no retail pack and no purchase page - recorded as the B2B route under the owner rule, never to be shown as a retail offer."
       ],
       "candidates": [],
-      "notes": "No spray-dried dairy cream powder found in Singapore retail; searches return only whole/full-cream milk powder (~26–28 % fat) and coconut cream powder, both rejected by the protocol. WebSearch budget exhausted (session-wide 200/200), discovery done via retailers' own search pages."
+      "notes": "No spray-dried dairy cream powder found in Singapore retail; searches return only whole/full-cream milk powder (~26–28 % fat) and coconut cream powder, both rejected by the protocol. WebSearch budget exhausted (session-wide 200/200), discovery done via retailers' own search pages. Re-checked 2026-09-17 under the new owner rule (a real spray-dried dairy cream powder outside 38-48 % fat is a valid B_SAME_TYPE_DIFFERENT_COMPOSITION candidate). Still BRAK: no dairy cream powder of any fat level was found on a page that binds to this market. The only genuine retail dairy cream powder found anywhere in this pass is Hoosier Hill Farm \"Heavy Cream Powder\" (hoosierhillfarm.com, \"made with 100% real sweet cream\", \"72% butterfat content\", 1 lb / 2 lb / 25 lb, US) - it is NOT recorded as a candidate because the seller's shipping policy (hoosierhillfarm.com/policies/shipping-policy) prints no destination countries and no international-delivery statement, so there is no verifiable purchase path into this market. Owner may want to ask them directly. BRAK stands. The RedMan/Phoon Huat own store (redmanshop.com, 2 000 rows) has liquid creams and 25 kg full-cream/skimmed milk powders, no cream powder. Owner rule 3 (B2B stays B2B): the only genuine dairy cream powder route that exists in this region is industrial - Fonterra/NZMP \"Cream Powder 55\" (blend of fresh dairy cream and skim milk, spray-dried, 55 % fat, quote verified) and regional B2B dairy traders such as bestdairies.com (Klang, Malaysia) in 25 kg sacks. Tagged B2B, not presented as a retail offer and not recorded as a candidate because no purchase page binds it to this market. Retail shelves in the region carry non-dairy creamers, whole/full-cream milk powders and whipped-topping mixes, which the protocol rejects."
     },
     "FRU": {
-      "result": "LEAD_ONLY",
+      "result": "VERIFIED_CROSS_BORDER",
       "local_terms": [
         "fructose",
         "fruit sugar",
@@ -50,7 +57,9 @@
         "果糖 (fairprice.com.sg, 0 results)",
         "fructose (coldstorage.com.sg, 0 relevant)",
         "fructose (bakeking.com.sg, 0 relevant)",
-        "fructose (phoonhuat.com, nothing found)"
+        "fructose (phoonhuat.com, nothing found)",
+        "Fruktose (gourmet-versand.com site search)",
+        "Fructose (gourmet-versand.com site search)"
       ],
       "sources_tried": [
         "fairprice.com.sg (supermarket; Green Earth Fructose 500 G — used; RedMan Hi-Fructose Corn Syrup rejected)",
@@ -58,11 +67,53 @@
         "bakeking.com.sg (baking supplier; no fructose)",
         "phoonhuat.com (baking supplier; nothing found; redmanshop.com HTTP 429)",
         "nutrition-depot.com (health; HTTP 429 bot check)",
-        "watsons.com.sg (HTTP 403)"
+        "watsons.com.sg (HTTP 403)",
+        "gourmet-versand.com (German gourmet/pastry retailer, generic .com; POST site search + /de/versand.html shipping-cost country selector - the selector names the destination country, so Sosa fructose / inulin are cross-border options)",
+        "redmanshop.com (2 000 rows read via products.json - no fructose)"
       ],
       "candidates": [
         {
           "rank": 1,
+          "brand": "Sosa",
+          "product_name": "Sosa Fruktose Pulver",
+          "pack": "1 kg",
+          "gtin": "8414933026259",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND (Heinsberg, Germany)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "no local binding (German gourmet/pastry retailer on a generic .com); cross-border only - see ships_to_evidence",
+          "cross_border": true,
+          "ships_to_evidence": "shipping-cost country selector on the seller's own delivery page https://www.gourmet-versand.com/de/versand.html (section 'Versendung in folgendes Land:') names the destination country; exact quote \"Serbien Singapur Slowakei Slowenien\" verified with check_quotes.py (found=true, http 200, 2026-09-17); the same page states \"Wir liefern nach Europa und weltweit in\" 77 \"verschiedene Länder.\"; quote JSON: ~/.cache/gellatti-evidence/quotes/gap-asia/gv_ship_SG.json",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+            "source": "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": 0.01,
+            "fibre_g": null,
+            "fructose_pct": 100.0,
+            "ingredients": "Fructosepulver. Fruktose.",
+            "from": "page \"Zutaten\" field + product text \"Dieses 100% - ige Fructosepulver wird aus Maissirup mit hohem Fructosegehalt gewonnen.\"; Nährwerttabelle per 100 g: Brennwert 1700 kJ / 400 kcal, Kohlenhydrate 100 g, davon Zucker 100 g, Eiweiß 0,01 g, Salz 0,13 g"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "printed as a 100 % fructose powder; carbohydrates 100 g / of which sugars 100 g per 100 g (reference: fructose 99.8)",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a590a2c52d3ab33c.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "notes": "gtin13 8414933026259 appears as JSON-LD data on this purchase page (verify_ean_market.py: clean_hits 3, echo_hits 0, embedded_hits 0, identity_basis GTIN_ON_THIS_PAGE) and again as the page's \"EAN Code\" field. Manufacturer printed: Sosa Ingredients, S.L.U., Colonia Galobart S/N, 08270 Navarcles, Barcelona, Spain; article no. 22941. Pack is 1 kg (reference pack is 125 g).",
+          "checked_at_utc": "2026-09-17T18:30:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "found_by": "gap-asia"
+        },
+        {
+          "rank": 2,
           "brand": "Green Earth",
           "product_name": "Green Earth Fructose",
           "pack": "500 G",
@@ -92,10 +143,16 @@
           "verifier_verification_class": "EAN_ON_MARKET_PAGE (clean hits in JSON-LD mpn / barcodes)",
           "notes": "The barcode 1111111003114 has a valid check digit but looks seller-constructed ('1111111' + '00311' + check digit; the seller's own product code is '311'), so it is not treated as a genuine GS1 GTIN. Listing is a FairPrice dropship item (vendor-fulfilled).",
           "checked_at_utc": "2026-09-17T15:53:55Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "schema.org InStock (\"availability\": \"https://schema.org/InStock\") in the page's Product JSON-LD",
+            "source": "https://www.fairprice.com.sg/product/green-earth-fructose-500-g-90080184"
+          }
         }
       ],
-      "notes": ""
+      "notes": "Closed cross-border 2026-09-17 by gap-asia: no usable local source was found, so the proposal is the Sosa article at GOURMET VERSAND (Germany), whose own shipping-cost country selector names this country (quote verified with check_quotes.py, file under ~/.cache/gellatti-evidence/quotes/gap-asia/). Owner should still prefer a local source if one turns up; a 1 kg / 500 g pack and international postage are the trade-off. The local FairPrice listing (Green Earth Fructose 500 G) is kept as the next rank: it is schema.org InStock and bound to .com.sg, but it prints no ingredient list and its barcode looks seller-constructed, so its composition is unproven (C_INSUFFICIENT_DATA)."
     },
     "INU": {
       "result": "CONFIRMED_LOCAL",
@@ -110,7 +167,8 @@
         "菊粉 (fairprice.com.sg, 0 results)",
         "inulin (coldstorage.com.sg)",
         "inulin (bakeking.com.sg)",
-        "inulin (phoonhuat.com)"
+        "inulin (phoonhuat.com)",
+        "Inulin (gourmet-versand.com site search)"
       ],
       "sources_tried": [
         "fairprice.com.sg (supermarket/Unity pharmacy range; NOW Foods Certified Organic Inulin Pure Powder 227 G — used; probiotic capsules rejected)",
@@ -118,7 +176,9 @@
         "bakeking.com.sg (no inulin)",
         "phoonhuat.com (nothing found)",
         "iHerb sg / nowfoods.com (Cloudflare challenge, not bypassed)",
-        "vitacost.com (US page for the same UPC, used only for the composition facts)"
+        "vitacost.com (US page for the same UPC, used only for the composition facts)",
+        "gourmet-versand.com (German gourmet/pastry retailer, generic .com; POST site search + /de/versand.html shipping-cost country selector - the selector names the destination country, so Sosa fructose / inulin are cross-border options)",
+        "redmanshop.com (2 000 rows read via products.json - no inulin)"
       ],
       "candidates": [
         {
@@ -155,10 +215,56 @@
           "verifier_verification_class": "EAN_ON_MARKET_PAGE (clean_hits 3: JSON-LD mpn and product data 'barcodes')",
           "notes": "FairPrice lists this as a dropship (vendor-fulfilled) item; not a third-party marketplace storefront, but flagged for owner review.",
           "checked_at_utc": "2026-09-17T15:53:52Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "schema.org InStock (\"availability\": \"https://schema.org/InStock\") in the page's Product JSON-LD",
+            "source": "https://www.fairprice.com.sg/product/now-foods-certified-organic-inulin-pure-powder-g-90013004"
+          }
+        },
+        {
+          "rank": 2,
+          "brand": "Sosa",
+          "product_name": "Sosa Inulin Cold (Ballaststoff) (50063)",
+          "pack": "500 g",
+          "gtin": "8414933008774",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND (Heinsberg, Germany)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "no local binding (German gourmet/pastry retailer on a generic .com); cross-border only - see ships_to_evidence",
+          "cross_border": true,
+          "ships_to_evidence": "shipping-cost country selector on the seller's own delivery page https://www.gourmet-versand.com/de/versand.html (section 'Versendung in folgendes Land:') names the destination country; exact quote \"Serbien Singapur Slowakei Slowenien\" verified with check_quotes.py (found=true, http 200, 2026-09-17); the same page states \"Wir liefern nach Europa und weltweit in\" 77 \"verschiedene Länder.\"; quote JSON: ~/.cache/gellatti-evidence/quotes/gap-asia/gv_ship_SG.json",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+            "source": "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ballaststoff Inulin. Inulin.",
+            "from": "page \"Zutaten\" field; Nährwerttabelle per 100 g: Brennwert 839 kJ / 208 kcal, Kohlenhydrate 7 g, davon Zucker 7 g, Salz 0,1 g (no fibre figure printed)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "printed ingredient list is inulin only (dietary fibre); the German nutrition table prints no fibre figure, sugars are 7 g/100 g which is consistent with the reference (fibre 89, sugars 8)",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3c3f5d6932e222fa.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "notes": "gtin13 8414933008774 appears as JSON-LD data on this purchase page (verify_ean_market.py identity_basis GTIN_ON_THIS_PAGE) and as the page's \"EAN Code\" field; article no. 34575. The page also prints \"Nur für den professionellen Gebrauch!\" (professional use only) although it is an ordinary consumer webshop listing. The sibling article \"Sosa Inulin Hot (Ballaststoff) (39460)\" 500 g is stocked on the same shop.",
+          "checked_at_utc": "2026-09-17T18:30:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "found_by": "gap-asia"
         }
       ],
-      "notes": ""
+      "notes": "Local rank 1 (NTUC FairPrice, NOW Foods organic inulin) re-checked 2026-09-17 and still schema.org InStock, so it stays rank 1; the Sosa article at GOURMET VERSAND was added as a cross-border fallback (its delivery-country selector names Singapur)."
     },
     "YOL": {
       "result": "BRAK",
@@ -174,7 +280,11 @@
         "蛋黄粉 (fairprice.com.sg, 0 results)",
         "egg yolk (coldstorage.com.sg)",
         "egg yolk / yolk powder (bakeking.com.sg)",
-        "egg yolk / yolk powder (phoonhuat.com)"
+        "egg yolk / yolk powder (phoonhuat.com)",
+        "egg yolk powder (redmanshop.com products.json)",
+        "jaune d'oeuf en poudre (cuisineaddict.com, cerf-dellier.com)",
+        "Eigelbpulver (pati-versand.de)",
+        "\"egg yolk powder\" buy Singapore Hong Kong baking ingredient shop online 100g"
       ],
       "sources_tried": [
         "fairprice.com.sg (supermarket; only Knorr salted-egg seasoning and RedMan egg-yellow colour powder — rejected)",
@@ -182,10 +292,26 @@
         "bakeking.com.sg (baking supplier; no yolk powder)",
         "phoonhuat.com (baking supplier; recipes only; redmanshop.com HTTP 429)",
         "guardian.com.sg / watsons.com.sg (pharmacy; no server-side results / HTTP 403)",
-        "modernistpantry.com Egg Yolk Powder (US; page states 'Available to US customers only at this time' — not cross-border)"
+        "modernistpantry.com Egg Yolk Powder (US; page states 'Available to US customers only at this time' — not cross-border)",
+        "gourmet-versand.com (searched Eigelbpulver, Eigelb, Eipulver, Vollei, Trockenei: no egg powder in the catalogue - only egg-yellow food colourings)",
+        "taste-market.de (German shop with a real \"Eigelbpulver\" 100 g, ingredients \"Hühner-Eigelb\", GTIN 4262421423127 - kept out because the served HTML exposes no shipping/delivery-country page, so no cross-border evidence)",
+        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no egg yolk powder)",
+        "redmanshop.com (2 000 rows read via products.json - no egg yolk powder)",
+        "redmanshop.com /search and /search/suggest.json serve a \"Verifying your connection...\" bot wall (not bypassed); catalogue read through products.json instead",
+        "pati-versand.de (German baking retailer with a real \"Eigelbpulver 100g\", brand Cake-Masters Basics, ingredients \"HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET\", schema.org InStock / \"Auf Lager\") - NOT usable: its \"Rest der Welt\" zone is an explicit list of 20 European countries only (\"Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, ... Ungarn\", quote verified with check_quotes.py, ~/.cache/gellatti-evidence/quotes/gap-asia/pati_eu_only.json), no Asian market",
+        "cuisineaddict.com (FR; search \"jaune d'oeuf en poudre\" returns only egg-yellow food COLOURING E102/E129)",
+        "cerf-dellier.com (FR pastry supplier; search returns \"Désolé, nous ne trouvons aucun produit\")",
+        "bienmanger.com (FR; search path HTTP 404)",
+        "modernistpantry.com (US; /products.json and /search both HTTP 404 - no readable catalogue)",
+        "sg.lkk.com / thatlittleshophk.com (Lee Kum Kee Salted Egg Yolk PASTE 100 g, Singlong Salted Egg Yolk Paste 120 g) - paste, not dried yolk powder: rejected type",
+        "etsy.com/sg-en (marketplace; never confirms)",
+        "modernistpantry.com (US; \"Egg Yolk Powder\", page text \"Egg yolk powder is made of spray dried pasteurized egg yolks ... Made in the USA and contains no additives of any kind\", page shows \"in stock\") - NOT usable as cross-border evidence: the international-shipping page names no country, only \"We are currently only offering FedEx shipping for international customers. To see whether we can ship to your country just add the products to cart and go to the checkout page.\" (adding to carts is out of scope by protocol rule 8)"
       ],
       "candidates": [],
-      "notes": "No pasteurised dried egg yolk powder found at Singapore retailers; salted-egg seasonings are rejected."
+      "notes": "No pasteurised dried egg yolk powder found at Singapore retailers; salted-egg seasonings are rejected. Cross-border route for dried egg yolk was searched and closed 2026-09-17: the one European retailer with a verified 100 % spray-dried chicken egg yolk powder in a 100 g retail pack (pati-versand.de, \"Eigelbpulver 100g\") ships only to a named list of 20 European countries, and gourmet-versand.com - the one shop whose delivery-country selector does name Asian markets - has no egg powder at all. So there is currently no verifiable purchase path for dried egg yolk into this market."
     }
-  }
+  },
+  "gap_followup_agent": "gap-asia",
+  "gap_followup_at_utc": "2026-09-17T18:30:00Z",
+  "gap_followup_egress_cc": "ES"
 }

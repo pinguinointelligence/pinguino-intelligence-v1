@@ -12,7 +12,7 @@ It never changes availability to ON and never touches an existing row (ON CONFLI
 usage: publish_starter_local.py --plan            writes publish/plan.json and publish/registry.sql, uploads nothing
        publish_starter_local.py --upload          uploads the planned files (after the plan was reviewed)
 """
-import argparse, json, os, subprocess, sys
+import argparse, collections, json, os, re, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BUILD = os.path.join(HERE, 'build', 'starter_local')
@@ -44,6 +44,15 @@ def plan():
                         'bytes': doc['bytes'], 'storage_path': path,
                         'download_file_name': f'Gellatti-Starter-Pack-{doc["iso"]}-{doc["locale"]}.pdf'})
     os.makedirs(OUT, exist_ok=True)
+    # Every planned row must carry its market, its language and its version, and no two rows may share a storage path
+    # or a sha: the order binds to ONE variant, and an existing order must keep pointing at its own historical file.
+    for e in entries:
+        assert re.fullmatch(r'[A-Z]{2}', e['iso']) and e['locale'] and VERSION, e
+    for key in ('storage_path', 'sha256'):
+        seen = collections.Counter(e[key] for e in entries)
+        dupes = [k for k, n in seen.items() if n > 1]
+        if dupes:
+            sys.exit(f'refusing: two documents share the same {key}: {dupes[:3]}')
     json.dump({'document_key': DOCUMENT_KEY, 'version': VERSION, 'availability': 'TEST_ACCOUNTS_ONLY', 'entries': entries,
                'refused': refused}, open(os.path.join(OUT, 'plan.json'), 'w'), ensure_ascii=False, indent=1)
     values = ',\n'.join(
@@ -61,7 +70,28 @@ values
 on conflict do nothing;
 """
     open(os.path.join(OUT, 'registry.sql'), 'w').write(sql)
-    print(f'plan: {len(entries)} document(s), {len(refused)} refused → publish/plan.json, publish/registry.sql')
+    verify = """-- Read-only checks for the per-country Starter Pack rows. Run BEFORE the insert (expect 0 rows for the
+-- markets being added) and AFTER it (expect one current row per market and language, each with its own file and sha).
+select document_key, country_iso2, language, version, availability, is_current, sha256, byte_size, storage_path
+from public.shop_digital_documents where document_key = '%s' order by country_iso2, language;
+
+-- One current row per (document, market, language):
+select country_iso2, language, count(*) from public.shop_digital_documents
+where document_key = '%s' and is_current group by 1, 2 having count(*) > 1;
+
+-- Every file the registry points at exists in the private bucket:
+select d.country_iso2, d.language, d.storage_path,
+       exists (select 1 from storage.objects o where o.bucket_id = d.storage_bucket and o.name = d.storage_path) as file_present
+from public.shop_digital_documents d where d.document_key = '%s' order by 1, 2;
+
+-- Each order keeps its own market, language and version (an old order must still point at its historical file):
+select o.order_number, o.status, d.document_key, d.country_iso2, d.language, d.version, d.sha256,
+       exists (select 1 from storage.objects o2 where o2.bucket_id = d.storage_bucket and o2.name = d.storage_path) as file_present
+from public.shop_orders o join public.shop_digital_documents d on d.id = o.document_id
+where o.order_type = 'DIGITAL_DOCUMENT' order by o.created_at;
+""" % (DOCUMENT_KEY, DOCUMENT_KEY, DOCUMENT_KEY)
+    open(os.path.join(OUT, 'verify.sql'), 'w').write(verify)
+    print(f'plan: {len(entries)} document(s), {len(refused)} refused → publish/plan.json, publish/registry.sql, publish/verify.sql')
 
 
 def upload():

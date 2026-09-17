@@ -7,7 +7,7 @@
   "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
   "items": {
     "CRP": {
-      "result": "BRAK",
+      "result": "LEAD_ONLY",
       "local_terms": [
         "crème en poudre",
         "poudre de crème",
@@ -20,7 +20,11 @@
         "pannanegoce.com Woo search: crème en poudre, crème, lait, poudre",
         "alghandourmarket.ma / heim.ma / foru.ma / aswakdelivery.com Woo search: crème en poudre, creme poudre",
         "dietmarket.ma search: crème en poudre",
-        "yammy.ma / goji.ma Shopify catalogue scan (partial): crème en poudre|cream powder"
+        "yammy.ma / goji.ma Shopify catalogue scan (partial): crème en poudre|cream powder",
+        "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+        "hoosierhillfarm.com product sitemap + policies/shipping-policy + pages/faqs (international shipping)",
+        "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+        "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
       ],
       "sources_tried": [
         "pannanegoce.com pastry/ice-cream supplier, Casablanca (no cream powder; only cream cheeses, pastry creams, skim milk)",
@@ -30,10 +34,55 @@
         "heim.ma / foru.ma health & supplement shops (no result)",
         "yammy.ma pastry-ingredient shop (partial catalogue scan + later site search 'creme poudre': no cream powder)",
         "goji.ma organic grocer (partial scan, then rate-limit challenge)",
-        "jumia.ma marketplace (bot wall)"
+        "jumia.ma marketplace (bot wall)",
+        "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+        "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+        "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+        "hoosierhillfarm.com (US, Heavy Cream Powder): FAQ states 'Do you ship internationally? At this time, we do not ship internationally.' - rejected as a cross-border path",
+        "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+        "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Morocco - rejected as a cross-border path"
       ],
-      "candidates": [],
-      "notes": "Search results only showed whole/skim milk powders (reject) and crème pâtissière mixes (reject). No dairy cream powder found."
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": null,
+          "product_name": "Sahnepulver sprühgetrocknet",
+          "pack": "100 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
+          "source_type": "RETAILER",
+          "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+          "cross_border": true,
+          "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). MA is NOT named, so this is a lead, not a confirmation.",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:21:06Z",
+            "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+            "source": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+            "from": "page label \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\"; nutrition per 100 g: Fett 42 g (davon gesättigte Fettsäuren 27,1 g), Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "spray-dried dairy cream, 42 % fat = the PI-ING-000260 reference exactly (fat 42, protein 20, lactose 30)",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3df84b49991636c0.json",
+          "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+          "checked_at_utc": "2026-09-17T18:21:06Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Search results only showed whole/skim milk powders (reject) and crème pâtissière mixes (reject). No dairy cream powder found. | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name Morocco among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF."
     },
     "FRU": {
       "result": "LEAD_ONLY",
@@ -48,7 +97,9 @@
         "alghandourmarket.ma Woo search: fructose",
         "heim.ma / foru.ma / pannanegoce.com / aswakdelivery.com Woo search: fructose, sucre",
         "dietmarket.ma search: fructose",
-        "yammy.ma / goji.ma catalogue scan (partial): fructose"
+        "yammy.ma / goji.ma catalogue scan (partial): fructose",
+        "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)",
+        "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline"
       ],
       "sources_tried": [
         "alghandourmarket.ma grocery, Casablanca (found Santiveri Fructose 750g)",
@@ -59,7 +110,15 @@
         "aswakdelivery.com supermarket (no result)",
         "santiveri.com manufacturer sitemaps (fructose not listed - GTIN source not found)",
         "mifarma.es / naturitas.es / herbolariosnavarro.es (search not readable - no GTIN source)",
-        "jumia.ma marketplace (bot wall)"
+        "jumia.ma marketplace (bot wall)",
+        "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+        "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+        "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Morocco - rejected as a cross-border path",
+        "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+        "vitacost.com: /international-shipping and /shipping-information redirect to the home page; no delivery-country list found",
+        "alghandourmarket.ma re-read 2026-09-17: schema.org InStock and \"Disponible Chez Alghandour Market à Casablanca\" on the product page (the .ma domain already binds the market); still no GTIN, so the row stays a LEAD",
+        "santiveri.com sitemaps re-checked (prod_alimentacion): no fructose product, so no manufacturer GTIN source exists",
+        "naturitas.es: sitemap.xml returns an empty body (blocked), so no Spanish retailer GTIN source could be read"
       ],
       "candidates": [
         {
@@ -92,7 +151,52 @@
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/db07d025bdcf3bb3.json",
           "verifier_verification_class": "PAGE_FACTS_ONLY",
           "checked_at_utc": "2026-09-17T15:50:04Z",
-          "identity_note": "no GTIN on the local page (store SKU 30516) and no authoritative Santiveri page carrying the GTIN could be found, so identity stays unproven"
+          "identity_note": "no GTIN on the local page (store SKU 30516) and no authoritative Santiveri page carrying the GTIN could be found, so identity stays unproven",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:45:00Z",
+            "basis": "schema.org InStock; page text \"Disponible Chez Alghandour Market à Casablanca\"",
+            "source": "https://alghandourmarket.ma/product/santiveri-fructose-750g/"
+          }
+        },
+        {
+          "rank": 2,
+          "brand": "Louis François",
+          "product_name": "Fructose - 1 kg - Louis François",
+          "pack": "1 kg",
+          "gtin": "3700434800807",
+          "identifier_confirmed": true,
+          "url": "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html",
+          "source_type": "RETAILER",
+          "seller": "Meilleur du Chef (meilleurduchef.com, France)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "none - generic .com, French-language shop; the destination market would be reached cross-border",
+          "cross_border": true,
+          "ships_to_evidence": "cross-border LEAD only: the product page prints 'Prices include taxes - Remove 5.5% outside EU.' (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/meilleurduchef_outside_eu.json) and the delivery page says only 'DPD Predict and Pickup, So Colissimo, Chronopost and DB Schenker for national and international deliveries'. MA is not named anywhere, so this is a lead, not a confirmation.",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:37:17Z",
+            "basis": "In stock (page text) / schema.org InStock",
+            "source": "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": null
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "crystalline fructose sold as a pastry ingredient; no ingredient list or nutrition table on the page",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/846a95814b76581b.json",
+          "identity_note": "gtin13 3700434800807 in the page JSON-LD (checksum valid, GTIN-13)",
+          "checked_at_utc": "2026-09-17T18:37:17Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
         }
       ],
       "notes": "Right product with printed composition on a Moroccan (.ma) retailer page; only the GTIN identity step is missing."
@@ -199,7 +303,7 @@
       "notes": "Also seen: Sosa 'Inuline à Froid XP 500' 500 g, 90 % soluble fibre (pannanegoce.com, UGS 50063) and NOW Foods certified organic inulin 227 g (foru.ma) - both without a readable GTIN source."
     },
     "YOL": {
-      "result": "BRAK",
+      "result": "LEAD_ONLY",
       "local_terms": [
         "jaune d'oeuf en poudre",
         "poudre de jaune d'œuf",
@@ -211,7 +315,10 @@
         "pannanegoce.com Woo search: oeuf, jaune, poudre",
         "alghandourmarket.ma / heim.ma / foru.ma / aswakdelivery.com Woo search: jaune d'oeuf, oeuf en poudre",
         "dietmarket.ma search: jaune d'oeuf",
-        "ovotec.ma product page"
+        "ovotec.ma product page",
+        "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+        "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+        "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
       ],
       "sources_tried": [
         "pannanegoce.com pastry supplier (only albumin powder, no yolk powder)",
@@ -222,11 +329,55 @@
         "heim.ma / foru.ma (no result)",
         "yammy.ma pastry-ingredient shop (site search 'jaune oeuf' / 'oeuf poudre': only flan mixes)",
         "jumia.ma marketplace (bot wall)",
-        "espaceagro.com B2B listings (classifieds, not a retailer)"
+        "espaceagro.com B2B listings (classifieds, not a retailer)",
+        "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+        "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+        "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+        "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+        "gourmet-versand.com (DE, ships to 81 named countries): Sosa fructose 1 kg is there, but the shipping-cost country selector does not name Morocco - rejected as a cross-border path"
       ],
-      "candidates": [],
-      "notes": "Only B2B/wholesale listings (espaceagro.com, tradekey-type pages) were seen. A search-result summary of an agrimaroc.org study said powdered egg products are imported, with no national producer (discovery text only, not verified)."
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": null,
+          "product_name": "Eigelbpulver",
+          "pack": "100 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
+          "source_type": "RETAILER",
+          "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+          "cross_border": true,
+          "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). MA is NOT named, so this is a lead, not a confirmation.",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:21:21Z",
+            "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+            "source": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g"
+          },
+          "composition": {
+            "fat_g": 55.8,
+            "protein_g": 34.3,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.",
+            "from": "page label \"Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.\"; nutrition per 100 g: Fett 55,8 g (davon gesättigte Fettsäuren 17,6 g), Kohlenhydrate 3,6 g, davon Zucker 3,6 g, Eiweiß 34,3 g, Salz 0,3 g"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised, spray-dried chicken egg yolk; fat 55,8 / protein 34,3 against the PI-ING-001645 reference fat 56,5 / protein 34,5",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2944f17c1f486c80.json",
+          "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+          "checked_at_utc": "2026-09-17T18:21:21Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Only B2B/wholesale listings (espaceagro.com, tradekey-type pages) were seen. A search-result summary of an agrimaroc.org study said powdered egg products are imported, with no national producer (discovery text only, not verified). | gap pass 2026-09-17: no dried egg yolk powder is sold by any readable seller in this market; the only lead is a German shop that carries 100 % pasteurised spray-dried yolk powder but does not name Morocco among its delivery countries. Owner decision needed as for CRP."
     }
   },
-  "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) after the first queries; DuckDuckGo/Mojeek served CAPTCHAs (not bypassed). Discovery then used shops' own catalogue/search endpoints. jumia.ma returned a bot wall (403); yammy.ma and goji.ma switched to a Cloudflare rate-limit challenge (429 'Verifying your connection') after a partial catalogue scan (500 and 750 products scanned, no target product found); yammy.ma was searched again ~1.5 h later with single requests (fructose, inuline, jaune oeuf, oeuf poudre, creme poudre: no matching product), goji.ma was not retried; aromashop.ma (own-brand 'INULINE AROMASHOP 200G' seen in search results) did not answer (connection failure)."
+  "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) after the first queries; DuckDuckGo/Mojeek served CAPTCHAs (not bypassed). Discovery then used shops' own catalogue/search endpoints. jumia.ma returned a bot wall (403); yammy.ma and goji.ma switched to a Cloudflare rate-limit challenge (429 'Verifying your connection') after a partial catalogue scan (500 and 750 products scanned, no target product found); yammy.ma was searched again ~1.5 h later with single requests (fructose, inuline, jaune oeuf, oeuf poudre, creme poudre: no matching product), goji.ma was not retried; aromashop.ma (own-brand 'INULINE AROMASHOP 200G' seen in search results) did not answer (connection failure). | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes."
 }

@@ -9,7 +9,11 @@ For every document in build/starter_local/manifest[_draft].json:
   5. every product listed in the manifest appears: its GTIN digits (when it has one) and the start of its name
      (Latin/Cyrillic/Greek names only — right-to-left and CJK text is not compared, pdftotext reorders it);
   6. a publishable document contains no draft banner, and every product in it is accepted (or v23);
-  7. the PDF carries at least as many link annotations as products with links.
+  7. the PDF carries at least as many link annotations as products with links;
+  8. no researcher placeholder ("not printed", "not stated", …) is printed as if it were a name;
+  9. a product the shop showed as out of stock carries the localized "out of stock on <date>" line;
+ 10. publishable only: each of the seven roles has at least one product the owner accepted — a LEAD candidate that was
+     never accepted cannot close the publication condition (owner 2026-09-17).
 Writes build/starter_local/validation[_draft].json and exits non-zero on any failure.
 usage: validate_starter_local.py [--draft]
 """
@@ -78,13 +82,27 @@ def main():
                     product_issues.append(f'{code} unaccepted research product in a publishable PDF')
                 with_links += 1
         checks['products_in_text'] = not product_issues
+        sentinels = [w for w in ('not printed', 'not stated', 'not specified', 'not shown', 'not seen', 'unbranded', 'no brand')
+                     if w in flat]
+        checks['no_sentinel_text'] = not sentinels
+        oos_line = norm(S['out_of_stock'].split('{date}')[0])
+        oos_products = [p for code in ITEMS for p in doc['items'][code] if (p.get('availability') or {}).get('state') == 'OUT_OF_STOCK']
+        checks['out_of_stock_shown'] = (not oos_products) or (comparable(S['out_of_stock']) is False) or (oos_line and oos_line in flat)
+        if a.draft:
+            checks['seven_roles_accepted'] = True
+        else:
+            checks['seven_roles_accepted'] = all(any(p.get('accepted') for p in doc['items'][code]) for code in ITEMS)
         banner = norm(S['draft']).split(' ')[0]
         checks['draft_banner'] = (banner in flat) if a.draft else (norm(S['draft']) not in flat)
         checks['links'] = link_count(pdf) >= min(with_links, 1)
         ok = all(checks.values())
         failed += 0 if ok else 1
         results.append({'iso': doc['iso'], 'locale': doc['locale'], 'ok': ok, 'checks': checks,
-                        'missing_item_names': missing_names, 'product_issues': product_issues})
+                        'missing_item_names': missing_names, 'product_issues': product_issues, 'sentinels': sentinels,
+                        'accepted_leads': [f'{code} rank {p.get("rank")}' for code in ITEMS for p in doc['items'][code]
+                                           if p.get('accepted') and p.get('evidence_class') == 'LEAD'],
+                        'out_of_stock_products': [f'{code} rank {p.get("rank")}' for code in ITEMS for p in doc['items'][code]
+                                                  if (p.get('availability') or {}).get('state') == 'OUT_OF_STOCK']})
         print(f'{"PASS" if ok else "FAIL"} {doc["iso"]}/{doc["locale"]} ' + ' '.join(k for k, v in checks.items() if not v))
     out = os.path.join(BUILD, 'validation_draft.json' if a.draft else 'validation.json')
     json.dump({'documents': results, 'failed': failed}, open(out, 'w'), ensure_ascii=False, indent=1)

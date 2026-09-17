@@ -1,359 +1,500 @@
 {
-  "iso2": "CO",
-  "country": "Colombia",
-  "agent": "research-americas",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T15:57:15Z",
-  "items": {
-    "CRP": {
-      "result": "BRAK",
-      "local_terms": [
-        "crema de leche en polvo",
-        "crema en polvo",
-        "nata en polvo",
-        "cream powder"
+ "iso2": "CO",
+ "country": "Colombia",
+ "agent": "research-americas",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T15:57:15Z",
+ "items": {
+  "CRP": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "crema de leche en polvo",
+    "crema en polvo",
+    "nata en polvo",
+    "cream powder"
+   ],
+   "queries": [
+    "crema de leche en polvo Colombia comprar",
+    "\"crema de leche en polvo\" Colombia heladería panadería ingredientes",
+    "\"crema en polvo\" láctea 1 kg Colombia tienda envíos",
+    "cream powder dairy buy Colombia",
+    "\"crema de leche en polvo\" 500 g OR 1 kg tienda online Bogotá Medellín",
+    "site search www.exito.com: crema de leche en polvo",
+    "site search www.jumbocolombia.com: crema en polvo",
+    "site search www.jumbocolombia.com: crema de leche en polvo",
+    "site search www.olimpica.com: crema en polvo",
+    "site search www.olimpica.com: crema de leche en polvo",
+    "site search www.carulla.com: crema de leche en polvo",
+    "site search www.locatelcolombia.com: crema de leche en polvo",
+    "site search mundohuevo.com: crema",
+    "site search elmolinoverde.com: crema de leche",
+    "site search elmolinoverde.com: crema en polvo",
+    "site search tienda.ipf.com.co: crema",
+    "site search tienda.essentiall.com.co: crema",
+    "site search www.mejoronline.co: crema",
+    "site search www.mejoronline.co: leche en polvo",
+    "site catalog gourmet-versand.com: Sahnepulver / Rahmpulver / Milchpulver (0 dairy powders)",
+    "site search pati-versand.de: Sahnepulver (Cake-Masters Sahnepulver 100g, SAHNE 42% Fett - EU-only delivery)",
+    "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose"
+   ],
+   "sources_tried": [
+    "jumbocolombia.com (supermarket; catalog site search 'crema en polvo' / 'crema de leche en polvo': only milk powders, drink mixes and liquid creams - no cream powder)",
+    "olimpica.com (supermarket; catalog site search: milk powders and liquid/UHT creams only)",
+    "carulla.com (supermarket; catalog site search: milk powders, liquid creams, dessert mixes only)",
+    "exito.com (supermarket; catalog site search HTTP 403 Cloudflare 'Just a moment' bot wall - inconclusive, not bypassed)",
+    "locatelcolombia.com (pharmacy/health; catalog site search: infant formulas, protein powders, cosmetics - no cream powder)",
+    "mundohuevo.com (baking/pastry supplier; site search 'crema': liquid dairy creams only; its 'Crema en Polvo para Café Coffee Creamer' seen in discovery is a coffee creamer - rejected type)",
+    "delyclar.com/producto/crema-de-leche-polvo-500-gr/ (retail-size listing seen in discovery; HTTP 503 Wordfence block 'Tu acceso a este sitio ha sido limitado por el propietario del sitio' on two attempts - bot wall, inconclusive, not bypassed; type, composition and market unknown; verdict ~/.cache/gellatti-evidence/verify/c7b7a4b597f60224.json)",
+    "alsec.com.co/product/crema-de-leche-en-polvo/ (Colombian ingredient manufacturer; microencapsulated cream powder, 'Presentación comercial: 25Kg', no composition - B2B sack, not a retail pack; verdict ~/.cache/gellatti-evidence/verify/3f5e0fe6bd7db382.json)",
+    "nutrilink.com.co/cremas-de-leche-y-natas-en-polvo/ (Bogotá B2B ingredient distributor; portfolio page lists 'Crema de leche en polvo 72%' - no pack, no purchase page; verdict ~/.cache/gellatti-evidence/verify/2f2e8d57f2601f02.json)",
+    "ingredients-solutions.com (B2B 'Crema de Leche en Polvo' 25kg bag, no country stated - not retail; verdict ~/.cache/gellatti-evidence/verify/eca8feb58bfcf6b3.json)",
+    "dirind.com (Ingredientes Funcionales de México - Mexican B2B, not Colombia; verdict ~/.cache/gellatti-evidence/verify/7b6a0aa048c71b5e.json)",
+    "elmolinoverde.com (natural/bulk store; site search 'crema de leche', 'crema en polvo': no cream powder)",
+    "tienda.ipf.com.co, tienda.essentiall.com.co (ingredient shops; site search 'crema': no cream powder)",
+    "mejoronline.co (online retailer; site search 'crema', 'leche en polvo': egg powders and cosmetics only)",
+    "listado.mercadolibre.com.co/crema-de-leche-en-polvo (marketplace; redirected to account-verification wall - not used)",
+    "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
+    "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
+    "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Ingredients Bar",
+     "product_name": "Cream Powder",
+     "pack": "200 g (same listing also offers 500 g, 1.5 kg and 4 kg; SKU 0370)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Ingredients Bar (United Kingdom)",
+     "page_market": "GB",
+     "market_by": "OTHER_MARKET:GB",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "NONE for CO (UK shop, GBP only - currency never binds). The seller states international delivery but names no country, so this is a LEAD purchase path, not VERIFIED_CROSS_BORDER.",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://ingredientsbar.com/payment-delivery/",
+        "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json"
+       }
       ],
-      "queries": [
-        "crema de leche en polvo Colombia comprar",
-        "\"crema de leche en polvo\" Colombia heladería panadería ingredientes",
-        "\"crema en polvo\" láctea 1 kg Colombia tienda envíos",
-        "cream powder dairy buy Colombia",
-        "\"crema de leche en polvo\" 500 g OR 1 kg tienda online Bogotá Medellín",
-        "site search www.exito.com: crema de leche en polvo",
-        "site search www.jumbocolombia.com: crema en polvo",
-        "site search www.jumbocolombia.com: crema de leche en polvo",
-        "site search www.olimpica.com: crema en polvo",
-        "site search www.olimpica.com: crema de leche en polvo",
-        "site search www.carulla.com: crema de leche en polvo",
-        "site search www.locatelcolombia.com: crema de leche en polvo",
-        "site search mundohuevo.com: crema",
-        "site search elmolinoverde.com: crema de leche",
-        "site search elmolinoverde.com: crema en polvo",
-        "site search tienda.ipf.com.co: crema",
-        "site search tienda.essentiall.com.co: crema",
-        "site search www.mejoronline.co: crema",
-        "site search www.mejoronline.co: leche en polvo"
-      ],
-      "sources_tried": [
-        "jumbocolombia.com (supermarket; catalog site search 'crema en polvo' / 'crema de leche en polvo': only milk powders, drink mixes and liquid creams - no cream powder)",
-        "olimpica.com (supermarket; catalog site search: milk powders and liquid/UHT creams only)",
-        "carulla.com (supermarket; catalog site search: milk powders, liquid creams, dessert mixes only)",
-        "exito.com (supermarket; catalog site search HTTP 403 Cloudflare 'Just a moment' bot wall - inconclusive, not bypassed)",
-        "locatelcolombia.com (pharmacy/health; catalog site search: infant formulas, protein powders, cosmetics - no cream powder)",
-        "mundohuevo.com (baking/pastry supplier; site search 'crema': liquid dairy creams only; its 'Crema en Polvo para Café Coffee Creamer' seen in discovery is a coffee creamer - rejected type)",
-        "delyclar.com/producto/crema-de-leche-polvo-500-gr/ (retail-size listing seen in discovery; HTTP 503 Wordfence block 'Tu acceso a este sitio ha sido limitado por el propietario del sitio' on two attempts - bot wall, inconclusive, not bypassed; type, composition and market unknown; verdict ~/.cache/gellatti-evidence/verify/c7b7a4b597f60224.json)",
-        "alsec.com.co/product/crema-de-leche-en-polvo/ (Colombian ingredient manufacturer; microencapsulated cream powder, 'Presentación comercial: 25Kg', no composition - B2B sack, not a retail pack; verdict ~/.cache/gellatti-evidence/verify/3f5e0fe6bd7db382.json)",
-        "nutrilink.com.co/cremas-de-leche-y-natas-en-polvo/ (Bogotá B2B ingredient distributor; portfolio page lists 'Crema de leche en polvo 72%' - no pack, no purchase page; verdict ~/.cache/gellatti-evidence/verify/2f2e8d57f2601f02.json)",
-        "ingredients-solutions.com (B2B 'Crema de Leche en Polvo' 25kg bag, no country stated - not retail; verdict ~/.cache/gellatti-evidence/verify/eca8feb58bfcf6b3.json)",
-        "dirind.com (Ingredientes Funcionales de México - Mexican B2B, not Colombia; verdict ~/.cache/gellatti-evidence/verify/7b6a0aa048c71b5e.json)",
-        "elmolinoverde.com (natural/bulk store; site search 'crema de leche', 'crema en polvo': no cream powder)",
-        "tienda.ipf.com.co, tienda.essentiall.com.co (ingredient shops; site search 'crema': no cream powder)",
-        "mejoronline.co (online retailer; site search 'crema', 'leche en polvo': egg powders and cosmetics only)",
-        "listado.mercadolibre.com.co/crema-de-leche-en-polvo (marketplace; redirected to account-verification wall - not used)"
-      ],
-      "candidates": [],
-      "notes": "BRAK: no retail dairy cream powder found at a direct Colombian retailer or manufacturer shop. Cream powder is visible in Colombia only through B2B ingredient suppliers (ALSEC 25 kg sacks; Nutrilink portfolio 'Crema de leche en polvo 72%', quote-only), which are not retail packs. The only retail-size listing seen (Delyclar 'crema de leche polvo 500 gr') sits behind a Wordfence bot wall and could not be read, so its type (dairy vs whipped-topping), composition and market are unknown - worth a manual owner check. Éxito (403 Cloudflare) and Mercado Libre (account verification) were not readable. The 4 further planned WebSearch queries (incl. English 'heavy cream powder Colombia envío') could not run. WebSearch budget exhausted during research; later discovery via on-site shop searches only. Tool limitation: verify_ean_market.py treats .co and .com.co (and .com) as generic TLDs, so Colombian shops never bind via CCTLD; binding needs an explicit Colombia sentence on the seller's own site (qrun.py found=true). COP currency never binds."
-    },
-    "FRU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "fructosa",
-        "fructosa pura",
-        "fructosa en polvo",
-        "levulosa"
-      ],
-      "queries": [
-        "fructosa en polvo pura Colombia comprar",
-        "site search www.exito.com: fructosa",
-        "site search www.jumbocolombia.com: fructosa",
-        "site search www.olimpica.com: fructosa",
-        "site search www.carulla.com: fructosa",
-        "site search www.locatelcolombia.com: fructosa",
-        "site search mundohuevo.com: fructosa",
-        "site search elmolinoverde.com: fructosa",
-        "site search tienda.ipf.com.co: fructosa",
-        "site search tienda.essentiall.com.co: fructosa",
-        "site search www.mejoronline.co: fructosa"
-      ],
-      "sources_tried": [
-        "jumbocolombia.com (supermarket; found DIETY 'Fructosa pura Frukta x450g', EAN as item data, Ingredientes: Fructosa - CONFIRMED_LOCAL)",
-        "carulla.com (supermarket; same EAN 7702323900007 'FRUCTOSA FRUKTA (450 gr)' - identity yes, but no explicit Colombia delivery sentence in raw HTML (only the loyalty programme name 'Puntos Colombia') - LEAD)",
-        "olimpica.com (supermarket; catalog search 'fructosa': only a coconut cream drink - no crystalline fructose)",
-        "exito.com (supermarket; HTTP 403 Cloudflare bot wall - inconclusive, not bypassed)",
-        "locatelcolombia.com (pharmacy; 'fructosa': children's nutrition drinks only)",
-        "elmolinoverde.com (natural/bulk store; own-brand 'FRUCTOSA - ENDULZANTE' 250 gr-5 kilos, no composition printed (C), explicit Colombia shipping fragment found ~/.cache/gellatti-evidence/verify/quote_fdea0d0fcc27d332.json; verdict ~/.cache/gellatti-evidence/verify/d83dad2e16d167ac.json - not ranked, weaker than ranks 1-2)",
-        "tienda.essentiall.com.co (ingredient shop; 'Fructosa x 1Kg', no brand or composition printed - not ranked; verdict ~/.cache/gellatti-evidence/verify/d8381bb6e476e2da.json)",
-        "tienda.ipf.com.co (ingredient shop; site search 'fructosa': no fructose product)",
-        "mundohuevo.com (baking/pastry supplier; 'fructosa': flavoured sugars, sauces only)",
-        "mejoronline.co ('fructosa': no results)",
-        "mercadolibre.com.co fructose listings seen in discovery (marketplace - not evidence, not opened)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "DIETY",
-          "product_name": "Fructosa pura Frukta x450g",
-          "pack": "450 g",
-          "gtin": "7702323900007",
-          "identifier_confirmed": true,
-          "url": "https://www.jumbocolombia.com/frukta-fructosa-x-450g-ales/p",
-          "source_type": "RETAILER",
-          "seller": "Tiendas Jumbo (offer seller 'Cencosud - Colombia')",
-          "page_market": "CO",
-          "market_by": "CURRENCY_ONLY",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "EXPLICIT_QUOTE: 'Compras a domicilio en toda Colombia' ~/.cache/gellatti-evidence/verify/quote_39f7c06c5af3cfba.json (page title of the seller's own delivery page https://www.jumbocolombia.com/domicilios; the verifier gives only CURRENCY_ONLY because it treats .com/.co/.com.co as generic, and COP never binds)",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "Fructosa",
-            "from": "raw page: VTEX product specification 'Ingredientes' on jumbocolombia.com (same data also gives 'Tipo de Producto: Azúcar en Polvo', 'Porción: 5', 'Porciones por envase: 90')"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Sole printed ingredient 'Fructosa' in a product named 'Fructosa pura' -> A per protocol (sole ingredient fructose counts as >= 98 %); no percentage printed, so fructose_pct left null.",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/31f13ba8619d9039.json",
-          "extra_evidence_files": [
-            "~/.cache/gellatti-evidence/verify/quote_39f7c06c5af3cfba.json"
-          ],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:40:27Z"
-        },
-        {
-          "rank": 2,
-          "brand": "FRUKTA",
-          "product_name": "FRUCTOSA FRUKTA (450 gr)",
-          "pack": "450 gr",
-          "gtin": "7702323900007",
-          "identifier_confirmed": true,
-          "url": "https://secure.carulla.com/fructosa-pura-diety-bolsa-doy-pack-x-450-gr-755716/p",
-          "source_type": "RETAILER",
-          "seller": "Carulla",
-          "page_market": "",
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "NONE (generic .com; no explicit Colombia delivery/store sentence in the raw HTML - JS-rendered site, only the loyalty programme name 'Puntos Colombia' is visible)",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": "not printed on this page; same GTIN 7702323900007 as rank 1, where 'Ingredientes: Fructosa' is printed (jumbocolombia.com)"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Same GTIN as rank 1 (Ingredientes: Fructosa) -> same product and composition.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0eb9d5b23c08e7be.json",
-          "extra_evidence_files": [],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:51:03Z"
-        }
-      ],
-      "notes": "CONFIRMED_LOCAL: Jumbo Colombia (Cencosud) prints EAN 7702323900007 as this item's data and 'Ingredientes: Fructosa'. The verifier only reached CURRENCY_ONLY (COP); binding comes from the seller's own statement 'Compras a domicilio en toda Colombia' (qrun found=true; it is the page title of jumbocolombia.com/domicilios - the body text of Jumbo pages is JS-rendered). Rank 2 Carulla has the same EAN but no quotable Colombia delivery sentence -> LEAD. WebSearch budget exhausted during research; later discovery via on-site shop searches only. Tool limitation: verify_ean_market.py treats .co and .com.co (and .com) as generic TLDs, so Colombian shops never bind via CCTLD; binding needs an explicit Colombia sentence on the seller's own site (qrun.py found=true). COP currency never binds."
-    },
-    "INU": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "inulina",
-        "inulina en polvo",
-        "inulina de achicoria",
-        "inulina de agave",
-        "fibra prebiótica"
-      ],
-      "queries": [
-        "inulina en polvo Colombia comprar",
-        "site search www.exito.com: inulina",
-        "site search www.jumbocolombia.com: inulina",
-        "site search www.olimpica.com: inulina",
-        "site search www.carulla.com: inulina",
-        "site search www.carulla.com: inulina de agave",
-        "site search www.locatelcolombia.com: inulina",
-        "site search www.locatelcolombia.com: fibra prebiotica",
-        "site search www.larebajavirtual.com: inulina",
-        "site search www.farmaciaspasteur.com.co: inulina",
-        "site search www.drogueriascafam.com.co: inulina",
-        "site search www.tiendasmetro.co: inulina",
-        "site search elmolinoverde.com: inulina",
-        "site search tienda.ipf.com.co: inulina",
-        "site search tienda.essentiall.com.co: inulina",
-        "site search mundohuevo.com: inulina",
-        "site search www.mejoronline.co: inulina"
-      ],
-      "sources_tried": [
-        "elmolinoverde.com (natural/bulk store; own brand 'INULINA EN POLVO (PREBIOTICO)', chicory root, 70 gr-5 kilos; no fibre value printed - LEAD rank 1)",
-        "tienda.ipf.com.co (ingredient supplier shop; 'INULINA X 1KG', no brand, source plant or composition printed - LEAD rank 2)",
-        "jumbocolombia.com (supermarket; catalog search 'inulina': 0 results)",
-        "olimpica.com (supermarket; 'inulina': only a multigrain bread with inulin - rejected)",
-        "carulla.com (supermarket; 'inulina': probiotic capsules, psyllium+inulin blend, fibre drinks - rejected; 'inulina de agave': 0 results)",
-        "exito.com (supermarket; HTTP 403 Cloudflare bot wall - inconclusive, not bypassed)",
-        "locatelcolombia.com (pharmacy/health; 'inulina', 'fibra prebiotica': flavoured prebiotic fibre blends/drinks and formulas - rejected)",
-        "larebajavirtual.com, farmaciaspasteur.com.co (pharmacies; catalog search 'inulina': 0 results)",
-        "tiendasmetro.co (supermarket; 'inulina': 0 results)",
-        "drogueriascafam.com.co (pharmacy; catalog search endpoint HTTP 401 - inconclusive)",
-        "tienda.essentiall.com.co, mundohuevo.com, mejoronline.co (site search 'inulina': no inulin powder)",
-        "tienda.nutriadn.com/products/inulina-en-polvo (resolves to nutriadn.com, a Mexican shop in MXN - not Colombia; verdict ~/.cache/gellatti-evidence/verify/b1230b03d0bfb856.json)",
-        "evitamins.com NOW organic inulin (possible cross-border source from discovery; connection failed, http 000 - inconclusive; verdict ~/.cache/gellatti-evidence/verify/5d1b24cb6c41059d.json)",
-        "colombia.yaxa.co Bulksupplements inulin and mercadolibre.com.co inulin listings (import reseller / marketplace seen in discovery - not evidence, not opened)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "EL MOLINO VERDE ®",
-          "product_name": "INULINA EN POLVO (PREBIOTICO)",
-          "pack": "125 gr (variant selector on the same listing: 70 gr, 125 gr, 250 gr, 500 gr, 1 kilo, 2 kilos, 5 kilos)",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://elmolinoverde.com/productos/inulina-en-polvo-prebiotico/",
-          "source_type": "RETAILER",
-          "seller": "El Molino Verde",
-          "page_market": "CO",
-          "market_by": "CURRENCY_ONLY",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "EXPLICIT_QUOTE: 'a todo Colombia por ENVIA, servientrega, interrapidisimo o la empresa de su' ~/.cache/gellatti-evidence/verify/quote_c1126e9327567476.json (exact fragment of the printed sentence 'Realizamos envíos a todo Colombia por ENVIA, servientrega, interrapidisimo o la empresa de su elección.'; the full accented sentence returns found=false because the raw HTML encodes í/ó as HTML entities - ~/.cache/gellatti-evidence/verify/quote_f17310d2eca60403.json; verifier itself: CURRENCY_ONLY, .com generic)",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": "not shown: raw page description only states 'INULINA EN POLVO De la raíz de la Achicoria - EL MOLINO VERDE ®' and that inulin is obtained from chicory root; no ingredient list, nutrition table or fibre value in the page text"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "Right type (chicory-root inulin powder, retailer's own-brand repack) but no fibre g/100 g or '100 % inulina' declaration printed -> cannot decide A.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ad661d1d8f562d97.json",
-          "extra_evidence_files": [
-            "~/.cache/gellatti-evidence/verify/quote_c1126e9327567476.json",
-            "~/.cache/gellatti-evidence/verify/quote_f17310d2eca60403.json"
-          ],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:43:00Z"
-        },
-        {
-          "rank": 2,
-          "brand": null,
-          "product_name": "INULINA X 1KG",
-          "pack": "1 kg",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://tienda.ipf.com.co/producto/inulina/",
-          "source_type": "RETAILER",
-          "seller": "IPF (tienda.ipf.com.co)",
-          "page_market": "CO",
-          "market_by": "CURRENCY_ONLY",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "NONE (only COP currency; the shipping text 'Envío en 2 a 4 días hábiles a nivel nacional.' does not name the country; .com.co treated as generic by the verifier)",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": "not shown: description 'Es una fibra prebiótica…' and 'APARIENCIA Polvo blanco cristalino'; no ingredient list, source plant or fibre value"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "Right type (inulin powder, 1 kg) but no composition printed; no brand shown (WooCommerce SKU 1425 only), so identity is not provable.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d7fc9b0972c3ba6a.json",
-          "extra_evidence_files": [],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:43:07Z"
-        }
-      ],
-      "notes": "LEAD_ONLY: plain inulin powder is sold by Colombian direct shops, but none prints a fibre value or a '100 % inulina' declaration (C). El Molino Verde is an own-brand D-37 listing bound by an explicit 'envíos a todo Colombia' sentence (entity-free exact fragment used - check_quotes false negative on HTML entities, both quote files kept). Supermarkets and pharmacies (Jumbo, Olímpica, Carulla, Locatel, La Rebaja, Pasteur, Metro) carry only blends/drinks (rejected); Éxito 403, Cafam API 401. WebSearch budget exhausted during research; later discovery via on-site shop searches only. Tool limitation: verify_ean_market.py treats .co and .com.co (and .com) as generic TLDs, so Colombian shops never bind via CCTLD; binding needs an explicit Colombia sentence on the seller's own site (qrun.py found=true). COP currency never binds."
-    },
-    "YOL": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "yema de huevo en polvo",
-        "yema en polvo",
-        "yema deshidratada",
-        "yema pasteurizada pulverizada"
-      ],
-      "queries": [
-        "yema de huevo en polvo Colombia",
-        "site search www.exito.com: yema de huevo",
-        "site search www.jumbocolombia.com: yema",
-        "site search www.jumbocolombia.com: huevo en polvo",
-        "site search www.olimpica.com: yema",
-        "site search www.olimpica.com: huevo en polvo",
-        "site search www.carulla.com: yema de huevo",
-        "site search www.carulla.com: huevo en polvo",
-        "site search www.locatelcolombia.com: yema",
-        "site search mundohuevo.com: yema",
-        "site search elmolinoverde.com: yema",
-        "site search elmolinoverde.com: huevo",
-        "site search tienda.ipf.com.co: yema",
-        "site search tienda.ipf.com.co: huevo",
-        "site search tienda.essentiall.com.co: yema",
-        "site search tienda.essentiall.com.co: huevo",
-        "site search www.mejoronline.co: yema"
-      ],
-      "sources_tried": [
-        "mejoronline.co (online retailer; 'Yema De Huevo En Polvo 500 Grs', also 250 Grs and 1 Kg; no brand, no ingredient list - LEAD)",
-        "jumbocolombia.com (supermarket; 'yema': mayonnaise only; 'huevo en polvo': no egg powder)",
-        "olimpica.com (supermarket; 'yema': 0 results; 'huevo en polvo': no egg powder)",
-        "carulla.com (supermarket; 'yema de huevo': egg separator, pet snack; 'huevo en polvo': egg-protein drink mix - rejected)",
-        "exito.com (supermarket; HTTP 403 Cloudflare bot wall - inconclusive, not bypassed)",
-        "locatelcolombia.com (pharmacy/health; 'yema': no egg products)",
-        "mundohuevo.com (baking/pastry supplier; 'yema': only whole egg 'Huevo Entero Deshidratado x 500 Gr' - rejected type)",
-        "alsec.com.co/product/yema-de-huevo-en-polvo/ (manufacturer; spray-dried pasteurised yolk in industrial sacks - B2B, no retail pack; verdict ~/.cache/gellatti-evidence/verify/26707e84ed532440.json)",
-        "ovomar.com/producto/yema-en-polvo/ ('Yema en Polvo', 'Sacos de 20 kg' - B2B, country not stated; verdict ~/.cache/gellatti-evidence/verify/a13e9700adb5c74a.json)",
-        "ovosur.co (Bogotá egg-products manufacturer; yolk powder for industry, no shop; verdict ~/.cache/gellatti-evidence/verify/4d2bf8e42aaa96b8.json)",
-        "alcampocolombia.com/productos-alcampo/ ('Yema Pasteurizada Pulverizada' manufacturer description, no pack or shop - B2B; verdict ~/.cache/gellatti-evidence/verify/ca1ed13fca8635bc.json)",
-        "ovopacific.com/productos/ ('Ovoliv 30 Yema' ultra-pasteurised LIQUID yolk - rejected type)",
-        "ianutricioninteligente.com/huevo-en-polvo/ (HTTP 404; B2B powder ingredient maker)",
-        "elmolinoverde.com, tienda.ipf.com.co, tienda.essentiall.com.co (site search 'yema'/'huevo': no yolk powder)",
-        "mercadolibre.cl, artepapel.cl, aesasrl.com (Chile/Argentina results from discovery - not Colombia, not opened)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": null,
-          "product_name": "Yema De Huevo En Polvo 500 Grs",
-          "pack": "500 g",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.mejoronline.co/productos/yema-de-huevo-en-polvo-500-grs/",
-          "source_type": "RETAILER",
-          "seller": "MejorOnline",
-          "page_market": "CO",
-          "market_by": "CURRENCY_ONLY",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "EXPLICIT_QUOTE: 'Envíos a toda Colombia' ~/.cache/gellatti-evidence/verify/quote_0dd758e6bb7759c1.json (printed on another product page of the same seller, mejoronline.co; verifier itself: CURRENCY_ONLY because .co is treated as generic)",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": "not shown: description lists 'Elaborada con huevos seleccionados y de alta calidad', registro INVIMA and 'HECHO EN COLOMBIA'; no ingredient list or nutrition values"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "Right type by name (egg-yolk powder) but no ingredient list; the description reuses whole-egg reconstitution copy ('1 Kg de huevo en polvo, equivale aproximadamente a 90 huevos'), so 100 % yolk vs a declared additive cannot be decided.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/be3a9290738ad5a5.json",
-          "extra_evidence_files": [
-            "~/.cache/gellatti-evidence/verify/quote_0dd758e6bb7759c1.json"
-          ],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:45:37Z"
-        }
-      ],
-      "notes": "LEAD_ONLY: the only retail egg-yolk powder found is MejorOnline 'Yema De Huevo En Polvo' (250 g / 500 g / 1 kg; 'HECHO EN COLOMBIA', INVIMA) with no brand, no GTIN and no ingredient list (identity NOT_PROVEN, C). Market binding is available via the seller's own 'Envíos a toda Colombia' statement. Other Colombian yolk powders are industrial only (ALSEC, Ovosur, Ovomar 20 kg sacks, Alcampo). WebSearch budget exhausted during research; later discovery via on-site shop searches only. Tool limitation: verify_ean_market.py treats .co and .com.co (and .com) as generic TLDs, so Colombian shops never bind via CCTLD; binding needs an explicit Colombia sentence on the seller's own site (qrun.py found=true). COP currency never binds."
+      "found": true,
+      "country_named": false,
+      "note": "Generic international-delivery statement only; CO is not named, so owner rule 2 (2026-09-17) keeps this a LEAD."
+     },
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:44:01Z",
+      "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+      "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+     },
+     "composition": {
+      "fat_g": 75.0,
+      "protein_g": 8.5,
+      "fibre_g": 0.0,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition Facts Per 100g: Energy 3094kJ/750kcal, Fat 75 g of which saturated fatty acid 51 g, Carbohydrates 12 g of which sugars 12 g, Protein 8.5 g, Dietary Fibre 0 g, Salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
+      "from": "product page, 'Ingredients & Nutrition' tab (quote file ~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json)",
+      "sugars_g": 12.0
+     },
+     "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+     "equivalence_note": "Real spray-dried dairy cream powder ('made from dehydrated cream, free from additives'), printed fat 75 g/100 g - outside the 38-48 % A band (reference 42 %). Ingredients are cream + milk protein + lactose, i.e. the permitted CRP ingredient family. Recorded under owner rule 3 (2026-09-17): a dairy cream powder outside 38-48 % fat is a valid candidate for owner decision.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/6c05c00683cdd804.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json",
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T18:44:01Z"
     }
+   ],
+   "notes": "BRAK: no retail dairy cream powder found at a direct Colombian retailer or manufacturer shop. Cream powder is visible in Colombia only through B2B ingredient suppliers (ALSEC 25 kg sacks; Nutrilink portfolio 'Crema de leche en polvo 72%', quote-only), which are not retail packs. The only retail-size listing seen (Delyclar 'crema de leche polvo 500 gr') sits behind a Wordfence bot wall and could not be read, so its type (dairy vs whipped-topping), composition and market are unknown - worth a manual owner check. Éxito (403 Cloudflare) and Mercado Libre (account verification) were not readable. The 4 further planned WebSearch queries (incl. English 'heavy cream powder Colombia envío') could not run. WebSearch budget exhausted during research; later discovery via on-site shop searches only. Tool limitation: verify_ean_market.py treats .co and .com.co (and .com) as generic TLDs, so Colombian shops never bind via CCTLD; binding needs an explicit Colombia sentence on the seller's own site (qrun.py found=true). COP currency never binds. | 2026-09-17: BRAK lifted to LEAD_ONLY under owner rule 3. The Colombian BRAK stands (cream powder is visible in Colombia only through B2B ingredient suppliers in 25 kg sacks). New candidate: Ingredients Bar (UK) Cream Powder, a real spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', retail 200 g pack, IN_STOCK. Kept a LEAD because the seller's delivery page only states that international delivery is charged at checkout and never names the country (owner rule 2). Delyclar's 'crema de leche polvo 500 gr' is still worth a manual owner check (Wordfence wall)."
+  },
+  "FRU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "fructosa",
+    "fructosa pura",
+    "fructosa en polvo",
+    "levulosa"
+   ],
+   "queries": [
+    "fructosa en polvo pura Colombia comprar",
+    "site search www.exito.com: fructosa",
+    "site search www.jumbocolombia.com: fructosa",
+    "site search www.olimpica.com: fructosa",
+    "site search www.carulla.com: fructosa",
+    "site search www.locatelcolombia.com: fructosa",
+    "site search mundohuevo.com: fructosa",
+    "site search elmolinoverde.com: fructosa",
+    "site search tienda.ipf.com.co: fructosa",
+    "site search tienda.essentiall.com.co: fructosa",
+    "site search www.mejoronline.co: fructosa"
+   ],
+   "sources_tried": [
+    "jumbocolombia.com (supermarket; found DIETY 'Fructosa pura Frukta x450g', EAN as item data, Ingredientes: Fructosa - CONFIRMED_LOCAL)",
+    "carulla.com (supermarket; same EAN 7702323900007 'FRUCTOSA FRUKTA (450 gr)' - identity yes, but no explicit Colombia delivery sentence in raw HTML (only the loyalty programme name 'Puntos Colombia') - LEAD)",
+    "olimpica.com (supermarket; catalog search 'fructosa': only a coconut cream drink - no crystalline fructose)",
+    "exito.com (supermarket; HTTP 403 Cloudflare bot wall - inconclusive, not bypassed)",
+    "locatelcolombia.com (pharmacy; 'fructosa': children's nutrition drinks only)",
+    "elmolinoverde.com (natural/bulk store; own-brand 'FRUCTOSA - ENDULZANTE' 250 gr-5 kilos, no composition printed (C), explicit Colombia shipping fragment found ~/.cache/gellatti-evidence/verify/quote_fdea0d0fcc27d332.json; verdict ~/.cache/gellatti-evidence/verify/d83dad2e16d167ac.json - not ranked, weaker than ranks 1-2)",
+    "tienda.essentiall.com.co (ingredient shop; 'Fructosa x 1Kg', no brand or composition printed - not ranked; verdict ~/.cache/gellatti-evidence/verify/d8381bb6e476e2da.json)",
+    "tienda.ipf.com.co (ingredient shop; site search 'fructosa': no fructose product)",
+    "mundohuevo.com (baking/pastry supplier; 'fructosa': flavoured sugars, sauces only)",
+    "mejoronline.co ('fructosa': no results)",
+    "mercadolibre.com.co fructose listings seen in discovery (marketplace - not evidence, not opened)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "DIETY",
+     "product_name": "Fructosa pura Frukta x450g",
+     "pack": "450 g",
+     "gtin": "7702323900007",
+     "identifier_confirmed": true,
+     "url": "https://www.jumbocolombia.com/frukta-fructosa-x-450g-ales/p",
+     "source_type": "RETAILER",
+     "seller": "Tiendas Jumbo (offer seller 'Cencosud - Colombia')",
+     "page_market": "CO",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "EXPLICIT_QUOTE: 'Compras a domicilio en toda Colombia' ~/.cache/gellatti-evidence/verify/quote_39f7c06c5af3cfba.json (page title of the seller's own delivery page https://www.jumbocolombia.com/domicilios; the verifier gives only CURRENCY_ONLY because it treats .com/.co/.com.co as generic, and COP never binds)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Fructosa",
+      "from": "raw page: VTEX product specification 'Ingredientes' on jumbocolombia.com (same data also gives 'Tipo de Producto: Azúcar en Polvo', 'Porción: 5', 'Porciones por envase: 90')"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Sole printed ingredient 'Fructosa' in a product named 'Fructosa pura' -> A per protocol (sole ingredient fructose counts as >= 98 %); no percentage printed, so fructose_pct left null.",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/31f13ba8619d9039.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/verify/quote_39f7c06c5af3cfba.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T15:40:27Z"
+    },
+    {
+     "rank": 2,
+     "brand": "FRUKTA",
+     "product_name": "FRUCTOSA FRUKTA (450 gr)",
+     "pack": "450 gr",
+     "gtin": "7702323900007",
+     "identifier_confirmed": true,
+     "url": "https://secure.carulla.com/fructosa-pura-diety-bolsa-doy-pack-x-450-gr-755716/p",
+     "source_type": "RETAILER",
+     "seller": "Carulla",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "NONE (generic .com; no explicit Colombia delivery/store sentence in the raw HTML - JS-rendered site, only the loyalty programme name 'Puntos Colombia' is visible)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "not printed on this page; same GTIN 7702323900007 as rank 1, where 'Ingredientes: Fructosa' is printed (jumbocolombia.com)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Same GTIN as rank 1 (Ingredientes: Fructosa) -> same product and composition.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0eb9d5b23c08e7be.json",
+     "extra_evidence_files": [],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T15:51:03Z"
+    }
+   ],
+   "notes": "CONFIRMED_LOCAL: Jumbo Colombia (Cencosud) prints EAN 7702323900007 as this item's data and 'Ingredientes: Fructosa'. The verifier only reached CURRENCY_ONLY (COP); binding comes from the seller's own statement 'Compras a domicilio en toda Colombia' (qrun found=true; it is the page title of jumbocolombia.com/domicilios - the body text of Jumbo pages is JS-rendered). Rank 2 Carulla has the same EAN but no quotable Colombia delivery sentence -> LEAD. WebSearch budget exhausted during research; later discovery via on-site shop searches only. Tool limitation: verify_ean_market.py treats .co and .com.co (and .com) as generic TLDs, so Colombian shops never bind via CCTLD; binding needs an explicit Colombia sentence on the seller's own site (qrun.py found=true). COP currency never binds."
+  },
+  "INU": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "inulina",
+    "inulina en polvo",
+    "inulina de achicoria",
+    "inulina de agave",
+    "fibra prebiótica"
+   ],
+   "queries": [
+    "inulina en polvo Colombia comprar",
+    "site search www.exito.com: inulina",
+    "site search www.jumbocolombia.com: inulina",
+    "site search www.olimpica.com: inulina",
+    "site search www.carulla.com: inulina",
+    "site search www.carulla.com: inulina de agave",
+    "site search www.locatelcolombia.com: inulina",
+    "site search www.locatelcolombia.com: fibra prebiotica",
+    "site search www.larebajavirtual.com: inulina",
+    "site search www.farmaciaspasteur.com.co: inulina",
+    "site search www.drogueriascafam.com.co: inulina",
+    "site search www.tiendasmetro.co: inulina",
+    "site search elmolinoverde.com: inulina",
+    "site search tienda.ipf.com.co: inulina",
+    "site search tienda.essentiall.com.co: inulina",
+    "site search mundohuevo.com: inulina",
+    "site search www.mejoronline.co: inulina",
+    "site search bulksupplements.com: inulin powder (cross-border check)",
+    "shipping-country list bulksupplements.com/policies/shipping-policy: Colombia"
+   ],
+   "sources_tried": [
+    "elmolinoverde.com (natural/bulk store; own brand 'INULINA EN POLVO (PREBIOTICO)', chicory root, 70 gr-5 kilos; no fibre value printed - LEAD rank 1)",
+    "tienda.ipf.com.co (ingredient supplier shop; 'INULINA X 1KG', no brand, source plant or composition printed - LEAD rank 2)",
+    "jumbocolombia.com (supermarket; catalog search 'inulina': 0 results)",
+    "olimpica.com (supermarket; 'inulina': only a multigrain bread with inulin - rejected)",
+    "carulla.com (supermarket; 'inulina': probiotic capsules, psyllium+inulin blend, fibre drinks - rejected; 'inulina de agave': 0 results)",
+    "exito.com (supermarket; HTTP 403 Cloudflare bot wall - inconclusive, not bypassed)",
+    "locatelcolombia.com (pharmacy/health; 'inulina', 'fibra prebiotica': flavoured prebiotic fibre blends/drinks and formulas - rejected)",
+    "larebajavirtual.com, farmaciaspasteur.com.co (pharmacies; catalog search 'inulina': 0 results)",
+    "tiendasmetro.co (supermarket; 'inulina': 0 results)",
+    "drogueriascafam.com.co (pharmacy; catalog search endpoint HTTP 401 - inconclusive)",
+    "tienda.essentiall.com.co, mundohuevo.com, mejoronline.co (site search 'inulina': no inulin powder)",
+    "tienda.nutriadn.com/products/inulina-en-polvo (resolves to nutriadn.com, a Mexican shop in MXN - not Colombia; verdict ~/.cache/gellatti-evidence/verify/b1230b03d0bfb856.json)",
+    "evitamins.com NOW organic inulin (possible cross-border source from discovery; connection failed, http 000 - inconclusive; verdict ~/.cache/gellatti-evidence/verify/5d1b24cb6c41059d.json)",
+    "colombia.yaxa.co Bulksupplements inulin and mercadolibre.com.co inulin listings (import reseller / marketplace seen in discovery - not evidence, not opened)",
+    "bulksupplements.com/products/inulin-fos-powder (US own-brand shop; GTIN 849720019592 as page data next to SKU INU250 and the 250 g variant; 'Other Ingredients: None'; schema.org InStock for 100 g/250 g/500 g) + its shipping policy names Colombia ('Chile China Colombia Cook Islands Costa Rica') - candidate 1"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "BulkSupplements.com",
+     "product_name": "Organic Inulin Powder - Powder / 250 Grams (8.8 oz)",
+     "pack": "250 g (8.8 oz), SKU INU250",
+     "gtin": "849720019592",
+     "identifier_confirmed": true,
+     "url": "https://www.bulksupplements.com/products/inulin-fos-powder",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "BulkSupplements.com (United States)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "NONE for CO (generic .com, US seller) - cross-border; delivery to this country is named in the seller's own shipping-country list (see ships_to_evidence)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://www.bulksupplements.com/policies/shipping-policy",
+        "quote": "Chile China Colombia Cook Islands Costa Rica",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_bs_ships_CO.json"
+       }
+      ],
+      "found": true,
+      "country_named": true
+     },
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:44:01Z",
+      "basis": "schema.org/InStock in the page's own offer data next to \"sku\": \"INU250\", \"gtin\": \"849720019592\"",
+      "source": "https://www.bulksupplements.com/products/inulin-fos-powder"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Other Ingredients: None (product: Organic Inulin Powder)",
+      "from": "product page text (see verifier verdict file ingredients_snippet)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Plain inulin powder with 'Other Ingredients: None'; the supplement-facts panel exists only as a label image, so no numeric fibre value is printed. GTIN 849720019592 sits next to SKU INU250 and the 250 g variant name in the page's own offer data (100 g and 500 g InStock; 1 kg and 5 kg OutOfStock at check time). | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/eb8d24a0257065f5.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_bs_ships_CO.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T18:44:01Z",
+     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+    },
+    {
+     "rank": 2,
+     "brand": "EL MOLINO VERDE ®",
+     "product_name": "INULINA EN POLVO (PREBIOTICO)",
+     "pack": "125 gr (variant selector on the same listing: 70 gr, 125 gr, 250 gr, 500 gr, 1 kilo, 2 kilos, 5 kilos)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://elmolinoverde.com/productos/inulina-en-polvo-prebiotico/",
+     "source_type": "RETAILER",
+     "seller": "El Molino Verde",
+     "page_market": "CO",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "EXPLICIT_QUOTE: 'a todo Colombia por ENVIA, servientrega, interrapidisimo o la empresa de su' ~/.cache/gellatti-evidence/verify/quote_c1126e9327567476.json (exact fragment of the printed sentence 'Realizamos envíos a todo Colombia por ENVIA, servientrega, interrapidisimo o la empresa de su elección.'; the full accented sentence returns found=false because the raw HTML encodes í/ó as HTML entities - ~/.cache/gellatti-evidence/verify/quote_f17310d2eca60403.json; verifier itself: CURRENCY_ONLY, .com generic)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "not shown: raw page description only states 'INULINA EN POLVO De la raíz de la Achicoria - EL MOLINO VERDE ®' and that inulin is obtained from chicory root; no ingredient list, nutrition table or fibre value in the page text"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "Right type (chicory-root inulin powder, retailer's own-brand repack) but no fibre g/100 g or '100 % inulina' declaration printed -> cannot decide A.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ad661d1d8f562d97.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/verify/quote_c1126e9327567476.json",
+      "~/.cache/gellatti-evidence/verify/quote_f17310d2eca60403.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T15:43:00Z",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:44:01Z",
+      "basis": "\"availability\": \"https://schema.org/InStock\" in the page's own product data (the 125 gr variant also shows 'es el ultimo!')",
+      "source": "https://elmolinoverde.com/productos/inulina-en-polvo-prebiotico/"
+     }
+    },
+    {
+     "rank": 3,
+     "brand": null,
+     "product_name": "INULINA X 1KG",
+     "pack": "1 kg",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://tienda.ipf.com.co/producto/inulina/",
+     "source_type": "RETAILER",
+     "seller": "IPF (tienda.ipf.com.co)",
+     "page_market": "CO",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "NONE (only COP currency; the shipping text 'Envío en 2 a 4 días hábiles a nivel nacional.' does not name the country; .com.co treated as generic by the verifier)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "not shown: description 'Es una fibra prebiótica…' and 'APARIENCIA Polvo blanco cristalino'; no ingredient list, source plant or fibre value"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "Right type (inulin powder, 1 kg) but no composition printed; no brand shown (WooCommerce SKU 1425 only), so identity is not provable.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d7fc9b0972c3ba6a.json",
+     "extra_evidence_files": [],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T15:43:07Z",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:44:01Z",
+      "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data",
+      "source": "https://tienda.ipf.com.co/producto/inulina/"
+     }
+    }
+   ],
+   "notes": "LEAD_ONLY: plain inulin powder is sold by Colombian direct shops, but none prints a fibre value or a '100 % inulina' declaration (C). El Molino Verde is an own-brand D-37 listing bound by an explicit 'envíos a todo Colombia' sentence (entity-free exact fragment used - check_quotes false negative on HTML entities, both quote files kept). Supermarkets and pharmacies (Jumbo, Olímpica, Carulla, Locatel, La Rebaja, Pasteur, Metro) carry only blends/drinks (rejected); Éxito 403, Cafam API 401. WebSearch budget exhausted during research; later discovery via on-site shop searches only. Tool limitation: verify_ean_market.py treats .co and .com.co (and .com) as generic TLDs, so Colombian shops never bind via CCTLD; binding needs an explicit Colombia sentence on the seller's own site (qrun.py found=true). COP currency never binds. | 2026-09-17: result lifted from LEAD_ONLY to VERIFIED_CROSS_BORDER. Both Colombian own-brand leads are IN_STOCK and kept (ranks 2 and 3) but still print no fibre value. New rank 1 is BulkSupplements' Organic Inulin Powder, GTIN proven on its own page, IN_STOCK in 250 g, with Colombia named in the seller's own shipping-country list."
+  },
+  "YOL": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "yema de huevo en polvo",
+    "yema en polvo",
+    "yema deshidratada",
+    "yema pasteurizada pulverizada"
+   ],
+   "queries": [
+    "yema de huevo en polvo Colombia",
+    "site search www.exito.com: yema de huevo",
+    "site search www.jumbocolombia.com: yema",
+    "site search www.jumbocolombia.com: huevo en polvo",
+    "site search www.olimpica.com: yema",
+    "site search www.olimpica.com: huevo en polvo",
+    "site search www.carulla.com: yema de huevo",
+    "site search www.carulla.com: huevo en polvo",
+    "site search www.locatelcolombia.com: yema",
+    "site search mundohuevo.com: yema",
+    "site search elmolinoverde.com: yema",
+    "site search elmolinoverde.com: huevo",
+    "site search tienda.ipf.com.co: yema",
+    "site search tienda.ipf.com.co: huevo",
+    "site search tienda.essentiall.com.co: yema",
+    "site search tienda.essentiall.com.co: huevo",
+    "site search www.mejoronline.co: yema"
+   ],
+   "sources_tried": [
+    "mejoronline.co (online retailer; 'Yema De Huevo En Polvo 500 Grs', also 250 Grs and 1 Kg; no brand, no ingredient list - LEAD)",
+    "jumbocolombia.com (supermarket; 'yema': mayonnaise only; 'huevo en polvo': no egg powder)",
+    "olimpica.com (supermarket; 'yema': 0 results; 'huevo en polvo': no egg powder)",
+    "carulla.com (supermarket; 'yema de huevo': egg separator, pet snack; 'huevo en polvo': egg-protein drink mix - rejected)",
+    "exito.com (supermarket; HTTP 403 Cloudflare bot wall - inconclusive, not bypassed)",
+    "locatelcolombia.com (pharmacy/health; 'yema': no egg products)",
+    "mundohuevo.com (baking/pastry supplier; 'yema': only whole egg 'Huevo Entero Deshidratado x 500 Gr' - rejected type)",
+    "alsec.com.co/product/yema-de-huevo-en-polvo/ (manufacturer; spray-dried pasteurised yolk in industrial sacks - B2B, no retail pack; verdict ~/.cache/gellatti-evidence/verify/26707e84ed532440.json)",
+    "ovomar.com/producto/yema-en-polvo/ ('Yema en Polvo', 'Sacos de 20 kg' - B2B, country not stated; verdict ~/.cache/gellatti-evidence/verify/a13e9700adb5c74a.json)",
+    "ovosur.co (Bogotá egg-products manufacturer; yolk powder for industry, no shop; verdict ~/.cache/gellatti-evidence/verify/4d2bf8e42aaa96b8.json)",
+    "alcampocolombia.com/productos-alcampo/ ('Yema Pasteurizada Pulverizada' manufacturer description, no pack or shop - B2B; verdict ~/.cache/gellatti-evidence/verify/ca1ed13fca8635bc.json)",
+    "ovopacific.com/productos/ ('Ovoliv 30 Yema' ultra-pasteurised LIQUID yolk - rejected type)",
+    "ianutricioninteligente.com/huevo-en-polvo/ (HTTP 404; B2B powder ingredient maker)",
+    "elmolinoverde.com, tienda.ipf.com.co, tienda.essentiall.com.co (site search 'yema'/'huevo': no yolk powder)",
+    "mercadolibre.cl, artepapel.cl, aesasrl.com (Chile/Argentina results from discovery - not Colombia, not opened)",
+    "gourmet-versand.com (DE; catalogue searched for Eipulver / Vollei / Trockenei / Eigelb - no egg yolk powder)",
+    "msk-ingredients.com (UK; full product sitemap, 6597 URLs: no egg yolk powder)",
+    "souschef.co.uk (UK; all 7 product sitemaps, 6274 URLs: no egg yolk powder)",
+    "bulksupplements.com (US; sells no egg yolk powder)",
+    "judeesfromscratch.com/policies/shipping-policy (maker of an 11 oz Egg Yolk Powder; no international statement)",
+    "gosupps.com (US reseller advertising Judee's Egg Yolk Powder with express international delivery; shipping pages HTTP 403 - blocked, inconclusive)",
+    "modernistpantry.com egg yolk powder (US customers only)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": null,
+     "product_name": "Yema De Huevo En Polvo 500 Grs",
+     "pack": "500 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.mejoronline.co/productos/yema-de-huevo-en-polvo-500-grs/",
+     "source_type": "RETAILER",
+     "seller": "MejorOnline",
+     "page_market": "CO",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "EXPLICIT_QUOTE: 'Envíos a toda Colombia' ~/.cache/gellatti-evidence/verify/quote_0dd758e6bb7759c1.json (printed on another product page of the same seller, mejoronline.co; verifier itself: CURRENCY_ONLY because .co is treated as generic)",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "not shown: description lists 'Elaborada con huevos seleccionados y de alta calidad', registro INVIMA and 'HECHO EN COLOMBIA'; no ingredient list or nutrition values"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "Right type by name (egg-yolk powder) but no ingredient list; the description reuses whole-egg reconstitution copy ('1 Kg de huevo en polvo, equivale aproximadamente a 90 huevos'), so 100 % yolk vs a declared additive cannot be decided.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/be3a9290738ad5a5.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/verify/quote_0dd758e6bb7759c1.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T15:45:37Z",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:44:01Z",
+      "basis": "\"availability\": \"https://schema.org/InStock\" in the page's own product data, with an active 'Agregar al carrito' button",
+      "source": "https://www.mejoronline.co/productos/yema-de-huevo-en-polvo-500-grs/"
+     }
+    }
+   ],
+   "notes": "LEAD_ONLY: the only retail egg-yolk powder found is MejorOnline 'Yema De Huevo En Polvo' (250 g / 500 g / 1 kg; 'HECHO EN COLOMBIA', INVIMA) with no brand, no GTIN and no ingredient list (identity NOT_PROVEN, C). Market binding is available via the seller's own 'Envíos a toda Colombia' statement. Other Colombian yolk powders are industrial only (ALSEC, Ovosur, Ovomar 20 kg sacks, Alcampo). WebSearch budget exhausted during research; later discovery via on-site shop searches only. Tool limitation: verify_ean_market.py treats .co and .com.co (and .com) as generic TLDs, so Colombian shops never bind via CCTLD; binding needs an explicit Colombia sentence on the seller's own site (qrun.py found=true). COP currency never binds. | Re-checked 2026-09-17: the MejorOnline listing is IN_STOCK but still shows no brand, GTIN or ingredient list, so it stays C/LEAD. No cross-border alternative qualified (the wide-shipping ingredient shops sell no egg yolk powder; the US sellers that do are US-only or bot-walled)."
   }
+ }
 }

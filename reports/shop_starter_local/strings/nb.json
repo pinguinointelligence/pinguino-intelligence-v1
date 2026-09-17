@@ -21,11 +21,13 @@
   "tag_other_composition": "Annen sammensetning",
   "tag_alternative": "Lokalt alternativ",
   "tag_unconfirmed": "Ikke bekreftet",
+  "tag_abroad_unconfirmed": "Butikk i utlandet",
   "legend": {
-    "from_abroad": "en butikk i utlandet som leverer til dette landet",
-    "b2b": "selges til bedrifter eller i store pakninger",
+    "from_abroad": "en butikk i utlandet som oppgir dette landet på sin egen leveringsliste",
+    "b2b": "selges til bedrifter eller i store pakninger — ikke et vanlig detaljtilbud",
     "other_composition": "samme type produkt med en annen sammensetning (oppgitt ved siden av)",
-    "alternative": "en erstatning for et annet Gellatti-produkt"
+    "alternative": "en erstatning for et annet Gellatti-produkt",
+    "abroad_unconfirmed": "en butikk i utlandet; levering til dette landet er ikke bekreftet"
   },
   "starter_amount": "I Starter Pack: {g} g",
   "option": "Alternativ {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Et lokalt alternativ til Gellatti-blandingen, ikke den samme blandingen. Bland det med de tørre ingrediensene, og varm opp basen til 75–80 °C.",
   "missing": "Ingen godkjente produkter i dette landet ennå.",
+  "out_of_stock": "Butikken viste varen som utsolgt {date}.",
   "notes_title": "Greit å vite",
   "notes": [
-    {"h": "Tilgjengelighet", "p": "Vi sjekket disse produktene på nettsidene til produsenter og butikker i september 2026. Tilgjengelighet, priser og levering kan endre seg og er ikke garantert."},
+    {"h": "Tilgjengelighet", "p": "Vi sjekket produktene fra undersøkelsen på nettsidene til butikker og produsenter 17. september 2026. Dekstrose, skummetmelkpulver og stabilisatoren kommer fra Gellattis landtabell av 12. september 2026 og ble ikke sjekket på nytt. Tilgjengelighet, priser og levering kan endre seg og er ikke garantert."},
     {"h": "Etiketten går foran", "p": "Sjekk ingredienser og allergener på pakken før du kjøper. Fløtepulver og melkepulver inneholder melk; eggeplomme inneholder egg."},
     {"h": "Stabilisator", "p": "I dette landet erstattes Gellatti Stabilizer av et lokalt plantegummi. Det virker på lignende måte, men er ikke den samme blandingen."}
   ],

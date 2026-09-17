@@ -37,7 +37,14 @@
         "site search barradoce.com.br: creme de leite em pó",
         "site search mavalerio.com.br: creme de leite em pó",
         "manufacturer site browse alibra.com.br: portfolio food-service + industrial (creme de leite em pó)",
-        "manufacturer site browse oetker.com.br: home page (creme de leite)"
+        "manufacturer site browse oetker.com.br: home page (creme de leite)",
+        "site catalog gourmet-versand.com: Sahnepulver / Rahmpulver / Milchpulver (0 dairy powders)",
+        "site search pati-versand.de: Sahnepulver (1 article: Cake-Masters Sahnepulver 100g, SAHNE 42% Fett)",
+        "site search hobbybaecker.de: Sahnepulver",
+        "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose",
+        "product-sitemap scan msk-ingredients.com (6597 products): yolk / cream-powder / inulin / fructose",
+        "product-sitemap scan souschef.co.uk (6274 products): yolk / cream-powder / inulin / fructose",
+        "WebSearch (com.br): \"creme de leite em po\" comprar loja \"informacao nutricional\" gorduras ingredientes creme de leite desidratado"
       ],
       "sources_tried": [
         "cerealistaexpress.com.br granel shop (found 'Creme de Leite em Pó Granel', no composition — rank-1 LEAD)",
@@ -60,7 +67,12 @@
         "mercado.carrefour.com.br (VTEX catalog search: HTTP 403 bot wall — inconclusive)",
         "atacadao.com.br (VTEX catalog search: HTTP 403 bot wall — inconclusive)",
         "angeloni.com.br / tendaatacado.com.br (catalog search endpoint 404 — not searchable without JS; inconclusive)",
-        "barradoce.com.br confectionery supplier (on-site search /s?q= renders results client-side only: identical page for every term — JS-only, inconclusive)"
+        "barradoce.com.br confectionery supplier (on-site search /s?q= renders results client-side only: identical page for every term — JS-only, inconclusive)",
+        "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
+        "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
+        "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)",
+        "ingredientesonline.com.br/creme-de-leite-em-po-alibra-granel-20-kg (retried 2026-09-17: HTTP 403 again - blocked, inconclusive; a search snippet shows this page prints an ingredient list, so it is worth an owner/manual check)",
+        "essenciasefestas.com.br (confectionery retailer; /busca and the guessed product path both return HTTP 404 - no readable catalogue search)"
       ],
       "candidates": [
         {
@@ -93,10 +105,70 @@
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e5ad6fecfca45556.json",
           "extra_evidence_files": [],
           "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:38:27Z"
+          "checked_at_utc": "2026-09-17T15:38:27Z",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:41:56Z",
+            "basis": "itemprop=\"availability\" ... content=\"http://schema.org/InStock\" in the page's own product markup",
+            "source": "https://www.cerealistaexpress.com.br/creme-de-leite-em-po-granel.html"
+          }
+        },
+        {
+          "rank": 2,
+          "brand": "Ingredients Bar",
+          "product_name": "Cream Powder",
+          "pack": "200 g (same listing also offers 500 g, 1.5 kg and 4 kg; SKU 0370)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Ingredients Bar (United Kingdom)",
+          "page_market": "GB",
+          "market_by": "OTHER_MARKET:GB",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "NONE for BR (UK shop, GBP only - currency never binds). The seller states international delivery but names no country, so this is a LEAD purchase path, not VERIFIED_CROSS_BORDER.",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "quotes": [
+              {
+                "url": "https://ingredientsbar.com/payment-delivery/",
+                "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
+                "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json"
+              }
+            ],
+            "found": true,
+            "country_named": false,
+            "note": "Generic international-delivery statement only; BR is not named, so owner rule 2 (2026-09-17) keeps this a LEAD."
+          },
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:41:56Z",
+            "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+            "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+          },
+          "composition": {
+            "fat_g": 75.0,
+            "protein_g": 8.5,
+            "fibre_g": 0.0,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition Facts Per 100g: Energy 3094kJ/750kcal, Fat 75 g of which saturated fatty acid 51 g, Carbohydrates 12 g of which sugars 12 g, Protein 8.5 g, Dietary Fibre 0 g, Salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
+            "from": "product page, 'Ingredients & Nutrition' tab (quote file ~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json)",
+            "sugars_g": 12.0
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "Real spray-dried dairy cream powder ('made from dehydrated cream, free from additives'), printed fat 75 g/100 g - outside the 38-48 % A band (reference 42 %). Ingredients are cream + milk protein + lactose, i.e. the permitted CRP ingredient family. Recorded under owner rule 3 (2026-09-17): a dairy cream powder outside 38-48 % fat is a valid candidate for owner decision.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e31a6422d8f4df41.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json",
+            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T18:41:56Z"
         }
       ],
-      "notes": "No dairy cream powder with printed composition found at a Brazilian direct retailer. Supermarkets only list liquid/UHT cream; the only named retail pack seen (Droga Raia 'Creme de Leite em Pó Cremoso 300g') is behind a 403 bot wall, and Alibra's 'Cream' powder is sold as a fresh-cream substitute without composition. Rank 1 is an unbranded bulk listing with no ingredients or fat % (C, LEAD). Four further WebSearch queries (PT and EN, e.g. 'dairy cream powder 40% fat Brazil') were refused because the session budget was exhausted. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+      "notes": "No dairy cream powder with printed composition found at a Brazilian direct retailer. Supermarkets only list liquid/UHT cream; the only named retail pack seen (Droga Raia 'Creme de Leite em Pó Cremoso 300g') is behind a 403 bot wall, and Alibra's 'Cream' powder is sold as a fresh-cream substitute without composition. Rank 1 is an unbranded bulk listing with no ingredients or fat % (C, LEAD). Four further WebSearch queries (PT and EN, e.g. 'dairy cream powder 40% fat Brazil') were refused because the session budget was exhausted. WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17: rank 1 (unbranded bulk 'Creme de Leite em Po Granel') is IN_STOCK but still prints no composition. Added rank 2: Ingredients Bar (UK) Cream Powder with printed 75 % fat and full ingredients, IN_STOCK, generic international delivery only (LEAD, owner rule 2). The Brazilian page that does print an ingredient list (Alibra 20 kg at ingredientesonline.com.br) is still behind a 403 wall."
     },
     "FRU": {
       "result": "CONFIRMED_LOCAL",

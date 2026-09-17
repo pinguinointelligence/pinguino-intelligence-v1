@@ -15,14 +15,21 @@
       ],
       "queries": [
         "cream powder dairy buy New Zealand shop .co.nz",
-        "\"cream powder\" keto store NZ OR \"heavy cream powder\" New Zealand"
+        "\"cream powder\" keto store NZ OR \"heavy cream powder\" New Zealand",
+        "site catalog gourmet-versand.com: Sahnepulver / Rahmpulver / Milchpulver (0 dairy powders)",
+        "site search pati-versand.de: Sahnepulver (Cake-Masters Sahnepulver 100g, SAHNE 42% Fett - EU-only delivery)",
+        "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose"
       ],
       "sources_tried": [
         "woolworths.co.nz (full cream MILK powder only - rejected type)",
         "opencountry.co.nz, awaruaorganics.co.nz, farmfield.co.nz, shop.springsheepnz.com (milk powders - rejected type)",
         "nzmp.com Cream Powder 55 (B2B ingredient, 55 % fat, no retail pack)",
         "ketostore.nz (own-brand cream powder - LEAD)",
-        "lifepharmacy.co.nz keto powders collection (not checked further)"
+        "lifepharmacy.co.nz keto powders collection (not checked further)",
+        "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
+        "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
+        "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)",
+        "ketostore.nz/products/cream-powder-750g (re-read 2026-09-17: IN_STOCK; the page text still gives only 'There are 0.2g carbs in each gram of cream powder' and 'contains Milk (Dairy)' - the fat % exists only inside the nutrition-panel image, so the composition gate still fails)"
       ],
       "candidates": [
         {
@@ -53,10 +60,71 @@
           "equivalence_note": "dairy cream powder from NZ milk, exclusive own product (SKU CRM-PWDR-750-BAG-S8-M14); fat % not printed in page text, so A/B cannot be decided",
           "evidence_class": "LEAD",
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/6a77a5a0c264c78a.json",
-          "checked_at_utc": "2026-09-17T15:37:50Z"
+          "checked_at_utc": "2026-09-17T15:37:50Z",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:45:29Z",
+            "basis": "\"availability\": \"http://schema.org/InStock\" in the page's own product data, with an active 'Add to Cart' button",
+            "source": "https://ketostore.nz/products/cream-powder-750g"
+          },
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Ingredients Bar",
+          "product_name": "Cream Powder",
+          "pack": "200 g (same listing also offers 500 g, 1.5 kg and 4 kg; SKU 0370)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Ingredients Bar (United Kingdom)",
+          "page_market": "GB",
+          "market_by": "OTHER_MARKET:GB",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "NONE for NZ (UK shop, GBP only - currency never binds). The seller states international delivery but names no country, so this is a LEAD purchase path, not VERIFIED_CROSS_BORDER.",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "quotes": [
+              {
+                "url": "https://ingredientsbar.com/payment-delivery/",
+                "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
+                "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json"
+              }
+            ],
+            "found": true,
+            "country_named": false,
+            "note": "Generic international-delivery statement only; NZ is not named, so owner rule 2 (2026-09-17) keeps this a LEAD."
+          },
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:45:29Z",
+            "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+            "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+          },
+          "composition": {
+            "fat_g": 75.0,
+            "protein_g": 8.5,
+            "fibre_g": 0.0,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition Facts Per 100g: Energy 3094kJ/750kcal, Fat 75 g of which saturated fatty acid 51 g, Carbohydrates 12 g of which sugars 12 g, Protein 8.5 g, Dietary Fibre 0 g, Salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
+            "from": "product page, 'Ingredients & Nutrition' tab (quote file ~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json)",
+            "sugars_g": 12.0
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "Real spray-dried dairy cream powder ('made from dehydrated cream, free from additives'), printed fat 75 g/100 g - outside the 38-48 % A band (reference 42 %). Ingredients are cream + milk protein + lactose, i.e. the permitted CRP ingredient family. Recorded under owner rule 3 (2026-09-17): a dairy cream powder outside 38-48 % fat is a valid candidate for owner decision.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ef4042ce3f1ab637.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json",
+            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T18:45:29Z"
         }
       ],
-      "notes": "Identity and market binding would pass (D-37 own-brand listing, .nz), but the composition gate fails for lack of a printed fat %. Owner could accept after reading the nutrition panel image on the page."
+      "notes": "Identity and market binding would pass (D-37 own-brand listing, .nz), but the composition gate fails for lack of a printed fat %. Owner could accept after reading the nutrition panel image on the page. | Re-checked 2026-09-17: the Keto Store NZ own-brand cream powder is IN_STOCK, but its nutrition panel is still an image only, so no fat % is printed as text and it stays C/LEAD - an owner who reads the panel image could lift it. Added rank 2: Ingredients Bar (UK) Cream Powder, which does print fat 75 g/100 g and the full ingredient list and is IN_STOCK, but only states generic international delivery (New Zealand not named) - LEAD."
     },
     "FRU": {
       "result": "CONFIRMED_LOCAL",

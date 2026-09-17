@@ -21,11 +21,13 @@
   "tag_other_composition": "Önnur samsetning",
   "tag_alternative": "Staðbundinn valkostur",
   "tag_unconfirmed": "Óstaðfest",
+  "tag_abroad_unconfirmed": "Erlend verslun",
   "legend": {
-    "from_abroad": "erlend verslun sem sendir til þessa lands",
-    "b2b": "selt fyrirtækjum eða í stórum pakkningum",
+    "from_abroad": "erlend verslun sem tilgreinir þetta land á eigin afhendingarlista",
+    "b2b": "selt fyrirtækjum eða í stórum pakkningum — ekki venjulegt smásölutilboð",
     "other_composition": "sams konar vara með aðra samsetningu (tilgreind við hliðina)",
-    "alternative": "staðgengill fyrir aðra Gellatti-vöru"
+    "alternative": "staðgengill fyrir aðra Gellatti-vöru",
+    "abroad_unconfirmed": "erlend verslun; afhending til þessa lands er óstaðfest"
   },
   "starter_amount": "Í Starter Pack: {g} g",
   "option": "Valkostur {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Staðbundinn valkostur við Gellatti-blönduna, ekki sama blandan. Blandaðu honum við þurrefnin og hitaðu grunninn upp í 75–80 °C.",
   "missing": "Engin samþykkt vara í þessu landi enn.",
+  "out_of_stock": "Verslunin sýndi vöruna uppselda {date}.",
   "notes_title": "Gott að vita",
   "notes": [
-    {"h": "Framboð", "p": "Við athuguðum þessar vörur á vefsíðum framleiðenda og verslana í september 2026. Framboð, verð og afhending geta breyst og eru ekki tryggð."},
+    {"h": "Framboð", "p": "Við athuguðum vörurnar sem voru rannsakaðar á vefsíðum verslana og framleiðenda 17. september 2026. Dextrósi, undanrennuduft og stöðgarinn koma úr landatöflu Gellatti frá 12. september 2026 og voru ekki athuguð aftur. Framboð, verð og afhending geta breyst og eru ekki tryggð."},
     {"h": "Merkimiðinn ræður", "p": "Skoðaðu innihaldsefni og ofnæmisvalda á umbúðunum áður en þú kaupir. Rjómaduft og mjólkurduft innihalda mjólk; eggjarauða inniheldur egg."},
     {"h": "Stöðgari", "p": "Í þessu landi kemur staðbundið plöntugúmmí í stað Gellatti Stabilizer. Það virkar á svipaðan hátt en er ekki sama blandan."}
   ],

@@ -21,11 +21,13 @@
   "tag_other_composition": "Autre composition",
   "tag_alternative": "Alternative locale",
   "tag_unconfirmed": "Non confirmé",
+  "tag_abroad_unconfirmed": "Boutique étrangère",
   "legend": {
-    "from_abroad": "une boutique à l’étranger qui livre dans ce pays",
-    "b2b": "vendu aux entreprises ou en grands conditionnements",
+    "from_abroad": "une boutique à l’étranger dont la liste de livraison mentionne ce pays",
+    "b2b": "vendu aux entreprises ou en grands conditionnements — pas une offre de détail ordinaire",
     "other_composition": "le même type de produit avec une autre composition (indiquée à côté)",
-    "alternative": "un substitut d’un autre produit Gellatti"
+    "alternative": "un substitut d’un autre produit Gellatti",
+    "abroad_unconfirmed": "une boutique à l’étranger ; la livraison dans ce pays n’est pas confirmée"
   },
   "starter_amount": "Dans le Starter Pack : {g} g",
   "option": "Option {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Une alternative locale au mélange Gellatti, pas le même mélange. Mélangez-la aux ingrédients secs et chauffez la base à 75–80 °C.",
   "missing": "Pas encore de produit validé dans ce pays.",
+  "out_of_stock": "La boutique l’indiquait en rupture de stock le {date}.",
   "notes_title": "Bon à savoir",
   "notes": [
-    {"h": "Disponibilité", "p": "Nous avons vérifié ces produits sur les sites de fabricants et de boutiques en septembre 2026. La disponibilité, les prix et la livraison peuvent changer et ne sont pas garantis."},
+    {"h": "Disponibilité", "p": "Nous avons vérifié les produits recherchés sur les sites de boutiques et de fabricants le 17 septembre 2026. Le dextrose, le lait écrémé en poudre et le stabilisant proviennent du tableau des pays Gellatti du 12 septembre 2026 et n’ont pas été revérifiés. La disponibilité, les prix et la livraison peuvent changer et ne sont pas garantis."},
     {"h": "L’étiquette prime", "p": "Avant d’acheter, vérifiez les ingrédients et les allergènes sur l’emballage. La crème en poudre et le lait en poudre contiennent du lait. Le jaune d’œuf contient de l’œuf."},
     {"h": "Stabilisant", "p": "Dans ce pays, une gomme végétale locale remplace le Gellatti Stabilizer. Elle agit de façon similaire, mais ce n’est pas le même mélange."}
   ],

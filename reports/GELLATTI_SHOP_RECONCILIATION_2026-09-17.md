@@ -94,34 +94,127 @@ Research zakończony dla 75/75 krajów. Każdy wiersz to `PROPOSAL_AWAITING_OWNE
 
 PR #400 scalony do staging (`a378a4f4`) po zielonym CI na `e0597224`; zmiana tylko ramki zdjęcia i 7 plików PNG 512×512 (zastępczy woreczek zostaje jako fallback). Przegląd serwowanej strony (headless Chrome 153, desktop 1440×900 @2x i mobile 390×844 @3x, bez logowania i koszyka): 7/7 kart ładuje własne zdjęcie (`naturalWidth` 512, `object-fit: contain`, cały obraz w ramce), sha256 serwowanych plików = pliki z PR, placeholder nie jest pobierany, 0 błędów konsoli, brak poziomego przewijania i nakładania kart. Bundle bez wpisanego SHA; zweryfikowano bundle `index-KvQ8jaYV.js`, który zawiera ścieżki 7 zdjęć. Dowody: `reports/evidence/SHOP_RECONCILIATION_2026-09-17/single-photos-served/`. Uwagi do etykiet na zdjęciach (literówka „preferenatemente”, brak „Contains MILK” na SMP, puste „Net wt.”) — pozostawione bez zmian. Akceptacja wizualna właściciela: **brak**.
 
-## Stan ukończenia (2026-09-17): zdjęcie to nie całe SHOP
+### M7. Korekta właściciela po przeglądzie arkusza i 108 szkiców (2026-09-17, noc)
 
-PR #383 zamyka wyłącznie zdjęcie woreczka 7 produktów. **Nie kończy infopaku ani zamówienia za 0 €.**
+Właściciel **nie akceptuje hurtowo** 230 rekomendacji. Decyzje Ownera zostają puste; `acceptance.json` nie istnieje, a build
+publikacyjny nadal wymaga akceptacji dla każdej z siedmiu ról. Rozliczone zostały wskazane różnice:
 
-| Zakres | Stan | Dowód i luki |
+| Zarzut właściciela | Co było | Co jest teraz |
 |---|---|---|
-| Zdjęcie woreczka 7 produktów (PR #383) | **Ukończone na staging** | merge `5ee5e467`; deploy staging = ten SHA; CI na tym SHA: sukces (przebieg 35208523862); przegląd 7 kart desktop i mobile (H2). **Niesprawdzone:** `onError`, fizyczny iPhone/Safari, widok zalogowany z wybranym krajem. Wizualna akceptacja właściciela: **brak** (OWNER_ACCEPTED_RUNTIME: NO). `main` i produkcja bez tej zmiany. |
-| Infopak „Składniki bazy lodów” za 0 € | **Nieukończony, nic nie wdrożone** | brak oferty, pliku w storage, zamówienia i pobierania |
-| PDF v1.1 (okładka, s. 2, nazwy lokalne cukru) | **Nieukończony** | G1 |
-| Zamówienie za 0 € dla dokumentu | **Nieukończone** | baza dziś odrzuca typ `DIGITAL_DOCUMENT` (K1) |
-| Lokalny Zestaw Startowy w US na danych testowych | **Otwarte ryzyko**, wymaga decyzji | K4 |
-| Wybór kraju dla niezalogowanych (401) | **Błąd sprzed #383, nienaprawiony** | sekcja L, zgoda K6 |
+| Znana niedostępność ginie w PDF (PL wiersz 259 Naturavena, PL 263 KicCake, ES 122 Myprotein) | stan magazynowy tylko w „Uwagach badacza” | `extract_stock.py` odczytuje stan z dowodów już zebranych (własna notatka badacza przy kandydacie + strona w cache weryfikatora): 140 w sprzedaży, 26 brak towaru, 155 bez informacji. PDF drukuje „Sklep pokazał brak towaru 2026-09-17” pod produktem; arkusz ma kolumny Stan magazynowy / Stan z dnia / Podstawa stanu |
+| Produkt kasowany albo ukrywany przez chwilowy brak | — | produkt zostaje; **tylko potwierdzony i dostępny** zamiennik wyprzedza pozycję bez towaru (stan „nie podano” nie wyprzedza niczego) |
+| Notatka wspólna dla całej pozycji mogła oznaczyć oba produkty jako niedostępne | — | stan bierze się wyłącznie z notatki przy danym kandydacie; to usunęło 15 fałszywych „brak towaru” |
+| „Z zagranicy” wzmacniało dowód v23 samą zmianą tekstu (135 oznaczeń) | jedno oznaczenie dla wszystkich | `v23_shipping_check.py` rozlicza samą dostawę per kraj, bez zmiany wyboru produktu w v23: **82 potwierdzone** (kraj wymieniony na liście dostaw sprzedawcy: bulksupplements 34, bakingwarehouse 17, buxtrade 12, iHerb 9+6, saporepuro 4, artegustando 1), **53 niepotwierdzone** (m.in. 51 wierszy SaporePuro). PDF: „Z zagranicy” tylko przy potwierdzonych, „Sklep za granicą” bez obietnicy dostawy przy reszcie; arkusz 03_V23 ma cytat i adres polityki |
+| B2B jako zwykła oferta | tylko tag z v23 | każde opakowanie ≥ 5 kg dostaje oznaczenie „Dla firm”, także w pozycjach z researchu (np. PL śmietanka 25 kg); legenda mówi wprost „nie zwykła oferta detaliczna” |
+| „not printed” jako marka (ES s. 4), „not stated” (CZ/FRU/2) | sentinel trafiał do PDF | `clean_text` usuwa sentinele i nawiasy z notatkami badacza (SKU, Art.-Nr, „size selector”); brak marki = brak wiersza, nic nie jest dopowiadane; marka nie zawiera już nazw spółek w nawiasie |
+| „v23” nie oznacza nowej kontroli zakupowej | nota „sprawdziliśmy we wrześniu 2026” | nota rozdziela źródła: research sprawdzony 17 września 2026, dekstroza/mleko/stabilizator z tabeli krajowej z 12 września 2026 i **niesprawdzane ponownie** |
+| Poprawny plik ≠ gotowy produkt | walidator sprawdzał plik | walidator sprawdza osobno: brak sentineli, linia „brak towaru” przy produkcie bez towaru, a w trybie publikacyjnym **każda z siedmiu ról ma produkt zaakceptowany przez właściciela** (kandydat LEAD bez akceptacji nie zamyka warunku) |
+| Numery wierszy zmieniają się przy każdej wersji arkusza | — | kolumna `ID` (np. `PL-FRU-1`) jest stała; import decyzji czyta ją w pierwszej kolejności |
 
-**Pozostały zakres SHOP.** Wszystko jest aktywne i nic nie jest odłożone; szczegóły w G, K i L.
+Dowody nowych rozliczeń: `~/.cache/gellatti-evidence/quotes/coordinator-v23/` (cytaty dostaw v23), `stock.json`, `v23_shipping.json`.
 
-Infopak, w kolejności wykonania:
-1. **G1:** PDF v1.1 i grafiki. Tylko pliki raportowe, bez wspólnej bazy; potem przegląd renderów przez właściciela (G7).
-2. **K1:** migracja zamówień dokumentów (z tabelą dokumentów i filtrami v1 dla starych klientów).
-3. **K2:** prywatny bucket i wgranie zatwierdzonego PDF v1.1.
-4. **K3:** funkcja `shop-digital-document` wdrożona z dostępnością `off`.
-5. **K5:** PR aplikacji (G2–G4 i testy kontraktów), przygotowywany równolegle; merge do staging dopiero po K1–K3.
-6. **Weryfikacja na staging** (G6 pkt 6) z dostępnością `allowlist`, tylko dla kont testowych.
-7. **Dostępność `on`:** infopak dostępny klientom (wspólna baza, więc w obu środowiskach).
-8. **Produkcja:** osobny release `main`.
+**Kanał sprzedaży jako osobny wymiar (wynik domykania braków w Europie).** `shop.cake-masters.com` — handlowe ramię tej samej grupy z Herzlake — publikuje tabelę kosztów wysyłki wymieniającą Bułgarię, Grecję, Islandię, Chorwację, Maltę i Rumunię i sprzedaje te same potwierdzone produkty w opakowaniach 100 g (Sahnepulver 42 %, Eigelbpulver; „Auf Lager”, cytaty w `~/.cache/gellatti-evidence/quotes/research-gap-eu/`). Ale stopka mówi: „Verkauf nur an registrierte, gewerbliche Wiederverkäufer”, a ceny są netto. Zgodnie z regułą właściciela „B2B pozostaje B2B” dodałem kanał jako osobny wymiar: kandydat z kanałem `TRADE_ONLY_*` dostaje w PDF oznaczenie „Dla firm”, a w arkuszu **nie dostaje rekomendacji TAK**, tylko „DO DECYZJI: kanał tylko dla firm (nie zwykła sprzedaż detaliczna)”. Dotyczy 7 kandydatów (GR, MT, BG, HR, RO, IS śmietanka + IS żółtko). Pokrycie 7/7 zostaje więc na 25 krajach — te sześć krajów ma śmietankę jako otwartą decyzję, nie jako zamknięty brak.
 
-Niezależnie od infopaku:
-- **K6:** naprawa 401;
-- **K4:** decyzja o ofercie LSP w US.
+**Fakty negatywne ustalone przy tym (żeby nie powtarzać poszukiwań):** `taste-market.de` nie ma żadnego Sahnepulver (przeskanowany pełny sitemap 2 425 URL), a jego strefy EU nie obejmują Islandii ani Turcji; `gourmet-versand.com` nadal bez śmietanki w proszku; `specialingredients.co.uk` (1 130 produktów) i `souschef.co.uk` (6 274) bez mlecznej śmietanki w proszku, podobnie cerfdellier, cuisineaddict, deco-relief, bienmanger, koro-shop; jedyna śmietanka Sosy to liofilizowany produkt z linii smaków/barw (2 kg, bez podanego tłuszczu); Turcja **ma** krajową śmietankę 42 % (Enka Süt, Konya, `İçindekiler: Krema`), ale wyłącznie w worku 25 kg, a wszystkie tureckie detaliczne „krema tozu” to mieszanki cukrowo-skrobiowe lub z tłuszczem roślinnym (odrzucone).
+
+### M8. Ocena śmietanki 72 % (USA) — pełny raport: `reports/shop_starter_local/US_CREAM_POWDER_72_EVALUATION.md`
+
+Ocena wyłącznie czytająca: żadnej zmiany kodu, żadnego zapisu do bazy, wszystkie zapytania to `SELECT`.
+
+- **Tożsamość: potwierdzona.** Hoosier Hill Farm Heavy Cream Powder 1 lb, GTIN 850054854513 jako dane przy własnym wariancie (454 g), `addressCountry US`, sklep deklaruje wysyłkę tylko w USA. Klasa `CONFIRMED_LOCAL` jest prawidłowa.
+- **Skład: strona drukuje tylko dwa fakty** — „72% butterfat” w tekście i skład „Cream, Nonfat Dry Milk, Natural Vitamin E & Vitamin C Ester”. **Brak tabeli wartości odżywczych i brak informacji o alergenach** na całej stronie (745 KB). Białko, laktoza, sucha masa beztłuszczowa i sól pozostają nieznane, a deklarowane odtłuszczone mleko w proszku sprawia, że oszacowanie „czysta śmietanka w proszku” byłoby błędne, nie tylko niedokładne.
+- **Profil w danych Gellatti: nie istnieje.** W żywej tabeli Mappera nie ma profilu mlecznej śmietanki w proszku 60–75 % (pasmo 58–80 % tłuszczu to orzechy, lecytyny, mieszanki stabilizujące i jedna baza mascarpone), a rodzina silnika `cream_powder` w ogóle nie istnieje — to znany brak zapisany w `GLOBAL_BASE_PRODUCT_ARCHITECTURE_AUDIT.md`.
+- **Istniejący mechanizm zamiany dziś:** zaproponowałby produkt 72 % przy jednym progu roli (`fat >= 20`), sortował kandydatów alfabetycznie i zamieniał **gram za gram, bez świadomości tłuszczu**, a przy nieudanym przeliczeniu odmawiał komunikatem `hard:<metryka>`. To znaczy: bez nowego profilu produkt nie nadaje się jako składnik silnika.
+- **Wniosek:** **tak** jako oznaczona lokalna alternatywa zakupowa w PDF („inny skład — 72 % zamiast 42 %”, z podanym tłuszczem), **nie** jako składnik silnika. `canonical_ingredient_id` zostaje pusty; produkt **nie** może być podstawiony pod `PI-ING-000260`.
+- **To nie jest przypadek jednostkowy:** 9 z 51 wierszy śmietanki w 8 rynkach (US ×2, AE, CA, CY, GR, MT, TR, SE) to śmietanki o tłuszczu 53,5–75 %. Jeden neutralny profil obsłużyłby kilka rynków; łatka tylko dla USA nie obsłuży żadnego innego. Kandydat CY/GR/MT/TR (75 %) ma pełną tabelę na 100 g, ale jego klasa dowodu to na razie trop.
+- **Tara zostaje rozdzielona:** `PI-ING-002114` (mieszanka Gellatti) i `PI-ING-000492` (sama guma tara) to dwa różne wiersze o różnych wynikach w silniku; guma tara jest też na liście wysokiego ryzyka Live Overlay, więc żadna lokalna guma nie jest wiązana automatycznie po nazwie.
+- **Rozbieżność do wyjaśnienia (nie zmieniana):** wiersz odniesienia `PI-ING-000260` ma inne wartości w pliku repo (`mapper_basement.csv`: woda 0 / sucha masa 100 / NFMS 58 / popiół 0 / `Verified`) niż w żywej tabeli (woda 3 / 97 / 55 / 5 / `Estimated / PI Calculated`), a neutralny `PI-ING-002242` istnieje tylko w bazie.
+- **Operacje, które byłyby potrzebne — wszystkie NIEZATWIERDZONE** (szczegóły w raporcie): wiersz `country_local_products` dla US/`GEL-CRP-500` z pustym `canonical_ingredient_id`; decyzja właściciela w wierszu `US-CRP-1`; zdobycie specyfikacji producenta (bez niej strona silnika jest zablokowana); usunięcie 7 testowych wierszy `shop_country_components` dla USA przed czymkolwiek publicznym; **nowy, neutralny** profil wysokotłuszczowej śmietanki w proszku (migracja pisana ręcznie, nigdy edycja `PI-ING-000260`); ranking zamienników według bliskości składu zamiast alfabetu i pokazanie różnicy składu w oknie zamiany.
+
+### M9. Domykanie braków w kontrolowanych grupach — wynik (2026-09-17, noc)
+
+Cztery rozłączne grupy krajów, tylko wskazane kombinacje, bez powtarzania pozycji już poprawnych. Liczymy **kombinacje
+kraj × rola (75 × 4 = 300)**, nigdy PDF-y (`gap_counters.py`).
+
+| | Przed | Po |
+|---|---|---|
+| Kandydatów w arkuszu | 313 | **416** |
+| Kombinacje bez żadnego kandydata | 102 | **29** |
+| Kombinacje bez rekomendacji TAK | 139 | **125** |
+| Krajów z rekomendacją na wszystkich 4 rolach | 25 | **25** (32 warianty językowe) |
+
+| Rola | rekomendacja TAK | kanał tylko dla firm | inny skład | tylko trop | brak kandydata |
+|---|---|---|---|---|---|
+| Śmietanka w proszku | 25 | 7 | 1 (USA 72 %) | 27 | 15 |
+| Fruktoza | 59 | 0 | 0 | 12 | 4 |
+| Inulina | 57 | 0 | 0 | 18 | 0 |
+| Suszone żółtko | 34 | 1 | 0 | 30 | 10 |
+
+**Co to znaczy uczciwie.** Prawie zniknęły puste pola (102 → 29), ale większość nowych znalezisk to **tropy**, nie
+rozwiązania: sprzedawca istnieje, lecz nie nazywa kraju w polityce dostawy, albo to marketplace, albo strona nie podaje
+składu. Liczba potwierdzonych rekomendacji dla inuliny **spadła** (66 → 57), bo zaostrzyłem regułę dostawy (niżej) — to
+celowe: wolę mniej obietnic niż obietnicę bez dowodu.
+
+**Jedna reguła dowodu dostawy dla wszystkich (rozstrzygnięcie sprzeczności między agentami).** Dwóch badaczy różnie
+przeczytało tę samą stronę: selektor kraju w sklepie Shopify jednemu wystarczył za dowód wysyłki, drugiemu nie. Test jest
+obiektywny: pobrać stronę wysyłki **i** stronę produktu. Jeśli ta sama lista krajów jest na stronie produktu, to element
+szablonu sklepu (selektor rynku/waluty), a nie oświadczenie o dostawie — i nie potwierdza niczego, choćby baner mówił
+„wysyłamy na cały świat” (reguła D-31: waluta nigdy nie wiąże rynku). Sprawdzone: **szablon** — bulksupplements.com,
+bakingwarehouse.com, kiki-health.com (dodatkowo własne zastrzeżenie „Some countries may require bespoke postage … if
+unable to select a delivery option at the checkout”); **prawdziwa lista dostaw** — gourmet-versand.com („Shipment to the
+following country”), pati-versand.de, glaeserundflaschen.de, taste-market.de, buxtrade.de, shop.cake-masters.com (ich
+listy nie występują na stronach produktów). `reconcile_shipping_basis.py` obniżył **18 kandydatów w 14 krajach** z
+„potwierdzony z zagranicy” na „trop”, zachowując produkt, cytat i wyjaśnienie. W v23 ta sama reguła dała 31 potwierdzeń
+zamiast 82 (bakingwarehouse 17 i bulksupplements 35 to szablon, nie lista dostaw).
+
+**Nowe fakty, które warto znać przy decyzjach:**
+- **Śmietanka w proszku poza Europą to problem kanału, nie odkrycia.** Jedyna prawdziwa mleczna śmietanka w proszku w
+  Azji to przemysłowa Fonterra/NZMP „Cream Powder 55” (55 % tłuszczu, worki) — zapisana i oznaczona jako B2B. W Turcji
+  krajowa śmietanka 42 % istnieje (Enka Süt), ale tylko w worku 25 kg. `hobbybaecker.de` i `pati-versand.de` mają
+  dokładny produkt referencyjny 42 % w opakowaniu 100 g, ale ich listy dostaw obejmują wyłącznie Europę i Wielką
+  Brytanię; „Rest der Welt 17,99 EUR” nie nazywa żadnego kraju, więc dla rynków pozaeuropejskich to trop.
+- **Śmietanka 75 % (ingredientsbar.com, UK)** to prawdziwa mleczna śmietanka w proszku z pełną tabelą na 100 g
+  (tłuszcz 75 g, białko 8,5 g, laktoza w składzie) — zapisana jako „ten sam rodzaj, inny skład”, ale tylko jako trop,
+  bo polityka dostawy nie nazywa kraju. To jedyny kandydat, który technicznie mógłby obsłużyć wiele rynków naraz.
+- **Żółtko w proszku z zagranicy jest zamknięte, nie niesprawdzone:** gourmet-versand, MSK Ingredients (6 597 URL),
+  Sous Chef (6 274 URL) i BulkSupplements nie mają żółtka w proszku; Modernist Pantry wysyła tylko w USA; Judee's nie
+  mówi nic o wysyłce międzynarodowej. Jedyna nieprzetestowana droga (gosupps.com) odpowiada 403.
+- **Dwa rynki są jedną decyzją od potwierdzenia lokalnego:** Arabia Saudyjska — Halwani Brothers „Fruit Sugar
+  Fructose 250 g” w Tamimi ma GTIN w danych strony i saudyjski adres sprzedawcy, brakuje tylko wydrukowanego składu;
+  NOW Foods w Nahdi `/en-sa/` drukuje skład, brakuje dopasowania zapisu opakowania.
+- **Do sprawdzenia w narzędziach:** `verify_ean_market.py` uznał kod `729011818324` (razberry.co.il) za potwierdzony,
+  a `identifiers.py` typuje go jako błędną sumę kontrolną; w `IL.json` zapisano `gtin: null` i zastrzeżenie. Arkusz i tak
+  nie daje rekomendacji TAK produktowi z kodem, który nie jest poprawnym GTIN.
+- **Zablokowane, zapisane, nieobchodzone:** iHerb (403 na wszystkich adresach), amazon.ae/.eg (ściana botowa — stan
+  magazynowy tych tropów jest uczciwie „nieznany”), Carrefour, Lulu, Spinneys, Shufersal, Jumia, noon, urbanplatter,
+  redmanshop, healthguard.lk, naheed.pk, chaldal, laranitadelapaz.com.mx, ingredientesonline.com.br, qualifirst,
+  chefsarmoury, gosupps. Wyczerpany limit wyszukiwarki i ściana botowa nie są dowodem, że produktu nie ma.
+
+## Stan ukończenia (2026-09-17, po korekcie wieczornej): mechanizm gotowy, treść czeka na akceptację
+
+Poprzednia wersja tej tabeli opisywała stan przed wykonaniem pakietu K. Stan na teraz, wyłącznie `staging` + wspólna baza:
+
+| Zakres | Stan | Dowód |
+|---|---|---|
+| Zamówienie dokumentu za 0 € (K1) | **Wdrożone** | migracja `20260917113631_shop_digital_document_orders` w ledgerze; funkcja `shop-digital-document` v3 (sha pobranego źródła = plik w repo); E2E konta A: `G-20260917-9F038F`, pobranie 200, plik obecny w prywatnym buckecie |
+| Oferta per kraj i język (K5, PR #399) | **Scalone do staging `5d4e35ce`** | 4 joby CI zielone na `14ccf6dc`; rejestr nie ma wierszy krajowych, więc oferta nie pokazuje się nikomu — to stan oczekiwany |
+| Rejestr per kraj × język (migracja) | **Wdrożone** | `20260917153851_shop_document_per_market_language`; próba w wycofanej transakcji + próba rollbacku (identyczne md5/ACL/indeksy) |
+| Naprawa 401 przy wyborze kraju (K6) i zabezpieczenie testowego LSP (K4) | **Wdrożone** | `20260917111101_shop_public_offer_read_and_qa_fixture_guard`; serwowana strona bez logowania: `shop_country_local_readiness` 200, `gellatti_shop_document_availability_v1` 200 |
+| Zdjęcia 7 fizycznych produktów (PR #400) | **Wdrożone na staging, sprawdzone na serwowanej stronie** | staging `a378a4f4`; 7/7 kart z własnym zdjęciem, sha serwowanych plików = pliki z PR, 0 błędów konsoli. Akceptacja wizualna właściciela: **brak** |
+| PDF bazy v1.1 (stary, angielski, 6 ról) | **Zbudowany, w prywatnym storage, zamówiony przez konto A** | sha `f9226284…`, plik obecny; pobranie nie zależy od dostępności, więc historyczne zamówienie zostaje sprawne także po wyłączeniu oferty |
+| PDF-y per kraj (7 ról Starter Packu) | **108 szkiców przechodzi walidację; 0 pozycji zaakceptowanych** | `build/starter_local/validation_draft.json` 108/108; `acceptance.json` nie istnieje; build publikacyjny odmawia wariantu bez akceptacji wszystkich 7 ról |
+| Dane krajowe (research 4 nowych ról) | **75/75 krajów zbadane; 121 z 300 kombinacji otwarte** | `gap_counters.py`; powody rozdzielone: brak kandydata, tylko trop, kanał B2B, inny skład |
+| Testowe wiersze Lokalnego Zestawu Startowego w USA | **Nadal 7 wierszy testowych** | decyzja o ich usunięciu otwarta (guard z K4 blokuje ofertę, dane testowe zostają) |
+| Publiczne ON, `main`, produkcja | **Niezatwierdzone** | wymaga osobnej, wyraźnej zgody właściciela |
+
+Kolejność dalszych kroków (nic z tego nie jest wykonane):
+1. **Decyzje właściciela w arkuszu** (TAK/NIE; oddzielnie: kanał tylko dla firm, inny skład, tropy).
+2. **Domknięcie braków** w kontrolowanych grupach — trwa; wyczerpany limit wyszukiwarki nie jest dowodem, że produktu nie ma.
+3. **Build publikacyjny** wariantów z 7/7 zaakceptowanymi rolami → walidacja → `publish_starter_local.py --plan` (+ `verify.sql`).
+4. **Upload do prywatnego bucketa i wiersze rejestru** z dostępnością `TEST_ACCOUNTS_ONLY` i kontami QA (operacja do zatwierdzenia).
+5. **QA na staging** na zaakceptowanych wariantach: konto A, konto B (brak dostępu do zamówienia A), finance admin, wyścig równoległych zamówień, mail do kontrolowanego odbiornika — wymaga logowań właściciela.
+6. **Osobno do decyzji:** wyłączenie starej oferty bazy (`OFF`), usunięcie testowych wierszy LSP w USA, neutralny profil śmietanki wysokotłuszczowej (migracja).
+7. **Publiczne ON i wydanie `main`/produkcja:** jeden końcowy pakiet wymagający wyraźnej zgody.
 
 ---
 

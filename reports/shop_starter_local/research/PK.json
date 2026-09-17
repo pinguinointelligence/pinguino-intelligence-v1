@@ -16,7 +16,8 @@
       "queries": [
         "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on metro-online.pk, dvago.pk, dwatson.pk, imtiaz.com.pk, naheed.pk, alfatah.pk, springs.com.pk",
         "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on alfatah.pk and springs.com.pk",
-        "Urdu terms listed for owner copy; retailer URLs/search are English"
+        "Urdu terms listed for owner copy; retailer URLs/search are English",
+        "\"cream powder\" dairy spray dried milk fat 40% buy retail Asia baking supplier 1kg"
       ],
       "sources_tried": [
         "metro-online.pk (cash & carry/grocer) - 25.6k product URLs scanned: only Rafhan vanilla ice cream powder (dessert mix, rejected)",
@@ -27,10 +28,15 @@
         "naheed.pk (supermarket) - HTTP 403 bot wall, inconclusive",
         "imtiaz.com.pk - sitemap holds blog posts only",
         "daraz.pk (marketplace) - not used",
-        "no readable Pakistani baking/professional ingredient supplier could be identified without a working web search"
+        "no readable Pakistani baking/professional ingredient supplier could be identified without a working web search",
+        "hoosierhillfarm.com (US; real dairy \"Heavy Cream Powder\" 72 % butterfat found, but the shipping policy names no delivery countries - no cross-border evidence)",
+        "gourmet-versand.com (searched Sahnepulver, Rahmpulver, Milchpulver, Sahne: no dairy cream powder in the catalogue - only QimiQ whip desserts, coconut cream and horseradish cream)",
+        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no cream powder)",
+        "meilleurduchef.com (FR pastry supplier; delivery page /en/boutique/livraison.html lists no Asian market)",
+        "nzmp.com (Fonterra B2B ingredients brand): \"Cream Powder 55\" IS a real spray-dried dairy cream powder - the page prints \"Our cream powder is made from a blend of fresh dairy cream and skim milk, spray-dried to create a naturally rich 55%-fat powder\" (quote verified with check_quotes.py, found=true, ~/.cache/gellatti-evidence/quotes/gap-asia/nzmp_cream55.json). B2B-ONLY industrial ingredient, no retail pack and no purchase page - recorded as the B2B route under the owner rule, never to be shown as a retail offer."
       ],
       "candidates": [],
-      "notes": "Only coconut cream powder and ice cream dessert powders found (rejected types)."
+      "notes": "Only coconut cream powder and ice cream dessert powders found (rejected types). Re-checked 2026-09-17 under the new owner rule (a real spray-dried dairy cream powder outside 38-48 % fat is a valid B_SAME_TYPE_DIFFERENT_COMPOSITION candidate). Still BRAK: no dairy cream powder of any fat level was found on a page that binds to this market. The only genuine retail dairy cream powder found anywhere in this pass is Hoosier Hill Farm \"Heavy Cream Powder\" (hoosierhillfarm.com, \"made with 100% real sweet cream\", \"72% butterfat content\", 1 lb / 2 lb / 25 lb, US) - it is NOT recorded as a candidate because the seller's shipping policy (hoosierhillfarm.com/policies/shipping-policy) prints no destination countries and no international-delivery statement, so there is no verifiable purchase path into this market. Owner may want to ask them directly. Owner rule 3 (B2B stays B2B): the only genuine dairy cream powder route that exists in this region is industrial - Fonterra/NZMP \"Cream Powder 55\" (blend of fresh dairy cream and skim milk, spray-dried, 55 % fat, quote verified) and regional B2B dairy traders such as bestdairies.com (Klang, Malaysia) in 25 kg sacks. Tagged B2B, not presented as a retail offer and not recorded as a candidate because no purchase page binds it to this market. Retail shelves in the region carry non-dairy creamers, whole/full-cream milk powders and whipped-topping mixes, which the protocol rejects."
     },
     "FRU": {
       "result": "BRAK",
@@ -53,13 +59,14 @@
         "naheed.pk (supermarket) - HTTP 403 bot wall, inconclusive",
         "imtiaz.com.pk - sitemap holds blog posts only",
         "daraz.pk (marketplace) - not used",
-        "no readable Pakistani baking/professional ingredient supplier could be identified without a working web search"
+        "no readable Pakistani baking/professional ingredient supplier could be identified without a working web search",
+        "nifdo.com (searched the imported-supplement catalogue; no crystalline fructose)"
       ],
       "candidates": [],
-      "notes": "Possible lead for re-check by a browser session: 'Fruitaline Fruit Sugar 200 gm' on alfatah.pk (seen only in a search-results payload; product page bot-walled, so it is not classified - 'fruit sugar' names can be sucrose blends)."
+      "notes": "Possible lead for re-check by a browser session: 'Fruitaline Fruit Sugar 200 gm' on alfatah.pk (seen only in a search-results payload; product page bot-walled, so it is not classified - 'fruit sugar' names can be sucrose blends). BRAK stands. naheed.pk returns HTTP 403, and no fructose was found in the reachable Pakistani supplement catalogues. Pakistan is not in the GOURMET VERSAND delivery list."
     },
     "INU": {
-      "result": "BRAK",
+      "result": "LEAD_ONLY",
       "local_terms": [
         "inulin",
         "انولن (ur)"
@@ -67,7 +74,9 @@
       "queries": [
         "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on metro-online.pk, dvago.pk, dwatson.pk, imtiaz.com.pk, naheed.pk, alfatah.pk, springs.com.pk",
         "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on alfatah.pk and springs.com.pk",
-        "Urdu terms listed for owner copy; retailer URLs/search are English"
+        "Urdu terms listed for owner copy; retailer URLs/search are English",
+        "inulin powder buy Pakistan online store chicory fiber",
+        "Inulin (kiki-health.com country selector + shipping policy)"
       ],
       "sources_tried": [
         "metro-online.pk (cash & carry/grocer) - 25.6k product URLs scanned: only Rafhan vanilla ice cream powder (dessert mix, rejected)",
@@ -78,10 +87,92 @@
         "naheed.pk (supermarket) - HTTP 403 bot wall, inconclusive",
         "imtiaz.com.pk - sitemap holds blog posts only",
         "daraz.pk (marketplace) - not used",
-        "no readable Pakistani baking/professional ingredient supplier could be identified without a working web search"
+        "no readable Pakistani baking/professional ingredient supplier could be identified without a working web search",
+        "nifdo.com (Pakistani importer of US supplements; /collections/inulin-supplements lists NOW Organic Inulin Powder 8 oz, Nutricost Organic Inulin 1 lb, Carlyle, BulkSupplements, Herbamama etc. - products.json returns HTTP 403, collection HTML readable)",
+        "kiki-health.com (UK brand shop; organic agave inulin 250 g, GTIN 5060018515847, schema.org InStock; its Shopify country/region selector names this country but its shipping policy names none - LEAD only)"
       ],
-      "candidates": [],
-      "notes": "No inulin powder found at readable Pakistani retailers."
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "NOW Foods",
+          "product_name": "Now - Organic Inulin Powder 8 Oz in Pakistan",
+          "pack": "8 oz (227 g)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://nifdo.com/products/now-organic-inulin-powder-8-oz-in-pakistan",
+          "source_type": "RETAILER",
+          "seller": "NIFDO Pharma (Pakistani online importer/retailer of imported supplements)",
+          "page_market": null,
+          "market_by": "CURRENCY_ONLY",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "generic .com; verify_ean_market.py returned market_by CURRENCY_ONLY (PKR) and market_binding_confirmed=false. Page statement naming the country, verified with check_quotes.py (found=true, 2026-09-17): \"Now - Organic Inulin Powder 8 Oz for sale in Pakistan\"; quote JSON ~/.cache/gellatti-evidence/quotes/gap-asia/nifdo_pk_page.json. Currency never binds (D-31), so this stays a LEAD.",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "schema.org InStock (\"availability\": \"https://schema.org/InStock\") in the page's Product JSON-LD, price PKR 8000",
+            "source": "https://nifdo.com/products/now-organic-inulin-powder-8-oz-in-pakistan"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "reseller page prints no ingredient list and no nutrition panel"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Right type (NOW Foods Organic Inulin Pure Powder, the same product confirmed locally in SG and BD), but this reseller page prints no composition and no GTIN.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1ac72e5ed1747185.json",
+          "notes": "NIFDO describes itself as an importer of \"Amazon imported health products\" with free home delivery in Pakistan; the JSON-LD brand field is the shop (\"Nifdo Pharma\"), not NOW Foods, and the sku is a Shopify gid, so exact identity is not proven. The same collection also lists Nutricost Organic Inulin Powder 1 lb and \"Inulin Powder Organic Chicory Root (FOS) ... 8oz\". A GTIN-bearing NOW Foods page (e.g. the NOW Foods brand site) plus identity_match.py would be needed to lift this above LEAD.",
+          "checked_at_utc": "2026-09-17T18:30:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "found_by": "gap-asia"
+        },
+        {
+          "rank": 2,
+          "brand": "KIKI Health",
+          "product_name": "Inulin Powder, Organic - 250g",
+          "pack": "250 g",
+          "gtin": "5060018515847",
+          "identifier_confirmed": true,
+          "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "KIKI Health (UK brand web shop)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "no local binding (UK brand shop on a generic .com); cross-border candidate only - see ships_to_evidence",
+          "cross_border": true,
+          "ships_to_evidence": "LEAD-grade only. The shop's Shopify country/region selector on the product page carries the exact option \"Pakistan (PKR ₨)\" (check_quotes.py found=true, ratio 1.0, 2026-09-17; ~/.cache/gellatti-evidence/quotes/gap-asia/kiki_sel_PK.json), but that is the /localization (market + currency) selector, NOT a shipping-cost country selector. The shipping policy names no country: \"For EU and International orders, postage costs vary according to your country.\" (check_quotes.py found=true; ~/.cache/gellatti-evidence/quotes/gap-asia/kiki_policy.json), and it also warns \"Some countries may require bespoke postage, please contact the KIKI team for shipping costs and further information if unable to select a delivery option at the checkout.\" Under the owner rule of 2026-09-17 a generic international-delivery statement is not confirmation, so this stays a LEAD until the owner sees a delivery option for this country at checkout.",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:45:00Z",
+            "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") and Shopify product data variants[0].\"available\": true",
+            "source": "https://kiki-health.com/products/inulin-powder-organic-250g"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": 93.0,
+            "fructose_pct": null,
+            "ingredients": "100% organic inulin from Blue Agave (Agave Tequilana Weber Blue)",
+            "from": "product page \"Ingredients\" block plus the printed claims \"93% soluble plant-based fibre\", \"Made from 100% Blue Agave\", \"5.4g of fibre per serving\", \"Completely pure, with no added sugars or sweeteners\""
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "pure organic agave inulin, 93 % soluble fibre (reference: fibre 89)",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/51db948e9a232bd2.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "notes": "gtin13 5060018515847 confirmed as data on this page (verify_ean_market.py: clean_hits 2, echo_hits 0, identity_basis GTIN_ON_THIS_PAGE). Added because the local NIFDO listing proves neither identity nor market binding and Pakistan is not in the GOURMET VERSAND delivery selector. NOTE for the owner: the same product/shop is recorded as VERIFIED_CROSS_BORDER in DZ.json by another agent on the strength of the same country selector; this row is deliberately the more cautious reading of the 2026-09-17 cross-border rule, and the two files should be reconciled.",
+          "checked_at_utc": "2026-09-17T18:45:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "found_by": "gap-asia"
+        }
+      ],
+      "notes": "No inulin powder found at readable Pakistani retailers. New LEAD 2026-09-17: nifdo.com (Pakistani importer of US supplements) lists NOW Foods Organic Inulin Powder 8 oz, schema.org InStock, PKR 8000, with the page phrase \"Now - Organic Inulin Powder 8 Oz for sale in Pakistan\" (quote verified). It stays a LEAD because the host is a generic .com whose only market signal is currency (never binds, D-31) and because the page carries no GTIN and names itself as the brand. Pakistan is NOT in the GOURMET VERSAND delivery list, so no cross-border fallback either. Cross-border fallback added 2026-09-17: KIKI Health organic agave inulin 250 g (in stock, GTIN on the page). It is a LEAD, not VERIFIED_CROSS_BORDER, because the shop only shows a Shopify country/region (currency) selector and a generic international-delivery policy."
     },
     "YOL": {
       "result": "BRAK",
@@ -92,7 +183,9 @@
       "queries": [
         "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on metro-online.pk, dvago.pk, dwatson.pk, imtiaz.com.pk, naheed.pk, alfatah.pk, springs.com.pk",
         "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on alfatah.pk and springs.com.pk",
-        "Urdu terms listed for owner copy; retailer URLs/search are English"
+        "Urdu terms listed for owner copy; retailer URLs/search are English",
+        "jaune d'oeuf en poudre (cuisineaddict.com, cerf-dellier.com)",
+        "Eigelbpulver (pati-versand.de)"
       ],
       "sources_tried": [
         "metro-online.pk (cash & carry/grocer) - 25.6k product URLs scanned: only Rafhan vanilla ice cream powder (dessert mix, rejected)",
@@ -103,10 +196,22 @@
         "naheed.pk (supermarket) - HTTP 403 bot wall, inconclusive",
         "imtiaz.com.pk - sitemap holds blog posts only",
         "daraz.pk (marketplace) - not used",
-        "no readable Pakistani baking/professional ingredient supplier could be identified without a working web search"
+        "no readable Pakistani baking/professional ingredient supplier could be identified without a working web search",
+        "gourmet-versand.com (searched Eigelbpulver, Eigelb, Eipulver, Vollei, Trockenei: no egg powder in the catalogue - only egg-yellow food colourings)",
+        "taste-market.de (German shop with a real \"Eigelbpulver\" 100 g, ingredients \"Hühner-Eigelb\", GTIN 4262421423127 - kept out because the served HTML exposes no shipping/delivery-country page, so no cross-border evidence)",
+        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no egg yolk powder)",
+        "pati-versand.de (German baking retailer with a real \"Eigelbpulver 100g\", brand Cake-Masters Basics, ingredients \"HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET\", schema.org InStock / \"Auf Lager\") - NOT usable: its \"Rest der Welt\" zone is an explicit list of 20 European countries only (\"Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, ... Ungarn\", quote verified with check_quotes.py, ~/.cache/gellatti-evidence/quotes/gap-asia/pati_eu_only.json), no Asian market",
+        "cuisineaddict.com (FR; search \"jaune d'oeuf en poudre\" returns only egg-yellow food COLOURING E102/E129)",
+        "cerf-dellier.com (FR pastry supplier; search returns \"Désolé, nous ne trouvons aucun produit\")",
+        "bienmanger.com (FR; search path HTTP 404)",
+        "modernistpantry.com (US; /products.json and /search both HTTP 404 - no readable catalogue)",
+        "modernistpantry.com (US; \"Egg Yolk Powder\", page text \"Egg yolk powder is made of spray dried pasteurized egg yolks ... Made in the USA and contains no additives of any kind\", page shows \"in stock\") - NOT usable as cross-border evidence: the international-shipping page names no country, only \"We are currently only offering FedEx shipping for international customers. To see whether we can ship to your country just add the products to cart and go to the checkout page.\" (adding to carts is out of scope by protocol rule 8)"
       ],
       "candidates": [],
-      "notes": "No dried egg yolk powder found."
+      "notes": "No dried egg yolk powder found. Cross-border route for dried egg yolk was searched and closed 2026-09-17: the one European retailer with a verified 100 % spray-dried chicken egg yolk powder in a 100 g retail pack (pati-versand.de, \"Eigelbpulver 100g\") ships only to a named list of 20 European countries, and gourmet-versand.com - the one shop whose delivery-country selector does name Asian markets - has no egg powder at all. So there is currently no verifiable purchase path for dried egg yolk into this market."
     }
-  }
+  },
+  "gap_followup_agent": "gap-asia",
+  "gap_followup_at_utc": "2026-09-17T18:30:00Z",
+  "gap_followup_egress_cc": "ES"
 }

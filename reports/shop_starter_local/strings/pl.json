@@ -11,9 +11,18 @@
   "howto_title": "Jak korzystać",
   "howto_lede": "Dla każdego składnika Starter Packu podajemy produkt, który kupisz w tym kraju.",
   "steps": [
-    {"b": "Wybierz jeden produkt", "p": "Pierwszy to nasz wybór, drugi to zamiennik, gdy pierwszego zabraknie."},
-    {"b": "Sprawdź etykietę", "p": "Skład na opakowaniu musi odpowiadać opisowi przy składniku. Tam, gdzie produkt ma inny skład, piszemy to wprost."},
-    {"b": "Ilości bierzesz z aplikacji", "p": "Ten PDF wskazuje produkty, nie gramatury. Receptury i ilości liczy aplikacja Gellatti."}
+    {
+      "b": "Wybierz jeden produkt",
+      "p": "Pierwszy to nasz wybór, drugi to zamiennik, gdy pierwszego zabraknie."
+    },
+    {
+      "b": "Sprawdź etykietę",
+      "p": "Skład na opakowaniu musi odpowiadać opisowi przy składniku. Tam, gdzie produkt ma inny skład, piszemy to wprost."
+    },
+    {
+      "b": "Ilości bierzesz z aplikacji",
+      "p": "Ten PDF wskazuje produkty, nie gramatury. Receptury i ilości liczy aplikacja Gellatti."
+    }
   ],
   "legend_title": "Oznaczenia",
   "tag_from_abroad": "Z zagranicy",
@@ -21,11 +30,13 @@
   "tag_other_composition": "Inny skład",
   "tag_alternative": "Lokalna alternatywa",
   "tag_unconfirmed": "Niepotwierdzone",
+  "tag_abroad_unconfirmed": "Sklep za granicą",
   "legend": {
-    "from_abroad": "sklep za granicą, który wysyła do tego kraju",
-    "b2b": "sprzedaż dla firm lub w dużych opakowaniach",
+    "from_abroad": "sklep za granicą, który wymienia ten kraj na swojej liście dostaw",
+    "b2b": "sprzedaż dla firm lub w dużych opakowaniach — nie zwykła oferta detaliczna",
     "other_composition": "ten sam rodzaj produktu, ale inny skład (podany obok)",
-    "alternative": "zamiennik innego produktu Gellatti"
+    "alternative": "zamiennik innego produktu Gellatti",
+    "abroad_unconfirmed": "sklep za granicą; dostawa do tego kraju nie jest potwierdzona"
   },
   "starter_amount": "W Starter Packu: {g} g",
   "option": "Wybór {n}",
@@ -33,21 +44,52 @@
   "where": "Gdzie",
   "fat": "tłuszcz",
   "items": {
-    "DEX": {"name": "Dekstroza", "ref": "Dekstroza (glukoza) w proszku, jednowodna."},
-    "SMP": {"name": "Mleko odtłuszczone w proszku", "ref": "Mleko w proszku o zawartości tłuszczu około 1%."},
-    "CRP": {"name": "Śmietanka w proszku", "ref": "Suszona śmietanka, około 42% tłuszczu."},
-    "FRU": {"name": "Fruktoza", "ref": "Krystaliczna fruktoza, czysta."},
-    "INU": {"name": "Inulina", "ref": "Inulina w proszku, np. z cykorii."},
-    "YOL": {"name": "Suszone żółtko jaja", "ref": "Żółtko jaja kurzego w proszku, pasteryzowane."},
-    "STB": {"name": "Stabilizator", "ref": "Gellatti Stabilizer to mieszanka gumy tara, mączki chleba świętojańskiego i gumy guar."}
+    "DEX": {
+      "name": "Dekstroza",
+      "ref": "Dekstroza (glukoza) w proszku, jednowodna."
+    },
+    "SMP": {
+      "name": "Mleko odtłuszczone w proszku",
+      "ref": "Mleko w proszku o zawartości tłuszczu około 1%."
+    },
+    "CRP": {
+      "name": "Śmietanka w proszku",
+      "ref": "Suszona śmietanka, około 42% tłuszczu."
+    },
+    "FRU": {
+      "name": "Fruktoza",
+      "ref": "Krystaliczna fruktoza, czysta."
+    },
+    "INU": {
+      "name": "Inulina",
+      "ref": "Inulina w proszku, np. z cykorii."
+    },
+    "YOL": {
+      "name": "Suszone żółtko jaja",
+      "ref": "Żółtko jaja kurzego w proszku, pasteryzowane."
+    },
+    "STB": {
+      "name": "Stabilizator",
+      "ref": "Gellatti Stabilizer to mieszanka gumy tara, mączki chleba świętojańskiego i gumy guar."
+    }
   },
   "stabilizer_note": "Lokalna alternatywa dla mieszanki Gellatti, nie ta sama mieszanka. Wymieszaj z suchymi składnikami i podgrzej bazę do 75–80 °C.",
   "missing": "Brak zatwierdzonego produktu w tym kraju.",
+  "out_of_stock": "Sklep pokazał brak towaru {date}.",
   "notes_title": "Warto wiedzieć",
   "notes": [
-    {"h": "Dostępność", "p": "Produkty sprawdziliśmy na stronach producentów i sklepów we wrześniu 2026. Dostępność, ceny i dostawa mogą się zmienić i nie są gwarantowane."},
-    {"h": "Etykieta ma pierwszeństwo", "p": "Przed zakupem sprawdź skład i alergeny na opakowaniu. Śmietanka w proszku i mleko zawierają mleko, żółtko zawiera jaja."},
-    {"h": "Stabilizator", "p": "Gellatti Stabilizer zastępuje w tym kraju lokalna guma roślinna. Działa podobnie, ale nie jest tą samą mieszanką."}
+    {
+      "h": "Dostępność",
+      "p": "Produkty z researchu sprawdziliśmy na stronach sklepów i producentów 17 września 2026. Dekstroza, mleko odtłuszczone i stabilizator pochodzą z tabeli krajowej Gellatti z 12 września 2026 i nie były sprawdzane ponownie. Dostępność, ceny i dostawa mogą się zmienić i nie są gwarantowane."
+    },
+    {
+      "h": "Etykieta ma pierwszeństwo",
+      "p": "Przed zakupem sprawdź skład i alergeny na opakowaniu. Śmietanka w proszku i mleko zawierają mleko, żółtko zawiera jaja."
+    },
+    {
+      "h": "Stabilizator",
+      "p": "Gellatti Stabilizer zastępuje w tym kraju lokalna guma roślinna. Działa podobnie, ale nie jest tą samą mieszanką."
+    }
   ],
   "fine": "Wskazanie produktu nie oznacza, że jest on już dostępny w aplikacji Gellatti. Gellatti nie sprzedaje produktów innych marek.",
   "back_h": "Lody zaczynają się od dobrej bazy.",

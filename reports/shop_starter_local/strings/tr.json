@@ -21,11 +21,13 @@
   "tag_other_composition": "Farklı bileşim",
   "tag_alternative": "Yerel alternatif",
   "tag_unconfirmed": "Doğrulanmadı",
+  "tag_abroad_unconfirmed": "Yurt dışı mağaza",
   "legend": {
-    "from_abroad": "bu ülkeye gönderim yapan yurt dışındaki bir mağaza",
-    "b2b": "işletmelere veya büyük ambalajlarda satılır",
+    "from_abroad": "kendi teslimat listesinde bu ülkeyi belirten, yurt dışındaki bir mağaza",
+    "b2b": "işletmelere veya büyük ambalajlarda satılır — olağan bir perakende teklifi değil",
     "other_composition": "aynı türde ama bileşimi farklı ürün (yanında belirtilir)",
-    "alternative": "başka bir Gellatti ürününün yerine geçen ürün"
+    "alternative": "başka bir Gellatti ürününün yerine geçen ürün",
+    "abroad_unconfirmed": "yurt dışındaki bir mağaza; bu ülkeye teslimat doğrulanmadı"
   },
   "starter_amount": "Starter Pack’te: {g} g",
   "option": "Seçenek {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Gellatti karışımının yerel alternatifidir, aynı karışım değildir. Kuru malzemelerle karıştırın ve bazı 75–80 °C sıcaklığa kadar ısıtın.",
   "missing": "Bu ülkede henüz onaylı bir ürün yok.",
+  "out_of_stock": "Mağaza {date} tarihinde ürünü stokta yok olarak gösterdi.",
   "notes_title": "Bilmekte fayda var",
   "notes": [
-    {"h": "Bulunabilirlik", "p": "Bu ürünleri Eylül 2026’da üretici ve mağaza web sitelerinde kontrol ettik. Bulunabilirlik, fiyatlar ve teslimat değişebilir ve garanti edilmez."},
+    {"h": "Bulunabilirlik", "p": "Araştırılan ürünleri 17 Eylül 2026’da mağaza ve üretici web sitelerinde kontrol ettik. Dekstroz, yağsız süt tozu ve stabilizör, Gellatti’nin 12 Eylül 2026 tarihli ülke tablosundan geliyor ve yeniden kontrol edilmedi. Bulunabilirlik, fiyatlar ve teslimat değişebilir ve garanti edilmez."},
     {"h": "Önce etiket", "p": "Satın almadan önce ambalajdaki içerik ve alerjen bilgilerini kontrol edin. Krema tozu ve süt tozu süt, yumurta sarısı yumurta içerir."},
     {"h": "Stabilizör", "p": "Bu ülkede Gellatti Stabilizer yerine yerel bir bitkisel gam kullanılır. Benzer şekilde işlev görür ancak aynı karışım değildir."}
   ],

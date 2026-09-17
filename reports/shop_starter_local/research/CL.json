@@ -6,7 +6,7 @@
   "researched_at_utc": "2026-09-17T15:53:00Z",
   "items": {
     "CRP": {
-      "result": "BRAK",
+      "result": "LEAD_ONLY",
       "local_terms": [
         "crema de leche en polvo",
         "crema en polvo",
@@ -27,7 +27,10 @@
         "site search cherrychile.cl: crema en polvo",
         "site search listado.mercadolibre.cl: crema de leche en polvo",
         "site search bulksupplements.com: cream powder",
-        "site search cl.iherb.com: cream powder"
+        "site search cl.iherb.com: cream powder",
+        "site catalog gourmet-versand.com: Sahnepulver / Rahmpulver / Milchpulver (0 dairy powders)",
+        "site search pati-versand.de: Sahnepulver (Cake-Masters Sahnepulver 100g, SAHNE 42% Fett - EU-only delivery)",
+        "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose"
       ],
       "sources_tried": [
         "jumbo.cl (supermarket; on-site search 'crema en polvo' -> 26 results, only bouillon/sauce powders; no dairy cream powder)",
@@ -42,10 +45,68 @@
         "solgi.com / alsec.com.co / ingredients-solutions.com / sparlapalma.com / alibaba (surfaced by WebSearch; foreign B2B, other-market or marketplace pages, no Chilean seller - not pursued)",
         "bulksupplements.com (US retailer with a Chile shipping page in v23; on-site search 'cream powder' -> no dairy cream powder)",
         "cl.iherb.com (on-site search -> HTTP 403 bot wall, inconclusive)",
-        "amazon.com (marketplace, surfaced by WebSearch - not evidence)"
+        "amazon.com (marketplace, surfaced by WebSearch - not evidence)",
+        "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
+        "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
+        "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)"
       ],
-      "candidates": [],
-      "notes": "No spray-dried dairy cream powder found at any Chilean direct retailer or manufacturer. Only coffee creamers, liquid creams, whole milk powder and glaze/icing mixes surfaced (all rejected types). Mercado Libre (403), Lider (CAPTCHA) and iHerb CL (403) were bot walls, recorded as inconclusive. Cross-border check: BulkSupplements has no cream powder. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Ingredients Bar",
+          "product_name": "Cream Powder",
+          "pack": "200 g (same listing also offers 500 g, 1.5 kg and 4 kg; SKU 0370)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Ingredients Bar (United Kingdom)",
+          "page_market": "GB",
+          "market_by": "OTHER_MARKET:GB",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "NONE for CL (UK shop, GBP only - currency never binds). The seller states international delivery but names no country, so this is a LEAD purchase path, not VERIFIED_CROSS_BORDER.",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "quotes": [
+              {
+                "url": "https://ingredientsbar.com/payment-delivery/",
+                "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
+                "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json"
+              }
+            ],
+            "found": true,
+            "country_named": false,
+            "note": "Generic international-delivery statement only; CL is not named, so owner rule 2 (2026-09-17) keeps this a LEAD."
+          },
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:43:28Z",
+            "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+            "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+          },
+          "composition": {
+            "fat_g": 75.0,
+            "protein_g": 8.5,
+            "fibre_g": 0.0,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition Facts Per 100g: Energy 3094kJ/750kcal, Fat 75 g of which saturated fatty acid 51 g, Carbohydrates 12 g of which sugars 12 g, Protein 8.5 g, Dietary Fibre 0 g, Salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
+            "from": "product page, 'Ingredients & Nutrition' tab (quote file ~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json)",
+            "sugars_g": 12.0
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "Real spray-dried dairy cream powder ('made from dehydrated cream, free from additives'), printed fat 75 g/100 g - outside the 38-48 % A band (reference 42 %). Ingredients are cream + milk protein + lactose, i.e. the permitted CRP ingredient family. Recorded under owner rule 3 (2026-09-17): a dairy cream powder outside 38-48 % fat is a valid candidate for owner decision.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f5099d995fb08f00.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json",
+            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T18:43:28Z"
+        }
+      ],
+      "notes": "No spray-dried dairy cream powder found at any Chilean direct retailer or manufacturer. Only coffee creamers, liquid creams, whole milk powder and glaze/icing mixes surfaced (all rejected types). Mercado Libre (403), Lider (CAPTCHA) and iHerb CL (403) were bot walls, recorded as inconclusive. Cross-border check: BulkSupplements has no cream powder. WebSearch budget exhausted during research; later discovery via on-site shop searches only. | 2026-09-17: BRAK lifted to LEAD_ONLY under owner rule 3. The Chilean BRAK stands (no dairy cream powder at any Chilean direct retailer or manufacturer). The new candidate is a foreign purchase path: Ingredients Bar (UK) Cream Powder - a real spray-dried dairy cream powder with printed fat 75 g/100 g and the full ingredient list, retail 200 g pack, IN_STOCK - kept a LEAD because the seller's delivery page only states that international delivery is charged at checkout and never names Chile (owner rule 2). Note: BulkSupplements, which does name Chile, sells no cream powder."
     },
     "FRU": {
       "result": "CONFIRMED_LOCAL",
@@ -268,7 +329,14 @@
         "jumbo.cl (supermarket; on-site search 'yema en polvo' -> only Ecoterra egg-white powder)",
         "chilefoodreposteria.cl / cherrychile.cl (pastry suppliers; on-site search 'yema' -> no results)",
         "bulksupplements.com (cross-border check; on-site search 'egg yolk' -> no egg yolk powder)",
-        "listado.mercadolibre.cl / amazon.com (marketplaces surfaced by WebSearch - not evidence)"
+        "listado.mercadolibre.cl / amazon.com (marketplaces surfaced by WebSearch - not evidence)",
+        "gourmet-versand.com (DE; catalogue searched for Eipulver / Vollei / Trockenei / Eigelb - it sells no egg yolk powder, only egg-yellow food colours)",
+        "msk-ingredients.com (UK modernist supplier; full product sitemap, 6597 URLs: no egg yolk powder)",
+        "souschef.co.uk (UK; all 7 product sitemaps, 6274 URLs: no egg yolk powder)",
+        "bulksupplements.com (US; ships to many of these markets but sells no egg yolk powder)",
+        "judeesfromscratch.com/policies/shipping-policy (maker of an 11 oz Egg Yolk Powder; shipping policy mentions only free US shipping - no international statement)",
+        "gosupps.com (US reseller advertising Judee's Egg Yolk Powder with 'Express International Delivery'; its shipping pages return HTTP 403 - blocked, inconclusive, not bypassed)",
+        "modernistpantry.com egg yolk powder (page states it is available to US customers only)"
       ],
       "candidates": [
         {
@@ -301,7 +369,13 @@
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8089c39635b866e6.json",
           "extra_evidence_files": [],
           "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:39:30Z"
+          "checked_at_utc": "2026-09-17T15:39:30Z",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:43:28Z",
+            "basis": "\"availability\":\"http://schema.org/InStock\" in the page's own product data",
+            "source": "https://newweb.alimentarichile.cl/producto/yema-en-polvo-cat/"
+          }
         },
         {
           "rank": 2,
@@ -333,10 +407,16 @@
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/bea3571fc8b8c371.json",
           "extra_evidence_files": [],
           "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:38:30Z"
+          "checked_at_utc": "2026-09-17T15:38:30Z",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:43:28Z",
+            "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data",
+            "source": "https://mmpp.cl/producto/yema-de-huevo-en-polvo-yd05/"
+          }
         }
       ],
-      "notes": "No Chilean listing of egg yolk powder prints an ingredient list, so both candidates are the right type but C (LEAD). Alimentari is a first-party own-brand .cl listing using a format selector (SKU N/D); MMPP is an unbranded repack. Ecoterra 125 g (at Tottus) could not be checked: Tottus returned a 403 bot wall and the product is no longer on ecoterra.cl. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+      "notes": "No Chilean listing of egg yolk powder prints an ingredient list, so both candidates are the right type but C (LEAD). Alimentari is a first-party own-brand .cl listing using a format selector (SKU N/D); MMPP is an unbranded repack. Ecoterra 125 g (at Tottus) could not be checked: Tottus returned a 403 bot wall and the product is no longer on ecoterra.cl. WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17: both Chilean candidates are IN_STOCK (schema.org InStock on their own pages) but still print no ingredient list, so both stay C/LEAD. No cross-border alternative qualified (see sources_tried: the wide-shipping ingredient shops sell no egg yolk powder; the US sellers that do are US-only or bot-walled)."
     }
   }
 }

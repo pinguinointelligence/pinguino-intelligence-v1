@@ -21,11 +21,13 @@
   "tag_other_composition": "Iné zloženie",
   "tag_alternative": "Miestna alternatíva",
   "tag_unconfirmed": "Nepotvrdené",
+  "tag_abroad_unconfirmed": "Zahraničný obchod",
   "legend": {
-    "from_abroad": "obchod v zahraničí, ktorý doručuje do tejto krajiny",
-    "b2b": "predaj firmám alebo vo veľkých baleniach",
+    "from_abroad": "obchod v zahraničí, ktorého vlastný zoznam doručovania uvádza túto krajinu",
+    "b2b": "predaj firmám alebo vo veľkých baleniach — nie bežná maloobchodná ponuka",
     "other_composition": "rovnaký druh produktu s iným zložením (uvedeným vedľa)",
-    "alternative": "náhrada za iný produkt Gellatti"
+    "alternative": "náhrada za iný produkt Gellatti",
+    "abroad_unconfirmed": "obchod v zahraničí; doručenie do tejto krajiny nie je potvrdené"
   },
   "starter_amount": "V Starter Packu: {g} g",
   "option": "Možnosť {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Miestna alternatíva k zmesi Gellatti, nie tá istá zmes. Zmiešajte ju so suchými surovinami a základ zohrejte na 75–80 °C.",
   "missing": "V tejto krajine zatiaľ nie je schválený produkt.",
+  "out_of_stock": "Obchod tento produkt {date} uvádzal ako vypredaný.",
   "notes_title": "Dobré vedieť",
   "notes": [
-    {"h": "Dostupnosť", "p": "Produkty sme overili na weboch výrobcov a obchodov v septembri 2026. Dostupnosť, ceny a doručenie sa môžu zmeniť a nie sú zaručené."},
+    {"h": "Dostupnosť", "p": "Vyhľadané produkty sme 17. septembra 2026 overili na weboch obchodov a výrobcov. Dextróza, sušené odtučnené mlieko a stabilizátor pochádzajú z tabuľky krajín Gellatti z 12. septembra 2026 a znova sa neoverovali. Dostupnosť, ceny a doručenie sa môžu zmeniť a nie sú zaručené."},
     {"h": "Etiketa má prednosť", "p": "Pred kúpou skontrolujte zloženie a alergény na obale. Smotana v prášku a sušené mlieko obsahujú mlieko, žĺtok obsahuje vajcia."},
     {"h": "Stabilizátor", "p": "V tejto krajine nahrádza Gellatti Stabilizer miestna rastlinná guma. Funguje podobne, ale nie je to tá istá zmes."}
   ],

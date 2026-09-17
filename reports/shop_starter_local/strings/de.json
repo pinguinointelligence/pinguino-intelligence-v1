@@ -21,11 +21,13 @@
   "tag_other_composition": "Andere Zusammensetzung",
   "tag_alternative": "Lokale Alternative",
   "tag_unconfirmed": "Unbestätigt",
+  "tag_abroad_unconfirmed": "Shop im Ausland",
   "legend": {
-    "from_abroad": "ein Shop im Ausland, der in dieses Land liefert",
-    "b2b": "Verkauf an Firmen oder in Großpackungen",
+    "from_abroad": "ein Shop im Ausland, dessen eigene Lieferliste dieses Land nennt",
+    "b2b": "Verkauf an Firmen oder in Großpackungen — kein gewöhnliches Einzelhandelsangebot",
     "other_composition": "gleiche Produktart mit anderer Zusammensetzung (daneben angegeben)",
-    "alternative": "ein Ersatz für ein anderes Gellatti-Produkt"
+    "alternative": "ein Ersatz für ein anderes Gellatti-Produkt",
+    "abroad_unconfirmed": "ein Shop im Ausland; die Lieferung in dieses Land ist nicht bestätigt"
   },
   "starter_amount": "Im Starter Pack: {g} g",
   "option": "Option {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Eine lokale Alternative zur Gellatti-Mischung, nicht dieselbe Mischung. Vermische sie mit den trockenen Zutaten und erhitze die Basis auf 75–80 °C.",
   "missing": "In diesem Land noch kein freigegebenes Produkt.",
+  "out_of_stock": "Der Shop zeigte das Produkt am {date} als nicht vorrätig.",
   "notes_title": "Gut zu wissen",
   "notes": [
-    {"h": "Verfügbarkeit", "p": "Wir haben diese Produkte im September 2026 auf Websites von Herstellern und Shops geprüft. Verfügbarkeit, Preise und Lieferung können sich ändern und sind nicht garantiert."},
+    {"h": "Verfügbarkeit", "p": "Wir haben die recherchierten Produkte am 17. September 2026 auf Websites von Shops und Herstellern geprüft. Dextrose, Magermilchpulver und der Stabilisator stammen aus der Gellatti-Ländertabelle vom 12. September 2026 und wurden nicht erneut geprüft. Verfügbarkeit, Preise und Lieferung können sich ändern und sind nicht garantiert."},
     {"h": "Das Etikett hat Vorrang", "p": "Prüfe vor dem Kauf Zutaten und Allergene auf der Packung. Sahnepulver und Milchpulver enthalten Milch, Eigelb enthält Ei."},
     {"h": "Stabilisator", "p": "In diesem Land ersetzt ein lokales pflanzliches Verdickungsmittel den Gellatti Stabilizer. Es wirkt ähnlich, ist aber nicht dieselbe Mischung."}
   ],

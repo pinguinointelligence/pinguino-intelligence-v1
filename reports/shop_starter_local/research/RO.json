@@ -1,298 +1,383 @@
 {
- "iso2": "RO",
- "country": "Romania",
- "agent": "research-eu-central-east",
- "egress_cc": "ES",
- "researched_at_utc": "2026-09-17T16:22:12Z",
- "items": {
-  "CRP": {
-   "result": "BRAK",
-   "local_terms": [
-    "smântână praf",
-    "smântână pudră",
-    "frișcă praf"
-   ],
-   "queries": [
-    "shopmania.ro: smantana praf",
-    "shopmania.ro: smantana pudra",
-    "shopmania.ro: frisca praf lactate",
-    "sezamo.ro search API: smantana praf / lapte praf",
-    "sitemap grep (smantana-praf | smantana-pudra | frisca-praf | lapte-praf) carrefour.ro, freshful.ro, auchan.ro, deliciudeciocolata.ro, fares.ro, getbio.ro"
-   ],
-   "sources_tried": [
-    "carrefour.ro, freshful.ro, auchan.ro, sezamo.ro (grocers): liquid creams and whole milk powder 26 % only (Dr. Oetker, Raraul, My Friend — rejected)",
-    "deliciudeciocolata.ro (professional pastry supplier, 10 642 URLs): liquid UHT cream and plant creams only",
-    "fares.ro (herbal manufacturer), getbio.ro (organic shop; product pages return a 67-byte response — inconclusive): none",
-    "shopmania.ro (price comparison): no results; suggestions were plant-based whipping creams (Puratos) and a PreGel soft-serve premix — rejected",
-    "compari.ro, vegis.ro, drmax.ro, helpnet.ro: Cloudflare/403 — inconclusive",
-    "pati-versand.de has a matching cream powder but its delivery list does not name Rumänien"
-   ],
-   "candidates": [],
-   "notes": "BRAK. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, retailer search APIs and price-comparison search pages instead."
-  },
-  "FRU": {
-   "result": "VERIFIED_CROSS_BORDER",
-   "local_terms": [
-    "fructoză",
-    "fructoză cristalină",
-    "zahăr din fructe"
-   ],
-   "queries": [
-    "shopmania.ro: fructoza",
-    "sezamo.ro search API: fructoza",
-    "sitemap grep (fructoz) carrefour.ro, freshful.ro, auchan.ro, deliciudeciocolata.ro, fares.ro, getbio.ro",
-    "manufacturer site diamant.ro (sitemap + home page)"
-   ],
-   "sources_tried": [
-    "carrefour.ro (hypermarket) — Diamant 500 g — kept (LEAD)",
-    "freshful.ro (online grocer) — Diamant 500 g — kept (LEAD)",
-    "shopmania.ro leads not reachable: Naturmind 1 kg at jollymag.ro (HTTP 403) and paradisulverde.com (HTTP 403, generic .com), Kotys 500 g at paradisulverde.com (403), Dr. GroB bio 500 g at getbio.ro (67-byte response — inconclusive)",
-    "diamant.ro (Pfeifer & Langen brand site): recipes only, no product page or GTIN",
-    "sezamo.ro, auchan.ro: none"
-   ],
-   "candidates": [
-    {
-     "rank": 1,
-     "brand": "Sosa Ingredients",
-     "product_name": "Sosa fructose powder, 1 kg, PE dose",
-     "pack": "1 kg",
-     "gtin": "8414933026259",
-     "identifier_confirmed": true,
-     "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
-     "source_type": "RETAILER",
-     "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
-     "page_market": "",
-     "market_by": "GENERIC_TLD",
-     "identity_basis": "GTIN_ON_LOCAL_PAGE",
-     "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists Romania (check_quotes.py found=true)",
-     "cross_border": true,
-     "ships_to_evidence": {
-      "tool": "check_quotes.py",
-      "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
-      "quotes": [
-       "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
-       "Qatar Romania San Marino"
+  "iso2": "RO",
+  "country": "Romania",
+  "agent": "research-eu-central-east",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:22:12Z",
+  "items": {
+    "CRP": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "smântână praf",
+        "smântână pudră",
+        "frișcă praf"
       ],
-      "found": [
-       true,
-       true
+      "queries": [
+        "shopmania.ro: smantana praf",
+        "shopmania.ro: smantana pudra",
+        "shopmania.ro: frisca praf lactate",
+        "sezamo.ro search API: smantana praf / lapte praf",
+        "sitemap grep (smantana-praf | smantana-pudra | frisca-praf | lapte-praf) carrefour.ro, freshful.ro, auchan.ro, deliciudeciocolata.ro, fares.ro, getbio.ro",
+        "\"Sahnepulver\" 42% Fett kaufen Online Shop 100g Süßrahm (WebSearch)",
+        "\"Sahnepulver\" Onlineshop Lieferung Griechenland Rumänien Bulgarien Versandkosten Land (WebSearch)",
+        "\"panna in polvere\" 42% grassi vendita online spedizione (WebSearch)",
+        "\"slagroompoeder\" kopen 100 gram webshop verzending Europa (WebSearch)",
+        "sosa.cat site search 'cream powder'",
+        "gourmet-versand.com site search 'Sahnepulver' / 'Sahne Pulver' (0 dairy cream powder)",
+        "specialingredients.co.uk + souschef.co.uk product sitemaps grepped for cream/dairy powder (0)",
+        "shop.cake-masters.com site search + /versand-zahlung country table"
       ],
-      "type": "shipping-cost country selector listing the market",
-      "check_quotes_result_files": [
-       "~/.cache/gellatti-evidence/quotes/coordinator/gv-header.json",
-       "~/.cache/gellatti-evidence/quotes/coordinator/gv-RO.json"
-      ]
-     },
-     "composition": {
-      "fat_g": null,
-      "protein_g": null,
-      "fibre_g": null,
-      "fructose_pct": null,
-      "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
-      "from": "retailer page ('EAN Code 8414933026259' printed)",
-      "sugars_g": 100.0
-     },
-     "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
-     "evidence_class": "VERIFIED_CROSS_BORDER",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/41a997aaee8f811e.json",
-     "checked_at_utc": "2026-09-17T17:16:28Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "added_by": "coordinator (reuse of the MT/GR/CY/TR cross-border listing; country named in the seller delivery selector)"
+      "sources_tried": [
+        "carrefour.ro, freshful.ro, auchan.ro, sezamo.ro (grocers): liquid creams and whole milk powder 26 % only (Dr. Oetker, Raraul, My Friend — rejected)",
+        "deliciudeciocolata.ro (professional pastry supplier, 10 642 URLs): liquid UHT cream and plant creams only",
+        "fares.ro (herbal manufacturer), getbio.ro (organic shop; product pages return a 67-byte response — inconclusive): none",
+        "shopmania.ro (price comparison): no results; suggestions were plant-based whipping creams (Puratos) and a PreGel soft-serve premix — rejected",
+        "compari.ro, vegis.ro, drmax.ro, helpnet.ro: Cloudflare/403 — inconclusive",
+        "pati-versand.de has a matching cream powder but its delivery list does not name Rumänien",
+        "shop.cake-masters.com (Cake-Masters trade shop, Herzlake DE): CM Basics Sahnepulver 100g, SAHNE 42% Fett sprühgetrocknet, Auf Lager; its own foreign shipping-cost table names the market — VERIFIED_CROSS_BORDER but trade-only (registered commercial resellers)",
+        "torten-boutique.de and tolletorten.com (same Herzlake group, consumer shops): same 21-country delivery list as pati-versand/backfun/meincupcake — market NOT named; 'Rest der Welt' flat rate names no country",
+        "taste-market.de: full product sitemap (2 425 URLs) scanned — Eigelbpulver / Eiklarpulver / Volleipulver / Vollmilchpulver only, NO Sahnepulver; its EU zones 1-3 name no non-EU market",
+        "gourmet-versand.com: no Sahnepulver / dairy cream powder in the catalogue (confirmed again by site search)",
+        "sosa.cat: only 'TASTE COLOUR FREEZE-DRIED FRESH CREAM POWDER' (2 kg, Taste-Colour flavour/colour line, ingredients nata + leche desnatada en polvo + E450, no fat % printed) — no distributor found that sells it in a retail pack to this market",
+        "specialingredients.co.uk (1 130 products) and souschef.co.uk (6 274 products): product sitemaps hold no dairy cream powder",
+        "cerfdellier.com, cuisineaddict.com, deco-relief.fr, bienmanger.com, koro-shop.de: no 'crème en poudre' / Sahnepulver in search",
+        "ingredientsbar.com (UK): real dairy cream powder 75 % fat in retail sizes, but the delivery policy only says 'International delivery carries additional charges…' — no country named, LEAD",
+        "shop.kraeuter-mieke.de: 'Sahnepulver' 100/250/500/1000 g, 'Sofort verfügbar', but NO ingredient list or fat % printed and EU shipping only 'Auf Anfrage oder nach Auswahl im Bestellvorgang' (no country named) — not proposed",
+        "ecolebensmittel.com: 'Sahnepulver 42 % Fett 750 g' (brand FeelWell) — dropshipping shop whose article number is an Amazon ASIN (B07KZPP6JK) and the item is 'Ausverkauft (nur vorbestellen)'",
+        "gosupps.com: HTTP 403 bot wall — inconclusive",
+        "materiiprimecofetarie.ro, topingrediente.com, depozituldeciocolata.ro (professional confectionery suppliers) site searches for 'smantana': only lapte praf integral 26 % / degresat — rejected; alimentaria.ro HTTP 403 inconclusive; angrosist.ro search 404"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters",
+          "product_name": "CM Basics Sahnepulver 100g",
+          "pack": "100 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Cake-Masters.com, Alexander Müller, Siemensstr. 24, 49770 Herzlake, DE (trade-only shop — footer: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\")",
+          "page_market": "DE",
+          "market_by": "ADDRESS_COUNTRY",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "cross-border: the seller's own foreign shipping-cost table prints a row for the market (\"Rumänien 26,59 €\"), check_quotes.py found=true",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://shop.cake-masters.com/versand-zahlung",
+            "quotes": [
+              "Versandkosten Ausland: Land Versandkosten pro angefangene 25kg",
+              "Rumänien 26,59 €",
+              "Verkauf nur an registrierte, gewerbliche Wiederverkäufer."
+            ],
+            "found": [
+              true,
+              true,
+              true
+            ],
+            "type": "seller's own foreign shipping-cost table, one row per destination country",
+            "check_quotes_result_files": [
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-header.json",
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-RO.json",
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-TRADEONLY.json"
+            ]
+          },
+          "channel": "TRADE_ONLY_B2B_REGISTERED_RESELLERS",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:40:00Z",
+            "basis": "Auf Lager (page also carries schema.org/InStock)",
+            "source": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet. Nährwertangaben 100 g: 2456 kJ / 587 kcal, Fett 42 g, davon gesättigte Fettsäuren 27,1 g, Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g. Produziert in Deutschland. Artikel-Nr.: 10866",
+            "from": "page label",
+            "carbohydrate_g": 29.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "fat 42 % = reference (PI-ING-000260: fat 42, protein 20, lactose 30); single-ingredient spray-dried dairy cream, no additives",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/47657ec4bbc7dc81.json",
+          "checked_at_utc": "2026-09-17T18:40:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "added_by": "research-gap-eu",
+          "owner_check": "shop.cake-masters.com is the trade arm of the Herzlake group (same address as pati-versand.de / torten-boutique.de) and sells only to registered commercial resellers, prices net of VAT. The product and the pack are ordinary retail size (100 g) but the CHANNEL is B2B — it must not be shown as a consumer offer without the owner's decision. The group's consumer shops (pati-versand.de, backfun.de, meincupcake.de, hobbybaecker.de, torten-boutique.de, tolletorten.com) all use the same 21-country list, which excludes this market."
+        }
+      ],
+      "notes": "BRAK. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, retailer search APIs and price-comparison search pages instead. | Gap closed 2026-09-17 by research-gap-eu: the confirmed 42 % spray-dried cream powder is also sold by shop.cake-masters.com (the Herzlake group's TRADE shop), whose own foreign shipping-cost table prints a row for this market — so delivery here is verified in the seller's own words, unlike the group's consumer shops. Caveat for the owner: that shop states \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\" and quotes prices net of VAT, i.e. it is a B2B channel; the pack itself (100 g) is retail size. No consumer-facing seller of a 38-48 % dairy cream powder that names this market was found. A local search with a working web-search engine was added on top of the earlier sitemap sweep and still found no dairy cream powder in this market."
     },
-    {
-     "rank": 2,
-     "brand": "Diamant",
-     "product_name": "Fructoza Diamant 500g",
-     "pack": "500 g",
-     "gtin": "5949096103262",
-     "identifier_confirmed": false,
-     "url": "https://carrefour.ro/produse/fructoza-diamant-500g-19-14519168/",
-     "source_type": "RETAILER",
-     "seller": "Carrefour Romania",
-     "page_market": "RO",
-     "market_by": "CCTLD",
-     "identity_basis": "NOT_PROVEN",
-     "market_binding_signal": "country domain .ro",
-     "cross_border": false,
-     "ships_to_evidence": null,
-     "composition": {
-      "fat_g": null,
-      "protein_g": null,
-      "fibre_g": null,
-      "fructose_pct": null,
-      "ingredients": "Ingrediente: fructoza cristalina; Valori nutritionale: 1700 kJ / 400 kcal / 100 g; JSON-LD availability InStock",
-      "from": "page label"
-     },
-     "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "single-ingredient crystalline fructose. The GTIN 5949096103262 appears on the page only inside a Flixmedia widget attribute (data-flix-ean=…); the verifier classes that as EAN_ONLY_ECHOED_FROM_URL_OR_QUERY, so identity is not proven — LEAD for owner review.",
-     "evidence_class": "LEAD",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/083f4e0b45dd682c.json",
-     "verifier_class": "EAN_ONLY_ECHOED_FROM_URL_OR_QUERY",
-     "checked_at_utc": "2026-09-17T16:11:50Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    "FRU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "fructoză",
+        "fructoză cristalină",
+        "zahăr din fructe"
+      ],
+      "queries": [
+        "shopmania.ro: fructoza",
+        "sezamo.ro search API: fructoza",
+        "sitemap grep (fructoz) carrefour.ro, freshful.ro, auchan.ro, deliciudeciocolata.ro, fares.ro, getbio.ro",
+        "manufacturer site diamant.ro (sitemap + home page)"
+      ],
+      "sources_tried": [
+        "carrefour.ro (hypermarket) — Diamant 500 g — kept (LEAD)",
+        "freshful.ro (online grocer) — Diamant 500 g — kept (LEAD)",
+        "shopmania.ro leads not reachable: Naturmind 1 kg at jollymag.ro (HTTP 403) and paradisulverde.com (HTTP 403, generic .com), Kotys 500 g at paradisulverde.com (403), Dr. GroB bio 500 g at getbio.ro (67-byte response — inconclusive)",
+        "diamant.ro (Pfeifer & Langen brand site): recipes only, no product page or GTIN",
+        "sezamo.ro, auchan.ro: none"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sosa Ingredients",
+          "product_name": "Sosa fructose powder, 1 kg, PE dose",
+          "pack": "1 kg",
+          "gtin": "8414933026259",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists Romania (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+            "quotes": [
+              "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
+              "Qatar Romania San Marino"
+            ],
+            "found": [
+              true,
+              true
+            ],
+            "type": "shipping-cost country selector listing the market",
+            "check_quotes_result_files": [
+              "~/.cache/gellatti-evidence/quotes/coordinator/gv-header.json",
+              "~/.cache/gellatti-evidence/quotes/coordinator/gv-RO.json"
+            ]
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
+            "from": "retailer page ('EAN Code 8414933026259' printed)",
+            "sugars_g": 100.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/41a997aaee8f811e.json",
+          "checked_at_utc": "2026-09-17T17:16:28Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "added_by": "coordinator (reuse of the MT/GR/CY/TR cross-border listing; country named in the seller delivery selector)"
+        },
+        {
+          "rank": 2,
+          "brand": "Diamant",
+          "product_name": "Fructoza Diamant 500g",
+          "pack": "500 g",
+          "gtin": "5949096103262",
+          "identifier_confirmed": false,
+          "url": "https://carrefour.ro/produse/fructoza-diamant-500g-19-14519168/",
+          "source_type": "RETAILER",
+          "seller": "Carrefour Romania",
+          "page_market": "RO",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .ro",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingrediente: fructoza cristalina; Valori nutritionale: 1700 kJ / 400 kcal / 100 g; JSON-LD availability InStock",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient crystalline fructose. The GTIN 5949096103262 appears on the page only inside a Flixmedia widget attribute (data-flix-ean=…); the verifier classes that as EAN_ONLY_ECHOED_FROM_URL_OR_QUERY, so identity is not proven — LEAD for owner review.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/083f4e0b45dd682c.json",
+          "verifier_class": "EAN_ONLY_ECHOED_FROM_URL_OR_QUERY",
+          "checked_at_utc": "2026-09-17T16:11:50Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 3,
+          "brand": "Diamant",
+          "product_name": "Fructoză cristalină 500g",
+          "pack": "500 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.freshful.ro/p/100101121-diamant-fructoza-cristalina-500g",
+          "source_type": "RETAILER",
+          "seller": "Freshful.ro",
+          "page_market": "RO",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .ro",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingrediente: Fructoza cristalina. (brand Diamant per page)",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient crystalline fructose; no GTIN on the page — LEAD",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f2567d2655a4ffcb.json",
+          "verifier_class": "PAGE_FACTS_ONLY",
+          "checked_at_utc": "2026-09-17T16:19:06Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Best Romanian purchase path is Diamant 500 g at Carrefour/Freshful; confirmation needs the GTIN as page data. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, retailer search APIs and price-comparison search pages instead. | Coordinator addition 2026-09-17: gourmet-versand.com lists Romania in its delivery country selector; Sosa fructose 1 kg (GTIN 8414933026259 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was LEAD_ONLY."
     },
-    {
-     "rank": 3,
-     "brand": "Diamant",
-     "product_name": "Fructoză cristalină 500g",
-     "pack": "500 g",
-     "gtin": null,
-     "identifier_confirmed": false,
-     "url": "https://www.freshful.ro/p/100101121-diamant-fructoza-cristalina-500g",
-     "source_type": "RETAILER",
-     "seller": "Freshful.ro",
-     "page_market": "RO",
-     "market_by": "CCTLD",
-     "identity_basis": "NOT_PROVEN",
-     "market_binding_signal": "country domain .ro",
-     "cross_border": false,
-     "ships_to_evidence": null,
-     "composition": {
-      "fat_g": null,
-      "protein_g": null,
-      "fibre_g": null,
-      "fructose_pct": null,
-      "ingredients": "Ingrediente: Fructoza cristalina. (brand Diamant per page)",
-      "from": "page label"
-     },
-     "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "single-ingredient crystalline fructose; no GTIN on the page — LEAD",
-     "evidence_class": "LEAD",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f2567d2655a4ffcb.json",
-     "verifier_class": "PAGE_FACTS_ONLY",
-     "checked_at_utc": "2026-09-17T16:19:06Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-    }
-   ],
-   "notes": "Best Romanian purchase path is Diamant 500 g at Carrefour/Freshful; confirmation needs the GTIN as page data. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, retailer search APIs and price-comparison search pages instead. | Coordinator addition 2026-09-17: gourmet-versand.com lists Romania in its delivery country selector; Sosa fructose 1 kg (GTIN 8414933026259 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was LEAD_ONLY."
-  },
-  "INU": {
-   "result": "CONFIRMED_LOCAL",
-   "local_terms": [
-    "inulină",
-    "inulină din cicoare",
-    "inulina pulbere"
-   ],
-   "queries": [
-    "hreflang sibling of the verified CZ listing (gymbeam.cz → gymbeam.ro)",
-    "sezamo.ro search API: inulina",
-    "sitemap grep (inulin) carrefour.ro, freshful.ro, auchan.ro"
-   ],
-   "sources_tried": [
-    "gymbeam.ro (own-brand shop) — kept",
-    "freshful.ro: 'Pronat Inulina BIO din agave 200g' — not verified",
-    "sezamo.ro: none"
-   ],
-   "candidates": [
-    {
-     "rank": 1,
-     "brand": "GymBeam",
-     "product_name": "Inulină de cicoare - GymBeam",
-     "pack": "200 g",
-     "gtin": "8586028133576",
-     "identifier_confirmed": true,
-     "url": "https://gymbeam.ro/inulina-de-cicoare-gymbeam.html",
-     "source_type": "OFFICIAL_SHOP",
-     "seller": "GymBeam (own-brand country shop)",
-     "page_market": "RO",
-     "market_by": "CCTLD",
-     "identity_basis": "GTIN_ON_LOCAL_PAGE",
-     "market_binding_signal": "country domain",
-     "cross_border": false,
-     "ships_to_evidence": null,
-     "composition": {
-      "fat_g": null,
-      "protein_g": null,
-      "fibre_g": 86.0,
-      "fructose_pct": null,
-      "ingredients": "per 100 g 875 kJ / 216 kcal, fat 0 g, carbohydrate 11 g (sugars 11 g), fibre 86 g, protein 0 g, salt 0.00 g; single-ingredient chicory inulin per the same GTIN on the CZ/SK/PL pages",
-      "from": "page label"
-     },
-     "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "chicory inulin powder, fibre 86 g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check",
-     "evidence_class": "CONFIRMED_LOCAL",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/37a88536f8b0586a.json",
-     "verifier_class": "EAN_ON_MARKET_PAGE",
-     "checked_at_utc": "2026-09-17T15:51:09Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-    }
-   ],
-   "notes": ""
-  },
-  "YOL": {
-   "result": "VERIFIED_CROSS_BORDER",
-   "local_terms": [
-    "gălbenuș de ou praf",
-    "pudră de gălbenuș",
-    "ou praf"
-   ],
-   "queries": [
-    "shopmania.ro: galbenus ou praf",
-    "shopmania.ro: praf de galbenus",
-    "shopmania.ro: pastovocrem",
-    "sezamo.ro search API: galbenus praf",
-    "sitemap grep (galbenus | pudra-de-ou | praf-de-ou | oua-praf) carrefour.ro, freshful.ro, auchan.ro, deliciudeciocolata.ro, fares.ro, getbio.ro"
-   ],
-   "sources_tried": [
-    "deliciudeciocolata.ro (professional pastry supplier): 'Pudra de Galbenus de Ou Pastovocrem Fabbri, 1.4 kg' — page text 'Pudra de oua pasteurizate cu zahar adaugat … contine 35% galbenus si 47% zahar', 'Stoc epuizat' (verdict ~/.cache/gellatti-evidence/verify/5b4d5f99c59f783e.json) — rejected: a sugared egg preparation with 35 % yolk, not a yolk powder",
-    "sezamo.ro: only egg-white powder (Vilgain) — rejected",
-    "carrefour.ro, freshful.ro, auchan.ro (grocers): none",
-    "fares.ro, getbio.ro (health): none / inconclusive",
-    "vegis.ro, drmax.ro, helpnet.ro: HTTP 403 — inconclusive",
-    "pati-versand.de has a matching yolk powder but its delivery list does not name Rumänien"
-   ],
-   "candidates": [
-    {
-     "rank": 1,
-     "brand": "Taste Market",
-     "product_name": "Eigelbpulver 100 g Sprühgetrocknet (Art.-Nr. 123-100g)",
-     "pack": "100 g",
-     "gtin": "4262421423127",
-     "identifier_confirmed": true,
-     "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
-     "source_type": "OFFICIAL_SHOP",
-     "seller": "Taste Market GmbH (Germany)",
-     "page_market": "DE",
-     "market_by": "CCTLD",
-     "identity_basis": "GTIN_ON_LOCAL_PAGE",
-     "market_binding_signal": "cross-border: seller's EU shipping zone 3 lists Rumänien (check_quotes.py found=true)",
-     "cross_border": true,
-     "ships_to_evidence": {
-      "tool": "check_quotes.py",
-      "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
-      "quotes": [
-       "Lieferung in das EU-Ausland oder internationaler Versand",
-       "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulină",
+        "inulină din cicoare",
+        "inulina pulbere"
       ],
-      "found": [
-       true,
-       true
+      "queries": [
+        "hreflang sibling of the verified CZ listing (gymbeam.cz → gymbeam.ro)",
+        "sezamo.ro search API: inulina",
+        "sitemap grep (inulin) carrefour.ro, freshful.ro, auchan.ro"
       ],
-      "check_quotes_result_files": [
-       "~/.cache/gellatti-evidence/quotes/coordinator/tm-header.json",
-       "~/.cache/gellatti-evidence/quotes/coordinator/tm-zone3.json"
-      ]
-     },
-     "composition": {
-      "fat_g": 58.0,
-      "protein_g": 34.0,
-      "fibre_g": null,
-      "fructose_pct": null,
-      "ingredients": "Zutaten: Hühner-Eigelb, sprühgetrocknet und pasteurisiert. Nährwerte/100 g: Fett 58 g (ges. 18 g), Kohlenhydrate 2,1 g, davon Zucker 0 g, Eiweiß 34 g, Salz 0,4 g",
-      "from": "shop page (Zutaten + Nährwertangaben)",
-      "carbs_g": 2.1
-     },
-     "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 58 / protein 34 vs reference 56.5 / 34.5. Page data prints itemprop gtin13 as 14-digit '04262421423127'.",
-     "evidence_class": "VERIFIED_CROSS_BORDER",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/96c214343c3a4e0f.json",
-     "checked_at_utc": "2026-09-17T17:16:34Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "added_by": "coordinator (reuse of the MT/GR/CY/PT/IT cross-border listing; country named in the seller EU shipping zone)"
+      "sources_tried": [
+        "gymbeam.ro (own-brand shop) — kept",
+        "freshful.ro: 'Pronat Inulina BIO din agave 200g' — not verified",
+        "sezamo.ro: none"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "GymBeam",
+          "product_name": "Inulină de cicoare - GymBeam",
+          "pack": "200 g",
+          "gtin": "8586028133576",
+          "identifier_confirmed": true,
+          "url": "https://gymbeam.ro/inulina-de-cicoare-gymbeam.html",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "GymBeam (own-brand country shop)",
+          "page_market": "RO",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": 86.0,
+            "fructose_pct": null,
+            "ingredients": "per 100 g 875 kJ / 216 kcal, fat 0 g, carbohydrate 11 g (sugars 11 g), fibre 86 g, protein 0 g, salt 0.00 g; single-ingredient chicory inulin per the same GTIN on the CZ/SK/PL pages",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin powder, fibre 86 g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/37a88536f8b0586a.json",
+          "verifier_class": "EAN_ON_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T15:51:09Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "gălbenuș de ou praf",
+        "pudră de gălbenuș",
+        "ou praf"
+      ],
+      "queries": [
+        "shopmania.ro: galbenus ou praf",
+        "shopmania.ro: praf de galbenus",
+        "shopmania.ro: pastovocrem",
+        "sezamo.ro search API: galbenus praf",
+        "sitemap grep (galbenus | pudra-de-ou | praf-de-ou | oua-praf) carrefour.ro, freshful.ro, auchan.ro, deliciudeciocolata.ro, fares.ro, getbio.ro"
+      ],
+      "sources_tried": [
+        "deliciudeciocolata.ro (professional pastry supplier): 'Pudra de Galbenus de Ou Pastovocrem Fabbri, 1.4 kg' — page text 'Pudra de oua pasteurizate cu zahar adaugat … contine 35% galbenus si 47% zahar', 'Stoc epuizat' (verdict ~/.cache/gellatti-evidence/verify/5b4d5f99c59f783e.json) — rejected: a sugared egg preparation with 35 % yolk, not a yolk powder",
+        "sezamo.ro: only egg-white powder (Vilgain) — rejected",
+        "carrefour.ro, freshful.ro, auchan.ro (grocers): none",
+        "fares.ro, getbio.ro (health): none / inconclusive",
+        "vegis.ro, drmax.ro, helpnet.ro: HTTP 403 — inconclusive",
+        "pati-versand.de has a matching yolk powder but its delivery list does not name Rumänien"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Taste Market",
+          "product_name": "Eigelbpulver 100 g Sprühgetrocknet (Art.-Nr. 123-100g)",
+          "pack": "100 g",
+          "gtin": "4262421423127",
+          "identifier_confirmed": true,
+          "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Taste Market GmbH (Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: seller's EU shipping zone 3 lists Rumänien (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+            "quotes": [
+              "Lieferung in das EU-Ausland oder internationaler Versand",
+              "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
+            ],
+            "found": [
+              true,
+              true
+            ],
+            "check_quotes_result_files": [
+              "~/.cache/gellatti-evidence/quotes/coordinator/tm-header.json",
+              "~/.cache/gellatti-evidence/quotes/coordinator/tm-zone3.json"
+            ]
+          },
+          "composition": {
+            "fat_g": 58.0,
+            "protein_g": 34.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: Hühner-Eigelb, sprühgetrocknet und pasteurisiert. Nährwerte/100 g: Fett 58 g (ges. 18 g), Kohlenhydrate 2,1 g, davon Zucker 0 g, Eiweiß 34 g, Salz 0,4 g",
+            "from": "shop page (Zutaten + Nährwertangaben)",
+            "carbs_g": 2.1
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 58 / protein 34 vs reference 56.5 / 34.5. Page data prints itemprop gtin13 as 14-digit '04262421423127'.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/96c214343c3a4e0f.json",
+          "checked_at_utc": "2026-09-17T17:16:34Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "added_by": "coordinator (reuse of the MT/GR/CY/PT/IT cross-border listing; country named in the seller EU shipping zone)"
+        }
+      ],
+      "notes": "BRAK (Pastovocrem noted for the owner in case a sugared yolk preparation is acceptable). WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, retailer search APIs and price-comparison search pages instead. | Coordinator addition 2026-09-17: taste-market.de EU-Zone3 lists Rumänien; Taste Market Eigelbpulver 100 g (GTIN 4262421423127 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was BRAK."
     }
-   ],
-   "notes": "BRAK (Pastovocrem noted for the owner in case a sugared yolk preparation is acceptable). WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, retailer search APIs and price-comparison search pages instead. | Coordinator addition 2026-09-17: taste-market.de EU-Zone3 lists Rumänien; Taste Market Eigelbpulver 100 g (GTIN 4262421423127 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was BRAK."
-  }
- }
+  },
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "contributing_agents": [
+    "research-gap-eu"
+  ]
 }

@@ -21,11 +21,13 @@
   "tag_other_composition": "Ander samestelling",
   "tag_alternative": "Plaaslike alternatief",
   "tag_unconfirmed": "Onbevestig",
+  "tag_abroad_unconfirmed": "Buitelandse winkel",
   "legend": {
-    "from_abroad": "’n winkel in die buiteland wat na hierdie land aflewer",
-    "b2b": "verkoop aan besighede of in groot verpakkings",
+    "from_abroad": "’n winkel in die buiteland wie se eie afleweringslys hierdie land noem",
+    "b2b": "verkoop aan besighede of in groot verpakkings — nie ’n gewone kleinhandelaanbod nie",
     "other_composition": "dieselfde soort produk met ’n ander samestelling (langsaan aangedui)",
-    "alternative": "’n plaasvervanger vir ’n ander Gellatti-produk"
+    "alternative": "’n plaasvervanger vir ’n ander Gellatti-produk",
+    "abroad_unconfirmed": "’n winkel in die buiteland; aflewering na hierdie land is nie bevestig nie"
   },
   "starter_amount": "In die Starter Pack: {g} g",
   "option": "Opsie {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "’n Plaaslike alternatief vir die Gellatti-mengsel, nie dieselfde mengsel nie. Meng dit met die droë bestanddele en verhit die basis tot 75–80 °C.",
   "missing": "Nog geen goedgekeurde produk in hierdie land nie.",
+  "out_of_stock": "Die winkel het dit op {date} as uit voorraad gewys.",
   "notes_title": "Goed om te weet",
   "notes": [
-    {"h": "Beskikbaarheid", "p": "Ons het hierdie produkte in September 2026 op die webwerwe van vervaardigers en winkels nagegaan. Beskikbaarheid, pryse en aflewering kan verander en word nie gewaarborg nie."},
+    {"h": "Beskikbaarheid", "p": "Ons het die nagevorste produkte op 17 September 2026 op winkel- en vervaardigerwebwerwe nagegaan. Dekstrose, afgeroomde melkpoeier en die stabiliseerder kom uit die Gellatti-landtabel van 12 September 2026 en is nie weer nagegaan nie. Beskikbaarheid, pryse en aflewering kan verander en word nie gewaarborg nie."},
     {"h": "Die etiket het voorrang", "p": "Kontroleer die bestanddele en allergene op die verpakking voordat jy koop. Roompoeier en melkpoeier bevat melk; eiergeel bevat eier."},
     {"h": "Stabiliseerder", "p": "In hierdie land vervang ’n plaaslike plantgom die Gellatti Stabilizer. Dit werk op ’n soortgelyke manier, maar is nie dieselfde mengsel nie."}
   ],

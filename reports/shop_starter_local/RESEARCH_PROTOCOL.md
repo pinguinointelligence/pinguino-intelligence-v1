@@ -55,6 +55,39 @@ Tooling: `reports/a03/tooling/` (read `README.md` first). Set `export GELLATTI_E
 8. No prices are required. Don't record personal data. Don't create accounts, don't log in, don't add to carts, don't fill forms.
 9. Retail packs are preferred (100 g – 1 kg); up to 5 kg only when nothing smaller exists. Pack size never has to match 125/250 g.
 
+## Added by the owner's correction of 2026-09-17 (binding for every further round)
+
+10. **Stock state is its own fact, with a date.** Every candidate carries
+    `"availability": {"state": "IN_STOCK"|"OUT_OF_STOCK"|"UNKNOWN", "checked_at_utc": "<ISO8601>", "basis": "<the exact page
+    token or phrase>", "source": "<url>"}`. Never write IN_STOCK without evidence on the page; `UNKNOWN` is honest.
+    A temporary stock-out never deletes a correct product: it stays, and the PDF prints the state with its date. Put a
+    stock remark in the candidate's own `equivalence_note`, never only in the item's shared `notes` — a shared sentence
+    would otherwise be read as if it applied to the alternative too.
+11. **Channel is its own dimension.** A shop that sells only to registered businesses (net prices, "nur an gewerbliche
+    Wiederverkäufer", trade login) is not an ordinary retail offer, even when the pack is 100 g: record
+    `"channel": "TRADE_ONLY_B2B_REGISTERED_RESELLERS"` (or `B2B_INDUSTRIAL_PACK_ONLY` for sacks) and quote the sentence.
+    Such a candidate never earns a TAK recommendation — it becomes an owner decision. B2B stays B2B.
+12. **Cream powder with a different fat content is a candidate, not an acceptance.** A real dairy cream powder outside
+    38–48 % fat is recorded as `B_SAME_TYPE_DIFFERENT_COMPOSITION` with the printed fat % and the full ingredient list.
+    The owner decides. It is never mapped onto the 42 % reference ingredient, and no substitution ratio is ever stated.
+13. **No sentinels in data fields.** A field the page does not print is JSON `null` — never "not printed", "not stated",
+    "unknown", "n/a" or an invented brand. Keep the real listing name exactly; put researcher bookkeeping (article
+    numbers, "size selector", "also listed", own-brand reasoning) in `equivalence_note` / `notes`, never in `brand`,
+    `product_name` or `pack`.
+14. **A delivery claim needs the country named.** "We ship worldwide/internationally" is not confirmation: keep it as a
+    LEAD and quote the wording. Save every `check_quotes.py` result file and reference its path in `ships_to_evidence`
+    (a dict, never prose).
+15. **Anything the owner should look at before deciding** goes in `"owner_check": "<one sentence>"` on that candidate.
+16. **A country list is only delivery evidence when it is a delivery statement.** Two agents read the same kind of page
+    differently, so the test is objective: fetch the seller's shipping page AND one product page. If the same country
+    list appears on the product page, it is site furniture — the store's market/currency selector — and it does NOT
+    confirm delivery, however broad a "we ship worldwide" banner is (D-31: a currency never binds a market). Verified on
+    2026-09-17: furniture at bulksupplements.com, bakingwarehouse.com and kiki-health.com (whose own policy also warns
+    "Some countries may require bespoke postage … if unable to select a delivery option at the checkout"); genuine
+    delivery statements at gourmet-versand.com ("Shipment to the following country"), pati-versand.de,
+    glaeserundflaschen.de, taste-market.de, buxtrade.de and shop.cake-masters.com, whose lists are absent from product
+    pages. `reconcile_shipping_basis.py` applies this uniformly and explains every downgrade in the candidate.
+
 ## Output — one file per country, written as soon as that country is done
 
 `reports/shop_starter_local/research/<ISO2>.json` (UTF-8, pretty-printed). Don't edit any other file.

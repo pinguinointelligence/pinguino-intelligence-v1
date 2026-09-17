@@ -21,11 +21,13 @@
   "tag_other_composition": "Kita sudėtis",
   "tag_alternative": "Vietinė alternatyva",
   "tag_unconfirmed": "Nepatvirtinta",
+  "tag_abroad_unconfirmed": "Užsienio parduotuvė",
   "legend": {
-    "from_abroad": "užsienio parduotuvė, pristatanti į šią šalį",
-    "b2b": "parduodama įmonėms arba didelėmis pakuotėmis",
+    "from_abroad": "užsienio parduotuvė, kurios pristatymo sąraše nurodyta ši šalis",
+    "b2b": "parduodama įmonėms arba didelėmis pakuotėmis — ne įprastas mažmeninis pasiūlymas",
     "other_composition": "tos pačios rūšies produktas su kitokia sudėtimi (nurodyta šalia)",
-    "alternative": "kito Gellatti produkto pakaitalas"
+    "alternative": "kito Gellatti produkto pakaitalas",
+    "abroad_unconfirmed": "užsienio parduotuvė; pristatymas į šią šalį nepatvirtintas"
   },
   "starter_amount": "Starter Pack rinkinyje: {g} g",
   "option": "Variantas {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Vietinė alternatyva Gellatti mišiniui, ne tas pats mišinys. Sumaišykite ją su sausais ingredientais ir pakaitinkite pagrindą iki 75–80 °C.",
   "missing": "Šioje šalyje dar nėra patvirtinto produkto.",
+  "out_of_stock": "Parduotuvė {date} rodė, kad prekės nėra.",
   "notes_title": "Verta žinoti",
   "notes": [
-    {"h": "Prieinamumas", "p": "Šiuos produktus patikrinome gamintojų ir parduotuvių svetainėse 2026 m. rugsėjį. Prieinamumas, kainos ir pristatymas gali keistis ir nėra garantuojami."},
+    {"h": "Prieinamumas", "p": "Ištirtus produktus patikrinome parduotuvių ir gamintojų svetainėse 2026 m. rugsėjo 17 d. Dekstrozė, nugriebto pieno milteliai ir stabilizatorius paimti iš 2026 m. rugsėjo 12 d. Gellatti šalių lentelės ir iš naujo netikrinti. Prieinamumas, kainos ir pristatymas gali keistis ir nėra garantuojami."},
     {"h": "Svarbiausia – etiketė", "p": "Prieš pirkdami patikrinkite ingredientus ir alergenus ant pakuotės. Grietinėlės milteliuose ir pieno milteliuose yra pieno, o trynyje – kiaušinių."},
     {"h": "Stabilizatorius", "p": "Šioje šalyje vietoj Gellatti Stabilizer naudojama vietinė augalinė guma. Ji veikia panašiai, bet tai nėra tas pats mišinys."}
   ],

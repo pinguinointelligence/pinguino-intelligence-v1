@@ -7,7 +7,14 @@
   "items": {
     "CRP": {
       "result": "CONFIRMED_LOCAL",
-      "local_terms": ["heavy cream powder", "cream powder", "dried cream", "sweet cream powder", "crema en polvo", "crema de leche en polvo"],
+      "local_terms": [
+        "heavy cream powder",
+        "cream powder",
+        "dried cream",
+        "sweet cream powder",
+        "crema en polvo",
+        "crema de leche en polvo"
+      ],
       "queries": [
         "WebSearch: heavy cream powder ingredients cream soy lecithin nutrition facts buy",
         "WebSearch: heavy cream powder 1 lb shop",
@@ -18,7 +25,13 @@
         "site catalog judeesglutenfree.com (products.json): cream powder / heavy cream",
         "site search modernistpantry.com: cream powder",
         "site search vitacost.com: cream powder",
-        "site catalog mexgrocer.com (products.json, first 1250 items): crema en polvo / crema de leche"
+        "site catalog mexgrocer.com (products.json, first 1250 items): crema en polvo / crema de leche",
+        "site catalog gourmet-versand.com: Sahnepulver / Rahmpulver / Milchpulver (0 dairy powders)",
+        "site search pati-versand.de: Sahnepulver (1 article: Cake-Masters Sahnepulver 100g, SAHNE 42% Fett)",
+        "site search hobbybaecker.de: Sahnepulver",
+        "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose",
+        "product-sitemap scan msk-ingredients.com (6597 products): yolk / cream-powder / inulin / fructose",
+        "product-sitemap scan souschef.co.uk (6274 products): yolk / cream-powder / inulin / fructose"
       ],
       "sources_tried": [
         "hoosierhillfarm.com (manufacturer shop; Heavy Cream Powder 1 lb / 2 lb / 25 lb with GTINs; 72% butterfat) - candidate 1",
@@ -29,7 +42,13 @@
         "modernistpantry.com (baking/modernist ingredient supplier; no cream powder in on-site search)",
         "vitacost.com (online health grocer; no dairy cream powder in on-site search)",
         "mexgrocer.com (US online Mexican grocer; no crema en polvo in scanned catalog)",
-        "shop.chocolatealchemy.com (Heavy Cream Powder seen in search results only; not verified)"
+        "shop.chocolatealchemy.com (Heavy Cream Powder seen in search results only; not verified)",
+        "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
+        "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
+        "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)",
+        "hoosierhillfarm.com/policies/shipping-policy (re-read 2026-09-17: no international-shipping sentence and no country list at all)",
+        "judeesfromscratch.com/policies/shipping-policy (Judee's, maker of a Heavy Cream Powder and an Egg Yolk Powder; only 'free shipping in the US for orders $100+' - no international statement)",
+        "modernistpantry.com (BigCommerce; robots.txt disallows /search.php, so the on-site search was not used; an earlier agent found no cream powder there)"
       ],
       "candidates": [
         {
@@ -66,7 +85,13 @@
             "~/.cache/gellatti-evidence/verify/quote_1d5ae18cb65fc536.json"
           ],
           "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:37:51Z"
+          "checked_at_utc": "2026-09-17T15:37:51Z",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:41:56Z",
+            "basis": "\"available\":true on the 1 lb variant in the page's own variant data (barcode 850054854513), plus \"availability\": \"https://schema.org/InStock\" and the printed status 'Available in stock'",
+            "source": "https://hoosierhillfarm.com/products/heavy-cream-powder"
+          }
         },
         {
           "rank": 2,
@@ -101,14 +126,26 @@
             "~/.cache/gellatti-evidence/verify/quote_fe292df2746f8484.json"
           ],
           "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:41:06Z"
+          "checked_at_utc": "2026-09-17T15:41:06Z",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:41:56Z",
+            "basis": "\"availability\": \"http://schema.org/InStock\" in the JSON-LD Product offer (sku 00-BKDY-IITE)",
+            "source": "https://anthonysgoods.com/products/heavy-cream-powder-gluten-free"
+          }
         }
       ],
-      "notes": "US retail 'heavy cream powder' is ~72 % butterfat (B); no 38-48 % fat dairy cream powder was found in US retail. Hoosier Hill Farm is CONFIRMED_LOCAL (GTIN as page data + ADDRESS_COUNTRY US + US-only FAQ quote). WebSearch budget exhausted during research; later discovery via on-site shop searches only (a targeted search for a ~40 % fat cream powder could not be run)."
+      "notes": "US retail 'heavy cream powder' is ~72 % butterfat (B); no 38-48 % fat dairy cream powder was found in US retail. Hoosier Hill Farm is CONFIRMED_LOCAL (GTIN as page data + ADDRESS_COUNTRY US + US-only FAQ quote). WebSearch budget exhausted during research; later discovery via on-site shop searches only (a targeted search for a ~40 % fat cream powder could not be run). | Re-checked 2026-09-17 under owner rule 3 (CRP): both US candidates re-verified IN_STOCK. Still no 38-48 % fat dairy cream powder in US retail. The only A-band product found anywhere in this sweep is a German 42 % 'Sahnepulver' (Cake-Masters, 100 g, fat 42 g / protein 19 g / sugars 29 g, 'Auf Lager') sold by pati-versand.de, whose delivery list names only European countries - not a US option. A second real dairy cream powder with full composition (Ingredients Bar, UK, 75 % fat) exists but only states generic international delivery."
     },
     "FRU": {
       "result": "CONFIRMED_LOCAL",
-      "local_terms": ["fructose", "crystalline fructose", "fructose powder", "fruit sugar", "fructosa"],
+      "local_terms": [
+        "fructose",
+        "crystalline fructose",
+        "fructose powder",
+        "fruit sugar",
+        "fructosa"
+      ],
       "queries": [
         "WebSearch: NOW Foods fructose powder 3 lbs nowfoods.com",
         "site search modernistpantry.com: fructose",
@@ -205,7 +242,13 @@
     },
     "INU": {
       "result": "CONFIRMED_LOCAL",
-      "local_terms": ["inulin powder", "organic inulin", "chicory root inulin", "agave inulin", "inulina"],
+      "local_terms": [
+        "inulin powder",
+        "organic inulin",
+        "chicory root inulin",
+        "agave inulin",
+        "inulina"
+      ],
       "queries": [
         "WebSearch: organic inulin powder pure chicory root 1 lb",
         "site search vitacost.com: inulin",
@@ -305,7 +348,12 @@
     },
     "YOL": {
       "result": "CONFIRMED_LOCAL",
-      "local_terms": ["egg yolk powder", "dried egg yolk", "dry egg yolks", "yema de huevo en polvo"],
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk",
+        "dry egg yolks",
+        "yema de huevo en polvo"
+      ],
       "queries": [
         "WebSearch: egg yolk powder 100% dried egg yolk buy USA",
         "site search modernistpantry.com: egg yolk",

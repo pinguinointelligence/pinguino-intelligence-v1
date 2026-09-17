@@ -1,313 +1,435 @@
 {
-  "iso2": "IL",
-  "country": "Israel",
-  "agent": "research-mena",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:31:24Z",
-  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-  "items": {
-    "CRP": {
-      "result": "BRAK",
-      "local_terms": [
-        "אבקת שמנת",
-        "שמנת מתוקה באבקה",
-        "cream powder"
-      ],
-      "queries": [
-        "אבקת שמנת מתוקה לאפייה (WebSearch)",
-        "\"אבקת שמנת\" קונדיטוריה חומרי גלם (WebSearch)",
-        "razberry.co.il אבקת שמנת (WebSearch)",
-        "razberry.co.il /products.json catalogue scan: שמנת|cream",
-        "cookstock.co.il categories אבקות ומייצבים (pages 1-2), סוכר ותחליפים, ללא סוכר/קיטו: שמנת",
-        "tvuot.co.il / galam.co.il / altman.co.il site search: אבקת שמנת"
-      ],
-      "sources_tried": [
-        "razberry.co.il pastry-ingredient shop (138 products scanned, no cream powder)",
-        "cookstock.co.il baking supplier (powders/stabilisers, sugars, keto categories: only whole milk powder 'אבקת חלב', no cream powder)",
-        "tvuot.co.il manufacturer (no result)",
-        "galam.co.il manufacturer (no result)",
-        "altman.co.il health brand (no result)",
-        "shufersal.co.il supermarket (bot wall)",
-        "shop.super-pharm.co.il pharmacy (bot wall)",
-        "keshet-teamim.co.il health/bulk chain (bot wall)",
-        "carrefour.co.il supermarket (bot wall)",
-        "rami-levy.co.il supermarket (bot wall)"
-      ],
-      "candidates": [],
-      "notes": "No dairy cream powder found at any Israeli direct retailer that could be read. Discovery surfaced only a marketplace listing on amazon.com (Hebrew locale): Healthier Comforts organic cream powder '72% butterfat', ingredients 'קרם אורגני, חלב יבש אורגני ללא שומן', 7 oz, UPC 850034864082 (verdict ~/.cache/gellatti-evidence/verify/52303ef5f329b931.json). It is a US marketplace page, delivery to Israel is not shown (the page asked for a different delivery location), and 72 % fat would be B_SAME_TYPE_DIFFERENT_COMPOSITION, so it is not kept as a candidate."
-    },
-    "FRU": {
-      "result": "CONFIRMED_LOCAL",
-      "local_terms": [
-        "פרוקטוז",
-        "פרוקטוזה",
-        "סוכר פירות"
-      ],
-      "queries": [
-        "פרוקטוז אבקה 500 גרם (WebSearch)",
-        "tvuot.co.il WooCommerce store search: פרוקטוז, פרוקטוזה, סוכר פירות",
-        "galam.co.il store search: פרוקטוז",
-        "razberry.co.il catalogue scan: פרוקטוז|fructose",
-        "cookstock.co.il sugar & substitutes category"
-      ],
-      "sources_tried": [
-        "tvuot.co.il manufacturer (found: סוכר פירות טבעי 500 גרם, EAN on page)",
-        "nizat.com health-food chain (found own-brand fructose 500 g; generic .com)",
-        "galam.co.il manufacturer (industrial fructose page only, no retail pack)",
-        "vitaminglobal.co.il health shop (bot wall 403)",
-        "razberry.co.il pastry shop (no result)",
-        "cookstock.co.il baking supplier (no fructose; dextrose/glucose/isomalt/allulose only)",
-        "shufersal.co.il supermarket (bot wall)",
-        "shop.super-pharm.co.il pharmacy (bot wall)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "תבואות (Tvuot)",
-          "product_name": "סוכר פירות טבעי",
-          "pack": "500 גרם",
-          "gtin": "7290011473556",
-          "identifier_confirmed": true,
-          "url": "https://tvuot.co.il/product/%d7%a1%d7%95%d7%9b%d7%a8-%d7%a4%d7%99%d7%a8%d7%95%d7%aa-%d7%98%d7%91%d7%a2%d7%99/",
-          "source_type": "MANUFACTURER",
-          "seller": "תבואות מזון אורגני בע\"מ",
-          "page_market": "IL",
-          "market_by": "CCTLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "country domain .co.il",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "סוכר פירות טבעי",
-            "from": "manufacturer product page (no nutrition table printed)"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "Single-ingredient 'natural fruit sugar' (סוכר פירות = the Hebrew name for fructose); no fructose % or nutrition panel printed on this page. A retailer title for the same Tvuot 500 g pack reads 'סוכר פירות (פרוקטוזה)' (vitaminglobal.co.il, bot-walled, not evidence).",
-          "evidence_class": "CONFIRMED_LOCAL",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d4db0c111f0d9ff1.json",
-          "verifier_verification_class": "EAN_ON_MARKET_PAGE",
-          "checked_at_utc": "2026-09-17T15:45:26Z",
-          "identity_note": "verifier EAN_ON_MARKET_PAGE: 'מקט: 7290011473556' printed on the .co.il manufacturer page; manufacturer page, not a checkout page"
-        },
-        {
-          "rank": 2,
-          "brand": "ניצת הדובדבן (Nitzat Haduvdevan, own brand)",
-          "product_name": "סוכר פירות פרוקטוז, 500 גרם - ניצת הדובדבן",
-          "pack": "500 גרם",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.nizat.com/%D7%A1%D7%95%D7%9B%D7%A8-%D7%A4%D7%99%D7%A8%D7%95%D7%AA--%D7%A4%D7%A8%D7%95%D7%A7%D7%98%D7%95%D7%96-500-%D7%92%D7%A8%D7%9D-%D7%A0%D7%99%D7%A6%D7%AA-%D7%94%D7%93%D7%95%D7%91%D7%93%D7%91%D7%9F-i7301",
-          "source_type": "RETAILER",
-          "seller": "ניצת הדובדבן (כנפי נשרים בע\"מ)",
-          "page_market": "IL",
-          "market_by": "CURRENCY_ONLY",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "none that binds: generic .com, ILS prices only (currency never binds); no country named on the product or terms page",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": 0.0,
-            "protein_g": 0.0,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "סוכר פירות (פרוקטוזה)",
-            "from": "page label: per 100 g energy 399 kcal, carbohydrates 98.8 g of which sugars 98.8 g, fat 0 g, protein 0 g, sodium 0 mg"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "single ingredient fructose; sugars 98.8 g/100 g as printed",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9a7f18f9ed18b1ee.json",
-          "verifier_verification_class": "PAGE_FACTS_ONLY",
-          "checked_at_utc": "2026-09-17T15:33:28Z",
-          "identity_note": "own-brand listing with exact name and pack; store SKU on page, no GTIN. Market binding not proven (generic .com)"
-        }
-      ],
-      "notes": "Rank 1 is confirmed on the manufacturer's .co.il page (GTIN as data). Rank 2 has the better printed composition but no binding market signal."
-    },
-    "INU": {
-      "result": "VERIFIED_CROSS_BORDER",
-      "local_terms": [
-        "אינולין",
-        "אבקת אינולין",
-        "סיבים מסיסים מעולש"
-      ],
-      "queries": [
-        "אינולין אבקה לקנות (WebSearch)",
-        "kiki-health.com product page + shipping policy (cross-border)",
-        "cookstock.co.il category אבקות ומייצבים",
-        "tvuot.co.il / galam.co.il / altman.co.il site search: אינולין",
-        "razberry.co.il catalogue scan: אינולין|inulin"
-      ],
-      "sources_tried": [
-        "kiki-health.com UK brand shop (GTIN on page; country selector lists Israel)",
-        "nizat.com health-food chain (found Atid Yarok inulin 400 g; generic .com, no GTIN)",
-        "cookstock.co.il baking supplier (found unbranded 'אינולין (קר) 600 גרם')",
-        "vit2go.com supplements (listing no longer resolves to the product)",
-        "prikafu.com health shop (product URL now serves the home page)",
-        "biogaya.co.il health shop (bot wall)",
-        "keshet-teamim.co.il (bot wall)",
-        "shop.super-pharm.co.il pharmacy (bot wall)",
-        "galam.co.il / tvuot.co.il / altman.co.il (no result)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "KIKI Health",
-          "product_name": "Inulin Powder, Organic - 250g",
-          "pack": "250 g",
-          "gtin": "5060018515847",
-          "identifier_confirmed": true,
-          "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
-          "source_type": "OFFICIAL_SHOP",
-          "seller": "KIKI Health (UK brand web shop)",
-          "page_market": null,
-          "market_by": "GENERIC_TLD",
-          "identity_basis": "GTIN_ON_LOCAL_PAGE",
-          "market_binding_signal": "no local binding (generic .com, UK brand shop); cross-border - see ships_to_evidence",
-          "cross_border": true,
-          "ships_to_evidence": "country selector on the product page lists 'Israel (ILS ₪)'; shipping policy https://kiki-health.com/policies/shipping-policy checked with check_quotes.py (found=true, 2026-09-17): 'For EU and International orders, postage costs vary according to your country.' and 'International Delivery ... Royal Mail International Tracked delivery is used on all orders'",
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": 93.0,
-            "fructose_pct": null,
-            "ingredients": "Made from 100% Blue Agave (organic agave inulin)",
-            "from": "brand product page: '93% soluble plant-based fibre', '5.4g of fibre per serving', 'Completely pure, with no added sugars or sweeteners'"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "pure organic agave inulin, 93 % soluble fibre",
-          "evidence_class": "VERIFIED_CROSS_BORDER",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e10a0560f724b16f.json",
-          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
-          "checked_at_utc": "2026-09-17T16:31:10Z",
-          "identity_note": "gtin13 5060018515847 as JSON-LD data on this purchase page (verifier EAN_ON_GENERIC_TLD_PAGE); the same GTIN/product is sold locally in UAE/KSA by Life Pharmacy"
-        },
-        {
-          "rank": 2,
-          "brand": "עתיד ירוק (Atid Yarok)",
-          "product_name": "אינולין אבקת סיבים מסיסים מעולש 400 גרם - עתיד ירוק",
-          "pack": "400 גרם",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.nizat.com/%D7%90%D7%99%D7%A0%D7%95%D7%9C%D7%99%D7%9F-%D7%90%D7%91%D7%A7%D7%AA-%D7%A1%D7%99%D7%91%D7%99%D7%9D-%D7%9E%D7%A1%D7%99%D7%A1%D7%99%D7%9D-%D7%9E%D7%A2%D7%95%D7%9C%D7%A9-400-%D7%92%D7%A8%D7%9D-%D7%A2%D7%AA%D7%99%D7%93-%D7%99%D7%A8%D7%95%D7%A7-i26909",
-          "source_type": "RETAILER",
-          "seller": "ניצת הדובדבן (כנפי נשרים בע\"מ)",
-          "page_market": "IL",
-          "market_by": "CURRENCY_ONLY",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "none that binds: generic .com, ILS prices only",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": 0.0,
-            "protein_g": 0.0,
-            "fibre_g": 88.0,
-            "fructose_pct": null,
-            "ingredients": "סיבי אינולין משורש עולש",
-            "from": "page label: per 100 g energy 208 kcal, carbohydrates 8 g of which sugars 8 g, dietary fibre 88 g, sodium 16 mg"
-          },
-          "equivalence": "A_EQUIVALENT",
-          "equivalence_note": "chicory-root inulin, fibre 88 g/100 g (reference 89)",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f84e6318803924dc.json",
-          "verifier_verification_class": "PAGE_FACTS_ONLY",
-          "checked_at_utc": "2026-09-17T15:33:30Z",
-          "identity_note": "third-party brand on a retailer page without GTIN (store SKU only); no manufacturer page found"
-        }
-      ],
-      "notes": "No Israeli page with an inulin GTIN could be read, so the only verified path is cross-border (rank 1, UK brand shop that lists Israel in its country selector). Best local option: Atid Yarok 400 g at Nitzat Haduvdevan (rank 2, 88 g fibre, generic .com, no GTIN). Also local: Cookstock unbranded 'אינולין (קר) 600 גרם' (https://www.cookstock.co.il/items/8311986, .co.il, chicory inulin, no composition printed; verdict ~/.cache/gellatti-evidence/verify/8818ac18cdcfcfc4.json)."
-    },
-    "YOL": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "אבקת חלמון",
-        "אבקת חלמון ביצה",
-        "חלמון מיובש"
-      ],
-      "queries": [
-        "אבקת חלמון ביצה (WebSearch)",
-        "razberry.co.il site search / catalogue scan: חלמון",
-        "cookstock.co.il category אבקות ומייצבים"
-      ],
-      "sources_tried": [
-        "cookstock.co.il baking supplier (found 100 g and 500 g pasteurised yolk powder)",
-        "razberry.co.il pastry shop (found 200 g egg yolk powder)",
-        "shufersal.co.il (bot wall)",
-        "keshet-teamim.co.il (bot wall)",
-        "shop.super-pharm.co.il (bot wall)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "(unbranded on page)",
-          "product_name": "אבקת חלמון מפוסטר 100 גרם",
-          "pack": "100 גרם (also listed: 500 גרם, item 7943969)",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.cookstock.co.il/items/7943959-%D7%90%D7%91%D7%A7%D7%AA-%D7%97%D7%9C%D7%9E%D7%95%D7%9F-%D7%9E%D7%A4%D7%95%D7%A1%D7%98%D7%A8-100-%D7%92%D7%A8%D7%9D",
-          "source_type": "RETAILER",
-          "seller": "Cookstock (קוקסטוק), Kfar Saba",
-          "page_market": "IL",
-          "market_by": "CCTLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "country domain .co.il",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "not printed; description: pasteurised egg yolk powder made from selected yolks, pasteurised and dried (מיוצרת מחלמונים מובחרים אשר עברו תהליך פסטור עדין ויובשו); 10 g powder + 10 g water = 1 M yolk",
-            "from": "page description"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "described as dried pasteurised yolk, but no ingredient list or nutrition printed, so A vs B cannot be decided",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/833c157e629b8178.json",
-          "verifier_verification_class": "PAGE_FACTS_ONLY",
-          "checked_at_utc": "2026-09-17T15:33:35Z",
-          "identity_note": "first-party listing (item 7943959) without a brand or GTIN"
-        },
-        {
-          "rank": 2,
-          "brand": "(unbranded on page; packed for Razberry)",
-          "product_name": "אבקת חלמון ביצה",
-          "pack": "200 גרם",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://razberry.co.il/products/egg-yolk-powder",
-          "source_type": "RETAILER",
-          "seller": "רזברי קולינרי אינספריישן בע\"מ (Razberry)",
-          "page_market": "IL",
-          "market_by": "CCTLD",
-          "identity_basis": "NOT_PROVEN",
-          "market_binding_signal": "country domain .co.il",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": "not printed; description: egg yolk powder with rich concentrated taste; kosher parve, packed under Rosh HaAyin rabbinate supervision",
-            "from": "page description"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "no ingredient list or nutrition printed",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c1fcb0d7ecbbf04b.json",
-          "verifier_verification_class": "PAGE_FACTS_ONLY",
-          "checked_at_utc": "2026-09-17T15:33:32Z",
-          "identity_note": "page data field gtin/barcode '729011818324' fails the GS1 checksum (12 digits) - not a GTIN and not completed"
-        }
-      ],
-      "notes": "Right product type is sold locally in retail packs, but neither page prints ingredients, so equivalence stays C and the class stays LEAD."
+ "iso2": "IL",
+ "country": "Israel",
+ "agent": "research-mena",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:31:24Z",
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "items": {
+  "CRP": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "אבקת שמנת",
+    "שמנת מתוקה באבקה",
+    "cream powder"
+   ],
+   "queries": [
+    "אבקת שמנת מתוקה לאפייה (WebSearch)",
+    "\"אבקת שמנת\" קונדיטוריה חומרי גלם (WebSearch)",
+    "razberry.co.il אבקת שמנת (WebSearch)",
+    "razberry.co.il /products.json catalogue scan: שמנת|cream",
+    "cookstock.co.il categories אבקות ומייצבים (pages 1-2), סוכר ותחליפים, ללא סוכר/קיטו: שמנת",
+    "tvuot.co.il / galam.co.il / altman.co.il site search: אבקת שמנת",
+    "\"אבקת חלמון\" ביצה מפוסטר מרכיבים 100% חנות חומרי גלם קונדיטוריה (WebSearch); \"אבקת שמנת\" קנייה חנות אונליין חומרי גלם לאפייה 42% שומן (WebSearch)",
+    "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+    "hoosierhillfarm.com product sitemap + policies/shipping-policy + pages/faqs (international shipping)",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
+   ],
+   "sources_tried": [
+    "razberry.co.il pastry-ingredient shop (138 products scanned, no cream powder)",
+    "cookstock.co.il baking supplier (powders/stabilisers, sugars, keto categories: only whole milk powder 'אבקת חלב', no cream powder)",
+    "tvuot.co.il manufacturer (no result)",
+    "galam.co.il manufacturer (no result)",
+    "altman.co.il health brand (no result)",
+    "shufersal.co.il supermarket (bot wall)",
+    "shop.super-pharm.co.il pharmacy (bot wall)",
+    "keshet-teamim.co.il health/bulk chain (bot wall)",
+    "carrefour.co.il supermarket (bot wall)",
+    "rami-levy.co.il supermarket (bot wall)",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+    "hoosierhillfarm.com (US, Heavy Cream Powder): FAQ states 'Do you ship internationally? At this time, we do not ship internationally.' - rejected as a cross-border path",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "gourmet-versand.com (DE gourmet retailer, shipping-cost country selector names 81 countries incl. Israel): Sosa fructose powder 1 kg found with GTIN, ingredients and nutrition; its EN sitemap has NO dairy cream powder (only cooking-, filling- and coconut-cream powders) and NO egg yolk powder (only yolk-coloured food colouring)",
+    "lironbereshit18.co.il powders category listed in full: 18 powders, none is a cream powder (אבקת שמנת)",
+    "tobake.co.il / chefconditor.co.il: no cream powder page could be read (chefconditor category page not server-rendered)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": null,
+     "product_name": "Sahnepulver sprühgetrocknet",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
+     "source_type": "RETAILER",
+     "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+     "cross_border": true,
+     "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). IL is NOT named, so this is a lead, not a confirmation.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:21:06Z",
+      "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+      "source": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+      "from": "page label \"Zutaten: SAHNE 42% Fett, sprühgetrocknet\"; nutrition per 100 g: Fett 42 g (davon gesättigte Fettsäuren 27,1 g), Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "spray-dried dairy cream, 42 % fat = the PI-ING-000260 reference exactly (fat 42, protein 20, lactose 30)",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3df84b49991636c0.json",
+     "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+     "checked_at_utc": "2026-09-17T18:21:06Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
     }
+   ],
+   "notes": "No dairy cream powder found at any Israeli direct retailer that could be read. Discovery surfaced only a marketplace listing on amazon.com (Hebrew locale): Healthier Comforts organic cream powder '72% butterfat', ingredients 'קרם אורגני, חלב יבש אורגני ללא שומן', 7 oz, UPC 850034864082 (verdict ~/.cache/gellatti-evidence/verify/52303ef5f329b931.json). It is a US marketplace page, delivery to Israel is not shown (the page asked for a different delivery location), and 72 % fat would be B_SAME_TYPE_DIFFERENT_COMPOSITION, so it is not kept as a candidate. | gap pass 2026-09-17: no dairy cream powder is sold by any readable seller in this market; the only lead is a German shop that carries the exact reference product (cream 42 % fat, spray-dried) but does not name Israel among its delivery countries. Owner decision needed: accept a cross-border lead, or leave the CRP line out of this country's PDF."
   },
-  "country_notes": "Discovery constraint: the shared session WebSearch budget ran out (200/200) after the first queries; DuckDuckGo and Mojeek served CAPTCHAs (not bypassed) and Bing returned unrelated results to non-browser clients. Further discovery used retailers' own catalogue/search endpoints. Bot walls (HTTP 403/challenge) from the ES egress: shufersal.co.il, shop.super-pharm.co.il, keshet-teamim.co.il, carrefour.co.il, rami-levy.co.il, biogaya.co.il, shukcity.co.il, tivtaam.co.il, supherb.co.il, vitaminglobal.co.il."
+  "FRU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "פרוקטוז",
+    "פרוקטוזה",
+    "סוכר פירות"
+   ],
+   "queries": [
+    "פרוקטוז אבקה 500 גרם (WebSearch)",
+    "tvuot.co.il WooCommerce store search: פרוקטוז, פרוקטוזה, סוכר פירות",
+    "galam.co.il store search: פרוקטוז",
+    "razberry.co.il catalogue scan: פרוקטוז|fructose",
+    "cookstock.co.il sugar & substitutes category"
+   ],
+   "sources_tried": [
+    "tvuot.co.il manufacturer (found: סוכר פירות טבעי 500 גרם, EAN on page)",
+    "nizat.com health-food chain (found own-brand fructose 500 g; generic .com)",
+    "galam.co.il manufacturer (industrial fructose page only, no retail pack)",
+    "vitaminglobal.co.il health shop (bot wall 403)",
+    "razberry.co.il pastry shop (no result)",
+    "cookstock.co.il baking supplier (no fructose; dextrose/glucose/isomalt/allulose only)",
+    "shufersal.co.il supermarket (bot wall)",
+    "shop.super-pharm.co.il pharmacy (bot wall)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "תבואות (Tvuot)",
+     "product_name": "סוכר פירות טבעי",
+     "pack": "500 גרם",
+     "gtin": "7290011473556",
+     "identifier_confirmed": true,
+     "url": "https://tvuot.co.il/product/%d7%a1%d7%95%d7%9b%d7%a8-%d7%a4%d7%99%d7%a8%d7%95%d7%aa-%d7%98%d7%91%d7%a2%d7%99/",
+     "source_type": "MANUFACTURER",
+     "seller": "תבואות מזון אורגני בע\"מ",
+     "page_market": "IL",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .co.il",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "סוכר פירות טבעי",
+      "from": "manufacturer product page (no nutrition table printed)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Single-ingredient 'natural fruit sugar' (סוכר פירות = the Hebrew name for fructose); no fructose % or nutrition panel printed on this page. A retailer title for the same Tvuot 500 g pack reads 'סוכר פירות (פרוקטוזה)' (vitaminglobal.co.il, bot-walled, not evidence).",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d4db0c111f0d9ff1.json",
+     "verifier_verification_class": "EAN_ON_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T15:45:26Z",
+     "identity_note": "verifier EAN_ON_MARKET_PAGE: 'מקט: 7290011473556' printed on the .co.il manufacturer page; manufacturer page, not a checkout page"
+    },
+    {
+     "rank": 2,
+     "brand": "ניצת הדובדבן (Nitzat Haduvdevan, own brand)",
+     "product_name": "סוכר פירות פרוקטוז, 500 גרם - ניצת הדובדבן",
+     "pack": "500 גרם",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.nizat.com/%D7%A1%D7%95%D7%9B%D7%A8-%D7%A4%D7%99%D7%A8%D7%95%D7%AA--%D7%A4%D7%A8%D7%95%D7%A7%D7%98%D7%95%D7%96-500-%D7%92%D7%A8%D7%9D-%D7%A0%D7%99%D7%A6%D7%AA-%D7%94%D7%93%D7%95%D7%91%D7%93%D7%91%D7%9F-i7301",
+     "source_type": "RETAILER",
+     "seller": "ניצת הדובדבן (כנפי נשרים בע\"מ)",
+     "page_market": "IL",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "none that binds: generic .com, ILS prices only (currency never binds); no country named on the product or terms page",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": 0.0,
+      "protein_g": 0.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "סוכר פירות (פרוקטוזה)",
+      "from": "page label: per 100 g energy 399 kcal, carbohydrates 98.8 g of which sugars 98.8 g, fat 0 g, protein 0 g, sodium 0 mg"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "single ingredient fructose; sugars 98.8 g/100 g as printed",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9a7f18f9ed18b1ee.json",
+     "verifier_verification_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T15:33:28Z",
+     "identity_note": "own-brand listing with exact name and pack; store SKU on page, no GTIN. Market binding not proven (generic .com)"
+    }
+   ],
+   "notes": "Rank 1 is confirmed on the manufacturer's .co.il page (GTIN as data). Rank 2 has the better printed composition but no binding market signal."
+  },
+  "INU": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "אינולין",
+    "אבקת אינולין",
+    "סיבים מסיסים מעולש"
+   ],
+   "queries": [
+    "אינולין אבקה לקנות (WebSearch)",
+    "kiki-health.com product page + shipping policy (cross-border)",
+    "cookstock.co.il category אבקות ומייצבים",
+    "tvuot.co.il / galam.co.il / altman.co.il site search: אינולין",
+    "razberry.co.il catalogue scan: אינולין|inulin"
+   ],
+   "sources_tried": [
+    "kiki-health.com UK brand shop (GTIN on page; country selector lists Israel)",
+    "nizat.com health-food chain (found Atid Yarok inulin 400 g; generic .com, no GTIN)",
+    "cookstock.co.il baking supplier (found unbranded 'אינולין (קר) 600 גרם')",
+    "vit2go.com supplements (listing no longer resolves to the product)",
+    "prikafu.com health shop (product URL now serves the home page)",
+    "biogaya.co.il health shop (bot wall)",
+    "keshet-teamim.co.il (bot wall)",
+    "shop.super-pharm.co.il pharmacy (bot wall)",
+    "galam.co.il / tvuot.co.il / altman.co.il (no result)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "KIKI Health",
+     "product_name": "Inulin Powder, Organic - 250g",
+     "pack": "250 g",
+     "gtin": "5060018515847",
+     "identifier_confirmed": true,
+     "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "KIKI Health (UK brand web shop)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "no local binding (generic .com, UK brand shop); cross-border - see ships_to_evidence",
+     "cross_border": true,
+     "ships_to_evidence": "country selector on the product page lists 'Israel (ILS ₪)'; shipping policy https://kiki-health.com/policies/shipping-policy checked with check_quotes.py (found=true, 2026-09-17): 'For EU and International orders, postage costs vary according to your country.' and 'International Delivery ... Royal Mail International Tracked delivery is used on all orders'",
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": 93.0,
+      "fructose_pct": null,
+      "ingredients": "Made from 100% Blue Agave (organic agave inulin)",
+      "from": "brand product page: '93% soluble plant-based fibre', '5.4g of fibre per serving', 'Completely pure, with no added sugars or sweeteners'"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "pure organic agave inulin, 93 % soluble fibre | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e10a0560f724b16f.json",
+     "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+     "checked_at_utc": "2026-09-17T16:31:10Z",
+     "identity_note": "gtin13 5060018515847 as JSON-LD data on this purchase page (verifier EAN_ON_GENERIC_TLD_PAGE); the same GTIN/product is sold locally in UAE/KSA by Life Pharmacy",
+     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+    },
+    {
+     "rank": 2,
+     "brand": "עתיד ירוק (Atid Yarok)",
+     "product_name": "אינולין אבקת סיבים מסיסים מעולש 400 גרם - עתיד ירוק",
+     "pack": "400 גרם",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.nizat.com/%D7%90%D7%99%D7%A0%D7%95%D7%9C%D7%99%D7%9F-%D7%90%D7%91%D7%A7%D7%AA-%D7%A1%D7%99%D7%91%D7%99%D7%9D-%D7%9E%D7%A1%D7%99%D7%A1%D7%99%D7%9D-%D7%9E%D7%A2%D7%95%D7%9C%D7%A9-400-%D7%92%D7%A8%D7%9D-%D7%A2%D7%AA%D7%99%D7%93-%D7%99%D7%A8%D7%95%D7%A7-i26909",
+     "source_type": "RETAILER",
+     "seller": "ניצת הדובדבן (כנפי נשרים בע\"מ)",
+     "page_market": "IL",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "none that binds: generic .com, ILS prices only",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": 0.0,
+      "protein_g": 0.0,
+      "fibre_g": 88.0,
+      "fructose_pct": null,
+      "ingredients": "סיבי אינולין משורש עולש",
+      "from": "page label: per 100 g energy 208 kcal, carbohydrates 8 g of which sugars 8 g, dietary fibre 88 g, sodium 16 mg"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "chicory-root inulin, fibre 88 g/100 g (reference 89)",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f84e6318803924dc.json",
+     "verifier_verification_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T15:33:30Z",
+     "identity_note": "third-party brand on a retailer page without GTIN (store SKU only); no manufacturer page found"
+    }
+   ],
+   "notes": "No Israeli page with an inulin GTIN could be read, so the only verified path is cross-border (rank 1, UK brand shop that lists Israel in its country selector). Best local option: Atid Yarok 400 g at Nitzat Haduvdevan (rank 2, 88 g fibre, generic .com, no GTIN). Also local: Cookstock unbranded 'אינולין (קר) 600 גרם' (https://www.cookstock.co.il/items/8311986, .co.il, chicory inulin, no composition printed; verdict ~/.cache/gellatti-evidence/verify/8818ac18cdcfcfc4.json)."
+  },
+  "YOL": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "אבקת חלמון",
+    "אבקת חלמון ביצה",
+    "חלמון מיובש"
+   ],
+   "queries": [
+    "אבקת חלמון ביצה (WebSearch)",
+    "razberry.co.il site search / catalogue scan: חלמון",
+    "cookstock.co.il category אבקות ומייצבים",
+    "\"אבקת חלמון\" ביצה מפוסטר מרכיבים 100% חנות חומרי גלם קונדיטוריה (WebSearch); \"אבקת שמנת\" קנייה חנות אונליין חומרי גלם לאפייה 42% שומן (WebSearch)",
+    "hobbybaecker.de sitemap scan (sahnepulver|rahmpulver|eigelb|eidotter|fruktose|inulin) + Versand- und Zahlungsbedingungen",
+    "meilleurduchef.com sitemap_en.xml (7 533 shop URLs) and cerfdellier.com 1_fr_0_sitemap.xml (9 727 product URLs) scanned for yolk|jaune-d-oeuf|creme-en-poudre|poudre-de-creme|fructose|inuline",
+    "gourmet-versand.com EN sitemap scan (fructose|cream-powder|yolk|inulin) + shipping-cost country selector index.php?site=versand&language=en (81 country options)"
+   ],
+   "sources_tried": [
+    "cookstock.co.il baking supplier (found 100 g and 500 g pasteurised yolk powder)",
+    "razberry.co.il pastry shop (found 200 g egg yolk powder)",
+    "shufersal.co.il (bot wall)",
+    "keshet-teamim.co.il (bot wall)",
+    "shop.super-pharm.co.il (bot wall)",
+    "iherb.com and its country subdomains: HTTP 403 for every URL tried (blocked, inconclusive)",
+    "souschef.co.uk: 'Verifying your connection...' interstitial instead of the sitemap (bot wall, inconclusive)",
+    "hobbybaecker.de (DE): 'Sahnepulver sprühgetrocknet 100 g' (Zutaten: SAHNE 42% Fett) and 'Eigelbpulver 100 g' (Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET), both 'auf Lager' - the exact reference products; its enumerated delivery list is EU + UK only, 'Rest der Welt' is priced but no country is named (kept as a LEAD)",
+    "meilleurduchef.com and cerfdellier.com (FR pastry suppliers, sitemaps scanned): Louis François fructose 1 kg (GTIN 3700434800807) and inulin 1 kg (GTIN 3700434802382) in stock, but NO dairy cream powder and NO egg yolk powder in either catalogue (egg white powder only); delivery wording is generic ('national and international deliveries', 'Remove 5.5% outside EU'), no country named",
+    "gourmet-versand.com (DE gourmet retailer, shipping-cost country selector names 81 countries incl. Israel): Sosa fructose powder 1 kg found with GTIN, ingredients and nutrition; its EN sitemap has NO dairy cream powder (only cooking-, filling- and coconut-cream powders) and NO egg yolk powder (only yolk-coloured food colouring)",
+    "lironbereshit18.co.il (\"אבקת חלמון ביצה 100 גרם\") and tobake.co.il (\"אבקת חלמון ביצה 1 ק\\\"ג\"), both .co.il with schema.org InStock: same class as the two existing leads, still no ingredient list, so they add nothing",
+    "teva-galil.co.il (Israeli egg-powder producer): egg white powder only, B2B enquiry form, no yolk powder page",
+    "razberry.co.il /products/egg-yolk-powder.json: barcode 729011818324 fails the GTIN check digit (identifiers.py CHECKSUM_FAIL)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": null,
+     "product_name": "אבקת חלמון מפוסטר 100 גרם",
+     "pack": "100 גרם",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.cookstock.co.il/items/7943959-%D7%90%D7%91%D7%A7%D7%AA-%D7%97%D7%9C%D7%9E%D7%95%D7%9F-%D7%9E%D7%A4%D7%95%D7%A1%D7%98%D7%A8-100-%D7%92%D7%A8%D7%9D",
+     "source_type": "RETAILER",
+     "seller": "Cookstock (קוקסטוק), Kfar Saba",
+     "page_market": "IL",
+     "market_by": "CCTLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "country domain .co.il",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "page description"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "described as dried pasteurised yolk, but no ingredient list or nutrition printed, so A vs B cannot be decided",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/833c157e629b8178.json",
+     "verifier_verification_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T15:33:35Z",
+     "identity_note": "first-party listing (item 7943959) without a brand or GTIN",
+     "composition_note": "the page prints no ingredient list - page text: description: pasteurised egg yolk powder made from selected yolks, pasteurised and dried (מיוצרת מחלמונים מובחרים אשר עברו תהליך פסטור עדין ויובשו); 10 g powder + 10 g water = 1 M yolk",
+     "brand_note": "(unbranded on page)",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:44:00Z",
+      "basis": "schema.org InStock",
+      "source": "https://www.cookstock.co.il/items/7943959-%D7%90%D7%91%D7%A7%D7%AA-%D7%97%D7%9C%D7%9E%D7%95%D7%9F-%D7%9E%D7%A4%D7%95%D7%A1%D7%98%D7%A8-100-%D7%92%D7%A8%D7%9D"
+     },
+     "pack_note": "(also listed: 500 גרם, item 7943969)"
+    },
+    {
+     "rank": 2,
+     "brand": null,
+     "product_name": "אבקת חלמון ביצה",
+     "pack": "200 גרם",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://razberry.co.il/products/egg-yolk-powder",
+     "source_type": "RETAILER",
+     "seller": "רזברי קולינרי אינספריישן בע\"מ (Razberry)",
+     "page_market": "IL",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "country domain .co.il",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "page description"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "no ingredient list or nutrition printed",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c1fcb0d7ecbbf04b.json",
+     "verifier_verification_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T15:33:32Z",
+     "identity_note": "CAUTION: the page JSON-LD carries \"gtin\":\"729011818324\" for the 200 g variant and verify_ean_market.py therefore returned CONFIRMED, but identifiers.py types that number as CHECKSUM_FAIL - it is not a valid GTIN, so it is recorded as null and identifier_confirmed is false. Identity rests on the first-party .co.il listing (exact name, 200 g pack).",
+     "composition_note": "the page prints no ingredient list - page text: description: egg yolk powder with rich concentrated taste; kosher parve, packed under Rosh HaAyin rabbinate supervision",
+     "brand_note": "(unbranded on page; packed for Razberry)",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:39:50Z",
+      "basis": "schema.org InStock",
+      "source": "https://razberry.co.il/products/egg-yolk-powder"
+     }
+    },
+    {
+     "rank": 3,
+     "brand": null,
+     "product_name": "Eigelbpulver",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
+     "source_type": "RETAILER",
+     "seller": "Hobbybäcker-Versand (hobbybaecker.de); food business operator printed on the page: Cake-Masters, Siemensstraße 24, 49770 Herzlake, Germany",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "German .de country domain; the destination market would be reached cross-border",
+     "cross_border": true,
+     "ships_to_evidence": "cross-border LEAD only: the seller's own shipping page prices a 'Rest der Welt' zone (check_quotes.py found=true, ~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_rest_of_world.json, quote 'Rest der Welt 1 17,99 EUR pauschal.') but the only enumerated delivery countries are EU + UK (~/.cache/gellatti-evidence/quotes/gap-mena/hobbybaecker_named_countries.json, quote 'Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.'). IL is NOT named, so this is a lead, not a confirmation.",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:21:21Z",
+      "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+      "source": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g"
+     },
+     "composition": {
+      "fat_g": 55.8,
+      "protein_g": 34.3,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.",
+      "from": "page label \"Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.\"; nutrition per 100 g: Fett 55,8 g (davon gesättigte Fettsäuren 17,6 g), Kohlenhydrate 3,6 g, davon Zucker 3,6 g, Eiweiß 34,3 g, Salz 0,3 g"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % pasteurised, spray-dried chicken egg yolk; fat 55,8 / protein 34,3 against the PI-ING-001645 reference fat 56,5 / protein 34,5",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2944f17c1f486c80.json",
+     "identity_note": "no GTIN is printed; first-party own listing of the shop (page title \"… | Hobbybäcker\", exact name, 100 g pack, ingredient and nutrition declaration). identifier_confirmed stays false.",
+     "checked_at_utc": "2026-09-17T18:21:21Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "Right product type is sold locally in retail packs, but neither page prints ingredients, so equivalence stays C and the class stays LEAD. | gap pass 2026-09-17: both Israeli leads are confirmed in stock (schema.org InStock) and two more Israeli shops sell the same product, so availability is not the problem - no Israeli page prints the ingredient list, which is why the class stays LEAD. The razberry \"gtin\" value on the page is not a valid GTIN (checksum fails)."
+  }
+ },
+ "country_notes": "Discovery constraint: the shared session WebSearch budget ran out (200/200) after the first queries; DuckDuckGo and Mojeek served CAPTCHAs (not bypassed) and Bing returned unrelated results to non-browser clients. Further discovery used retailers' own catalogue/search endpoints. Bot walls (HTTP 403/challenge) from the ES egress: shufersal.co.il, shop.super-pharm.co.il, keshet-teamim.co.il, carrefour.co.il, rami-levy.co.il, biogaya.co.il, shukcity.co.il, tivtaam.co.il, supherb.co.il, vitaminglobal.co.il. | Gap pass 2026-09-17 by agent gap-mena (egress ES) under the owner rules of 2026-09-17 (stock state, cross-border country naming, no sentinels, marketplaces never confirm): items reworked in this pass are listed in each item's notes."
 }

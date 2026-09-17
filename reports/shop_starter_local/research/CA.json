@@ -35,7 +35,13 @@
         "site search healthyplanetcanada.com: heavy cream powder",
         "site search laguildeculinaire.com: crème en poudre",
         "vendor page laguildeculinaire.com: Moléculaire",
-        "shipping policy pages hoosierhillfarm.com / anthonysgoods.com / znaturalfoods.com: Canada"
+        "shipping policy pages hoosierhillfarm.com / anthonysgoods.com / znaturalfoods.com: Canada",
+        "site catalog gourmet-versand.com: Sahnepulver / Rahmpulver / Milchpulver (0 dairy powders)",
+        "site search pati-versand.de: Sahnepulver (1 article: Cake-Masters Sahnepulver 100g, SAHNE 42% Fett)",
+        "site search hobbybaecker.de: Sahnepulver",
+        "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose",
+        "product-sitemap scan msk-ingredients.com (6597 products): yolk / cream-powder / inulin / fructose",
+        "product-sitemap scan souschef.co.uk (6274 products): yolk / cream-powder / inulin / fructose"
       ],
       "sources_tried": [
         "laguildeculinaire.com (Quebec culinary retailer; found: Moléculaire 'Heavy Cream Powder' 80g/450g, 72 % fat, both variants OutOfStock)",
@@ -55,7 +61,13 @@
         "healthyplanetcanada.com (health store; HTTP 403 bot wall)",
         "amazon.ca, etsy.com/ca, ebay.com, walmart.com (search results only; marketplaces, not used)",
         "hoosierhillfarm.com, anthonysgoods.com (US makers of ~72 % fat heavy cream powder; shipping policy has no Canada statement: no cross-border)",
-        "znaturalfoods.com (US; shipping policy HTTP 403: inconclusive)"
+        "znaturalfoods.com (US; shipping policy HTTP 403: inconclusive)",
+        "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
+        "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
+        "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)",
+        "qualifirst.com (Canadian fine-food importer; retried 2026-09-17: HTTP 429 again - blocked, inconclusive)",
+        "mccalls.ca (Toronto baking supplier; on-site search returns a 646-byte empty body - inconclusive)",
+        "hoosierhillfarm.com/policies/shipping-policy + judeesfromscratch.com/policies/shipping-policy (re-read 2026-09-17: neither page names Canada or states international shipping)"
       ],
       "candidates": [
         {
@@ -92,10 +104,70 @@
             "~/.cache/gellatti-evidence/verify/1d32135e937d5f67.json"
           ],
           "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T15:38:13Z"
+          "checked_at_utc": "2026-09-17T15:38:13Z",
+          "availability": {
+            "state": "OUT_OF_STOCK",
+            "checked_at_utc": "2026-09-17T18:41:56Z",
+            "basis": "\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, plus the printed 'Out of stock' next to the 450 g weight option and 'Sold out'",
+            "source": "https://www.laguildeculinaire.com/en/products/poudre-de-creme-lourde-heavy-powder"
+          }
+        },
+        {
+          "rank": 2,
+          "brand": "Ingredients Bar",
+          "product_name": "Cream Powder",
+          "pack": "200 g (same listing also offers 500 g, 1.5 kg and 4 kg; SKU 0370)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Ingredients Bar (United Kingdom)",
+          "page_market": "GB",
+          "market_by": "OTHER_MARKET:GB",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "NONE for CA (UK shop, GBP only - currency never binds). The seller states international delivery but names no country, so this is a LEAD purchase path, not VERIFIED_CROSS_BORDER.",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "quotes": [
+              {
+                "url": "https://ingredientsbar.com/payment-delivery/",
+                "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
+                "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json"
+              }
+            ],
+            "found": true,
+            "country_named": false,
+            "note": "Generic international-delivery statement only; CA is not named, so owner rule 2 (2026-09-17) keeps this a LEAD."
+          },
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:41:56Z",
+            "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+            "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+          },
+          "composition": {
+            "fat_g": 75.0,
+            "protein_g": 8.5,
+            "fibre_g": 0.0,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition Facts Per 100g: Energy 3094kJ/750kcal, Fat 75 g of which saturated fatty acid 51 g, Carbohydrates 12 g of which sugars 12 g, Protein 8.5 g, Dietary Fibre 0 g, Salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
+            "from": "product page, 'Ingredients & Nutrition' tab (quote file ~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json)",
+            "sugars_g": 12.0
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "Real spray-dried dairy cream powder ('made from dehydrated cream, free from additives'), printed fat 75 g/100 g - outside the 38-48 % A band (reference 42 %). Ingredients are cream + milk protein + lactose, i.e. the permitted CRP ingredient family. Recorded under owner rule 3 (2026-09-17): a dairy cream powder outside 38-48 % fat is a valid candidate for owner decision.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/65b1e5ec2bf5bace.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json",
+            "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T18:41:56Z"
         }
       ],
-      "notes": "LEAD_ONLY. Only dairy cream powder found at a Canadian direct seller is La Guilde Culinaire's 72 %-fat Heavy Cream Powder (B). Market binding would hold (explicit 'Fast shipping in Canada' quote found) but identity is NOT_PROVEN: 'Moléculaire' is a vendor/category label on 67 molecular-gastronomy items with no own-brand statement (D-37 not applicable), and the JSON-LD/variant barcodes 151429489446 (450g) and 671792489358 (80g) fail the GS1 check digit (identifiers.py CHECKSUM_FAIL). The verifier nevertheless counted 2 clean hits for 151429489446 (verdict 1d32135e937d5f67.json) = verifier false positive; no GTIN is claimed. Both variants OutOfStock at check time. No 38–48 % fat retail cream powder found in Canada; grocers mostly bot-walled (metro.ca, realcanadiansuperstore.ca 403; bulkbarn.ca 404); qualifirst.com 429. No cross-border option: the US heavy-cream-powder makers checked show no Canada shipping statement (znaturalfoods.com 403). WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+      "notes": "LEAD_ONLY. Only dairy cream powder found at a Canadian direct seller is La Guilde Culinaire's 72 %-fat Heavy Cream Powder (B). Market binding would hold (explicit 'Fast shipping in Canada' quote found) but identity is NOT_PROVEN: 'Moléculaire' is a vendor/category label on 67 molecular-gastronomy items with no own-brand statement (D-37 not applicable), and the JSON-LD/variant barcodes 151429489446 (450g) and 671792489358 (80g) fail the GS1 check digit (identifiers.py CHECKSUM_FAIL). The verifier nevertheless counted 2 clean hits for 151429489446 (verdict 1d32135e937d5f67.json) = verifier false positive; no GTIN is claimed. Both variants OutOfStock at check time. No 38–48 % fat retail cream powder found in Canada; grocers mostly bot-walled (metro.ca, realcanadiansuperstore.ca 403; bulkbarn.ca 404); qualifirst.com 429. No cross-border option: the US heavy-cream-powder makers checked show no Canada shipping statement (znaturalfoods.com 403). WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17 under owner rule 3: the local 72 % product (La Guilde Culinaire) is still OUT_OF_STOCK and its identity is still unproven. Added rank 2: Ingredients Bar (UK) Cream Powder, a real spray-dried dairy cream powder with a printed 75 % fat and full ingredient list, IN_STOCK - but its delivery page only says international delivery is charged at checkout and never names Canada, so it stays a LEAD (owner rule 2). No 38-48 % fat cream powder is sold by any Canadian direct retailer found."
     },
     "FRU": {
       "result": "CONFIRMED_LOCAL",

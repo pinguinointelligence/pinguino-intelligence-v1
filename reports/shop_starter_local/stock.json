@@ -1,0 +1,3262 @@
+{
+ "AE": {
+  "CRP": {
+   "https://www.amazon.ae/dp/B00OCV3QRW": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:45:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 1
+   },
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:07:43Z",
+    "basis": "NOW AVAILABLE",
+    "rank": 1
+   },
+   "https://www.amazon.ae/dp/B07KXZDVHS": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:45:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.lifepharmacy.com/product/kiki-health-organic-inulin-100-blue-agave-powder-250g-15847": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:04:16Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.nahdionline.com/en-ae/bioglan-inulin-powder-250-grams/pdp/102722215": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:08:46Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.amazon.ae/dp/B098SP2LTV": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:45:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 1
+   },
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 2
+   }
+  }
+ },
+ "AR": {
+  "CRP": {
+   "https://www.ingredients-solutions.com/tienda/108838/crema_de_leche_en_polvo.php?idsp=2338": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:43:28Z",
+    "basis": "B2B page with an inquiry form only; no stock or availability statement is printed",
+    "rank": 1
+   },
+   "https://pampacreations.com/crema-en-polvo/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:43:28Z",
+    "basis": "manufacturer contact page; no stock or availability statement is printed",
+    "rank": 2
+   },
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:43:28Z",
+    "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 3
+   }
+  },
+  "FRU": {
+   "https://www.bulksupplements.com/products/fructose-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:43:28Z",
+    "basis": "schema.org/InStock in the page's own offer data next to \"sku\": \"FRUC250\", \"gtin\": \"849720029065\"",
+    "rank": 1
+   },
+   "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:43:28Z",
+    "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data, plus the printed status 'SOFORT LIEFERBAR'",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.farmacity.com/inufiber-inulina-pote-x-150-g/p": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:43:59Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.tecnovo.com.ar/yema-polvo.html": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:43:28Z",
+    "basis": "manufacturer information page (25 kg B2B); no stock or availability statement is printed",
+    "rank": 1
+   }
+  }
+ },
+ "AT": {
+  "CRP": {
+   "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:52:13Z",
+    "basis": "printed phrase next to the product: \"auf lager\"",
+    "rank": 1
+   },
+   "https://www.meincupcake.de/shop/sahnepulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:52:16Z",
+    "basis": "page data: \"availability\":\"InStock\" (406 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.glaeserundflaschen.de/fruchtzucker-500-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:52:18Z",
+    "basis": "page data: \"availability\": \"https:\\/\\/schema.org\\/InStock\" (382 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.spar.at/produktwelt/sucofin-fruchtzucker-p2020005601499": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:38:53Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.prokopp.co.at/inulin-250g.html": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:39:21Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.shop-apotheke.at/ernaehrung/upmPM2ED2/sanatura-inulin.htm": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:51:55Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (261 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:52:20Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://bauernladen.at/produkte/markenzirkus/eierei-ei-gelb-pulver-aus-oesterreich-26612": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:38:56Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "AU": {
+  "CRP": {
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:29Z",
+    "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.mrvitamins.com.au/products/lotus-fructose-fruit-sugar-500g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:31:50Z",
+    "basis": "page data: \"available\":true (249 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://norwoodhealthfoods.com.au/product/lotus-fructose-powder-500g/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:31:52Z",
+    "basis": "printed phrase next to the product: \"in stock\"",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://orku.com.au/products/orku-chicory-root-inulin-powder-supplement-all-sizes": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:32:32Z",
+    "basis": "page data: \"available\":true (230 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.henfresh.com.au/product/5547-egg-yolk-powder-500g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:45:29Z",
+    "basis": "the distributor listing prints no stock or availability statement; the price itself is hidden behind a trade login",
+    "rank": 1
+   }
+  }
+ },
+ "BD": {
+  "INU": {
+   "https://www.arogga.com/product/77145/now-certified-organic-inulin-pure-powder-227g": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org OutOfStock (\"availability\":\"https://schema.org/OutOfStock\") in the page's Product JSON-LD",
+    "rank": 1
+   },
+   "https://kiki-health.com/products/inulin-powder-organic-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") and Shopify product data variants[0].\"available\": true",
+    "rank": 2
+   }
+  }
+ },
+ "BE": {
+  "CRP": {
+   "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:10:54Z",
+    "basis": "printed phrase next to the product: \"auf lager\"",
+    "rank": 1
+   },
+   "https://www.meincupcake.de/shop/sahnepulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:10:57Z",
+    "basis": "page data: \"availability\":\"InStock\" (406 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.farmaline.be/nl/Supplementen/BE01481027/prodia-fructose.htm": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:09:44Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (187 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://webshop.revogan.be/en/shop/5472-prodia-fructose-1kg-15568": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:09:24Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.biovita.be/nl/132784/agave-inuline-natural-powder-250g/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:09:48Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.myprotein.be/p/vitamins/prebiotische-inulinevezel/11397387/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:09:50Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (67 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:10:59Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.meincupcake.de/shop/eigelbpulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:11:01Z",
+    "basis": "page data: \"availability\":\"InStock\" (407 chars from the product on the page)",
+    "rank": 2
+   }
+  }
+ },
+ "BG": {
+  "CRP": {
+   "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "Auf Lager (page also carries schema.org/InStock)",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T17:16:30Z",
+    "basis": "researcher note: \"…Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.…\"",
+    "rank": 1
+   },
+   "https://www.ebag.bg/fruktoza-dr-keskin/386143": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:16:56Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (7671 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.myprotein.bg/p/vitamins/prebiotic-inulin-fibre-powder/11397387/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:17:19Z",
+    "basis": "researcher note: \"…TIN sits in the JSON-LD offer named '… 30 SERVINGS - 360g'; availability InStock.…\"",
+    "rank": 1
+   },
+   "https://benu.bg/osavi-inulin-fibrulinetm-cikoriya-240-gr-prah": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:17:21Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T17:16:36Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  }
+ },
+ "BH": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:07:43Z",
+    "basis": "NOW AVAILABLE",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://kiki-health.com/products/inulin-powder-organic-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:25:06Z",
+    "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  }
+ },
+ "BR": {
+  "CRP": {
+   "https://www.cerealistaexpress.com.br/creme-de-leite-em-po-granel.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:41:56Z",
+    "basis": "itemprop=\"availability\" ... content=\"http://schema.org/InStock\" in the page's own product markup",
+    "rank": 1
+   },
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:41:56Z",
+    "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.lowcucar.com.br/acucares/frutose/frutose-lowcucar-cartucho-200g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:44:24Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.santaluzia.com.br/adocante-em-po-frutose-sem-gluten-gerbeaud-200g-733598/p": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:42:38Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.cerealistasbrasil.com.br/aditivos-e-espessantes/inulina-em-po-fibra-de-chicoria-100-pura-sem-gluten-500g-tlc-tudo-low-carb": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:45:40Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://zonacerealista.com.br/products/inulina-de-chicoria-em-po-granel-250g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:45:14Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.emporioquatroestrelas.com.br/products/gema-de-ovo-em-po-100g10730-3": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:47:38Z",
+    "basis": "page data: \"available\":true (191 chars from the product on the page)",
+    "rank": 1
+   }
+  }
+ },
+ "CA": {
+  "CRP": {
+   "https://www.laguildeculinaire.com/en/products/poudre-de-creme-lourde-heavy-powder": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T18:41:56Z",
+    "basis": "\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, plus the printed 'Out of stock' next to the 450 g weight option and 'Sold out'",
+    "rank": 1
+   },
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:41:56Z",
+    "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://bulknbits.ca/products/fruit-sugar": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:45:08Z",
+    "basis": "page data: \"available\":true (5716 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://ingredientdepot.com/products/fructose-1-kg": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:45:48Z",
+    "basis": "page data: \"available\":true (8892 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.vitamart.ca/products/now-inulin-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:45:04Z",
+    "basis": "page data: \"available\":true (239 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://well.ca/products/now-100-pure-organic-inulin-powder_89288.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:42:39Z",
+    "basis": "page data: og:availability\" content=\"instock\" (1775 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.laguildeculinaire.com/products/poudre-de-jaune-doeuf": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:43:54Z",
+    "basis": "researcher note: \"…. Other Canadian paths could not be proven: McCall's 450 g (out of stock; no brand, ingredients or GTIN) and Can…\"",
+    "rank": 1
+   }
+  }
+ },
+ "CH": {
+  "CRP": {
+   "https://www.meincupcake.de/shop/sahnepulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:00:07Z",
+    "basis": "page data: \"availability\":\"InStock\" (406 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:00:11Z",
+    "basis": "printed phrase next to the product: \"auf lager\"",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://cakelicious.ch/de/backzutaten/18979-kristallisierte-fructose-300-g-3700105292887.html": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:59:18Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.morgashop.ch/de/fruchtzucker/13021-fruchtzucker-750-g.html": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:58:41Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.myprotein.ch/p/vitamine/prabiotische-inulin-ballaststoffe/11397387/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:57:34Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (67 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.chefgourmet.ch/achat/inuline-1kg/LF10167.htm": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:57:17Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://cakelicious.ch/de/backzutaten/18963-pasteurisiertes-eigelbpulver-100-g-7612558007061.html": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:57:32Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://cakelicious.ch/de/backzutaten/19170-eigelbpulver-pasteurisiert-1-kg-7630557804948.html": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:59:14Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "CL": {
+  "CRP": {
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:43:28Z",
+    "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.nutrigood.cl/fructosa-cristalina-1-kilo": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:44:03Z",
+    "basis": "page data: product:availability\" content=\"instock\" (1595 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://smartbrew.cl/tienda/fructosa-pura-1-kg/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:42:39Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (224 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://lafarmacianatural.net/intestinal/252-prebiotico-inulina-polvo-227g.html": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:45:19Z",
+    "basis": "printed phrase next to the product: \"agotado\"",
+    "rank": 1
+   },
+   "https://www.mixgreen.cl/products/10748-inulina-organica-en-polvo-227-g-now": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:45:11Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://newweb.alimentarichile.cl/producto/yema-en-polvo-cat/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:43:28Z",
+    "basis": "\"availability\":\"http://schema.org/InStock\" in the page's own product data",
+    "rank": 1
+   },
+   "https://mmpp.cl/producto/yema-de-huevo-en-polvo-yd05/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:43:28Z",
+    "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data",
+    "rank": 2
+   }
+  }
+ },
+ "CN": {
+  "INU": {
+   "https://product.suning.com/0070211624/12394724031.html": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "page prints \"售完\" and the JSON flag \"SoldOut\"",
+    "rank": 1
+   },
+   "https://kiki-health.com/products/inulin-powder-organic-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") and Shopify product data variants[0].\"available\": true",
+    "rank": 2
+   }
+  }
+ },
+ "CO": {
+  "CRP": {
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:01Z",
+    "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.jumbocolombia.com/frukta-fructosa-x-450g-ales/p": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:40:27Z",
+    "basis": "page data: \"availability\":\"http://schema.org/InStock\" (393 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://secure.carulla.com/fructosa-pura-diety-bolsa-doy-pack-x-450-gr-755716/p": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:51:03Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.bulksupplements.com/products/inulin-fos-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:01Z",
+    "basis": "schema.org/InStock in the page's own offer data next to \"sku\": \"INU250\", \"gtin\": \"849720019592\"",
+    "rank": 1
+   },
+   "https://elmolinoverde.com/productos/inulina-en-polvo-prebiotico/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:01Z",
+    "basis": "\"availability\": \"https://schema.org/InStock\" in the page's own product data (the 125 gr variant also shows 'es el ultimo!')",
+    "rank": 2
+   },
+   "https://tienda.ipf.com.co/producto/inulina/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:01Z",
+    "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data",
+    "rank": 3
+   }
+  },
+  "YOL": {
+   "https://www.mejoronline.co/productos/yema-de-huevo-en-polvo-500-grs/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:01Z",
+    "basis": "\"availability\": \"https://schema.org/InStock\" in the page's own product data, with an active 'Agregar al carrito' button",
+    "rank": 1
+   }
+  }
+ },
+ "CR": {
+  "CRP": {
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:01Z",
+    "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.bulksupplements.com/products/fructose-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:03:43Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (173 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://delcaribeshop.com/cr/producto/fructosa-cristalina-bolsa-1-kg/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:38:39Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.bulksupplements.com/products/inulin-fos-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:03:46Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (172 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.macrobioticasunidas.com/products/1160/now-foods-inulina-en-polvo-8-onzas": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:40:20Z",
+    "basis": "page data: product:availability\"\n          content=\"in stock\" (951 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://delcaribeshop.com/cr/producto/yema-de-huevo-en-polvo-bolsa-1-kg/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:01Z",
+    "basis": "\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, plus the printed badge 'Agotado'",
+    "rank": 1
+   }
+  }
+ },
+ "CY": {
+  "CRP": {
+   "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:47:01Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:41:31Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:17:19Z",
+    "basis": "researcher note: \"…Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'. No Cypriot retailer page reachable; c…\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.pharm24.gr/now-foods-inulin-prebiotic-pure-powder-227g-p-74386.html": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:34:33Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.taste-market.de/Inulin-Pulver/27-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:57:52Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.myprotein.com.cy/p/sports-nutrition/egg-yolk-powder/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:46:42Z",
+    "basis": "researcher note: \"…SON-LD pairs gtin13 5055534303733 with weight 500 g; schema availability OutOfStock / inStock:false at check time (same on…\"",
+    "rank": 1
+   },
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:57:53Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "CZ": {
+  "CRP": {
+   "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:05:59Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.vsenavareni.cz/fruktoza-ovocny-cukr-1kg-dr.-hlavac": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:54:40Z",
+    "basis": "page data: \"availability\": \"http://schema.org/InStock\" (1317 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.cukrarskepotreby.cz/fruktoza-krystalicka-prirodni-sladidlo-bez-cukru-1kg": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:49:41Z",
+    "basis": "page data: product:availability\" content=\"instock\" (3052 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://gymbeam.cz/cekankovy-inulin-gymbeam.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:51:04Z",
+    "basis": "researcher note: \"…g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check…\"",
+    "rank": 1
+   },
+   "https://www.vsenavareni.cz/inulin-1-kg-louis-francois": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:07:21Z",
+    "basis": "page data: \"availability\": \"http://schema.org/InStock\" (683 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.vsenavareni.cz/suseny-vajecny-zloutek-v-prasku-100g-cake-masters": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:54:38Z",
+    "basis": "page data: \"availability\": \"http://schema.org/InStock\" (953 chars from the product on the page)",
+    "rank": 1
+   }
+  }
+ },
+ "DE": {
+  "CRP": {
+   "https://www.meincupcake.de/shop/sahnepulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:31:41Z",
+    "basis": "page data: \"availability\":\"InStock\" (406 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:31:47Z",
+    "basis": "printed phrase next to the product: \"auf lager\"",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.glaeserundflaschen.de/fruchtzucker-500-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:32:50Z",
+    "basis": "page data: \"availability\": \"https:\\/\\/schema.org\\/InStock\" (382 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.sicca.de/feldkueche/outdoor/243/fruchtzucker-100-rein": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:32:37Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (6692 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.vitalia-reformhaus.de/sanatura-inulin-250-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:34:22Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (1013 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://reformhaus.de/products/sanatura-inulin-ballaststoff-250g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:33:45Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:35:16Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.meincupcake.de/shop/eigelbpulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:36:51Z",
+    "basis": "page data: \"availability\":\"InStock\" (407 chars from the product on the page)",
+    "rank": 2
+   }
+  }
+ },
+ "DK": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:51:55Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://gourmetoutlet.dk/products/fruchtzucker": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:34:30Z",
+    "basis": "page data: \"availability\":\"http:\\/\\/schema.org\\/InStock\" (254 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://bioshi24.dk/da/products/fruktose-frugtsukker-500-g-dr-health-55655": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:34:29Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://well.dk/natur-drogeriet-inulin-pulver-150-gr": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:56:30Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.matas.dk/fos-inulin-150-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:56:32Z",
+    "basis": "page data: \"availability\":\"http://schema.org/InStock\" (396 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.myprotein.dk/p/sports-nutrition/aeggeblomme-pulver/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:56:34Z",
+    "basis": "page data: \"availability\": \"https://schema.org/OutOfStock\" (70 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:11:25Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "DO": {
+  "CRP": {
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:41Z",
+    "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:41Z",
+    "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data, plus the printed status 'SOFORT LIEFERBAR'",
+    "rank": 1
+   },
+   "https://www.sirena.do/multifood-fructosa-14-oz-1707264/p": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:41Z",
+    "basis": "\"availability\":\"http://schema.org/InStock\" in the VTEX page's own product data",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:41Z",
+    "basis": "\"availability\":\"https://schema.org/InStock\" in the page's own product data, plus the printed status 'SOFORT LIEFERBAR'",
+    "rank": 1
+   }
+  }
+ },
+ "DZ": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:37:17Z",
+    "basis": "In stock (page text) / schema.org InStock",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://kiki-health.com/products/inulin-powder-organic-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:26:27Z",
+    "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  }
+ },
+ "EE": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:52:00Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://barbora.ee/toode/kristall-fruktoos-alvo-500-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:00:40Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://sumena.ee/toode/fruktoos-alvo-500g/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:01:21Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.euroapteek.ee/p/iconfit-inuliini-pulber-250-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:05:36Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.myprotein.ee/p/sports-nutrition/munakollase-pulber/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T16:04:51Z",
+    "basis": "page data: \"availability\": \"https://schema.org/OutOfStock\" (70 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:11:30Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "EG": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://spinneys-egypt.com/en/star-diet-fructose-sugar-500-gm-spinneys": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:00Z",
+    "basis": "schema.org InStock",
+    "rank": 1
+   },
+   "https://spinneys-egypt.com/en/rich-diet-sugar-fructose-500-gm": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:00Z",
+    "basis": "schema.org InStock",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://kiki-health.com/products/inulin-powder-organic-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:22:48Z",
+    "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.amazon.eg/dp/B01LWV9LNO": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:23:21Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://arkanfoodsegypt.com/ar/product/%D8%A8%D9%88%D8%AF%D8%B1-%D8%B5%D9%81%D8%A7%D8%B1-%D8%A7%D9%84%D8%A8%D9%8A%D8%B6-500-%D8%AC%D8%B1%D8%A7%D9%85/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:51Z",
+    "basis": "schema.org InStock",
+    "rank": 1
+   },
+   "https://www.amazon.eg/dp/B0GCQ7DKK8": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:45:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 2
+   },
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 3
+   }
+  }
+ },
+ "ES": {
+  "CRP": {
+   "https://www.meincupcake.de/shop/sahnepulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:52:35Z",
+    "basis": "page data: \"availability\":\"InStock\" (406 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://lopezmira.com/nuestros-productos/materias-primas/lacteos/nata-en-polvo/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:43:04Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.farmaciasdirect.es/products/santiveri-fructosa-750gr": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:36:19Z",
+    "basis": "page data: \"availability\":\"http://schema.org/OutOfStock\" (695 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.naturitas.es/p/alimentacion/endulzantes-y-mieles/sustitutivos-del-azucar/fructosa-1-kg-de-polvo-el-granero-integral": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:35:05Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://farmasana.es/18722-inulina-de-achicoria-en-polvo-200g.html": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:39:46Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://canarias.integramed.es/inicio/1073-inulina-en-polvo-250-g-8412347005310.html": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:36:53Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.myprotein.es/p/nutricion-deportiva/yema-de-huevo-en-polvo/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:34:37Z",
+    "basis": "researcher note: \"…gtin13 5055534303733 with weight 500 g; variant data shows inStock:false at check time (1 kg variant GTIN 505553…\"",
+    "rank": 1
+   },
+   "https://sermand.com/products/yema-de-huevo-en-polvo-natural-sin-gluten-ni-lactosa": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:34:40Z",
+    "basis": "page data: \"availability\":\"http:\\/\\/schema.org\\/InStock\" (311 chars from the product on the page)",
+    "rank": 2
+   }
+  }
+ },
+ "FI": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:51:58Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.minimani.fi/dansukker-hedelmasokeri-370-g.html": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:32:35Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.ravinnetukku.fi/p/ostrovit-inulin-500-g-natural-puhdas-sikurista-saatava-inuliini": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:49:01Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.verkkokauppa.com/fi/product/1062325/ICONFIT-Inuliinijauhe-250-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:50:24Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.myprotein.fi/p/lisaravinteet/kananmunan-keltuaisjauhe/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:50:09Z",
+    "basis": "page data: \"availability\": \"https://schema.org/OutOfStock\" (70 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:11:29Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "FR": {
+  "CRP": {
+   "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:20:04Z",
+    "basis": "printed phrase next to the product: \"auf lager\"",
+    "rank": 1
+   },
+   "https://www.meincupcake.de/shop/sahnepulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:20:07Z",
+    "basis": "page data: \"availability\":\"InStock\" (406 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.auchan.fr/gayelord-hauser-fructose-vivis-cristallise/pr-C1274492": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:14:54Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/sucre-edulcorant/lfr-fructose.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:19:11Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (263 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/stabilisateur/lfr-inuline-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:19:13Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (278 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://fr.myprotein.com/p/vitamines/fibre-prebiotique-d-inuline/11397387/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:16:16Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (67 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/blanc-oeuf/lfr-jaune-oeuf-seche-pasteurise-louis-francois.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:19:09Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (422 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.gdetou.com/shop/loujoe100106-dried-egg-yolk-150g-louis-f-19186": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:14:30Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (889 chars from the product on the page)",
+    "rank": 2
+   }
+  }
+ },
+ "GB": {
+  "CRP": {
+   "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:28:09Z",
+    "basis": "printed phrase next to the product: \"auf lager\"",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.healthysupplies.co.uk/sussex-wholefoods-fructose-500g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:26:44Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (154 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://specialingredients.co.uk/products/fructose-500-grams": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:27:39Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.healthysupplies.co.uk/inulin-powder-from-chicory-250g-sussex-wholefoods.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:26:45Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (173 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://specialingredients.co.uk/products/inulin-powder-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:27:37Z",
+    "basis": "page data: \"available\":true (9321 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:28:11Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/blanc-oeuf/lfr-jaune-oeuf-seche-pasteurise-louis-francois.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:28:13Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (422 chars from the product on the page)",
+    "rank": 2
+   }
+  }
+ },
+ "GH": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:37:17Z",
+    "basis": "In stock (page text) / schema.org InStock",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/ice-cream-stabilizers/lfr-inulin.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:38:37Z",
+    "basis": "In stock (page text) / schema.org InStock",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  }
+ },
+ "GR": {
+  "CRP": {
+   "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "Auf Lager (page also carries schema.org/InStock)",
+    "rank": 1
+   },
+   "https://kallasinc.com/product/6239": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "no stock or availability wording printed; the page's Product JSON-LD (sku 440005) has no offer/availability",
+    "rank": 2
+   },
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "schema.org/InStock in the page's Product JSON-LD offer (Product ID 0370)",
+    "rank": 3
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:17:18Z",
+    "basis": "researcher note: \"…Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.…\"",
+    "rank": 1
+   },
+   "https://www.mymarket.gr/zografos-frouktozi-400gr": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:04:03Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.pharm24.gr/now-foods-inulin-prebiotic-pure-powder-227g-p-74386.html": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:33:48Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.taste-market.de/Inulin-Pulver/27-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:57:48Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.myprotein.gr/p/sports-nutrition/egg-yolk-powder/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:46:40Z",
+    "basis": "researcher note: \"…SON-LD pairs gtin13 5055534303733 with weight 500 g; schema availability OutOfStock / inStock:false at check time (same on…\"",
+    "rank": 1
+   },
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:57:50Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "HK": {
+  "FRU": {
+   "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://bakingwarehouse.com/products/inulin-hot-sosa-600gr": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "Shopify product data: variants[0].\"available\": true, inventory_quantity 1 (bakingwarehouse.com/products.json and /products/inulin-hot-sosa-600gr.json)",
+    "rank": 1
+   },
+   "https://bakingwarehouse.com/products/inulin-250gr-saporepuro": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "page prints \"Sold Out\"; Shopify product data: variants[0].\"available\": false",
+    "rank": 2
+   }
+  }
+ },
+ "HR": {
+  "CRP": {
+   "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "Auf Lager (page also carries schema.org/InStock)",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T17:16:26Z",
+    "basis": "researcher note: \"…Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'. BRAK. No Croatian baking/pastry suppl…\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://gymbeam.hr/inulin-iz-cikorije-gymbeam.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:51:11Z",
+    "basis": "researcher note: \"…g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check…\"",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T17:16:33Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  }
+ },
+ "HU": {
+  "CRP": {
+   "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:06:06Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.ilovecakes.hu/fruktoz-gyumolcscukor-1-kg": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:04:22Z",
+    "basis": "page data: \"availability\": \"http://schema.org/InStock\" (1313 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://gymbeam.hu/cikoria-inulin-gymbeam.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:51:07Z",
+    "basis": "researcher note: \"…g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check…\"",
+    "rank": 1
+   },
+   "https://www.ilovecakes.hu/inulin-1-kg-louis-francois": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:07:25Z",
+    "basis": "page data: \"availability\": \"http://schema.org/InStock\" (708 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.ilovecakes.hu/szaritott-tojassargaja-por-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:04:10Z",
+    "basis": "page data: \"availability\": \"http://schema.org/InStock\" (906 chars from the product on the page)",
+    "rank": 1
+   }
+  }
+ },
+ "ID": {
+  "FRU": {
+   "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://citranatapramana.com/product/egg-yolk-powder/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:55:00Z",
+    "basis": "schema.org InStock (\"availability\":\"http://schema.org/InStock\") on the product page",
+    "rank": 1
+   }
+  }
+ },
+ "IE": {
+  "CRP": {
+   "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:30:56Z",
+    "basis": "printed phrase next to the product: \"auf lager\"",
+    "rank": 1
+   },
+   "https://www.meincupcake.de/shop/sahnepulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:30:58Z",
+    "basis": "page data: \"availability\":\"InStock\" (406 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.glaeserundflaschen.de/fruchtzucker-500-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:31:00Z",
+    "basis": "page data: \"availability\": \"https:\\/\\/schema.org\\/InStock\" (382 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.myprotein.ie/p/vitamins/prebiotic-inulin-fibre/11397387/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:29:34Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (67 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/stabilisateur/lfr-inuline-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:31:01Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (278 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:31:03Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.meincupcake.de/shop/eigelbpulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:31:05Z",
+    "basis": "page data: \"availability\":\"InStock\" (407 chars from the product on the page)",
+    "rank": 2
+   }
+  }
+ },
+ "IL": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://tvuot.co.il/product/%d7%a1%d7%95%d7%9b%d7%a8-%d7%a4%d7%99%d7%a8%d7%95%d7%aa-%d7%98%d7%91%d7%a2%d7%99/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:45:26Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.nizat.com/%D7%A1%D7%95%D7%9B%D7%A8-%D7%A4%D7%99%D7%A8%D7%95%D7%AA--%D7%A4%D7%A8%D7%95%D7%A7%D7%98%D7%95%D7%96-500-%D7%92%D7%A8%D7%9D-%D7%A0%D7%99%D7%A6%D7%AA-%D7%94%D7%93%D7%95%D7%91%D7%93%D7%91%D7%9F-i7301": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:33:28Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (882 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://kiki-health.com/products/inulin-powder-organic-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:31:10Z",
+    "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.nizat.com/%D7%90%D7%99%D7%A0%D7%95%D7%9C%D7%99%D7%9F-%D7%90%D7%91%D7%A7%D7%AA-%D7%A1%D7%99%D7%91%D7%99%D7%9D-%D7%9E%D7%A1%D7%99%D7%A1%D7%99%D7%9D-%D7%9E%D7%A2%D7%95%D7%9C%D7%A9-400-%D7%92%D7%A8%D7%9D-%D7%A2%D7%AA%D7%99%D7%93-%D7%99%D7%A8%D7%95%D7%A7-i26909": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:33:30Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (1700 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.cookstock.co.il/items/7943959-%D7%90%D7%91%D7%A7%D7%AA-%D7%97%D7%9C%D7%9E%D7%95%D7%9F-%D7%9E%D7%A4%D7%95%D7%A1%D7%98%D7%A8-100-%D7%92%D7%A8%D7%9D": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:00Z",
+    "basis": "schema.org InStock",
+    "rank": 1
+   },
+   "https://razberry.co.il/products/egg-yolk-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:39:50Z",
+    "basis": "schema.org InStock",
+    "rank": 2
+   },
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 3
+   }
+  }
+ },
+ "IN": {
+  "FRU": {
+   "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   },
+   "https://www.urbanplatter.com/products/urban-platter-pure-fructose-sugar-400g-fruit-based-finely-granulated-free-flowing-sugar": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   },
+   "https://www.naturesvelvet.in/product/600655a2-7a02-4fa0-bfc7-00c6f2571076": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 2
+   },
+   "https://www.urbanplatter.com/products/urban-platter-inulin-powder-fructo-oligo-saccharides-prebiotic-rich-in-fiber-fos": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 3
+   }
+  },
+  "YOL": {
+   "https://tajagro.com/product/egg-yolk-powder/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:55:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") on the product page",
+    "rank": 1
+   }
+  }
+ },
+ "IS": {
+  "CRP": {
+   "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "Auf Lager (page also carries schema.org/InStock)",
+    "rank": 1
+   },
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "schema.org/InStock in the page's Product JSON-LD offer (Product ID 0370)",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T17:16:31Z",
+    "basis": "researcher note: \"…Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'. BRAK for retail packs: the only Icela…\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.lyfja.is/verslun/vitamin-og-baetiefni/magi-og-melting/trefjar/na-inulin-trefjar-duft-250g-10160249/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:13:43Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.apotekarinn.is/vara/natures-aid-inulin-trefjar-duft-250gr-3578": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:13:43Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-eigelbpulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "Auf Lager (page also carries schema.org/InStock)",
+    "rank": 1
+   }
+  }
+ },
+ "IT": {
+  "CRP": {
+   "https://www.lucgel.it/1968-panna-in-polvere-42-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:01:34Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (single product page)",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://fiordiloto.it/fruttosio-ricarica": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:31:52Z",
+    "basis": "printed phrase next to the product: \"disponibile\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.lucgel.it/563-inulina-istantanea-fibra-alimentare-ideale-per-gelato-alla-frutta-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:18:42Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (1297 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.myprotein.it/p/nutrizione-sportiva/tuorlo-d-uovo-in-polvere/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:46:39Z",
+    "basis": "researcher note: \"…SON-LD pairs gtin13 5055534303733 with weight 500 g; schema availability OutOfStock / inStock:false at check time (same on…\"",
+    "rank": 1
+   },
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:57:40Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "JP": {
+  "FRU": {
+   "https://tomiz.com/item/00006300": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 1
+   },
+   "https://www.profoods.co.jp/i/1050010": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\": \"https://schema.org/InStock\") plus the page label \"在庫商品\"",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://tomiz.com/item/02177400": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 1
+   },
+   "https://nichie.shop/?pid=152684791": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.shijoh.com/shopdetail/004008000003/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 1
+   },
+   "https://profoods.business/product.php?id=1520": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 2
+   }
+  }
+ },
+ "KE": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:37:17Z",
+    "basis": "In stock (page text) / schema.org InStock",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://mydawa.com/products/supplements-and-nutrition/supplements/general/natures-aid-inulin-powder-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:57:02Z",
+    "basis": "page data: product:availability\" content=\"in stock\" (2730 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  }
+ },
+ "KR": {
+  "FRU": {
+   "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   },
+   "https://prod.danawa.com/info/?pcode=112333357": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 2
+   },
+   "https://www.lotteon.com/p/product/LO2648585221": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 3
+   }
+  },
+  "INU": {
+   "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   },
+   "https://prod.danawa.com/info/?pcode=92422913": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://item.gmarket.co.kr/Item?goodscode=4598390843": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 1
+   },
+   "https://smartstore.naver.com/inflow/ep/gw?url=%2Finflow%2Fep%2Fdanawa%2Fproducts%2F10377330731": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 2
+   }
+  }
+ },
+ "KW": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:07:43Z",
+    "basis": "NOW AVAILABLE",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://kiki-health.com/products/inulin-powder-organic-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:24:39Z",
+    "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  }
+ },
+ "LK": {
+  "INU": {
+   "https://kiki-health.com/products/inulin-powder-organic-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") and Shopify product data variants[0].\"available\": true",
+    "rank": 1
+   }
+  }
+ },
+ "LT": {
+  "CRP": {
+   "https://spaisvile.lt/produktas/grietineles-milteliai": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:05:59Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:52:03Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.glaeserundflaschen.de/fruchtzucker-500-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:49:52Z",
+    "basis": "page data: \"availability\": \"https:\\/\\/schema.org\\/InStock\" (382 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://gulbele.lt/cukrus/49115-fruktoze-alvo-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:00:43Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (4481 chars from the product on the page)",
+    "rank": 2
+   },
+   "https://www.rimi.lt/e-parduotuve/lt/produktai/bakaleja/cukrus-ir-saldikliai/saldikliai-ir-kitas-cukrus/kristalizuota-fruktoze-alvo-500-g/p/171908": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:00:42Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 3
+   }
+  },
+  "INU": {
+   "https://camelia.lt/p/iconfit-maisto-papildas-inulin-250-g-4744130015621-31224": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:05:37Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.myprotein.lt/p/sports-nutrition/kiausinio-trynio-milteliai/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T16:04:50Z",
+    "basis": "page data: \"availability\": \"https://schema.org/OutOfStock\" (70 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:11:33Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "LU": {
+  "CRP": {
+   "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:23:09Z",
+    "basis": "printed phrase next to the product: \"auf lager\"",
+    "rank": 1
+   },
+   "https://www.meincupcake.de/shop/sahnepulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:23:12Z",
+    "basis": "page data: \"availability\":\"InStock\" (406 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.glaeserundflaschen.de/fruchtzucker-500-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:23:13Z",
+    "basis": "page data: \"availability\": \"https:\\/\\/schema.org\\/InStock\" (382 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/stabilisateur/lfr-inuline-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:23:16Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (278 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://fr.myprotein.com/p/vitamines/fibre-prebiotique-d-inuline/11397387/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:23:15Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (67 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.meincupcake.de/shop/eigelbpulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:23:21Z",
+    "basis": "page data: \"availability\":\"InStock\" (407 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/blanc-oeuf/lfr-jaune-oeuf-seche-pasteurise-louis-francois.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:23:24Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (422 chars from the product on the page)",
+    "rank": 2
+   }
+  }
+ },
+ "LV": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:52:02Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.glaeserundflaschen.de/fruchtzucker-500-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:49:55Z",
+    "basis": "page data: \"availability\": \"https:\\/\\/schema.org\\/InStock\" (382 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.rimi.lv/e-veikals/lv/produkti/iepakota-partika/saldas-garsvielas/cukurs/fruktoze-alvo-500g/p/171908": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:00:45Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.benu.lv/p/iconfit-inulina-pulveris-250g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:05:36Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.euroaptieka.lv/p/iconfit-inulina-pulveris-250-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:05:36Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.myprotein.lv/p/sports-nutrition/egg-yolk-powder/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T16:04:50Z",
+    "basis": "page data: \"availability\": \"https://schema.org/OutOfStock\" (70 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:11:31Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "MA": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://alghandourmarket.ma/product/santiveri-fructose-750g/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:00Z",
+    "basis": "schema.org InStock; page text \"Disponible Chez Alghandour Market à Casablanca\"",
+    "rank": 1
+   },
+   "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:37:17Z",
+    "basis": "In stock (page text) / schema.org InStock",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://heim.ma/product/ostrovit-inulin-500-g-natural/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:33:45Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://pannanegoce.com/produit/inuline-a-chaud/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:50:10Z",
+    "basis": "page data: product:availability\" content=\"instock\" (1537 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  }
+ },
+ "MT": {
+  "CRP": {
+   "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "Auf Lager (page also carries schema.org/InStock)",
+    "rank": 1
+   },
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "schema.org/InStock in the page's Product JSON-LD offer (Product ID 0370)",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:17:21Z",
+    "basis": "researcher note: \"…Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'. Brave result for Malta suggested supe…\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.hollandandbarrett.com.mt/product/holland-barrett-inulin-powder-200g-2/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:24:48Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:57:46Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://sermand.com/products/yema-de-huevo-en-polvo-natural-sin-gluten-ni-lactosa": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:25:24Z",
+    "basis": "page data: \"availability\":\"http:\\/\\/schema.org\\/InStock\" (311 chars from the product on the page)",
+    "rank": 2
+   }
+  }
+ },
+ "MX": {
+  "CRP": {
+   "https://www.dirind.com/pro/crema-leche-polvo.html": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:42:47Z",
+    "basis": "the B2B directory listing prints no stock or availability statement at all",
+    "rank": 1
+   },
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:42:47Z",
+    "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.bulksupplements.com/products/fructose-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:42:47Z",
+    "basis": "schema.org/InStock in the page's own offer data next to \"sku\": \"FRUC250\", \"gtin\": \"849720029065\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.bulksupplements.com/products/inulin-fos-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:42:47Z",
+    "basis": "schema.org/InStock in the page's own offer data next to \"sku\": \"INU250\", \"gtin\": \"849720019592\"",
+    "rank": 1
+   },
+   "https://www.chedraui.com.mx/inulina-de-agave-fibragave-om8-255g-3457730/p": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:42:47Z",
+    "basis": "\"availability\":\"http://schema.org/InStock\" in the VTEX page's own product data",
+    "rank": 2
+   },
+   "https://www.chedraui.com.mx/null-3857154/p": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:42:47Z",
+    "basis": "\"availability\":\"http://schema.org/InStock\" in the VTEX page's own product data",
+    "rank": 3
+   }
+  },
+  "YOL": {
+   "https://www.koonol.mx/productos/yema-de-huevo-deshidratada": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:42:47Z",
+    "basis": "the printed line 'Disponibilidad : En Stock' on the product page",
+    "rank": 1
+   }
+  }
+ },
+ "MY": {
+  "FRU": {
+   "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  }
+ },
+ "NG": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:37:17Z",
+    "basis": "In stock (page text) / schema.org InStock",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://hubpharmafrica.com/product/now-inulin-prebiotic-pure-powder/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:55Z",
+    "basis": "schema.org InStock",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  }
+ },
+ "NL": {
+  "CRP": {
+   "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:06:25Z",
+    "basis": "printed phrase next to the product: \"auf lager\"",
+    "rank": 1
+   },
+   "https://www.meincupcake.de/shop/sahnepulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:06:27Z",
+    "basis": "page data: \"availability\":\"InStock\" (406 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.gezondheidswinkel.nl/p/gw-fructose-zak-500gr-0001047364": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:04:36Z",
+    "basis": "page data: product:availability\" content=\"in stock\" (320 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.vitaminstore.nl/product/jacob-hooy-inuline-poeder-280831": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:04:38Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (41 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.superfoodstore.nl/products/mijnnatuurwinkel-inuline-poeder-500-gram": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:04:39Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:06:29Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.meincupcake.de/shop/eigelbpulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:06:32Z",
+    "basis": "page data: \"availability\":\"InStock\" (407 chars from the product on the page)",
+    "rank": 2
+   }
+  }
+ },
+ "NO": {
+  "CRP": {
+   "https://gaute.no/produkt/flotepulver-500-g/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:58:04Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://gaute.no/produkt/fruktose-500-gram/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:35:48Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.sg.no/produkter/Mel_korn_farin_bakeartikler/Bakeartikler/fruktose-500g/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:36:05Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.med24.no/kosttilskudd/aktive-ingredienser/prebiotika/natur-drogeriet-inulin-150-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:58:59Z",
+    "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (257 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.tights.no/butikk/sunnrask-okologisk-inulin-200g/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:59:00Z",
+    "basis": "page data: \"availability\":\"http:\\/\\/schema.org\\/OutOfStock\" (201 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.myprotein.no/p/sports-nutrition/eggeplomme-pulver/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:59:15Z",
+    "basis": "researcher note: \"…ne Norwegian listing of egg yolk powder was found and it is out of stock.…\"",
+    "rank": 1
+   }
+  }
+ },
+ "NZ": {
+  "CRP": {
+   "https://ketostore.nz/products/cream-powder-750g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:29Z",
+    "basis": "\"availability\": \"http://schema.org/InStock\" in the page's own product data, with an active 'Add to Cart' button",
+    "rank": 1
+   },
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:29Z",
+    "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.ohmywellness.co.nz/shop/product/839021/lotus-fructose-fruit-sugar-500g/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:38:22Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.naturitas.nz/p/food/sweeteners-and-honey/sugar-substitutes/fructose-1-kg-of-powder-el-granero-integral": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:37:21Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.pharmacydirect.co.nz/Now-Certified-Organic-Inulin-Pure-Powder-227g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:39:22Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (193 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.nothingnaughty.kiwi.nz/products/inulin-250g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:38:31Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://ketostore.nz/products/egg-yolk-powder": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:37:53Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://nz.myprotein.com/p/sports-nutrition/egg-yolk-powder/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:39:24Z",
+    "basis": "page data: \"availability\": \"https://schema.org/OutOfStock\" (350 chars from the product on the page)",
+    "rank": 2
+   }
+  }
+ },
+ "OM": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:37:17Z",
+    "basis": "In stock (page text) / schema.org InStock",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://kiki-health.com/products/inulin-powder-organic-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:25:33Z",
+    "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  }
+ },
+ "PA": {
+  "CRP": {
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:41Z",
+    "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.bulksupplements.com/products/fructose-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:03:48Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (173 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://delcaribeshop.com/pa/producto/fructosa-cristalina-bolsa-1-kg/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T16:00:05Z",
+    "basis": "page data: \"availability\":\"http://schema.org/OutOfStock\" (5481 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.bulksupplements.com/products/inulin-fos-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:03:51Z",
+    "basis": "page data: \"availability\":\"https://schema.org/InStock\" (172 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://delcaribeshop.com/pa/producto/yema-de-huevo-en-polvo-bolsa-1-kg/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T18:44:41Z",
+    "basis": "\"availability\":\"http://schema.org/OutOfStock\" in the page's own product data, plus the printed badge 'Agotado' (price also shown as '$ 0,00')",
+    "rank": 1
+   }
+  }
+ },
+ "PH": {
+  "FRU": {
+   "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.burket.ph/product/912/ferna-egg-yolk-powder": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:55:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 1
+   }
+  }
+ },
+ "PK": {
+  "INU": {
+   "https://nifdo.com/products/now-organic-inulin-powder-8-oz-in-pakistan": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\": \"https://schema.org/InStock\") in the page's Product JSON-LD, price PKR 8000",
+    "rank": 1
+   },
+   "https://kiki-health.com/products/inulin-powder-organic-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") and Shopify product data variants[0].\"available\": true",
+    "rank": 2
+   }
+  }
+ },
+ "PL": {
+  "CRP": {
+   "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:05:56Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://mlekovita.com.pl/produkt/smietanka-w-proszku-25-kg-594": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:37:34Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://e-ecolife.pl/pl/products/fruktoza-500-g-naturavena-32986.html": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:33:32Z",
+    "basis": "researcher note: \"…single-ingredient fructose 100 % (≥ 98 %). Page showed 'Produkt niedostępny' (out of stock) at check; the same GTIN…\"",
+    "rank": 1
+   },
+   "https://kol-pol.pl/pl/p/Fruktoza-krystaliczna-500g/258": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:32:43Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://ketosklep.pl/produkt/inulina-z-cykorii-500g-naturalnie-zdrowe/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:35:20Z",
+    "basis": "researcher note: \"…0 g fibre; the nutrition table values are recorded. JSON-LD availability InStock at check.…\"",
+    "rank": 1
+   },
+   "https://swojskapiwniczka.pl/blonnki-i-inne/inulina-z-cykorii-blonnik-1kg-swojska-piwniczka": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:34:31Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://kiccake.pl/pl/products/zoltko-jaja-kurzego-w-proszku-100g-kiccake-109331.html": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:36:17Z",
+    "basis": "researcher note: \"…56.5 / 34.5). GTIN is printed as 'Kod producenta'. JSON-LD availability OutOfStock at check.…\"",
+    "rank": 1
+   },
+   "https://shop.bakeplus.pl/jaja/23-zoltko-w-proszku.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:35:51Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (3224 chars from the product on the page)",
+    "rank": 2
+   }
+  }
+ },
+ "PT": {
+  "CRP": {
+   "https://www.meincupcake.de/shop/sahnepulver-100g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:52:38Z",
+    "basis": "page data: \"availability\":\"InStock\" (406 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://lojaprovida.pt/inicio/242-frutose-acucar-de-frutas-500g-5602353181624.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:29:23Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (2989 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.celeiro.pt/877718-frutose-500-gramas-kg-sem-marca": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:30:02Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.taste-market.de/Inulin-Pulver/27-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:57:35Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.celeiro.pt/534727-inulina-em-po-227-gramas-kg-now-foods": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:48:03Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.myprotein.pt/p/sports-nutrition/gema-de-ovo-em-po/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:46:37Z",
+    "basis": "researcher note: \"…SON-LD pairs gtin13 5055534303733 with weight 500 g; schema availability OutOfStock / inStock:false at check time (same on…\"",
+    "rank": 1
+   },
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:57:36Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "QA": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:07:43Z",
+    "basis": "NOW AVAILABLE",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://kiki-health.com/products/inulin-powder-organic-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:24:12Z",
+    "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  }
+ },
+ "RO": {
+  "CRP": {
+   "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "Auf Lager (page also carries schema.org/InStock)",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T17:16:28Z",
+    "basis": "researcher note: \"…Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.…\"",
+    "rank": 1
+   },
+   "https://carrefour.ro/produse/fructoza-diamant-500g-19-14519168/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:11:50Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (474 chars from the product on the page)",
+    "rank": 2
+   },
+   "https://www.freshful.ro/p/100101121-diamant-fructoza-cristalina-500g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:19:06Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 3
+   }
+  },
+  "INU": {
+   "https://gymbeam.ro/inulina-de-cicoare-gymbeam.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:51:09Z",
+    "basis": "researcher note: \"…g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check…\"",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.taste-market.de/Eigelbpulver/123-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T17:16:34Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  }
+ },
+ "SA": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:07:43Z",
+    "basis": "NOW AVAILABLE",
+    "rank": 1
+   },
+   "https://www.nahdionline.com/en-sa/now-foods-fructose-sweetener-3-lbs-1361gm/pdp/103320411": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:35:39Z",
+    "basis": "schema.org InStock",
+    "rank": 2
+   },
+   "https://shop.tamimimarkets.com/product/fruit-sugar-fructose": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:32:07Z",
+    "basis": "\"stock\":7 in the product's own variant object, next to \"barcodes\":[\"6281041092818\"] and fullName \"Fruit Sugar Fructose-250 G\"",
+    "rank": 3
+   }
+  },
+  "INU": {
+   "https://www.nahdionline.com/en-sa/now-foods-inulin-prebiotic-powder-227-g/pdp/102814929": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:04:08Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.lifepharmacy.com/sa-en/product/kiki-health-organic-inulin-100-blue-agave-powder-250g-15847": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:04:10Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  }
+ },
+ "SE": {
+  "CRP": {
+   "https://skafferimat.se/products/graddpulver-500g-akta": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:41:58Z",
+    "basis": "page data: \"available\":true (239 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:51:57Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.delitea.se/dan-s-fruktsocker-500g": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:32:34Z",
+    "basis": "page data: \"availability\":\"https://schema.org/OutOfStock\" (41 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.olbryggning.se/spraymalt-og-sukker/110477/fruktos-levulos-1-kg-fruktsocker-f%c3%b6r-s%c3%b6tning-av-dryck-m-dot--m-dot-": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:44:06Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.craftednature.se/produkt/inulin-pulver-500-gram/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:41:58Z",
+    "basis": "page data: \"availability\": \"https://schema.org/InStock\" (572 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.med24.se/kosttillskott/aktiva-ingredienser/prebiotika/easis-inulin-300-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:41:58Z",
+    "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (238 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.myprotein.se/p/kosttillskott/aggulepulver/10529352/": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:41:58Z",
+    "basis": "page data: \"availability\": \"https://schema.org/OutOfStock\" (70 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:11:27Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "SG": {
+  "FRU": {
+   "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   },
+   "https://www.fairprice.com.sg/product/green-earth-fructose-500-g-90080184": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\": \"https://schema.org/InStock\") in the page's Product JSON-LD",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.fairprice.com.sg/product/now-foods-certified-organic-inulin-pure-powder-g-90013004": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\": \"https://schema.org/InStock\") in the page's Product JSON-LD",
+    "rank": 1
+   },
+   "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 2
+   }
+  }
+ },
+ "SI": {
+  "CRP": {
+   "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:06:09Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.glaeserundflaschen.de/fruchtzucker-500-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:49:58Z",
+    "basis": "page data: \"availability\": \"https:\\/\\/schema.org\\/InStock\" (382 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://gymbeam.si/inulin-iz-cikorije-gymbeam.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:51:16Z",
+    "basis": "researcher note: \"…g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check…\"",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/eigelbpulver-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:19:05Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  }
+ },
+ "SK": {
+  "CRP": {
+   "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/sahnepulver-100g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:06:03Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.vsetkonavarenie.sk/fruktoza-ovocny-cukor-1-kg-dr.-hlavac": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:04:20Z",
+    "basis": "page data: \"availability\": \"http://schema.org/InStock\" (1332 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://gymbeam.sk/cakankovy-inulin-gymbeam.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:51:05Z",
+    "basis": "researcher note: \"…g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check…\"",
+    "rank": 1
+   },
+   "https://www.vsetkonavarenie.sk/inulin-1-kg-louis-francois": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:07:23Z",
+    "basis": "page data: \"availability\": \"http://schema.org/InStock\" (676 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://www.vsetkonavarenie.sk/suseny-vajecny-zltok-v-prasku-100-g-cake-masters": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:04:08Z",
+    "basis": "page data: \"availability\": \"http://schema.org/InStock\" (969 chars from the product on the page)",
+    "rank": 1
+   }
+  }
+ },
+ "TH": {
+  "FRU": {
+   "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.thenaturalist.co.th/product/28316-45787/%E0%B8%9C%E0%B8%87%E0%B9%84%E0%B8%82%E0%B9%88%E0%B9%81%E0%B8%94%E0%B8%87-egg-yolk-powder-30-": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 1
+   }
+  }
+ },
+ "TN": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.meilleurduchef.com/en/shop/baking-supplies/ingredients/sugar-sweetener/lfr-fructose-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:37:17Z",
+    "basis": "In stock (page text) / schema.org InStock",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://kiki-health.com/products/inulin-powder-organic-250g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:26:00Z",
+    "basis": "page data: \"availability\":\"https:\\/\\/schema.org\\/InStock\" (269 chars from the product on the page)",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  }
+ },
+ "TR": {
+  "CRP": {
+   "https://www.enkasut.com/tatli-krema-tozu/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "no stock or availability wording printed; the page is a product data sheet with a generic 'SİPARİŞ VER' link",
+    "rank": 1
+   },
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "schema.org/InStock in the page's Product JSON-LD offer (Product ID 0370)",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:17:23Z",
+    "basis": "researcher note: \"…Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.…\"",
+    "rank": 1
+   },
+   "https://www.hammaddeler.com/urun/fruktoz-500-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:15:41Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.gourmet-versand.com/en/article26461/sosa-inulin-cold-fiber-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T16:17:24Z",
+    "basis": "researcher note: \"…e), sugars 7 g/100 g; fibre value not printed on the page. 'NOW AVAILABLE'.…\"",
+    "rank": 1
+   },
+   "https://www.hammaddeler.com/urun/inulin-100-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:15:43Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://organikcimiz.com/kor-organik-500-gr-yumurta-sarisi-tozu-yt-02": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "\"Stoğa gelince haber ver\" on the page; Product JSON-LD offer availability = https://schema.org/OutOfStock",
+    "rank": 1
+   },
+   "https://www.hammaddeler.com/urun/yumurta-sarisi-tozu-500-g": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:40:00Z",
+    "basis": "no stock wording and no JSON-LD availability on the page; it shows an active 'SEPETE EKLE' / 'HEMEN AL' buy path",
+    "rank": 2
+   }
+  }
+ },
+ "TW": {
+  "FRU": {
+   "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   },
+   "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=13588190": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "page contains the token \"in stock\" (momoshop marketplace listing)",
+    "rank": 2
+   },
+   "https://24h.pchome.com.tw/prod/DBDA21-A900HM2M7": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "recorded by the researcher",
+    "rank": 3
+   }
+  },
+  "YOL": {
+   "https://www.wlscook.com.tw/SalePage/Index/8855870?lang=zh-TW": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\": \"https://schema.org/InStock\") in the page's Product JSON-LD",
+    "rank": 1
+   },
+   "https://www.wlscook.com.tw/SalePage/Index/8855865?lang=zh-TW": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\": \"https://schema.org/InStock\") in the page's Product JSON-LD",
+    "rank": 2
+   }
+  }
+ },
+ "US": {
+  "CRP": {
+   "https://hoosierhillfarm.com/products/heavy-cream-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:41:56Z",
+    "basis": "\"available\":true on the 1 lb variant in the page's own variant data (barcode 850054854513), plus \"availability\": \"https://schema.org/InStock\" and the printed status 'Available in stock'",
+    "rank": 1
+   },
+   "https://anthonysgoods.com/products/heavy-cream-powder-gluten-free": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:41:56Z",
+    "basis": "\"availability\": \"http://schema.org/InStock\" in the JSON-LD Product offer (sku 00-BKDY-IITE)",
+    "rank": 2
+   }
+  },
+  "FRU": {
+   "https://modernistpantry.com/products/fructose-powder.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:47:53Z",
+    "basis": "printed phrase next to the product: \"in stock\"",
+    "rank": 1
+   },
+   "https://www.vitacost.com/products/now-foods-fructose-sweetener-3-lbs-1-361-g-7762": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:32:19Z",
+    "basis": "page data: \"available\":true (4213 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.vitacost.com/products/micro-ingredients-organic-inulin-powder-unflavored-1-1-lb-500-g-160283": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:47:09Z",
+    "basis": "page data: \"available\":true (3423 chars from the product on the page)",
+    "rank": 1
+   },
+   "https://www.vitacost.com/products/now-foods-certified-organic-inulin-prebiotic-pure-powder-8-oz-227-g-1100": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:46:45Z",
+    "basis": "page data: \"available\":true (3484 chars from the product on the page)",
+    "rank": 2
+   }
+  },
+  "YOL": {
+   "https://modernistpantry.com/products/egg-yolk-powder.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T15:45:18Z",
+    "basis": "printed phrase next to the product: \"in stock\"",
+    "rank": 1
+   },
+   "https://www.judeesfromscratch.com/products/dried-egg-yolk-powder": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:45:38Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 2
+   }
+  }
+ },
+ "UY": {
+  "CRP": {
+   "https://ingredientsbar.com/p/cream-powder-0370t/": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:29Z",
+    "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://www.bulksupplements.com/products/fructose-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:29Z",
+    "basis": "schema.org/InStock in the page's own offer data next to \"sku\": \"FRUC250\", \"gtin\": \"849720029065\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.bulksupplements.com/products/inulin-fos-powder": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:29Z",
+    "basis": "schema.org/InStock in the page's own offer data next to \"sku\": \"INU250\", \"gtin\": \"849720019592\"",
+    "rank": 1
+   },
+   "https://www.lamolienda.uy/catalogo/inulina-100g_000000000003222_000000000003222": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:45:29Z",
+    "basis": "itemprop=\"availability\" href=\"http://schema.org/InStock\" in the page's own product markup",
+    "rank": 2
+   }
+  }
+ },
+ "VN": {
+  "FRU": {
+   "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  },
+  "INU": {
+   "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:30:00Z",
+    "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+    "rank": 1
+   }
+  }
+ },
+ "ZA": {
+  "CRP": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:06Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  },
+  "FRU": {
+   "https://delitedashfood.co.za/shop/fructose-fruit-sugar/": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T15:45:25Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   },
+   "https://www.checkers.co.za/product/tantalize-fruit-sugar-crystalline-fructose-500g-10125696EA": {
+    "state": "OUT_OF_STOCK",
+    "checked_at_utc": "2026-09-17T15:54:06Z",
+    "basis": "researcher note: \"…uctose by name; retailer article 10125696, no GTIN; JSON-LD availability OutOfStock (delivery-address dependent)…\"",
+    "rank": 2
+   }
+  },
+  "INU": {
+   "https://www.wellnesswarehouse.com/products/now-inulin-pure-powder-227g-227g-00448711477197": {
+    "state": "UNKNOWN",
+    "checked_at_utc": "2026-09-17T16:08:01Z",
+    "basis": "no stock statement on the page or in the researcher note",
+    "rank": 1
+   }
+  },
+  "YOL": {
+   "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g": {
+    "state": "IN_STOCK",
+    "checked_at_utc": "2026-09-17T18:21:21Z",
+    "basis": "auf Lager. / verfügbar, Lieferzeit: 1-3 Tage*",
+    "rank": 1
+   }
+  }
+ }
+}

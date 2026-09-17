@@ -21,11 +21,13 @@
   "tag_other_composition": "Muundo tofauti",
   "tag_alternative": "Mbadala wa ndani",
   "tag_unconfirmed": "Haijathibitishwa",
+  "tag_abroad_unconfirmed": "Duka la ng’ambo",
   "legend": {
-    "from_abroad": "duka la nje ya nchi linalosafirisha hadi nchi hii",
-    "b2b": "huuzwa kwa biashara au katika vifurushi vikubwa",
+    "from_abroad": "duka la nje ya nchi ambalo orodha yake ya usafirishaji inataja nchi hii",
+    "b2b": "huuzwa kwa biashara au katika vifurushi vikubwa — si ofa ya kawaida ya rejareja",
     "other_composition": "aina ileile ya bidhaa yenye muundo tofauti (umeonyeshwa kando yake)",
-    "alternative": "mbadala wa bidhaa nyingine ya Gellatti"
+    "alternative": "mbadala wa bidhaa nyingine ya Gellatti",
+    "abroad_unconfirmed": "duka la nje ya nchi; usafirishaji hadi nchi hii haujathibitishwa"
   },
   "starter_amount": "Katika Starter Pack: gramu {g}",
   "option": "Chaguo {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Mbadala wa ndani wa mchanganyiko wa Gellatti, si mchanganyiko uleule. Changanya na viungo vikavu, kisha pasha msingi moto hadi 75–80 °C.",
   "missing": "Bado hakuna bidhaa iliyoidhinishwa katika nchi hii.",
+  "out_of_stock": "Duka lilionyesha bidhaa hii kuwa imeisha tarehe {date}.",
   "notes_title": "Ni vizuri kujua",
   "notes": [
-    {"h": "Upatikanaji", "p": "Tulikagua bidhaa hizi kwenye tovuti za watengenezaji na maduka mnamo Septemba 2026. Upatikanaji, bei na usafirishaji vinaweza kubadilika na havihakikishwi."},
+    {"h": "Upatikanaji", "p": "Tulikagua bidhaa zilizotafitiwa kwenye tovuti za maduka na watengenezaji tarehe 17 Septemba 2026. Dekstrosi, maziwa ya unga yaliyoondolewa mafuta na kiimarishaji vinatoka kwenye jedwali la nchi la Gellatti la tarehe 12 Septemba 2026 na havikukaguliwa tena. Upatikanaji, bei na usafirishaji vinaweza kubadilika na havihakikishwi."},
     {"h": "Lebo kwanza", "p": "Kabla ya kununua, kagua viambato na vizio kwenye kifurushi. Unga wa krimu na maziwa ya unga vina maziwa; kiini cha yai kina yai."},
     {"h": "Kiimarishaji", "p": "Katika nchi hii, gum ya mimea ya ndani inachukua nafasi ya Gellatti Stabilizer. Inafanya kazi kwa njia inayofanana, lakini si mchanganyiko uleule."}
   ],

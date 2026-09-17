@@ -1,243 +1,446 @@
 {
- "iso2": "IS",
- "country": "Iceland",
- "agent": "research-nordic-baltic",
- "egress_cc": "ES",
- "researched_at_utc": "2026-09-17T16:19:09Z",
- "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
- "items": {
-  "CRP": {
-   "result": "BRAK",
-   "local_terms": [
-    "rjómaduft",
-    "þurrkaður rjómi",
-    "rjómi í duftformi"
-   ],
-   "queries": [
-    "rjómaduft kaupa þurrkaður rjómi",
-    "rjómaduft",
-    "þurrkaður rjómi duft vara",
-    "mjólkurduft rjómaduft verslun",
-    "cream powder Iceland buy"
-   ],
-   "sources_tried": [
-    "hagkaup.is (online grocer; search results show fresh cream only) [T]",
-    "aha.is (online grocer; search results show fresh cream 36 %) [T]",
-    "innnes.is (wholesaler; search results show fresh cream) [T]",
-    "rv.is / vefverslun.olgerdin.is / buvorur.is (search results show milk powder only) [T]",
-    "garri.is (foodservice wholesaler; site search URL returned 404)",
-    "mammaveitbest.is (health shop; site search 'rjóma': no cream powder)",
-    "heilsuhusid.is (health shop; site search: no hit)",
-    "kokka.is (kitchen/ingredient shop; HTTP 403, inconclusive)",
-    "hobbybaecker.de (42 % Sahnepulver; Iceland not in its delivery-country list)",
-    "skafferimat.se (bot challenge; no Iceland shipping proof)"
-   ],
-   "candidates": [],
-   "notes": "BRAK: no Icelandic listing of genuine dairy cream powder (or of any cream powder) was found across online grocers, health shops and professional/wholesale suppliers; no GTIN-proven cross-border seller that lists Iceland was found."
-  },
-  "FRU": {
-   "result": "VERIFIED_CROSS_BORDER",
-   "local_terms": [
-    "frúktósi",
-    "ávaxtasykur"
-   ],
-   "queries": [
-    "ávaxtasykur frúktósi verslun",
-    "fructose powder Iceland heilsuhúsið OR nettó OR krónan OR hagkaup",
-    "frúktósi duft 500 g",
-    "\"fructose\" site:is",
-    "frúktósi",
-    "ávaxtasykur duft",
-    "frúktósi sætuefni verslun",
-    "fructose 500g heimkaup",
-    "frúktósi 500g",
-    "ávaxtasykur 500 g vara",
-    "sendum til Íslands fructose"
-   ],
-   "sources_tried": [
-    "kronan.is search 'frúktósi' (no product)",
-    "heimkaup.is search (HTTP 404 search URL)",
-    "hagkaup.is (no fructose surfaced in search)",
-    "storkaup.is Sykur og sætuefni category (no fructose)",
-    "hverslun.is Sætuefni category (no fructose)",
-    "mammaveitbest.is and heilsuhusid.is searches (no fructose)",
-    "katla.is Ávaxtasykur (Icelandic food manufacturer; 25 kg bakery sack, Vörunúmer 14996 — above the 5 kg limit, not proposed)",
-    "lyfja.is (pharmacy; menu shows a þrúgusykur/dextrose category, no fructose surfaced)",
-    "bioshi24 country domains (not reachable)"
-   ],
-   "candidates": [
-    {
-     "rank": 1,
-     "brand": "Sosa Ingredients",
-     "product_name": "Sosa fructose powder, 1 kg, PE dose",
-     "pack": "1 kg",
-     "gtin": "8414933026259",
-     "identifier_confirmed": true,
-     "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
-     "source_type": "RETAILER",
-     "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
-     "page_market": "",
-     "market_by": "GENERIC_TLD",
-     "identity_basis": "GTIN_ON_LOCAL_PAGE",
-     "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists Iceland (check_quotes.py found=true)",
-     "cross_border": true,
-     "ships_to_evidence": {
-      "tool": "check_quotes.py",
-      "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
-      "quotes": [
-       "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
-       "Hungary Iceland India"
+  "iso2": "IS",
+  "country": "Iceland",
+  "agent": "research-nordic-baltic",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:19:09Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "rjómaduft",
+        "þurrkaður rjómi",
+        "rjómi í duftformi"
       ],
-      "found": [
-       true,
-       true
+      "queries": [
+        "rjómaduft kaupa þurrkaður rjómi",
+        "rjómaduft",
+        "þurrkaður rjómi duft vara",
+        "mjólkurduft rjómaduft verslun",
+        "cream powder Iceland buy",
+        "\"Sahnepulver\" 42% Fett kaufen Online Shop 100g Süßrahm (WebSearch)",
+        "\"Sahnepulver\" Onlineshop Lieferung Griechenland Rumänien Bulgarien Versandkosten Land (WebSearch)",
+        "\"panna in polvere\" 42% grassi vendita online spedizione (WebSearch)",
+        "\"slagroompoeder\" kopen 100 gram webshop verzending Europa (WebSearch)",
+        "sosa.cat site search 'cream powder'",
+        "gourmet-versand.com site search 'Sahnepulver' / 'Sahne Pulver' (0 dairy cream powder)",
+        "specialingredients.co.uk + souschef.co.uk product sitemaps grepped for cream/dairy powder (0)",
+        "shop.cake-masters.com site search + /versand-zahlung country table"
       ],
-      "type": "shipping-cost country selector listing the market",
-      "check_quotes_result_files": [
-       "~/.cache/gellatti-evidence/quotes/coordinator/gv-header.json",
-       "~/.cache/gellatti-evidence/quotes/coordinator/gv-IS.json"
-      ]
-     },
-     "composition": {
-      "fat_g": null,
-      "protein_g": null,
-      "fibre_g": null,
-      "fructose_pct": null,
-      "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
-      "from": "retailer page ('EAN Code 8414933026259' printed)",
-      "sugars_g": 100.0
-     },
-     "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
-     "evidence_class": "VERIFIED_CROSS_BORDER",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1c6e9eabd7c775ce.json",
-     "checked_at_utc": "2026-09-17T17:16:31Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "added_by": "coordinator (reuse of the MT/GR/CY/TR cross-border listing; country named in the seller delivery selector)"
-    }
-   ],
-   "notes": "BRAK for retail packs: the only Icelandic fructose found is Katla's 25 kg professional sack (outside the ≤5 kg rule). | Coordinator addition 2026-09-17: gourmet-versand.com lists Iceland in its delivery country selector; Sosa fructose 1 kg (GTIN 8414933026259 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was BRAK."
-  },
-  "INU": {
-   "result": "CONFIRMED_LOCAL",
-   "local_terms": [
-    "inúlín",
-    "inulin trefjar duft",
-    "trefjaduft"
-   ],
-   "queries": [
-    "inúlín duft",
-    "inulin duft kaupa"
-   ],
-   "sources_tried": [
-    "lyfja.is (Natures Aid Inulin trefjar duft 250 g; barcode present only in HTML-escaped page data, which the verifier counts as echo; identity via manufacturer GTIN)",
-    "apotekarinn.is (same product, no GTIN on page; identity via manufacturer GTIN)",
-    "naturesaid.co.uk (manufacturer page, GTIN 5023652416253 in JSON-LD, used as identity source)",
-    "lyfjaver.is Swanson Inulin 227 g (no GTIN in static page)",
-    "ja.is (directory/aggregator, discovery only) [T]",
-    "heilsuhusid.is / hagkaup.is site searches for inulin (no hit)"
-   ],
-   "candidates": [
-    {
-     "rank": 1,
-     "brand": "Natures Aid",
-     "product_name": "Inulin trefjar duft (250 g)",
-     "pack": "250 g",
-     "gtin": "5023652416253",
-     "identifier_confirmed": true,
-     "url": "https://www.lyfja.is/verslun/vitamin-og-baetiefni/magi-og-melting/trefjar/na-inulin-trefjar-duft-250g-10160249/",
-     "source_type": "RETAILER",
-     "seller": "Lyfja (distributor Artasan)",
-     "page_market": "IS",
-     "market_by": "CCTLD",
-     "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
-     "market_binding_signal": "country domain .is",
-     "cross_border": false,
-     "ships_to_evidence": null,
-     "composition": {
-      "fat_g": 0.0,
-      "protein_g": 0.0,
-      "carbohydrate_g": 8.0,
-      "sugars_g": 8.0,
-      "fibre_g": 88.0,
-      "fructose_pct": null,
-      "ingredients": "Inulin (lyfja.is 'Innihaldslýsing Inulin.'; manufacturer: 100 % natural chicory inulin)",
-      "basis": "per 100 g",
-      "from": "nutrition from manufacturer page naturesaid.co.uk (same GTIN; verdict ~/.cache/gellatti-evidence/verify/08caeac82e8bd32f.json); ingredient line from this page"
-     },
-     "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "chicory inulin, fibre 88 g / sugars 8 g per 100 g (reference 89 / 8)",
-     "evidence_class": "CONFIRMED_LOCAL",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/572c33d78fa77893.json",
-     "checked_at_utc": "2026-09-17T16:13:43Z",
-     "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_7adaa6e908a6bcd4.json",
-     "notes": "identity_match.py: GTIN on naturesaid.co.uk + brand 'Natures Aid' / 'Inulin' / 250 g on lyfja.is, no failed checks. Direct EAN run on lyfja.is: EAN_ONLY_ECHOED_FROM_URL_OR_QUERY (~/.cache/gellatti-evidence/verify/d1c84d07005acd3a.json) because the barcode sits in HTML-escaped JSON. Vörunúmer 10160249, 2.599 kr",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+      "sources_tried": [
+        "hagkaup.is (online grocer; search results show fresh cream only) [T]",
+        "aha.is (online grocer; search results show fresh cream 36 %) [T]",
+        "innnes.is (wholesaler; search results show fresh cream) [T]",
+        "rv.is / vefverslun.olgerdin.is / buvorur.is (search results show milk powder only) [T]",
+        "garri.is (foodservice wholesaler; site search URL returned 404)",
+        "mammaveitbest.is (health shop; site search 'rjóma': no cream powder)",
+        "heilsuhusid.is (health shop; site search: no hit)",
+        "kokka.is (kitchen/ingredient shop; HTTP 403, inconclusive)",
+        "hobbybaecker.de (42 % Sahnepulver; Iceland not in its delivery-country list)",
+        "skafferimat.se (bot challenge; no Iceland shipping proof)",
+        "shop.cake-masters.com (Cake-Masters trade shop, Herzlake DE): CM Basics Sahnepulver 100g, SAHNE 42% Fett sprühgetrocknet, Auf Lager; its own foreign shipping-cost table names the market — VERIFIED_CROSS_BORDER but trade-only (registered commercial resellers)",
+        "torten-boutique.de and tolletorten.com (same Herzlake group, consumer shops): same 21-country delivery list as pati-versand/backfun/meincupcake — market NOT named; 'Rest der Welt' flat rate names no country",
+        "taste-market.de: full product sitemap (2 425 URLs) scanned — Eigelbpulver / Eiklarpulver / Volleipulver / Vollmilchpulver only, NO Sahnepulver; its EU zones 1-3 name no non-EU market",
+        "gourmet-versand.com: no Sahnepulver / dairy cream powder in the catalogue (confirmed again by site search)",
+        "sosa.cat: only 'TASTE COLOUR FREEZE-DRIED FRESH CREAM POWDER' (2 kg, Taste-Colour flavour/colour line, ingredients nata + leche desnatada en polvo + E450, no fat % printed) — no distributor found that sells it in a retail pack to this market",
+        "specialingredients.co.uk (1 130 products) and souschef.co.uk (6 274 products): product sitemaps hold no dairy cream powder",
+        "cerfdellier.com, cuisineaddict.com, deco-relief.fr, bienmanger.com, koro-shop.de: no 'crème en poudre' / Sahnepulver in search",
+        "ingredientsbar.com (UK): real dairy cream powder 75 % fat in retail sizes, but the delivery policy only says 'International delivery carries additional charges…' — no country named, LEAD",
+        "shop.kraeuter-mieke.de: 'Sahnepulver' 100/250/500/1000 g, 'Sofort verfügbar', but NO ingredient list or fat % printed and EU shipping only 'Auf Anfrage oder nach Auswahl im Bestellvorgang' (no country named) — not proposed",
+        "ecolebensmittel.com: 'Sahnepulver 42 % Fett 750 g' (brand FeelWell) — dropshipping shop whose article number is an Amazon ASIN (B07KZPP6JK) and the item is 'Ausverkauft (nur vorbestellen)'",
+        "gosupps.com: HTTP 403 bot wall — inconclusive",
+        "rjómaduft kaupa Ísland verslun þurrmjólk (WebSearch): only fresh cream, infant formula and calf milk powder — nothing usable"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters",
+          "product_name": "CM Basics Sahnepulver 100g",
+          "pack": "100 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Cake-Masters.com, Alexander Müller, Siemensstr. 24, 49770 Herzlake, DE (trade-only shop — footer: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\")",
+          "page_market": "DE",
+          "market_by": "ADDRESS_COUNTRY",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "cross-border: the seller's own foreign shipping-cost table prints a row for the market (\"Island 33,49 €\"), check_quotes.py found=true",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://shop.cake-masters.com/versand-zahlung",
+            "quotes": [
+              "Versandkosten Ausland: Land Versandkosten pro angefangene 25kg",
+              "Island 33,49 €",
+              "Verkauf nur an registrierte, gewerbliche Wiederverkäufer."
+            ],
+            "found": [
+              true,
+              true,
+              true
+            ],
+            "type": "seller's own foreign shipping-cost table, one row per destination country",
+            "check_quotes_result_files": [
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-header.json",
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-IS.json",
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-TRADEONLY.json"
+            ]
+          },
+          "channel": "TRADE_ONLY_B2B_REGISTERED_RESELLERS",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:40:00Z",
+            "basis": "Auf Lager (page also carries schema.org/InStock)",
+            "source": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet. Nährwertangaben 100 g: 2456 kJ / 587 kcal, Fett 42 g, davon gesättigte Fettsäuren 27,1 g, Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g. Produziert in Deutschland. Artikel-Nr.: 10866",
+            "from": "page label",
+            "carbohydrate_g": 29.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "fat 42 % = reference (PI-ING-000260: fat 42, protein 20, lactose 30); single-ingredient spray-dried dairy cream, no additives",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/435e4065e6cb7787.json",
+          "checked_at_utc": "2026-09-17T18:40:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "added_by": "research-gap-eu",
+          "owner_check": "shop.cake-masters.com is the trade arm of the Herzlake group (same address as pati-versand.de / torten-boutique.de) and sells only to registered commercial resellers, prices net of VAT. The product and the pack are ordinary retail size (100 g) but the CHANNEL is B2B — it must not be shown as a consumer offer without the owner's decision. The group's consumer shops (pati-versand.de, backfun.de, meincupcake.de, hobbybaecker.de, torten-boutique.de, tolletorten.com) all use the same 21-country list, which excludes this market."
+        },
+        {
+          "rank": 2,
+          "brand": "Ingredients Bar",
+          "product_name": "Cream Powder | Dairy Milk High-Fat 75%",
+          "pack": "200 g / 500 g / 1.5 kg / 4 kg (size selector)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+          "source_type": "RETAILER",
+          "seller": "Ingredients Bar (ingredientsbar.com), United Kingdom",
+          "page_market": "GB",
+          "market_by": "CURRENCY_ONLY",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "none for this market: the seller's delivery policy says only \"International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.\" and never names the country",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://ingredientsbar.com/payment-delivery/",
+            "quotes": [
+              "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided."
+            ],
+            "found": [
+              true
+            ],
+            "type": "GENERIC_INTERNATIONAL_NO_COUNTRY_NAMED (not a confirmation — LEAD only)",
+            "check_quotes_result_files": [
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/ingredientsbar-generic-intl.json"
+            ]
+          },
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:40:00Z",
+            "basis": "schema.org/InStock in the page's Product JSON-LD offer (Product ID 0370)",
+            "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+          },
+          "composition": {
+            "fat_g": 75.0,
+            "protein_g": 8.5,
+            "fibre_g": 0.0,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition per 100 g: 3094 kJ / 750 kcal, fat 75 g of which saturates 51 g, carbohydrates 12 g of which sugars 12 g, protein 8.5 g, fibre 0 g, salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
+            "from": "page label",
+            "carbohydrate_g": 12.0
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "real spray-dried dairy cream powder but fat 75 % vs the 42 % reference (owner rule 2026-09-17 #3 makes this a valid candidate for owner decision); dose would have to be roughly halved against the reference",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2b3fa160f30389a9.json",
+          "checked_at_utc": "2026-09-17T18:40:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "added_by": "research-gap-eu"
+        }
+      ],
+      "notes": "BRAK: no Icelandic listing of genuine dairy cream powder (or of any cream powder) was found across online grocers, health shops and professional/wholesale suppliers; no GTIN-proven cross-border seller that lists Iceland was found. | Gap closed 2026-09-17 by research-gap-eu: the confirmed 42 % spray-dried cream powder is also sold by shop.cake-masters.com (the Herzlake group's TRADE shop), whose own foreign shipping-cost table prints a row for this market — so delivery here is verified in the seller's own words, unlike the group's consumer shops. Caveat for the owner: that shop states \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\" and quotes prices net of VAT, i.e. it is a B2B channel; the pack itself (100 g) is retail size. No consumer-facing seller of a 38-48 % dairy cream powder that names this market was found. Iceland is explicitly priced in that table (\"Island 33,49 €\"), so this is the first cross-border cream-powder path verified for Iceland; the earlier result was BRAK."
     },
-    {
-     "rank": 2,
-     "brand": "Natures Aid",
-     "product_name": "Natures Aid Inulin Trefjar Duft 250gr",
-     "pack": "250 g",
-     "gtin": "5023652416253",
-     "identifier_confirmed": true,
-     "url": "https://www.apotekarinn.is/vara/natures-aid-inulin-trefjar-duft-250gr-3578",
-     "source_type": "RETAILER",
-     "seller": "Apótekarinn",
-     "page_market": "IS",
-     "market_by": "CCTLD",
-     "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
-     "market_binding_signal": "country domain .is",
-     "cross_border": false,
-     "ships_to_evidence": null,
-     "composition": {
-      "fat_g": 0.0,
-      "protein_g": 0.0,
-      "carbohydrate_g": 8.0,
-      "sugars_g": 8.0,
-      "fibre_g": 88.0,
-      "fructose_pct": null,
-      "ingredients": "100% Pure (Chicory) Inulin",
-      "basis": "per 100 g",
-      "from": "ingredient line from this page; nutrition from manufacturer page (same GTIN)"
-     },
-     "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "same product as rank 1",
-     "evidence_class": "CONFIRMED_LOCAL",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5379a811f05b2c15.json",
-     "checked_at_utc": "2026-09-17T16:13:43Z",
-     "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_95ce1a3225ac4eeb.json",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    "FRU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "frúktósi",
+        "ávaxtasykur"
+      ],
+      "queries": [
+        "ávaxtasykur frúktósi verslun",
+        "fructose powder Iceland heilsuhúsið OR nettó OR krónan OR hagkaup",
+        "frúktósi duft 500 g",
+        "\"fructose\" site:is",
+        "frúktósi",
+        "ávaxtasykur duft",
+        "frúktósi sætuefni verslun",
+        "fructose 500g heimkaup",
+        "frúktósi 500g",
+        "ávaxtasykur 500 g vara",
+        "sendum til Íslands fructose"
+      ],
+      "sources_tried": [
+        "kronan.is search 'frúktósi' (no product)",
+        "heimkaup.is search (HTTP 404 search URL)",
+        "hagkaup.is (no fructose surfaced in search)",
+        "storkaup.is Sykur og sætuefni category (no fructose)",
+        "hverslun.is Sætuefni category (no fructose)",
+        "mammaveitbest.is and heilsuhusid.is searches (no fructose)",
+        "katla.is Ávaxtasykur (Icelandic food manufacturer; 25 kg bakery sack, Vörunúmer 14996 — above the 5 kg limit, not proposed)",
+        "lyfja.is (pharmacy; menu shows a þrúgusykur/dextrose category, no fructose surfaced)",
+        "bioshi24 country domains (not reachable)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sosa Ingredients",
+          "product_name": "Sosa fructose powder, 1 kg, PE dose",
+          "pack": "1 kg",
+          "gtin": "8414933026259",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists Iceland (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+            "quotes": [
+              "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
+              "Hungary Iceland India"
+            ],
+            "found": [
+              true,
+              true
+            ],
+            "type": "shipping-cost country selector listing the market",
+            "check_quotes_result_files": [
+              "~/.cache/gellatti-evidence/quotes/coordinator/gv-header.json",
+              "~/.cache/gellatti-evidence/quotes/coordinator/gv-IS.json"
+            ]
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
+            "from": "retailer page ('EAN Code 8414933026259' printed)",
+            "sugars_g": 100.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1c6e9eabd7c775ce.json",
+          "checked_at_utc": "2026-09-17T17:16:31Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "added_by": "coordinator (reuse of the MT/GR/CY/TR cross-border listing; country named in the seller delivery selector)"
+        }
+      ],
+      "notes": "BRAK for retail packs: the only Icelandic fructose found is Katla's 25 kg professional sack (outside the ≤5 kg rule). | Coordinator addition 2026-09-17: gourmet-versand.com lists Iceland in its delivery country selector; Sosa fructose 1 kg (GTIN 8414933026259 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was BRAK."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inúlín",
+        "inulin trefjar duft",
+        "trefjaduft"
+      ],
+      "queries": [
+        "inúlín duft",
+        "inulin duft kaupa"
+      ],
+      "sources_tried": [
+        "lyfja.is (Natures Aid Inulin trefjar duft 250 g; barcode present only in HTML-escaped page data, which the verifier counts as echo; identity via manufacturer GTIN)",
+        "apotekarinn.is (same product, no GTIN on page; identity via manufacturer GTIN)",
+        "naturesaid.co.uk (manufacturer page, GTIN 5023652416253 in JSON-LD, used as identity source)",
+        "lyfjaver.is Swanson Inulin 227 g (no GTIN in static page)",
+        "ja.is (directory/aggregator, discovery only) [T]",
+        "heilsuhusid.is / hagkaup.is site searches for inulin (no hit)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Natures Aid",
+          "product_name": "Inulin trefjar duft (250 g)",
+          "pack": "250 g",
+          "gtin": "5023652416253",
+          "identifier_confirmed": true,
+          "url": "https://www.lyfja.is/verslun/vitamin-og-baetiefni/magi-og-melting/trefjar/na-inulin-trefjar-duft-250g-10160249/",
+          "source_type": "RETAILER",
+          "seller": "Lyfja (distributor Artasan)",
+          "page_market": "IS",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "country domain .is",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "carbohydrate_g": 8.0,
+            "sugars_g": 8.0,
+            "fibre_g": 88.0,
+            "fructose_pct": null,
+            "ingredients": "Inulin (lyfja.is 'Innihaldslýsing Inulin.'; manufacturer: 100 % natural chicory inulin)",
+            "basis": "per 100 g",
+            "from": "nutrition from manufacturer page naturesaid.co.uk (same GTIN; verdict ~/.cache/gellatti-evidence/verify/08caeac82e8bd32f.json); ingredient line from this page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin, fibre 88 g / sugars 8 g per 100 g (reference 89 / 8)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/572c33d78fa77893.json",
+          "checked_at_utc": "2026-09-17T16:13:43Z",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_7adaa6e908a6bcd4.json",
+          "notes": "identity_match.py: GTIN on naturesaid.co.uk + brand 'Natures Aid' / 'Inulin' / 250 g on lyfja.is, no failed checks. Direct EAN run on lyfja.is: EAN_ONLY_ECHOED_FROM_URL_OR_QUERY (~/.cache/gellatti-evidence/verify/d1c84d07005acd3a.json) because the barcode sits in HTML-escaped JSON. Vörunúmer 10160249, 2.599 kr",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Natures Aid",
+          "product_name": "Natures Aid Inulin Trefjar Duft 250gr",
+          "pack": "250 g",
+          "gtin": "5023652416253",
+          "identifier_confirmed": true,
+          "url": "https://www.apotekarinn.is/vara/natures-aid-inulin-trefjar-duft-250gr-3578",
+          "source_type": "RETAILER",
+          "seller": "Apótekarinn",
+          "page_market": "IS",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "country domain .is",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "carbohydrate_g": 8.0,
+            "sugars_g": 8.0,
+            "fibre_g": 88.0,
+            "fructose_pct": null,
+            "ingredients": "100% Pure (Chicory) Inulin",
+            "basis": "per 100 g",
+            "from": "ingredient line from this page; nutrition from manufacturer page (same GTIN)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "same product as rank 1",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5379a811f05b2c15.json",
+          "checked_at_utc": "2026-09-17T16:13:43Z",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_95ce1a3225ac4eeb.json",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "eggjarauðuduft",
+        "þurrkuð eggjarauða",
+        "eggjaduft"
+      ],
+      "queries": [
+        "eggjarauðuduft",
+        "eggjaduft kaupa",
+        "eggjarauðuduft vara verslun",
+        "egg yolk powder Iceland shop",
+        "\"eggjarauðuduft\" OR \"eggjarauða í duftformi\" kaupa Ísland (WebSearch)",
+        "shop.cake-masters.com site search 'Eigelbpulver' (1 article)"
+      ],
+      "sources_tried": [
+        "mammaveitbest.is Eggjaduft 150 gr (whole egg powder, rejected)",
+        "katla.is Blandað eggjaduft (blended/whole egg powder for bakeries, rejected)",
+        "nesbu.is (egg producer) [T]",
+        "garri.is (egg category surfaced in search results; site search URL 404)",
+        "innnes.is search 'eggjarauðuduft' (no hit)",
+        "heilsuhusid.is / lyfja.is (no egg yolk powder surfaced)",
+        "myprotein.is (HTTP 503, not available)",
+        "hobbybaecker.de Eigelbpulver (Iceland not in delivery-country list)",
+        "shop.cake-masters.com: CM Basics Eigelbpulver 100g, HÜHNEREIGELB PASTEURISIERT SPRÜHGETROCKNET, Auf Lager; its foreign shipping-cost table prints \"Island 33,49 €\" — VERIFIED_CROSS_BORDER (trade-only channel)",
+        "taste-market.de (the Eigelbpulver source used for BG/HR/RO/GR/MT/CY): its EU zones 1-3 do NOT include Island, so it cannot serve Iceland",
+        "myprotein.is: HTTP 503 on both the product URL and the homepage — bot wall / not available, inconclusive",
+        "WebSearch for Icelandic egg-yolk powder returned no Icelandic retailer (only whole-egg powder, already rejected)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters",
+          "product_name": "CM Basics Eigelbpulver 100g",
+          "pack": "100 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-eigelbpulver-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Cake-Masters.com, Alexander Müller, Siemensstr. 24, 49770 Herzlake, DE (trade-only shop — footer: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\")",
+          "page_market": "DE",
+          "market_by": "ADDRESS_COUNTRY",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "cross-border: the seller's own foreign shipping-cost table prints \"Island 33,49 €\", check_quotes.py found=true",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://shop.cake-masters.com/versand-zahlung",
+            "quotes": [
+              "Versandkosten Ausland: Land Versandkosten pro angefangene 25kg",
+              "Island 33,49 €",
+              "Verkauf nur an registrierte, gewerbliche Wiederverkäufer."
+            ],
+            "found": [
+              true,
+              true,
+              true
+            ],
+            "type": "seller's own foreign shipping-cost table, one row per destination country",
+            "check_quotes_result_files": [
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-header.json",
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-IS.json",
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-TRADEONLY.json"
+            ]
+          },
+          "channel": "TRADE_ONLY_B2B_REGISTERED_RESELLERS",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:40:00Z",
+            "basis": "Auf Lager (page also carries schema.org/InStock)",
+            "source": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-eigelbpulver-100g"
+          },
+          "composition": {
+            "fat_g": 55.8,
+            "protein_g": 34.3,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET. Nährwertangaben 100 g: 2709 kJ / 647 kcal, Fett 55,8 g, davon gesättigte Fettsäuren 17,6 g, Kohlenhydrate 3,6 g, davon Zucker 3,6 g, Eiweiß 34,3 g, Salz 0,3 g. Artikel-Nr.: 11551",
+            "from": "page label",
+            "carbohydrate_g": 3.6
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised spray-dried chicken egg yolk; fat 55,8 / protein 34,3 vs the reference PI-ING-001645 fat 56,5 / protein 34,5 / carbs 2,5",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7e4e9bcd30bf99f3.json",
+          "checked_at_utc": "2026-09-17T18:40:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "added_by": "research-gap-eu",
+          "owner_check": "same trade-only channel caveat as the Cake-Masters cream powder: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\""
+        }
+      ],
+      "notes": "BRAK: only whole-egg powders are sold in Iceland; no egg yolk powder listing and no GTIN-proven cross-border seller that lists Iceland. | Gap closed 2026-09-17 by research-gap-eu: shop.cake-masters.com sells a 100 % pasteurised spray-dried egg yolk powder in a 100 g pack and its own shipping-cost table prices Iceland, so the earlier BRAK becomes VERIFIED_CROSS_BORDER. Owner caveat: that shop sells only to registered commercial resellers. Still no Icelandic listing of any egg yolk powder — only whole-egg powders."
     }
-   ],
-   "notes": ""
   },
-  "YOL": {
-   "result": "BRAK",
-   "local_terms": [
-    "eggjarauðuduft",
-    "þurrkuð eggjarauða",
-    "eggjaduft"
-   ],
-   "queries": [
-    "eggjarauðuduft",
-    "eggjaduft kaupa",
-    "eggjarauðuduft vara verslun",
-    "egg yolk powder Iceland shop"
-   ],
-   "sources_tried": [
-    "mammaveitbest.is Eggjaduft 150 gr (whole egg powder, rejected)",
-    "katla.is Blandað eggjaduft (blended/whole egg powder for bakeries, rejected)",
-    "nesbu.is (egg producer) [T]",
-    "garri.is (egg category surfaced in search results; site search URL 404)",
-    "innnes.is search 'eggjarauðuduft' (no hit)",
-    "heilsuhusid.is / lyfja.is (no egg yolk powder surfaced)",
-    "myprotein.is (HTTP 503, not available)",
-    "hobbybaecker.de Eigelbpulver (Iceland not in delivery-country list)"
-   ],
-   "candidates": [],
-   "notes": "BRAK: only whole-egg powders are sold in Iceland; no egg yolk powder listing and no GTIN-proven cross-border seller that lists Iceland."
-  }
- },
- "notes": "sources_tried entries marked [T] were judged from search-result titles/snippets only (page not opened); every other entry was fetched (verify_ean_market.py or a direct fetch). Search results are discovery only, never evidence."
+  "notes": "sources_tried entries marked [T] were judged from search-result titles/snippets only (page not opened); every other entry was fetched (verify_ean_market.py or a direct fetch). Search results are discovery only, never evidence.",
+  "contributing_agents": [
+    "research-gap-eu"
+  ]
 }

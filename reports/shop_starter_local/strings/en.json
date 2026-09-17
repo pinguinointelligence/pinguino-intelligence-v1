@@ -11,9 +11,18 @@
   "howto_title": "How to use this guide",
   "howto_lede": "For every Starter Pack ingredient we name a product you can buy in this country.",
   "steps": [
-    {"b": "Pick one product", "p": "The first is our pick; the second is an alternative if the first is not available."},
-    {"b": "Check the label", "p": "The ingredients on the pack must match the description of the item. Where a product's composition differs, we say so."},
-    {"b": "Take the amounts from the app", "p": "This PDF names products, not gram amounts. Recipes and amounts are calculated by the Gellatti app."}
+    {
+      "b": "Pick one product",
+      "p": "The first is our pick; the second is an alternative if the first is not available."
+    },
+    {
+      "b": "Check the label",
+      "p": "The ingredients on the pack must match the description of the item. Where a product's composition differs, we say so."
+    },
+    {
+      "b": "Take the amounts from the app",
+      "p": "This PDF names products, not gram amounts. Recipes and amounts are calculated by the Gellatti app."
+    }
   ],
   "legend_title": "Labels",
   "tag_from_abroad": "From abroad",
@@ -21,11 +30,13 @@
   "tag_other_composition": "Different composition",
   "tag_alternative": "Local alternative",
   "tag_unconfirmed": "Unconfirmed",
+  "tag_abroad_unconfirmed": "Shop abroad",
   "legend": {
-    "from_abroad": "a shop abroad that delivers to this country",
-    "b2b": "sold to businesses or in large packs",
+    "from_abroad": "a shop abroad whose own delivery list names this country",
+    "b2b": "sold to businesses or in large packs — not an ordinary retail offer",
     "other_composition": "the same kind of product with a different composition (shown next to it)",
-    "alternative": "a substitute for another Gellatti product"
+    "alternative": "a substitute for another Gellatti product",
+    "abroad_unconfirmed": "a shop abroad; delivery to this country is not confirmed"
   },
   "starter_amount": "In the Starter Pack: {g} g",
   "option": "Option {n}",
@@ -33,21 +44,52 @@
   "where": "Where",
   "fat": "fat",
   "items": {
-    "DEX": {"name": "Dextrose", "ref": "Dextrose (glucose) powder, monohydrate."},
-    "SMP": {"name": "Skim milk powder", "ref": "Milk powder with about 1% fat."},
-    "CRP": {"name": "Cream powder", "ref": "Dried cream with about 42% fat."},
-    "FRU": {"name": "Fructose", "ref": "Pure crystalline fructose."},
-    "INU": {"name": "Inulin", "ref": "Inulin powder, for example from chicory."},
-    "YOL": {"name": "Dried egg yolk", "ref": "Pasteurised chicken egg yolk powder."},
-    "STB": {"name": "Stabilizer", "ref": "Gellatti Stabilizer is a blend of tara gum, locust bean gum and guar gum."}
+    "DEX": {
+      "name": "Dextrose",
+      "ref": "Dextrose (glucose) powder, monohydrate."
+    },
+    "SMP": {
+      "name": "Skim milk powder",
+      "ref": "Milk powder with about 1% fat."
+    },
+    "CRP": {
+      "name": "Cream powder",
+      "ref": "Dried cream with about 42% fat."
+    },
+    "FRU": {
+      "name": "Fructose",
+      "ref": "Pure crystalline fructose."
+    },
+    "INU": {
+      "name": "Inulin",
+      "ref": "Inulin powder, for example from chicory."
+    },
+    "YOL": {
+      "name": "Dried egg yolk",
+      "ref": "Pasteurised chicken egg yolk powder."
+    },
+    "STB": {
+      "name": "Stabilizer",
+      "ref": "Gellatti Stabilizer is a blend of tara gum, locust bean gum and guar gum."
+    }
   },
   "stabilizer_note": "A local alternative to the Gellatti blend, not the same blend. Mix it with the dry ingredients and heat the base to 75–80 °C.",
   "missing": "No approved product in this country yet.",
+  "out_of_stock": "The shop showed this as out of stock on {date}.",
   "notes_title": "Good to know",
   "notes": [
-    {"h": "Availability", "p": "We checked these products on manufacturer and shop websites in September 2026. Availability, prices and delivery can change and are not guaranteed."},
-    {"h": "The label comes first", "p": "Before you buy, check the ingredients and allergens on the pack. Cream powder and milk powder contain milk; egg yolk contains egg."},
-    {"h": "Stabilizer", "p": "In this country, a local plant gum replaces the Gellatti Stabilizer. It works in a similar way but is not the same blend."}
+    {
+      "h": "Availability",
+      "p": "We checked the researched products on shop and manufacturer websites on 17 September 2026. Dextrose, skim milk powder and the stabilizer come from the Gellatti country table of 12 September 2026 and were not re-checked. Availability, prices and delivery can change and are not guaranteed."
+    },
+    {
+      "h": "The label comes first",
+      "p": "Before you buy, check the ingredients and allergens on the pack. Cream powder and milk powder contain milk; egg yolk contains egg."
+    },
+    {
+      "h": "Stabilizer",
+      "p": "In this country, a local plant gum replaces the Gellatti Stabilizer. It works in a similar way but is not the same blend."
+    }
   ],
   "fine": "A product named here is not necessarily available in the Gellatti app yet. Gellatti does not sell other brands' products.",
   "back_h": "Great gelato starts with a good base.",

@@ -1,0 +1,1394 @@
+{
+ "AE": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "AR": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "AT": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "AU": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "BD": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/bd",
+   "country_named_as": "Bangladesh",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Bangladesh Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "www.nowfoods.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-BD.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "BE": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "BG": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "BH": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "BR": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "CA": {
+  "STB": {
+   "state": "CONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": "Canada",
+   "quote": "nge Shipping Cost 0 – 3 kg €25.00 3.01 – 10 kg €39.00 Over 10 kg €59.00 8) North America, Canada, Australia, South America, and Islands Weight Range Shipping Cost 0 – 10 kg €65.00 10.01",
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/saporepuro.com-CA.json"
+  }
+ },
+ "CH": {
+  "STB": {
+   "state": "CONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": "Switzerland",
+   "quote": "REE shipping for orders over €25 in Italy - Free shipping over €50 in the EU - CHF 100 in Switzerland Technical Ingredients Technical Ingredients Structure and Texture Structure and Texture T",
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/saporepuro.com-CH.json"
+  }
+ },
+ "CL": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "CN": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "CO": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "CR": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "CY": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://buxtrade.de/pages/zahlung-und-versand",
+   "country_named_as": "Zypern",
+   "quote": "Polen, Portugal, Rumänien, Schweden, Slowakei, Slowenien, Tschechische Republik, Ungarn, Zypern . Versandkosten (inklusive gesetzliche Mehrwertsteuer) Lieferungen im Inland (Deutschland",
+   "seller": "buxtrade.de",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/buxtrade.de-CY.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "CZ": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "DE": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "DK": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://buxtrade.de/pages/zahlung-und-versand",
+   "country_named_as": "Dänemark",
+   "quote": ": Österreich, Spanien, Italien, Frankreich, Großbritannien, Schweiz, Belgien, Bulgarien, Dänemark, Estland, Finnland, Griechenland, Irland, Kroatien, Lettland, Litauen, Luxemburg, Malta,",
+   "seller": "buxtrade.de",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/buxtrade.de-DK.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "DO": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "DZ": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/dz",
+   "country_named_as": "Algeria",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Algeria Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "dz.iherb.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-DZ.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "EE": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://buxtrade.de/pages/zahlung-und-versand",
+   "country_named_as": "Estland",
+   "quote": "ich, Spanien, Italien, Frankreich, Großbritannien, Schweiz, Belgien, Bulgarien, Dänemark, Estland, Finnland, Griechenland, Irland, Kroatien, Lettland, Litauen, Luxemburg, Malta, Niederlan",
+   "seller": "buxtrade.de",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/buxtrade.de-EE.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "EG": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/eg",
+   "country_named_as": "Egypt",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Egypt Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "eg.iherb.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-EG.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "ES": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://buxtrade.de/pages/zahlung-und-versand",
+   "country_named_as": "Spanien",
+   "quote": "e Lieferung erfolgt im Inland (Deutschland) und in die nachstehenden Länder : Österreich, Spanien, Italien, Frankreich, Großbritannien, Schweiz, Belgien, Bulgarien, Dänemark, Estland, Fin",
+   "seller": "buxtrade.de",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/buxtrade.de-ES.json"
+  },
+  "STB": {
+   "state": "CONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": "Spain",
+   "quote": "Shipping Cost Orders below CHF 100 CHF 15.00 Orders from CHF 100 Free 7) Canary Islands (Spain – Special Provinces) Weight Range Shipping Cost 0 – 3 kg €25.00 3.01 – 10 kg €39.00 Over",
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/saporepuro.com-ES.json"
+  }
+ },
+ "FI": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://buxtrade.de/pages/zahlung-und-versand",
+   "country_named_as": "Finnland",
+   "quote": "ien, Italien, Frankreich, Großbritannien, Schweiz, Belgien, Bulgarien, Dänemark, Estland, Finnland, Griechenland, Irland, Kroatien, Lettland, Litauen, Luxemburg, Malta, Niederlande, Polen,",
+   "seller": "buxtrade.de",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/buxtrade.de-FI.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "FR": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "GB": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://buxtrade.de/pages/zahlung-und-versand",
+   "country_named_as": "Vereinigtes Königreich",
+   "quote": "R €) Slowakei (EUR €) Slowenien (EUR €) Spanien (EUR €) Tschechien (EUR €) Ungarn (EUR €) Vereinigtes Königreich (EUR €) Zypern (EUR €) Sprache Deutsch Sprache Deutsch English Français Italiano Español",
+   "seller": "buxtrade.de",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/buxtrade.de-GB.json"
+  },
+  "STB": {
+   "state": "CONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": "United Kingdom",
+   "quote": "ing Cost 0 – 5 kg €18.00 5.01 – 15 kg €25.00 Over 15 kg €35.00 Orders from €50.00 Free 5) United Kingdom (UK) Weight Range Shipping Cost 0 – 10 kg €25.00 10.01 – 20 kg €35.00 Over 20 kg €45.00 O",
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/saporepuro.com-GB.json"
+  }
+ },
+ "GH": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/gh",
+   "country_named_as": "Ghana",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Ghana Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "gh.iherb.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-GH.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "GR": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "HK": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "HR": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "HU": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "ID": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "IE": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://buxtrade.de/pages/zahlung-und-versand",
+   "country_named_as": "Irland",
+   "quote": ", Großbritannien, Schweiz, Belgien, Bulgarien, Dänemark, Estland, Finnland, Griechenland, Irland, Kroatien, Lettland, Litauen, Luxemburg, Malta, Niederlande, Polen, Portugal, Rumänien, S",
+   "seller": "buxtrade.de",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/buxtrade.de-IE.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "IL": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "IN": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "IS": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.hsnstore.eu/shipping-and-returns",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.hsnstore.eu",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "JP": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "KE": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/ke",
+   "country_named_as": "Kenya",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Kenya Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "ke.iherb.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-KE.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "KR": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "KW": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "LK": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/lk",
+   "country_named_as": "Sri Lanka",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Sri Lanka Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "www.nowfoods.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-LK.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "LT": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://buxtrade.de/pages/zahlung-und-versand",
+   "country_named_as": "Litauen",
+   "quote": "elgien, Bulgarien, Dänemark, Estland, Finnland, Griechenland, Irland, Kroatien, Lettland, Litauen, Luxemburg, Malta, Niederlande, Polen, Portugal, Rumänien, Schweden, Slowakei, Slowenien,",
+   "seller": "buxtrade.de",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/buxtrade.de-LT.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "LU": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://buxtrade.de/pages/zahlung-und-versand",
+   "country_named_as": "Luxemburg",
+   "quote": "ulgarien, Dänemark, Estland, Finnland, Griechenland, Irland, Kroatien, Lettland, Litauen, Luxemburg, Malta, Niederlande, Polen, Portugal, Rumänien, Schweden, Slowakei, Slowenien, Tschechisc",
+   "seller": "buxtrade.de",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/buxtrade.de-LU.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "LV": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://buxtrade.de/pages/zahlung-und-versand",
+   "country_named_as": "Lettland",
+   "quote": "Schweiz, Belgien, Bulgarien, Dänemark, Estland, Finnland, Griechenland, Irland, Kroatien, Lettland, Litauen, Luxemburg, Malta, Niederlande, Polen, Portugal, Rumänien, Schweden, Slowakei, S",
+   "seller": "buxtrade.de",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/buxtrade.de-LV.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "MA": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/ma",
+   "country_named_as": "Morocco",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Morocco Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "ma.iherb.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-MA.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "MT": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://artegustando.com/policies/shipping-policy",
+   "country_named_as": "Malta",
+   "quote": "R €) Irlanda (EUR €) Italia (EUR €) Lettonia (EUR €) Lituania (EUR €) Lussemburgo (EUR €) Malta (EUR €) Paesi Bassi (EUR €) Polonia (PLN zł) Portogallo (EUR €) Romania (RON Lei) Slovacc",
+   "seller": "artegustando.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/artegustando.com-MT.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "MX": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/mx",
+   "country_named_as": "Mexico",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Mexico Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "www.nowfoods.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-MX.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "MY": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "NG": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/ng",
+   "country_named_as": "Nigeria",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Nigeria Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "ng.iherb.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-NG.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "NL": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "NO": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://buxtrade.de/pages/zahlung-und-versand",
+   "country_named_as": "Norwegen",
+   "quote": "roßbritannien: bis 0,5 kg - 8,95 € 0,51 kg bis 25 kg - 15,61 € je weitere 25 kg - 15,61 € Norwegen: bis 1 kg - 18,99 € 1,1 kg bis 5 kg - 24,99 € je weitere 5 kg - 8,00 € Bei der Versendung",
+   "seller": "buxtrade.de",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/buxtrade.de-NO.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "NZ": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "OM": {
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/om",
+   "country_named_as": "Oman",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Oman Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "om.iherb.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-OM.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "PA": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/pa",
+   "country_named_as": "Panama",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Panama Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "www.nowfoods.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-PA.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "PH": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "PK": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/pk",
+   "country_named_as": "Pakistan",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Pakistan Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "www.nowfoods.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-PK.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "PL": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "PT": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "QA": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "RO": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "SA": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "SE": {
+  "DEX": {
+   "state": "CONFIRMED",
+   "policy_url": "https://buxtrade.de/pages/zahlung-und-versand",
+   "country_named_as": "Schweden",
+   "quote": "d, Kroatien, Lettland, Litauen, Luxemburg, Malta, Niederlande, Polen, Portugal, Rumänien, Schweden, Slowakei, Slowenien, Tschechische Republik, Ungarn, Zypern . Versandkosten (inklusive ge",
+   "seller": "buxtrade.de",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "country named in the seller delivery list or shipping-cost table",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/buxtrade.de-SE.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "SG": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "SI": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "SK": {
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "TH": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/th",
+   "country_named_as": "Thailand",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Thailand Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "www.nowfoods.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-TH.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "TN": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "SMP": {
+   "state": "CONFIRMED",
+   "policy_url": "https://www.iherb.com/shipping/tn",
+   "country_named_as": "Tunisia",
+   "quote": "tarian Paleo Professional Brands Deals Best Sellers Try New More Shipping Information for Tunisia Set To My Destination Founded in the United States in 1996, iHerb serves customers in ove",
+   "seller": "tn.iherb.com",
+   "basis_kind": "COUNTRY_PAGE",
+   "basis": "the seller publishes a shipping page for this destination",
+   "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator-v23/www.iherb.com-TN.json"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "TR": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "TW": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "UY": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ },
+ "VN": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://bakingwarehouse.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "bakingwarehouse.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  }
+ },
+ "ZA": {
+  "DEX": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://www.bulksupplements.com/pages/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "www.bulksupplements.com",
+   "basis_kind": "MARKET_PICKER",
+   "basis": "only the store market/currency selector names this country — not a delivery statement"
+  },
+  "STB": {
+   "state": "UNCONFIRMED",
+   "policy_url": "https://saporepuro.com/policies/shipping-policy",
+   "country_named_as": null,
+   "quote": null,
+   "seller": "saporepuro.com",
+   "basis_kind": "DELIVERY_LIST",
+   "basis": "no country-specific delivery statement could be read on the seller page"
+  }
+ }
+}

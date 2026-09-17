@@ -21,7 +21,9 @@
         "奶油粉 (momo)",
         "鮮奶油粉 (Carrefour TW)",
         "奶粉 (Carrefour TW, to check dairy powder range)",
-        "cream powder (PChome 24h API, English — only a book)"
+        "cream powder (PChome 24h API, English — only a book)",
+        "奶油粉 (wlscook.com.tw)",
+        "\"cream powder\" dairy spray dried milk fat 40% buy retail Asia baking supplier 1kg"
       ],
       "sources_tried": [
         "24h.pchome.com.tw search API (first-party online retailer; product pages later returned HTTP 429)",
@@ -31,13 +33,19 @@
         "watsons.com.tw (pharmacy; HTTP 403 Access Denied)",
         "pxmart.com.tw (supermarket; no online product search)",
         "iHerb tw (Cloudflare challenge, not bypassed)",
-        "results seen: soup powders (日正鮮奶油濃湯粉), custard powder (Tommy's 卡士達粉), whole/full-cream milk powders (克寧, 安佳) — rejected types"
+        "results seen: soup powders (日正鮮奶油濃湯粉), custard powder (Tommy's 卡士達粉), whole/full-cream milk powders (克寧, 安佳) — rejected types",
+        "hoosierhillfarm.com (US; real dairy \"Heavy Cream Powder\" 72 % butterfat found, but the shipping policy names no delivery countries - no cross-border evidence)",
+        "gourmet-versand.com (searched Sahnepulver, Rahmpulver, Milchpulver, Sahne: no dairy cream powder in the catalogue - only QimiQ whip desserts, coconut cream and horseradish cream)",
+        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no cream powder)",
+        "meilleurduchef.com (FR pastry supplier; delivery page /en/boutique/livraison.html lists no Asian market)",
+        "wlscook.com.tw (旺來興, Taiwanese baking-ingredient retailer, .com.tw; /V2/Search \"奶油粉\" - 0 matching titles)",
+        "nzmp.com (Fonterra B2B ingredients brand): \"Cream Powder 55\" IS a real spray-dried dairy cream powder - the page prints \"Our cream powder is made from a blend of fresh dairy cream and skim milk, spray-dried to create a naturally rich 55%-fat powder\" (quote verified with check_quotes.py, found=true, ~/.cache/gellatti-evidence/quotes/gap-asia/nzmp_cream55.json). B2B-ONLY industrial ingredient, no retail pack and no purchase page - recorded as the B2B route under the owner rule, never to be shown as a retail offer."
       ],
       "candidates": [],
-      "notes": "No spray-dried dairy cream powder found. Taiwanese baking-supply shops could not be discovered: WebSearch budget exhausted (session-wide 200/200)."
+      "notes": "No spray-dried dairy cream powder found. Taiwanese baking-supply shops could not be discovered: WebSearch budget exhausted (session-wide 200/200). Re-checked 2026-09-17 under the new owner rule (a real spray-dried dairy cream powder outside 38-48 % fat is a valid B_SAME_TYPE_DIFFERENT_COMPOSITION candidate). Still BRAK: no dairy cream powder of any fat level was found on a page that binds to this market. The only genuine retail dairy cream powder found anywhere in this pass is Hoosier Hill Farm \"Heavy Cream Powder\" (hoosierhillfarm.com, \"made with 100% real sweet cream\", \"72% butterfat content\", 1 lb / 2 lb / 25 lb, US) - it is NOT recorded as a candidate because the seller's shipping policy (hoosierhillfarm.com/policies/shipping-policy) prints no destination countries and no international-delivery statement, so there is no verifiable purchase path into this market. Owner may want to ask them directly. Owner rule 3 (B2B stays B2B): the only genuine dairy cream powder route that exists in this region is industrial - Fonterra/NZMP \"Cream Powder 55\" (blend of fresh dairy cream and skim milk, spray-dried, 55 % fat, quote verified) and regional B2B dairy traders such as bestdairies.com (Klang, Malaysia) in 25 kg sacks. Tagged B2B, not presented as a retail offer and not recorded as a candidate because no purchase page binds it to this market. Retail shelves in the region carry non-dairy creamers, whole/full-cream milk powders and whipped-topping mixes, which the protocol rejects."
     },
     "FRU": {
-      "result": "BRAK",
+      "result": "VERIFIED_CROSS_BORDER",
       "local_terms": [
         "果糖粉",
         "結晶果糖",
@@ -50,7 +58,10 @@
         "果糖粉 (momo)",
         "結晶果糖 (momo)",
         "果糖 (Carrefour TW)",
-        "fructose (PChome 24h API, English — only books)"
+        "fructose (PChome 24h API, English — only books)",
+        "Fruktose (gourmet-versand.com site search)",
+        "Fructose (gourmet-versand.com site search)",
+        "果糖 (wlscook.com.tw)"
       ],
       "sources_tried": [
         "24h.pchome.com.tw search API (first-party online retailer; product pages later returned HTTP 429)",
@@ -60,13 +71,56 @@
         "watsons.com.tw (pharmacy; HTTP 403 Access Denied)",
         "pxmart.com.tw (supermarket; no online product search)",
         "iHerb tw (Cloudflare challenge, not bypassed)",
-        "results seen: liquid fructose syrups / corn syrup (清淨園, 戀液糖), fructose dispensing machines, fruit candies — rejected types; PChome '果糖(1500g)' is a syrup-size listing without crystalline designation"
+        "results seen: liquid fructose syrups / corn syrup (清淨園, 戀液糖), fructose dispensing machines, fruit candies — rejected types; PChome '果糖(1500g)' is a syrup-size listing without crystalline designation",
+        "gourmet-versand.com (German gourmet/pastry retailer, generic .com; POST site search + /de/versand.html shipping-cost country selector - the selector names the destination country, so Sosa fructose / inulin are cross-border options)",
+        "wlscook.com.tw /V2/Search \"果糖\" - 2 hits, both fructose SYRUP: \"豐年果糖500g/罐\" (poured over food, water-soluble syrup) and \"果糖球 15gx50入/包\" - rejected type"
       ],
-      "candidates": [],
-      "notes": "No crystalline fructose found at the reachable retailers; in Taiwan '果糖' retail usually means liquid fructose syrup (rejected)."
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sosa",
+          "product_name": "Sosa Fruktose Pulver",
+          "pack": "1 kg",
+          "gtin": "8414933026259",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND (Heinsberg, Germany)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "no local binding (German gourmet/pastry retailer on a generic .com); cross-border only - see ships_to_evidence",
+          "cross_border": true,
+          "ships_to_evidence": "shipping-cost country selector on the seller's own delivery page https://www.gourmet-versand.com/de/versand.html (section 'Versendung in folgendes Land:') names the destination country; exact quote \"Südafrika Südkorea Taiwan Thailand\" verified with check_quotes.py (found=true, http 200, 2026-09-17); the same page states \"Wir liefern nach Europa und weltweit in\" 77 \"verschiedene Länder.\"; quote JSON: ~/.cache/gellatti-evidence/quotes/gap-asia/gv_ship_TW.json",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+            "source": "https://www.gourmet-versand.com/de/article13797/sosa-fruktose-pulver-1-kg.html"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": 0.01,
+            "fibre_g": null,
+            "fructose_pct": 100.0,
+            "ingredients": "Fructosepulver. Fruktose.",
+            "from": "page \"Zutaten\" field + product text \"Dieses 100% - ige Fructosepulver wird aus Maissirup mit hohem Fructosegehalt gewonnen.\"; Nährwerttabelle per 100 g: Brennwert 1700 kJ / 400 kcal, Kohlenhydrate 100 g, davon Zucker 100 g, Eiweiß 0,01 g, Salz 0,13 g"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "printed as a 100 % fructose powder; carbohydrates 100 g / of which sugars 100 g per 100 g (reference: fructose 99.8)",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a590a2c52d3ab33c.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "notes": "gtin13 8414933026259 appears as JSON-LD data on this purchase page (verify_ean_market.py: clean_hits 3, echo_hits 0, embedded_hits 0, identity_basis GTIN_ON_THIS_PAGE) and again as the page's \"EAN Code\" field. Manufacturer printed: Sosa Ingredients, S.L.U., Colonia Galobart S/N, 08270 Navarcles, Barcelona, Spain; article no. 22941. Pack is 1 kg (reference pack is 125 g).",
+          "checked_at_utc": "2026-09-17T18:30:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "found_by": "gap-asia"
+        }
+      ],
+      "notes": "No crystalline fructose found at the reachable retailers; in Taiwan '果糖' retail usually means liquid fructose syrup (rejected). Closed cross-border 2026-09-17 by gap-asia: no usable local source was found, so the proposal is the Sosa article at GOURMET VERSAND (Germany), whose own shipping-cost country selector names this country (quote verified with check_quotes.py, file under ~/.cache/gellatti-evidence/quotes/gap-asia/). Owner should still prefer a local source if one turns up; a 1 kg / 500 g pack and international postage are the trade-off. Local check: wlscook.com.tw carries only fructose SYRUP (豐年果糖 500 g jar, 果糖球 sachets), which the protocol rejects."
     },
     "INU": {
-      "result": "LEAD_ONLY",
+      "result": "VERIFIED_CROSS_BORDER",
       "local_terms": [
         "菊苣纖維",
         "菊糖",
@@ -83,7 +137,9 @@
         "菊苣粉 (momo)",
         "菊苣纖維 (Carrefour TW)",
         "inulin (Carrefour TW)",
-        "inulin (PChome 24h API / momo / Carrefour TW, English)"
+        "inulin (PChome 24h API / momo / Carrefour TW, English)",
+        "Inulin (gourmet-versand.com site search)",
+        "菊粉 (wlscook.com.tw)"
       ],
       "sources_tried": [
         "24h.pchome.com.tw search API (first-party online retailer; product pages later returned HTTP 429)",
@@ -92,11 +148,53 @@
         "cosmed.com.tw (pharmacy/drugstore; JS search, no server-side results)",
         "watsons.com.tw (pharmacy; HTTP 403 Access Denied)",
         "pxmart.com.tw (supermarket; no online product search)",
-        "iHerb tw (Cloudflare challenge, not bypassed)"
+        "iHerb tw (Cloudflare challenge, not bypassed)",
+        "gourmet-versand.com (German gourmet/pastry retailer, generic .com; POST site search + /de/versand.html shipping-cost country selector - the selector names the destination country, so Sosa fructose / inulin are cross-border options)",
+        "wlscook.com.tw /V2/Search \"菊粉\" - 0 matching titles"
       ],
       "candidates": [
         {
           "rank": 1,
+          "brand": "Sosa",
+          "product_name": "Sosa Inulin Cold (Ballaststoff) (50063)",
+          "pack": "500 g",
+          "gtin": "8414933008774",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND (Heinsberg, Germany)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "no local binding (German gourmet/pastry retailer on a generic .com); cross-border only - see ships_to_evidence",
+          "cross_border": true,
+          "ships_to_evidence": "shipping-cost country selector on the seller's own delivery page https://www.gourmet-versand.com/de/versand.html (section 'Versendung in folgendes Land:') names the destination country; exact quote \"Südafrika Südkorea Taiwan Thailand\" verified with check_quotes.py (found=true, http 200, 2026-09-17); the same page states \"Wir liefern nach Europa und weltweit in\" 77 \"verschiedene Länder.\"; quote JSON: ~/.cache/gellatti-evidence/quotes/gap-asia/gv_ship_TW.json",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "schema.org InStock (\"availability\":\"https://schema.org/InStock\") plus the page label \"SOFORT LIEFERBAR\"",
+            "source": "https://www.gourmet-versand.com/de/article26461/sosa-inulin-cold-ballaststoff-50063-500-g.html"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ballaststoff Inulin. Inulin.",
+            "from": "page \"Zutaten\" field; Nährwerttabelle per 100 g: Brennwert 839 kJ / 208 kcal, Kohlenhydrate 7 g, davon Zucker 7 g, Salz 0,1 g (no fibre figure printed)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "printed ingredient list is inulin only (dietary fibre); the German nutrition table prints no fibre figure, sugars are 7 g/100 g which is consistent with the reference (fibre 89, sugars 8)",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3c3f5d6932e222fa.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "notes": "gtin13 8414933008774 appears as JSON-LD data on this purchase page (verify_ean_market.py identity_basis GTIN_ON_THIS_PAGE) and as the page's \"EAN Code\" field; article no. 34575. The page also prints \"Nur für den professionellen Gebrauch!\" (professional use only) although it is an ordinary consumer webshop listing. The sibling article \"Sosa Inulin Hot (Ballaststoff) (39460)\" 500 g is stocked on the same shop.",
+          "checked_at_utc": "2026-09-17T18:30:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "found_by": "gap-asia"
+        },
+        {
+          "rank": 2,
           "brand": "日初良食",
           "product_name": "【日初良食】長鏈菊苣纖維250g/包(低熱量 代糖 低醣 烘焙)",
           "pack": "250 g",
@@ -124,10 +222,16 @@
           "evidence_class": "LEAD",
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/b1366d42ff37e1cd.json",
           "checked_at_utc": "2026-09-17T15:59:02Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "page contains the token \"in stock\" (momoshop marketplace listing)",
+            "source": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=13588190"
+          }
         },
         {
-          "rank": 2,
+          "rank": 3,
           "brand": "三多 SENTOSA",
           "product_name": "膳食纖維粉末食品 X4罐(350g/罐)-菊苣纖維粉末/素食可食",
           "pack": "350 g can (sold as 4-can set; 6- and 12-can sets also listed)",
@@ -156,13 +260,20 @@
           "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c7cc41277b5e6cf7.json",
           "notes": "Manufacturer/importer: 三多士股份有限公司 (Taipei). Multi-can set listing; single-can pack not confirmed.",
           "checked_at_utc": "2026-09-17T16:13:29Z",
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "availability": {
+            "state": "UNKNOWN",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": null,
+            "source": "https://24h.pchome.com.tw/prod/DBDA21-A900HM2M7",
+            "note": "page returned HTTP 429 (bot check) on the 2026-09-17 stock re-check; not bypassed"
+          }
         }
       ],
-      "notes": "Candidates exist at major Taiwanese online retailers but neither GTIN nor composition could be read from the served pages."
+      "notes": "Candidates exist at major Taiwanese online retailers but neither GTIN nor composition could be read from the served pages. Closed cross-border 2026-09-17 by gap-asia: no usable local source was found, so the proposal is the Sosa article at GOURMET VERSAND (Germany), whose own shipping-cost country selector names this country (quote verified with check_quotes.py, file under ~/.cache/gellatti-evidence/quotes/gap-asia/). Owner should still prefer a local source if one turns up; a 1 kg / 500 g pack and international postage are the trade-off."
     },
     "YOL": {
-      "result": "BRAK",
+      "result": "LEAD_ONLY",
       "local_terms": [
         "蛋黃粉",
         "乾燥蛋黃",
@@ -173,7 +284,11 @@
         "蛋黃粉 (PChome 24h API)",
         "蛋黃粉 (momo)",
         "蛋黃粉 (Carrefour TW)",
-        "egg yolk powder (PChome 24h API, English — only books)"
+        "egg yolk powder (PChome 24h API, English — only books)",
+        "蛋黃粉 (wlscook.com.tw)",
+        "蛋黃粉 烘焙材料 台灣 網購 購買",
+        "jaune d'oeuf en poudre (cuisineaddict.com, cerf-dellier.com)",
+        "Eigelbpulver (pati-versand.de)"
       ],
       "sources_tried": [
         "24h.pchome.com.tw search API (first-party online retailer; product pages later returned HTTP 429)",
@@ -183,10 +298,102 @@
         "watsons.com.tw (pharmacy; HTTP 403 Access Denied)",
         "pxmart.com.tw (supermarket; no online product search)",
         "iHerb tw (Cloudflare challenge, not bypassed)",
-        "results seen: bird-food yolk powders, hydrolysed yolk supplements (固營 水解蛋黃粉), 三鳥牌蛋黃粉 (custard-type baking powder), 鹹蛋黃粉 (salted-egg seasoning) — rejected types"
+        "results seen: bird-food yolk powders, hydrolysed yolk supplements (固營 水解蛋黃粉), 三鳥牌蛋黃粉 (custard-type baking powder), 鹹蛋黃粉 (salted-egg seasoning) — rejected types",
+        "gourmet-versand.com (searched Eigelbpulver, Eigelb, Eipulver, Vollei, Trockenei: no egg powder in the catalogue - only egg-yellow food colourings)",
+        "taste-market.de (German shop with a real \"Eigelbpulver\" 100 g, ingredients \"Hühner-Eigelb\", GTIN 4262421423127 - kept out because the served HTML exposes no shipping/delivery-country page, so no cross-border evidence)",
+        "souschef.co.uk (UK; full Shopify catalogue read via products.json - no egg yolk powder)",
+        "wlscook.com.tw /V2/Search \"蛋黃粉\" - 5 hits: two plain 蛋黃粉 packs (100 g and 1 kg, used) plus 醸蛋黃粉 / 醸式 / 金沙 salted-egg-yolk powders (rejected)",
+        "pati-versand.de (German baking retailer with a real \"Eigelbpulver 100g\", brand Cake-Masters Basics, ingredients \"HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET\", schema.org InStock / \"Auf Lager\") - NOT usable: its \"Rest der Welt\" zone is an explicit list of 20 European countries only (\"Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, ... Ungarn\", quote verified with check_quotes.py, ~/.cache/gellatti-evidence/quotes/gap-asia/pati_eu_only.json), no Asian market",
+        "cuisineaddict.com (FR; search \"jaune d'oeuf en poudre\" returns only egg-yellow food COLOURING E102/E129)",
+        "cerf-dellier.com (FR pastry supplier; search returns \"Désolé, nous ne trouvons aucun produit\")",
+        "bienmanger.com (FR; search path HTTP 404)",
+        "modernistpantry.com (US; /products.json and /search both HTTP 404 - no readable catalogue)",
+        "modernistpantry.com (US; \"Egg Yolk Powder\", page text \"Egg yolk powder is made of spray dried pasteurized egg yolks ... Made in the USA and contains no additives of any kind\", page shows \"in stock\") - NOT usable as cross-border evidence: the international-shipping page names no country, only \"We are currently only offering FedEx shipping for international customers. To see whether we can ship to your country just add the products to cart and go to the checkout page.\" (adding to carts is out of scope by protocol rule 8)"
       ],
-      "candidates": [],
-      "notes": "In Taiwanese baking retail '蛋黃粉' often denotes custard powder; no pasteurised dried egg yolk found."
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": null,
+          "product_name": "蛋黃粉 100g / 包 雞蛋粉 蛋黃粉 乾燥雞蛋粉 製作 蛋黃液 烘焙 效期2027.9.10",
+          "pack": "100 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.wlscook.com.tw/SalePage/Index/8855870?lang=zh-TW",
+          "source_type": "RETAILER",
+          "seller": "旺來興企業股份有限公司 (WLS Cook, Taiwan baking-ingredient retailer, own online store)",
+          "page_market": "TW",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .com.tw (verify_ean_market.py: page_market TW, market_by CCTLD, market_binding_confirmed true); price in TWD",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "schema.org InStock (\"availability\": \"https://schema.org/InStock\") in the page's Product JSON-LD",
+            "source": "https://www.wlscook.com.tw/SalePage/Index/8855870?lang=zh-TW"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "page prints no ingredient list and no nutrition table; product text: \"蛋黃粉是採用新鮮雞蛋為原料，是新鮮雞蛋理想的替代品\" and \"建議使用方式：蛋黃粉 : 水＝1 : 1.23，等同新鮮蛋黃液\""
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Right type: dried chicken-egg YOLK powder, reconstituted 1 : 1.23 with water to liquid egg yolk. The page prints no ingredient list, no additive declaration and no nutrition figures, so A vs B cannot be decided. Market binding (.com.tw) and the first-party listing are solid; only the composition is missing.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": null,
+          "notes": "The listing name is keyword-stuffed: it contains 雞蛋粉 (whole-egg powder) as well as 蛋黃粉 (egg-yolk powder). The product description is entirely about egg yolk powder and its 1 : 1.23 reconstitution to 蛋黃液 (liquid yolk), and the shop's category is 烘焙原料區 > 加工粉／花草／水果粉. Owner should ask WLS Cook for the label before the PDF: the name alone does not exclude a whole-egg product. No GTIN on the page; shop SalePage id 8855870, JSON-LD brand field is the seller's own company name.",
+          "checked_at_utc": "2026-09-17T18:30:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "found_by": "gap-asia"
+        },
+        {
+          "rank": 2,
+          "brand": null,
+          "product_name": "蛋黃粉1kg/包   雞蛋粉 蛋黃粉 乾燥雞蛋粉 製作 蛋黃液 烘焙 效期2027.10.27",
+          "pack": "1 kg",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.wlscook.com.tw/SalePage/Index/8855865?lang=zh-TW",
+          "source_type": "RETAILER",
+          "seller": "旺來興企業股份有限公司 (WLS Cook, Taiwan baking-ingredient retailer, own online store)",
+          "page_market": "TW",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .com.tw (verify_ean_market.py verdict file below: page_market TW, market_by CCTLD, market_binding_confirmed true, source_type DIRECT); price in TWD",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:30:00Z",
+            "basis": "schema.org InStock (\"availability\": \"https://schema.org/InStock\") in the page's Product JSON-LD",
+            "source": "https://www.wlscook.com.tw/SalePage/Index/8855865?lang=zh-TW"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "page prints no ingredient list and no nutrition table; product text: \"※一般食品加工用。新鮮雞蛋的替代品，具有較好的乳化性…粉:水比例為1:1.23(1.23倍水還原蛋黃液)\""
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Right type: dried chicken-egg YOLK powder, reconstituted 1 : 1.23 with water to liquid egg yolk. The page prints no ingredient list, no additive declaration and no nutrition figures, so A vs B cannot be decided. Market binding (.com.tw) and the first-party listing are solid; only the composition is missing.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5fd7ff9219247c01.json",
+          "notes": "Same product family as rank 1 in a 1 kg pack (SalePage id 8855865, NT$780). verify_ean_market.py (page facts, no GTIN on page) confirmed page_market TW by CCTLD. Same caveat as rank 1: the listing name mixes 雞蛋粉 and 蛋黃粉 and no label is printed.",
+          "checked_at_utc": "2026-09-17T18:30:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "found_by": "gap-asia"
+        }
+      ],
+      "notes": "In Taiwanese baking retail '蛋黃粉' often denotes custard powder; no pasteurised dried egg yolk found. New in 2026-09-17: two plain 蛋黃粉 (egg yolk powder) packs at wlscook.com.tw (旺來興, Taiwanese baking-ingredient retailer, .com.tw, both schema.org InStock, 100 g and 1 kg). Market binding and the first-party listing are solid, but neither page prints an ingredient list or nutrition panel and both names are keyword-stuffed with 雞蛋粉 (whole-egg powder), so the rows stay LEAD / C_INSUFFICIENT_DATA. The salted-egg-yolk powders on the same shop (醸蛋黃粉, 金沙) are rejected as a different product type."
     }
-  }
+  },
+  "gap_followup_agent": "gap-asia",
+  "gap_followup_at_utc": "2026-09-17T18:30:00Z",
+  "gap_followup_egress_cc": "ES"
 }

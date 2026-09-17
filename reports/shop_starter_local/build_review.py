@@ -24,6 +24,9 @@ CLASS_PL = {'CONFIRMED_LOCAL': 'POTWIERDZONY LOKALNIE', 'VERIFIED_CROSS_BORDER':
             'LEAD': 'NIEPOTWIERDZONY (trop)', 'LEAD_ONLY': 'TYLKO NIEPOTWIERDZONE TROPY', 'BRAK': 'BRAK'}
 EQ_PL = {'A_EQUIVALENT': 'odpowiednik', 'B_SAME_TYPE_DIFFERENT_COMPOSITION': 'ten sam rodzaj, inny skład',
          'C_INSUFFICIENT_DATA': 'za mało danych'}
+STOCK_PL = {'IN_STOCK': 'w sprzedaży', 'OUT_OF_STOCK': 'brak towaru', 'UNKNOWN': 'nie podano na stronie'}
+SHIP_PL = {'CONFIRMED': 'wysyłka do kraju potwierdzona cytatem', 'UNCONFIRMED': 'wysyłka do kraju NIEpotwierdzona',
+           'UNSTRUCTURED': 'dowód wysyłki opisowy — do ponownego sprawdzenia'}
 
 
 def col(n):
@@ -99,11 +102,28 @@ def write_xlsx(path, sheets):
             z.writestr(f'xl/worksheets/sheet{i + 1}.xml', sheet_xml(rows, widths, header))
 
 
+def shipping_state(c):
+    """Is the delivery to this country evidenced? Prose instead of a checked quote counts as UNSTRUCTURED, not proof."""
+    ev = c.get('ships_to_evidence')
+    if isinstance(ev, str):
+        return 'UNSTRUCTURED'
+    ev = ev or {}
+    found = ev.get('found')
+    ok = found is True or (isinstance(found, list) and found and all(found))
+    return 'CONFIRMED' if (ok and (ev.get('quote') or ev.get('quotes'))) else 'UNCONFIRMED'
+
+
+TRADE_ONLY = re.compile(r'TRADE_ONLY|B2B|WHOLESALE|RESELLER', re.I)
+
+
 def recommendation(c):
     cls, eq = c.get('evidence_class'), c.get('equivalence')
     kind = id_type(c.get('gtin')) if c.get('gtin') else 'NONE'
     if c.get('gtin') and not kind.startswith('GTIN'):
         return f'DO DECYZJI: kod nie jest poprawnym GTIN ({kind})'
+    if TRADE_ONLY.search(str(c.get('channel') or '')):
+        # A shop that sells only to registered businesses is not an ordinary retail offer, however good the product is.
+        return 'DO DECYZJI: kanał tylko dla firm (nie zwykła sprzedaż detaliczna)'
     if cls in ('CONFIRMED_LOCAL', 'VERIFIED_CROSS_BORDER') and eq == 'A_EQUIVALENT':
         return 'TAK'
     if cls in ('CONFIRMED_LOCAL', 'VERIFIED_CROSS_BORDER'):
@@ -126,9 +146,13 @@ def build(out_path):
     markets = json.load(open(os.path.join(HERE, 'markets75.json')))
     v23 = json.load(open(os.path.join(HERE, 'v23_rows.json')))['countries']
     now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+    stock = json.load(open(os.path.join(HERE, 'stock.json'))) if os.path.exists(os.path.join(HERE, 'stock.json')) else {}
+    v23_ship = json.load(open(os.path.join(HERE, 'v23_shipping.json'))) if os.path.exists(os.path.join(HERE, 'v23_shipping.json')) else {}
     done = [iso for iso in sorted(markets) if os.path.exists(os.path.join(HERE, 'research', f'{iso}.json'))]
-    decide = [['ISO', 'Kraj', 'Składnik', 'Wybór', 'Marka', 'Produkt (jak na stronie)', 'Opakowanie', 'EAN', 'Link', 'Sprzedawca',
-               'Typ identyfikatora', 'Klasa dowodu', 'Z zagranicy', 'Równoważność', 'Skład (ze strony)', 'Uwagi badacza', 'Sprawdzono (UTC)',
+    decide = [['ID', 'ISO', 'Kraj', 'Składnik', 'Wybór', 'Marka', 'Produkt (jak na stronie)', 'Opakowanie', 'EAN', 'Link', 'Sprzedawca',
+               'Typ identyfikatora', 'Tożsamość i skład (klasa dowodu)', 'Skład (ze strony)', 'Dopuszczalność zamiany',
+               'Oferta dla kraju', 'Kanał sprzedaży', 'Stan magazynowy', 'Stan z dnia', 'Podstawa stanu',
+               'Do sprawdzenia przez Ownera', 'Uwagi badacza', 'Sprawdzono (UTC)',
                'Rekomendacja', 'Decyzja Ownera (TAK/NIE)', 'Uwagi Ownera']]
     gaps = [['ISO', 'Kraj', 'Składnik', 'Wynik', 'Szukane terminy', 'Sprawdzone źródła', 'Uwagi']]
     matrix = [['ISO', 'Kraj', 'Dekstroza (v23)', 'Mleko odtł. (v23)', 'Stabilizator (v23)', 'Śmietanka 42%', 'Fruktoza', 'Inulina', 'Żółtko',
@@ -150,32 +174,59 @@ def build(out_path):
                 gaps.append([iso, name, ITEM_PL[code], CLASS_PL.get(result, result), ', '.join((item or {}).get('local_terms') or []),
                              '; '.join((item or {}).get('sources_tried') or [])[:1500], (item or {}).get('notes') or ''])
             for c in cands[:2]:
-                decide.append([iso, name, ITEM_PL[code], c.get('rank'), c.get('brand'), c.get('product_name'), c.get('pack'),
-                               c.get('gtin') or '', c.get('url'), c.get('seller') or '', id_type(c.get('gtin')) if c.get('gtin') else 'BRAK KODU (D-37: listing własnej marki)', CLASS_PL.get(c.get('evidence_class'), c.get('evidence_class')),
-                               'TAK' if c.get('cross_border') else '', EQ_PL.get(c.get('equivalence'), c.get('equivalence') or ''),
-                               comp_text(c), c.get('equivalence_note') or '', c.get('checked_at_utc') or '', recommendation(c), '', ''])
+                st = (stock.get(iso, {}).get(code, {}) or {}).get(c.get('url') or '', {})
+                offer = ('sklep z tego kraju' if not c.get('cross_border')
+                         else 'sklep za granicą — ' + SHIP_PL.get(shipping_state(c), ''))
+                decide.append([f'{iso}-{code}-{c.get("rank")}', iso, name, ITEM_PL[code], c.get('rank'), c.get('brand'),
+                               c.get('product_name'), c.get('pack'), c.get('gtin') or '', c.get('url'), c.get('seller') or '',
+                               id_type(c.get('gtin')) if c.get('gtin') else 'BRAK KODU (D-37: listing własnej marki)',
+                               CLASS_PL.get(c.get('evidence_class'), c.get('evidence_class')), comp_text(c),
+                               EQ_PL.get(c.get('equivalence'), c.get('equivalence') or ''), offer,
+                               ('tylko dla zarejestrowanych firm (B2B)' if TRADE_ONLY.search(str(c.get('channel') or ''))
+                                else ('detaliczny' if c.get('channel') is None else str(c.get('channel')))),
+                               STOCK_PL.get(st.get('state', 'UNKNOWN'), ''), (st.get('checked_at_utc') or '')[:10],
+                               st.get('basis') or '', c.get('owner_check') or '', c.get('equivalence_note') or '', c.get('checked_at_utc') or '',
+                               recommendation(c), '', ''])
         without_yes = [ITEM_PL[code] for code in ITEMS_R
                        if not r or 'TAK' not in [recommendation(c) for c in ((r.get('items', {}).get(code) or {}).get('candidates') or [])[:2]]]
         row.append('TAK' if not without_yes else 'NIE — brakuje: ' + ', '.join(without_yes))
         matrix.append(row)
-    v23rows = [['ISO', 'Kraj', 'Składnik', 'Marka', 'Produkt', 'Opakowanie', 'EAN', 'Oznaczenia', 'Link']]
+    v23rows = [['ISO', 'Kraj', 'Składnik', 'Marka', 'Produkt', 'Opakowanie', 'EAN', 'Oznaczenia v23',
+                'Wysyłka do tego kraju', 'Cytat dostawy', 'Strona z polityką wysyłki', 'Link']]
     for iso in sorted(markets):
         for code in ('DEX', 'SMP', 'STB'):
             v = v23.get(iso, {}).get(code) or {}
+            sh = (v23_ship.get(iso) or {}).get(code) or {}
+            state = SHIP_PL.get(sh.get('state'), 'nie dotyczy (produkt z tego kraju)') if 'From abroad' in (v.get('tags') or []) else 'nie dotyczy (produkt z tego kraju)'
             v23rows.append([iso, markets[iso]['country'], ITEM_PL[code], v.get('brand_v23'), v.get('product_v23'), v.get('pack_v23'),
-                            v.get('ean_v23'), ' '.join(v.get('tags') or []), ' '.join(l['url'] for l in (v.get('links') or []))])
+                            v.get('ean_v23'), ' '.join(v.get('tags') or []), state, (sh.get('quote') or '')[:300],
+                            sh.get('policy_url') or '', ' '.join(l['url'] for l in (v.get('links') or []))])
+    gaps_no_cand = sum(1 for iso in sorted(markets) for code in ITEMS_R
+                       if not ((json.load(open(os.path.join(HERE, 'research', f'{iso}.json'))).get('items') or {}).get(code) or {}).get('candidates'))
     intro = [['GELLATTI — Starter Pack: lokalne odpowiedniki (przegląd do akceptacji)'],
              [f'Stan: {now}. Kraje z zakończonym researchem: {len(done)}/75.'],
              ['Jak decydować: w arkuszu 01_DO_DECYZJI wpisz TAK przy produkcie, który ma trafić do PDF danego kraju, albo NIE. Puste = bez decyzji.'],
+             ['Kolumna ID (np. PL-FRU-1) nie zmienia się między wersjami arkusza — można się nią posługiwać zamiast numeru wiersza.'],
+             ['Pięć rzeczy jest rozdzielonych, bo są niezależne: (1) Tożsamość i skład — czy to na pewno ten produkt i co ma na etykiecie; '
+              '(2) Dopuszczalność zamiany — czy to ten sam rodzaj produktu, czy inny skład; (3) Oferta dla kraju — sklep krajowy albo zagraniczny '
+              'z potwierdzoną wysyłką; (4) Stan magazynowy z datą — co sklep pokazywał w dniu sprawdzenia; (5) Decyzja Ownera.'],
+             ['Brak towaru nie kasuje produktu: w PDF zostaje z informacją „sklep pokazał brak towaru <data>”, a jeżeli istnieje potwierdzony '
+              'i dostępny zamiennik, to on jest pokazany jako pierwszy.'],
              ['Do PDF trafia tylko produkt z TAK. Kraj dostaje PDF dopiero, gdy każdy z 7 składników ma co najmniej jeden produkt.'],
              ['Rekomendacja to tylko podpowiedź: TAK = potwierdzony (lokalnie lub z wysyłką z zagranicy) i ten sam rodzaj produktu.'],
              ['Klasy: POTWIERDZONY LOKALNIE = dokładny EAN/listing na stronie sklepu lub producenta z tego kraju; POTWIERDZONY Z ZAGRANICY = sklep za granicą z potwierdzoną wysyłką do kraju; NIEPOTWIERDZONY = trop (np. marketplace, brak EAN na stronie).'],
              ['Dekstroza, mleko odtłuszczone i stabilizator pochodzą z Twojej tabeli v23 (arkusz 03_V23); stabilizator jest pokazany jako lokalna alternatywa dla mieszanki Gellatti.'],
              ['Procedura badań: reports/shop_starter_local/RESEARCH_PROTOCOL.md (reguły D-10, D-29…D-37). Dowody stron: ~/.cache/gellatti-evidence/verify.'],
              ['Uwaga: limit wyszukiwarki w sesji skończył się w trakcie badań; część BRAK w późniejszych krajach wynika z ograniczonego wyszukiwania (patrz „Uwagi” w 02_BRAKI), a nie z dowodu, że produktu nie ma.'],
-             ['Typ identyfikatora sprawdzamy niezależnie (suma kontrolna GS1, kody wewnętrzne sklepów RCN, ISBN, kupony). Produkt z kodem, który nie jest poprawnym GTIN, nie dostaje rekomendacji TAK.']]
-    sheets = [('00_INSTRUKCJA', intro, [140], False), ('01_DO_DECYZJI', decide, [5, 14, 18, 6, 16, 34, 12, 15, 40, 18, 18, 18, 8, 16, 34, 30, 17, 22, 16, 24], True),
-              ('02_BRAKI', gaps, [5, 14, 18, 16, 30, 60, 40], True), ('03_V23', v23rows, [5, 14, 22, 16, 36, 16, 15, 14, 50], True),
+             ['Typ identyfikatora sprawdzamy niezależnie (suma kontrolna GS1, kody wewnętrzne sklepów RCN, ISBN, kupony). Produkt z kodem, który nie jest poprawnym GTIN, nie dostaje rekomendacji TAK.'],
+             ['Arkusz 03_V23 nie zmienia Twojego wyboru produktu. Kolumna „Wysyłka do tego kraju” rozlicza osobno samo oznaczenie „Z zagranicy”: '
+              'POTWIERDZONA znaczy, że sklep wymienia ten kraj na własnej liście dostaw (cytat obok), NIEPOTWIERDZONA — że takiej listy nie udało się '
+              'odczytać. W PDF pierwsze oznaczamy „Z zagranicy”, drugie „Sklep za granicą” bez obietnicy dostawy. Oznaczenie B2B zostaje B2B.'],
+             [f'Liczniki braków (cztery nowe role, 75 krajów = 300 kombinacji): {gaps_no_cand} bez żadnego kandydata; '
+              f'{sum(1 for iso in sorted(markets) for code in ITEMS_R for c in [((json.load(open(os.path.join(HERE, "research", f"{iso}.json"))).get("items") or {}).get(code) or {})] if c.get("candidates") and "TAK" not in [recommendation(x) for x in c["candidates"][:2]])} '
+              'z kandydatem, ale bez rekomendacji TAK. Reszta ma co najmniej jedną rekomendację TAK — rekomendacja to nadal nie jest akceptacja.']]
+    sheets = [('00_INSTRUKCJA', intro, [140], False), ('01_DO_DECYZJI', decide, [12, 5, 14, 18, 6, 16, 34, 12, 15, 40, 18, 18, 22, 34, 20, 30, 22, 14, 11, 40, 40, 30, 17, 22, 16, 24], True),
+              ('02_BRAKI', gaps, [5, 14, 18, 16, 30, 60, 40], True), ('03_V23', v23rows, [5, 14, 22, 16, 36, 16, 15, 14, 34, 60, 40, 50], True),
               ('04_MACIERZ', matrix, [5, 16, 12, 12, 14, 22, 22, 22, 22, 40], True)]
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     write_xlsx(out_path, sheets)
@@ -194,7 +245,11 @@ def import_decisions(path):
         decision = (r.get(idx['Decyzja Ownera (TAK/NIE)']) or '').strip().upper()
         if decision not in ('TAK', 'NIE'):
             continue
-        iso, code, rank = r.get(idx['ISO']), name_to_code.get(r.get(idx['Składnik'])), int(float(r.get(idx['Wybór'])))
+        if 'ID' in idx and r.get(idx['ID']):
+            iso, code, rank = str(r[idx['ID']]).split('-')
+            rank = int(rank)
+        else:
+            iso, code, rank = r.get(idx['ISO']), name_to_code.get(r.get(idx['Składnik'])), int(float(r.get(idx['Wybór'])))
         entry = acc.setdefault(iso, {}).setdefault(code, {'decision': 'ACCEPT', 'accepted_ranks': [], 'rejected_ranks': []})
         (entry['accepted_ranks'] if decision == 'TAK' else entry['rejected_ranks']).append(rank)
     for iso in acc:

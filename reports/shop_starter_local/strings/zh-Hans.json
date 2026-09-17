@@ -21,11 +21,13 @@
   "tag_other_composition": "成分不同",
   "tag_alternative": "本地替代",
   "tag_unconfirmed": "未确认",
+  "tag_abroad_unconfirmed": "海外商店",
   "legend": {
-    "from_abroad": "可配送至当地的海外商店",
-    "b2b": "面向企业销售或大包装",
+    "from_abroad": "其自有配送清单中列有当地的海外商店",
+    "b2b": "面向企业销售或大包装，并非普通零售商品",
     "other_composition": "同类产品，但成分不同（旁边已注明）",
-    "alternative": "另一款 Gellatti 产品的替代品"
+    "alternative": "另一款 Gellatti 产品的替代品",
+    "abroad_unconfirmed": "海外商店，能否配送至当地未经确认"
   },
   "starter_amount": "Starter Pack 中：{g} 克",
   "option": "选项 {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "这是 Gellatti 混合物的本地替代品，并非同一种混合物。请将其与干性原料混合，并将基底加热至 75–80 °C。",
   "missing": "当地暂无已批准的产品。",
+  "out_of_stock": "该商店在 {date} 显示此商品缺货。",
   "notes_title": "值得了解",
   "notes": [
-    {"h": "供货情况", "p": "我们于 2026 年 9 月在制造商和商店的网站上核实了这些产品。供货情况、价格和配送可能会变化，且不作保证。"},
+    {"h": "供货情况", "p": "我们于 2026 年 9 月 17 日在商店和制造商的网站上核实了调研中的产品。葡萄糖、脱脂奶粉和稳定剂来自 2026 年 9 月 12 日的 Gellatti 国家表，未再次核实。供货情况、价格和配送可能会变化，且不作保证。"},
     {"h": "以包装标签为准", "p": "购买前，请查看包装上的配料和过敏原信息。稀奶油粉和奶粉含有牛奶；蛋黄含有鸡蛋。"},
     {"h": "稳定剂", "p": "在当地，Gellatti Stabilizer 由一种本地植物胶替代。其作用类似，但并非同一种混合物。"}
   ],

@@ -21,11 +21,13 @@
   "tag_other_composition": "Composizione diversa",
   "tag_alternative": "Alternativa locale",
   "tag_unconfirmed": "Non confermato",
+  "tag_abroad_unconfirmed": "Negozio estero",
   "legend": {
-    "from_abroad": "un negozio all’estero che spedisce in questo Paese",
-    "b2b": "venduto ad aziende o in confezioni grandi",
+    "from_abroad": "un negozio all’estero il cui elenco di consegna indica questo Paese",
+    "b2b": "venduto ad aziende o in confezioni grandi — non è una normale offerta al dettaglio",
     "other_composition": "lo stesso tipo di prodotto con una composizione diversa (indicata accanto)",
-    "alternative": "un sostituto di un altro prodotto Gellatti"
+    "alternative": "un sostituto di un altro prodotto Gellatti",
+    "abroad_unconfirmed": "un negozio all’estero; la consegna in questo Paese non è confermata"
   },
   "starter_amount": "Nello Starter Pack: {g} g",
   "option": "Opzione {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Un’alternativa locale alla miscela Gellatti, non la stessa miscela. Mescolala con gli ingredienti secchi e scalda la base a 75–80 °C.",
   "missing": "Non c’è ancora un prodotto approvato in questo Paese.",
+  "out_of_stock": "Il negozio lo indicava come esaurito il {date}.",
   "notes_title": "Buono a sapersi",
   "notes": [
-    {"h": "Disponibilità", "p": "Abbiamo verificato questi prodotti sui siti di produttori e negozi a settembre 2026. Disponibilità, prezzi e consegna possono cambiare e non sono garantiti."},
+    {"h": "Disponibilità", "p": "Abbiamo verificato i prodotti della ricerca sui siti di negozi e produttori il 17 settembre 2026. Destrosio, latte scremato in polvere e stabilizzante provengono dalla tabella dei Paesi Gellatti del 12 settembre 2026 e non sono stati verificati di nuovo. Disponibilità, prezzi e consegna possono cambiare e non sono garantiti."},
     {"h": "L’etichetta viene prima", "p": "Prima dell’acquisto, controlla ingredienti e allergeni sulla confezione. Panna in polvere e latte in polvere contengono latte, il tuorlo d’uovo contiene uova."},
     {"h": "Stabilizzante", "p": "In questo Paese una gomma vegetale locale sostituisce il Gellatti Stabilizer. Agisce in modo simile, ma non è la stessa miscela."}
   ],

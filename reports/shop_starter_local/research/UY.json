@@ -1,185 +1,371 @@
 {
-  "iso2": "UY",
-  "country": "Uruguay",
-  "agent": "research-americas",
-  "egress_cc": "ES",
-  "researched_at_utc": "2026-09-17T16:13:08Z",
-  "items": {
-    "CRP": {
-      "result": "BRAK",
-      "local_terms": [
-        "crema de leche en polvo",
-        "crema en polvo (láctea)"
+ "iso2": "UY",
+ "country": "Uruguay",
+ "agent": "research-americas",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:13:08Z",
+ "items": {
+  "CRP": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "crema de leche en polvo",
+    "crema en polvo (láctea)"
+   ],
+   "queries": [
+    "site search tata.com.uy (VTEX catalog): crema de leche en polvo / crema en polvo / cream powder",
+    "site search eldorado.com.uy: crema de leche en polvo / cream powder",
+    "site search tienda.farmashop.com.uy: crema en polvo / crema de leche en polvo",
+    "site search sanroque.com.uy: crema en polvo / cream powder",
+    "site search lamolienda.uy: crema en polvo / leche en polvo / cream powder",
+    "site search elgranero.com.uy: crema de leche en polvo / leche en polvo (+ store API: crema, leche en polvo)",
+    "site search granel.com.uy: crema de leche / leche en polvo",
+    "site search diu.com.uy: crema de leche",
+    "product list hornex.com.uy/productos.html",
+    "site navigation conaprole.uy and forexport.conaprole.uy",
+    "site catalog gourmet-versand.com: Sahnepulver / Rahmpulver / Milchpulver (0 dairy powders)",
+    "site search pati-versand.de: Sahnepulver (Cake-Masters Sahnepulver 100g, SAHNE 42% Fett - EU-only delivery)",
+    "product-sitemap scan ingredientsbar.com (75 products): cream powder / yolk / inulin / fructose"
+   ],
+   "sources_tried": [
+    "tata.com.uy (supermarket; VTEX FastStore, searched via the store's own catalog endpoint tatauy.vtexcommercestable.com.br: 0 results)",
+    "eldorado.com.uy (supermarket; VTEX search: milk powders only / 0 results)",
+    "eldorado.com.uy detail: only Saint/Conaprole skimmed milk powders (rejected)",
+    "tiendainglesa.com.uy (supermarket; HTTP 403 Cloudflare 'Just a moment...' - bot wall, inconclusive, not bypassed)",
+    "disco.com.uy / devoto.com.uy / geant.com.uy (supermarkets; JS-only site, search routes redirect to not-found - inconclusive)",
+    "macromercado.com.uy / kinko.com.uy (grocers; no server-side on-site search - inconclusive)",
+    "tienda.farmashop.com.uy (pharmacy; no cream powder - only unrelated creams and milk extractors)",
+    "sanroque.com.uy (pharmacy; 0 results)",
+    "lamolienda.uy (natural-food shop; only whole milk powder Saint and a vegan coconut-milk powder - rejected)",
+    "elgranero.com.uy / granel.com.uy (natural-food shops; only soy/coconut creams - rejected)",
+    "puntonatural.com.uy (no online catalogue)",
+    "diu.com.uy (Droguería Industrial Uruguaya, food-ingredient/chemical supplier; no cream powder)",
+    "hornex.com.uy (Uruguayan baking brand; only crema pastelera/chantilly mixes - rejected)",
+    "conaprole.uy / forexport.conaprole.uy (dairy manufacturer; retail catalogue has no cream powder, export catalogue is JS-only - inconclusive)",
+    "iherb.com (cross-border check: HTTP 403 Cloudflare challenge - not bypassed)",
+    "ingredientsbar.com/p/cream-powder-0370t/ (UK own-brand shop; REAL spray-dried dairy cream powder, printed fat 75 g/100 g, ingredients 'Dairy cream, milk protein, lactose', packs 200 g/500 g/1.5 kg/4 kg, schema.org InStock; delivery page says only 'International delivery carries additional charges ... based on the delivery address provided' - no country named, so LEAD)",
+    "pati-versand.de art. 10866 'Sahnepulver 100g spruehgetrocknet' (Cake-Masters, DE; the only A-band product found anywhere: ingredients 'SAHNE 42% Fett, spruehgetrocknet', fat 42 g, protein 19 g, sugars 29 g/100 g, 'Verfuegbarkeit: Auf Lager') - its delivery list covers only European countries (Belgien ... Zypern), so it is NOT a cross-border option for this market",
+    "gourmet-versand.com (DE; shipping-cost country selector read in full - no cream powder and no egg yolk powder in the catalogue: searches Sahnepulver/Rahmpulver/Milchpulver/Eipulver/Vollei/Trockenei returned no dairy powder)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Ingredients Bar",
+     "product_name": "Cream Powder",
+     "pack": "200 g (same listing also offers 500 g, 1.5 kg and 4 kg; SKU 0370)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Ingredients Bar (United Kingdom)",
+     "page_market": "GB",
+     "market_by": "OTHER_MARKET:GB",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "NONE for UY (UK shop, GBP only - currency never binds). The seller states international delivery but names no country, so this is a LEAD purchase path, not VERIFIED_CROSS_BORDER.",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://ingredientsbar.com/payment-delivery/",
+        "quote": "International delivery carries additional charges, which are displayed at checkout based on the delivery address provided.",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json"
+       }
       ],
-      "queries": [
-        "site search tata.com.uy (VTEX catalog): crema de leche en polvo / crema en polvo / cream powder",
-        "site search eldorado.com.uy: crema de leche en polvo / cream powder",
-        "site search tienda.farmashop.com.uy: crema en polvo / crema de leche en polvo",
-        "site search sanroque.com.uy: crema en polvo / cream powder",
-        "site search lamolienda.uy: crema en polvo / leche en polvo / cream powder",
-        "site search elgranero.com.uy: crema de leche en polvo / leche en polvo (+ store API: crema, leche en polvo)",
-        "site search granel.com.uy: crema de leche / leche en polvo",
-        "site search diu.com.uy: crema de leche",
-        "product list hornex.com.uy/productos.html",
-        "site navigation conaprole.uy and forexport.conaprole.uy"
-      ],
-      "sources_tried": [
-        "tata.com.uy (supermarket; VTEX FastStore, searched via the store's own catalog endpoint tatauy.vtexcommercestable.com.br: 0 results)",
-        "eldorado.com.uy (supermarket; VTEX search: milk powders only / 0 results)",
-        "eldorado.com.uy detail: only Saint/Conaprole skimmed milk powders (rejected)",
-        "tiendainglesa.com.uy (supermarket; HTTP 403 Cloudflare 'Just a moment...' - bot wall, inconclusive, not bypassed)",
-        "disco.com.uy / devoto.com.uy / geant.com.uy (supermarkets; JS-only site, search routes redirect to not-found - inconclusive)",
-        "macromercado.com.uy / kinko.com.uy (grocers; no server-side on-site search - inconclusive)",
-        "tienda.farmashop.com.uy (pharmacy; no cream powder - only unrelated creams and milk extractors)",
-        "sanroque.com.uy (pharmacy; 0 results)",
-        "lamolienda.uy (natural-food shop; only whole milk powder Saint and a vegan coconut-milk powder - rejected)",
-        "elgranero.com.uy / granel.com.uy (natural-food shops; only soy/coconut creams - rejected)",
-        "puntonatural.com.uy (no online catalogue)",
-        "diu.com.uy (Droguería Industrial Uruguaya, food-ingredient/chemical supplier; no cream powder)",
-        "hornex.com.uy (Uruguayan baking brand; only crema pastelera/chantilly mixes - rejected)",
-        "conaprole.uy / forexport.conaprole.uy (dairy manufacturer; retail catalogue has no cream powder, export catalogue is JS-only - inconclusive)",
-        "iherb.com (cross-border check: HTTP 403 Cloudflare challenge - not bypassed)"
-      ],
-      "candidates": [],
-      "notes": "No dairy cream powder found at any reachable Uruguayan grocer, pharmacy, natural-food shop, ingredient supplier or dairy manufacturer. Only milk powders, plant-based creams and chantilly mixes turned up, all rejected. The largest grocer (Tienda Inglesa) is behind a Cloudflare wall, and the GDU supermarkets (Disco/Devoto/Géant) have JS-only search, so coverage is limited. No cross-border page with an explicit ships-to-Uruguay statement was reachable. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
-    },
-    "FRU": {
-      "result": "BRAK",
-      "local_terms": [
-        "fructosa",
-        "fructosa pura",
-        "azúcar de fruta"
-      ],
-      "queries": [
-        "site search tata.com.uy (VTEX catalog): fructosa / fructose",
-        "site search eldorado.com.uy: fructosa / fructose",
-        "site search tienda.farmashop.com.uy: fructosa / fructose",
-        "site search sanroque.com.uy: fructosa / fructose / stevia",
-        "site search lamolienda.uy: fructosa / fructose",
-        "site search elgranero.com.uy: fructosa (+ store API)",
-        "site search granel.com.uy: fructosa / fructose",
-        "site search diu.com.uy: fructosa / fructose",
-        "product list hornex.com.uy/productos.html"
-      ],
-      "sources_tried": [
-        "tata.com.uy (supermarket; VTEX FastStore, searched via the store's own catalog endpoint tatauy.vtexcommercestable.com.br: 0 results)",
-        "eldorado.com.uy (supermarket; VTEX search: milk powders only / 0 results)",
-        "tiendainglesa.com.uy (supermarket; HTTP 403 Cloudflare 'Just a moment...' - bot wall, inconclusive, not bypassed)",
-        "disco.com.uy / devoto.com.uy / geant.com.uy (supermarkets; JS-only site, search routes redirect to not-found - inconclusive)",
-        "macromercado.com.uy / kinko.com.uy (grocers; no server-side on-site search - inconclusive)",
-        "tienda.farmashop.com.uy (pharmacy; only fructose-containing electrolyte/rehydration drinks: Rehidroms, Lytos, Power Drink - rejected)",
-        "sanroque.com.uy (pharmacy; 0 results)",
-        "lamolienda.uy / elgranero.com.uy (natural-food shops; 0 results)",
-        "granel.com.uy (bulk health-food shop; full-text matches only in unrelated products such as dried fruit and raw bars)",
-        "puntonatural.com.uy (no online catalogue)",
-        "diu.com.uy (Droguería Industrial Uruguaya, ingredient supplier; 0 results)",
-        "hornex.com.uy (baking brand; no fructose)"
-      ],
-      "candidates": [],
-      "notes": "No crystalline fructose found at any reachable Uruguayan grocer, pharmacy, natural-food shop or ingredient/baking supplier. Fructose appears only inside electrolyte drinks (rejected). Tienda Inglesa (403 Cloudflare) and the GDU supermarkets (JS-only search) could not be checked. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
-    },
-    "INU": {
-      "result": "LEAD_ONLY",
-      "local_terms": [
-        "inulina",
-        "inulina en polvo",
-        "inulina de achicoria",
-        "inulina de agave"
-      ],
-      "queries": [
-        "site search tata.com.uy (VTEX catalog): inulina / inulin",
-        "site search eldorado.com.uy: inulina / inulin",
-        "site search tienda.farmashop.com.uy: inulina",
-        "site search sanroque.com.uy: inulina / inulin / fibra",
-        "site search lamolienda.uy: inulina / inulin",
-        "site search elgranero.com.uy: inulina (+ store API)",
-        "site search granel.com.uy: inulina / inulin",
-        "site search diu.com.uy: inulina / inulin",
-        "site search iherb.com: inulin powder (cross-border check)"
-      ],
-      "sources_tried": [
-        "tata.com.uy (supermarket; VTEX FastStore, searched via the store's own catalog endpoint tatauy.vtexcommercestable.com.br: 0 results)",
-        "eldorado.com.uy (supermarket; VTEX search: milk powders only / 0 results)",
-        "tiendainglesa.com.uy (supermarket; HTTP 403 Cloudflare 'Just a moment...' - bot wall, inconclusive, not bypassed)",
-        "disco.com.uy / devoto.com.uy / geant.com.uy (supermarkets; JS-only site, search routes redirect to not-found - inconclusive)",
-        "macromercado.com.uy / kinko.com.uy (grocers; no server-side on-site search - inconclusive)",
-        "lamolienda.uy (natural-food shop; found own-brand 'INULINA 100G', no composition shown)",
-        "tienda.farmashop.com.uy (pharmacy; fuzzy search returned insulin/aniline products only - no inulin)",
-        "sanroque.com.uy (pharmacy; 'inulina' 0 results; 'fibra' 19 results with no inulin powder by name)",
-        "elgranero.com.uy / granel.com.uy (natural-food shops; no inulin powder, only desserts listing inulin as an ingredient)",
-        "diu.com.uy (ingredient supplier; 0 results)",
-        "iherb.com (cross-border; HTTP 403 Cloudflare challenge - not bypassed)"
-      ],
-      "candidates": [
-        {
-          "rank": 1,
-          "brand": "La Molienda",
-          "product_name": "INULINA 100G",
-          "pack": "100 g (variant 'Inulina 100gr')",
-          "gtin": null,
-          "identifier_confirmed": false,
-          "url": "https://www.lamolienda.uy/catalogo/inulina-100g_000000000003222_000000000003222",
-          "source_type": "RETAILER",
-          "seller": "La Molienda (own brand; article code 000000000003222)",
-          "page_market": "UY",
-          "market_by": "CCTLD",
-          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
-          "market_binding_signal": "country domain .uy",
-          "cross_border": false,
-          "ships_to_evidence": null,
-          "composition": {
-            "fat_g": null,
-            "protein_g": null,
-            "fibre_g": null,
-            "fructose_pct": null,
-            "ingredients": null,
-            "from": "not shown: the page has no description, ingredients or nutrition table (product data only: nombre 'INULINA 100G', categoria 'Otros suplementos', marca 'La Molienda')"
-          },
-          "equivalence": "C_INSUFFICIENT_DATA",
-          "equivalence_note": "Own-brand inulin sold by weight (100 g) in 'Otros suplementos'. Neither fibre content, inulin source nor form (powder) is printed, so A cannot be confirmed.",
-          "evidence_class": "LEAD",
-          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/52355fd08b6d20a5.json",
-          "extra_evidence_files": [],
-          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-          "checked_at_utc": "2026-09-17T16:07:49Z"
-        }
-      ],
-      "notes": "Identity (D-37 own-brand listing: brand La Molienda, name INULINA 100G, variant Inulina 100gr, 100 g, article 000000000003222) and market binding (.uy) are both present, but the page prints no composition. Equivalence is therefore C and the class LEAD. A label or spec sheet showing inulin/fibre >= 85 % would lift it to CONFIRMED_LOCAL. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
-    },
-    "YOL": {
-      "result": "BRAK",
-      "local_terms": [
-        "yema de huevo en polvo",
-        "yema en polvo",
-        "yema deshidratada",
-        "huevo en polvo"
-      ],
-      "queries": [
-        "site search tata.com.uy (VTEX catalog): yema en polvo / egg yolk powder / huevo",
-        "site search eldorado.com.uy: yema en polvo / egg yolk",
-        "site search tienda.farmashop.com.uy: yema en polvo / huevo en polvo",
-        "site search sanroque.com.uy: yema / huevo / egg yolk",
-        "site search lamolienda.uy: yema / huevo en polvo / huevo / egg yolk",
-        "site search elgranero.com.uy: yema / huevo en polvo (+ store API: huevo)",
-        "site search granel.com.uy: yema / huevo en polvo",
-        "site search diu.com.uy: yema / huevo",
-        "product list prodhin.com.uy (egg processor)"
-      ],
-      "sources_tried": [
-        "tata.com.uy (supermarket; VTEX FastStore, searched via the store's own catalog endpoint tatauy.vtexcommercestable.com.br: 0 results)",
-        "eldorado.com.uy (supermarket; VTEX search: milk powders only / 0 results)",
-        "tiendainglesa.com.uy (supermarket; HTTP 403 Cloudflare 'Just a moment...' - bot wall, inconclusive, not bypassed)",
-        "disco.com.uy / devoto.com.uy / geant.com.uy (supermarkets; JS-only site, search routes redirect to not-found - inconclusive)",
-        "macromercado.com.uy / kinko.com.uy (grocers; no server-side on-site search - inconclusive)",
-        "tienda.farmashop.com.uy / sanroque.com.uy (pharmacies; no egg powders)",
-        "lamolienda.uy (natural-food shop; only 'ALBUMINA DE HUEVO 250G' = egg white and vegan egg replacers - rejected)",
-        "elgranero.com.uy / granel.com.uy (natural-food shops; no egg powder)",
-        "prodhin.com.uy (Uruguayan egg processor; only liquid pasteurised yolk in 3 L/10 L bags, not dried - rejected)",
-        "diu.com.uy (ingredient supplier; 0 relevant results)",
-        "hornex.com.uy (baking brand; no egg products)"
-      ],
-      "candidates": [],
-      "notes": "No dried egg yolk found in Uruguay. The local egg processor Prodhin sells only liquid yolk, and La Molienda only egg-white powder and egg replacers (all rejected). Tienda Inglesa (403) and the GDU supermarkets (JS-only search) could not be checked. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+      "found": true,
+      "country_named": false,
+      "note": "Generic international-delivery statement only; UY is not named, so owner rule 2 (2026-09-17) keeps this a LEAD."
+     },
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:45:29Z",
+      "basis": "schema.org/InStock in the page's own product data (\"availability\":\"http://schema.org/InStock\"), plus \"In stock\" on the listing",
+      "source": "https://ingredientsbar.com/p/cream-powder-0370t/"
+     },
+     "composition": {
+      "fat_g": 75.0,
+      "protein_g": 8.5,
+      "fibre_g": 0.0,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Allergens: Contains milk. Nutrition Facts Per 100g: Energy 3094kJ/750kcal, Fat 75 g of which saturated fatty acid 51 g, Carbohydrates 12 g of which sugars 12 g, Protein 8.5 g, Dietary Fibre 0 g, Salt 2 g. Produced in the EU (Germany). Packaged in the UK.",
+      "from": "product page, 'Ingredients & Nutrition' tab (quote file ~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json)",
+      "sugars_g": 12.0
+     },
+     "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+     "equivalence_note": "Real spray-dried dairy cream powder ('made from dehydrated cream, free from additives'), printed fat 75 g/100 g - outside the 38-48 % A band (reference 42 %). Ingredients are cream + milk protein + lactose, i.e. the permitted CRP ingredient family. Recorded under owner rule 3 (2026-09-17): a dairy cream powder outside 38-48 % fat is a valid candidate for owner decision.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ba8f4aeeb1263acd.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_intl_delivery.json",
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_ib_cream_stock.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T18:45:29Z"
     }
+   ],
+   "notes": "No dairy cream powder found at any reachable Uruguayan grocer, pharmacy, natural-food shop, ingredient supplier or dairy manufacturer. Only milk powders, plant-based creams and chantilly mixes turned up, all rejected. The largest grocer (Tienda Inglesa) is behind a Cloudflare wall, and the GDU supermarkets (Disco/Devoto/Géant) have JS-only search, so coverage is limited. No cross-border page with an explicit ships-to-Uruguay statement was reachable. WebSearch budget exhausted during research; later discovery via on-site shop searches only. | 2026-09-17: BRAK lifted to LEAD_ONLY under owner rule 3. The Uruguayan BRAK stands (no dairy cream powder at any reachable grocer, pharmacy, natural-food shop, ingredient supplier or at Conaprole). New candidate: Ingredients Bar (UK) Cream Powder, real spray-dried dairy cream powder, printed fat 75 g/100 g and full ingredient list, retail 200 g pack, IN_STOCK. Kept a LEAD because the seller's delivery page only states that international delivery is charged at checkout and never names the country (owner rule 2). BulkSupplements, whose nation list does name Uruguay (and which supplies the FRU and INU rows here), sells no cream powder."
+  },
+  "FRU": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "fructosa",
+    "fructosa pura",
+    "azúcar de fruta"
+   ],
+   "queries": [
+    "site search tata.com.uy (VTEX catalog): fructosa / fructose",
+    "site search eldorado.com.uy: fructosa / fructose",
+    "site search tienda.farmashop.com.uy: fructosa / fructose",
+    "site search sanroque.com.uy: fructosa / fructose / stevia",
+    "site search lamolienda.uy: fructosa / fructose",
+    "site search elgranero.com.uy: fructosa (+ store API)",
+    "site search granel.com.uy: fructosa / fructose",
+    "site search diu.com.uy: fructosa / fructose",
+    "product list hornex.com.uy/productos.html",
+    "site search bulksupplements.com: fructose powder (cross-border check)",
+    "shipping-country list bulksupplements.com/policies/shipping-policy: Uruguay"
+   ],
+   "sources_tried": [
+    "tata.com.uy (supermarket; VTEX FastStore, searched via the store's own catalog endpoint tatauy.vtexcommercestable.com.br: 0 results)",
+    "eldorado.com.uy (supermarket; VTEX search: milk powders only / 0 results)",
+    "tiendainglesa.com.uy (supermarket; HTTP 403 Cloudflare 'Just a moment...' - bot wall, inconclusive, not bypassed)",
+    "disco.com.uy / devoto.com.uy / geant.com.uy (supermarkets; JS-only site, search routes redirect to not-found - inconclusive)",
+    "macromercado.com.uy / kinko.com.uy (grocers; no server-side on-site search - inconclusive)",
+    "tienda.farmashop.com.uy (pharmacy; only fructose-containing electrolyte/rehydration drinks: Rehidroms, Lytos, Power Drink - rejected)",
+    "sanroque.com.uy (pharmacy; 0 results)",
+    "lamolienda.uy / elgranero.com.uy (natural-food shops; 0 results)",
+    "granel.com.uy (bulk health-food shop; full-text matches only in unrelated products such as dried fruit and raw bars)",
+    "puntonatural.com.uy (no online catalogue)",
+    "diu.com.uy (Droguería Industrial Uruguaya, ingredient supplier; 0 results)",
+    "hornex.com.uy (baking brand; no fructose)",
+    "bulksupplements.com/products/fructose-powder (US own-brand shop; GTIN 849720029065 as page data next to SKU FRUC250 and the 250 g variant; 'Ingredients: Fructose'; schema.org InStock) + its shipping policy 'We currently ship to the following nations: ... United Kingdom Uruguay Vanuatu ...' - Uruguay named - candidate 1",
+    "gourmet-versand.com (DE; sells Sosa Fruktose Pulver 1 kg, but its shipping-cost country selector does NOT list Uruguay)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "BulkSupplements.com",
+     "product_name": "Fructose (Sugar) Powder - Powder / 250 Grams (8.8 oz)",
+     "pack": "250 g (8.8 oz), SKU FRUC250",
+     "gtin": "849720029065",
+     "identifier_confirmed": true,
+     "url": "https://www.bulksupplements.com/products/fructose-powder",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "BulkSupplements.com (United States)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "NONE for UY (generic .com, US seller) - cross-border; delivery to this country is named in the seller's own shipping-country list (see ships_to_evidence)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://www.bulksupplements.com/policies/shipping-policy",
+        "quote": "United Kingdom Uruguay Vanuatu Vatican City Vietnam",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_bs_ships_UY.json"
+       }
+      ],
+      "found": true,
+      "country_named": true
+     },
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:45:29Z",
+      "basis": "schema.org/InStock in the page's own offer data next to \"sku\": \"FRUC250\", \"gtin\": \"849720029065\"",
+      "source": "https://www.bulksupplements.com/products/fructose-powder"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Fructose",
+      "from": "product page text (see verifier verdict file ingredients_snippet)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Sole ingredient fructose ('Ingredients: Fructose Free of: Added Sugar, Soy, Dairy, Yeast, Gluten, Additives'); no numeric purity printed. GTIN 849720029065 sits next to SKU FRUC250 and the 250 g variant name in the page's own offer data (other packs on the page: 100 g, 500 g, 1 kg, 5 kg InStock; 25 kg OutOfStock). | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2b7b2fc5d57d6fe9.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_bs_ships_UY.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T18:45:29Z",
+     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+    }
+   ],
+   "notes": "No crystalline fructose found at any reachable Uruguayan grocer, pharmacy, natural-food shop or ingredient/baking supplier. Fructose appears only inside electrolyte drinks (rejected). Tienda Inglesa (403 Cloudflare) and the GDU supermarkets (JS-only search) could not be checked. WebSearch budget exhausted during research; later discovery via on-site shop searches only. | 2026-09-17: BRAK lifted to VERIFIED_CROSS_BORDER. The local BRAK stands (fructose appears in Uruguay only inside electrolyte drinks). BulkSupplements sells a single-ingredient fructose powder in 100 g/250 g/500 g/1 kg packs, proves the GTIN on its own page, is IN_STOCK, and names Uruguay in its own shipping-country list."
+  },
+  "INU": {
+   "result": "LEAD_ONLY",
+   "local_terms": [
+    "inulina",
+    "inulina en polvo",
+    "inulina de achicoria",
+    "inulina de agave"
+   ],
+   "queries": [
+    "site search tata.com.uy (VTEX catalog): inulina / inulin",
+    "site search eldorado.com.uy: inulina / inulin",
+    "site search tienda.farmashop.com.uy: inulina",
+    "site search sanroque.com.uy: inulina / inulin / fibra",
+    "site search lamolienda.uy: inulina / inulin",
+    "site search elgranero.com.uy: inulina (+ store API)",
+    "site search granel.com.uy: inulina / inulin",
+    "site search diu.com.uy: inulina / inulin",
+    "site search iherb.com: inulin powder (cross-border check)",
+    "site search bulksupplements.com: inulin powder (cross-border check)",
+    "shipping-country list bulksupplements.com/policies/shipping-policy: Uruguay"
+   ],
+   "sources_tried": [
+    "tata.com.uy (supermarket; VTEX FastStore, searched via the store's own catalog endpoint tatauy.vtexcommercestable.com.br: 0 results)",
+    "eldorado.com.uy (supermarket; VTEX search: milk powders only / 0 results)",
+    "tiendainglesa.com.uy (supermarket; HTTP 403 Cloudflare 'Just a moment...' - bot wall, inconclusive, not bypassed)",
+    "disco.com.uy / devoto.com.uy / geant.com.uy (supermarkets; JS-only site, search routes redirect to not-found - inconclusive)",
+    "macromercado.com.uy / kinko.com.uy (grocers; no server-side on-site search - inconclusive)",
+    "lamolienda.uy (natural-food shop; found own-brand 'INULINA 100G', no composition shown)",
+    "tienda.farmashop.com.uy (pharmacy; fuzzy search returned insulin/aniline products only - no inulin)",
+    "sanroque.com.uy (pharmacy; 'inulina' 0 results; 'fibra' 19 results with no inulin powder by name)",
+    "elgranero.com.uy / granel.com.uy (natural-food shops; no inulin powder, only desserts listing inulin as an ingredient)",
+    "diu.com.uy (ingredient supplier; 0 results)",
+    "iherb.com (cross-border; HTTP 403 Cloudflare challenge - not bypassed)",
+    "bulksupplements.com/products/inulin-fos-powder (US own-brand shop; GTIN 849720019592 as page data next to SKU INU250 and the 250 g variant; 'Other Ingredients: None'; schema.org InStock for 100 g/250 g/500 g) + Uruguay named in its shipping-country list - candidate 1"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "BulkSupplements.com",
+     "product_name": "Organic Inulin Powder - Powder / 250 Grams (8.8 oz)",
+     "pack": "250 g (8.8 oz), SKU INU250",
+     "gtin": "849720019592",
+     "identifier_confirmed": true,
+     "url": "https://www.bulksupplements.com/products/inulin-fos-powder",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "BulkSupplements.com (United States)",
+     "page_market": null,
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "NONE for UY (generic .com, US seller) - cross-border; delivery to this country is named in the seller's own shipping-country list (see ships_to_evidence)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "quotes": [
+       {
+        "url": "https://www.bulksupplements.com/policies/shipping-policy",
+        "quote": "United Kingdom Uruguay Vanuatu Vatican City Vietnam",
+        "file": "~/.cache/gellatti-evidence/quotes/gap-americas/quote_bs_ships_UY.json"
+       }
+      ],
+      "found": true,
+      "country_named": true
+     },
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:45:29Z",
+      "basis": "schema.org/InStock in the page's own offer data next to \"sku\": \"INU250\", \"gtin\": \"849720019592\"",
+      "source": "https://www.bulksupplements.com/products/inulin-fos-powder"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Other Ingredients: None (product: Organic Inulin Powder)",
+      "from": "product page text (see verifier verdict file ingredients_snippet)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Plain inulin powder with 'Other Ingredients: None'; the supplement-facts panel exists only as a label image, so no numeric fibre value is printed. GTIN 849720019592 sits next to SKU INU250 and the 250 g variant name in the page's own offer data (100 g and 500 g InStock; 1 kg and 5 kg OutOfStock at check time). | Downgraded 2026-09-17 by reconcile_shipping_basis.py: the destination country is named only in the store's market/currency selector, which appears on every page of that shop, not in a delivery statement. The product and its evidence are kept; the delivery to this country is not confirmed.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7b06306372620330.json",
+     "extra_evidence_files": [
+      "~/.cache/gellatti-evidence/quotes/gap-americas/quote_bs_ships_UY.json"
+     ],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T18:45:29Z",
+     "shipping_basis": "MARKET_PICKER_NOT_A_DELIVERY_STATEMENT"
+    },
+    {
+     "rank": 2,
+     "brand": "La Molienda",
+     "product_name": "INULINA 100G",
+     "pack": "100 g (variant 'Inulina 100gr')",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.lamolienda.uy/catalogo/inulina-100g_000000000003222_000000000003222",
+     "source_type": "RETAILER",
+     "seller": "La Molienda (own brand; article code 000000000003222)",
+     "page_market": "UY",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "country domain .uy",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": null,
+      "from": "not shown: the page has no description, ingredients or nutrition table (product data only: nombre 'INULINA 100G', categoria 'Otros suplementos', marca 'La Molienda')"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "Own-brand inulin sold by weight (100 g) in 'Otros suplementos'. Neither fibre content, inulin source nor form (powder) is printed, so A cannot be confirmed.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/52355fd08b6d20a5.json",
+     "extra_evidence_files": [],
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "checked_at_utc": "2026-09-17T16:07:49Z",
+     "availability": {
+      "state": "IN_STOCK",
+      "checked_at_utc": "2026-09-17T18:45:29Z",
+      "basis": "itemprop=\"availability\" href=\"http://schema.org/InStock\" in the page's own product markup",
+      "source": "https://www.lamolienda.uy/catalogo/inulina-100g_000000000003222_000000000003222"
+     }
+    }
+   ],
+   "notes": "Identity (D-37 own-brand listing: brand La Molienda, name INULINA 100G, variant Inulina 100gr, 100 g, article 000000000003222) and market binding (.uy) are both present, but the page prints no composition. Equivalence is therefore C and the class LEAD. A label or spec sheet showing inulin/fibre >= 85 % would lift it to CONFIRMED_LOCAL. WebSearch budget exhausted during research; later discovery via on-site shop searches only. | 2026-09-17: result lifted from LEAD_ONLY to VERIFIED_CROSS_BORDER. La Molienda's own-brand INULINA 100G is IN_STOCK and kept at rank 2, but it still prints no composition (C). New rank 1 is BulkSupplements' Organic Inulin Powder: GTIN on its own page, 'Other Ingredients: None', IN_STOCK in 250 g, Uruguay named in the seller's own shipping-country list."
+  },
+  "YOL": {
+   "result": "BRAK",
+   "local_terms": [
+    "yema de huevo en polvo",
+    "yema en polvo",
+    "yema deshidratada",
+    "huevo en polvo"
+   ],
+   "queries": [
+    "site search tata.com.uy (VTEX catalog): yema en polvo / egg yolk powder / huevo",
+    "site search eldorado.com.uy: yema en polvo / egg yolk",
+    "site search tienda.farmashop.com.uy: yema en polvo / huevo en polvo",
+    "site search sanroque.com.uy: yema / huevo / egg yolk",
+    "site search lamolienda.uy: yema / huevo en polvo / huevo / egg yolk",
+    "site search elgranero.com.uy: yema / huevo en polvo (+ store API: huevo)",
+    "site search granel.com.uy: yema / huevo en polvo",
+    "site search diu.com.uy: yema / huevo",
+    "product list prodhin.com.uy (egg processor)"
+   ],
+   "sources_tried": [
+    "tata.com.uy (supermarket; VTEX FastStore, searched via the store's own catalog endpoint tatauy.vtexcommercestable.com.br: 0 results)",
+    "eldorado.com.uy (supermarket; VTEX search: milk powders only / 0 results)",
+    "tiendainglesa.com.uy (supermarket; HTTP 403 Cloudflare 'Just a moment...' - bot wall, inconclusive, not bypassed)",
+    "disco.com.uy / devoto.com.uy / geant.com.uy (supermarkets; JS-only site, search routes redirect to not-found - inconclusive)",
+    "macromercado.com.uy / kinko.com.uy (grocers; no server-side on-site search - inconclusive)",
+    "tienda.farmashop.com.uy / sanroque.com.uy (pharmacies; no egg powders)",
+    "lamolienda.uy (natural-food shop; only 'ALBUMINA DE HUEVO 250G' = egg white and vegan egg replacers - rejected)",
+    "elgranero.com.uy / granel.com.uy (natural-food shops; no egg powder)",
+    "prodhin.com.uy (Uruguayan egg processor; only liquid pasteurised yolk in 3 L/10 L bags, not dried - rejected)",
+    "diu.com.uy (ingredient supplier; 0 relevant results)",
+    "hornex.com.uy (baking brand; no egg products)",
+    "gourmet-versand.com (DE; catalogue searched for Eipulver / Vollei / Trockenei / Eigelb - no egg yolk powder)",
+    "msk-ingredients.com (UK; full product sitemap, 6597 URLs: no egg yolk powder)",
+    "souschef.co.uk (UK; all 7 product sitemaps, 6274 URLs: no egg yolk powder)",
+    "bulksupplements.com (US; sells no egg yolk powder)",
+    "judeesfromscratch.com/policies/shipping-policy (maker of an 11 oz Egg Yolk Powder; no international statement)",
+    "gosupps.com (US reseller advertising Judee's Egg Yolk Powder with express international delivery; shipping pages HTTP 403 - blocked, inconclusive)",
+    "modernistpantry.com egg yolk powder (US customers only)"
+   ],
+   "candidates": [],
+   "notes": "No dried egg yolk found in Uruguay. The local egg processor Prodhin sells only liquid yolk, and La Molienda only egg-white powder and egg replacers (all rejected). Tienda Inglesa (403) and the GDU supermarkets (JS-only search) could not be checked. WebSearch budget exhausted during research; later discovery via on-site shop searches only. | Re-checked 2026-09-17: still BRAK. A cross-border path was searched for as well: BulkSupplements (the one shop whose nation list names Uruguay) sells no egg yolk powder, and neither do gourmet-versand, MSK Ingredients or Sous Chef. The US shops that do sell dried egg yolk are US-only (Modernist Pantry), silent on international shipping (Judee's) or bot-walled (GoSupps)."
   }
+ }
 }

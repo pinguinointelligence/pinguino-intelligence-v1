@@ -21,11 +21,13 @@
   "tag_other_composition": "Ibang komposisyon",
   "tag_alternative": "Lokal na alternatibo",
   "tag_unconfirmed": "Hindi kumpirmado",
+  "tag_abroad_unconfirmed": "Dayuhang tindahan",
   "legend": {
-    "from_abroad": "tindahan sa ibang bansa na nagpapadala sa bansang ito",
-    "b2b": "ibinebenta sa mga negosyo o sa malalaking pakete",
+    "from_abroad": "tindahan sa ibang bansa na nakalista ang bansang ito sa sarili nitong listahan ng paghahatid",
+    "b2b": "ibinebenta sa mga negosyo o sa malalaking pakete — hindi ordinaryong alok na tingi",
     "other_composition": "parehong uri ng produkto na may ibang komposisyon (nakasaad sa tabi)",
-    "alternative": "pamalit sa ibang produkto ng Gellatti"
+    "alternative": "pamalit sa ibang produkto ng Gellatti",
+    "abroad_unconfirmed": "tindahan sa ibang bansa; hindi kumpirmado ang paghahatid sa bansang ito"
   },
   "starter_amount": "Sa Starter Pack: {g} g",
   "option": "Opsiyon {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Lokal na alternatibo sa timpla ng Gellatti, hindi ang parehong timpla. Ihalo ito sa mga tuyong sangkap at initin ang base sa 75–80 °C.",
   "missing": "Wala pang aprubadong produkto sa bansang ito.",
+  "out_of_stock": "Noong {date}, ipinakita ng tindahan na wala itong stock.",
   "notes_title": "Mabuting malaman",
   "notes": [
-    {"h": "Pagkakaroon ng produkto", "p": "Sinuri namin ang mga produktong ito sa mga website ng mga tagagawa at tindahan noong Setyembre 2026. Ang pagkakaroon ng produkto, presyo at paghahatid ay maaaring magbago at hindi garantisado."},
+    {"h": "Pagkakaroon ng produkto", "p": "Sinuri namin ang mga produktong nasaliksik sa mga website ng tindahan at tagagawa noong 17 Setyembre 2026. Ang dextrose, pulbos na skim milk at ang stabilizer ay mula sa talahanayan ng mga bansa ng Gellatti noong 12 Setyembre 2026 at hindi na muling sinuri. Ang pagkakaroon ng produkto, presyo at paghahatid ay maaaring magbago at hindi garantisado."},
     {"h": "Ang label ang masusunod", "p": "Bago bumili, suriin ang mga sangkap at allergen sa pakete. Ang pulbos na krema at pulbos na gatas ay naglalaman ng gatas; ang pula ng itlog ay naglalaman ng itlog."},
     {"h": "Stabilizer", "p": "Sa bansang ito, isang lokal na gum mula sa halaman ang pumapalit sa Gellatti Stabilizer. Gumagana ito sa katulad na paraan, ngunit hindi ang parehong timpla."}
   ],

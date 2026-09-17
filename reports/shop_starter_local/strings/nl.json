@@ -21,11 +21,13 @@
   "tag_other_composition": "Andere samenstelling",
   "tag_alternative": "Lokaal alternatief",
   "tag_unconfirmed": "Onbevestigd",
+  "tag_abroad_unconfirmed": "Buitenlandse winkel",
   "legend": {
-    "from_abroad": "een winkel in het buitenland die naar dit land levert",
-    "b2b": "verkocht aan bedrijven of in grote verpakkingen",
+    "from_abroad": "een winkel in het buitenland waarvan de eigen bezorglijst dit land noemt",
+    "b2b": "verkocht aan bedrijven of in grote verpakkingen — geen gewone winkelaanbieding",
     "other_composition": "hetzelfde soort product met een andere samenstelling (ernaast vermeld)",
-    "alternative": "een vervanger van een ander Gellatti-product"
+    "alternative": "een vervanger van een ander Gellatti-product",
+    "abroad_unconfirmed": "een winkel in het buitenland; levering naar dit land is niet bevestigd"
   },
   "starter_amount": "In het Starter Pack: {g} g",
   "option": "Optie {n}",
@@ -43,9 +45,10 @@
   },
   "stabilizer_note": "Een lokaal alternatief voor het Gellatti-mengsel, niet hetzelfde mengsel. Meng het met de droge ingrediënten en verwarm de basis tot 75–80 °C.",
   "missing": "Nog geen goedgekeurd product in dit land.",
+  "out_of_stock": "De winkel gaf dit op {date} aan als niet op voorraad.",
   "notes_title": "Goed om te weten",
   "notes": [
-    {"h": "Beschikbaarheid", "p": "We hebben deze producten in september 2026 gecontroleerd op websites van fabrikanten en winkels. Beschikbaarheid, prijzen en levering kunnen veranderen en zijn niet gegarandeerd."},
+    {"h": "Beschikbaarheid", "p": "We hebben de onderzochte producten op 17 september 2026 gecontroleerd op websites van winkels en fabrikanten. Dextrose, magere melkpoeder en de stabilisator komen uit de Gellatti-landentabel van 12 september 2026 en zijn niet opnieuw gecontroleerd. Beschikbaarheid, prijzen en levering kunnen veranderen en zijn niet gegarandeerd."},
     {"h": "Het etiket gaat voor", "p": "Controleer vóór aankoop de ingrediënten en allergenen op de verpakking. Roompoeder en melkpoeder bevatten melk; eigeel bevat ei."},
     {"h": "Stabilisator", "p": "In dit land vervangt een lokale plantaardige gom de Gellatti Stabilizer. Die werkt op een vergelijkbare manier, maar is niet hetzelfde mengsel."}
   ],

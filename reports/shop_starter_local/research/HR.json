@@ -1,235 +1,320 @@
 {
- "iso2": "HR",
- "country": "Croatia",
- "agent": "research-eu-central-east",
- "egress_cc": "ES",
- "researched_at_utc": "2026-09-17T16:21:18Z",
- "items": {
-  "CRP": {
-   "result": "BRAK",
-   "local_terms": [
-    "vrhnje u prahu",
-    "slatko vrhnje u prahu",
-    "mlijeko u prahu (checked, rejected)"
-   ],
-   "queries": [
-    "nabava.net: vrhnje u prahu",
-    "nabava.net: slatko vrhnje u prahu",
-    "nabava.net: suho vrhnje",
-    "jeftinije.hr / idealno.hr search",
-    "sitemap grep of konzum.hr (grocer, 13 261 URLs), tommy.hr (grocer, 29 904), biobio.hr (organic chain, 5 077), biovega.hr (organic, 2 587), vitamini.hr (12 410, mostly articles), kaufland.hr (1 788, food lexicon), zdravahrana.hr (Vivo Life HR health shop, 87), pekar.hr (bakery chain, 53) for vrhnje-u-prahu / mlijeko-u-prahu"
-   ],
-   "sources_tried": [
-    "konzum.hr (grocer, 13 261 URLs) and tommy.hr (grocer, 29 904 URLs): only 'Dukat mlijeko u prahu' 1 kg (whole milk powder ~26 % fat — rejected)",
-    "kaufland.hr: food lexicon only",
-    "biobio.hr, biovega.hr, zdravahrana.hr, vitamini.hr (health/organic): none",
-    "pekar.hr (bakery chain): none",
-    "nabava.net (price comparison): only coffee creamer 'vrhnje za kavu' and casein proteins — rejected",
-    "jeftinije.hr, idealno.hr: Cloudflare challenge (HTTP 403) — inconclusive",
-    "pati-versand.de has a matching cream powder but its delivery list does not name Kroatien — not usable as verified cross-border",
-    "plodine.hr, studenac.hr, proteini.hr (no sitemap URLs), tortice.hr (no catalogue): not searchable"
-   ],
-   "candidates": [],
-   "notes": "BRAK. No Croatian baking/pastry supplier with a readable catalogue was found (guessed domains did not resolve); the baking-supplier check is the cross-border Pati-Versand catalogue, which does not deliver to Croatia. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, on-site search and price-comparison search pages instead."
-  },
-  "FRU": {
-   "result": "VERIFIED_CROSS_BORDER",
-   "local_terms": [
-    "fruktoza",
-    "voćni šećer"
-   ],
-   "queries": [
-    "nabava.net: fruktoza",
-    "nabava.net: fruktoza kristalna",
-    "nabava.net: fruktoza 500 g",
-    "GymBeam own-brand catalogue (checked by on-site search 'fruktoza' on gymbeam.cz; gymbeam.hr carries the same catalogue): no fructose",
-    "sitemap grep of konzum.hr (grocer, 13 261 URLs), tommy.hr (grocer, 29 904), biobio.hr (organic chain, 5 077), biovega.hr (organic, 2 587), vitamini.hr (12 410, mostly articles), kaufland.hr (1 788, food lexicon), zdravahrana.hr (Vivo Life HR health shop, 87), pekar.hr (bakery chain, 53) for fruktoz"
-   ],
-   "sources_tried": [
-    "konzum.hr, tommy.hr (grocers): no crystalline fructose",
-    "biobio.hr, biovega.hr, zdravahrana.hr (health/organic): none; vitamini.hr: articles only",
-    "pekar.hr (bakery chain): none",
-    "nabava.net: only products that contain fructose (syrups, gels, supplements)",
-    "GymBeam (catalogue checked on gymbeam.cz): no fructose product",
-    "jeftinije.hr / idealno.hr: HTTP 403 — inconclusive",
-    "plodine.hr, studenac.hr, proteini.hr (no sitemap URLs), tortice.hr (no catalogue): not searchable"
-   ],
-   "candidates": [
-    {
-     "rank": 1,
-     "brand": "Sosa Ingredients",
-     "product_name": "Sosa fructose powder, 1 kg, PE dose",
-     "pack": "1 kg",
-     "gtin": "8414933026259",
-     "identifier_confirmed": true,
-     "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
-     "source_type": "RETAILER",
-     "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
-     "page_market": "",
-     "market_by": "GENERIC_TLD",
-     "identity_basis": "GTIN_ON_LOCAL_PAGE",
-     "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists Croatia (check_quotes.py found=true)",
-     "cross_border": true,
-     "ships_to_evidence": {
-      "tool": "check_quotes.py",
-      "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
-      "quotes": [
-       "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
-       "Colombia Croatia Cyprus"
+  "iso2": "HR",
+  "country": "Croatia",
+  "agent": "research-eu-central-east",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:21:18Z",
+  "items": {
+    "CRP": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "vrhnje u prahu",
+        "slatko vrhnje u prahu",
+        "mlijeko u prahu (checked, rejected)"
       ],
-      "found": [
-       true,
-       true
+      "queries": [
+        "nabava.net: vrhnje u prahu",
+        "nabava.net: slatko vrhnje u prahu",
+        "nabava.net: suho vrhnje",
+        "jeftinije.hr / idealno.hr search",
+        "sitemap grep of konzum.hr (grocer, 13 261 URLs), tommy.hr (grocer, 29 904), biobio.hr (organic chain, 5 077), biovega.hr (organic, 2 587), vitamini.hr (12 410, mostly articles), kaufland.hr (1 788, food lexicon), zdravahrana.hr (Vivo Life HR health shop, 87), pekar.hr (bakery chain, 53) for vrhnje-u-prahu / mlijeko-u-prahu",
+        "\"Sahnepulver\" 42% Fett kaufen Online Shop 100g Süßrahm (WebSearch)",
+        "\"Sahnepulver\" Onlineshop Lieferung Griechenland Rumänien Bulgarien Versandkosten Land (WebSearch)",
+        "\"panna in polvere\" 42% grassi vendita online spedizione (WebSearch)",
+        "\"slagroompoeder\" kopen 100 gram webshop verzending Europa (WebSearch)",
+        "sosa.cat site search 'cream powder'",
+        "gourmet-versand.com site search 'Sahnepulver' / 'Sahne Pulver' (0 dairy cream powder)",
+        "specialingredients.co.uk + souschef.co.uk product sitemaps grepped for cream/dairy powder (0)",
+        "shop.cake-masters.com site search + /versand-zahlung country table"
       ],
-      "type": "shipping-cost country selector listing the market",
-      "check_quotes_result_files": [
-       "~/.cache/gellatti-evidence/quotes/coordinator/gv-header.json",
-       "~/.cache/gellatti-evidence/quotes/coordinator/gv-HR.json"
-      ]
-     },
-     "composition": {
-      "fat_g": null,
-      "protein_g": null,
-      "fibre_g": null,
-      "fructose_pct": null,
-      "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
-      "from": "retailer page ('EAN Code 8414933026259' printed)",
-      "sugars_g": 100.0
-     },
-     "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
-     "evidence_class": "VERIFIED_CROSS_BORDER",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d862a5784fd85268.json",
-     "checked_at_utc": "2026-09-17T17:16:26Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "added_by": "coordinator (reuse of the MT/GR/CY/TR cross-border listing; country named in the seller delivery selector)"
+      "sources_tried": [
+        "konzum.hr (grocer, 13 261 URLs) and tommy.hr (grocer, 29 904 URLs): only 'Dukat mlijeko u prahu' 1 kg (whole milk powder ~26 % fat — rejected)",
+        "kaufland.hr: food lexicon only",
+        "biobio.hr, biovega.hr, zdravahrana.hr, vitamini.hr (health/organic): none",
+        "pekar.hr (bakery chain): none",
+        "nabava.net (price comparison): only coffee creamer 'vrhnje za kavu' and casein proteins — rejected",
+        "jeftinije.hr, idealno.hr: Cloudflare challenge (HTTP 403) — inconclusive",
+        "pati-versand.de has a matching cream powder but its delivery list does not name Kroatien — not usable as verified cross-border",
+        "plodine.hr, studenac.hr, proteini.hr (no sitemap URLs), tortice.hr (no catalogue): not searchable",
+        "shop.cake-masters.com (Cake-Masters trade shop, Herzlake DE): CM Basics Sahnepulver 100g, SAHNE 42% Fett sprühgetrocknet, Auf Lager; its own foreign shipping-cost table names the market — VERIFIED_CROSS_BORDER but trade-only (registered commercial resellers)",
+        "torten-boutique.de and tolletorten.com (same Herzlake group, consumer shops): same 21-country delivery list as pati-versand/backfun/meincupcake — market NOT named; 'Rest der Welt' flat rate names no country",
+        "taste-market.de: full product sitemap (2 425 URLs) scanned — Eigelbpulver / Eiklarpulver / Volleipulver / Vollmilchpulver only, NO Sahnepulver; its EU zones 1-3 name no non-EU market",
+        "gourmet-versand.com: no Sahnepulver / dairy cream powder in the catalogue (confirmed again by site search)",
+        "sosa.cat: only 'TASTE COLOUR FREEZE-DRIED FRESH CREAM POWDER' (2 kg, Taste-Colour flavour/colour line, ingredients nata + leche desnatada en polvo + E450, no fat % printed) — no distributor found that sells it in a retail pack to this market",
+        "specialingredients.co.uk (1 130 products) and souschef.co.uk (6 274 products): product sitemaps hold no dairy cream powder",
+        "cerfdellier.com, cuisineaddict.com, deco-relief.fr, bienmanger.com, koro-shop.de: no 'crème en poudre' / Sahnepulver in search",
+        "ingredientsbar.com (UK): real dairy cream powder 75 % fat in retail sizes, but the delivery policy only says 'International delivery carries additional charges…' — no country named, LEAD",
+        "shop.kraeuter-mieke.de: 'Sahnepulver' 100/250/500/1000 g, 'Sofort verfügbar', but NO ingredient list or fat % printed and EU shipping only 'Auf Anfrage oder nach Auswahl im Bestellvorgang' (no country named) — not proposed",
+        "ecolebensmittel.com: 'Sahnepulver 42 % Fett 750 g' (brand FeelWell) — dropshipping shop whose article number is an Amazon ASIN (B07KZPP6JK) and the item is 'Ausverkauft (nur vorbestellen)'",
+        "gosupps.com: HTTP 403 bot wall — inconclusive",
+        "iggos.hr (Pula, professional confectionery supplier): 'Mlijeko u prahu' category holds whole/skimmed milk powders in 1 kg and 25 kg only, 'Vrhnja i šlag' and 'Proizvodi u prahu' sections are empty — no cream powder"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters",
+          "product_name": "CM Basics Sahnepulver 100g",
+          "pack": "100 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Cake-Masters.com, Alexander Müller, Siemensstr. 24, 49770 Herzlake, DE (trade-only shop — footer: \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\")",
+          "page_market": "DE",
+          "market_by": "ADDRESS_COUNTRY",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "cross-border: the seller's own foreign shipping-cost table prints a row for the market (\"Kroatien 36,09 €\"), check_quotes.py found=true",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://shop.cake-masters.com/versand-zahlung",
+            "quotes": [
+              "Versandkosten Ausland: Land Versandkosten pro angefangene 25kg",
+              "Kroatien 36,09 €",
+              "Verkauf nur an registrierte, gewerbliche Wiederverkäufer."
+            ],
+            "found": [
+              true,
+              true,
+              true
+            ],
+            "type": "seller's own foreign shipping-cost table, one row per destination country",
+            "check_quotes_result_files": [
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-header.json",
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-HR.json",
+              "~/.cache/gellatti-evidence/quotes/research-gap-eu/cakemasters-TRADEONLY.json"
+            ]
+          },
+          "channel": "TRADE_ONLY_B2B_REGISTERED_RESELLERS",
+          "availability": {
+            "state": "IN_STOCK",
+            "checked_at_utc": "2026-09-17T18:40:00Z",
+            "basis": "Auf Lager (page also carries schema.org/InStock)",
+            "source": "https://shop.cake-masters.com/zutaten/sonstige-zutaten/hilfsstoffe/cm-basics-sahnepulver-100g"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet. Nährwertangaben 100 g: 2456 kJ / 587 kcal, Fett 42 g, davon gesättigte Fettsäuren 27,1 g, Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0,75 g. Produziert in Deutschland. Artikel-Nr.: 10866",
+            "from": "page label",
+            "carbohydrate_g": 29.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "fat 42 % = reference (PI-ING-000260: fat 42, protein 20, lactose 30); single-ingredient spray-dried dairy cream, no additives",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/353c2662167d3787.json",
+          "checked_at_utc": "2026-09-17T18:40:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "added_by": "research-gap-eu",
+          "owner_check": "shop.cake-masters.com is the trade arm of the Herzlake group (same address as pati-versand.de / torten-boutique.de) and sells only to registered commercial resellers, prices net of VAT. The product and the pack are ordinary retail size (100 g) but the CHANNEL is B2B — it must not be shown as a consumer offer without the owner's decision. The group's consumer shops (pati-versand.de, backfun.de, meincupcake.de, hobbybaecker.de, torten-boutique.de, tolletorten.com) all use the same 21-country list, which excludes this market."
+        }
+      ],
+      "notes": "BRAK. No Croatian baking/pastry supplier with a readable catalogue was found (guessed domains did not resolve); the baking-supplier check is the cross-border Pati-Versand catalogue, which does not deliver to Croatia. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, on-site search and price-comparison search pages instead. | Gap closed 2026-09-17 by research-gap-eu: the confirmed 42 % spray-dried cream powder is also sold by shop.cake-masters.com (the Herzlake group's TRADE shop), whose own foreign shipping-cost table prints a row for this market — so delivery here is verified in the seller's own words, unlike the group's consumer shops. Caveat for the owner: that shop states \"Verkauf nur an registrierte, gewerbliche Wiederverkäufer.\" and quotes prices net of VAT, i.e. it is a B2B channel; the pack itself (100 g) is retail size. No consumer-facing seller of a 38-48 % dairy cream powder that names this market was found. A local search with a working web-search engine was added on top of the earlier sitemap sweep and still found no dairy cream powder in this market."
+    },
+    "FRU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "fruktoza",
+        "voćni šećer"
+      ],
+      "queries": [
+        "nabava.net: fruktoza",
+        "nabava.net: fruktoza kristalna",
+        "nabava.net: fruktoza 500 g",
+        "GymBeam own-brand catalogue (checked by on-site search 'fruktoza' on gymbeam.cz; gymbeam.hr carries the same catalogue): no fructose",
+        "sitemap grep of konzum.hr (grocer, 13 261 URLs), tommy.hr (grocer, 29 904), biobio.hr (organic chain, 5 077), biovega.hr (organic, 2 587), vitamini.hr (12 410, mostly articles), kaufland.hr (1 788, food lexicon), zdravahrana.hr (Vivo Life HR health shop, 87), pekar.hr (bakery chain, 53) for fruktoz"
+      ],
+      "sources_tried": [
+        "konzum.hr, tommy.hr (grocers): no crystalline fructose",
+        "biobio.hr, biovega.hr, zdravahrana.hr (health/organic): none; vitamini.hr: articles only",
+        "pekar.hr (bakery chain): none",
+        "nabava.net: only products that contain fructose (syrups, gels, supplements)",
+        "GymBeam (catalogue checked on gymbeam.cz): no fructose product",
+        "jeftinije.hr / idealno.hr: HTTP 403 — inconclusive",
+        "plodine.hr, studenac.hr, proteini.hr (no sitemap URLs), tortice.hr (no catalogue): not searchable"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sosa Ingredients",
+          "product_name": "Sosa fructose powder, 1 kg, PE dose",
+          "pack": "1 kg",
+          "gtin": "8414933026259",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists Croatia (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+            "quotes": [
+              "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
+              "Colombia Croatia Cyprus"
+            ],
+            "found": [
+              true,
+              true
+            ],
+            "type": "shipping-cost country selector listing the market",
+            "check_quotes_result_files": [
+              "~/.cache/gellatti-evidence/quotes/coordinator/gv-header.json",
+              "~/.cache/gellatti-evidence/quotes/coordinator/gv-HR.json"
+            ]
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
+            "from": "retailer page ('EAN Code 8414933026259' printed)",
+            "sugars_g": 100.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d862a5784fd85268.json",
+          "checked_at_utc": "2026-09-17T17:16:26Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "added_by": "coordinator (reuse of the MT/GR/CY/TR cross-border listing; country named in the seller delivery selector)"
+        }
+      ],
+      "notes": "BRAK. No Croatian baking/pastry supplier with a readable catalogue was found (guessed domains did not resolve); the baking-supplier check is the cross-border Pati-Versand catalogue, which does not deliver to Croatia. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, on-site search and price-comparison search pages instead. | Coordinator addition 2026-09-17: gourmet-versand.com lists Croatia in its delivery country selector; Sosa fructose 1 kg (GTIN 8414933026259 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was BRAK."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin",
+        "inulin iz cikorije"
+      ],
+      "queries": [
+        "hreflang sibling of the verified CZ listing (gymbeam.cz → gymbeam.hr)",
+        "nabava.net: inulin",
+        "sitemap grep (inulin) biobio.hr, biovega.hr, konzum.hr, tommy.hr"
+      ],
+      "sources_tried": [
+        "gymbeam.hr (own-brand shop) — kept",
+        "nabava.net lists further offers not verified here: Myprotein Inulin 250 g, 'Inulin topiva vlakna 125g', 'Inulin iz cikorije 1 kg', 'Inulin u prahu Hifood 500 g'",
+        "biobio.hr / biovega.hr: 'Stevia prah s inulinom' (sweetener blend — rejected)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "GymBeam",
+          "product_name": "Inulin iz cikorije - GymBeam",
+          "pack": "200 g",
+          "gtin": "8586028133576",
+          "identifier_confirmed": true,
+          "url": "https://gymbeam.hr/inulin-iz-cikorije-gymbeam.html",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "GymBeam (own-brand country shop)",
+          "page_market": "HR",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": 86.0,
+            "fructose_pct": null,
+            "ingredients": "per 100 g 875 kJ / 216 kcal, fat 0 g, carbohydrate 11 g (sugars 11 g), fibre (vlakno) 86 g, protein 0 g, salt 0.00 g; single-ingredient chicory inulin per the same GTIN on the CZ/SK/PL pages",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin powder, fibre 86 g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/aecabea452f9f2b7.json",
+          "verifier_class": "EAN_ON_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T15:51:11Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "žumanjak u prahu",
+        "jaja u prahu"
+      ],
+      "queries": [
+        "nabava.net: žumanjak u prahu",
+        "nabava.net: zumanjak",
+        "nabava.net: jaja u prahu (138 full-text hits; first results page = pet-food / supplement ingredient lists, no yolk powder)",
+        "sitemap grep of konzum.hr (grocer, 13 261 URLs), tommy.hr (grocer, 29 904), biobio.hr (organic chain, 5 077), biovega.hr (organic, 2 587), vitamini.hr (12 410, mostly articles), kaufland.hr (1 788, food lexicon), zdravahrana.hr (Vivo Life HR health shop, 87), pekar.hr (bakery chain, 53) for zumanjak / jaja-u-prahu"
+      ],
+      "sources_tried": [
+        "grocers (konzum.hr, tommy.hr): none; kaufland.hr: food lexicon page only",
+        "health/organic (biobio.hr, biovega.hr, zdravahrana.hr, vitamini.hr): none",
+        "bakery chain pekar.hr: none",
+        "nabava.net: shampoo, pet food, yolk separators only",
+        "pati-versand.de has a matching yolk powder but its delivery list does not name Kroatien",
+        "plodine.hr, studenac.hr, proteini.hr (no sitemap URLs), tortice.hr (no catalogue): not searchable"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Taste Market",
+          "product_name": "Eigelbpulver 100 g Sprühgetrocknet (Art.-Nr. 123-100g)",
+          "pack": "100 g",
+          "gtin": "4262421423127",
+          "identifier_confirmed": true,
+          "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Taste Market GmbH (Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: seller's EU shipping zone 3 lists Kroatien (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+            "quotes": [
+              "Lieferung in das EU-Ausland oder internationaler Versand",
+              "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
+            ],
+            "found": [
+              true,
+              true
+            ],
+            "check_quotes_result_files": [
+              "~/.cache/gellatti-evidence/quotes/coordinator/tm-header.json",
+              "~/.cache/gellatti-evidence/quotes/coordinator/tm-zone3.json"
+            ]
+          },
+          "composition": {
+            "fat_g": 58.0,
+            "protein_g": 34.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: Hühner-Eigelb, sprühgetrocknet und pasteurisiert. Nährwerte/100 g: Fett 58 g (ges. 18 g), Kohlenhydrate 2,1 g, davon Zucker 0 g, Eiweiß 34 g, Salz 0,4 g",
+            "from": "shop page (Zutaten + Nährwertangaben)",
+            "carbs_g": 2.1
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 58 / protein 34 vs reference 56.5 / 34.5. Page data prints itemprop gtin13 as 14-digit '04262421423127'.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0779f3433acc50a2.json",
+          "checked_at_utc": "2026-09-17T17:16:33Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "added_by": "coordinator (reuse of the MT/GR/CY/PT/IT cross-border listing; country named in the seller EU shipping zone)"
+        }
+      ],
+      "notes": "BRAK. No Croatian baking/pastry supplier with a readable catalogue was found (guessed domains did not resolve); the baking-supplier check is the cross-border Pati-Versand catalogue, which does not deliver to Croatia. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, on-site search and price-comparison search pages instead. | Coordinator addition 2026-09-17: taste-market.de EU-Zone3 lists Kroatien; Taste Market Eigelbpulver 100 g (GTIN 4262421423127 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was BRAK."
     }
-   ],
-   "notes": "BRAK. No Croatian baking/pastry supplier with a readable catalogue was found (guessed domains did not resolve); the baking-supplier check is the cross-border Pati-Versand catalogue, which does not deliver to Croatia. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, on-site search and price-comparison search pages instead. | Coordinator addition 2026-09-17: gourmet-versand.com lists Croatia in its delivery country selector; Sosa fructose 1 kg (GTIN 8414933026259 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was BRAK."
   },
-  "INU": {
-   "result": "CONFIRMED_LOCAL",
-   "local_terms": [
-    "inulin",
-    "inulin iz cikorije"
-   ],
-   "queries": [
-    "hreflang sibling of the verified CZ listing (gymbeam.cz → gymbeam.hr)",
-    "nabava.net: inulin",
-    "sitemap grep (inulin) biobio.hr, biovega.hr, konzum.hr, tommy.hr"
-   ],
-   "sources_tried": [
-    "gymbeam.hr (own-brand shop) — kept",
-    "nabava.net lists further offers not verified here: Myprotein Inulin 250 g, 'Inulin topiva vlakna 125g', 'Inulin iz cikorije 1 kg', 'Inulin u prahu Hifood 500 g'",
-    "biobio.hr / biovega.hr: 'Stevia prah s inulinom' (sweetener blend — rejected)"
-   ],
-   "candidates": [
-    {
-     "rank": 1,
-     "brand": "GymBeam",
-     "product_name": "Inulin iz cikorije - GymBeam",
-     "pack": "200 g",
-     "gtin": "8586028133576",
-     "identifier_confirmed": true,
-     "url": "https://gymbeam.hr/inulin-iz-cikorije-gymbeam.html",
-     "source_type": "OFFICIAL_SHOP",
-     "seller": "GymBeam (own-brand country shop)",
-     "page_market": "HR",
-     "market_by": "CCTLD",
-     "identity_basis": "GTIN_ON_LOCAL_PAGE",
-     "market_binding_signal": "country domain",
-     "cross_border": false,
-     "ships_to_evidence": null,
-     "composition": {
-      "fat_g": null,
-      "protein_g": null,
-      "fibre_g": 86.0,
-      "fructose_pct": null,
-      "ingredients": "per 100 g 875 kJ / 216 kcal, fat 0 g, carbohydrate 11 g (sugars 11 g), fibre (vlakno) 86 g, protein 0 g, salt 0.00 g; single-ingredient chicory inulin per the same GTIN on the CZ/SK/PL pages",
-      "from": "page label"
-     },
-     "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "chicory inulin powder, fibre 86 g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check",
-     "evidence_class": "CONFIRMED_LOCAL",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/aecabea452f9f2b7.json",
-     "verifier_class": "EAN_ON_MARKET_PAGE",
-     "checked_at_utc": "2026-09-17T15:51:11Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
-    }
-   ],
-   "notes": ""
-  },
-  "YOL": {
-   "result": "VERIFIED_CROSS_BORDER",
-   "local_terms": [
-    "žumanjak u prahu",
-    "jaja u prahu"
-   ],
-   "queries": [
-    "nabava.net: žumanjak u prahu",
-    "nabava.net: zumanjak",
-    "nabava.net: jaja u prahu (138 full-text hits; first results page = pet-food / supplement ingredient lists, no yolk powder)",
-    "sitemap grep of konzum.hr (grocer, 13 261 URLs), tommy.hr (grocer, 29 904), biobio.hr (organic chain, 5 077), biovega.hr (organic, 2 587), vitamini.hr (12 410, mostly articles), kaufland.hr (1 788, food lexicon), zdravahrana.hr (Vivo Life HR health shop, 87), pekar.hr (bakery chain, 53) for zumanjak / jaja-u-prahu"
-   ],
-   "sources_tried": [
-    "grocers (konzum.hr, tommy.hr): none; kaufland.hr: food lexicon page only",
-    "health/organic (biobio.hr, biovega.hr, zdravahrana.hr, vitamini.hr): none",
-    "bakery chain pekar.hr: none",
-    "nabava.net: shampoo, pet food, yolk separators only",
-    "pati-versand.de has a matching yolk powder but its delivery list does not name Kroatien",
-    "plodine.hr, studenac.hr, proteini.hr (no sitemap URLs), tortice.hr (no catalogue): not searchable"
-   ],
-   "candidates": [
-    {
-     "rank": 1,
-     "brand": "Taste Market",
-     "product_name": "Eigelbpulver 100 g Sprühgetrocknet (Art.-Nr. 123-100g)",
-     "pack": "100 g",
-     "gtin": "4262421423127",
-     "identifier_confirmed": true,
-     "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
-     "source_type": "OFFICIAL_SHOP",
-     "seller": "Taste Market GmbH (Germany)",
-     "page_market": "DE",
-     "market_by": "CCTLD",
-     "identity_basis": "GTIN_ON_LOCAL_PAGE",
-     "market_binding_signal": "cross-border: seller's EU shipping zone 3 lists Kroatien (check_quotes.py found=true)",
-     "cross_border": true,
-     "ships_to_evidence": {
-      "tool": "check_quotes.py",
-      "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
-      "quotes": [
-       "Lieferung in das EU-Ausland oder internationaler Versand",
-       "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
-      ],
-      "found": [
-       true,
-       true
-      ],
-      "check_quotes_result_files": [
-       "~/.cache/gellatti-evidence/quotes/coordinator/tm-header.json",
-       "~/.cache/gellatti-evidence/quotes/coordinator/tm-zone3.json"
-      ]
-     },
-     "composition": {
-      "fat_g": 58.0,
-      "protein_g": 34.0,
-      "fibre_g": null,
-      "fructose_pct": null,
-      "ingredients": "Zutaten: Hühner-Eigelb, sprühgetrocknet und pasteurisiert. Nährwerte/100 g: Fett 58 g (ges. 18 g), Kohlenhydrate 2,1 g, davon Zucker 0 g, Eiweiß 34 g, Salz 0,4 g",
-      "from": "shop page (Zutaten + Nährwertangaben)",
-      "carbs_g": 2.1
-     },
-     "equivalence": "A_EQUIVALENT",
-     "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 58 / protein 34 vs reference 56.5 / 34.5. Page data prints itemprop gtin13 as 14-digit '04262421423127'.",
-     "evidence_class": "VERIFIED_CROSS_BORDER",
-     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0779f3433acc50a2.json",
-     "checked_at_utc": "2026-09-17T17:16:33Z",
-     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
-     "added_by": "coordinator (reuse of the MT/GR/CY/PT/IT cross-border listing; country named in the seller EU shipping zone)"
-    }
-   ],
-   "notes": "BRAK. No Croatian baking/pastry supplier with a readable catalogue was found (guessed domains did not resolve); the baking-supplier check is the cross-border Pati-Versand catalogue, which does not deliver to Croatia. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, on-site search and price-comparison search pages instead. | Coordinator addition 2026-09-17: taste-market.de EU-Zone3 lists Kroatien; Taste Market Eigelbpulver 100 g (GTIN 4262421423127 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was BRAK."
-  }
- }
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "contributing_agents": [
+    "research-gap-eu"
+  ]
 }
