@@ -254,6 +254,16 @@ W07 ⚪ RELEASE GATE - credential review and rotation before public launch
                credentials, coordinated so that running integrations do not
                break early. A secret exposed before launch is rotated
                immediately, not at launch.
+    Mandatory before the public release (owner, 2026-09-17):
+      - rotate or revoke every credential used during development;
+      - each environment uses its own keys (production never runs on a
+        development or sandbox key, and QA/staging never on a production key);
+      - after rotation, re-test the webhooks: one real signed delivery per
+        endpoint and mode, received and processed by the environment it
+        belongs to.
+      - Not before the QA campaign ends: do not revoke the sandbox keys of
+        gellatti-qa-growth-e2e (acct_1UGdTdAi07MMapq2) or the signing secret
+        of its endpoint we_1UGdYfAi07MMapq2rQwaGFpG while that campaign runs.
     Status:  OPEN. This entry is not evidence of rotation; it closes only with
              proof of each step.
 
