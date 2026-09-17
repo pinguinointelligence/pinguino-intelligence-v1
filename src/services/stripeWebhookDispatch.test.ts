@@ -862,11 +862,11 @@ describe('invoice_voided / dispute writers — full reversals', () => {
     const deps = {
       db,
       refetch: makeRefetcher({ dispute: { dp_fake_1: reinstated }, charge: { ch_fake_1: basilCharge({}) } }),
-      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], disputes: [reinstated] }),
     };
 
     const result = await applyEventEffects(deps, event('charge.dispute.funds_reinstated', 'evt_fake_43', { id: 'dp_fake_1' }));
-    expect(result.note).toBeNull();
+    expect(result.note).toBe('reconciled_reinstatement:dp_fake_1');
     const adjustments = db.rows('commission_adjustments');
     expect(adjustments).toHaveLength(2);
     expect(adjustments[1]).toMatchObject({
@@ -878,7 +878,7 @@ describe('invoice_voided / dispute writers — full reversals', () => {
     expect(db.rows('commission_entries')[0]?.status).toBe('held');
 
     const replay = await applyEventEffects(deps, event('charge.dispute.funds_reinstated', 'evt_fake_44', { id: 'dp_fake_1' }));
-    expect(replay.note).toBe('skipped_already_reinstated');
+    expect(replay.note).toBe('skipped_nothing_to_restore');
     expect(db.rows('commission_adjustments')).toHaveLength(2);
   });
 
@@ -898,9 +898,11 @@ describe('invoice_voided / dispute writers — full reversals', () => {
     const deps = {
       db,
       refetch: makeRefetcher({ dispute: { dp_fake_2: reinstated }, charge: { ch_fake_1: basilCharge({}) } }),
-      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], disputes: [reinstated] }),
     };
-    expect((await applyEventEffects(deps, event('charge.dispute.funds_reinstated', 'evt_fake_45', { id: 'dp_fake_2' }))).note).toBeNull();
+    expect((await applyEventEffects(deps, event('charge.dispute.funds_reinstated', 'evt_fake_45', { id: 'dp_fake_2' }))).note).toBe(
+      'reconciled_reinstatement:dp_fake_2',
+    );
     const amounts = db.rows('commission_adjustments').map((row) => row.amount_cents);
     expect(amounts).toEqual([-184, -716, 716]); // the refund's 184 stays taken
     expect(db.rows('commission_entries')[0]?.status).toBe('held');
@@ -931,17 +933,41 @@ describe('invoice_voided / dispute writers — full reversals', () => {
     expect(restored?.status).toBe(eligibleAt <= Date.now() ? 'eligible' : 'held');
   });
 
-  it('a reinstatement with no reversal of that dispute changes nothing', async () => {
+  it('a reinstatement delivered BEFORE the withdrawal still settles both, once', async () => {
+    /* Stripe does not promise order. If the restore is refused for want of a
+       reversal, that movement is lost — Stripe will not send it again. So the
+       reinstatement reads what the dispute actually took and gave back, writes
+       both under the usual keys, and the withdrawal delivery that follows is
+       refused as a duplicate. */
+    const db = new FakeDb();
+    seedEntryForReversal(db);
+    const settled = basilDispute('dp_fake_4', { status: 'won', balance_transactions: [{ amount: -4900 }, { amount: 4900 }] });
+    const deps = {
+      db,
+      refetch: makeRefetcher({ dispute: { dp_fake_4: settled }, charge: { ch_fake_1: basilCharge({}) } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], disputes: [settled] }),
+    };
+    const first = await applyEventEffects(deps, event('charge.dispute.funds_reinstated', 'evt_fake_48', { id: 'dp_fake_4' }));
+    expect(first.note).toContain('reconciled_dispute:dp_fake_4');
+    expect(first.note).toContain('reconciled_reinstatement:dp_fake_4');
+    expect(db.rows('commission_adjustments').map((row) => row.amount_cents)).toEqual([-900, 900]);
+
+    const late = await applyEventEffects(deps, event('charge.dispute.funds_withdrawn', 'evt_fake_49', { id: 'dp_fake_4' }));
+    expect(late.note).toBe('skipped_duplicate_reversal');
+    expect(db.rows('commission_adjustments')).toHaveLength(2);
+  });
+
+  it('a reinstatement of a dispute that never took anything changes nothing', async () => {
     const db = new FakeDb();
     seedEntryForReversal(db);
     const reinstated = basilDispute('dp_fake_3', { status: 'won', balance_transactions: [{ amount: 4900 }] });
     const deps = {
       db,
       refetch: makeRefetcher({ dispute: { dp_fake_3: reinstated }, charge: { ch_fake_1: basilCharge({}) } }),
-      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], disputes: [reinstated] }),
     };
     const result = await applyEventEffects(deps, event('charge.dispute.funds_reinstated', 'evt_fake_46', { id: 'dp_fake_3' }));
-    expect(result.note).toBe('skipped_no_matching_dispute_reversal');
+    expect(result.note).toBe('skipped_nothing_to_restore');
     expect(db.rows('commission_adjustments')).toHaveLength(0);
   });
 });

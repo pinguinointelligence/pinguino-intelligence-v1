@@ -1038,16 +1038,23 @@ async function applyDisputeReinstatement(deps: DispatchDeps, event: WebhookEvent
     }
     return honestNoEntryNote('dispute', expectation);
   }
-  const disputeReversalKey = buildIdempotencyKey('object', {
-    eventId: event.id,
-    objectId: dispute.id,
-    eventCreated: event.created,
-  });
-  return appendReinstatement(deps, entry, {
-    disputeReversalKey,
-    reinstatementKey: `${disputeReversalKey}:reinstated`,
-    reason: event.type,
-  });
+  if (!charge.paymentIntentId) return 'skipped_dispute_without_payment_intent';
+  /* ORDER DOES NOT MATTER HERE. A reinstatement that arrives before the
+     withdrawal has nothing to restore, and refusing it would lose the movement:
+     Stripe will not send it again. So this goes through the same reconciliation
+     the booking uses — it reads what the dispute actually took and gave back,
+     and writes whichever of the two the ledger is missing, under the same keys.
+     A later withdrawal delivery is then refused as a duplicate. */
+  const notes = await applyMoneyAlreadyMoved(
+    deps,
+    entry,
+    { paymentIntentId: charge.paymentIntentId, grossCents: charge.amountCents },
+    { id: event.id, created: event.created },
+    event.type,
+  );
+  // Nothing appended: either it was restored already, or this dispute never
+  // took anything to give back.
+  return notes.length > 0 ? notes.join('; ') : 'skipped_nothing_to_restore';
 }
 
 async function appendReinstatement(
