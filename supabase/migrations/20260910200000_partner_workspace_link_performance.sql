@@ -139,11 +139,16 @@ begin
             and swe.event_type in ('invoice.paid','invoice.payment_succeeded')
             and swe.payload#>>'{data,object,id}'=ce.stripe_invoice_id
         ) invoice_amount on true),0),
-      'refundCommissionCents',coalesce((select abs(sum(ca.amount_cents))
+      -- What is still taken, NET of what came back. Summing only the negative
+      -- rows made a won dispute look like money the Partner had lost: the
+      -- reinstatement (R6) is a positive adjustment on the same entry, and the
+      -- counter must see it. `greatest(…, 0)` keeps the number a claw-back
+      -- total rather than turning a positive net into a negative refund.
+      'refundCommissionCents',coalesce((select greatest(-sum(ca.amount_cents), 0)
         from public.commission_adjustments ca
         join public.commission_entries ce on ce.id=ca.commission_entry_id
         join public.referral_attributions ra on ra.id=ce.attribution_id
-        where ra.partner_code_id=c.id and ca.amount_cents<0),0),
+        where ra.partner_code_id=c.id),0),
       'pendingCommissionCents',coalesce((select sum(ce.amount_cents)
         from public.commission_entries ce join public.referral_attributions ra on ra.id=ce.attribution_id
         where ra.partner_code_id=c.id and ce.status='held'),0),

@@ -184,6 +184,18 @@ describe('whose event is this? (Connect destinations)', () => {
   });
 });
 
+describe('what the Partner sees after a won dispute', () => {
+  const WORKSPACE = read('supabase', 'migrations', '20260910200000_partner_workspace_link_performance.sql');
+
+  it('the refund counter is NET of reinstatements, not a sum of the negative rows', () => {
+    /* Measured on the QA branch: with two restored disputes the panel reported
+       2189 cents "refunded" while the ledger had taken 1791 — the +199 rows
+       were invisible to a counter that only looked at negatives. */
+    expect(WORKSPACE).toContain("'refundCommissionCents',coalesce((select greatest(-sum(ca.amount_cents), 0)");
+    expect(WORKSPACE).not.toContain('and ca.amount_cents<0),0),');
+  });
+});
+
 describe('a won dispute can be stored (R6)', () => {
   it('adds the value without rewriting 0018 or touching a row', () => {
     expect(KIND).toContain("'dispute_reinstatement'");
