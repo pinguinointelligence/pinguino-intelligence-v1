@@ -57,6 +57,7 @@ import { useRecalculatedIngredientLines } from './ingredientChangeStore';
 import type { IngredientPriceView } from './IngredientPriceControl';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
 import { nextProductionLineId } from '@/features/production-workspace/productionNextAction';
+import { preparationOrderedBaseLines } from '@/features/production-workspace/preparationPlan';
 import { ProductionTopUpSection } from '@/features/production-workspace/ProductionTopUpSection';
 import { pendingProductionTopUpTasks } from '@/features/production-workspace/productionSession';
 import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
@@ -103,7 +104,6 @@ export function IngredientBuilder({
   layout = 'card',
   mode = 'recipe',
   production,
-  productionReadyPresentation = false,
   recipeActionDock,
 }: {
   items: EffectiveRecipeItem[];
@@ -113,9 +113,6 @@ export function IngredientBuilder({
   layout?: 'card' | 'workbench';
   mode?: IngredientTableMode;
   production?: ProductionWorkspaceView;
-  /** Desktop-only presentation bridge for the approved inline process reminder.
-   * Mobile keeps the current Production cockpit card and interaction model. */
-  productionReadyPresentation?: boolean;
   recipeActionDock?: ReactNode;
 }) {
   const queryClient = useQueryClient();
@@ -561,32 +558,18 @@ export function IngredientBuilder({
     mode === 'recipe' &&
     (pickerNotice !== null || compositionMigrationAmbiguities.length > 0 || duplicateCount > 0);
 
-  const orderIndex = new Map(baseOrder.map((id, index) => [id, index]));
+  // A running batch lists its rows in preparation-plan order, the same order as the
+  // active row and the plan card. Recipe mode and the stored recipe order are unchanged.
+  const displayOrder =
+    mode === 'production' && production?.session
+      ? preparationOrderedBaseLines(production.session).map((line) => line.lineId)
+      : baseOrder;
+  const orderIndex = new Map(displayOrder.map((id, index) => [id, index]));
   const orderedItems = [...items].sort((left, right) => {
     const leftIndex = orderIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER;
     const rightIndex = orderIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER;
     return leftIndex === rightIndex ? 0 : leftIndex - rightIndex;
   });
-  const pendingHeatAdvisories =
-    productionReadyPresentation && production && !production.heatInformationAcknowledged
-      ? (production.heatInformation ?? [])
-      : [];
-  const heatReminderLineId =
-    orderedItems.find((item) =>
-      pendingHeatAdvisories.some((advisory) => {
-        const identities = [
-          item.id,
-          item.ingredient.id,
-          item.ingredient.canonical_ingredient_id,
-        ].filter((identity): identity is string => Boolean(identity));
-        const normalizedName = item.ingredient.name.trim().toLocaleUpperCase('pl-PL');
-        const advisoryName = advisory.productName?.trim().toLocaleUpperCase('pl-PL') ?? '';
-        return (
-          (advisory.productId !== null && identities.includes(advisory.productId)) ||
-          advisoryName.includes(normalizedName)
-        );
-      }),
-    )?.id ?? null;
   const activeProductionLineId =
     mode === 'production'
       ? nextProductionLineId(
@@ -719,14 +702,6 @@ export function IngredientBuilder({
         productionLine={productionLine}
         productionActions={productionActions}
         productionActive={item.id === activeProductionLineId}
-        productionProcessReminder={
-          item.id === heatReminderLineId && production
-            ? {
-                disabled: production.persistenceBusy,
-                onConfirm: () => void production.acknowledgeHeatInformation(),
-              }
-            : undefined
-        }
         canMoveUp={rowIndex > 0}
         canMoveDown={rowIndex < orderedItems.length - 1}
         changed={isLineChanged(item.id)}
