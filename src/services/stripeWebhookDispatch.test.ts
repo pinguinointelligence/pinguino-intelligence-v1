@@ -930,3 +930,235 @@ describe('shop order settlement — the provider is the payment authority', () =
     expect(db.rows('shop_orders')).toHaveLength(0);
   });
 });
+
+// ── Stripe API "Basil" relations (2025-03-31.basil and later) ────────────────
+
+/**
+ * The Edge Functions import `npm:stripe@18` and refetch with the pinned Basil
+ * version. Basil REMOVED the relations the reversal writers were built on:
+ * `Invoice.payment_intent`, `Invoice.charge`, `Invoice.subscription`,
+ * `Charge.invoice` and `PaymentIntent.invoice`; an invoice and the payment
+ * that settled it are joined only through an `InvoicePayment`. `Charge.refunds`
+ * is not returned unless expanded, and even expanded it is one page.
+ *
+ * Every object below has exactly the fields stripe-node 18.5.0 declares for
+ * that API generation (the SDK the functions resolve today). None carries a
+ * removed field.
+ */
+const basilInvoice = (overrides: Row = {}): Row => ({
+  id: 'in_fake_1',
+  object: 'invoice',
+  status: 'paid',
+  amount_paid: 4900,
+  customer: 'cus_fake_1',
+  parent: {
+    type: 'subscription_details',
+    quote_details: null,
+    subscription_details: { metadata: {}, subscription: 'sub_fake_1' },
+  },
+  status_transitions: { finalized_at: PAID_AT_EPOCH, paid_at: PAID_AT_EPOCH },
+  ...overrides,
+});
+
+const basilInvoicePayment = (overrides: Row = {}): Row => ({
+  id: 'inpay_fake_1',
+  object: 'invoice_payment',
+  amount_paid: 4900,
+  amount_requested: 4900,
+  created: PAID_AT_EPOCH,
+  currency: 'eur',
+  invoice: 'in_fake_1',
+  is_default: true,
+  livemode: false,
+  payment: { type: 'payment_intent', payment_intent: 'pi_fake_1' },
+  status: 'paid',
+  status_transitions: { canceled_at: null, paid_at: PAID_AT_EPOCH },
+  ...overrides,
+});
+
+const basilCharge = (overrides: Row = {}): Row => ({
+  id: 'ch_fake_1',
+  object: 'charge',
+  amount: 4900,
+  amount_refunded: 0,
+  customer: 'cus_fake_1',
+  payment_intent: 'pi_fake_1',
+  refunded: false,
+  ...overrides,
+});
+
+const basilRefund = (id: string, amount: number, overrides: Row = {}): Row => ({
+  id,
+  object: 'refund',
+  amount,
+  charge: 'ch_fake_1',
+  currency: 'eur',
+  payment_intent: 'pi_fake_1',
+  status: 'succeeded',
+  ...overrides,
+});
+
+interface BasilWorld {
+  invoicePayments?: Row[];
+  refunds?: Row[];
+}
+
+/** A list port that already walked every page, as the adapter contract requires. */
+const basilLists = (world: BasilWorld) => ({
+  listAll: async (list: string, filter: string): Promise<Row[]> => {
+    switch (list) {
+      case 'invoice_payments_by_invoice':
+        return (world.invoicePayments ?? []).filter((payment) => payment.invoice === filter);
+      case 'invoice_payments_by_payment_intent':
+        return (world.invoicePayments ?? []).filter(
+          (payment) => (payment.payment as Row | undefined)?.payment_intent === filter,
+        );
+      case 'refunds_by_charge':
+        return (world.refunds ?? []).filter((refund) => refund.charge === filter);
+      default:
+        throw new Error(`unexpected list: ${list}`);
+    }
+  },
+});
+
+/** Records the reward-reversal RPC so a test can prove it named the right invoice. */
+const recordRewardReversals = (db: FakeDb): Array<Record<string, unknown>> => {
+  const calls: Array<Record<string, unknown>> = [];
+  const original = db.rpc;
+  db.rpc = async (fn, args) => {
+    if (fn === 'gellatti_reverse_referral_reward_v1') {
+      calls.push(args);
+      return { data: { ok: true, reason: 'reversed' }, error: null };
+    }
+    return original(fn, args);
+  };
+  return calls;
+};
+
+/**
+ * An entry exactly as the invoice.paid writer books it under Basil before this
+ * fix: the invoice no longer names its PaymentIntent, so the column is null.
+ * Staging already holds entries like this, so a reversal must find them by
+ * invoice, never by a PaymentIntent the entry does not have.
+ */
+const seedBasilEntry = (db: FakeDb) => {
+  db.seed('partners', { id: 'partner-1', user_id: 'partner-user-1' });
+  db.seed('commission_entries', {
+    id: 'entry-1',
+    partner_id: 'partner-1',
+    amount_cents: 900,
+    status: 'held',
+    stripe_invoice_id: 'in_fake_1',
+    stripe_payment_intent_id: null,
+  });
+};
+
+describe('Basil relations — reversals find the invoice through InvoicePayment', () => {
+  it('charge.refunded on a Basil charge reverses the commission and the referral reward', async () => {
+    const db = new FakeDb();
+    seedBasilEntry(db);
+    const rewardReversals = recordRewardReversals(db);
+    const deps = {
+      db,
+      refetch: makeRefetcher({ charge: { ch_fake_1: basilCharge({ amount_refunded: 1000 }) } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], refunds: [basilRefund('re_fake_1', 1000)] }),
+    };
+
+    const result = await applyEventEffects(deps, event('charge.refunded', 'evt_basil_1', { id: 'ch_fake_1' }));
+
+    expect(db.rows('commission_adjustments')).toHaveLength(1);
+    expect(db.rows('commission_adjustments')[0]).toMatchObject({
+      commission_entry_id: 'entry-1',
+      amount_cents: -184,
+      kind: 'refund_reversal',
+      source_event_key: 'obj:re_fake_1',
+    });
+    expect(rewardReversals).toEqual([{ p_stripe_invoice_id: 'in_fake_1', p_reason: 'charge.refunded' }]);
+    expect(result.note).toBe('referral_reward_reversed');
+  });
+
+  it('refund.created resolves refund → charge → InvoicePayment → invoice', async () => {
+    const db = new FakeDb();
+    seedBasilEntry(db);
+    const rewardReversals = recordRewardReversals(db);
+    const refund = basilRefund('re_fake_2', 4900);
+    const deps = {
+      db,
+      refetch: makeRefetcher({
+        refund: { re_fake_2: refund },
+        charge: { ch_fake_1: basilCharge({ amount_refunded: 4900, refunded: true }) },
+      }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], refunds: [refund] }),
+    };
+
+    await applyEventEffects(deps, event('refund.created', 'evt_basil_2', { id: 're_fake_2' }));
+
+    expect(db.rows('commission_adjustments')).toHaveLength(1);
+    expect(db.rows('commission_adjustments')[0]).toMatchObject({ amount_cents: -900, source_event_key: 'obj:re_fake_2' });
+    expect(db.rows('commission_entries')[0]?.status).toBe('reversed');
+    expect(rewardReversals.map((call) => call.p_stripe_invoice_id)).toEqual(['in_fake_1']);
+  });
+
+  it('charge.dispute.funds_withdrawn on a Basil charge reverses the commission and the reward', async () => {
+    const db = new FakeDb();
+    seedBasilEntry(db);
+    const rewardReversals = recordRewardReversals(db);
+    const deps = {
+      db,
+      refetch: makeRefetcher({
+        dispute: { dp_fake_1: { id: 'dp_fake_1', object: 'dispute', amount: 4900, charge: 'ch_fake_1', payment_intent: 'pi_fake_1', status: 'lost' } },
+        charge: { ch_fake_1: basilCharge() },
+      }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+    };
+
+    await applyEventEffects(deps, event('charge.dispute.funds_withdrawn', 'evt_basil_3', { id: 'dp_fake_1' }));
+
+    expect(db.rows('commission_adjustments')[0]).toMatchObject({
+      amount_cents: -900,
+      kind: 'dispute_reversal',
+      source_event_key: 'obj:dp_fake_1',
+    });
+    expect(rewardReversals.map((call) => call.p_stripe_invoice_id)).toEqual(['in_fake_1']);
+  });
+
+  it('reverses every refund of the charge, not the first page of an expanded list', async () => {
+    const db = new FakeDb();
+    seedBasilEntry(db);
+    // Twelve 100-cent refunds: more than one default page (10) of refunds.
+    const refunds = Array.from({ length: 12 }, (_, index) => basilRefund(`re_page_${index + 1}`, 100));
+    const deps = {
+      db,
+      refetch: makeRefetcher({ charge: { ch_fake_1: basilCharge({ amount_refunded: 1200 }) } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], refunds }),
+    };
+
+    await applyEventEffects(deps, event('charge.refunded', 'evt_basil_4', { id: 'ch_fake_1' }));
+
+    const adjustments = db.rows('commission_adjustments');
+    expect(adjustments).toHaveLength(12);
+    // 900 × 100 / 4900 = 18.37 → 18 per refund (round-half-up), twelve times.
+    expect(adjustments.map((row) => row.amount_cents)).toEqual(Array(12).fill(-18));
+    expect(new Set(adjustments.map((row) => row.source_event_key)).size).toBe(12);
+  });
+
+  it('invoice.paid on a Basil invoice books the entry with the PaymentIntent from its InvoicePayment', async () => {
+    const db = new FakeDb();
+    seedCommissionWorld(db);
+    const deps = {
+      db,
+      refetch: makeRefetcher({ invoice: { in_fake_1: basilInvoice() } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()] }),
+    };
+
+    const result = await applyEventEffects(deps, event('invoice.paid', 'evt_basil_5', { id: 'in_fake_1' }));
+
+    expect(result.note).toBeNull();
+    expect(db.rows('commission_entries')).toHaveLength(1);
+    expect(db.rows('commission_entries')[0]).toMatchObject({
+      stripe_invoice_id: 'in_fake_1',
+      stripe_subscription_id: 'sub_fake_1',
+      stripe_payment_intent_id: 'pi_fake_1',
+    });
+  });
+});
