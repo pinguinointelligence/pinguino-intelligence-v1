@@ -33,6 +33,12 @@ export interface IntentTerm {
   readonly role: IntentRole | null;
   /** True when the concept was reached through fuzzy (typo) matching, not exactly. */
   readonly fuzzy: boolean;
+  /**
+   * The listed element this term was said in, verbatim (e.g. „puree truskawkowe”).
+   * Product selection reads it so explicit words around a concept — a form, a brand
+   * — keep their meaning after the utterance is split into separate chips.
+   */
+  readonly segment: string;
 }
 
 export interface ParsedIntent {
@@ -398,7 +404,14 @@ export function parseIntent(text: string): ParsedIntent {
     for (const [phrase, concept] of PHRASE_ENTRIES) {
       if (remaining.includes(phrase) && !seen.has(concept)) {
         seen.add(concept);
-        terms.push({ raw: phrase, normalized: phrase, concept, role: statedRole, fuzzy: false });
+        terms.push({
+          raw: phrase,
+          normalized: phrase,
+          concept,
+          role: statedRole,
+          fuzzy: false,
+          segment,
+        });
         remaining = remaining.replace(phrase, ' ');
       }
     }
@@ -420,6 +433,7 @@ export function parseIntent(text: string): ParsedIntent {
         concept,
         role: statedRole,
         fuzzy: exact === null && concept !== null,
+        segment,
       });
     }
   }
