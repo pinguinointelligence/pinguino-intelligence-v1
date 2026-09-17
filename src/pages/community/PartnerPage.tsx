@@ -156,9 +156,9 @@ function Overview({ data }: { data: PartnerWorkspace }) {
             {data.partner?.payoutsEnabled
               ? 'Wypłaty aktywne'
               : data.partner?.connectAccountPresent && data.partner?.onboardingComplete
-                ? 'Dane wysłane do Stripe — sprawdź, czy czegoś nie brakuje'
+                ? 'Dane wysłane — sprawdź, czy operator płatności czegoś nie potrzebuje'
                 : data.partner?.connectAccountPresent
-                  ? 'Potwierdź dane do wypłat w Stripe'
+                  ? 'Potwierdź dane do wypłat'
                   : 'Gellatti przygotowuje Twoje konto wypłat'}
           </p>
         </div>
@@ -587,7 +587,7 @@ function Payouts({ data }: { data: PartnerWorkspace }) {
     <>
       <Heading
         title="Wypłaty"
-        detail="Stawki, terminy i rozliczenia ustala Gellatti. Twoja część to potwierdzenie tożsamości i danych do wypłat u operatora płatności Stripe."
+        detail="Stawki, terminy i rozliczenia ustala Gellatti. Twoja część to potwierdzenie tożsamości i danych do wypłat u naszego operatora płatności."
       />
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border border-ink/10 bg-[#f3ede3] p-5">
         <div>
@@ -596,14 +596,14 @@ function Payouts({ data }: { data: PartnerWorkspace }) {
             {data.partner?.payoutsEnabled
               ? 'Dane potwierdzone — wypłaty są aktywne.'
               : data.partner?.connectAccountPresent && data.partner?.onboardingComplete
-                ? 'Twoje dane są u Stripe. Jeśli Stripe będzie potrzebował czegoś jeszcze, zobaczysz to po otwarciu.'
+                ? 'Twoje dane są u operatora płatności. Jeśli będzie potrzebował czegoś jeszcze, zobaczysz to po otwarciu.'
                 : data.partner?.connectAccountPresent
-                  ? 'Potwierdź tożsamość i dane do wypłat w Stripe. Zajmuje to kilka minut.'
+                  ? 'Potwierdź tożsamość i dane do wypłat u operatora płatności. Zajmuje to kilka minut.'
                   : 'Gellatti przygotowuje Twoje konto wypłat. Damy znać, kiedy będzie gotowe.'}
           </p>
         </div>
         {data.partner?.connectAccountPresent && !data.partner.payoutsEnabled ? (
-          <Button onClick={() => connect.mutate()}>Potwierdź dane w Stripe</Button>
+          <Button onClick={() => connect.mutate()}>Potwierdź dane do wypłat</Button>
         ) : null}
       </div>
       <div className="mt-6 divide-y divide-ink/10 border-y border-ink/10">

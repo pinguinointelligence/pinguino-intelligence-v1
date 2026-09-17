@@ -66,7 +66,7 @@ export function partnerFirstSteps(data: PartnerWorkspace): readonly FirstStep[] 
           done: false,
           title: 'Wypłaty',
           detail:
-            'Potwierdź tożsamość i dane do wypłat w Stripe. Stawki i terminy ustala Gellatti.',
+            'Potwierdź tożsamość i dane do wypłat u operatora płatności. Stawki i terminy ustala Gellatti.',
           section: 'payouts',
         }
       : {

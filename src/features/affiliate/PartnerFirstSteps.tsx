@@ -6,7 +6,7 @@ import { firstStepsComplete, partnerFirstSteps, type FirstStepId } from './first
 const ACTION: Readonly<Record<FirstStepId, string>> = {
   code: 'Utwórz kod',
   link: 'Utwórz link',
-  payouts: 'Potwierdź dane w Stripe',
+  payouts: 'Potwierdź dane do wypłat',
 };
 
 /**

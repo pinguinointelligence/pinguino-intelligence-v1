@@ -36,10 +36,16 @@ describe('what the Partner is asked to do', () => {
     expect(FIRST_STEPS).toContain('Stawki i terminy ustala Gellatti.');
   });
 
-  it('names the one real step, and where it happens', () => {
-    expect(PARTNER_PAGE).toContain('Potwierdź tożsamość i dane do wypłat w Stripe.');
-    expect(PARTNER_PAGE).toContain('Potwierdź dane w Stripe');
-    expect(STEP_LABELS).toContain("payouts: 'Potwierdź dane w Stripe'");
+  it('names the one real step, and where it happens — without naming the vendor', () => {
+    /* The studio boundary forbids the payment vendor's name anywhere in the UI
+       layer, so the sentence says who asks (our payment operator) rather than
+       which company it is. */
+    expect(PARTNER_PAGE).toContain('Potwierdź tożsamość i dane do wypłat u operatora płatności.');
+    expect(PARTNER_PAGE).toContain('Potwierdź dane do wypłat');
+    expect(STEP_LABELS).toContain("payouts: 'Potwierdź dane do wypłat'");
+    for (const source of PARTNER_FACING) {
+      expect(source).not.toMatch(/\bstripe\b/i);
+    }
   });
 
   it('distinguishes "not started" from "sent to Stripe"', () => {
@@ -47,7 +53,7 @@ describe('what the Partner is asked to do', () => {
        rendered, so a Partner who had finished the hosted flow saw the same
        sentence as one who had not started it. */
     expect(PARTNER_PAGE).toContain('data.partner?.onboardingComplete');
-    expect(PARTNER_PAGE).toContain('Twoje dane są u Stripe.');
+    expect(PARTNER_PAGE).toContain('Twoje dane są u operatora płatności.');
   });
 
   it('never promises that nothing more is needed — the app cannot know that', () => {
@@ -59,7 +65,7 @@ describe('what the Partner is asked to do', () => {
       expect(source).not.toMatch(/nic więcej nie musisz robić/i);
       expect(source).not.toMatch(/wystarczy czekać/i);
     }
-    expect(PARTNER_PAGE).toContain('Jeśli Stripe będzie potrzebował czegoś jeszcze, zobaczysz to po otwarciu.');
+    expect(PARTNER_PAGE).toContain('Jeśli będzie potrzebował czegoś jeszcze, zobaczysz to po otwarciu.');
     // the action stays available in that state
     expect(PARTNER_PAGE).toContain('data.partner?.connectAccountPresent && !data.partner.payoutsEnabled');
   });

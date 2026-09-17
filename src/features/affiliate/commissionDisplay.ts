@@ -135,7 +135,7 @@ export const PAYOUT_STATUS_COPY: Readonly<Record<PayoutStatus, CommissionStatusC
     paid: { label: 'Wypłacona', help: 'Środki zostały przelane.', negative: false },
     failed: {
       label: 'Nieudana',
-      help: 'Przelew się nie powiódł. Sprawdź dane do wypłat w Stripe — kwota nie przepada.',
+      help: 'Przelew się nie powiódł. Sprawdź dane do wypłat u operatora płatności — kwota nie przepada.',
       negative: false,
     },
     skipped_below_threshold: {
