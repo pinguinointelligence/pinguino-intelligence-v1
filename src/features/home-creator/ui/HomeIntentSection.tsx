@@ -127,6 +127,7 @@ export function HomeIntentSection({
           label: term.raw,
           concept: term.concept,
           role: term.role,
+          segment: term.segment,
           source,
           productId: null,
           productName: null,
