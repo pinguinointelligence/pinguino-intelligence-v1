@@ -170,6 +170,37 @@ export interface ShopCopy {
     readonly markShipped: string;
     readonly filterAll: string;
   };
+  /** The free PDF shopping guide, ordered for 0 € (a document, never a parcel). */
+  readonly infopak: {
+    readonly kicker: string;
+    readonly name: string;
+    readonly subtitle: string;
+    readonly formatPrice: string;
+    readonly cta: string;
+    readonly ctaBusy: string;
+    readonly lede: string;
+    readonly description: readonly string[];
+    readonly detailsTitle: string;
+    readonly details: readonly string[];
+    readonly smallPrint: string;
+    readonly ready: string;
+    readonly download: string;
+    readonly downloadBusy: string;
+    readonly signInFirst: string;
+    readonly notAvailable: string;
+    readonly fileMissing: string;
+    readonly failed: string;
+    readonly downloadFailed: string;
+    readonly imageAlt: string;
+    readonly orderRow: string;
+    readonly language: string;
+    readonly accountHint: string;
+    readonly adminTitle: string;
+    readonly adminEmpty: string;
+    readonly adminQa: string;
+    readonly adminVersion: string;
+    readonly adminMail: string;
+  };
   readonly orders: {
     readonly createdNotice: string;
     readonly viewPdf: string;
@@ -394,6 +425,53 @@ export const shopCopyPl: ShopCopy = {
     markShipped: 'Oznacz jako wysłane',
     filterAll: 'Wszystkie',
   },
+  infopak: {
+    kicker: 'Darmowy infopak',
+    name: 'Gellatti — Składniki bazy lodów',
+    subtitle: 'Infopak zakupowy: co kupić i gdzie znaleźć składniki w Twoim kraju.',
+    formatPrice: 'PDF · 0 €',
+    cta: 'Zamów za 0 €',
+    ctaBusy: 'Zamawiam…',
+    lede: 'Darmowy infopak PDF: jakie podstawowe składniki kupić do bazy lodów i gdzie je znaleźć w Twoim kraju.',
+    description: [
+      'To infopak w formacie PDF z informacjami o zakupach. Nie jest to paczka składników ani zbiór receptur z gramaturami.',
+      'Infopak obejmuje sześć podstawowych składników bazy gelato: mleko, śmietankę, mleko odtłuszczone w proszku, cukier, dekstrozę i gumę tara. ' +
+        'Dla mleka, śmietanki, mleka w proszku, dekstrozy i gumy tara podaje produkty wskazane w zatwierdzonej tabeli Gellatti dla Twojego kraju: ' +
+        'markę, nazwę, opakowanie, kod kreskowy (jeśli produkt go ma) i odnośniki do miejsc, gdzie produkt znaleziono. ' +
+        'Dla cukru podaje prostą regułę wyboru zamiast marki, a tam, gdzie potwierdziliśmy lokalną nazwę, także tę nazwę.',
+      'Część produktów sprzedają sklepy za granicą albo dystrybutorzy dla firm. Infopak wyraźnie to oznacza. ' +
+        'Dostępność, ceny i dostawa mogą się zmieniać i nie są gwarantowane.',
+    ],
+    detailsTitle: 'Szczegóły',
+    details: [
+      'Format: PDF.',
+      'Język dokumentu: angielski.',
+      'Zakres: 75 krajów w jednym pliku; swój kraj znajdziesz w klikalnym spisie.',
+      'Dostawa: pobranie po złożeniu zamówienia za 0 €, bez karty i bez kosztów wysyłki.',
+      'Plik znajdziesz też w: Konto → Zamówienia.',
+    ],
+    smallPrint:
+      'Informacje zebrano ze stron producentów i sprzedawców (wrzesień 2026). Dostępność, ceny i dostawa nie są gwarantowane; ' +
+      'przed zakupem sprawdź etykietę. Wskazanie produktu w infopaku nie oznacza, że jest on już dostępny w aplikacji Gellatti.',
+    ready: 'Zamówienie przyjęte. Twój infopak jest gotowy.',
+    download: 'Pobierz PDF',
+    downloadBusy: 'Przygotowuję plik…',
+    signInFirst: 'Zaloguj się, aby zamówić infopak za 0 €.',
+    notAvailable: 'Ten infopak nie jest jeszcze dostępny dla Twojego konta.',
+    fileMissing:
+      'Plik jest chwilowo niedostępny. Spróbuj ponownie za chwilę; zamówienie jest w Konto → Zamówienia.',
+    failed: 'Nie udało się złożyć zamówienia. Spróbuj ponownie.',
+    downloadFailed: 'Nie udało się przygotować pliku. Spróbuj ponownie.',
+    imageAlt: 'Okładka infopaku Gellatti — Składniki bazy lodów',
+    orderRow: 'Składniki bazy lodów · PDF · 0 €',
+    language: 'PDF po angielsku',
+    accountHint: 'Plik możesz pobrać ponownie w każdej chwili.',
+    adminTitle: 'Dokumenty cyfrowe · 0 €',
+    adminEmpty: 'Nie ma jeszcze zamówień dokumentów.',
+    adminQa: 'Konto QA',
+    adminVersion: 'Wersja',
+    adminMail: 'Powiadomienie',
+  },
   orders: {
     createdNotice: 'Zamówienie utworzone. Poniżej znajdziesz swoje zamówienie.',
     viewPdf: 'Otwórz listę zakupów (PDF)',
@@ -609,6 +687,53 @@ export const shopCopyEn: ShopCopy = {
     trackingNumber: 'Tracking number',
     markShipped: 'Mark as shipped',
     filterAll: 'All',
+  },
+  infopak: {
+    kicker: 'Free guide',
+    name: 'Gellatti — Gelato Base Ingredients',
+    subtitle: 'Shopping guide: what to buy and where to find ingredients in your country.',
+    formatPrice: 'PDF · €0',
+    cta: 'Get it for €0',
+    ctaBusy: 'Ordering…',
+    lede: 'Free PDF shopping guide: the basic ingredients to buy for a gelato base, and where to find them in your country.',
+    description: [
+      'This is a PDF shopping guide. It is information, not a parcel of ingredients and not a recipe collection with gram amounts.',
+      'It covers the six basic ingredients of a gelato base: milk, cream, skim milk powder, sugar, dextrose and tara gum. ' +
+        "For milk, cream, skim milk powder, dextrose and tara gum, it lists the products in Gellatti's approved table for your country: " +
+        'brand, name, pack size, the barcode where the product has one, and links to where each product was found. ' +
+        'For sugar it gives a simple buying rule instead of a brand, plus the local name where we have confirmed one.',
+      'Some products are sold by shops abroad or by distributors to businesses, and the guide marks them clearly. ' +
+        'Availability, prices and delivery can change and are not guaranteed.',
+    ],
+    detailsTitle: 'Details',
+    details: [
+      'Format: PDF.',
+      'Document language: English.',
+      'Coverage: 75 countries in one file; find yours in the linked index.',
+      'Delivery: download after placing the €0 order, with no card and no shipping costs.',
+      'Also in: Account → Orders.',
+    ],
+    smallPrint:
+      'Compiled from manufacturer and retailer pages, September 2026. Availability, prices and delivery are not guaranteed; ' +
+      'check the label before you buy. A product in this guide is not necessarily available in the Gellatti app yet.',
+    ready: 'Order received. Your guide is ready.',
+    download: 'Download PDF',
+    downloadBusy: 'Preparing the file…',
+    signInFirst: 'Sign in to get the guide for €0.',
+    notAvailable: 'This guide is not available for your account yet.',
+    fileMissing:
+      'The file is temporarily unavailable. Try again shortly; your order is in Account → Orders.',
+    failed: 'The order could not be placed. Please try again.',
+    downloadFailed: 'The file could not be prepared. Please try again.',
+    imageAlt: 'Cover of the Gellatti — Gelato Base Ingredients guide',
+    orderRow: 'Gelato Base Ingredients · PDF · €0',
+    language: 'PDF in English',
+    accountHint: 'You can download the file again at any time.',
+    adminTitle: 'Digital documents · €0',
+    adminEmpty: 'No document orders yet.',
+    adminQa: 'QA account',
+    adminVersion: 'Version',
+    adminMail: 'Notification',
   },
   orders: {
     createdNotice: 'Order created. You will find it below.',

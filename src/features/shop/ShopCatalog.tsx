@@ -15,6 +15,7 @@ import { ShopStarterContents } from './ShopStarterContents';
 import { useNavigate } from 'react-router';
 import { selectedShopCountry, useShopCountryStore } from './shopCountryStore';
 import { ShopStarterOffer } from './ShopStarterOffer';
+import { ShopInfopakOffer } from './ShopInfopakOffer';
 
 /** The Gellatti shop: a small, factual catalogue and one honest checkout. */
 
@@ -162,6 +163,9 @@ export function ShopCatalog() {
           ))}
         </div>
       </section>
+
+      {/* The free PDF shopping guide: a document, independent of country and pack mode. */}
+      <ShopInfopakOffer />
 
       <div className="mt-16 md:mt-23">
         <ShopCart
