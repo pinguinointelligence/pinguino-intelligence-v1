@@ -83,10 +83,12 @@ export function interpretProviderResponse(status: number, body: unknown): Provid
 }
 
 /**
- * The outcome to record when no credential is configured.
+ * What "no credential is configured" MEANS. One authority for the wording.
  *
- * RETRYABLE, never a send and never a `sent`. The job stays visible in Admin
- * with a truthful reason, and delivers itself once the credential exists.
+ * The worker no longer settles jobs with this — it refuses to claim any, so
+ * nothing is touched and no attempt is spent. This supplies the truthful
+ * reason reported back to the caller, and stays RETRYABLE in kind because the
+ * mail itself is fine: only the configuration is missing.
  */
 export function missingCredentialOutcome(providerName: string): ProviderOutcome {
   return {
