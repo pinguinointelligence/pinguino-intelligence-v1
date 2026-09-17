@@ -173,6 +173,8 @@ def month_shift(epoch, months):
 
 
 def new_customer_user(c, label):
+    # SUFFIX makes a repeat run its own person; the label itself never carries it.
+    label = f'{label}{SUFFIX}'
     email = f'qa.growth.cust.{label}.{c.run[:8]}@example.invalid'
     uid = str(uuid.uuid4())
     c.sql(f'user-{label}', f"""do $u$ declare v_col text; begin {GUARD}
@@ -242,7 +244,6 @@ def lane(c, label, price_env, offer_key, pm='pm_card_visa', anchor_hours=3, back
     """A customer user (attributed to Partner A unless partner=False), on its own Test Clock, subscribed to a REAL offer.
     backdate=True positions the next renewal `anchor_hours` ahead on the clock, inside the current month.
     before_subscribe(customer_id) runs after the customer exists and before any invoice does (fault injection)."""
-    label = f'{label}{SUFFIX}' if not label.endswith(SUFFIX) else label
     uid, email = user if user else new_customer_user(c, label)
     attr = attribute(c, label, uid) if partner else None
     t0 = int(time.time())
