@@ -75,7 +75,11 @@ describe('the change', () => {
 describe('nothing the app runs loses access', () => {
   /** The latest definition of every function, in migration order. */
   const latest = new Map<string, { header: string; body: string }>();
-  /** Whether `authenticated` may execute a function, replayed in migration order. */
+  /**
+   * Whether `authenticated` may execute a function, replayed in migration order.
+   * Supabase's default privileges grant EXECUTE on every new function to anon
+   * and authenticated, so a function is callable until a revoke says otherwise.
+   */
   const executable = new Map<string, boolean>();
   for (const file of migrationFiles) {
     const sql = readFileSync(join(MIGRATIONS_DIR, file), 'utf8');
@@ -83,6 +87,7 @@ describe('nothing the app runs loses access', () => {
       /create (?:or replace )?function\s+public\.(\w+)\s*\([^]*?\)\s*(returns[^]*?)\bas\s+(\$\w*\$)([^]*?)\3/gi,
     )) {
       latest.set(match[1]!, { header: match[2]!, body: match[4]! });
+      if (!executable.has(match[1]!)) executable.set(match[1]!, true);
     }
     for (const match of sql.matchAll(/\b(grant|revoke)\s+[^;]*?on function public\.(\w+)[^;]*?(?:to|from)\s+([^;]*);/gi)) {
       if (/\bauthenticated\b/.test(match[3]!)) {
@@ -97,7 +102,7 @@ describe('nothing the app runs loses access', () => {
       expect.arrayContaining(['gellatti_my_referral_dashboard_v1', 'gellatti_claim_referral_code_v1']),
     );
     const invokerReachable = readers
-      .filter(([name]) => executable.get(name) === true)
+      .filter(([name]) => executable.get(name) !== false)
       .filter(([, fn]) => !/security definer/i.test(fn.header))
       .map(([name]) => name);
     expect(invokerReachable).toEqual([]);
