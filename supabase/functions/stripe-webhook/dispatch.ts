@@ -1088,32 +1088,7 @@ async function appendReinstatement(
   );
   if (outcome === 'duplicate') return 'skipped_already_reinstated';
 
-  const { data: entryRow, error: entryError } = await deps.db
-    .from('commission_entries')
-    .select('eligible_at')
-    .eq('id', entry.id)
-    .maybeSingle();
-  throwOnDbError(entryError, 'commission_entries eligible_at lookup');
-  const eligibleAtUtcMs = entryRow && typeof entryRow.eligible_at === 'string'
-    ? Date.parse(entryRow.eligible_at)
-    : Number.POSITIVE_INFINITY;
-  let sumAfter = decision.amountCents;
-  for (const row of prior) sumAfter += row.amountCents;
-  const nextStatus = decideStatusAfterReinstatement({
-    status: entry.status,
-    commissionCents: entry.commissionCents,
-    adjustmentsSumAfterCents: sumAfter,
-    eligibleAtUtcMs: Number.isFinite(eligibleAtUtcMs) ? eligibleAtUtcMs : Number.POSITIVE_INFINITY,
-    nowUtcMs: Date.now(),
-  });
-  if (nextStatus) {
-    const { error } = await deps.db
-      .from('commission_entries')
-      .update({ status: nextStatus })
-      .eq('id', entry.id)
-      .eq('status', 'reversed');
-    throwOnDbError(error, 'commission_entries status restore');
-  }
+  await settleEntryStatus(deps, entry.id);
   return null;
 }
 
@@ -1126,6 +1101,55 @@ async function appendReinstatement(
  * open) leaves no delivery to retry. Both paths write the same adjustment with
  * the same key, so whichever arrives second is refused as a duplicate.
  */
+/**
+ * The entry's status follows its BALANCE, not the order the rows arrived in.
+ *
+ * A reversal flips a fully clawed-back entry to `reversed` and a reinstatement
+ * puts it back, but a repair can write both in one pass — and then the second
+ * decision is made against a status the first one already changed. This reads
+ * the ledger as it now stands and states the answer once. It is idempotent, so
+ * every path can end with it, and it never touches a `paid` entry: money that
+ * already moved is settled by the next batch's netting, not by a status.
+ */
+async function settleEntryStatus(deps: DispatchDeps, entryId: string): Promise<void> {
+  const { data: entryRow, error: entryError } = await deps.db
+    .from('commission_entries')
+    .select('amount_cents, status, eligible_at')
+    .eq('id', entryId)
+    .maybeSingle();
+  throwOnDbError(entryError, 'commission_entries status settle read');
+  if (!entryRow) return;
+  const status = String(entryRow.status ?? '');
+  if (status !== 'reversed' && status !== 'held' && status !== 'eligible') return;
+
+  const { data: adjustmentRows, error: adjustmentError } = await deps.db
+    .from('commission_adjustments')
+    .select('amount_cents')
+    .eq('commission_entry_id', entryId);
+  throwOnDbError(adjustmentError, 'commission_adjustments sum for status settle');
+  let net = Number(entryRow.amount_cents ?? 0);
+  for (const row of adjustmentRows ?? []) net += Number(row.amount_cents ?? 0);
+
+  const parsedEligibleAt = typeof entryRow.eligible_at === 'string' ? Date.parse(entryRow.eligible_at) : Number.NaN;
+  const eligibleAtUtcMs = Number.isFinite(parsedEligibleAt) ? parsedEligibleAt : Number.POSITIVE_INFINITY;
+  const next = status === 'reversed'
+    ? decideStatusAfterReinstatement({
+        status,
+        commissionCents: Number(entryRow.amount_cents ?? 0),
+        adjustmentsSumAfterCents: net - Number(entryRow.amount_cents ?? 0),
+        eligibleAtUtcMs,
+        nowUtcMs: Date.now(),
+      })
+    : (net <= 0 ? 'reversed' : null);
+  if (!next) return;
+  const { error } = await deps.db
+    .from('commission_entries')
+    .update({ status: next })
+    .eq('id', entryId)
+    .eq('status', status);
+  throwOnDbError(error, 'commission_entries status settle');
+}
+
 async function applyMoneyAlreadyMoved(
   deps: DispatchDeps,
   entry: EntryForReversal,
@@ -1178,6 +1202,9 @@ async function applyMoneyAlreadyMoved(
       if (restored === null) notes.push(`reconciled_reinstatement:${dispute.id}`);
     }
   }
+  // Always, even when nothing was appended: a previous repair may have left the
+  // status behind its own balance.
+  await settleEntryStatus(deps, entry.id);
   return notes;
 }
 

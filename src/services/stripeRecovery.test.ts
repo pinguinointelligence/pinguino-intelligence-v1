@@ -107,6 +107,15 @@ describe('the schedule is the caller shape this project already uses', () => {
     expect(SCHEDULER).toContain("jsonb_build_object('skipped', 'not_configured')");
   });
 
+  it('serves both modes from one entry point, and refuses any other', () => {
+    /* The schedule calls it with no arguments; an operator calls it with
+       `reconcile` when a repair is needed. The credential never leaves the
+       database in either case. */
+    expect(SCHEDULER).toContain("p_mode text default 'retry'");
+    expect(SCHEDULER).toContain("if p_mode not in ('retry', 'reconcile') then");
+    expect(SCHEDULER).toContain("jsonb_build_object('mode', p_mode)");
+  });
+
   it('does not wake the worker for an empty backlog, and uses the worker’s own due rule', () => {
     expect(SCHEDULER).toContain("jsonb_build_object('skipped', 'nothing_due')");
     expect(SCHEDULER).toContain('least(60 * power(2, greatest(e.attempts - 1, 0)), 1800)');
@@ -118,12 +127,12 @@ describe('the schedule is the caller shape this project already uses', () => {
   });
 
   it('is operator-only in the database too', () => {
-    expect(SCHEDULER).toContain('revoke all on function public.gellatti_stripe_recovery_tick_v1() from public, anon, authenticated');
+    expect(SCHEDULER).toContain('revoke all on function public.gellatti_stripe_recovery_tick_v1(text, jsonb) from public, anon, authenticated');
   });
 
   it('the rollback removes exactly what it added and touches no row', () => {
     expect(SCHEDULER_RB).toContain("cron.unschedule('gellatti-stripe-recovery')");
-    expect(SCHEDULER_RB).toContain('drop function if exists public.gellatti_stripe_recovery_tick_v1()');
+    expect(SCHEDULER_RB).toContain('drop function if exists public.gellatti_stripe_recovery_tick_v1');
     expect(SCHEDULER_RB).toContain('drop function if exists public.gellatti_admin_webhook_backlog_v1(integer)');
     expect(SCHEDULER_RB).not.toMatch(/\b(update|delete|truncate|insert)\b/i);
     expect(SCHEDULER_RB).not.toContain('drop extension');

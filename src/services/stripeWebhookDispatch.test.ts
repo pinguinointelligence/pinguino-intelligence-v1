@@ -906,6 +906,31 @@ describe('invoice_voided / dispute writers — full reversals', () => {
     expect(db.rows('commission_entries')[0]?.status).toBe('held');
   });
 
+  it('a repair that writes both movements in one pass still ends with the right status', async () => {
+    /* The reconciliation can append the withdrawal and the reinstatement of the
+       same dispute in one run. The second decision must not be made against the
+       status the first one just changed, so the status is stated from the
+       ledger's own balance at the end. */
+    const db = new FakeDb();
+    seedCommissionWorld(db);
+    db.rows('commission_entries').length = 0;
+    const settled = basilDispute('dp_fake_5', { status: 'won', balance_transactions: [{ amount: -4900 }, { amount: 4900 }] });
+    const deps = {
+      db,
+      refetch: makeRefetcher({ invoice: { in_fake_1: basilInvoice() } }),
+      ...basilLists({ invoicePayments: [basilInvoicePayment()], disputes: [settled] }),
+    };
+    const result = await applyEventEffects(deps, event('invoice.paid', 'evt_fake_47', { id: 'in_fake_1' }));
+    expect(result.note).toContain('reconciled_dispute:dp_fake_5');
+    expect(result.note).toContain('reconciled_reinstatement:dp_fake_5');
+    const amounts = db.rows('commission_adjustments').map((row) => row.amount_cents);
+    expect(amounts).toEqual([-900, 900]);
+    // Payable again, and the HOLD CALENDAR decides which payable state it is.
+    const restored = db.rows('commission_entries')[0];
+    const eligibleAt = Date.parse(String(restored?.eligible_at));
+    expect(restored?.status).toBe(eligibleAt <= Date.now() ? 'eligible' : 'held');
+  });
+
   it('a reinstatement with no reversal of that dispute changes nothing', async () => {
     const db = new FakeDb();
     seedEntryForReversal(db);

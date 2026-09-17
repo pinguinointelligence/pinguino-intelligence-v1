@@ -17,4 +17,5 @@ end
 $rollback$;
 
 drop function if exists public.gellatti_admin_webhook_backlog_v1(integer);
+drop function if exists public.gellatti_stripe_recovery_tick_v1(text, jsonb);
 drop function if exists public.gellatti_stripe_recovery_tick_v1();

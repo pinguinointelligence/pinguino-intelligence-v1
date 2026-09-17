@@ -27,7 +27,15 @@
 
 create extension if not exists pg_net with schema extensions;
 
-create or replace function public.gellatti_stripe_recovery_tick_v1()
+-- One entry point for both modes: the schedule calls it with no arguments, an
+-- operator calls it with `reconcile` when a repair is needed. The credential
+-- never leaves the database either way.
+drop function if exists public.gellatti_stripe_recovery_tick_v1();
+
+create or replace function public.gellatti_stripe_recovery_tick_v1(
+  p_mode text default 'retry',
+  p_payload jsonb default '{}'::jsonb
+)
 returns jsonb
 language plpgsql
 security definer
@@ -39,6 +47,9 @@ declare
   v_due integer;
   v_request_id bigint;
 begin
+  if p_mode not in ('retry', 'reconcile') then
+    raise exception 'unknown recovery mode: %', p_mode;
+  end if;
   select decrypted_secret into v_base_url
     from vault.decrypted_secrets where name = 'gellatti_edge_functions_base_url';
   select decrypted_secret into v_dispatch_key
@@ -52,18 +63,20 @@ begin
 
   -- The SAME due rule the worker applies, so the two cannot drift: a delivery
   -- that already recorded a failure, whose backoff has elapsed.
-  select count(*) into v_due
-    from public.stripe_webhook_events e
-   where e.state in ('received', 'failed')
-     and e.attempts > 0
-     and e.updated_at <= now() - make_interval(secs => least(60 * power(2, greatest(e.attempts - 1, 0)), 1800));
-  if v_due = 0 then
-    return jsonb_build_object('skipped', 'nothing_due');
+  if p_mode = 'retry' then
+    select count(*) into v_due
+      from public.stripe_webhook_events e
+     where e.state in ('received', 'failed')
+       and e.attempts > 0
+       and e.updated_at <= now() - make_interval(secs => least(60 * power(2, greatest(e.attempts - 1, 0)), 1800));
+    if v_due = 0 then
+      return jsonb_build_object('skipped', 'nothing_due');
+    end if;
   end if;
 
   select net.http_post(
     url => rtrim(v_base_url, '/') || '/stripe-recovery',
-    body => jsonb_build_object('mode', 'retry'),
+    body => jsonb_build_object('mode', p_mode) || coalesce(p_payload, '{}'::jsonb),
     headers => jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || v_dispatch_key
@@ -71,11 +84,11 @@ begin
     timeout_milliseconds => 30000
   ) into v_request_id;
 
-  return jsonb_build_object('dispatched', true, 'due', v_due, 'requestId', v_request_id);
+  return jsonb_build_object('dispatched', true, 'mode', p_mode, 'due', v_due, 'requestId', v_request_id);
 end
 $$;
 
-revoke all on function public.gellatti_stripe_recovery_tick_v1() from public, anon, authenticated;
+revoke all on function public.gellatti_stripe_recovery_tick_v1(text, jsonb) from public, anon, authenticated;
 
 -- ── what is stuck, for a human ───────────────────────────────────────────────
 -- A retry that keeps failing must be visible without a SQL console. Read-only,
