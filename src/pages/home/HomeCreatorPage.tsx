@@ -152,6 +152,15 @@ export function HomeCreatorPage() {
   const [initialBuilding, setInitialBuilding] = useState(false);
   const initialFinalizing = useRef(false);
   const lastGeneratedFor = useRef<string | null>(null);
+  /**
+   * Served staging 2026-09-18: a build that cannot finish used to clear `lastGeneratedFor`,
+   * so the effect started the SAME build again — for the same answers, forever. The
+   * customer saw the question they had just answered while the page quietly rebuilt in a
+   * loop, and the refusal that was written was cleared by the next attempt before it could
+   * be read. The answers that failed are remembered here: the refusal stays on screen and
+   * the next attempt needs a real change (another answer, or the CTA pressed again).
+   */
+  const failedGenerationFor = useRef<string | null>(null);
   /** The products waiting for their confirmed amounts, asked one at a time
    * (Package 2A): each gets its own question. No line exists until it is answered. */
   const [pendingAdds, setPendingAdds] = useState<PendingAdd[]>([]);
@@ -462,7 +471,7 @@ export function HomeCreatorPage() {
               `Nie udało się potwierdzić aktualnych danych produktu ${chip.productName ?? chip.label}. Wybierz produkt ponownie.`,
             );
             setInitialBuilding(false);
-            lastGeneratedFor.current = null;
+            failedGenerationFor.current = lastGeneratedFor.current;
             return;
           }
           prepared.push(resolved);
@@ -688,7 +697,7 @@ export function HomeCreatorPage() {
         'Nie udało się jeszcze bezpiecznie przygotować receptury. Sprawdź wybór produktu i spróbuj ponownie.',
       );
       setInitialBuilding(false);
-      lastGeneratedFor.current = null;
+      failedGenerationFor.current = lastGeneratedFor.current;
     }
     initialFinalizing.current = false;
   }, [missingIdeaProducts, scrollToStage]);
@@ -767,7 +776,7 @@ export function HomeCreatorPage() {
       }
       setRecipeNotice(`Nie udało się potwierdzić roli produktu ${next.ingredient.name}.`);
       setInitialBuilding(false);
-      lastGeneratedFor.current = null;
+      failedGenerationFor.current = lastGeneratedFor.current;
     });
     return () => {
       cancelled = true;
@@ -815,7 +824,9 @@ export function HomeCreatorPage() {
       suggestions.communitySettled &&
       // Never behind an official recipe that is still opening: it is about to BE the recipe.
       officialAdoption?.state !== 'loading' &&
-      lastGeneratedFor.current !== key
+      lastGeneratedFor.current !== key &&
+      // The same answers already failed: say so and wait for the customer, never retry silently.
+      failedGenerationFor.current !== key
     ) {
       lastGeneratedFor.current = key;
       generateRecipe();
@@ -937,6 +948,8 @@ export function HomeCreatorPage() {
   /** „Create my recipe” — also „Tworzę swoją” chosen on the suggestions layer before it. */
   const submitIdea = () => {
     useHomeDraftStore.getState().submitIntent();
+    // Pressing the CTA is the customer asking again, so a previous refusal may be retried.
+    failedGenerationFor.current = null;
     // Owner 2026-09-17 (B): committed chips already resolve while the idea is described
     // (useHomeIdeaSuggestions); the CTA finishes whatever is still unresolved.
     setResolving(true);

@@ -50,3 +50,15 @@ describe('KIWI-02 — the recognised idea reaches the open recipe', () => {
     expect(page).not.toMatch(/PI-ING-\d/);
   });
 });
+
+describe('KIWI-11 — a refusal is shown, not retried in a loop', () => {
+  it('remembers the answers that failed and never rebuilds them silently', () => {
+    // Every failure path records the key instead of inviting the effect to start again.
+    expect(page).not.toMatch(/setInitialBuilding\(false\);\s+lastGeneratedFor\.current = null;/);
+    expect(page.match(/failedGenerationFor\.current = lastGeneratedFor\.current;/g)?.length).toBe(3);
+    // The generate effect refuses to repeat a build that already failed for these answers.
+    expect(page).toContain('failedGenerationFor.current !== key');
+    // Pressing the CTA is a real retry.
+    expect(page).toMatch(/submitIntent\(\);\s+\/\/[^\n]*\n\s+failedGenerationFor\.current = null;/);
+  });
+});

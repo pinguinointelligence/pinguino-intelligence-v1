@@ -430,6 +430,22 @@ describe('B — review 2026-09-17: the Community answer tells the truth', () => 
     expect(new Set(widened).size).toBeGreaterThan(1);
   });
 
+  it('B-17: after the profile is chosen the layer settles again — generation is never held forever', async () => {
+    mocks.community.mockResolvedValue([]);
+    act(() => useHomeDraftStore.getState().addChip(generic('c1')));
+    await flush(IDEA_SUGGESTION_DEBOUNCE_MS + 10);
+    await act(async () => {
+      await probe.latest!.settle();
+    });
+    expect(probe.latest!.communitySettled).toBe(true);
+    // The flow asks for the profile AFTER the CTA: the idea version changes.
+    act(() => useHomeDraftStore.getState().setProfile('sorbet'));
+    expect(probe.latest!.communitySettled).toBe(false);
+    await flush(IDEA_SUGGESTION_DEBOUNCE_MS + 10);
+    await flush(0);
+    expect(probe.latest!.communitySettled).toBe(true);
+  });
+
   it('B-16: the deadline only bounds what is SHOWN — the real answer still lands', async () => {
     const pending: (() => void)[] = [];
     const row = {
