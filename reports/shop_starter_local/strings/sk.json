@@ -1,0 +1,57 @@
+{
+  "locale": "sk",
+  "dir": "ltr",
+  "title": "Suroviny na základ gelata",
+  "benefit": "Čo kúpiť a kde",
+  "pill": "PDF · 0 €",
+  "country_label": "Krajina",
+  "language_label": "Jazyk",
+  "edition": "Vydanie 1 · september 2026",
+  "cover_items_title": "Sedem surovín zo Starter Packu",
+  "howto_title": "Ako používať tohto sprievodcu",
+  "howto_lede": "Ku každej surovine zo Starter Packu uvádzame produkt, ktorý si môžete kúpiť v tejto krajine.",
+  "steps": [
+    {"b": "Vyberte jeden produkt", "p": "Prvý je náš výber, druhý je alternatíva, ak prvý nie je dostupný."},
+    {"b": "Skontrolujte etiketu", "p": "Zloženie na obale musí zodpovedať popisu suroviny. Ak má produkt iné zloženie, uvádzame to."},
+    {"b": "Množstvá berte z aplikácie", "p": "Toto PDF uvádza produkty, nie gramáže. Recepty a množstvá vypočíta aplikácia Gellatti."}
+  ],
+  "legend_title": "Označenia",
+  "tag_from_abroad": "Zo zahraničia",
+  "tag_b2b": "Pre firmy",
+  "tag_other_composition": "Iné zloženie",
+  "tag_alternative": "Miestna alternatíva",
+  "tag_unconfirmed": "Nepotvrdené",
+  "legend": {
+    "from_abroad": "obchod v zahraničí, ktorý doručuje do tejto krajiny",
+    "b2b": "predaj firmám alebo vo veľkých baleniach",
+    "other_composition": "rovnaký druh produktu s iným zložením (uvedeným vedľa)",
+    "alternative": "náhrada za iný produkt Gellatti"
+  },
+  "starter_amount": "V Starter Packu: {g} g",
+  "option": "Možnosť {n}",
+  "ean": "EAN",
+  "where": "Kde",
+  "fat": "tuk",
+  "items": {
+    "DEX": {"name": "Dextróza", "ref": "Dextróza (glukóza) v prášku, monohydrát."},
+    "SMP": {"name": "Sušené odtučnené mlieko", "ref": "Sušené mlieko s obsahom tuku približne 1 %."},
+    "CRP": {"name": "Smotana v prášku", "ref": "Sušená smotana s obsahom tuku približne 42 %."},
+    "FRU": {"name": "Fruktóza", "ref": "Čistá kryštalická fruktóza."},
+    "INU": {"name": "Inulín", "ref": "Inulín v prášku, napríklad z čakanky."},
+    "YOL": {"name": "Sušený vaječný žĺtok", "ref": "Pasterizovaný žĺtok zo slepačích vajec v prášku."},
+    "STB": {"name": "Stabilizátor", "ref": "Gellatti Stabilizer je zmes tarovej gumy, karubínu a guarovej gumy."}
+  },
+  "stabilizer_note": "Miestna alternatíva k zmesi Gellatti, nie tá istá zmes. Zmiešajte ju so suchými surovinami a základ zohrejte na 75–80 °C.",
+  "missing": "V tejto krajine zatiaľ nie je schválený produkt.",
+  "notes_title": "Dobré vedieť",
+  "notes": [
+    {"h": "Dostupnosť", "p": "Produkty sme overili na weboch výrobcov a obchodov v septembri 2026. Dostupnosť, ceny a doručenie sa môžu zmeniť a nie sú zaručené."},
+    {"h": "Etiketa má prednosť", "p": "Pred kúpou skontrolujte zloženie a alergény na obale. Smotana v prášku a sušené mlieko obsahujú mlieko, žĺtok obsahuje vajcia."},
+    {"h": "Stabilizátor", "p": "V tejto krajine nahrádza Gellatti Stabilizer miestna rastlinná guma. Funguje podobne, ale nie je to tá istá zmes."}
+  ],
+  "fine": "Tu uvedený produkt nemusí byť v aplikácii Gellatti ešte dostupný. Gellatti nepredáva produkty iných značiek.",
+  "back_h": "Skvelé gelato začína dobrým základom.",
+  "back_p": "Recepty, množstvá a postup nájdete v aplikácii Gellatti.",
+  "back_link": "gellatti.com",
+  "draft": "KONCEPT · návrhy na schválenie"
+}

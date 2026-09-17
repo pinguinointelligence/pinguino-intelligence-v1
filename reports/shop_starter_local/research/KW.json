@@ -1,0 +1,143 @@
+{
+  "iso2": "KW",
+  "country": "Kuwait",
+  "agent": "research-mena",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:49Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "heavy cream powder",
+        "بودرة القشطة",
+        "مسحوق الكريمة",
+        "قشطة بودرة"
+      ],
+      "queries": [
+        "sitemap URL-slug scan (English slug terms): cream-powder, heavy-cream(-powder), whipping-cream-powder",
+        "no Arabic slug term was used for this item in the sitemap scan",
+        "domain probing of GCC grocers/pharmacies for readable catalogues"
+      ],
+      "sources_tried": [
+        "sultan-center.com supermarket (sitemap empty)",
+        "kuwait.whizzcart.com online grocer (Cloudflare challenge)",
+        "q8coop.com co-op (no answer)",
+        "yiaco.com medical group (corporate WordPress site, no product catalogue)",
+        "chefmiddleeast.com GCC professional/pastry supplier (JavaScript-only catalogue, not readable)",
+        "sporter.com health/supplement retailer country page (Cloudflare challenge)"
+      ],
+      "candidates": [],
+      "notes": "No dairy cream powder found on any readable source."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "fructose",
+        "fruit sugar",
+        "سكر الفركتوز",
+        "فركتوز"
+      ],
+      "queries": [
+        "sitemap URL-slug scan (English slug terms): fructos",
+        "sitemap URL-slug scan (Arabic slug terms, URL-encoded): فركتوز",
+        "domain probing of GCC grocers/pharmacies for readable catalogues"
+      ],
+      "sources_tried": [
+        "sultan-center.com supermarket (sitemap empty)",
+        "kuwait.whizzcart.com online grocer (Cloudflare challenge)",
+        "q8coop.com co-op (no answer)",
+        "yiaco.com medical group (corporate WordPress site, no product catalogue)",
+        "chefmiddleeast.com GCC professional/pastry supplier (JavaScript-only catalogue, not readable)",
+        "sporter.com health/supplement retailer country page (Cloudflare challenge)"
+      ],
+      "candidates": [],
+      "notes": "No fructose retail pack found on any readable source."
+    },
+    "INU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "inulin",
+        "inulin powder",
+        "انولين",
+        "إينولين"
+      ],
+      "queries": [
+        "sitemap URL-slug scan (English slug terms): inulin",
+        "sitemap URL-slug scan (Arabic slug terms, URL-encoded): نولين (matches انولين/إينولين)",
+        "domain probing of GCC grocers/pharmacies for readable catalogues",
+        "kiki-health.com product page + shipping policy (cross-border)"
+      ],
+      "sources_tried": [
+        "sultan-center.com supermarket (sitemap empty)",
+        "kuwait.whizzcart.com online grocer (Cloudflare challenge)",
+        "q8coop.com co-op (no answer)",
+        "yiaco.com medical group (corporate WordPress site, no product catalogue)",
+        "chefmiddleeast.com GCC professional/pastry supplier (JavaScript-only catalogue, not readable)",
+        "sporter.com health/supplement retailer country page (Cloudflare challenge)",
+        "kiki-health.com UK brand shop (GTIN on page; country selector lists this market)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "KIKI Health",
+          "product_name": "Inulin Powder, Organic - 250g",
+          "pack": "250 g",
+          "gtin": "5060018515847",
+          "identifier_confirmed": true,
+          "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "KIKI Health (UK brand web shop)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "no local binding (generic .com, UK brand shop); cross-border - see ships_to_evidence",
+          "cross_border": true,
+          "ships_to_evidence": "country selector on the product page lists 'Kuwait (GBP £)'; shipping policy https://kiki-health.com/policies/shipping-policy checked with check_quotes.py (found=true, 2026-09-17): 'For EU and International orders, postage costs vary according to your country.' and 'International Delivery ... Royal Mail International Tracked delivery is used on all orders'",
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": 93.0,
+            "fructose_pct": null,
+            "ingredients": "Made from 100% Blue Agave (organic agave inulin)",
+            "from": "brand product page: '93% soluble plant-based fibre', '5.4g of fibre per serving', 'Completely pure, with no added sugars or sweeteners'"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "pure organic agave inulin, 93 % soluble fibre",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8acbdea5299460ae.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "checked_at_utc": "2026-09-17T16:24:39Z",
+          "identity_note": "gtin13 5060018515847 as JSON-LD data on this purchase page (verifier EAN_ON_GENERIC_TLD_PAGE); the same GTIN/product is sold locally in UAE/KSA by Life Pharmacy"
+        }
+      ],
+      "notes": "No local direct retailer with inulin powder was readable; cross-border brand shop used (the selector prices Kuwait in GBP)."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk",
+        "مسحوق صفار البيض",
+        "صفار البيض المجفف"
+      ],
+      "queries": [
+        "sitemap URL-slug scan (English slug terms): yolk, egg-powder, dried-egg, powdered-egg",
+        "sitemap URL-slug scan (Arabic slug terms, URL-encoded): صفار",
+        "domain probing of GCC grocers/pharmacies for readable catalogues"
+      ],
+      "sources_tried": [
+        "sultan-center.com supermarket (sitemap empty)",
+        "kuwait.whizzcart.com online grocer (Cloudflare challenge)",
+        "q8coop.com co-op (no answer)",
+        "yiaco.com medical group (corporate WordPress site, no product catalogue)",
+        "chefmiddleeast.com GCC professional/pastry supplier (JavaScript-only catalogue, not readable)",
+        "sporter.com health/supplement retailer country page (Cloudflare challenge)"
+      ],
+      "candidates": [],
+      "notes": "No dried egg yolk powder found on any readable source."
+    }
+  },
+  "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; DuckDuckGo/Mojeek/Brave/Ecosia/Yandex/Qwant served CAPTCHAs or firewalls (not bypassed). Discovery used retailer sitemaps (URL-slug scan with English and Arabic terms). GCC-wide sources that could not be read from the ES egress: carrefour country sites (empty bot-protected responses on UAE/KSA/Qatar), luluhypermarket.com (403 on sitemap), iherb.com country subdomains (403), sporter.com country pages (Cloudflare challenge), drnutrition.com (Cloudflare), chefmiddleeast.com professional catalogue (JavaScript-only, no readable catalogue or sitemap). Life Pharmacy and Nahdi (which carry inulin powders in UAE/KSA) have no storefront path for this market."
+}

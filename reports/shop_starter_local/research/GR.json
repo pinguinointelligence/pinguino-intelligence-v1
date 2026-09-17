@@ -1,0 +1,408 @@
+{
+  "iso2": "GR",
+  "country": "Greece",
+  "agent": "research-eu-south",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:00Z",
+  "items": {
+    "CRP": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "κρέμα γάλακτος σε σκόνη",
+        "κρέμα γάλακτος σκόνη",
+        "σκόνη κρέμας γάλακτος"
+      ],
+      "queries": [
+        "κρέμα γάλακτος σε σκόνη (Brave)",
+        "evripidou.gr site search 'σκόνη'",
+        "mymarket.gr / ab.gr site search attempts"
+      ],
+      "sources_tried": [
+        "ingredientsbar.com (UK; dairy cream powder 75 % fat in retail sizes, generic international delivery - lead)",
+        "kallasinc.com (Greek dairy-powder distributor; 42 % cream powder in 25 kg industrial bags only)",
+        "metropak.com.gr (ice-cream raw materials; milk-powder blends only)",
+        "evripidou.gr (bulk food shop; whole milk powder 26 % only - reject)",
+        "sklavenitis.gr (liquid creams/santigi category; search HTTP 403)",
+        "infusion.gr (skimmed milk powder only in result)",
+        "skroutz.gr (price comparison - not used)",
+        "meincupcake.de / backfun.de (German 42 % Sahnepulver shops - delivery lists do not include Greece)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Kallas Inc (distributor)",
+          "product_name": "Κρέμα γάλακτος σκόνη 42% λιπαρά",
+          "pack": "25 kg bags (industrial)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://kallasinc.com/product/6239",
+          "source_type": "RETAILER",
+          "seller": "Kallas Inc (B2B catalogue, Κωδικός 440005)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none (generic .com; Greek-language B2B catalogue)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "name: 'Κρέμα γάλακτος σκόνη 42% λιπαρά'; category 'ΒΙΟΜΗΧΑΝΙΚΟ'; no ingredient list printed",
+            "from": "catalogue page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Right type and fat (42 %), but only 25 kg industrial sacks (above the 5 kg limit) and no online purchase - lead for the owner, not a retail path.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a85eea5b7df868a4.json",
+          "checked_at_utc": "2026-09-17T16:21:16Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Ingredients Bar",
+          "product_name": "Cream Powder | Dairy Milk High-Fat 75% (Product ID 0370)",
+          "pack": "200 g / 500 g / 1.5 kg / 4 kg (size selector)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Ingredients Bar (UK; packed in the UK, produced in Germany)",
+          "page_market": "GB",
+          "market_by": "CURRENCY_ONLY",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none for GR: delivery page only states generic international delivery (no country list)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://ingredientsbar.com/payment-delivery/",
+            "quotes": [
+              "International delivery carries additional charges, which are displayed at checkout based on the delivery address"
+            ],
+            "found": [
+              true
+            ],
+            "explicit_country": false
+          },
+          "composition": {
+            "fat_g": 75.0,
+            "protein_g": 8.5,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Per 100 g: Energy 3094 kJ/750 kcal, Fat 75 g (saturates 51 g), Carbohydrates 12 g (sugars 12 g), Protein 8.5 g, Fibre 0 g, Salt 2 g",
+            "from": "shop page",
+            "carbs_g": 12.0
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "Dairy cream powder at 75 % fat (outside 38-48 %). UK seller (post-Brexit import to the EU/TR); delivery to GR not explicitly stated; several pack sizes on one page, no GTIN. schema InStock.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/756b1dd23bcfc449.json",
+          "checked_at_utc": "2026-09-17T16:40:27Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "No retail (<=5 kg) dairy cream powder found for Greece; no verified cross-border seller of 38-48 % cream powder that lists Greece was found."
+    },
+    "FRU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "φρουκτόζη",
+        "φρουκτόζη σκόνη"
+      ],
+      "queries": [
+        "masoutis.gr / kritikos-sm.gr product sitemap scan 'frouktozh' (Zografos Φρουκτόζη 400gr; MrGrand Φρουκτόζη 200gr - no GTIN on pages)",
+        "mymarket.gr site search 'φρουκτόζη'",
+        "sklavenitis.gr site search 'φρουκτόζη' (HTTP 403)",
+        "vita4you.gr search 'φρουκτόζη' (empty)",
+        "xalkiadakis.gr / masoutis.gr search 'φρουκτόζη' (no products parsed)",
+        "healthtrade.gr search 'φρουκτόζη' / 'fructose' (0)",
+        "evripidou.gr search 'φρουκτόζη' (0)",
+        "openfoodfacts (discovery) 'φρουκτόζη' Greece (0)"
+      ],
+      "sources_tried": [
+        "mymarket.gr (Ζωγράφος Φρουκτόζη 400gr, Akis Φρουκτόζη 200gr - no GTIN on page)",
+        "sklavenitis.gr (HTTP 403 bot wall)",
+        "ab.gr (JS app, results not in HTML)",
+        "vita4you.gr, healthtrade.gr, evripidou.gr, xalkiadakis.gr, masoutis.gr (no fructose product found)",
+        "gourmet-versand.com (country selector lists Greece - cross-border)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sosa Ingredients",
+          "product_name": "Sosa fructose powder, 1 kg, PE dose",
+          "pack": "1 kg",
+          "gtin": "8414933026259",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists the market (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+            "quotes": [
+              "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
+              "Great Britain / United Kingdom Greece Guadeloupe"
+            ],
+            "found": [
+              true,
+              true
+            ],
+            "type": "shipping-cost country selector listing the market"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
+            "from": "retailer page ('EAN Code 8414933026259' printed)",
+            "sugars_g": 100.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5d1bc7a6649ad820.json",
+          "checked_at_utc": "2026-09-17T16:17:18Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Ζωγράφος (Zografos)",
+          "product_name": "Ζωγράφος Φρουκτόζη 400gr",
+          "pack": "400 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.mymarket.gr/zografos-frouktozi-400gr",
+          "source_type": "RETAILER",
+          "seller": "My Market (mymarket.gr)",
+          "page_market": "GR",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .gr",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": 100.0,
+            "ingredients": "Συστατικά: 100% ΦΡΟΥΚΤΟΖΗ; Ενέργεια 400 kcal/100 g; ΧΩΡΙΣ ΓΛΟΥΤΕΝΗ",
+            "from": "retailer page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % fructose. Page shows only the retailer code 'Κωδικός: 275202' (no GTIN), so identity is not proven.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/cf75deea0e56bfa9.json",
+          "checked_at_utc": "2026-09-17T16:04:03Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Local product exists at a Greek supermarket (rank 2) but without a GTIN on the page."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "ινουλίνη",
+        "ινουλίνη σκόνη",
+        "inulin powder"
+      ],
+      "queries": [
+        "pharm24.gr product sitemap scan 'inulin'",
+        "vita4you.gr product sitemap scan 'inulin'",
+        "masoutis.gr / kritikos-sm.gr sitemaps scan 'inoulin'",
+        "mymarket.gr site search 'ινουλίνη' (0)",
+        "healthtrade.gr search 'ινουλίνη' / 'inulin' (0)"
+      ],
+      "sources_tried": [
+        "pharm24.gr (online pharmacy; Now Foods Inulin 227 g, BARCODE printed, in stock)",
+        "vita4you.gr (pharmacy; Now Organic Inulin 227 g listed in sitemap, product page JS shell)",
+        "mymarket.gr (supermarket, 0)",
+        "masoutis.gr (supermarket; only a mastic drink powder with inulin - reject)",
+        "healthtrade.gr (0)",
+        "evripidou.gr (0)",
+        "taste-market.de (EU-Zone 3 lists Griechenland - cross-border backup)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Now Foods",
+          "product_name": "Now Foods Inulin Prebiotic Pure Powder 227g",
+          "pack": "227 g",
+          "gtin": "733739029447",
+          "identifier_confirmed": true,
+          "url": "https://www.pharm24.gr/now-foods-inulin-prebiotic-pure-powder-227g-p-74386.html",
+          "source_type": "RETAILER",
+          "seller": "Pharm24.gr (online pharmacy, Greece; retailer code 074386)",
+          "page_market": "GR",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .gr",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ανά δόση (περίπου 4 γρ.): Θερμίδες 10, Συνολικοί Υδατάνθρακες 4 g, Φυτικές Ίνες 4 g, Βιολογική Ινουλίνη (FOS) (από μπλε αγαύη) 3,3 g",
+            "from": "retailer page (Διατροφικές Πληροφορίες; BARCODE: 733739029447)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Organic agave inulin (labelled FOS); fibre 4 g per ~4 g serving (declared inulin 3.3 g). Page shows 'Άμεση Διαθεσιμότητα (σε απόθεμα)' with only 1 unit left at check time.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3d82e21da1248585.json",
+          "checked_at_utc": "2026-09-17T16:33:48Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Taste Market",
+          "product_name": "Inulin Pulver 100 g Ballaststoff-Pulver | Chicorée Wurzel (Art.-Nr. 27-100g)",
+          "pack": "100 g (other sizes 200 g - 20 kg on the same page)",
+          "gtin": "0710535894134",
+          "identifier_confirmed": true,
+          "url": "https://www.taste-market.de/Inulin-Pulver/27-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Taste Market GmbH (Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: seller's EU shipping zones list the market (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+            "quotes": [
+              "Lieferung in das EU-Ausland oder internationaler Versand",
+              "EU-Zone 2:Italien, Slowakei, Slowenien, Spanien &amp; Ungarn",
+              "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
+            ],
+            "found": [
+              true,
+              true,
+              true
+            ]
+          },
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": 88.0,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: Inulin (aus der Chicoréewurzel). Nährwerte/100 g: Kohlenhydrate 8,0 g, davon Zucker 8,0 g, Ballaststoffe 88 g, Eiweiß 0 g, Salz 0,20 g",
+            "from": "shop page (Zutaten + Nährwertangaben)",
+            "sugars_g": 8.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Chicory inulin, fibre 88 g/100 g (reference 89). itemprop gtin13 0710535894134 sits in the 27-100g variant page data; page offers 14 sizes (identifier checked only for the 100 g variant URL).",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/bb74f3c653deb648.json",
+          "checked_at_utc": "2026-09-17T15:57:48Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Rank 2 (cross-border, 100 g) kept as a backup because rank 1 showed only one unit in stock."
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "κρόκος αυγού σε σκόνη",
+        "σκόνη κρόκου αυγού"
+      ],
+      "queries": [
+        "myprotein.gr product 10529352 (Σκόνη Κρόκου Αυγού)",
+        "evripidou.gr search 'κρόκος' (no yolk powder)"
+      ],
+      "sources_tried": [
+        "myprotein.gr (GTIN on page, OutOfStock)",
+        "evripidou.gr (no yolk powder)",
+        "taste-market.de (EU-Zone 3 lists Griechenland - cross-border, in stock)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Myprotein",
+          "product_name": "Κρόκος αυγού σε σκόνη - 500g - Χωρίς Γεύση",
+          "pack": "500 g",
+          "gtin": "5055534303733",
+          "identifier_confirmed": true,
+          "url": "https://www.myprotein.gr/p/sports-nutrition/egg-yolk-powder/10529352/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Myprotein (THG) country site",
+          "page_market": "GR",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 59.0,
+            "protein_g": 32.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Αυτό το προϊόν είναι 100% κρόκος αυγού σε σκόνη. Ανά 100g: Λιπαρά 59 g (κορεσμένα 20 g), Υδατάνθρακες 2.1 g (σάκχαρα 2.1 g), Πρωτεΐνη 32 g, Αλάτι 2.5 g",
+            "from": "official shop page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % egg yolk powder. JSON-LD pairs gtin13 5055534303733 with weight 500 g; schema availability OutOfStock / inStock:false at check time (same on es/pt/it/gr/com.cy). ",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7cbdb255a26e392c.json",
+          "checked_at_utc": "2026-09-17T15:46:40Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Taste Market",
+          "product_name": "Eigelbpulver 100 g Sprühgetrocknet (Art.-Nr. 123-100g)",
+          "pack": "100 g",
+          "gtin": "4262421423127",
+          "identifier_confirmed": true,
+          "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Taste Market GmbH (Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: seller's EU shipping zones list the market (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+            "quotes": [
+              "Lieferung in das EU-Ausland oder internationaler Versand",
+              "EU-Zone 2:Italien, Slowakei, Slowenien, Spanien &amp; Ungarn",
+              "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
+            ],
+            "found": [
+              true,
+              true,
+              true
+            ]
+          },
+          "composition": {
+            "fat_g": 58.0,
+            "protein_g": 34.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: Hühner-Eigelb, sprühgetrocknet und pasteurisiert. Nährwerte/100 g: Fett 58 g (ges. 18 g), Kohlenhydrate 2,1 g, davon Zucker 0 g, Eiweiß 34 g, Salz 0,4 g",
+            "from": "shop page (Zutaten + Nährwertangaben)",
+            "carbs_g": 2.1
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 58 / protein 34 vs reference 56.5 / 34.5. Page data prints itemprop gtin13 as 14-digit '04262421423127'.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/92e33e290037e4ed.json",
+          "checked_at_utc": "2026-09-17T15:57:50Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Rank 1 local but out of stock at check time; rank 2 in stock (cross-border)."
+    }
+  }
+}

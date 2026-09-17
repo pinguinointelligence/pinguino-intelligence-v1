@@ -1,0 +1,207 @@
+{
+  "iso2": "HK",
+  "country": "Hong Kong SAR China",
+  "agent": "research-east-asia",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:12:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "忌廉粉",
+        "奶油粉",
+        "乳脂粉"
+      ],
+      "queries": [
+        "cream powder (bakingwarehouse.com)",
+        "whipping cream powder (bakingwarehouse.com)",
+        "milk fat / butter powder / dairy cream (bakingwarehouse.com)",
+        "cream powder (wellcome.com.hk)",
+        "忌廉粉 (wellcome.com.hk)",
+        "奶油粉 (wellcome.com.hk)",
+        "cream powder (livezero.hk, slowood.hk)"
+      ],
+      "sources_tried": [
+        "bakingwarehouse.com Shopify predictive search (baking/pastry supplier, HK)",
+        "wellcome.com.hk search (supermarket)",
+        "livezero.hk search (bulk/zero-waste grocer)",
+        "slowood.hk predictive search (organic grocer)",
+        "aeonstores.com.hk (site search is Google CSE only, no product results)",
+        "watsons.com.hk (pharmacy; HTTP 403 Access Denied)",
+        "mannings.com.hk (pharmacy; JS-only search, no server-side results)",
+        "online.citysuper.com.hk (HTTP 429 bot check)",
+        "hktvmall.com (marketplace; JS results / HTTP 501, not usable)",
+        "iHerb hk (Cloudflare challenge, not bypassed)",
+        "results seen: SaporePuro skimmed / lactose-free skimmed milk powder, NZMP whole milk powder 25 kg, Devondale / Dutch Lady full-cream milk powders, Meadows non-dairy coffee creamer, organic coconut cream powder — all rejected types"
+      ],
+      "candidates": [],
+      "notes": "No spray-dried dairy cream powder found at reachable Hong Kong retailers. WebSearch budget exhausted (session-wide 200/200); several HK retailers are behind bot walls, so this BRAK is partly inconclusive."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "fructose",
+        "果糖",
+        "果糖粉",
+        "結晶果糖"
+      ],
+      "queries": [
+        "fructose (bakingwarehouse.com)",
+        "果糖 (bakingwarehouse.com)",
+        "fructose (wellcome.com.hk)",
+        "果糖 (wellcome.com.hk)",
+        "fructose / 果糖 (livezero.hk, slowood.hk)",
+        "果糖 / fructose (hktvmall.com)"
+      ],
+      "sources_tried": [
+        "bakingwarehouse.com Shopify predictive search (baking/pastry supplier, HK)",
+        "wellcome.com.hk search (supermarket)",
+        "livezero.hk search (bulk/zero-waste grocer)",
+        "slowood.hk predictive search (organic grocer)",
+        "aeonstores.com.hk (site search is Google CSE only, no product results)",
+        "watsons.com.hk (pharmacy; HTTP 403 Access Denied)",
+        "mannings.com.hk (pharmacy; JS-only search, no server-side results)",
+        "online.citysuper.com.hk (HTTP 429 bot check)",
+        "hktvmall.com (marketplace; JS results / HTTP 501, not usable)",
+        "iHerb hk (Cloudflare challenge, not bypassed)",
+        "results seen: oligofructose (SaporePuro, Sosa), invert sugar, dextrose, trehalose, glucose powders — not fructose"
+      ],
+      "candidates": [],
+      "notes": "No crystalline fructose found; oligofructose/FOS is a different product type for this slot."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin",
+        "菊粉",
+        "菊糖",
+        "菊苣纖維"
+      ],
+      "queries": [
+        "inulin (bakingwarehouse.com)",
+        "菊粉 (bakingwarehouse.com)",
+        "inulin (wellcome.com.hk)",
+        "菊粉 (wellcome.com.hk)",
+        "inulin (livezero.hk)",
+        "inulin / 菊粉 (slowood.hk)"
+      ],
+      "sources_tried": [
+        "bakingwarehouse.com Shopify predictive search (baking/pastry supplier, HK)",
+        "wellcome.com.hk search (supermarket)",
+        "livezero.hk search (bulk/zero-waste grocer)",
+        "slowood.hk predictive search (organic grocer)",
+        "aeonstores.com.hk (site search is Google CSE only, no product results)",
+        "watsons.com.hk (pharmacy; HTTP 403 Access Denied)",
+        "mannings.com.hk (pharmacy; JS-only search, no server-side results)",
+        "online.citysuper.com.hk (HTTP 429 bot check)",
+        "hktvmall.com (marketplace; JS results / HTTP 501, not usable)",
+        "iHerb hk (Cloudflare challenge, not bypassed)",
+        "saporepuro.myshopify.com (Italian manufacturer shop; used as GTIN source for rank 2)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sosa",
+          "product_name": "Inulin Hot | Sosa | 500gr.",
+          "pack": "500 g",
+          "gtin": "8414933005872",
+          "identifier_confirmed": true,
+          "url": "https://bakingwarehouse.com/products/inulin-hot-sosa-600gr",
+          "source_type": "RETAILER",
+          "seller": "BakingWarehouse (Hong Kong)",
+          "page_market": "HK",
+          "market_by": "EXPLICIT_QUOTE_ON_LOCAL_SELLER (verifier: GENERIC_TLD)",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "explicit local-delivery quote on the seller page, checked with check_quotes.py (found=true): \"香港本地消費滿1000港元免運費\" (SF local delivery, 1–3 working days); bakingwarehouse.com is a generic .com (verifier GENERIC_TLD)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Inulin 100% derived from chicory root; Allergens: No allergens",
+            "from": "product description on the retailer page / product data"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Printed as 100 % inulin from chicory root (no nutrition numbers printed).",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/964a176c557ba571.json",
+          "gtin_source_verdict_file": "~/.cache/gellatti-evidence/verify/619e29778ec315e5.json",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_b58d8cc1702c82f5.json",
+          "notes": "GTIN 8414933005872 is the variant 'barcode' in the retailer's own Shopify product data (bakingwarehouse.com/products/inulin-hot-sosa-600gr.json), not in the HTML. identity_match.py: brand Sosa, name 'Inulin Hot', pack 500gr on both, failed_checks [].",
+          "checked_at_utc": "2026-09-17T16:08:16Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "SaporePuro",
+          "product_name": "Inulin 250gr | Pure Inulin powder SaporePuro",
+          "pack": "250 g",
+          "gtin": "8055728540040",
+          "identifier_confirmed": true,
+          "url": "https://bakingwarehouse.com/products/inulin-250gr-saporepuro",
+          "source_type": "RETAILER",
+          "seller": "BakingWarehouse (Hong Kong)",
+          "page_market": "HK",
+          "market_by": "EXPLICIT_QUOTE_ON_LOCAL_SELLER (verifier: GENERIC_TLD)",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "explicit local-delivery quote on the seller page, checked with check_quotes.py (found=true): \"香港本地消費滿1000港元免運費\" (SF local delivery, 1–3 working days); bakingwarehouse.com is a generic .com (verifier GENERIC_TLD)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "pure inulin powder extracted from European chicory root (Belgium)",
+            "from": "product description on the retailer page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Printed as pure chicory inulin powder; no nutrition numbers printed.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/43d4a07ec9888390.json",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_dc5844d81e041e83.json",
+          "notes": "GTIN 8055728540040 is on the manufacturer's shop data (saporepuro.myshopify.com 'Inulina in polvere pura - 250gr', SKU SPINU-250). identity_match.py: brand SaporePuro, name 'Inulin', pack 250gr, failed_checks [].",
+          "checked_at_utc": "2026-09-17T16:08:56Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "蛋黃粉",
+        "乾燥蛋黃",
+        "dried egg yolk"
+      ],
+      "queries": [
+        "egg yolk powder (bakingwarehouse.com)",
+        "蛋黃粉 (bakingwarehouse.com)",
+        "egg yolk / yolk / dried egg (bakingwarehouse.com)",
+        "egg yolk (wellcome.com.hk)",
+        "蛋黃粉 (wellcome.com.hk)",
+        "egg yolk (livezero.hk, slowood.hk)"
+      ],
+      "sources_tried": [
+        "bakingwarehouse.com Shopify predictive search (baking/pastry supplier, HK)",
+        "wellcome.com.hk search (supermarket)",
+        "livezero.hk search (bulk/zero-waste grocer)",
+        "slowood.hk predictive search (organic grocer)",
+        "aeonstores.com.hk (site search is Google CSE only, no product results)",
+        "watsons.com.hk (pharmacy; HTTP 403 Access Denied)",
+        "mannings.com.hk (pharmacy; JS-only search, no server-side results)",
+        "online.citysuper.com.hk (HTTP 429 bot check)",
+        "hktvmall.com (marketplace; JS results / HTTP 501, not usable)",
+        "iHerb hk (Cloudflare challenge, not bypassed)",
+        "results seen: Ovoteam chilled pasteurised liquid egg yolk 1 kg, dried egg WHITE powders (Louis François, DekorHaus), salted-egg-yolk snacks and mooncakes — rejected types"
+      ],
+      "candidates": [],
+      "notes": "No dried egg yolk powder found; the only yolk product is chilled liquid yolk."
+    }
+  }
+}

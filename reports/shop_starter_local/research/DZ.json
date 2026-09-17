@@ -1,0 +1,152 @@
+{
+  "iso2": "DZ",
+  "country": "Algeria",
+  "agent": "research-mena",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:02Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "crème en poudre",
+        "poudre de crème",
+        "crème de lait en poudre",
+        "بودرة القشدة",
+        "كريمة بودرة"
+      ],
+      "queries": [
+        "parapharmacie-dz.com site-search attempts for 'fructose' and 'inuline' (JavaScript app, nothing readable)",
+        "jumia.dz homepage probe (Cloudflare challenge - catalogue not searchable)",
+        "fructose en poudre Maroc prix (WebSearch; surfaced an Algerian Facebook price post)",
+        "domain probing for Algerian bio / parapharmacy / pastry / nutrition shops (.dz and .com guesses)",
+        "item terms prepared but not searchable on any readable Algerian shop: crème en poudre / بودرة القشدة"
+      ],
+      "sources_tried": [
+        "jumia.dz marketplace (Cloudflare challenge)",
+        "parapharmacie-dz.com parapharmacy (JavaScript app, search not readable)",
+        "yassir.com super-app market (no readable catalogue)",
+        "batolis.com (empty response)",
+        "chefdz.com (recipe blog, not a supplier)",
+        "guessed .dz bio/parapharmacy/pastry domains (did not resolve)"
+      ],
+      "candidates": [],
+      "notes": "No dairy cream powder found on any readable source."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "fructose",
+        "fructose en poudre",
+        "sucre de fruit",
+        "سكر الفركتوز",
+        "فركتوز"
+      ],
+      "queries": [
+        "parapharmacie-dz.com site-search attempts for 'fructose' and 'inuline' (JavaScript app, nothing readable)",
+        "jumia.dz homepage probe (Cloudflare challenge - catalogue not searchable)",
+        "fructose en poudre Maroc prix (WebSearch; surfaced an Algerian Facebook price post)",
+        "domain probing for Algerian bio / parapharmacy / pastry / nutrition shops (.dz and .com guesses)",
+        "item terms prepared but not searchable on any readable Algerian shop: fructose / فركتوز"
+      ],
+      "sources_tried": [
+        "jumia.dz marketplace (Cloudflare challenge)",
+        "parapharmacie-dz.com parapharmacy (JavaScript app, search not readable)",
+        "yassir.com super-app market (no readable catalogue)",
+        "batolis.com (empty response)",
+        "chefdz.com (recipe blog, not a supplier)",
+        "guessed .dz bio/parapharmacy/pastry domains (did not resolve)"
+      ],
+      "candidates": [],
+      "notes": "Discovery only: a Facebook post of an Algerian shop (facebook.com/miniprixdelamosquee) lists 'sucre fructose 250DA' in a diet range - social media, no product identity or composition, not a candidate."
+    },
+    "INU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "inuline",
+        "inuline en poudre",
+        "inuline de chicorée",
+        "إينولين"
+      ],
+      "queries": [
+        "parapharmacie-dz.com site-search attempts for 'fructose' and 'inuline' (JavaScript app, nothing readable)",
+        "jumia.dz homepage probe (Cloudflare challenge - catalogue not searchable)",
+        "fructose en poudre Maroc prix (WebSearch; surfaced an Algerian Facebook price post)",
+        "domain probing for Algerian bio / parapharmacy / pastry / nutrition shops (.dz and .com guesses)",
+        "item terms prepared but not searchable on any readable Algerian shop: inuline / إينولين",
+        "kiki-health.com product page + shipping policy (cross-border)"
+      ],
+      "sources_tried": [
+        "jumia.dz marketplace (Cloudflare challenge)",
+        "parapharmacie-dz.com parapharmacy (JavaScript app, search not readable)",
+        "yassir.com super-app market (no readable catalogue)",
+        "batolis.com (empty response)",
+        "chefdz.com (recipe blog, not a supplier)",
+        "guessed .dz bio/parapharmacy/pastry domains (did not resolve)",
+        "kiki-health.com UK brand shop (GTIN on page; country selector lists this market)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "KIKI Health",
+          "product_name": "Inulin Powder, Organic - 250g",
+          "pack": "250 g",
+          "gtin": "5060018515847",
+          "identifier_confirmed": true,
+          "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "KIKI Health (UK brand web shop)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "no local binding (generic .com, UK brand shop); cross-border - see ships_to_evidence",
+          "cross_border": true,
+          "ships_to_evidence": "country selector on the product page lists 'Algeria (DZD د.ج)'; shipping policy https://kiki-health.com/policies/shipping-policy checked with check_quotes.py (found=true, 2026-09-17): 'For EU and International orders, postage costs vary according to your country.' and 'International Delivery ... Royal Mail International Tracked delivery is used on all orders'",
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": 93.0,
+            "fructose_pct": null,
+            "ingredients": "Made from 100% Blue Agave (organic agave inulin)",
+            "from": "brand product page: '93% soluble plant-based fibre', '5.4g of fibre per serving', 'Completely pure, with no added sugars or sweeteners'"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "pure organic agave inulin, 93 % soluble fibre",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/50d3e7c08c143de5.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "checked_at_utc": "2026-09-17T16:26:27Z",
+          "identity_note": "gtin13 5060018515847 as JSON-LD data on this purchase page (verifier EAN_ON_GENERIC_TLD_PAGE); the same GTIN/product is sold locally in UAE/KSA by Life Pharmacy"
+        }
+      ],
+      "notes": "No local direct retailer with inulin powder was readable; cross-border brand shop used."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "jaune d'oeuf en poudre",
+        "poudre de jaune d'œuf",
+        "صفار البيض المجفف",
+        "بودرة صفار البيض"
+      ],
+      "queries": [
+        "parapharmacie-dz.com site-search attempts for 'fructose' and 'inuline' (JavaScript app, nothing readable)",
+        "jumia.dz homepage probe (Cloudflare challenge - catalogue not searchable)",
+        "fructose en poudre Maroc prix (WebSearch; surfaced an Algerian Facebook price post)",
+        "domain probing for Algerian bio / parapharmacy / pastry / nutrition shops (.dz and .com guesses)",
+        "item terms prepared but not searchable on any readable Algerian shop: jaune d'oeuf en poudre / صفار البيض"
+      ],
+      "sources_tried": [
+        "jumia.dz marketplace (Cloudflare challenge)",
+        "parapharmacie-dz.com parapharmacy (JavaScript app, search not readable)",
+        "yassir.com super-app market (no readable catalogue)",
+        "batolis.com (empty response)",
+        "chefdz.com (recipe blog, not a supplier)",
+        "guessed .dz bio/parapharmacy/pastry domains (did not resolve)"
+      ],
+      "candidates": [],
+      "notes": "No dried egg yolk powder found on any readable source."
+    }
+  },
+  "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; DuckDuckGo/Mojeek/Brave/Ecosia/Yandex/Qwant served CAPTCHAs or firewalls (not bypassed). Discovery used shops' own server-rendered search pages, WooCommerce Store API and sitemaps, plus domain probing. Algerian online retail is thin and the readable sources did not carry any of the items."
+}

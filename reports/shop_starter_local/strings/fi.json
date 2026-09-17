@@ -1,0 +1,57 @@
+{
+  "locale": "fi",
+  "dir": "ltr",
+  "title": "Gelatopohjan raaka-aineet",
+  "benefit": "Mitä ostaa ja mistä",
+  "pill": "PDF · 0 €",
+  "country_label": "Maa",
+  "language_label": "Kieli",
+  "edition": "Painos 1 · syyskuu 2026",
+  "cover_items_title": "Starter Packin seitsemän raaka-ainetta",
+  "howto_title": "Näin käytät opasta",
+  "howto_lede": "Nimeämme jokaiselle Starter Packin raaka-aineelle tuotteen, jonka voit ostaa tästä maasta.",
+  "steps": [
+    {"b": "Valitse yksi tuote", "p": "Ensimmäinen on meidän valintamme, toinen vaihtoehto, jos ensimmäistä ei ole saatavilla."},
+    {"b": "Tarkista pakkausmerkinnät", "p": "Pakkauksen ainesosaluettelon on vastattava raaka-aineen kuvausta. Jos tuotteen koostumus poikkeaa, kerromme sen."},
+    {"b": "Ota määrät sovelluksesta", "p": "Tämä PDF nimeää tuotteita, ei grammamääriä. Reseptit ja määrät laskee Gellatti-sovellus."}
+  ],
+  "legend_title": "Selitteet",
+  "tag_from_abroad": "Ulkomailta",
+  "tag_b2b": "Yrityksille",
+  "tag_other_composition": "Eri koostumus",
+  "tag_alternative": "Paikallinen vaihtoehto",
+  "tag_unconfirmed": "Vahvistamaton",
+  "legend": {
+    "from_abroad": "ulkomainen kauppa, joka toimittaa tähän maahan",
+    "b2b": "myydään yrityksille tai suurissa pakkauksissa",
+    "other_composition": "samantyyppinen tuote eri koostumuksella (ilmoitettu vieressä)",
+    "alternative": "korvike toiselle Gellatti-tuotteelle"
+  },
+  "starter_amount": "Starter Packissa: {g} g",
+  "option": "Vaihtoehto {n}",
+  "ean": "EAN",
+  "where": "Mistä",
+  "fat": "rasva",
+  "items": {
+    "DEX": {"name": "Dekstroosi", "ref": "Dekstroosi (glukoosi) jauheena, monohydraatti."},
+    "SMP": {"name": "Rasvaton maitojauhe", "ref": "Maitojauhe, jossa on noin 1 % rasvaa."},
+    "CRP": {"name": "Kermajauhe", "ref": "Kuivattu kerma, jossa on noin 42 % rasvaa."},
+    "FRU": {"name": "Hedelmäsokeri", "ref": "Puhdas kiteinen fruktoosi."},
+    "INU": {"name": "Inuliini", "ref": "Inuliinijauhe, esimerkiksi sikurista."},
+    "YOL": {"name": "Kuivattu munankeltuainen", "ref": "Pastöroitu kananmunan keltuaisjauhe."},
+    "STB": {"name": "Stabilointiaine", "ref": "Gellatti Stabilizer on tarakumin, johanneksenleipäpuujauheen ja guarkumin seos."}
+  },
+  "stabilizer_note": "Paikallinen vaihtoehto Gellatti-seokselle, ei sama seos. Sekoita se kuiviin raaka-aineisiin ja kuumenna pohja lämpötilaan 75–80 °C.",
+  "missing": "Tässä maassa ei ole vielä hyväksyttyä tuotetta.",
+  "notes_title": "Hyvä tietää",
+  "notes": [
+    {"h": "Saatavuus", "p": "Tarkistimme tuotteet valmistajien ja kauppojen verkkosivuilta syyskuussa 2026. Saatavuus, hinnat ja toimitus voivat muuttua, eikä niitä taata."},
+    {"h": "Pakkausmerkinnät ratkaisevat", "p": "Tarkista ennen ostamista pakkauksen ainesosat ja allergeenit. Kermajauhe ja maitojauhe sisältävät maitoa, munankeltuainen sisältää kananmunaa."},
+    {"h": "Stabilointiaine", "p": "Tässä maassa Gellatti Stabilizer korvataan paikallisella kasviperäisellä kumilla. Se toimii samankaltaisesti, mutta ei ole sama seos."}
+  ],
+  "fine": "Tässä mainittu tuote ei välttämättä ole vielä saatavilla Gellatti-sovelluksessa. Gellatti ei myy muiden tuotemerkkien tuotteita.",
+  "back_h": "Upea gelato alkaa hyvästä pohjasta.",
+  "back_p": "Reseptit, määrät ja valmistusvaiheet löydät Gellatti-sovelluksesta.",
+  "back_link": "gellatti.com",
+  "draft": "LUONNOS · ehdotukset hyväksyttäväksi"
+}

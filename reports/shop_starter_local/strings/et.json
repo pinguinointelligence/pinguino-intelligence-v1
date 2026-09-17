@@ -1,0 +1,57 @@
+{
+  "locale": "et",
+  "dir": "ltr",
+  "title": "Gelato aluse koostisosad",
+  "benefit": "Mida osta ja kust",
+  "pill": "PDF · 0 €",
+  "country_label": "Riik",
+  "language_label": "Keel",
+  "edition": "Väljaanne 1 · september 2026",
+  "cover_items_title": "Starter Packi seitse koostisosa",
+  "howto_title": "Kuidas juhendit kasutada",
+  "howto_lede": "Iga Starter Packi koostisosa kohta nimetame toote, mida saad selles riigis osta.",
+  "steps": [
+    {"b": "Vali üks toode", "p": "Esimene on meie valik, teine on alternatiiv juhuks, kui esimest pole saada."},
+    {"b": "Kontrolli etiketti", "p": "Pakendil olev koostis peab vastama koostisosa kirjeldusele. Kui toote koostis erineb, märgime selle ära."},
+    {"b": "Võta kogused rakendusest", "p": "See PDF nimetab tooteid, mitte koguseid grammides. Retseptid ja kogused arvutab Gellatti rakendus."}
+  ],
+  "legend_title": "Tähised",
+  "tag_from_abroad": "Välismaalt",
+  "tag_b2b": "Ettevõtetele",
+  "tag_other_composition": "Erinev koostis",
+  "tag_alternative": "Kohalik alternatiiv",
+  "tag_unconfirmed": "Kinnitamata",
+  "legend": {
+    "from_abroad": "välismaine pood, mis tarnib sellesse riiki",
+    "b2b": "müüakse ettevõtetele või suurtes pakendites",
+    "other_composition": "sama liiki toode, kuid erineva koostisega (näidatud kõrval)",
+    "alternative": "asendus mõnele teisele Gellatti tootele"
+  },
+  "starter_amount": "Starter Packis: {g} g",
+  "option": "Valik {n}",
+  "ean": "EAN",
+  "where": "Kust",
+  "fat": "rasv",
+  "items": {
+    "DEX": {"name": "Dekstroos", "ref": "Dekstroos (glükoos) pulbrina, monohüdraat."},
+    "SMP": {"name": "Lõssipulber", "ref": "Piimapulber, milles on umbes 1% rasva."},
+    "CRP": {"name": "Koorepulber", "ref": "Kuivatatud koor, milles on umbes 42% rasva."},
+    "FRU": {"name": "Fruktoos", "ref": "Puhas kristalliline fruktoos."},
+    "INU": {"name": "Inuliin", "ref": "Inuliinipulber, näiteks sigurist."},
+    "YOL": {"name": "Kuivatatud munakollane", "ref": "Pastöriseeritud kanamunakollase pulber."},
+    "STB": {"name": "Stabilisaator", "ref": "Gellatti Stabilizer on taarakummi, jaanikaunapuu seemnejahu ja guarkummi segu."}
+  },
+  "stabilizer_note": "Kohalik alternatiiv Gellatti segule, mitte sama segu. Sega see kuivade koostisosadega ja kuumuta alus temperatuurini 75–80 °C.",
+  "missing": "Selles riigis pole veel kinnitatud toodet.",
+  "notes_title": "Hea teada",
+  "notes": [
+    {"h": "Saadavus", "p": "Kontrollisime neid tooteid tootjate ja poodide veebilehtedel 2026. aasta septembris. Saadavus, hinnad ja tarne võivad muutuda ega ole tagatud."},
+    {"h": "Etikett on esmatähtis", "p": "Enne ostmist kontrolli pakendilt koostisosi ja allergeene. Koorepulber ja piimapulber sisaldavad piima, munakollane sisaldab muna."},
+    {"h": "Stabilisaator", "p": "Selles riigis asendatakse Gellatti Stabilizer kohaliku taimse kummiga. See toimib sarnaselt, kuid ei ole sama segu."}
+  ],
+  "fine": "Siin nimetatud toode ei pruugi Gellatti rakenduses veel saadaval olla. Gellatti ei müü teiste kaubamärkide tooteid.",
+  "back_h": "Suurepärane gelato algab heast alusest.",
+  "back_p": "Retseptid, kogused ja valmistamise käigu leiad Gellatti rakendusest.",
+  "back_link": "gellatti.com",
+  "draft": "MUSTAND · heakskiitmist ootavad ettepanekud"
+}

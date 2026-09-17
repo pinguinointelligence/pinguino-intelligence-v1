@@ -1,0 +1,229 @@
+{
+  "placeholder_core_box": [
+    41,
+    31,
+    472,
+    493
+  ],
+  "R": 25,
+  "lambda": 4.0,
+  "items": [
+    {
+      "sku": "GEL-DEX-500",
+      "source": "PI-ING-000494.png",
+      "out": "dextrose.png",
+      "align": {
+        "scale": 2.466,
+        "tx": -1.25,
+        "ty": -8.5,
+        "edge_err_mean": 0.65,
+        "edge_err_p95": 2.0,
+        "edge_err_max": 4.0
+      },
+      "snap_offset_px": {
+        "min": -6.5,
+        "max": 7.9,
+        "at_limit": 0,
+        "points": 4127
+      },
+      "weak_edge_points(<4)": 42,
+      "holes_filled_px": 0,
+      "shadow_removed_px": 48895,
+      "core_box_512": [
+        42,
+        33,
+        469,
+        494
+      ],
+      "iou_vs_placeholder_512": 0.9938,
+      "bytes": 231666,
+      "sha256": "d2a3e0c08aed4635ad523fed956e132954a3a8427104475b48e7cb250a0e8626"
+    },
+    {
+      "sku": "GEL-FRU-500",
+      "source": "PI-ING-000496.png",
+      "out": "fructose.png",
+      "align": {
+        "scale": 2.468,
+        "tx": -2.25,
+        "ty": -8.25,
+        "edge_err_mean": 0.82,
+        "edge_err_p95": 3.0,
+        "edge_err_max": 7.0
+      },
+      "snap_offset_px": {
+        "min": -6.5,
+        "max": 7.4,
+        "at_limit": 0,
+        "points": 4131
+      },
+      "weak_edge_points(<4)": 47,
+      "holes_filled_px": 0,
+      "shadow_removed_px": 56667,
+      "core_box_512": [
+        43,
+        33,
+        470,
+        493
+      ],
+      "iou_vs_placeholder_512": 0.9942,
+      "bytes": 231454,
+      "sha256": "30b0bdd7c00e8200e4d1bc2611c2a5f340afb6d031dede6de9d544af63a9e21c"
+    },
+    {
+      "sku": "GEL-INU-500",
+      "source": "PI-ING-000456.png",
+      "out": "inulin.png",
+      "align": {
+        "scale": 2.47,
+        "tx": -3.0,
+        "ty": -7.75,
+        "edge_err_mean": 0.71,
+        "edge_err_p95": 2.0,
+        "edge_err_max": 6.0
+      },
+      "snap_offset_px": {
+        "min": -5.5,
+        "max": 18.2,
+        "at_limit": 0,
+        "points": 4136
+      },
+      "weak_edge_points(<4)": 152,
+      "holes_filled_px": 0,
+      "shadow_removed_px": 52519,
+      "core_box_512": [
+        40,
+        33,
+        472,
+        493
+      ],
+      "iou_vs_placeholder_512": 0.9915,
+      "bytes": 225869,
+      "sha256": "33c05c608f537e7c67c693a1e03af912e39f98b935bc70f34cf1011bdfcf22e2"
+    },
+    {
+      "sku": "GEL-STB-500",
+      "source": "PI-ING-002114.png",
+      "out": "gellatti-stabilizer.png",
+      "align": {
+        "scale": 2.472,
+        "tx": -3.0,
+        "ty": -7.75,
+        "edge_err_mean": 0.73,
+        "edge_err_p95": 2.0,
+        "edge_err_max": 5.0
+      },
+      "snap_offset_px": {
+        "min": -5.5,
+        "max": 4.9,
+        "at_limit": 0,
+        "points": 4139
+      },
+      "weak_edge_points(<4)": 67,
+      "holes_filled_px": 0,
+      "shadow_removed_px": 51505,
+      "core_box_512": [
+        42,
+        33,
+        469,
+        492
+      ],
+      "iou_vs_placeholder_512": 0.9954,
+      "bytes": 224011,
+      "sha256": "290e03751c909d4f7876b9eb7e2248b9e58be0453dafb3a2a1eac29a4ae8dac9"
+    },
+    {
+      "sku": "GEL-YOL-500",
+      "source": "PI-ING-001645.png",
+      "out": "dried-egg-yolk.png",
+      "align": {
+        "scale": 2.472,
+        "tx": -3.25,
+        "ty": -11.75,
+        "edge_err_mean": 0.71,
+        "edge_err_p95": 2.0,
+        "edge_err_max": 6.0
+      },
+      "snap_offset_px": {
+        "min": -7.5,
+        "max": 9.0,
+        "at_limit": 0,
+        "points": 4139
+      },
+      "weak_edge_points(<4)": 57,
+      "holes_filled_px": 0,
+      "shadow_removed_px": 55171,
+      "core_box_512": [
+        42,
+        32,
+        470,
+        494
+      ],
+      "iou_vs_placeholder_512": 0.9925,
+      "bytes": 295757,
+      "sha256": "127214c534f3022a84d344c6a4edb17d9118e80f0582a8777ea384e1fc7d7c4f"
+    },
+    {
+      "sku": "GEL-SMP-500",
+      "source": "PI-ING-000270.png",
+      "out": "skimmed-milk-powder.png",
+      "align": {
+        "scale": 2.472,
+        "tx": -3.25,
+        "ty": -8.25,
+        "edge_err_mean": 0.7,
+        "edge_err_p95": 2.0,
+        "edge_err_max": 7.0
+      },
+      "snap_offset_px": {
+        "min": -6.5,
+        "max": 5.1,
+        "at_limit": 0,
+        "points": 4138
+      },
+      "weak_edge_points(<4)": 48,
+      "holes_filled_px": 0,
+      "shadow_removed_px": 57146,
+      "core_box_512": [
+        43,
+        32,
+        469,
+        493
+      ],
+      "iou_vs_placeholder_512": 0.9957,
+      "bytes": 257216,
+      "sha256": "1f8074a80c4323027f67203fb7a65dd65278afa295b35101549b344e57d0143e"
+    },
+    {
+      "sku": "GEL-CRP-500",
+      "source": "PI-ING-000260.png",
+      "out": "cream-powder-42.png",
+      "align": {
+        "scale": 2.468,
+        "tx": -0.75,
+        "ty": -12.75,
+        "edge_err_mean": 1.08,
+        "edge_err_p95": 3.0,
+        "edge_err_max": 5.0
+      },
+      "snap_offset_px": {
+        "min": -7.5,
+        "max": 9.9,
+        "at_limit": 0,
+        "points": 4133
+      },
+      "weak_edge_points(<4)": 60,
+      "holes_filled_px": 0,
+      "shadow_removed_px": 61464,
+      "core_box_512": [
+        42,
+        33,
+        470,
+        495
+      ],
+      "iou_vs_placeholder_512": 0.9897,
+      "bytes": 245346,
+      "sha256": "46c8afd73350d317ed5a71078838cc68b0528f20858e5c37dd32ecf82ba43584"
+    }
+  ]
+}

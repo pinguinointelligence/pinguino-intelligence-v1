@@ -1,0 +1,57 @@
+{
+  "locale": "fil",
+  "dir": "ltr",
+  "title": "Mga sangkap ng gelato base",
+  "benefit": "Ano ang bibilhin at saan",
+  "pill": "PDF · €0",
+  "country_label": "Bansa",
+  "language_label": "Wika",
+  "edition": "Edisyon 1 · Setyembre 2026",
+  "cover_items_title": "Ang pitong sangkap ng Starter Pack",
+  "howto_title": "Paano gamitin ang gabay na ito",
+  "howto_lede": "Para sa bawat sangkap ng Starter Pack, nagbibigay kami ng produktong mabibili sa bansang ito.",
+  "steps": [
+    {"b": "Pumili ng isang produkto", "p": "Ang una ay ang aming pinili; ang ikalawa ay alternatibo kung hindi makukuha ang una."},
+    {"b": "Suriin ang label", "p": "Ang listahan ng sangkap sa pakete ay dapat tumugma sa paglalarawan ng item. Kung naiiba ang komposisyon ng isang produkto, sinasabi namin ito."},
+    {"b": "Kunin ang dami sa app", "p": "Ang PDF na ito ay nagbibigay ng mga produkto, hindi ng dami sa gramo. Ang mga recipe at dami ay kinakalkula ng Gellatti app."}
+  ],
+  "legend_title": "Mga palatandaan",
+  "tag_from_abroad": "Mula sa ibang bansa",
+  "tag_b2b": "Para sa negosyo",
+  "tag_other_composition": "Ibang komposisyon",
+  "tag_alternative": "Lokal na alternatibo",
+  "tag_unconfirmed": "Hindi kumpirmado",
+  "legend": {
+    "from_abroad": "tindahan sa ibang bansa na nagpapadala sa bansang ito",
+    "b2b": "ibinebenta sa mga negosyo o sa malalaking pakete",
+    "other_composition": "parehong uri ng produkto na may ibang komposisyon (nakasaad sa tabi)",
+    "alternative": "pamalit sa ibang produkto ng Gellatti"
+  },
+  "starter_amount": "Sa Starter Pack: {g} g",
+  "option": "Opsiyon {n}",
+  "ean": "EAN",
+  "where": "Saan",
+  "fat": "taba",
+  "items": {
+    "DEX": {"name": "Dextrose", "ref": "Pulbos na dextrose (glucose), monohydrate."},
+    "SMP": {"name": "Pulbos na skim milk", "ref": "Pulbos na gatas na may humigit-kumulang 1% taba."},
+    "CRP": {"name": "Pulbos na krema", "ref": "Pinatuyong krema na may humigit-kumulang 42% taba."},
+    "FRU": {"name": "Fructose", "ref": "Dalisay na kristal na fructose."},
+    "INU": {"name": "Inulin", "ref": "Pulbos na inulin, halimbawa mula sa chicory."},
+    "YOL": {"name": "Pinatuyong pula ng itlog", "ref": "Pulbos na pula ng itlog ng manok, pasteurized."},
+    "STB": {"name": "Stabilizer", "ref": "Ang Gellatti Stabilizer ay timpla ng tara gum, locust bean gum at guar gum."}
+  },
+  "stabilizer_note": "Lokal na alternatibo sa timpla ng Gellatti, hindi ang parehong timpla. Ihalo ito sa mga tuyong sangkap at initin ang base sa 75–80 °C.",
+  "missing": "Wala pang aprubadong produkto sa bansang ito.",
+  "notes_title": "Mabuting malaman",
+  "notes": [
+    {"h": "Pagkakaroon ng produkto", "p": "Sinuri namin ang mga produktong ito sa mga website ng mga tagagawa at tindahan noong Setyembre 2026. Ang pagkakaroon ng produkto, presyo at paghahatid ay maaaring magbago at hindi garantisado."},
+    {"h": "Ang label ang masusunod", "p": "Bago bumili, suriin ang mga sangkap at allergen sa pakete. Ang pulbos na krema at pulbos na gatas ay naglalaman ng gatas; ang pula ng itlog ay naglalaman ng itlog."},
+    {"h": "Stabilizer", "p": "Sa bansang ito, isang lokal na gum mula sa halaman ang pumapalit sa Gellatti Stabilizer. Gumagana ito sa katulad na paraan, ngunit hindi ang parehong timpla."}
+  ],
+  "fine": "Ang produktong nakasaad dito ay hindi kinakailangang makukuha na sa Gellatti app. Hindi nagbebenta ang Gellatti ng mga produkto ng ibang brand.",
+  "back_h": "Ang mahusay na gelato ay nagsisimula sa magandang base.",
+  "back_p": "Ang mga recipe, dami at proseso ay nasa Gellatti app.",
+  "back_link": "gellatti.com",
+  "draft": "BORADOR · mga mungkahi para sa pag-apruba"
+}

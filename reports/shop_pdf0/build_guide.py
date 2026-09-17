@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
-"""GELLATTI SHOP — free 0 € PDF: the 75-country gelato BASE guide.
+"""GELLATTI SHOP — free 0 € PDF: "Gelato Base Ingredients", the 75-country gelato base shopping guide (v1.1).
 
 Source authority (owner, 2026-09-12): GELLATTI_BAZA_GELATO_75_KRAJOW_v23_SYNC_FINAL.xlsx, frozen.
 Every product field is copied from v23: sheet 04_POKRYCIE_PR (the 75 × 6 matrix) and the role sheets 11_MLEKO_75,
 14_SMIETANKA_75, 17_PROSZEK_75, 20_DEKSTROZA_75 and 23_TARA_75. Nothing is researched, re-selected or substituted.
+
+v1.1 (owner G1, reconciliation report 2026-09-17, sections C1–C2, E8, G1):
+  - title "Gelato Base Ingredients" (cover, running header, back cover, PDF title); cover per E8, without the dominant
+    "75" and without the promise of a product for every ingredient; page 2 step 2 gives products for five ingredients
+    and a buying rule plus the confirmed local name for sugar;
+  - the one addition beyond v23: the owner-approved local sugar names (decisions D-8 and D-32) from
+    reports/a03/sucrose_consumer_terms_approved.csv, pinned by sha256, shown as "Local name: …" on those markets'
+    sugar rows only (no brand, no EAN). The other markets keep only the English sugar rule.
+  - v1 outputs (GELLATTI_GELATO_BASE_GUIDE_75_COUNTRIES_v1.pdf, guide_dataset.json/.csv, layout_report.json,
+    build/guide.html) are kept; v1.1 writes new, versioned files.
 Presentation changes only:
   - English labels. Polish pack wording and the Polish v23 notes are translated through fixed tables (PACK_EN,
     V23_TEXT_EN). A v23 text that is not in a table stops the build instead of being guessed.
@@ -14,9 +24,10 @@ Presentation changes only:
     SMP/DEXTROSE offer text says import or cross-border.
 
 usage: build_guide.py [--xlsx PATH] [--node-modules DIR] [--no-pdf]
-Outputs: reports/shop_pdf0/ (dataset, PDF, layout report); reports/shop_pdf0/build/ (HTML, fonts; not in git).
+Outputs: reports/shop_pdf0/ (GELLATTI_GELATO_BASE_INGREDIENTS_v1.1.pdf, guide_dataset_v1.1.json/.csv,
+layout_report_v1.1.json); reports/shop_pdf0/build/ (guide_v1.1.html, fonts; not in git).
 """
-import argparse, csv, hashlib, html, json, os, re, shutil, subprocess, sys, unicodedata, zipfile
+import argparse, csv, hashlib, html, io, json, os, re, shutil, subprocess, sys, unicodedata, zipfile
 from decimal import Decimal, ROUND_HALF_UP
 from xml.etree import ElementTree as ET
 
@@ -27,9 +38,23 @@ DEFAULT_XLSX = os.path.expanduser('~/Developer/gellatti-owner-inputs/2026-09-12_
                                   'GELLATTI_BAZA_GELATO_75_KRAJOW_v23_SYNC_FINAL.xlsx')
 DEFAULT_NODE_MODULES = os.path.expanduser('~/Developer/pinguino-intelligence-v1/node_modules')
 CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-PDF_NAME = 'GELLATTI_GELATO_BASE_GUIDE_75_COUNTRIES_v1.pdf'
-TITLE = 'Gelato Base Guide'
+VERSION = 'v1.1'
+PDF_NAME = f'GELLATTI_GELATO_BASE_INGREDIENTS_{VERSION}.pdf'
+DATASET_NAME = f'guide_dataset_{VERSION}'          # .json and .csv
+LAYOUT_NAME = f'layout_report_{VERSION}.json'
+HTML_NAME = f'guide_{VERSION}.html'
+TITLE = 'Gelato Base Ingredients'
+BENEFIT = 'What to buy and where'
+COVER_FORMAT = 'PDF shopping guide · Free · €0'
+COVER_COVERAGE = 'Covers 75 countries — find yours in the index'
 EDITION = 'Edition 1 · September 2026'
+
+# Local sugar names: owner decisions D-8 (the PDF uses the local consumer term) and D-32 (28 approved markets; Japan
+# グラニュー糖, never 上白糖; a multilingual market keeps every approved locale variant). Pinned: a changed list stops the build.
+SUCROSE_TERMS = os.path.join(HERE, '..', 'a03', 'sucrose_consumer_terms_approved.csv')
+SUCROSE_TERMS_SHA = '266acc7e166ae6067e181d042852c6cfebecb74b2d02345bd0d105d3b7368066'
+SUCROSE_MARKETS = 28
+LANGUAGE_EN = {'fi': 'Finnish', 'sv': 'Swedish'}   # shown only where a market has more than one approved name
 ROLES = ['MILK', 'CREAM', 'SMP', 'SUCROSE', 'DEXTROSE', 'TARA']
 ROLE_LABEL = {'MILK': 'Milk', 'CREAM': 'Cream', 'SMP': 'Skim milk powder', 'SUCROSE': 'Sugar',
               'DEXTROSE': 'Dextrose', 'TARA': 'Tara gum'}
@@ -234,8 +259,48 @@ def sort_key(name):
     return unicodedata.normalize('NFKD', name).encode('ascii', 'ignore').decode().casefold()
 
 
-def build_dataset(book):
+def load_sucrose_terms():
+    """Owner-approved local sugar names by market: {iso: [{locale, term, csv_line, basis}]}, plus source issues.
+    Nothing outside the pinned D-32 list is used, and a row that D-32 does not allow stops the build."""
     issues = []
+    raw = open(SUCROSE_TERMS, 'rb').read()
+    sha = hashlib.sha256(raw).hexdigest()
+    if sha != SUCROSE_TERMS_SHA:
+        issues.append(f'sucrose_consumer_terms_approved.csv sha256 {sha} is not the pinned D-32 list {SUCROSE_TERMS_SHA}')
+    terms = {}
+    reader = csv.DictReader(io.StringIO(raw.decode('utf-8'), newline=''))
+    for r in reader:
+        iso, loc, term, basis = r['iso2'].strip(), r['locale'].strip(), r['approved_term'], r['basis'].strip()
+        where = f'sucrose terms line {reader.line_num} ({iso}/{loc})'
+        if not (basis.startswith('OWNER_') and 'D-32' in basis):
+            issues.append(f'{where}: basis {basis!r} is not an owner D-32 approval')
+        if not term or term != term.strip() or unicodedata.normalize('NFC', term) != term:
+            issues.append(f'{where}: term {term!r} is empty, padded or not NFC')
+        terms.setdefault(iso, []).append({'locale': loc, 'term': term, 'csv_line': reader.line_num, 'basis': basis})
+    if len(terms) != SUCROSE_MARKETS:
+        issues.append(f'sucrose terms: {len(terms)} markets, D-32 approves {SUCROSE_MARKETS}')
+    if [t['term'] for t in terms.get('JP', [])] != ['グラニュー糖']:
+        issues.append(f'sucrose terms: JP must be グラニュー糖 (D-32), found {terms.get("JP")}')
+    if any('上白糖' in t['term'] for ts in terms.values() for t in ts):
+        issues.append('sucrose terms: 上白糖 never stands in for plain white sugar (D-32)')
+    for iso, ts in terms.items():
+        if len({t['locale'] for t in ts}) != len(ts):
+            issues.append(f'sucrose terms: {iso} repeats a locale')
+        if len(ts) > 1 and any(t['locale'] not in LANGUAGE_EN for t in ts):
+            issues.append(f'sucrose terms: {iso} has several names; add their language names to LANGUAGE_EN')
+    return terms, sha, issues
+
+
+def local_name_text(ts):
+    """The visible text of the local-name line (the HTML in item_html prints exactly this)."""
+    if len(ts) == 1:
+        return f'Local name: {ts[0]["term"]}'
+    return 'Local names: ' + ' · '.join(f'{t["term"]} ({LANGUAGE_EN[t["locale"]]})' for t in ts)
+
+
+def build_dataset(book, sugar_terms=None):
+    issues = []
+    sugar_terms = sugar_terms or {}
     countries = {}
     for rn, r in book.table('02_KRAJE_75', ['ISO2', 'Country', 'Region']):
         if iso_row(r, 'ISO2'):
@@ -257,6 +322,9 @@ def build_dataset(book):
     for c in countries.values():
         if not c['region']:
             issues.append(f'{c["iso"]}: unknown region code {c["region_code"]}')
+    for iso in sugar_terms:
+        if iso not in countries:
+            issues.append(f'sucrose terms: {iso} is not one of the 75 v23 countries')
 
     items = []
     for iso in countries:
@@ -274,6 +342,10 @@ def build_dataset(book):
                           note=translate(r4['Warunek aktywacji'], f'{iso} SUCROSE condition'), ean='')
                 if r4['Marka'] != 'GENERIC':
                     issues.append(f'{iso}/SUCROSE: brand is {r4["Marka"]!r}, expected GENERIC')
+                if iso in sugar_terms:   # v1.1: the approved local name, never a brand or an EAN
+                    it['local_name'] = local_name_text(sugar_terms[iso])
+                    it['local_name_terms'] = sugar_terms[iso]
+                    it['local_name_source'] = 'reports/a03/sucrose_consumer_terms_approved.csv (owner decisions D-8, D-32)'
                 items.append(it)
                 continue
             if iso not in side[role]:
@@ -412,17 +484,15 @@ h1, h2, h3, p { margin: 0; }
 .cv-top { display: flex; justify-content: space-between; align-items: center; }
 .cv-top img { height: 6.2mm; }
 .cv-free { font-size: 7pt; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; color: var(--ink);
-  border: .7pt solid var(--ink); border-radius: 99px; padding: 1.1mm 2.6mm 1mm; }
-.cv-hero { position: relative; margin-top: 30mm; height: 62mm; flex: none; }
-.cv-scoop { position: absolute; left: 47mm; top: -4mm; width: 52mm; height: 52mm; border-radius: 50%; background: var(--accent); }
-.cv-num { position: absolute; left: -1.5mm; top: 0; font-size: 158pt; line-height: .8; font-weight: 800;
-  letter-spacing: -.07em; color: var(--ink); mix-blend-mode: multiply; }
-.cv-numlab { position: absolute; left: 1mm; top: 49mm; font-size: 8pt; font-weight: 750; letter-spacing: .18em;
-  text-transform: uppercase; color: var(--ink); }
+  border: .7pt solid var(--ink); border-radius: 99px; padding: 1.1mm 2.6mm 1mm; white-space: nowrap; }
+/* v1.1 (E8): the title leads in the upper half, the benefit second, format and price quiet in the pill */
+.cv-head { margin-top: 30mm; flex: none; }
+.cv-title { font-size: 42pt; font-weight: 800; letter-spacing: -.035em; line-height: 1.02; text-wrap: balance; }
+.cv-benefit { margin-top: 5mm; font-size: 16pt; font-weight: 650; letter-spacing: -.012em; line-height: 1.25; color: var(--ink); }
+.cv-scoop { position: absolute; right: 10mm; top: 118mm; width: 30mm; height: 30mm; border-radius: 50%; background: var(--accent); }
 .cv-text { margin-top: auto; }
-.cv-title { font-size: 27pt; font-weight: 800; letter-spacing: -.03em; line-height: 1.02; }
-.cv-sub { margin-top: 3.4mm; font-size: 10pt; line-height: 1.42; color: var(--text2); max-width: 88mm; }
-.cv-six { list-style: none; margin: 7mm 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 6mm; }
+.cv-cover { font-size: 9pt; line-height: 1.42; color: var(--text2); }
+.cv-six { list-style: none; margin: 4.4mm 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 6mm; }
 .cv-six li { font-size: 9pt; font-weight: 650; padding: 1.9mm 0 1.7mm; border-top: .5pt solid var(--line); }
 .cv-six li:nth-child(n+5) { border-bottom: .5pt solid var(--line); }
 .cv-foot { margin-top: 10mm; display: flex; justify-content: space-between; font-size: 7pt; color: var(--muted); letter-spacing: .03em; }
@@ -493,6 +563,9 @@ h1, h2, h3, p { margin: 0; }
 .src { color: var(--text2); border-bottom: .5pt solid var(--line-strong); overflow-wrap: anywhere; }
 .arr { width: 5.2pt; height: 5.2pt; margin-left: .9pt; vertical-align: .2pt; color: var(--accent-line); }
 .seller { margin-top: .5mm; font-size: 7.9pt; color: var(--text2); }
+.lname { margin-top: .6mm; font-size: 8.4pt; line-height: 1.34; color: var(--text2); overflow-wrap: anywhere; }
+.lname .lt { color: var(--ink); font-weight: 650; unicode-bidi: isolate; }
+.lname .pair { white-space: nowrap; }   /* a name never parts from its language */
 .note { margin-top: .5mm; font-size: 7.5pt; line-height: 1.33; color: var(--muted); }
 .note a { color: var(--text2); border-bottom: .5pt solid var(--line-strong); }
 
@@ -502,7 +575,7 @@ h1, h2, h3, p { margin: 0; }
 .page.tight .run { margin-bottom: 3.6mm; }
 .page.tight .steps li { padding: 2.6mm 0 2.8mm; }
 .page.tighter .name { font-size: 10.1pt; }
-.page.tighter .meta { font-size: 8.1pt; }
+.page.tighter .meta, .page.tighter .lname { font-size: 8.1pt; }
 .page.tighter .idl, .page.tighter .seller { font-size: 7.6pt; }
 
 /* notes */
@@ -535,13 +608,13 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
     const over = flow ? Math.round(flow.scrollHeight - flow.clientHeight) : 0;
     const pageOver = Math.round(p.scrollHeight - p.clientHeight);
     const wide = [];
-    p.querySelectorAll('.name,.meta,.idl,.note,.seller,.ie,.rl,.cname,.h1,.lede,.steps p,.ing p,.nt p,.bk-p,.idx').forEach(el => {
+    p.querySelectorAll('.name,.meta,.lname,.idl,.note,.seller,.ie,.rl,.cname,.h1,.lede,.steps p,.ing p,.nt p,.bk-p,.idx,.cv-title,.cv-benefit,.cv-cover,.cv-free').forEach(el => {
       if (el.scrollWidth > el.clientWidth + 1) wide.push((el.className || el.tagName) + ': ' + el.textContent.trim().slice(0, 50));
     });
     // nothing may reach past the page's content box (a grid track that grows would push text off the page)
     const pr = p.getBoundingClientRect(), cs = getComputedStyle(p);
     const right = pr.right - parseFloat(cs.paddingRight) + 0.5, left = pr.left + parseFloat(cs.paddingLeft) - 0.5;
-    p.querySelectorAll('.name,.meta,.meta span,.idl > *,.seller,.note,.rl,.tag,.cname,.ie,.lede,.steps p,.ing p,.nt p,.bk-p,.cv-six li,.fine,.box p').forEach(el => {
+    p.querySelectorAll('.name,.meta,.meta span,.lname,.lname span,.idl > *,.seller,.note,.rl,.tag,.cname,.ie,.lede,.steps p,.ing p,.nt p,.bk-p,.cv-six li,.fine,.box p,.cv-title,.cv-benefit,.cv-cover,.cv-free,.cv-scoop').forEach(el => {
       const r = el.getBoundingClientRect();
       if (r.width && (r.right > right || r.left < left)) wide.push('outside content box ' + (el.className || el.tagName) + ': ' + el.textContent.trim().slice(0, 40));
     });
@@ -568,12 +641,14 @@ def foot(page_no, back=True):
 
 
 def page_cover():
+    """E8: title first (upper half, where the "75" was), the benefit second, "PDF · Free · €0" quiet in the existing pill;
+    coverage as small text; one smaller accent circle lower right; logo, ingredient list and footer unchanged."""
     six = ''.join(f'<li>{E(ROLE_LABEL[r])}</li>' for r in ROLES)
     return f'''<section class="page cover" id="cover">
-  <div class="cv-top"><img src="assets/wordmark-graphite.svg" alt="Gellatti"><span class="cv-free">Free guide · 0 €</span></div>
-  <div class="cv-hero"><div class="cv-scoop"></div><div class="cv-num">75</div><div class="cv-numlab">countries</div></div>
-  <div class="cv-text"><div class="cv-title">{TITLE}</div>
-  <p class="cv-sub">The six ingredients of the Gellatti gelato base, matched to a product in each of 75 countries.</p>
+  <div class="cv-top"><img src="assets/wordmark-graphite.svg" alt="Gellatti"><span class="cv-free">{E(COVER_FORMAT)}</span></div>
+  <div class="cv-head"><div class="cv-title">{E(TITLE)}</div><p class="cv-benefit">{E(BENEFIT)}</p></div>
+  <div class="cv-scoop" aria-hidden="true"></div>
+  <div class="cv-text"><p class="cv-cover">{E(COVER_COVERAGE)}</p>
   <ul class="cv-six">{six}</ul></div>
   <div class="cv-foot"><span>{EDITION}</span><span>gellatti.com</span></div>
 </section>'''
@@ -587,8 +662,9 @@ def page_howto():
   <h1 class="h1" style="margin-top:2mm">How to use this guide</h1>
   <ol class="steps">
     <li><div><b>Find your country</b><p>Open the index on page 4 and tap your country, or use your PDF viewer's bookmarks.</p></div></li>
-    <li><div><b>Check the six base ingredients</b><p>Your country page shows the product Gellatti identified for each ingredient,
-      with the brand, the pack size and the barcode where the product has one.</p></div></li>
+    <li><div><b>Check the six base ingredients</b><p>For milk, cream, skim milk powder, dextrose and tara gum, your country page
+      shows the product Gellatti identified, with the brand, the pack size and the barcode where the product has one. For sugar
+      it gives a simple buying rule instead of a brand, plus the local name where Gellatti has confirmed one.</p></div></li>
     <li><div><b>Buy the listed product</b><p>Match the barcode, or the exact name and pack. The links show where Gellatti found
       each product.</p></div></li>
   </ol>
@@ -684,11 +760,22 @@ def item_html(it, notes_page):
         ids.append(f'<a class="src" href="{html.escape(ln["url"])}">{E(ln["label"])}{ARROW}</a>')
     idl = f'<div class="idl">{"".join(ids)}</div>' if ids else ''
     seller = f'<div class="seller">{E(it["seller"])}</div>' if it.get('seller') else ''
+    lname = ''
+    if it.get('local_name_terms'):   # v1.1, sugar only: the approved local name(s), same text as it['local_name']
+        ts = it['local_name_terms']
+        if len(ts) == 1:
+            body = f'Local name: <span class="lt" lang="{html.escape(ts[0]["locale"])}">{E(ts[0]["term"])}</span>'
+        else:
+            body = 'Local names: ' + ' · '.join(f'<span class="pair"><span class="lt" lang="{html.escape(t["locale"])}">'
+                                                f'{E(t["term"])}</span> ({E(LANGUAGE_EN[t["locale"]])})</span>' for t in ts)
+        if html.unescape(re.sub(r'<[^>]+>', '', body)) != it['local_name']:
+            sys.exit(f'{it["iso"]}: local-name HTML does not print the dataset text {it["local_name"]!r}')
+        lname = f'<div class="lname">{body}</div>'
     note_html = f'<div class="note">{E(it["note"])}</div>' if it.get('note') else ''
     if it['role'] == 'TARA' and 'B2B' in it['tags']:
         note_html += f'<div class="note">See <a href="#notes">Good to know, page {notes_page}</a>.</div>'
     return (f'<div class="row" data-role="{it["role"]}"><div class="role"><span class="rl">{E(it["role_label"])}</span>{tags}</div>'
-            f'<div class="prod"><div class="name">{E(it["name"])}</div><div class="meta">{meta}</div>{seller}{idl}{note_html}</div></div>')
+            f'<div class="prod"><div class="name">{E(it["name"])}</div><div class="meta">{meta}</div>{lname}{seller}{idl}{note_html}</div></div>')
 
 
 def page_country(c, items, notes_page):
@@ -715,7 +802,9 @@ NOTES = [
     ('What this guide covers', 'The six base ingredients of the Gellatti gelato base, in 75 countries. It does not list every '
                                'ingredient used in Gellatti recipes.'),
 ]
-FINE_PRINT = ('Compiled from manufacturer and retailer information, September 2026. Links show where each product was found; '
+FINE_PRINT = ('Compiled from manufacturer and retailer information, September 2026. Local sugar names come from a separate '
+              'Gellatti consumer-term review (September 2026); they are the only country-page information not taken from '
+              "Gellatti's approved product table. Links show where each product was found; "
               'prices, stock and delivery are not guaranteed. Gellatti is not affiliated with the brands shown, and product names '
               'and trademarks belong to their owners. This guide is not regulatory advice; local food rules apply.')
 
@@ -759,8 +848,8 @@ def build_html(order, by_country, fit=None):
         extra = ' tight' + (' tighter' if level > 1 else '')
         doc = re.sub(rf'<section class="page([^"]*)" id="{re.escape(pid)}"', rf'<section class="page\1{extra}" id="{pid}"', doc)
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>Gellatti — {TITLE} (75 countries)</title>
-<meta name="author" content="Gellatti"><meta name="description" content="{TITLE}: six base ingredients in 75 countries. {EDITION}.">
+<title>Gellatti — {TITLE}</title>
+<meta name="author" content="Gellatti"><meta name="description" content="{TITLE}: {BENEFIT.lower()}. A PDF shopping guide covering 75 countries. {EDITION}.">
 <style>{font_css('fonts')}{CSS}</style></head><body>
 {doc}
 {LAYOUT_JS}
@@ -788,17 +877,17 @@ def overflowing(rep):
 
 def write_dataset(order, by_country, path_json, path_csv, meta):
     json.dump({'meta': meta, 'countries': order, 'items': by_country}, open(path_json, 'w'), ensure_ascii=False, indent=1)
-    cols = ['page', 'iso', 'country', 'region', 'role', 'name', 'meta', 'ean', 'code', 'tags', 'seller', 'note', 'links',
-            'product_v23', 'brand_v23', 'pack_v23', 'ean_v23', 'v23_rows']
+    cols = ['page', 'iso', 'country', 'region', 'role', 'name', 'meta', 'local_name', 'ean', 'code', 'tags', 'seller', 'note',
+            'links', 'product_v23', 'brand_v23', 'pack_v23', 'ean_v23', 'v23_rows']
     with open(path_csv, 'w', newline='') as f:
         w = csv.writer(f)
         w.writerow(cols)
         for c in order:
             for it in by_country[c['iso']]:
                 w.writerow([c['page'], c['iso'], c['country'], c['region'], it['role'], it['name'], ' · '.join(it['meta']),
-                            it.get('ean', ''), it.get('code', ''), ' '.join(it['tags']), it.get('seller', ''), it.get('note', ''),
-                            ' '.join(l['url'] for l in it['links']), it['product_v23'], it['brand_v23'], it['pack_v23'],
-                            it['ean_v23'], json.dumps(it['v23_rows'])])
+                            it.get('local_name', ''), it.get('ean', ''), it.get('code', ''), ' '.join(it['tags']),
+                            it.get('seller', ''), it.get('note', ''), ' '.join(l['url'] for l in it['links']), it['product_v23'],
+                            it['brand_v23'], it['pack_v23'], it['ean_v23'], json.dumps(it['v23_rows'])])
 
 
 def main():
@@ -810,7 +899,9 @@ def main():
     sha = hashlib.sha256(open(a.xlsx, 'rb').read()).hexdigest()
     if sha != V23_SHA:
         sys.exit(f'{a.xlsx} sha256 {sha} is not the frozen v23 ({V23_SHA}); stop and ask the owner which file is authoritative')
-    order, by_country, issues = build_dataset(Book(a.xlsx))
+    sugar_terms, sugar_sha, issues = load_sucrose_terms()
+    order, by_country, more = build_dataset(Book(a.xlsx), sugar_terms)
+    issues += more
     if issues:
         print('\n'.join('ISSUE ' + i for i in issues))
         sys.exit(f'{len(issues)} source issue(s); nothing was built')
@@ -822,13 +913,19 @@ def main():
                 shutil.copy2(os.path.join(d, fn), os.path.join(BUILD, 'fonts', fn))
     shutil.copytree(os.path.join(HERE, 'assets'), os.path.join(BUILD, 'assets'), dirs_exist_ok=True)
 
-    meta = {'source': os.path.basename(a.xlsx), 'source_sha256': sha, 'pdf': PDF_NAME, 'edition': EDITION,
-            'countries': len(order), 'roles': ROLES, 'front_pages': FRONT_PAGES,
-            'notes_page': FRONT_PAGES + len(order) + 1, 'total_pages': FRONT_PAGES + len(order) + 2}
-    write_dataset(order, by_country, os.path.join(HERE, 'guide_dataset.json'), os.path.join(HERE, 'guide_dataset.csv'), meta)
-    print(f'dataset: {len(order)} countries, {sum(len(v) for v in by_country.values())} items → guide_dataset.json / .csv')
+    named = sorted(it['iso'] for its in by_country.values() for it in its if it.get('local_name'))
+    meta = {'version': VERSION, 'title': TITLE, 'source': os.path.basename(a.xlsx), 'source_sha256': sha, 'pdf': PDF_NAME,
+            'edition': EDITION, 'countries': len(order), 'roles': ROLES, 'front_pages': FRONT_PAGES,
+            'notes_page': FRONT_PAGES + len(order) + 1, 'total_pages': FRONT_PAGES + len(order) + 2,
+            'local_sugar_names': {'source': 'reports/a03/sucrose_consumer_terms_approved.csv', 'source_sha256': sugar_sha,
+                                  'authority': 'owner decisions D-8 and D-32 (GLOBAL_BASE_PRODUCT_ARCHITECTURE_AUDIT.md)',
+                                  'markets': len(named), 'terms': sum(len(v) for v in sugar_terms.values()), 'iso': named,
+                                  'note': 'the only data in the guide that is not from v23'}}
+    write_dataset(order, by_country, os.path.join(HERE, DATASET_NAME + '.json'), os.path.join(HERE, DATASET_NAME + '.csv'), meta)
+    print(f'dataset: {len(order)} countries, {sum(len(v) for v in by_country.values())} items, local sugar names in '
+          f'{len(named)} markets → {DATASET_NAME}.json / .csv')
 
-    page = os.path.join(BUILD, 'guide.html')
+    page = os.path.join(BUILD, HTML_NAME)
     fit = {}
     for attempt in range(1, 4):
         open(page, 'w').write(build_html(order, by_country, fit))
@@ -840,7 +937,7 @@ def main():
         for p in bad:
             fit[p['id']] = fit.get(p['id'], 0) + 1
     rep['fit'] = fit
-    json.dump(rep, open(os.path.join(HERE, 'layout_report.json'), 'w'), indent=1)
+    json.dump(rep, open(os.path.join(HERE, LAYOUT_NAME), 'w'), indent=1)
     if bad:
         for p in bad:
             print('  OVERFLOW', p)

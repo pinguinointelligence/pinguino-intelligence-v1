@@ -1,0 +1,419 @@
+{
+  "iso2": "LU",
+  "country": "Luxembourg",
+  "agent": "research-eu-west",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:33:04Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "Sahnepulver",
+        "crème en poudre"
+      ],
+      "queries": [
+        "sahnepulver (naturata.lu de)",
+        "creme en poudre (auchan.lu, delhaize.lu, naturata.lu fr)"
+      ],
+      "sources_tried": [
+        "auchan.lu (site search results rendered client-side — inconclusive)",
+        "delhaize.lu (search results client-side — inconclusive)",
+        "naturata.lu (search returned recipes only)",
+        "pallcenter.lu / ouni.lu (no product result)",
+        "luxcaddy.lu (search URL 404)",
+        "cactus.lu (no server-side search form)",
+        "myprotein.lu (parked THG domain, no shop)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Sahnepulver 100g",
+          "pack": "100 g",
+          "gtin": "4250712308666",
+          "identifier_confirmed": true,
+          "url": "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g",
+          "source_type": "RETAILER",
+          "seller": "Backfun (backfun.de), Herzlake DE",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "none for this market (page .de); delivery-country list names Luxemburg",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.backfun.de/versand-bestellabwicklung",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/052a9b3cc9fe8b90.json"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+            "from": "page label (backfun.de: Zutaten + Nährwertangaben Fett 42 g, Eiweiß 19 g, Kohlenhydrate 29 g)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "spray-dried cream 42 % fat = reference",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e000bdb4beededef.json",
+          "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:23:09Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": false,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing"
+        },
+        {
+          "rank": 2,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Sahnepulver 100g",
+          "pack": "100 g",
+          "gtin": "4250712308666",
+          "identifier_confirmed": true,
+          "url": "https://www.meincupcake.de/shop/sahnepulver-100g.html",
+          "source_type": "RETAILER",
+          "seller": "MEINCUPCAKE Shop (meincupcake.de), Herzlake DE",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "none for this market (page .de); delivery-country list names Luxemburg",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.meincupcake.de/shop/popup/Versand-und-Zahlungsbedingungen.html",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende L&auml;nder: Belgien, D&auml;nemark, Estland, Finnland, Frankreich, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/a972e8ac8dd89ee4.json"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+            "from": "page label (meincupcake.de)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "same GTIN as the Backfun listing; policy page encodes umlauts as HTML entities, quote checked in that form",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/b1741f29c72318c0.json",
+          "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:23:12Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": false,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing"
+        }
+      ],
+      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+      "notes": "No Luxembourg retailer page with dairy cream powder found. WebSearch session budget exhausted (200/200, shared session cap); LU discovery used retailer site search and known shop pages only."
+    },
+    "FRU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "Fruchtzucker",
+        "fructose"
+      ],
+      "queries": [
+        "fructose (auchan.lu, delhaize.lu, naturata.lu, pallcenter.lu, luxcaddy.lu)"
+      ],
+      "sources_tried": [
+        "auchan.lu (site search results rendered client-side — inconclusive)",
+        "delhaize.lu (search results client-side — inconclusive)",
+        "naturata.lu (search returned recipes only)",
+        "pallcenter.lu / ouni.lu (no product result)",
+        "luxcaddy.lu (search URL 404)",
+        "cactus.lu (no server-side search form)",
+        "myprotein.lu (parked THG domain, no shop)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sweet Family (Nordzucker)",
+          "product_name": "Fruchtzucker, 500 g",
+          "pack": "500 g",
+          "gtin": "4008671070229",
+          "identifier_confirmed": true,
+          "url": "https://www.glaeserundflaschen.de/fruchtzucker-500-g",
+          "source_type": "RETAILER",
+          "seller": "Gläser & Flaschen (glaeserundflaschen.de), DE",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "none for this market (page .de); shipping page lists Luxemburg with rates",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.glaeserundflaschen.de/shop-service/versand-und-zahlungsinformationen/",
+            "quote": "Luxemburg bis 2 kg 13,20 EUR",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/66ca2d3771ffb3a7.json",
+            "supporting_quote": {
+              "method": "check_quotes.py",
+              "policy_url": "https://www.glaeserundflaschen.de/shop-service/versand-und-zahlungsinformationen/",
+              "quote": "Wir liefern in folgende Länder: Österreich",
+              "found": true,
+              "http": "200",
+              "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/735165fa922edcdb.json"
+            }
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "not printed as a list; \"Enthält Fruktose\"",
+            "from": "page (Kohlenhydrate 99,9 g, davon Zucker 99,9 g per 100 g)",
+            "sugars_g": 99.9
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "crystalline fruit sugar, sugars 99.9 g/100 g; fructose % not printed separately",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7367d3f71045c538.json",
+          "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:23:13Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": false,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing"
+        }
+      ],
+      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+      "notes": "Local LU grocers could not be searched server-side. Alternative with FR label: Meilleur du Chef Louis François Fructose 1 kg (GTIN 3700434800807, ships to Luxembourg) — composition not printed. WebSearch session budget exhausted (200/200, shared session cap); LU discovery used retailer site search and known shop pages only."
+    },
+    "INU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "Inulin",
+        "inuline"
+      ],
+      "queries": [
+        "inuline (auchan.lu, delhaize.lu, ouni.lu, pallcenter.lu)",
+        "inulin (naturata.lu de, myprotein.lu)"
+      ],
+      "sources_tried": [
+        "auchan.lu (site search results rendered client-side — inconclusive)",
+        "delhaize.lu (search results client-side — inconclusive)",
+        "naturata.lu (search returned recipes only)",
+        "pallcenter.lu / ouni.lu (no product result)",
+        "luxcaddy.lu (search URL 404)",
+        "cactus.lu (no server-side search form)",
+        "myprotein.lu (parked THG domain, no shop)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Louis François",
+          "product_name": "Inuline - 1 kg - Louis François",
+          "pack": "1 kg",
+          "gtin": "3700434802382",
+          "identifier_confirmed": true,
+          "url": "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/stabilisateur/lfr-inuline-1-kg.html",
+          "source_type": "RETAILER",
+          "seller": "Meilleur du Chef (meilleurduchef.com), FR",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "none for this market (generic .com, French storefront); delivery table names Luxembourg",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.meilleurduchef.com/fr/boutique/livraison.html",
+            "quote": "Pays de destination dpd Pickup Allemagne, Belgique, Luxembourg, Pays-Bas",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/999e59ee6fdde360.json"
+          },
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": 85.0,
+            "fructose_pct": null,
+            "ingredients": "Composition : poudre granulée blanche à légèrement jaune 100% naturelle, sans OGM, issue de la chicorée",
+            "from": "page (pour 100 g: Glucides 12 g dont sucre 12 g, Fibres 85 g)",
+            "sugars_g": 12.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin, fibre 85 g/100 g",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/74f2581de3e985dd.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "checked_at_utc": "2026-09-17T16:23:16Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": false,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_GENERIC_TLD_PAGE); no separate local listing"
+        },
+        {
+          "rank": 2,
+          "brand": "Myvitamins (MYPROTEIN)",
+          "product_name": "Fibre prébiotique d'inuline (Prebiotic Inulin Fibre) 360 g",
+          "pack": "360 g",
+          "gtin": "5056104521052",
+          "identifier_confirmed": true,
+          "url": "https://fr.myprotein.com/p/vitamines/fibre-prebiotique-d-inuline/11397387/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Myprotein France storefront (fr.myprotein.com)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "none for this market (fr. storefront, generic .com); delivery page names Luxembourg",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://fr.myprotein.com/c/customer-services/delivery-information/",
+            "quote": "Options de livraison à destination de la France métropolitaine, Belgique et Luxembourg",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/bb09cd51adc48e32.json"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "INGRÉDIENTS: Inuline de chicorée (100%).",
+            "from": "page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % chicory inulin by ingredient list; fibre % not printed as a number",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/add84fe0aabe9feb.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "checked_at_utc": "2026-09-17T16:23:15Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": false,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_GENERIC_TLD_PAGE); no separate local listing"
+        }
+      ],
+      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+      "notes": "WebSearch session budget exhausted (200/200, shared session cap); LU discovery used retailer site search and known shop pages only."
+    },
+    "YOL": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "Eigelbpulver",
+        "jaune d'œuf en poudre"
+      ],
+      "queries": [
+        "eigelb (naturata.lu)",
+        "jaune d'oeuf (auchan.lu)",
+        "jaune d'oeuf en poudre (delhaize.lu)"
+      ],
+      "sources_tried": [
+        "auchan.lu (site search results rendered client-side — inconclusive)",
+        "delhaize.lu (search results client-side — inconclusive)",
+        "naturata.lu (search returned recipes only)",
+        "pallcenter.lu / ouni.lu (no product result)",
+        "luxcaddy.lu (search URL 404)",
+        "cactus.lu (no server-side search form)",
+        "myprotein.lu (parked THG domain, no shop)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Eigelbpulver 100g",
+          "pack": "100 g",
+          "gtin": "4250712315510",
+          "identifier_confirmed": true,
+          "url": "https://www.meincupcake.de/shop/eigelbpulver-100g.html",
+          "source_type": "RETAILER",
+          "seller": "MEINCUPCAKE Shop (meincupcake.de), Herzlake DE",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "none for this market (page .de); delivery-country list names Luxemburg",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.meincupcake.de/shop/popup/Versand-und-Zahlungsbedingungen.html",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende L&auml;nder: Belgien, D&auml;nemark, Estland, Finnland, Frankreich, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/a972e8ac8dd89ee4.json"
+          },
+          "composition": {
+            "fat_g": 55.8,
+            "protein_g": 34.3,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET.",
+            "from": "page label (Fett 55.8 g, Kohlenhydrate 3.6 g, Eiweiß 34.3 g, Salz 0.3 g)",
+            "carbs_g": 3.6
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % egg yolk powder",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/fcc5130468e484e8.json",
+          "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:23:21Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": false,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing"
+        },
+        {
+          "rank": 2,
+          "brand": "Louis François",
+          "product_name": "Jaune d'oeuf séché - pasteurisé - 1 kg - Louis François",
+          "pack": "1 kg",
+          "gtin": "3700434800760",
+          "identifier_confirmed": true,
+          "url": "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/blanc-oeuf/lfr-jaune-oeuf-seche-pasteurise-louis-francois.html",
+          "source_type": "RETAILER",
+          "seller": "Meilleur du Chef (meilleurduchef.com), FR",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "none for this market (generic .com, French storefront); delivery table names Luxembourg",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.meilleurduchef.com/fr/boutique/livraison.html",
+            "quote": "Pays de destination dpd Pickup Allemagne, Belgique, Luxembourg, Pays-Bas",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/999e59ee6fdde360.json"
+          },
+          "composition": {
+            "fat_g": 59.0,
+            "protein_g": 30.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Composition : jaune d'oeuf de poule séché pasteurisé",
+            "from": "page (pour 100 g: Matières grasses 59 g, Glucides 2,5 g, Protéines 30 g, Sel 0,4 g)",
+            "carbs_g": 2.5
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised dried egg yolk",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c2b70419cfb0c5bc.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "checked_at_utc": "2026-09-17T16:23:24Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": false,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_GENERIC_TLD_PAGE); no separate local listing"
+        }
+      ],
+      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+      "notes": "WebSearch session budget exhausted (200/200, shared session cap); LU discovery used retailer site search and known shop pages only."
+    }
+  }
+}

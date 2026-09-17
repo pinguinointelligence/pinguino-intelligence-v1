@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>single-placeholder preview</title>
+<style>
+  html, body { margin: 0; }
+  /* Page ground behind the rows: --color-paper = #ffffff (bg-paper). */
+  body {
+    background: #ffffff;
+    color: #4a4a4a;
+    font: 11px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  }
+  .row { display: flex; align-items: flex-start; gap: 32px; padding: 24px; }
+  figure { margin: 0; }
+  figcaption { margin-top: 8px; white-space: nowrap; }
+  /* ShopReservedFrame: relative grid place-items-center overflow-hidden
+     rounded-[8px] bg-[var(--g-ivory)] (--g-ivory = #fbfaf7) */
+  .frame {
+    position: relative;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #fbfaf7;
+  }
+  /* <img alt="">: absolute inset-0 h-full w-full object-contain — no blend */
+  .frame img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .desktop { width: 76px; height: 94px; }
+  .phone { width: 64px; height: 80px; }
+  /* 3x magnification of the desktop frame (radius scaled with it). */
+  .x3 { width: 228px; height: 282px; border-radius: 24px; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <figure>
+      <div class="frame desktop"><img alt="" src="file:///Users/tomaszboro22/Developer/pinguino-shop-placeholder/public/shop/single-placeholder.png"></div>
+      <figcaption>desktop 76×94<br>radius 8<br><span class="nat">…</span></figcaption>
+    </figure>
+    <figure>
+      <div class="frame phone"><img alt="" src="file:///Users/tomaszboro22/Developer/pinguino-shop-placeholder/public/shop/single-placeholder.png"></div>
+      <figcaption>phone 64×80<br>radius 8<br><span class="nat">…</span></figcaption>
+    </figure>
+    <figure>
+      <div class="frame x3"><img alt="" src="file:///Users/tomaszboro22/Developer/pinguino-shop-placeholder/public/shop/single-placeholder.png"></div>
+      <figcaption>3× desktop frame 228×282, radius 24<br><span class="nat">…</span></figcaption>
+    </figure>
+  </div>
+  <script>
+    addEventListener('load', () => {
+      for (const figure of document.querySelectorAll('figure')) {
+        const img = figure.querySelector('img');
+        figure.querySelector('.nat').textContent =
+          img.complete && img.naturalWidth
+            ? `loaded ${img.naturalWidth}×${img.naturalHeight}`
+            : 'IMAGE FAILED TO LOAD';
+      }
+    });
+  </script>
+</body>
+</html>

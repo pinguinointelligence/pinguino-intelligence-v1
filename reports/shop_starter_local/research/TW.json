@@ -1,0 +1,192 @@
+{
+  "iso2": "TW",
+  "country": "Taiwan",
+  "agent": "research-east-asia",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:15:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "鮮奶油粉",
+        "奶油粉",
+        "乳脂粉",
+        "cream powder"
+      ],
+      "queries": [
+        "鮮奶油粉 (PChome 24h API)",
+        "奶油粉 (PChome 24h API)",
+        "鮮奶油粉 (momo)",
+        "奶油粉 (momo)",
+        "鮮奶油粉 (Carrefour TW)",
+        "奶粉 (Carrefour TW, to check dairy powder range)",
+        "cream powder (PChome 24h API, English — only a book)"
+      ],
+      "sources_tried": [
+        "24h.pchome.com.tw search API (first-party online retailer; product pages later returned HTTP 429)",
+        "momoshop.com.tw search (online retailer; results via JSON-LD ItemList; product detail/spec is rendered client-side)",
+        "online.carrefour.com.tw search (hypermarket online shop)",
+        "cosmed.com.tw (pharmacy/drugstore; JS search, no server-side results)",
+        "watsons.com.tw (pharmacy; HTTP 403 Access Denied)",
+        "pxmart.com.tw (supermarket; no online product search)",
+        "iHerb tw (Cloudflare challenge, not bypassed)",
+        "results seen: soup powders (日正鮮奶油濃湯粉), custard powder (Tommy's 卡士達粉), whole/full-cream milk powders (克寧, 安佳) — rejected types"
+      ],
+      "candidates": [],
+      "notes": "No spray-dried dairy cream powder found. Taiwanese baking-supply shops could not be discovered: WebSearch budget exhausted (session-wide 200/200)."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "果糖粉",
+        "結晶果糖",
+        "果糖",
+        "fructose"
+      ],
+      "queries": [
+        "果糖粉 (PChome 24h API)",
+        "結晶果糖 (PChome 24h API)",
+        "果糖粉 (momo)",
+        "結晶果糖 (momo)",
+        "果糖 (Carrefour TW)",
+        "fructose (PChome 24h API, English — only books)"
+      ],
+      "sources_tried": [
+        "24h.pchome.com.tw search API (first-party online retailer; product pages later returned HTTP 429)",
+        "momoshop.com.tw search (online retailer; results via JSON-LD ItemList; product detail/spec is rendered client-side)",
+        "online.carrefour.com.tw search (hypermarket online shop)",
+        "cosmed.com.tw (pharmacy/drugstore; JS search, no server-side results)",
+        "watsons.com.tw (pharmacy; HTTP 403 Access Denied)",
+        "pxmart.com.tw (supermarket; no online product search)",
+        "iHerb tw (Cloudflare challenge, not bypassed)",
+        "results seen: liquid fructose syrups / corn syrup (清淨園, 戀液糖), fructose dispensing machines, fruit candies — rejected types; PChome '果糖(1500g)' is a syrup-size listing without crystalline designation"
+      ],
+      "candidates": [],
+      "notes": "No crystalline fructose found at the reachable retailers; in Taiwan '果糖' retail usually means liquid fructose syrup (rejected)."
+    },
+    "INU": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "菊苣纖維",
+        "菊糖",
+        "菊粉",
+        "菊苣粉",
+        "inulin"
+      ],
+      "queries": [
+        "菊苣纖維 (PChome 24h API)",
+        "菊糖 (PChome 24h API)",
+        "菊粉 (PChome 24h API)",
+        "菊苣纖維 (momo)",
+        "菊糖 (momo)",
+        "菊苣粉 (momo)",
+        "菊苣纖維 (Carrefour TW)",
+        "inulin (Carrefour TW)",
+        "inulin (PChome 24h API / momo / Carrefour TW, English)"
+      ],
+      "sources_tried": [
+        "24h.pchome.com.tw search API (first-party online retailer; product pages later returned HTTP 429)",
+        "momoshop.com.tw search (online retailer; results via JSON-LD ItemList; product detail/spec is rendered client-side)",
+        "online.carrefour.com.tw search (hypermarket online shop)",
+        "cosmed.com.tw (pharmacy/drugstore; JS search, no server-side results)",
+        "watsons.com.tw (pharmacy; HTTP 403 Access Denied)",
+        "pxmart.com.tw (supermarket; no online product search)",
+        "iHerb tw (Cloudflare challenge, not bypassed)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "日初良食",
+          "product_name": "【日初良食】長鏈菊苣纖維250g/包(低熱量 代糖 低醣 烘焙)",
+          "pack": "250 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.momoshop.com.tw/goods/GoodsDetail.jsp?i_code=13588190",
+          "source_type": "RETAILER",
+          "seller": "momo購物網 (momo-sold listing, 品號 13588190)",
+          "page_market": "TW",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .com.tw",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "static page shows only title and marketing bullets ('甜度約為蔗糖的25%'); ingredients/nutrition are not in the served HTML"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Long-chain chicory inulin by name; composition not shown in the fetched page. The same brand also sells a short-chain version (FOS type, i_code 13588191).",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/b1366d42ff37e1cd.json",
+          "checked_at_utc": "2026-09-17T15:59:02Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "三多 SENTOSA",
+          "product_name": "膳食纖維粉末食品 X4罐(350g/罐)-菊苣纖維粉末/素食可食",
+          "pack": "350 g can (sold as 4-can set; 6- and 12-can sets also listed)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://24h.pchome.com.tw/prod/DBDA21-A900HM2M7",
+          "source_type": "RETAILER",
+          "seller": "PChome 24h購物",
+          "page_market": "TW",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .com.tw (page itself returned HTTP 429, inconclusive)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "內容物名稱: 菊苣纖維粉末; 原產地: 比利時; 營養成分: 詳見外包裝標示",
+            "from": "PChome product description API (ecapi-cdn.pchome.com.tw …/prod/DBDA21-A900HM2M7-000/desc) — discovery only"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Chicory fibre powder by declared content; no numbers printed.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c7cc41277b5e6cf7.json",
+          "notes": "Manufacturer/importer: 三多士股份有限公司 (Taipei). Multi-can set listing; single-can pack not confirmed.",
+          "checked_at_utc": "2026-09-17T16:13:29Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Candidates exist at major Taiwanese online retailers but neither GTIN nor composition could be read from the served pages."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "蛋黃粉",
+        "乾燥蛋黃",
+        "蛋黃粉末",
+        "egg yolk powder"
+      ],
+      "queries": [
+        "蛋黃粉 (PChome 24h API)",
+        "蛋黃粉 (momo)",
+        "蛋黃粉 (Carrefour TW)",
+        "egg yolk powder (PChome 24h API, English — only books)"
+      ],
+      "sources_tried": [
+        "24h.pchome.com.tw search API (first-party online retailer; product pages later returned HTTP 429)",
+        "momoshop.com.tw search (online retailer; results via JSON-LD ItemList; product detail/spec is rendered client-side)",
+        "online.carrefour.com.tw search (hypermarket online shop)",
+        "cosmed.com.tw (pharmacy/drugstore; JS search, no server-side results)",
+        "watsons.com.tw (pharmacy; HTTP 403 Access Denied)",
+        "pxmart.com.tw (supermarket; no online product search)",
+        "iHerb tw (Cloudflare challenge, not bypassed)",
+        "results seen: bird-food yolk powders, hydrolysed yolk supplements (固營 水解蛋黃粉), 三鳥牌蛋黃粉 (custard-type baking powder), 鹹蛋黃粉 (salted-egg seasoning) — rejected types"
+      ],
+      "candidates": [],
+      "notes": "In Taiwanese baking retail '蛋黃粉' often denotes custard powder; no pasteurised dried egg yolk found."
+    }
+  }
+}

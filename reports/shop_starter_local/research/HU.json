@@ -1,0 +1,260 @@
+{
+  "iso2": "HU",
+  "country": "Hungary",
+  "agent": "research-eu-central-east",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:10:23Z",
+  "items": {
+    "CRP": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "tejszínpor",
+        "szárított tejszín",
+        "tejszín por"
+      ],
+      "queries": [
+        "kifli.hu search API: tejszínpor / tejszín por",
+        "shopmania.hu: tejszínpor / tejszin por / szárított tejszín",
+        "sitemap grep (tejszin) ilovecakes.hu",
+        "sitemap grep pati-versand.de: sahnepulver (cross-border)"
+      ],
+      "sources_tried": [
+        "ilovecakes.hu (pastry retailer, 31 118 URLs): liquid and plant-based whipping creams only — no cream powder",
+        "kifli.hu (online grocer): none",
+        "shopmania.hu (price comparison): no results",
+        "arukereso.hu, argep.hu: Cloudflare challenge (HTTP 403) — inconclusive",
+        "pati-versand.de (DE; ships to 'Ungarn') — kept"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters (own brand of Pati-Versand; same food-business address Siemensstraße 24, 49770 Herzlake)",
+          "product_name": "Sahnepulver 100g sprühgetrocknet",
+          "pack": "100 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/sahnepulver-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Pati-Versand GmbH (DE)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "foreign page (DE); delivery country named in seller's shipping policy",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "url": "https://www.pati-versand.de/zahlung-versand",
+            "tool": "check_quotes.py",
+            "found": true,
+            "http": "200",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn, Zypern.",
+            "checked_at_utc": "2026-09-17T16:08:06Z",
+            "country_named_as": "Ungarn"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet; per 100 g: 2456 kJ / 587 kcal, fat 42 g (saturates 27.1 g), carbohydrate 29 g (sugars 29 g), protein 19 g, salt 0.75 g; Art.-Nr. 10866; 'Auf Lager'",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "spray-dried dairy cream, fat 42 % (reference 42), protein 19 (ref. 20), sugars/lactose 29 (ref. 30); no GTIN on the page (D-37 own-brand listing: brand, exact name, variant 42 % sprühgetrocknet, 100 g, article no.)",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/6060f782b4d30ad9.json",
+          "verifier_class": "PAGE_FACTS_ONLY",
+          "checked_at_utc": "2026-09-17T16:06:06Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "No Hungarian direct retailer page with dairy cream powder found."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fruktóz",
+        "gyümölcscukor"
+      ],
+      "queries": [
+        "hreflang sibling of the verified CZ listing (vsenavareni.cz → ilovecakes.hu)",
+        "kifli.hu search API: fruktóz",
+        "shopmania.hu: fruktóz"
+      ],
+      "sources_tried": [
+        "ilovecakes.hu — Dr. Hlaváč 1 kg, GTIN on page, 'Raktár > 10 db' — kept",
+        "kifli.hu — only foods containing fructose",
+        "shopmania.hu — 'N&Z Gyümölcscukor (fruktóz) 1000 g' at netbiobolt.hu (100 % fructose per snippet; not verified)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Dr. Hlaváč",
+          "product_name": "FRUKTÓZ – gyümölcscukor, 1 kg",
+          "pack": "1 kg",
+          "gtin": "8594164300691",
+          "identifier_confirmed": true,
+          "url": "https://www.ilovecakes.hu/fruktoz-gyumolcscukor-1-kg",
+          "source_type": "RETAILER",
+          "seller": "ilovecakes.hu",
+          "page_market": "HU",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .hu",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": 100.0,
+            "ingredients": "A termék összetétele: kristályos fruktóz 100%; per 100 g 1700 kJ / 406.2 kcal, carbohydrate 100 g",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "crystalline fructose 100 % (≥ 98 %); in stock (> 10 db)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/06a9dcd9a78332cf.json",
+          "verifier_class": "EAN_ON_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:04:22Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Unverified discovery lead: N&Z Gyümölcscukor (fruktóz) 1000 g at netbiobolt.hu."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin",
+        "cikória inulin"
+      ],
+      "queries": [
+        "hreflang siblings of the verified CZ listings (gymbeam.cz → gymbeam.hu; vsenavareni.cz → ilovecakes.hu)",
+        "kifli.hu search API: inulin"
+      ],
+      "sources_tried": [
+        "gymbeam.hu (own-brand shop) — kept",
+        "ilovecakes.hu — Louis François 1 kg — kept",
+        "kifli.hu — no inulin powder"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "GymBeam",
+          "product_name": "Cikória Inulin - GymBeam",
+          "pack": "200 g",
+          "gtin": "8586028133576",
+          "identifier_confirmed": true,
+          "url": "https://gymbeam.hu/cikoria-inulin-gymbeam.html",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "GymBeam (own-brand country shop)",
+          "page_market": "HU",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": 86.0,
+            "fructose_pct": null,
+            "ingredients": "Összetétel: Cikória Inulin; per 100 g 875 kJ / 216 kcal, fat 0 g, carbohydrate 11 g (sugars 11 g), fibre (rost) 86 g, protein 0 g, salt 0.00 g",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin powder, fibre 86 g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/61a52a10a427ab11.json",
+          "verifier_class": "EAN_ON_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T15:51:07Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Louis François",
+          "product_name": "Inulin 1 kg - Louis François",
+          "pack": "1 kg",
+          "gtin": "3700434802382",
+          "identifier_confirmed": true,
+          "url": "https://www.ilovecakes.hu/inulin-1-kg-louis-francois",
+          "source_type": "RETAILER",
+          "seller": "ilovecakes.hu",
+          "page_market": "HU",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .hu",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": 85.0,
+            "fructose_pct": null,
+            "ingredients": "A termék összetétele: Inulin (cikóriagyökérből származó rost); per 100 g 884 kJ / 211.2 kcal, carbohydrate 12 g (sugars 12 g), fibre ('Szál') 85 g, salt 0.1 g; origin France",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "professional chicory inulin, fibre 85 g/100 g (at the A threshold); 'Raktár utolsó 1 darabok' (last unit) at check",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/01a2b562da9b6fda.json",
+          "verifier_class": "EAN_ON_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:07:25Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "tojássárgája por",
+        "szárított tojássárgája"
+      ],
+      "queries": [
+        "hreflang sibling of the verified CZ listing (vsenavareni.cz → ilovecakes.hu)",
+        "kifli.hu search API: tojássárgája por / tojáspor",
+        "shopmania.hu: tojássárgája por"
+      ],
+      "sources_tried": [
+        "ilovecakes.hu — Cake Masters 100 g, GTIN on page, 'Raktár 4 db' — kept",
+        "kifli.hu — none",
+        "shopmania.hu — only a pet yolk powder (Pokusa) — rejected"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake Masters",
+          "product_name": "Szárított tojássárgája por, 100 g",
+          "pack": "100 g",
+          "gtin": "4250712315510",
+          "identifier_confirmed": true,
+          "url": "https://www.ilovecakes.hu/szaritott-tojassargaja-por-100-g",
+          "source_type": "RETAILER",
+          "seller": "ilovecakes.hu",
+          "page_market": "HU",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .hu",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 55.8,
+            "protein_g": 34.3,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "A termék összetétele: Pasztőrözött szárított csirke-tojássárgája; per 100 g 2709 kJ / 647.3 kcal, fat 55.8 g; protein 34.3 g as on the same-GTIN CZ/SK pages",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised chicken egg yolk powder; fat 55.8 vs reference 56.5; in stock (4 db)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/bc156d447e972939.json",
+          "verifier_class": "EAN_ON_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:04:10Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    }
+  }
+}

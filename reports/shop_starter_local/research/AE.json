@@ -1,0 +1,286 @@
+{
+  "iso2": "AE",
+  "country": "United Arab Emirates",
+  "agent": "research-mena",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:49Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "cream powder",
+        "heavy cream powder",
+        "بودرة القشطة",
+        "مسحوق الكريمة",
+        "قشطة بودرة"
+      ],
+      "queries": [
+        "heavy cream powder buy UAE (WebSearch)",
+        "sitemap URL scan (cream-powder|heavy-cream): lifepharmacy.com, nahdionline.com (uae_en/uae_ar), myaster.com, grandiose.ae, organicfoodsandcafe.com, aswaaq.ae, unioncoop.ae, choithrams.com",
+        "amazon.ae search: heavy cream powder"
+      ],
+      "sources_tried": [
+        "grandiose.ae supermarket (sitemap: no cream powder)",
+        "organicfoodsandcafe.com organic grocer (sitemap: no result)",
+        "lifepharmacy.com / nahdionline.com en-ae / myaster.com pharmacies (sitemaps: only protein powders named 'cream')",
+        "unioncoop.ae / choithrams.com (sitemaps empty) and aswaaq.ae (no sitemap, 404)",
+        "chefmiddleeast.com professional supplier (no sitemap/search readable)",
+        "carrefouruae.com, luluhypermarket.com, spinneys.com, waitrose.ae, kibsons.com (bot walls)",
+        "cakecraftuae.com, masterbakerstudio.com baking suppliers (429 challenge)",
+        "amazon.ae marketplace (found US heavy cream powders)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Hoosier Hill Farm",
+          "product_name": "Hoosier Hill Farm Heavy Cream Powder, 1LB (Pack of 1)",
+          "pack": "1 lb (454 g)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.amazon.ae/dp/B00OCV3QRW",
+          "source_type": "MARKETPLACE",
+          "seller": "JetSouq (third-party seller on Amazon.ae)",
+          "page_market": "AE",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .ae (marketplace - never confirms); page shows delivery to Dubai",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 72.0,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "cream",
+            "from": "Amazon.ae page ('Ingredients: cream'; 'dried sweet cream has a 72% butterfat content')"
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "dairy cream powder but 72 % butterfat, above the 38-48 % band",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/578827c42ce60de9.json",
+          "verifier_verification_class": "PAGE_FACTS_ONLY",
+          "checked_at_utc": "2026-09-17T16:20:03Z",
+          "notes": "Also on amazon.ae: Anthony's Heavy Cream Powder 1 lb (B01A03E494), Judee's Heavy Cream Powder 11 oz / 1.5 lb (B07S93MZ7M, B087BPF56P), Z Natural Foods Heavy Cream Powder 1 lb (B09XN67ZH7) - not opened. A buyer review on the page disputes the label (mentions sodium caseinate/soy lecithin) - owner should check the pack."
+        }
+      ],
+      "notes": "No direct UAE retailer page with a dairy cream powder could be read; the only purchase path found is a marketplace offer, kept as LEAD."
+    },
+    "FRU": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "fructose",
+        "fruit sugar",
+        "سكر الفركتوز",
+        "فركتوز"
+      ],
+      "queries": [
+        "fructose powder 500g UAE supermarket (WebSearch)",
+        "sitemap URL scan (fructos|فركتوز): lifepharmacy.com, nahdionline.com, myaster.com, grandiose.ae, organicfoodsandcafe.com",
+        "nahdionline.com/en-ae NOW Foods fructose pdp (404 in UAE)",
+        "amazon.ae search: fructose powder"
+      ],
+      "sources_tried": [
+        "nahdionline.com en-ae (NOW Foods Fructose listed for KSA only; UAE URL returns 404)",
+        "grandiose.ae (sitemap: only a fructose-sweetened bar)",
+        "lifepharmacy.com / myaster.com (no fructose)",
+        "organicfoodsandcafe.com (no result)",
+        "carrefouruae.com / luluhypermarket.com / spinneys.com / kibsons.com (bot walls)",
+        "noon.com marketplace (BulkSupplements fructose seen in search; page did not answer)",
+        "amazon.ae marketplace (found)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Urban Platter",
+          "product_name": "Urban Platter Pure Fructose Sugar, 400g / 14.11oz [Fruit-Based, Finely Granulated & Free-Flowing Sugar]",
+          "pack": "400 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.amazon.ae/dp/B07KXZDVHS",
+          "source_type": "MARKETPLACE",
+          "seller": "Mahzuz Shop (third-party seller on Amazon.ae)",
+          "page_market": "AE",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .ae (marketplace - never confirms); page shows delivery to Dubai",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "not printed; listing says 'Pure Fructose Sugar', item form crystal",
+            "from": "Amazon.ae listing"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "sold as pure crystalline fructose but no ingredient list or nutrition printed",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ef02ca5c52cec784.json",
+          "verifier_verification_class": "PAGE_FACTS_ONLY",
+          "checked_at_utc": "2026-09-17T16:20:23Z",
+          "notes": "Other amazon.ae offers seen in search: 'Pure Fructose Granulated Powder OU Kosher' 200 g / 1 kg (B07HHHM2XW, B07HHJGX8K), BulkSupplements Fructose Powder (B0799XXRZK)."
+        }
+      ],
+      "notes": "No direct UAE retailer with fructose could be read."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin",
+        "inulin powder",
+        "انولين",
+        "إينولين"
+      ],
+      "queries": [
+        "inulin powder UAE buy online (WebSearch)",
+        "sitemap URL scan (inulin): lifepharmacy.com, nahdionline.com uae_en/uae_ar, myaster.com, grandiose.ae",
+        "kiki-health.com Shopify search: inulin (GTIN source)"
+      ],
+      "sources_tried": [
+        "lifepharmacy.com (found KIKI Health organic agave inulin 250 g, UAE page)",
+        "kiki-health.com brand store (GTIN 5060018515847 in JSON-LD)",
+        "nahdionline.com en-ae (found Bioglan Inulin Powder 250 g, Holland & Barrett Inulin Powder 200 g, Jarrow Inulin FOS 180 g)",
+        "bioglan.co.uk / hollandandbarrett.com (no GTIN printed)",
+        "carrefouruae.com (NOW Foods organic inulin 227 g in search results; bot wall)",
+        "drnutrition.com/en-ae (Cloudflare)",
+        "amazon.ae / noon.com (marketplaces, not needed)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "KIKI Health",
+          "product_name": "KIKI Health Organic Inulin 100% Blue Agave Powder 250g",
+          "pack": "250 g",
+          "gtin": "5060018515847",
+          "identifier_confirmed": true,
+          "url": "https://www.lifepharmacy.com/product/kiki-health-organic-inulin-100-blue-agave-powder-250g-15847",
+          "source_type": "RETAILER",
+          "seller": "Life Pharmacy (UAE)",
+          "page_market": "AE",
+          "market_by": "ADDRESS_COUNTRY",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "single seller addressCountry AE in page JSON-LD; title 'online at best price in the UAE'",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": 93.0,
+            "fructose_pct": null,
+            "ingredients": "100% organic inulin from Blue Agave (Agave tequilana weber blue)",
+            "from": "local page ingredients; fibre '93% soluble plant-based fibre' from the brand page kiki-health.com"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % agave inulin; 93 % soluble fibre (brand page)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9e66ed6ffc7f45b0.json",
+          "verifier_verification_class": "PAGE_FACTS_ONLY",
+          "checked_at_utc": "2026-09-17T16:04:16Z",
+          "identity_note": "GTIN 5060018515847 as JSON-LD gtin13 on kiki-health.com; identity_match.py passed brand, name, pack 250 g and formulation 'Blue Agave'",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_8ede019b5f5f2a3a.json",
+          "identity_match_result": {
+            "identifier_confirmed": true,
+            "exact_product_identity_confirmed": true,
+            "market_binding_confirmed": true,
+            "local_availability_confirmed": true,
+            "failed_checks": [],
+            "source_url": "https://kiki-health.com/products/inulin-powder-organic-250g"
+          }
+        },
+        {
+          "rank": 2,
+          "brand": "Bioglan",
+          "product_name": "Bioglan Inulin Powder 250 grams",
+          "pack": "250 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.nahdionline.com/en-ae/bioglan-inulin-powder-250-grams/pdp/102722215",
+          "source_type": "RETAILER",
+          "seller": "Nahdi (nahdionline.com, UAE storefront)",
+          "page_market": "AE",
+          "market_by": "PATH_LOCALE",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country path /en-ae/ (AED prices)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": 89.0,
+            "fructose_pct": null,
+            "ingredients": "Native chicory (Cichorium intybus) inulin",
+            "from": "page label per 100 g: energy 210 kcal, carbohydrates 8 g of which sugars 8 g, fibre 89 g, fat 0 g, protein 0 g, salt 0 g"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin; fibre 89 g and sugars 8 g per 100 g = reference values",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/886f2cc762952fc2.json",
+          "verifier_verification_class": "PAGE_FACTS_ONLY",
+          "checked_at_utc": "2026-09-17T16:08:46Z",
+          "identity_note": "no GTIN on Nahdi, bioglan.co.uk or hollandandbarrett.com pages"
+        }
+      ],
+      "notes": "Rank 2 matches the reference composition exactly but its identity is unproven (no GTIN anywhere readable)."
+    },
+    "YOL": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk",
+        "مسحوق صفار البيض",
+        "صفار البيض المجفف"
+      ],
+      "queries": [
+        "egg yolk powder buy Dubai (WebSearch)",
+        "sitemap URL scan (yolk|egg-powder|صفار): lifepharmacy.com, nahdionline.com, myaster.com, grandiose.ae, organicfoodsandcafe.com",
+        "amazon.ae search: egg yolk powder"
+      ],
+      "sources_tried": [
+        "grandiose.ae (only an egg-yolk separator and snacks)",
+        "masterbakerstudio.com (liquid pasteurised yolk in search results; site 429)",
+        "casinetto.com (fresh eggs; 403)",
+        "nahdionline.com (egg yolk lecithin capsules only)",
+        "lifepharmacy.com / myaster.com (no result)",
+        "amazon.ae marketplace (found)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Judee's",
+          "product_name": "Judee's Gluten Free Dried Egg Yolk Powder - 11 oz",
+          "pack": "11 oz (312 g)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.amazon.ae/dp/B098SP2LTV",
+          "source_type": "MARKETPLACE",
+          "seller": "BrandatMe (third-party seller, fulfilled by Amazon.ae)",
+          "page_market": "AE",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .ae (marketplace - never confirms); page shows delivery to Dubai, 'Only 4 left in stock'",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Pasteurized Dried Egg Yolk",
+            "from": "Amazon.ae page 'Important information - Ingredients'"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single ingredient pasteurised dried egg yolk as printed; a buyer review claims sodium silicoaluminate on the pack (not evidence) - owner should check the label",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f57dbb818a015344.json",
+          "verifier_verification_class": "PAGE_FACTS_ONLY",
+          "checked_at_utc": "2026-09-17T16:20:06Z",
+          "notes": "Also on amazon.ae: Judee's Egg Yolk Powder 1.5 lb (B098SP69CN), Eggylicious Egg Yolk Powder 1 lb (B0DP9JMN8B) - not opened."
+        }
+      ],
+      "notes": "No direct UAE retailer with dried egg yolk powder could be read."
+    }
+  },
+  "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; DuckDuckGo/Mojeek/Brave/Ecosia/Yandex/Qwant served CAPTCHAs or firewalls (not bypassed). Discovery used retailer sitemaps and brand stores. Bot walls / challenges from the ES egress: carrefouruae.com (empty page), luluhypermarket.com (403), spinneys.com (403), waitrose.ae (403), kibsons.com (403 captcha), drnutrition.com (Cloudflare), ae.iherb.com (403), sporter.com country pages (Cloudflare), hollandandbarrett.ae and binsina.ae (405), noon.com (no answer), cakecraftuae.com and masterbakerstudio.com (429 challenge)."
+}

@@ -1,0 +1,374 @@
+{
+  "url": "https://staging.pinguinoai.com/shop",
+  "capturedAt": "2026-09-17T12:00:53.779Z",
+  "chrome": "Chrome/153.0.8010.48",
+  "note": "Chrome DevTools emulation; not a physical iPhone/Safari",
+  "runs": [
+    {
+      "profile": "desktop-1440x900",
+      "mode": "control",
+      "bundle": "/assets/index-BrZ6_ijC.js",
+      "screenshot": "desktop-1440x900__control__card-GEL-DEX-500.png",
+      "placeholderRequestsFailedByTest": 0,
+      "consoleExceptions": [],
+      "frames": [
+        {
+          "sku": "GEL-DEX-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        },
+        {
+          "sku": "GEL-FRU-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        },
+        {
+          "sku": "GEL-INU-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        },
+        {
+          "sku": "GEL-STB-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        },
+        {
+          "sku": "GEL-YOL-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        },
+        {
+          "sku": "GEL-SMP-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        },
+        {
+          "sku": "GEL-CRP-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        }
+      ],
+      "verdict": "PASS: 7/7 frames show the pouch photo"
+    },
+    {
+      "profile": "desktop-1440x900",
+      "mode": "forced-image-failure",
+      "bundle": "/assets/index-BrZ6_ijC.js",
+      "screenshot": "desktop-1440x900__forced-image-failure__card-GEL-DEX-500.png",
+      "placeholderRequestsFailedByTest": 1,
+      "consoleExceptions": [],
+      "frames": [
+        {
+          "sku": "GEL-DEX-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 30.375,
+            "h": 41.09375,
+            "border": "1.11917px"
+          }
+        },
+        {
+          "sku": "GEL-FRU-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 30.375,
+            "h": 41.09375,
+            "border": "1.11917px"
+          }
+        },
+        {
+          "sku": "GEL-INU-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 30.375,
+            "h": 41.09375,
+            "border": "1.11917px"
+          }
+        },
+        {
+          "sku": "GEL-STB-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 30.375,
+            "h": 41.09375,
+            "border": "1.11917px"
+          }
+        },
+        {
+          "sku": "GEL-YOL-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 30.375,
+            "h": 41.09375,
+            "border": "1.11917px"
+          }
+        },
+        {
+          "sku": "GEL-SMP-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 30.375,
+            "h": 41.09375,
+            "border": "1.11917px"
+          }
+        },
+        {
+          "sku": "GEL-CRP-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 30.375,
+            "h": 41.09375,
+            "border": "1.11917px"
+          }
+        }
+      ],
+      "verdict": "PASS: 7/7 frames fell back to the empty outline, no broken image"
+    },
+    {
+      "profile": "mobile-390x844-emulated",
+      "mode": "control",
+      "bundle": "/assets/index-BrZ6_ijC.js",
+      "screenshot": "mobile-390x844-emulated__control__card-GEL-DEX-500.png",
+      "placeholderRequestsFailedByTest": 0,
+      "consoleExceptions": [],
+      "frames": [
+        {
+          "sku": "GEL-DEX-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        },
+        {
+          "sku": "GEL-FRU-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        },
+        {
+          "sku": "GEL-INU-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        },
+        {
+          "sku": "GEL-STB-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        },
+        {
+          "sku": "GEL-YOL-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        },
+        {
+          "sku": "GEL-SMP-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        },
+        {
+          "sku": "GEL-CRP-500",
+          "card": true,
+          "frame": true,
+          "img": {
+            "src": "/shop/single-placeholder.png",
+            "complete": true,
+            "naturalWidth": 512,
+            "broken": false
+          },
+          "outline": null
+        }
+      ],
+      "verdict": "PASS: 7/7 frames show the pouch photo"
+    },
+    {
+      "profile": "mobile-390x844-emulated",
+      "mode": "forced-image-failure",
+      "bundle": "/assets/index-BrZ6_ijC.js",
+      "screenshot": "mobile-390x844-emulated__forced-image-failure__card-GEL-DEX-500.png",
+      "placeholderRequestsFailedByTest": 2,
+      "consoleExceptions": [],
+      "frames": [
+        {
+          "sku": "GEL-DEX-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 28,
+            "h": 38,
+            "border": "1px"
+          }
+        },
+        {
+          "sku": "GEL-FRU-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 28,
+            "h": 38,
+            "border": "1px"
+          }
+        },
+        {
+          "sku": "GEL-INU-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 28,
+            "h": 38,
+            "border": "1px"
+          }
+        },
+        {
+          "sku": "GEL-STB-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 28,
+            "h": 38,
+            "border": "1px"
+          }
+        },
+        {
+          "sku": "GEL-YOL-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 28,
+            "h": 38,
+            "border": "1px"
+          }
+        },
+        {
+          "sku": "GEL-SMP-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 28,
+            "h": 38,
+            "border": "1px"
+          }
+        },
+        {
+          "sku": "GEL-CRP-500",
+          "card": true,
+          "frame": true,
+          "img": null,
+          "outline": {
+            "w": 28,
+            "h": 38,
+            "border": "1px"
+          }
+        }
+      ],
+      "verdict": "PASS: 7/7 frames fell back to the empty outline, no broken image"
+    }
+  ]
+}

@@ -1,0 +1,273 @@
+{
+ "iso2": "SI",
+ "country": "Slovenia",
+ "agent": "research-eu-central-east",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:21:18Z",
+ "items": {
+  "CRP": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "smetana v prahu",
+    "sušena smetana"
+   ],
+   "queries": [
+    "sitemap grep of mercatoronline.si (grocer, 35 270 URLs), tus.si (grocer, 4 253), kalcek.si (organic shop, 2 733), proteini.si (supplements, 12 820), sanolabor.si (3 604), lekarnar.com (pharmacy, 12 778) for smetana-v-prahu / mleko-v-prahu",
+    "pametno.si: smetana v prahu (9 full-text hits, none a dairy cream powder)",
+    "pametno.si: sladka smetana v prahu (0)",
+    "ceneje.si search: smetana v prahu",
+    "sitemap grep pati-versand.de: sahnepulver (cross-border)"
+   ],
+   "sources_tried": [
+    "mercatoronline.si: only 'Smetana v prahu kozarec Carmen 200g' (coffee whitener brand — rejected, not fetched) and milk powders",
+    "tus.si: skim milk powder only",
+    "kalcek.si, proteini.si, sanolabor.si, lekarnar.com: none",
+    "e-lekarna.si (no sitemap URLs), lekarnaljubljana.si (48 URLs), sladkarije.si (9 URLs), tortica.si ('New website', no catalogue): no usable catalogue",
+    "pametno.si (price comparison): no dairy cream powder",
+    "ceneje.si: Cloudflare challenge (HTTP 403) — inconclusive",
+    "pati-versand.de (DE baking supplier; ships to 'Slowenien') — kept"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Cake-Masters (own brand of Pati-Versand; same food-business address Siemensstraße 24, 49770 Herzlake)",
+     "product_name": "Sahnepulver 100g sprühgetrocknet",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/sahnepulver-100g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Pati-Versand GmbH (DE)",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "foreign page (DE); delivery country named in seller's shipping policy",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "url": "https://www.pati-versand.de/zahlung-versand",
+      "tool": "check_quotes.py",
+      "found": true,
+      "http": "200",
+      "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn, Zypern.",
+      "checked_at_utc": "2026-09-17T16:08:06Z",
+      "country_named_as": "Slowenien"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet; per 100 g: 2456 kJ / 587 kcal, fat 42 g (saturates 27.1 g), carbohydrate 29 g (sugars 29 g), protein 19 g, salt 0.75 g; Art.-Nr. 10866; 'Auf Lager'",
+      "from": "page label"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "spray-dried dairy cream, fat 42 % (reference 42), protein 19 (ref. 20), sugars/lactose 29 (ref. 30); no GTIN on the page (D-37 own-brand listing: brand, exact name, variant 42 % sprühgetrocknet, 100 g, article no.)",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4d4168c9e494486b.json",
+     "verifier_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T16:06:09Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "No Slovenian direct retailer page with dairy cream powder found. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, on-site search and price-comparison search pages instead."
+  },
+  "FRU": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "fruktoza",
+    "sadni sladkor"
+   ],
+   "queries": [
+    "sitemap grep of mercatoronline.si (grocer, 35 270 URLs), tus.si (grocer, 4 253), kalcek.si (organic shop, 2 733), proteini.si (supplements, 12 820), sanolabor.si (3 604), lekarnar.com (pharmacy, 12 778) for fruktoz",
+    "pametno.si: fruktoza (62 full-text hits; page 1 = products containing fructose, no crystalline fructose)",
+    "ceneje.si search: fruktoza",
+    "GymBeam catalogue (gymbeam.cz search 'fruktoza', same catalogue as gymbeam.si): no fructose",
+    "sitemap grep pati-versand.de (foreign baking supplier): fruchtzucker"
+   ],
+   "sources_tried": [
+    "mercatoronline.si (grocer): only biscuits sweetened with fructose",
+    "tus.si (grocer): none",
+    "kalcek.si (organic shop), proteini.si (supplements): none",
+    "sanolabor.si, lekarnar.com (pharmacy/health): none",
+    "e-lekarna.si (no sitemap URLs), lekarnaljubljana.si (48 URLs), sladkarije.si (9 URLs), tortica.si ('New website', no catalogue): no usable catalogue",
+    "GymBeam (catalogue checked on gymbeam.cz): no fructose product",
+    "pametno.si: no crystalline fructose",
+    "ceneje.si: Cloudflare challenge (HTTP 403) — inconclusive",
+    "pati-versand.de (baking supplier, ships to SI): only 'Gelierfruchtzucker 3 zu 1' (gelling sugar — rejected)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Sweet Family (Nordzucker)",
+     "product_name": "Fruchtzucker, 500 g",
+     "pack": "500 g",
+     "gtin": "4008671070229",
+     "identifier_confirmed": true,
+     "url": "https://www.glaeserundflaschen.de/fruchtzucker-500-g",
+     "source_type": "RETAILER",
+     "seller": "Gläser & Flaschen (glaeserundflaschen.de), DE",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+     "market_binding_signal": "none for SI (page .de); the seller delivery table names Slowenien",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "method": "check_quotes.py",
+      "policy_url": "https://www.glaeserundflaschen.de/shop-service/versand-und-zahlungsinformationen/",
+      "quotes": [
+       "Wir liefern in folgende Länder:",
+       "Slowenien bis 2 kg 14,22 EUR"
+      ],
+      "found": [
+       true,
+       true
+      ],
+      "http": "200",
+      "check_quotes_result_files": [
+       "~/.cache/gellatti-evidence/quotes/coordinator/glaeserundflaschen-header.json",
+       "~/.cache/gellatti-evidence/quotes/coordinator/glaeserundflaschen-SI.json"
+      ]
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "not printed as a list; \"Enthält Fruktose\"",
+      "from": "page (Kohlenhydrate 99,9 g, davon Zucker 99,9 g per 100 g)",
+      "sugars_g": 99.9
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "crystalline fruit sugar, sugars 99.9 g/100 g; fructose % not printed separately",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/05b0d4402b048bed.json",
+     "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:49:58Z",
+     "exact_product_identity_confirmed": true,
+     "market_binding_confirmed": false,
+     "local_availability_confirmed": false,
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing",
+     "added_by": "coordinator (reuse of the AT/LU/IE cross-border listing; country named in the seller delivery table)"
+    }
+   ],
+   "notes": "BRAK. No local baking/pastry supplier with a readable catalogue was found for Slovenia; the baking-supplier check is the cross-border Pati-Versand catalogue. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, on-site search and price-comparison search pages instead. | Coordinator addition 2026-09-17: glaeserundflaschen.de (DE) lists Slowenien in its delivery table (check_quotes found=true); Sweet Family Fruchtzucker 500 g (GTIN 4008671070229 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was BRAK."
+  },
+  "INU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "inulin",
+    "inulin iz cikorije"
+   ],
+   "queries": [
+    "hreflang sibling of the verified CZ listing (gymbeam.cz → gymbeam.si)",
+    "sitemap grep of mercatoronline.si (grocer, 35 270 URLs), tus.si (grocer, 4 253), kalcek.si (organic shop, 2 733), proteini.si (supplements, 12 820), sanolabor.si (3 604), lekarnar.com (pharmacy, 12 778) for inulin"
+   ],
+   "sources_tried": [
+    "gymbeam.si (own-brand shop) — kept",
+    "sanolabor.si / lekarnar.com: 'Marsovci žvečljive tablete z inulinom' (tablets — rejected), 'Mastika v prahu s prebiotikom inulinom 60 g' (blend — rejected)",
+    "others: none"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "GymBeam",
+     "product_name": "Inulin iz cikorije - GymBeam",
+     "pack": "200 g",
+     "gtin": "8586028133576",
+     "identifier_confirmed": true,
+     "url": "https://gymbeam.si/inulin-iz-cikorije-gymbeam.html",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "GymBeam (own-brand country shop)",
+     "page_market": "SI",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": 86.0,
+      "fructose_pct": null,
+      "ingredients": "per 100 g 875 kJ / 216 kcal, fat 0 g, carbohydrate 11 g (sugars 11 g), fibre (vlaknine) 86 g, protein 0 g, salt 0.00 g; single-ingredient chicory inulin per the same GTIN on the CZ/SK/PL pages",
+      "from": "page label"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "chicory inulin powder, fibre 86 g/100 g (≥ 85; reference 89), sugars 11 g; JSON-LD gtin13 + availability InStock at check",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/60dbadd672066c4b.json",
+     "verifier_class": "EAN_ON_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T15:51:16Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": ""
+  },
+  "YOL": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "rumenjak v prahu",
+    "jajca v prahu"
+   ],
+   "queries": [
+    "sitemap grep of mercatoronline.si (grocer, 35 270 URLs), tus.si (grocer, 4 253), kalcek.si (organic shop, 2 733), proteini.si (supplements, 12 820), sanolabor.si (3 604), lekarnar.com (pharmacy, 12 778) for rumenjak / jajca-v-prahu",
+    "pametno.si: rumenjak v prahu (0)",
+    "pametno.si: jajca v prahu (egg dyes only)",
+    "ceneje.si search: rumenjak v prahu",
+    "sitemap grep pati-versand.de: eigelb (cross-border)"
+   ],
+   "sources_tried": [
+    "mercatoronline.si: only ice cream containing yolks",
+    "tus.si, kalcek.si, proteini.si, sanolabor.si, lekarnar.com: none",
+    "e-lekarna.si (no sitemap URLs), lekarnaljubljana.si (48 URLs), sladkarije.si (9 URLs), tortica.si ('New website', no catalogue): no usable catalogue",
+    "pametno.si: none",
+    "ceneje.si: HTTP 403 — inconclusive",
+    "pati-versand.de (DE baking supplier; ships to 'Slowenien') — kept"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Cake-Masters (own brand of Pati-Versand; same food-business address Siemensstraße 24, 49770 Herzlake)",
+     "product_name": "Eigelbpulver 100g",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/eigelbpulver-100g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Pati-Versand GmbH (DE)",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "foreign page (DE); delivery country named in seller's shipping policy",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "url": "https://www.pati-versand.de/zahlung-versand",
+      "tool": "check_quotes.py",
+      "found": true,
+      "http": "200",
+      "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn, Zypern.",
+      "checked_at_utc": "2026-09-17T16:08:06Z",
+      "country_named_as": "Slowenien"
+     },
+     "composition": {
+      "fat_g": 55.8,
+      "protein_g": 34.3,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET; per 100 g 2709 kJ / 647 kcal, fat 55.8 g (saturates 17.6 g), carbohydrate 3.6 g, protein 34.3 g, salt 0.3 g; Art.-Nr. 11551; 'Auf Lager'",
+      "from": "page label"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % pasteurised chicken egg yolk powder; fat 55.8 / protein 34.3 vs reference 56.5 / 34.5. No GTIN on this page; the same Cake Masters item (article no. 11551, identical label) carries GTIN 4250712315510 on vsenavareni.cz / vsetkonavarenie.sk / ilovecakes.hu.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/04934f82ee9d68b6.json",
+     "verifier_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T16:19:05Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "No Slovenian direct retailer page with dried egg yolk found. WebSearch budget for the session was exhausted (200/200) before this country, so no English/local web-search-engine queries could be run; discovery used retailer sitemaps, on-site search and price-comparison search pages instead."
+  }
+ }
+}

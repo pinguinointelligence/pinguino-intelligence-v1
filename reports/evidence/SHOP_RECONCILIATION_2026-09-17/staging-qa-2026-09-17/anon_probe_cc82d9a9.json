@@ -1,0 +1,180 @@
+{
+  "capturedAt": "2026-09-17T11:59:52.034Z",
+  "page": "https://staging.pinguinoai.com/shop",
+  "served": {
+    "cards": 7,
+    "countryOptions": 17,
+    "firstCountries": [
+      "België",
+      "Canada",
+      "Česko",
+      "Danmark",
+      "Deutschland"
+    ],
+    "loadError": false,
+    "bundle": [
+      "https://staging.pinguinoai.com/assets/index-BrZ6_ijC.js"
+    ]
+  },
+  "appSupabaseRequests": [
+    {
+      "method": "OPTIONS",
+      "path": "/rest/v1/rpc/gellatti_shop_catalog_v1",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/rest/v1/rpc/gellatti_shop_catalog_v1",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/rest/v1/shop_country_local_readiness",
+      "status": 200
+    },
+    {
+      "method": "OPTIONS",
+      "path": "/rest/v1/shop_country_local_readiness",
+      "status": 200
+    }
+  ],
+  "consoleErrors": [],
+  "probes": [
+    {
+      "name": "countries (public)",
+      "method": "GET",
+      "path": "/rest/v1/shop_country_local_readiness?…",
+      "status": 200,
+      "expect": "200, 17 rows, 0 live",
+      "excerpt": "array(17)"
+    },
+    {
+      "name": "shipping price (public column)",
+      "method": "GET",
+      "path": "/rest/v1/shop_shipping_rates?…",
+      "status": 200,
+      "expect": "200",
+      "excerpt": "array(3)"
+    },
+    {
+      "name": "carrier cost (private column)",
+      "method": "GET",
+      "path": "/rest/v1/shop_shipping_rates?…",
+      "status": 401,
+      "expect": "401/403 (42501)",
+      "excerpt": "{\"code\":\"42501\",\"message\":\"permission denied for table shop_shipping_rates\"}"
+    },
+    {
+      "name": "shipping rates select=* (includes private)",
+      "method": "GET",
+      "path": "/rest/v1/shop_shipping_rates?…",
+      "status": 401,
+      "expect": "401/403 (42501)",
+      "excerpt": "{\"code\":\"42501\",\"message\":\"permission denied for table shop_shipping_rates\"}"
+    },
+    {
+      "name": "stripe ids (private column)",
+      "method": "GET",
+      "path": "/rest/v1/shop_products?…",
+      "status": 401,
+      "expect": "401/403 (42501)",
+      "excerpt": "{\"code\":\"42501\",\"message\":\"permission denied for table shop_products\"}"
+    },
+    {
+      "name": "products public columns",
+      "method": "GET",
+      "path": "/rest/v1/shop_products?…",
+      "status": 200,
+      "expect": "200, active only",
+      "excerpt": "array(8)"
+    },
+    {
+      "name": "components (public read)",
+      "method": "GET",
+      "path": "/rest/v1/shop_country_components?…",
+      "status": 200,
+      "expect": "200, no reserved test rows",
+      "excerpt": "array(7)"
+    },
+    {
+      "name": "components reserved-domain rows",
+      "method": "GET",
+      "path": "/rest/v1/shop_country_components?…",
+      "status": 200,
+      "expect": "200, array(0)",
+      "excerpt": "array(0)"
+    },
+    {
+      "name": "storage object via anon",
+      "method": "GET",
+      "path": "/storage/v1/object/shop-documents/gelato-base-ingredients/1.1/f92262842f56e4b987ee0ba011cbe2420ddd2a6d3d7798dfa8224821912ca2e8.pdf",
+      "status": 400,
+      "expect": "400/404",
+      "excerpt": "{\"code\":\"NoSuchKey\",\"message\":\"Object not found\"}"
+    },
+    {
+      "name": "document registry",
+      "method": "GET",
+      "path": "/rest/v1/shop_digital_documents?…",
+      "status": 401,
+      "expect": "401/403",
+      "excerpt": "{\"code\":\"42501\",\"message\":\"permission denied for table shop_digital_documents\"}"
+    },
+    {
+      "name": "orders table",
+      "method": "GET",
+      "path": "/rest/v1/shop_orders?…",
+      "status": 200,
+      "expect": "200 array(0) or 401",
+      "excerpt": "array(0)"
+    },
+    {
+      "name": "availability RPC",
+      "method": "POST",
+      "path": "/rest/v1/rpc/gellatti_shop_document_availability_v1",
+      "status": 200,
+      "expect": "200, TEST_ACCOUNTS_ONLY, orderable false",
+      "excerpt": "{\"state\":\"TEST_ACCOUNTS_ONLY\",\"orderable\":false}"
+    },
+    {
+      "name": "order RPC (service only)",
+      "method": "POST",
+      "path": "/rest/v1/rpc/gellatti_shop_document_order_v1",
+      "status": 401,
+      "expect": "401/403/404",
+      "excerpt": "{\"code\":\"42501\",\"message\":\"permission denied for function gellatti_shop_document_order_v1\"}"
+    },
+    {
+      "name": "download RPC (service only)",
+      "method": "POST",
+      "path": "/rest/v1/rpc/gellatti_shop_document_download_v1",
+      "status": 401,
+      "expect": "401/403/404",
+      "excerpt": "{\"code\":\"42501\",\"message\":\"permission denied for function gellatti_shop_document_download_v1\"}"
+    },
+    {
+      "name": "storage list shop-documents",
+      "method": "POST",
+      "path": "/storage/v1/object/list/shop-documents",
+      "status": 200,
+      "expect": "no objects / 400",
+      "excerpt": "array(0)"
+    },
+    {
+      "name": "storage public URL",
+      "method": "GET",
+      "path": "/storage/v1/object/public/shop-documents/gelato-base-ingredients/1.1/f92262842f56e4b987ee0ba011cbe2420ddd2a6d3d7798dfa8224821912ca2e8.pdf",
+      "status": 400,
+      "expect": "400/404 (private)",
+      "excerpt": "{\"code\":\"NoSuchBucket\",\"message\":\"Bucket not found\"}"
+    },
+    {
+      "name": "edge function with anon key only",
+      "method": "POST",
+      "path": "/functions/v1/shop-digital-document",
+      "status": 401,
+      "expect": "401 unauthorized",
+      "excerpt": "{}"
+    }
+  ]
+}

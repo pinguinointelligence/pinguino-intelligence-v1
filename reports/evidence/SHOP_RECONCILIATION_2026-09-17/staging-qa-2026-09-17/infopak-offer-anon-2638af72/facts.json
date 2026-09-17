@@ -1,0 +1,140 @@
+{
+  "url": "https://staging.pinguinoai.com/shop",
+  "capturedAt": "2026-09-17T12:16:59.241Z",
+  "chrome": "Chrome/153.0.8010.48",
+  "note": "Chrome DevTools emulation; not a physical iPhone/Safari",
+  "runs": [
+    {
+      "profile": "desktop-1440x900",
+      "bundle": "/assets/index-Tn-BJd5q.js",
+      "offerPresent": true,
+      "facts": {
+        "kicker": "Darmowy infopak",
+        "title": "Gellatti — Składniki bazy lodów",
+        "titleStyle": {
+          "size": "25px",
+          "weight": "800"
+        },
+        "subtitle": "Infopak zakupowy: co kupić i gdzie znaleźć składniki w Twoim kraju.",
+        "price": "PDF · 0 €",
+        "details": [
+          "Format: PDF.",
+          "Język dokumentu: angielski.",
+          "Zakres: 75 krajów w jednym pliku; swój kraj znajdziesz w klikalnym spisie.",
+          "Dostawa: pobranie po złożeniu zamówienia za 0 €, bez karty i bez kosztów wysyłki.",
+          "Plik znajdziesz też w: Konto → Zamówienia."
+        ],
+        "cta": "Zamów za 0 €",
+        "ctaDisabled": false,
+        "ctaBox": {
+          "w": 96.0625,
+          "h": 35.734375
+        },
+        "signInHint": "Zaloguj się, aby zamówić infopak za 0 €.",
+        "readyShown": false,
+        "image": {
+          "src": "/shop/infopak-pl.png",
+          "naturalWidth": 1200,
+          "naturalHeight": 1500,
+          "renderedWidth": 196.5625
+        },
+        "offerWidth": 1143.703125,
+        "horizontalOverflow": false,
+        "singlesAboveOffer": true,
+        "cartBelowOffer": true
+      },
+      "screenshot": "desktop-1440x900__infopak-offer-anon.png",
+      "signedOutClick": {
+        "dialogOpen": true,
+        "dialogText": "GELLATTIZaloguj się do GellattiE-mailHasłoZaloguj sięLubKontynuuj z GoogleNie masz konta? Utwórz jeZamknij",
+        "intentRemembered": true,
+        "functionCallsAfterClick": 0,
+        "dialogShot": "desktop-1440x900__signed-out-click-dialog.png"
+      },
+      "consoleErrors": [],
+      "supabaseRequests": [
+        {
+          "method": "POST",
+          "path": "/rest/v1/rpc/gellatti_shop_catalog_v1",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/rest/v1/shop_country_local_readiness",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/rest/v1/rpc/gellatti_shop_document_availability_v1",
+          "status": 200
+        }
+      ]
+    },
+    {
+      "profile": "mobile-390x844-emulated",
+      "bundle": "/assets/index-Tn-BJd5q.js",
+      "offerPresent": true,
+      "facts": {
+        "kicker": "Darmowy infopak",
+        "title": "Gellatti — Składniki bazy lodów",
+        "titleStyle": {
+          "size": "25px",
+          "weight": "800"
+        },
+        "subtitle": "Infopak zakupowy: co kupić i gdzie znaleźć składniki w Twoim kraju.",
+        "price": "PDF · 0 €",
+        "details": [
+          "Format: PDF.",
+          "Język dokumentu: angielski.",
+          "Zakres: 75 krajów w jednym pliku; swój kraj znajdziesz w klikalnym spisie.",
+          "Dostawa: pobranie po złożeniu zamówienia za 0 €, bez karty i bez kosztów wysyłki.",
+          "Plik znajdziesz też w: Konto → Zamówienia."
+        ],
+        "cta": "Zamów za 0 €",
+        "ctaDisabled": false,
+        "ctaBox": {
+          "w": 128.484375,
+          "h": 44
+        },
+        "signInHint": "Zaloguj się, aby zamówić infopak za 0 €.",
+        "readyShown": false,
+        "image": {
+          "src": "/shop/infopak-pl.png",
+          "naturalWidth": 1200,
+          "naturalHeight": 1500,
+          "renderedWidth": 160
+        },
+        "offerWidth": 358,
+        "horizontalOverflow": false,
+        "singlesAboveOffer": true,
+        "cartBelowOffer": true
+      },
+      "screenshot": "mobile-390x844-emulated__infopak-offer-anon.png",
+      "signedOutClick": {
+        "dialogOpen": true,
+        "dialogText": "GELLATTIZaloguj się do GellattiE-mailHasłoZaloguj sięLubKontynuuj z GoogleNie masz konta? Utwórz jeZamknij",
+        "intentRemembered": true,
+        "functionCallsAfterClick": 0,
+        "dialogShot": "mobile-390x844-emulated__signed-out-click-dialog.png"
+      },
+      "consoleErrors": [],
+      "supabaseRequests": [
+        {
+          "method": "POST",
+          "path": "/rest/v1/rpc/gellatti_shop_catalog_v1",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "path": "/rest/v1/shop_country_local_readiness",
+          "status": 200
+        },
+        {
+          "method": "POST",
+          "path": "/rest/v1/rpc/gellatti_shop_document_availability_v1",
+          "status": 200
+        }
+      ]
+    }
+  ]
+}

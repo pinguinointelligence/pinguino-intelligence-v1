@@ -1,0 +1,57 @@
+{
+  "locale": "af",
+  "dir": "ltr",
+  "title": "Bestanddele vir die gelatobasis",
+  "benefit": "Wat om te koop en waar",
+  "pill": "PDF · €0",
+  "country_label": "Land",
+  "language_label": "Taal",
+  "edition": "Uitgawe 1 · September 2026",
+  "cover_items_title": "Die sewe Starter Pack-bestanddele",
+  "howto_title": "Hoe om hierdie gids te gebruik",
+  "howto_lede": "Vir elke Starter Pack-bestanddeel noem ons ’n produk wat jy in hierdie land kan koop.",
+  "steps": [
+    {"b": "Kies een produk", "p": "Die eerste is ons keuse; die tweede is ’n alternatief as die eerste nie beskikbaar is nie."},
+    {"b": "Kontroleer die etiket", "p": "Die samestelling op die verpakking moet ooreenstem met die beskrywing van die bestanddeel. Waar ’n produk se samestelling verskil, sê ons dit."},
+    {"b": "Kry die hoeveelhede in die app", "p": "Hierdie PDF noem produkte, nie hoeveelhede in gram nie. Resepte en hoeveelhede word deur die Gellatti-app bereken."}
+  ],
+  "legend_title": "Aanduidings",
+  "tag_from_abroad": "Uit die buiteland",
+  "tag_b2b": "Vir besighede",
+  "tag_other_composition": "Ander samestelling",
+  "tag_alternative": "Plaaslike alternatief",
+  "tag_unconfirmed": "Onbevestig",
+  "legend": {
+    "from_abroad": "’n winkel in die buiteland wat na hierdie land aflewer",
+    "b2b": "verkoop aan besighede of in groot verpakkings",
+    "other_composition": "dieselfde soort produk met ’n ander samestelling (langsaan aangedui)",
+    "alternative": "’n plaasvervanger vir ’n ander Gellatti-produk"
+  },
+  "starter_amount": "In die Starter Pack: {g} g",
+  "option": "Opsie {n}",
+  "ean": "EAN",
+  "where": "Waar",
+  "fat": "vet",
+  "items": {
+    "DEX": {"name": "Dekstrose", "ref": "Dekstrose (glukose) in poeiervorm, monohidraat."},
+    "SMP": {"name": "Afgeroomde melkpoeier", "ref": "Melkpoeier met ongeveer 1% vet."},
+    "CRP": {"name": "Roompoeier", "ref": "Gedroogde room met ongeveer 42% vet."},
+    "FRU": {"name": "Fruktose", "ref": "Suiwer kristallyne fruktose."},
+    "INU": {"name": "Inulien", "ref": "Inulienpoeier, byvoorbeeld van sigorei."},
+    "YOL": {"name": "Gedroogde eiergeel", "ref": "Gepasteuriseerde hoendereiergeel in poeiervorm."},
+    "STB": {"name": "Stabiliseerder", "ref": "Gellatti Stabilizer is ’n mengsel van taragom, johannesbroodgom en guargom."}
+  },
+  "stabilizer_note": "’n Plaaslike alternatief vir die Gellatti-mengsel, nie dieselfde mengsel nie. Meng dit met die droë bestanddele en verhit die basis tot 75–80 °C.",
+  "missing": "Nog geen goedgekeurde produk in hierdie land nie.",
+  "notes_title": "Goed om te weet",
+  "notes": [
+    {"h": "Beskikbaarheid", "p": "Ons het hierdie produkte in September 2026 op die webwerwe van vervaardigers en winkels nagegaan. Beskikbaarheid, pryse en aflewering kan verander en word nie gewaarborg nie."},
+    {"h": "Die etiket het voorrang", "p": "Kontroleer die bestanddele en allergene op die verpakking voordat jy koop. Roompoeier en melkpoeier bevat melk; eiergeel bevat eier."},
+    {"h": "Stabiliseerder", "p": "In hierdie land vervang ’n plaaslike plantgom die Gellatti Stabilizer. Dit werk op ’n soortgelyke manier, maar is nie dieselfde mengsel nie."}
+  ],
+  "fine": "’n Produk wat hier genoem word, is nie noodwendig reeds in die Gellatti-app beskikbaar nie. Gellatti verkoop nie produkte van ander handelsmerke nie.",
+  "back_h": "Uitstekende gelato begin met ’n goeie basis.",
+  "back_p": "Resepte, hoeveelhede en die proses is in die Gellatti-app.",
+  "back_link": "gellatti.com",
+  "draft": "KONSEP · voorstelle vir goedkeuring"
+}

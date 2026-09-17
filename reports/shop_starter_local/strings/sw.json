@@ -1,0 +1,57 @@
+{
+  "locale": "sw",
+  "dir": "ltr",
+  "title": "Viungo vya msingi wa gelato",
+  "benefit": "Nini cha kununua na wapi",
+  "pill": "PDF · €0",
+  "country_label": "Nchi",
+  "language_label": "Lugha",
+  "edition": "Toleo la 1 · Septemba 2026",
+  "cover_items_title": "Viungo saba vya Starter Pack",
+  "howto_title": "Jinsi ya kutumia mwongozo huu",
+  "howto_lede": "Kwa kila kiungo cha Starter Pack, tunataja bidhaa unayoweza kununua katika nchi hii.",
+  "steps": [
+    {"b": "Chagua bidhaa moja", "p": "Ya kwanza ni chaguo letu; ya pili ni mbadala ikiwa ya kwanza haipatikani."},
+    {"b": "Kagua lebo", "p": "Viambato vilivyo kwenye kifurushi lazima vilingane na maelezo ya kiungo. Pale ambapo muundo wa bidhaa ni tofauti, tunaeleza hivyo."},
+    {"b": "Chukua vipimo kutoka kwenye programu", "p": "PDF hii inataja bidhaa, si vipimo vya gramu. Mapishi na vipimo hukokotolewa na programu ya Gellatti."}
+  ],
+  "legend_title": "Alama",
+  "tag_from_abroad": "Kutoka nje ya nchi",
+  "tag_b2b": "Kwa biashara",
+  "tag_other_composition": "Muundo tofauti",
+  "tag_alternative": "Mbadala wa ndani",
+  "tag_unconfirmed": "Haijathibitishwa",
+  "legend": {
+    "from_abroad": "duka la nje ya nchi linalosafirisha hadi nchi hii",
+    "b2b": "huuzwa kwa biashara au katika vifurushi vikubwa",
+    "other_composition": "aina ileile ya bidhaa yenye muundo tofauti (umeonyeshwa kando yake)",
+    "alternative": "mbadala wa bidhaa nyingine ya Gellatti"
+  },
+  "starter_amount": "Katika Starter Pack: gramu {g}",
+  "option": "Chaguo {n}",
+  "ean": "EAN",
+  "where": "Wapi",
+  "fat": "mafuta",
+  "items": {
+    "DEX": {"name": "Dekstrosi", "ref": "Unga wa dekstrosi (glukosi), monohaidreti."},
+    "SMP": {"name": "Maziwa ya unga yaliyoondolewa mafuta", "ref": "Maziwa ya unga yenye takriban 1% ya mafuta."},
+    "CRP": {"name": "Unga wa krimu", "ref": "Krimu iliyokaushwa yenye takriban 42% ya mafuta."},
+    "FRU": {"name": "Fruktosi", "ref": "Fruktosi safi ya fuwele."},
+    "INU": {"name": "Inulini", "ref": "Unga wa inulini, kwa mfano kutoka kwa chikori."},
+    "YOL": {"name": "Kiini cha yai kilichokaushwa", "ref": "Unga wa kiini cha yai la kuku uliopasteurishwa."},
+    "STB": {"name": "Kiimarishaji", "ref": "Gellatti Stabilizer ni mchanganyiko wa tara gum, locust bean gum na guar gum."}
+  },
+  "stabilizer_note": "Mbadala wa ndani wa mchanganyiko wa Gellatti, si mchanganyiko uleule. Changanya na viungo vikavu, kisha pasha msingi moto hadi 75–80 °C.",
+  "missing": "Bado hakuna bidhaa iliyoidhinishwa katika nchi hii.",
+  "notes_title": "Ni vizuri kujua",
+  "notes": [
+    {"h": "Upatikanaji", "p": "Tulikagua bidhaa hizi kwenye tovuti za watengenezaji na maduka mnamo Septemba 2026. Upatikanaji, bei na usafirishaji vinaweza kubadilika na havihakikishwi."},
+    {"h": "Lebo kwanza", "p": "Kabla ya kununua, kagua viambato na vizio kwenye kifurushi. Unga wa krimu na maziwa ya unga vina maziwa; kiini cha yai kina yai."},
+    {"h": "Kiimarishaji", "p": "Katika nchi hii, gum ya mimea ya ndani inachukua nafasi ya Gellatti Stabilizer. Inafanya kazi kwa njia inayofanana, lakini si mchanganyiko uleule."}
+  ],
+  "fine": "Bidhaa iliyotajwa hapa haimaanishi kuwa tayari inapatikana kwenye programu ya Gellatti. Gellatti haiuzi bidhaa za chapa nyingine.",
+  "back_h": "Gelato bora huanza na msingi mzuri.",
+  "back_p": "Mapishi, vipimo na mchakato vinapatikana kwenye programu ya Gellatti.",
+  "back_link": "gellatti.com",
+  "draft": "RASIMU · mapendekezo ya kuidhinishwa"
+}

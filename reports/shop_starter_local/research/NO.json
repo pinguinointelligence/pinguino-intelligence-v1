@@ -1,0 +1,322 @@
+{
+  "iso2": "NO",
+  "country": "Norway",
+  "agent": "research-nordic-baltic",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:19:09Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fløtepulver",
+        "tørrfløte",
+        "tørket fløte"
+      ],
+      "queries": [
+        "fløtepulver kjøp tørrfløte pulver",
+        "fløtepulver ekte fløte 42% fett"
+      ],
+      "sources_tried": [
+        "gaute.no (Fløtepulver 43% 500 gram, seller-packed, På lager, no GTIN)",
+        "gaute.no Fløtepulver 43% 25 kg / sg.no Fløtepulver 42 25kg / tinehandel.no Fløtepulver 42 25 kg (B2B bags above 5 kg, not used) [T]",
+        "lyreco.no Coffee-Mate, emo.no / kontorgiganten.no / engrosnett.no Douwe Egberts sticks, pals.no, eureca.no, sunrisefoodorder.com Completa (coffee whiteners/sauce powders, rejected) [T]",
+        "skafferimat.se/no (Swedish shop; bot challenge, not bypassed)",
+        "hobbybaecker.de (42 % Sahnepulver; Norway not in its delivery-country list)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": null,
+          "product_name": "Fløtepulver 43% 500 gram",
+          "pack": "500 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://gaute.no/produkt/flotepulver-500-g/",
+          "source_type": "RETAILER",
+          "seller": "Gaute Fabrikkutsalg AS (Tiller, Trondheim)",
+          "page_market": "NO",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .no",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 42.5,
+            "protein_g": 20.0,
+            "carbohydrate_g": 30.2,
+            "sugars_g": 30.2,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "MELK og FLØTE",
+            "basis": "per 100 g",
+            "from": "page Ingredienser + Næringsinnhold"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "dairy cream powder, fat 42.5 g/100 g within 38–48 %; ingredients milk and cream only",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c1f80acb822be66a.json",
+          "checked_at_utc": "2026-09-17T15:58:04Z",
+          "notes": "D-37 CHECK REQUIRED: unbranded seller-packed product (Gaute also lists the same 43 % powder in 25 kg bags); listing shows seller, exact name, variant 43 %, pack 500 g and Produktnummer 105762; no GTIN exists on the page (never invented). Page: 'På lager', 244,00 kr",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Only consumer listing of genuine cream powder found in Norway; supermarket 'fløtepulver' is coffee whitener."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fruktose",
+        "fruktsukker"
+      ],
+      "queries": [
+        "fruktose fruktsukker pulver kjøp",
+        "Dr. Lindberg fruktose 500 g",
+        "\"Dr. Lindberg\" fruktose meny OR spar OR joker",
+        "oda.com fruktose",
+        "fruktose 500 g helsekost nettbutikk norge",
+        "\"fruktose\" \"500 g\" site:no",
+        "\"Saga\" fruktose 500 g"
+      ],
+      "sources_tried": [
+        "gaute.no (Fruktose 500 gram, På lager, no GTIN)",
+        "sg.no Servicegrossistene (Fruktose 500g Saga, GTIN printed; B2B, log-in for prices)",
+        "europris.no Fruktose 500 g Saga (HTTP 404, delisted)",
+        "kassal.app (price comparison, discovery only: Saga Fruktose shows no current store prices)",
+        "engrosnett.no SOSA fruktose 500 g (Utsolgt, no GTIN; title also says 'druesukker')",
+        "miseenplace.no SOSA fruktose 500 g (no GTIN)",
+        "butikk.verdensmat.no Fruktsukker (no GTIN, no pack on static page)",
+        "thekitchenlab.no (ships from Sweden, stock 0)",
+        "oda.com search API (no pure fructose)",
+        "labdidakt.no / fybikon.no (laboratory chemical, rejected) [T]",
+        "olbrygging.no Fruktose 5 kg (brewing, not used) [T]"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": null,
+          "product_name": "Fruktose 500 gram",
+          "pack": "500 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://gaute.no/produkt/fruktose-500-gram/",
+          "source_type": "RETAILER",
+          "seller": "Gaute Fabrikkutsalg AS (Tiller, Trondheim)",
+          "page_market": "NO",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .no",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "carbohydrate_g": 100.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Fruktose",
+            "basis": "per 100 g ('Fruktsukker inneholder 100 g karbohydrat per 100 g vare')",
+            "from": "page Ingredienser + description"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient fructose",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e5644ebd856f3747.json",
+          "checked_at_utc": "2026-09-17T15:35:48Z",
+          "notes": "D-37 CHECK REQUIRED: unbranded seller-packed product; listing shows seller, exact name, pack 500 g and Produktnummer 101730; no GTIN on page. 'På lager', 219,00 kr",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Saga (L.K. Haaland AS)",
+          "product_name": "Fruktose 500g Saga",
+          "pack": "500 g",
+          "gtin": "7053260181814",
+          "identifier_confirmed": true,
+          "url": "https://www.sg.no/produkter/Mel_korn_farin_bakeartikler/Bakeartikler/fruktose-500g/",
+          "source_type": "RETAILER",
+          "seller": "Servicegrossistene (sg.no, foodservice wholesaler)",
+          "page_market": "NO",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .no",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "carbohydrate_g": 99.8,
+            "sugars_g": 99.8,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "FRUKTOSE",
+            "basis": "per 100 g",
+            "from": "page Næringsinnhold + Ingredienser"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient fructose, sugars 99.8 g/100 g",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8fd64994dc134465.json",
+          "checked_at_utc": "2026-09-17T15:36:05Z",
+          "notes": "B2B wholesaler: 'Logg inn for å se priser' / 'Bli kunde?'; not a consumer shop. Kassalapp lists Saga Fruktose 500 g under a different EAN (7053260181722) with no current store prices",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "No GTIN-proven consumer listing found; consumer option is seller-packed (D-37), GTIN-proven option is B2B."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin",
+        "inulinpulver",
+        "sikoriinulin"
+      ],
+      "queries": [
+        "inulin pulver kjøp norge"
+      ],
+      "sources_tried": [
+        "med24.no (Natur-Drogeriet Inulin 150 g, GTIN in JSON-LD, InStock)",
+        "tights.no (SunnRask Inulin 200 g, GTIN, 'Tomt på lager')",
+        "natur.no (Inulinpulver fra økologisk jordskokk 250 g, På lager, no GTIN)",
+        "kinsarvik.no (Natur Drogeriet Inulin pulver 150 g; Shopify, not fetched to avoid rate limit)",
+        "goodlifenorge.no (wholesaler, log-in to buy)",
+        "mecindo.no (same Natur-Drogeriet product) [T]",
+        "vitaminx.no / tights.no NOW Inulin 227 g (not checked further) [T]",
+        "easis.no Easis Inulin 300 g (HTTP 429, inconclusive)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Natur-Drogeriet",
+          "product_name": "Natur-Drogeriet Inulin - 150 g.",
+          "pack": "150 g",
+          "gtin": "5703137403700",
+          "identifier_confirmed": true,
+          "url": "https://www.med24.no/kosttilskudd/aktive-ingredienser/prebiotika/natur-drogeriet-inulin-150-g",
+          "source_type": "RETAILER",
+          "seller": "Med24.no",
+          "page_market": "NO",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .no",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "carbohydrate_g": 7.0,
+            "sugars_g": 7.0,
+            "fibre_g": 90.0,
+            "fructose_pct": null,
+            "ingredients": "Inulin fra Sikorirot (Cichorium intybus L.)",
+            "basis": "per 100 g",
+            "from": "ingredients from this page; nutrition from well.dk label text of the same GTIN (verdict ~/.cache/gellatti-evidence/verify/8ff613f3a56c3bc9.json)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin, fibre 90 g / sugars 7 g per 100 g",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ab99c88249ebb543.json",
+          "checked_at_utc": "2026-09-17T15:58:59Z",
+          "notes": "JSON-LD availability InStock",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "SunnRask",
+          "product_name": "SunnRask Inulin 200g",
+          "pack": "200 g",
+          "gtin": "7090046126935",
+          "identifier_confirmed": true,
+          "url": "https://www.tights.no/butikk/sunnrask-okologisk-inulin-200g/",
+          "source_type": "RETAILER",
+          "seller": "tights.no",
+          "page_market": "NO",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .no",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "carbohydrate_g": 6.0,
+            "sugars_g": 5.0,
+            "fibre_g": 88.0,
+            "salt_g": 0.0,
+            "fructose_pct": null,
+            "ingredients": "100 % inulin",
+            "basis": "per 100 g",
+            "from": "page Næringsinnhold + Ingredienser"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "inulin, fibre 88 g/100 g",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e4e8737fda287d60.json",
+          "checked_at_utc": "2026-09-17T15:59:00Z",
+          "notes": "AVAILABILITY RISK: 'Tomt på lager'; page shows 'Best før: 13. juni 2025' (stale listing)",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "eggeplommepulver",
+        "eggeplomme pulver",
+        "tørket eggeplomme"
+      ],
+      "queries": [
+        "eggeplommepulver kjøp",
+        "tørket eggeplomme pulver"
+      ],
+      "sources_tried": [
+        "myprotein.no (Eggeplomme pulver 500 g and 1 kg variants, GTINs in page data, both inStock:false)",
+        "apotek1.no / apotera.no Salovum 25x4 g (medical-food sachets, rejected) [T]",
+        "proteincompany.no HeltÄrligt Eggpulver 750 g (whole egg, rejected) [T]",
+        "gaute.no (whole egg and egg white powder only, rejected)",
+        "sostapi.com / medicinerawmaterials.com / europages (foreign B2B manufacturers, not retail) [T]"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Myprotein",
+          "product_name": "Eggeplomme pulver - 500g - Naturell",
+          "pack": "500 g",
+          "gtin": "5055534303733",
+          "identifier_confirmed": true,
+          "url": "https://www.myprotein.no/p/sports-nutrition/eggeplomme-pulver/10529352/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Myprotein",
+          "page_market": "NO",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .no",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 56.0,
+            "protein_g": 40.0,
+            "carbohydrate_g": 14.0,
+            "sugars_g": 0.0,
+            "salt_g": 0.01,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Egg Yolk Powder (100%)",
+            "basis": "per 100 g (salt printed as '<0.01g')",
+            "from": "page Næringsinnhold + Ingredienser"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % egg yolk powder; fat 56 matches reference 56.5 (protein/carbohydrate values printed higher than reference)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/41bff96dfc152dfa.json",
+          "checked_at_utc": "2026-09-17T15:59:15Z",
+          "notes": "AVAILABILITY RISK: 500 g variant inStock:false (219 kr); the 1 kg variant (GTIN 5055534303726) is also inStock:false",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Only one Norwegian listing of egg yolk powder was found and it is out of stock."
+    }
+  },
+  "notes": "sources_tried entries marked [T] were judged from search-result titles/snippets only (page not opened); every other entry was fetched (verify_ean_market.py or a direct fetch). Search results are discovery only, never evidence."
+}

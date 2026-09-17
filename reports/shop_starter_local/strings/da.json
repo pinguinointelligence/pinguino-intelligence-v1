@@ -1,0 +1,57 @@
+{
+  "locale": "da",
+  "dir": "ltr",
+  "title": "Ingredienser til gelatobasen",
+  "benefit": "Hvad du skal købe, og hvor",
+  "pill": "PDF · 0 €",
+  "country_label": "Land",
+  "language_label": "Sprog",
+  "edition": "Udgave 1 · september 2026",
+  "cover_items_title": "De syv ingredienser i Starter Pack",
+  "howto_title": "Sådan bruger du guiden",
+  "howto_lede": "For hver ingrediens i Starter Pack nævner vi et produkt, du kan købe i dette land.",
+  "steps": [
+    {"b": "Vælg ét produkt", "p": "Det første er vores valg, det andet et alternativ, hvis det første ikke kan fås."},
+    {"b": "Tjek etiketten", "p": "Ingredienslisten på pakken skal svare til beskrivelsen af ingrediensen. Hvis et produkt har en anden sammensætning, skriver vi det."},
+    {"b": "Tag mængderne fra appen", "p": "Denne PDF nævner produkter, ikke mængder i gram. Opskrifter og mængder beregnes af Gellatti-appen."}
+  ],
+  "legend_title": "Tegnforklaring",
+  "tag_from_abroad": "Fra udlandet",
+  "tag_b2b": "Til virksomheder",
+  "tag_other_composition": "Anden sammensætning",
+  "tag_alternative": "Lokalt alternativ",
+  "tag_unconfirmed": "Ikke bekræftet",
+  "legend": {
+    "from_abroad": "en butik i udlandet, der leverer til dette land",
+    "b2b": "sælges til virksomheder eller i store pakninger",
+    "other_composition": "samme type produkt med en anden sammensætning (angivet ved siden af)",
+    "alternative": "en erstatning for et andet Gellatti-produkt"
+  },
+  "starter_amount": "I Starter Pack: {g} g",
+  "option": "Mulighed {n}",
+  "ean": "EAN",
+  "where": "Hvor",
+  "fat": "fedt",
+  "items": {
+    "DEX": {"name": "Dextrose", "ref": "Dextrose (glukose) i pulverform, monohydrat."},
+    "SMP": {"name": "Skummetmælkspulver", "ref": "Mælkepulver med ca. 1 % fedt."},
+    "CRP": {"name": "Flødepulver", "ref": "Tørret fløde med ca. 42 % fedt."},
+    "FRU": {"name": "Frugtsukker", "ref": "Ren krystallinsk fruktose."},
+    "INU": {"name": "Inulin", "ref": "Inulinpulver, fx fra cikorie."},
+    "YOL": {"name": "Tørret æggeblomme", "ref": "Pasteuriseret æggeblommepulver fra hønseæg."},
+    "STB": {"name": "Stabilisator", "ref": "Gellatti Stabilizer er en blanding af taragummi, johannesbrødkernemel og guargummi."}
+  },
+  "stabilizer_note": "Et lokalt alternativ til Gellatti-blandingen, ikke den samme blanding. Bland det med de tørre ingredienser, og varm basen op til 75–80 °C.",
+  "missing": "Endnu intet godkendt produkt i dette land.",
+  "notes_title": "Godt at vide",
+  "notes": [
+    {"h": "Tilgængelighed", "p": "Vi tjekkede disse produkter på producenters og butikkers websites i september 2026. Tilgængelighed, priser og levering kan ændre sig og er ikke garanteret."},
+    {"h": "Etiketten har forrang", "p": "Tjek ingredienser og allergener på pakken, før du køber. Flødepulver og mælkepulver indeholder mælk; æggeblomme indeholder æg."},
+    {"h": "Stabilisator", "p": "I dette land erstatter et lokalt plantegummi Gellatti Stabilizer. Det virker på lignende måde, men er ikke den samme blanding."}
+  ],
+  "fine": "Et produkt, der nævnes her, er ikke nødvendigvis tilgængeligt i Gellatti-appen endnu. Gellatti sælger ikke andre mærkers produkter.",
+  "back_h": "Fremragende gelato starter med en god base.",
+  "back_p": "Opskrifter, mængder og fremgangsmåde finder du i Gellatti-appen.",
+  "back_link": "gellatti.com",
+  "draft": "UDKAST · forslag til godkendelse"
+}

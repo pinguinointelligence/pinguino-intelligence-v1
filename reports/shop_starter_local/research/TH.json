@@ -1,0 +1,140 @@
+{
+  "iso2": "TH",
+  "country": "Thailand",
+  "agent": "research-east-asia",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:25:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "ครีมผง",
+        "ผงครีม",
+        "วิปปิ้งครีมผง",
+        "cream powder"
+      ],
+      "queries": [
+        "ครีมผง (lemonfarm.com)",
+        "นมผง (lemonfarm.com)",
+        "นม ครีม category (bakeryland.co.th)",
+        "cream powder (gourmetmarketthailand.com)"
+      ],
+      "sources_tried": [
+        "bakeryland.co.th category pages (baking supplier; 'น้ำตาล/สารให้ความหวาน (Sugar/Sweetener)' 25 items, 'นม ครีม (Milk/Cream)' 5 items, 'วัตถุดิบอื่น ๆ' 10 items, 'สารเสริมคุณภาพ/Emulsifier' 34 items)",
+        "lemonfarm.com site search (organic/health grocer; WordPress search returns no product results)",
+        "gourmetmarketthailand.com search (supermarket; results rendered client-side)",
+        "lotuss.com/th search (hypermarket; client-side)",
+        "tops.co.th (supermarket; Cloudflare HTTP 403)",
+        "bigc.co.th (hypermarket; Cloudflare challenge)",
+        "makro.pro (wholesale; search path 404)",
+        "foodland.co.th (Cloudflare challenge)",
+        "villamarket.com (connection failed HTTP 000)",
+        "boots.co.th (pharmacy; no server-side search results)",
+        "watsons.co.th (pharmacy; HTTP 403)",
+        "lazada.co.th (marketplace; client-side)",
+        "iHerb th (Cloudflare challenge, not bypassed)",
+        "results seen at bakeryland.co.th: skim milk powder SMR 202T (500 g / 25 kg), NZMP whole milk powder (500 g / 25 kg), frozen clotted cream — rejected types"
+      ],
+      "candidates": [],
+      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "ฟรุกโตส",
+        "น้ำตาลฟรุกโตส",
+        "fructose"
+      ],
+      "queries": [
+        "ฟรุกโตส (lemonfarm.com)",
+        "fructose (lemonfarm.com)",
+        "fructose (gourmetmarketthailand.com)",
+        "Sugar/Sweetener category (bakeryland.co.th)"
+      ],
+      "sources_tried": [
+        "bakeryland.co.th category pages (baking supplier; 'น้ำตาล/สารให้ความหวาน (Sugar/Sweetener)' 25 items, 'นม ครีม (Milk/Cream)' 5 items, 'วัตถุดิบอื่น ๆ' 10 items, 'สารเสริมคุณภาพ/Emulsifier' 34 items)",
+        "lemonfarm.com site search (organic/health grocer; WordPress search returns no product results)",
+        "gourmetmarketthailand.com search (supermarket; results rendered client-side)",
+        "lotuss.com/th search (hypermarket; client-side)",
+        "tops.co.th (supermarket; Cloudflare HTTP 403)",
+        "bigc.co.th (hypermarket; Cloudflare challenge)",
+        "makro.pro (wholesale; search path 404)",
+        "foodland.co.th (Cloudflare challenge)",
+        "villamarket.com (connection failed HTTP 000)",
+        "boots.co.th (pharmacy; no server-side search results)",
+        "watsons.co.th (pharmacy; HTTP 403)",
+        "lazada.co.th (marketplace; client-side)",
+        "iHerb th (Cloudflare challenge, not bypassed)",
+        "results seen at bakeryland.co.th: cane/caster/brown sugars, erythritol, invert sugar, syrups — no fructose"
+      ],
+      "candidates": [],
+      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search."
+    },
+    "INU": {
+      "result": "BRAK",
+      "local_terms": [
+        "อินูลิน",
+        "ใยอาหารอินูลิน",
+        "inulin"
+      ],
+      "queries": [
+        "อินูลิน (lemonfarm.com)",
+        "inulin (lemonfarm.com)",
+        "inulin (gourmetmarketthailand.com)",
+        "inulin (lotuss.com/th)",
+        "inulin (lazada.co.th)",
+        "ingredient categories (bakeryland.co.th)"
+      ],
+      "sources_tried": [
+        "bakeryland.co.th category pages (baking supplier; 'น้ำตาล/สารให้ความหวาน (Sugar/Sweetener)' 25 items, 'นม ครีม (Milk/Cream)' 5 items, 'วัตถุดิบอื่น ๆ' 10 items, 'สารเสริมคุณภาพ/Emulsifier' 34 items)",
+        "lemonfarm.com site search (organic/health grocer; WordPress search returns no product results)",
+        "gourmetmarketthailand.com search (supermarket; results rendered client-side)",
+        "lotuss.com/th search (hypermarket; client-side)",
+        "tops.co.th (supermarket; Cloudflare HTTP 403)",
+        "bigc.co.th (hypermarket; Cloudflare challenge)",
+        "makro.pro (wholesale; search path 404)",
+        "foodland.co.th (Cloudflare challenge)",
+        "villamarket.com (connection failed HTTP 000)",
+        "boots.co.th (pharmacy; no server-side search results)",
+        "watsons.co.th (pharmacy; HTTP 403)",
+        "lazada.co.th (marketplace; client-side)",
+        "iHerb th (Cloudflare challenge, not bypassed)"
+      ],
+      "candidates": [],
+      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "ไข่แดงผง",
+        "ผงไข่แดง",
+        "ผงไข่",
+        "egg yolk powder"
+      ],
+      "queries": [
+        "ไข่แดงผง (lemonfarm.com)",
+        "ผงไข่ (lemonfarm.com)",
+        "egg yolk powder (gourmetmarketthailand.com)",
+        "ingredient categories (bakeryland.co.th)"
+      ],
+      "sources_tried": [
+        "bakeryland.co.th category pages (baking supplier; 'น้ำตาล/สารให้ความหวาน (Sugar/Sweetener)' 25 items, 'นม ครีม (Milk/Cream)' 5 items, 'วัตถุดิบอื่น ๆ' 10 items, 'สารเสริมคุณภาพ/Emulsifier' 34 items)",
+        "lemonfarm.com site search (organic/health grocer; WordPress search returns no product results)",
+        "gourmetmarketthailand.com search (supermarket; results rendered client-side)",
+        "lotuss.com/th search (hypermarket; client-side)",
+        "tops.co.th (supermarket; Cloudflare HTTP 403)",
+        "bigc.co.th (hypermarket; Cloudflare challenge)",
+        "makro.pro (wholesale; search path 404)",
+        "foodland.co.th (Cloudflare challenge)",
+        "villamarket.com (connection failed HTTP 000)",
+        "boots.co.th (pharmacy; no server-side search results)",
+        "watsons.co.th (pharmacy; HTTP 403)",
+        "lazada.co.th (marketplace; client-side)",
+        "iHerb th (Cloudflare challenge, not bypassed)"
+      ],
+      "candidates": [],
+      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search."
+    }
+  }
+}

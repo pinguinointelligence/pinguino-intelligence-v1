@@ -1,0 +1,136 @@
+{
+  "iso2": "KE",
+  "country": "Kenya",
+  "agent": "research-south-asia-oceania-africa",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:15:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site search pages.",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "dried cream",
+        "unga wa krimu (sw, descriptive)"
+      ],
+      "queries": [
+        "sitemap URL scan 'cream-powder|dried-cream|heavy-cream|powdered-cream' on mydawa.com, greenspoon.co.ke, naivas.online, goodlife.co.ke, healthyu.co.ke, carrefour.ke, pharmaplus.co.ke, quickmart.co.ke"
+      ],
+      "sources_tried": [
+        "mydawa.com (online pharmacy, KE seller address) - product sitemap 10.5k URLs scanned, no match",
+        "greenspoon.co.ke (online grocer/deli) - sitemap 4.9k URLs scanned, no match",
+        "naivas.online (supermarket) - HTTP 403 bot wall, inconclusive",
+        "goodlife.co.ke (pharmacy chain) - HTTP 403, inconclusive",
+        "healthyu.co.ke (health shop) - HTTP 403, inconclusive",
+        "carrefour.ke (supermarket) - sitemap exposes no product URLs",
+        "pharmaplus.co.ke, quickmart.co.ke - no sitemap (404); JS-rendered search not readable",
+        "no readable Kenyan baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No dairy cream powder found; three of the main Kenyan retailers are bot-walled, so coverage is partial."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "fructose",
+        "fruit sugar",
+        "sukari ya matunda (sw)"
+      ],
+      "queries": [
+        "sitemap URL scan 'fructo|fruit-sugar' on the same Kenyan retailers"
+      ],
+      "sources_tried": [
+        "mydawa.com (online pharmacy, KE seller address) - product sitemap 10.5k URLs scanned, no match",
+        "greenspoon.co.ke (online grocer/deli) - sitemap 4.9k URLs scanned, no match",
+        "naivas.online (supermarket) - HTTP 403 bot wall, inconclusive",
+        "goodlife.co.ke (pharmacy chain) - HTTP 403, inconclusive",
+        "healthyu.co.ke (health shop) - HTTP 403, inconclusive",
+        "carrefour.ke (supermarket) - sitemap exposes no product URLs",
+        "pharmaplus.co.ke, quickmart.co.ke - no sitemap (404); JS-rendered search not readable",
+        "no readable Kenyan baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No crystalline fructose found at readable Kenyan retailers."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin powder",
+        "prebiotic fibre"
+      ],
+      "queries": [
+        "sitemap URL scan 'inulin' on mydawa.com, greenspoon.co.ke, naivas.online, goodlife.co.ke, healthyu.co.ke, carrefour.ke"
+      ],
+      "sources_tried": [
+        "mydawa.com (online pharmacy - CONFIRMED via identity_match)",
+        "naturesaid.co.uk (manufacturer page used as GTIN source)",
+        "greenspoon.co.ke (online grocer/deli) - sitemap 4.9k URLs scanned, no match",
+        "naivas.online (supermarket) - HTTP 403 bot wall, inconclusive",
+        "goodlife.co.ke (pharmacy chain) - HTTP 403, inconclusive",
+        "healthyu.co.ke (health shop) - HTTP 403, inconclusive",
+        "carrefour.ke (supermarket) - sitemap exposes no product URLs",
+        "pharmaplus.co.ke, quickmart.co.ke - no sitemap (404); JS-rendered search not readable",
+        "no readable Kenyan baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Natures Aid",
+          "product_name": "Natures Aid Inulin Powder 250g",
+          "pack": "250g",
+          "gtin": "5023652416253",
+          "identifier_confirmed": true,
+          "url": "https://mydawa.com/products/supplements-and-nutrition/supplements/general/natures-aid-inulin-powder-250g",
+          "source_type": "RETAILER",
+          "seller": "MYDAWA Limited (registered pharmacy, Pharmacy and Poisons Board of Kenya)",
+          "page_market": "KE",
+          "market_by": "ADDRESS_COUNTRY",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "single seller addressCountry KE on the page (verifier ADDRESS_COUNTRY); KES prices supporting only",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": 88.0,
+            "fructose_pct": null,
+            "ingredients": "inulin sourced from chicory root (local page); manufacturer page per 100 g: carbohydrate 8 g of which sugars 8 g, fibre 88 g, fat 0 g, protein 0 g",
+            "from": "manufacturer page naturesaid.co.uk (nutrition) + local page (description)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "fibre 88 g / sugars 8 g per 100 g = reference (fibre 89, sugars 8)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a0d4d95d1fc31a92.json",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_45ffa327391b53cf.json",
+          "identity_source_url": "https://www.naturesaid.co.uk/vegan-c16/inulin-powder-p27",
+          "checked_at_utc": "2026-09-17T15:57:02Z"
+        }
+      ],
+      "notes": "GTIN 5023652416253 is in the manufacturer's JSON-LD (gtin13); identity_match.py found brand, name and 250g on both pages with no failed checks. Local page showed 'Only 1 left' at check time."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk",
+        "unga wa kiini cha yai (sw, descriptive)"
+      ],
+      "queries": [
+        "sitemap URL scan 'yolk|egg-powder' on the same Kenyan retailers"
+      ],
+      "sources_tried": [
+        "mydawa.com (online pharmacy, KE seller address) - product sitemap 10.5k URLs scanned, no match",
+        "greenspoon.co.ke (online grocer/deli) - sitemap 4.9k URLs scanned, no match",
+        "naivas.online (supermarket) - HTTP 403 bot wall, inconclusive",
+        "goodlife.co.ke (pharmacy chain) - HTTP 403, inconclusive",
+        "healthyu.co.ke (health shop) - HTTP 403, inconclusive",
+        "carrefour.ke (supermarket) - sitemap exposes no product URLs",
+        "pharmaplus.co.ke, quickmart.co.ke - no sitemap (404); JS-rendered search not readable",
+        "no readable Kenyan baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No dried egg yolk powder found at readable Kenyan retailers."
+    }
+  }
+}

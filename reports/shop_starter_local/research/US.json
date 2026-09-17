@@ -1,0 +1,407 @@
+{
+  "iso2": "US",
+  "country": "United States",
+  "agent": "research-americas",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T15:50:00Z",
+  "items": {
+    "CRP": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": ["heavy cream powder", "cream powder", "dried cream", "sweet cream powder", "crema en polvo", "crema de leche en polvo"],
+      "queries": [
+        "WebSearch: heavy cream powder ingredients cream soy lecithin nutrition facts buy",
+        "WebSearch: heavy cream powder 1 lb shop",
+        "WebSearch (not performed - session WebSearch budget exhausted): \"cream powder\" 40% butterfat dry cream powder buy online United States",
+        "WebSearch (not performed - session WebSearch budget exhausted): \"sweet cream powder\" dairy spray dried cream 42% fat",
+        "site catalog hoosierhillfarm.com (products.json): cream",
+        "site catalog anthonysgoods.com (products.json): cream powder / heavy cream",
+        "site catalog judeesglutenfree.com (products.json): cream powder / heavy cream",
+        "site search modernistpantry.com: cream powder",
+        "site search vitacost.com: cream powder",
+        "site catalog mexgrocer.com (products.json, first 1250 items): crema en polvo / crema de leche"
+      ],
+      "sources_tried": [
+        "hoosierhillfarm.com (manufacturer shop; Heavy Cream Powder 1 lb / 2 lb / 25 lb with GTINs; 72% butterfat) - candidate 1",
+        "anthonysgoods.com (manufacturer shop; Heavy Cream Powder 1 lb GTIN; 72% butterfat; no US-only shipping statement found on FAQ / shipping-policy pages) - candidate 2",
+        "judeesglutenfree.com / judeesfromscratch.com (manufacturer shop; Heavy Cream Powder 11 oz / 24 oz / 5 lb with GTINs; ingredients Pasteurized Sweet Cream 80-90 %, Skim Milk Solids 10-15 %, Sodium Caseinate <5 %; fat % not printed -> C, not kept)",
+        "znaturalfoods.com (Heavy Cream Powder listed in search results; Cloudflare 'Just a moment...' challenge - inconclusive, not bypassed)",
+        "walmart.com / amazon.com / ebay.com (marketplace listings for Hoosier Hill Farm / Anthony's - not used)",
+        "modernistpantry.com (baking/modernist ingredient supplier; no cream powder in on-site search)",
+        "vitacost.com (online health grocer; no dairy cream powder in on-site search)",
+        "mexgrocer.com (US online Mexican grocer; no crema en polvo in scanned catalog)",
+        "shop.chocolatealchemy.com (Heavy Cream Powder seen in search results only; not verified)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Hoosier Hill Farm",
+          "product_name": "Heavy Cream Powder - 1 lb",
+          "pack": "1 lb (454 g)",
+          "gtin": "850054854513",
+          "identifier_confirmed": true,
+          "url": "https://hoosierhillfarm.com/products/heavy-cream-powder",
+          "source_type": "MANUFACTURER",
+          "seller": "Hoosier Hill Farm (own web shop)",
+          "page_market": "US",
+          "market_by": "ADDRESS_COUNTRY",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "Verifier ADDRESS_COUNTRY=US (JSON-LD offer shippingDestination addressCountry US) + D-30 explicit US-only shipping statement on the seller's own FAQ: EXPLICIT_QUOTE: 'We ship within the Continental U.S. We do not ship to Alaska or Hawaii at this time. Do you ship internationally? At this time, we do not ship internationally.' ~/.cache/gellatti-evidence/verify/quote_bd674776a3739bdb.json",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 72.0,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Cream, Nonfat Dry Milk, Natural Vitamin E & Vitamin C Ester (added to preserve freshness)",
+            "from": "raw product page text: 'this dried sweet cream has a 72% butterfat content' (quote_9eea9fd8dceb85b2.json) and 'Ingredients Cream, Nonfat Dry Milk, Natural Vitamin E & Vitamin C Ester (added to preserve freshness)' (quote_1d5ae18cb65fc536.json); nutrition panel not in page text"
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "Dairy cream powder, printed butterfat 72 % (reference 42 %; outside 38-48 %). Contains nonfat dry milk and antioxidant (vitamin E / vitamin C ester). Page states it is not a coffee creamer or instant cream powder. Variants on the page: 1 lb GTIN 850054854513 (SKU HHF263), 2 lbs GTIN 850054854001, 25 lbs GTIN 810215130375 - the 1 lb pack sits next to its GTIN in the page's variant data.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0709986311180401.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_bd674776a3739bdb.json",
+            "~/.cache/gellatti-evidence/verify/quote_9eea9fd8dceb85b2.json",
+            "~/.cache/gellatti-evidence/verify/quote_1d5ae18cb65fc536.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:37:51Z"
+        },
+        {
+          "rank": 2,
+          "brand": "Anthony's",
+          "product_name": "Heavy Cream Powder - 1lb",
+          "pack": "1 lb (454 g)",
+          "gtin": "646437482301",
+          "identifier_confirmed": true,
+          "url": "https://anthonysgoods.com/products/heavy-cream-powder-gluten-free",
+          "source_type": "MANUFACTURER",
+          "seller": "Anthony's Goods (own web shop)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "NONE (generic .com; no US-only shipping statement, country selector or US path found on the product page, /pages/faq-1 or /policies/shipping-policy - D-30 not met)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 72.0,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Only one ingredient - sweet cream solids",
+            "from": "raw product page text: 'High Quality Heavy Cream Powder with 72% Butterfat' (quote_7dac3fe2285b7b2b.json), 'Only one ingredient - sweet cream solids!' (quote_fe292df2746f8484.json)"
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "Single-ingredient sweet cream powder, printed butterfat 72 % (outside 38-48 %).",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c5ac8f1aa852d510.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_7dac3fe2285b7b2b.json",
+            "~/.cache/gellatti-evidence/verify/quote_fe292df2746f8484.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:41:06Z"
+        }
+      ],
+      "notes": "US retail 'heavy cream powder' is ~72 % butterfat (B); no 38-48 % fat dairy cream powder was found in US retail. Hoosier Hill Farm is CONFIRMED_LOCAL (GTIN as page data + ADDRESS_COUNTRY US + US-only FAQ quote). WebSearch budget exhausted during research; later discovery via on-site shop searches only (a targeted search for a ~40 % fat cream powder could not be run)."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": ["fructose", "crystalline fructose", "fructose powder", "fruit sugar", "fructosa"],
+      "queries": [
+        "WebSearch: NOW Foods fructose powder 3 lbs nowfoods.com",
+        "site search modernistpantry.com: fructose",
+        "site search vitacost.com: fructose",
+        "site search vitacost.com: fructosa",
+        "site catalog hoosierhillfarm.com (products.json): fructose",
+        "site catalog anthonysgoods.com / judeesglutenfree.com / naturesfarmacy.com / bakersauthority.com / nuts.com (products.json): fructose",
+        "site catalog mexgrocer.com (products.json, first 1250 items): fructosa"
+      ],
+      "sources_tried": [
+        "modernistpantry.com (US modernist/baking ingredient supplier; Fructose Powder Home 200 g / Professional 1 kg / Commercial 50 lb) - candidate 1",
+        "vitacost.com (US online health grocer; NOW Foods Fructose 3 lbs, UPC as page data; US domestic shipping page) - candidate 2",
+        "nuts.com (Fructose 1 lb / 5 lb bags in catalog JSON; product page not verified in time)",
+        "kroger.com, walmart.com, amazon.com, iherb.com, dailyvita.com, capitolnutrition.net, fruitfulyield.com (NOW Foods fructose in search results; Kroger/Walmart not fetched, Amazon marketplace, iHerb not US-bound - not used)",
+        "hoosierhillfarm.com, anthonysgoods.com, judeesglutenfree.com (no fructose in catalog)",
+        "bulkfoods.com (on-site search HTTP 403 - bot wall, not bypassed)",
+        "mexgrocer.com (no fructosa in scanned catalog)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Modernist Pantry",
+          "product_name": "Fructose Powder (Package Size: Home - 200g)",
+          "pack": "200 g (Home); page also offers Professional 1 kg and Commercial 50 lb",
+          "gtin": "852473004494",
+          "identifier_confirmed": true,
+          "url": "https://modernistpantry.com/products/fructose-powder.html",
+          "source_type": "MANUFACTURER",
+          "seller": "Modernist Pantry, LLC (own-brand web shop)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "EXPLICIT_QUOTE (D-30 US signal, seller's own Domestic Shipping page): 'We offer low flat-rate shipping and handling for $7.99 anywhere in the contiguous U.S., no matter the size of your order.' ~/.cache/gellatti-evidence/verify/quote_1e3b5a3c0a67ccfb.json (the shop also offers international shipping, so this is a US-domestic statement, not a US-only one)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Fructose",
+            "from": "raw product page text: 'Ingredient List: Fructose Allergen(s): None' (quote_00f28baad0bfb7c4.json); page also says 'Sugar substitute sourced from corn'"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Sole ingredient fructose (no numeric purity printed). The UPC is the page's selected variant: product_attributes sku 1074-200 / upc 852473004494 with 'Home - 200g' selected (quote_f044befab2bf4c14.json: 'Modernist Pantry Fructose Powder SKU: 1074-200'); the 1 kg variant's GTIN is not on the page.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d5001cd3820a0917.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_1e3b5a3c0a67ccfb.json",
+            "~/.cache/gellatti-evidence/verify/quote_00f28baad0bfb7c4.json",
+            "~/.cache/gellatti-evidence/verify/quote_f044befab2bf4c14.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:47:53Z"
+        },
+        {
+          "rank": 2,
+          "brand": "NOW Foods",
+          "product_name": "NOW Foods, Fructose Sweetener, 3 lbs (1,361 g)",
+          "pack": "3 lbs (1,361 g)",
+          "gtin": "733739069337",
+          "identifier_confirmed": true,
+          "url": "https://www.vitacost.com/products/now-foods-fructose-sweetener-3-lbs-1-361-g-7762",
+          "source_type": "RETAILER",
+          "seller": "Vitacost",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "EXPLICIT_QUOTE (D-30 US signal, seller's own shipping page): 'Domestic Shipping Within the United States FREE standard shipping is available on all orders totaling $30 or more after any discounts have been applied.' ~/.cache/gellatti-evidence/verify/quote_0986b6e48efa9db2.json + 'International Orders For all other international destinations, customers may order through our parent company, iHerb , which ships to more than 180 countries worldwide.' ~/.cache/gellatti-evidence/verify/quote_9f7c8e52a04bba2a.json",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Crystalline fructose.",
+            "from": "raw product page text: 'Ingredients Crystalline fructose.' (quote_2de91b177848c691.json); Nutrition Facts per 2 tsp (8 g): Total Carbohydrate 8 g"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Sole ingredient crystalline fructose. Pack 1.36 kg is above the preferred 100 g-1 kg range (ranked 2 behind the 200 g pack). Verifier run on https://www.vitacost.com/now-foods-fructose (redirects to this URL).",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a3e6549759a122ee.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_0986b6e48efa9db2.json",
+            "~/.cache/gellatti-evidence/verify/quote_9f7c8e52a04bba2a.json",
+            "~/.cache/gellatti-evidence/verify/quote_2de91b177848c691.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:32:19Z"
+        }
+      ],
+      "notes": "Both candidates are pure crystalline fructose with the GTIN as page data on generic .com shops; US binding comes from explicit shipping sentences checked with check_quotes.py (D-30). Modernist Pantry's binding sentence is US-domestic (the shop also ships abroad); Vitacost's is domestic-only with international orders redirected to iHerb. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": ["inulin powder", "organic inulin", "chicory root inulin", "agave inulin", "inulina"],
+      "queries": [
+        "WebSearch: organic inulin powder pure chicory root 1 lb",
+        "site search vitacost.com: inulin",
+        "site search vitacost.com: inulina",
+        "site search modernistpantry.com: inulin",
+        "site catalog anthonysgoods.com / naturebellusa.com / purivanutrition.com / microingredients.com / nuts.com (products.json): inulin",
+        "site catalog mexgrocer.com (products.json, first 1250 items): inulina"
+      ],
+      "sources_tried": [
+        "vitacost.com (US online health grocer; Micro Ingredients Organic Inulin Powder 500 g and NOW Foods Organic Inulin 8 oz / 1 lb with UPC as page data) - candidates 1 and 2",
+        "microingredients.com (manufacturer shop; Organic Inulin Powder 500 g / 2 lb in catalog JSON; not needed after Vitacost verification)",
+        "naturebellusa.com (Organic Inulin Prebiotic Fiber Powder 1 lb in catalog JSON; not verified)",
+        "anthonysgoods.com (Organic Inulin Powder in catalog JSON; same D-30 binding gap as its cream powder; not verified)",
+        "nuts.com (Organic Inulin Powder 8 oz / 1 lb in catalog JSON; not verified)",
+        "purivanutrition.com (1 lb inulin seen in search results; not in its 9-item catalog JSON)",
+        "amazon.com, bonanza.com, walmart.com (marketplace listings in search results - not used)",
+        "modernistpantry.com (no inulin in on-site search)",
+        "mexgrocer.com (no inulina in scanned catalog)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Micro Ingredients",
+          "product_name": "Micro Ingredients, Organic Inulin Powder, Unflavored, 1.1 lb (500 g)",
+          "pack": "1.1 lb (500 g)",
+          "gtin": "850074438687",
+          "identifier_confirmed": true,
+          "url": "https://www.vitacost.com/products/micro-ingredients-organic-inulin-powder-unflavored-1-1-lb-500-g-160283",
+          "source_type": "RETAILER",
+          "seller": "Vitacost",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "EXPLICIT_QUOTE (D-30 US signal, seller's own shipping page): 'Domestic Shipping Within the United States FREE standard shipping is available on all orders totaling $30 or more after any discounts have been applied.' ~/.cache/gellatti-evidence/verify/quote_0986b6e48efa9db2.json + international orders redirected to iHerb ~/.cache/gellatti-evidence/verify/quote_9f7c8e52a04bba2a.json",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Organic Inulin Powder (Supplement Facts); 'Ingredients None.' (no other ingredients)",
+            "from": "raw product page Supplement Facts: 'Serving Size: 1 Scoop (2.6 g) ... Total Carbohydrate 2.6 g ... Dietary Fiber 2.6 g ... Organic Inulin Powder 2.6 g' (quote_c1d70ade6383e985.json); 'Ingredients None. Free of: Soy, dairy, gluten.' (quote_4c93c4d243b55a2d.json)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Printed per 2.6 g serving: dietary fibre 2.6 g and organic inulin 2.6 g -> fibre/inulin 100 % (derived from printed per-serving values). Plant source not stated on the page.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1b99b277181e6378.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_0986b6e48efa9db2.json",
+            "~/.cache/gellatti-evidence/verify/quote_9f7c8e52a04bba2a.json",
+            "~/.cache/gellatti-evidence/verify/quote_c1d70ade6383e985.json",
+            "~/.cache/gellatti-evidence/verify/quote_4c93c4d243b55a2d.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:47:09Z"
+        },
+        {
+          "rank": 2,
+          "brand": "NOW Foods",
+          "product_name": "NOW Foods Certified Organic Inulin Prebiotic Pure Powder 8 oz (227 g)",
+          "pack": "8 oz (227 g)",
+          "gtin": "733739029447",
+          "identifier_confirmed": true,
+          "url": "https://www.vitacost.com/products/now-foods-certified-organic-inulin-prebiotic-pure-powder-8-oz-227-g-1100",
+          "source_type": "RETAILER",
+          "seller": "Vitacost",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "EXPLICIT_QUOTE (D-30 US signal, seller's own shipping page): 'Domestic Shipping Within the United States FREE standard shipping is available on all orders totaling $30 or more after any discounts have been applied.' ~/.cache/gellatti-evidence/verify/quote_0986b6e48efa9db2.json + international orders redirected to iHerb ~/.cache/gellatti-evidence/verify/quote_9f7c8e52a04bba2a.json",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Organic Inulin (FOS) (from Blue Agave); 'Ingredients None.' (no other ingredients)",
+            "from": "raw product page Supplement Facts: 'Serving Size: 1 Level Teaspoon (approx. 4 g) ... Total Carbohydrate 4 g ... Dietary Fiber 4 g ... Organic Inulin (FOS) (from Blue Agave) 3.3 g' (quote_2d7f696615a87dca.json); 'Ingredients None.' (quote_39166be9be54b870.json)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Agave inulin, no other ingredients. Printed per approx. 4 g serving: dietary fibre 4 g (~100 %) and inulin 3.3 g (~83 % of the approximate serving) - derived from printed per-serving values; ranked below candidate 1, whose label is exact.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ee793ca1c3749edb.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_0986b6e48efa9db2.json",
+            "~/.cache/gellatti-evidence/verify/quote_9f7c8e52a04bba2a.json",
+            "~/.cache/gellatti-evidence/verify/quote_2d7f696615a87dca.json",
+            "~/.cache/gellatti-evidence/verify/quote_39166be9be54b870.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:46:45Z"
+        }
+      ],
+      "notes": "Vitacost is a generic .com; its Domestic Shipping page states US shipping and sends all international orders to iHerb (explicit US signal, D-30). WebSearch budget exhausted during research; later discovery via on-site shop searches only. Vitacost on-site search started returning HTTP 429 (rate limit) late in the run - not retried."
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": ["egg yolk powder", "dried egg yolk", "dry egg yolks", "yema de huevo en polvo"],
+      "queries": [
+        "WebSearch: egg yolk powder 100% dried egg yolk buy USA",
+        "site search modernistpantry.com: egg yolk",
+        "site search vitacost.com: egg yolk powder",
+        "site search vitacost.com: yema de huevo en polvo (HTTP 429 rate limit)",
+        "site catalog hoosierhillfarm.com / judeesglutenfree.com / naturesfarmacy.com / bakersauthority.com / anthonysgoods.com (products.json): yolk",
+        "site catalog mexgrocer.com (products.json, first 1250 items): yema",
+        "site search bulkfoods.com: egg yolk (HTTP 403)"
+      ],
+      "sources_tried": [
+        "modernistpantry.com (baking/modernist ingredient supplier; Egg Yolk Powder Home 50 g / Professional 400 g / Commercial 50 lb; product note 'Available to US customers only at this time') - candidate 1",
+        "judeesglutenfree.com / judeesfromscratch.com (manufacturer shop; Egg Yolk Powder 11 oz / 1.5 lb / 5 lb with GTINs; contains sodium silicoaluminate) - candidate 2",
+        "bakersauthority.com (bakery supplier; 'Newburg Egg Dried Egg Yolk Powder' / Henningsen Dry Egg Yolks 5 lb, '100% pasteurized egg yolk solids', no GTIN, brand not the seller's own - not kept)",
+        "naturesfarmacy.com ('Pantry Egg Yolk Powder' is a pet supplement with feeding directions for dogs and cats - rejected)",
+        "bulkfoods.com (egg yolk powder page and on-site search HTTP 403 - bot wall, not bypassed)",
+        "eggsunlimited.com (wholesale powdered egg yolk - not a retail purchase page)",
+        "vitacost.com (only whole-egg / egg-white proteins and egg replacer - rejected types)",
+        "hoosierhillfarm.com (only Egg White Powder and Whole Egg Powder - rejected types)",
+        "amazon.com, walmart.com (Eggylicious, Blessfull Healing, AAA Grade listings - marketplaces, not used)",
+        "mexgrocer.com (no yema en polvo in scanned catalog)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Modernist Pantry",
+          "product_name": "Egg Yolk Powder (Package Size: Home - 50g)",
+          "pack": "50 g (Home); page also offers Professional 400 g and Commercial 50 lb",
+          "gtin": "852473004784",
+          "identifier_confirmed": true,
+          "url": "https://modernistpantry.com/products/egg-yolk-powder.html",
+          "source_type": "MANUFACTURER",
+          "seller": "Modernist Pantry, LLC (own-brand web shop)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "EXPLICIT_QUOTE (D-30 US-only statement on the product page itself): 'Available to US customers only at this time' ~/.cache/gellatti-evidence/verify/quote_693547785fd769d1.json",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Egg Yolks",
+            "from": "raw product page text: 'Ingredient List: Egg Yolks' (quote_05d86398fef4d77a.json); 'Our Egg Yolk Powder is Made in the USA and contains no additives of any kind.' (quote_928bf8bf598e8157.json); description: spray dried pasteurized egg yolks"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised spray-dried egg yolk, no additives. The UPC belongs to the page's selected variant (product_attributes sku 1145-50 / upc 852473004784, 'Home - 50g' selected); the 400 g variant's GTIN is not on the page. 50 g is below the preferred 100 g-1 kg range but is the only A-equivalent verified.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/95274c0af18b9e7b.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_693547785fd769d1.json",
+            "~/.cache/gellatti-evidence/verify/quote_05d86398fef4d77a.json",
+            "~/.cache/gellatti-evidence/verify/quote_928bf8bf598e8157.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:45:18Z"
+        },
+        {
+          "rank": 2,
+          "brand": "Judee's",
+          "product_name": "Egg Yolk Powder - 1 Pack (11oz)",
+          "pack": "11 oz (312 g)",
+          "gtin": "00810158700444",
+          "identifier_confirmed": true,
+          "url": "https://www.judeesfromscratch.com/products/dried-egg-yolk-powder",
+          "source_type": "MANUFACTURER",
+          "seller": "Judee's Gluten Free (own web shop)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "D-30 country selector: the store's country/region selector has a single option, US - EXPLICIT_QUOTE: 'Update country/region United States (USD $)' ~/.cache/gellatti-evidence/verify/quote_647a94776926a144.json (raw HTML <option> list contains only US) + shipping policy 'We are currently offering free shipping in the US for orders $100+.' ~/.cache/gellatti-evidence/verify/quote_a185658e10085797.json",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Dried Egg Yolks, Sodium Silicoaluminate",
+            "from": "raw product page text: 'Ingredients Dried Egg Yolks, Sodium Silicoaluminate' (quote_120c085a7983cc06.json)"
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "Egg yolk powder with a declared anti-caking agent (sodium silicoaluminate). Variants on the page: 11 oz GTIN 00810158700444 (available), 1.5 lb GTIN 00810158702356 and 5 lb GTIN 00810158702363 (both shown unavailable); the 11 oz pack sits next to its GTIN in the page's variant data. Verifier run on https://judeesglutenfree.com/products/dried-egg-yolk-powder (redirects to this URL).",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2f707f83329efd6e.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_647a94776926a144.json",
+            "~/.cache/gellatti-evidence/verify/quote_a185658e10085797.json",
+            "~/.cache/gellatti-evidence/verify/quote_120c085a7983cc06.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:45:38Z"
+        }
+      ],
+      "notes": "Rank 1 is A (pure yolk) but its GTIN-bearing pack is 50 g; rank 2 is a 312 g pack with an anti-caking agent (B). WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    }
+  }
+}

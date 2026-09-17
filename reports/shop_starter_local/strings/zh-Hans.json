@@ -1,0 +1,57 @@
+{
+  "locale": "zh-Hans",
+  "dir": "ltr",
+  "title": "意式冰淇淋基底原料",
+  "benefit": "买什么，去哪儿买",
+  "pill": "PDF · €0",
+  "country_label": "国家",
+  "language_label": "语言",
+  "edition": "第1版 · 2026年9月",
+  "cover_items_title": "Starter Pack 中的七种原料",
+  "howto_title": "如何使用本指南",
+  "howto_lede": "我们为 Starter Pack 中的每种原料列出一款在当地可以买到的产品。",
+  "steps": [
+    {"b": "选择一款产品", "p": "第一款是我们的推荐；如果买不到，第二款可作为替代。"},
+    {"b": "查看标签", "p": "包装上的配料须与该原料的说明一致。如产品成分不同，我们会注明。"},
+    {"b": "用量请看 App", "p": "本 PDF 只列出产品，不提供克数。配方和用量由 Gellatti App 计算。"}
+  ],
+  "legend_title": "图例",
+  "tag_from_abroad": "海外",
+  "tag_b2b": "商用",
+  "tag_other_composition": "成分不同",
+  "tag_alternative": "本地替代",
+  "tag_unconfirmed": "未确认",
+  "legend": {
+    "from_abroad": "可配送至当地的海外商店",
+    "b2b": "面向企业销售或大包装",
+    "other_composition": "同类产品，但成分不同（旁边已注明）",
+    "alternative": "另一款 Gellatti 产品的替代品"
+  },
+  "starter_amount": "Starter Pack 中：{g} 克",
+  "option": "选项 {n}",
+  "ean": "EAN",
+  "where": "购买渠道",
+  "fat": "脂肪",
+  "items": {
+    "DEX": {"name": "葡萄糖", "ref": "葡萄糖（右旋糖）粉末，一水合物。"},
+    "SMP": {"name": "脱脂奶粉", "ref": "脂肪含量约 1% 的奶粉。"},
+    "CRP": {"name": "稀奶油粉", "ref": "脂肪含量约 42% 的干燥稀奶油。"},
+    "FRU": {"name": "果糖", "ref": "纯结晶果糖。"},
+    "INU": {"name": "菊粉", "ref": "粉状菊粉，例如来自菊苣。"},
+    "YOL": {"name": "蛋黄粉", "ref": "经巴氏杀菌的鸡蛋黄粉。"},
+    "STB": {"name": "稳定剂", "ref": "Gellatti Stabilizer 是刺云实胶、刺槐豆胶和瓜尔胶的混合物。"}
+  },
+  "stabilizer_note": "这是 Gellatti 混合物的本地替代品，并非同一种混合物。请将其与干性原料混合，并将基底加热至 75–80 °C。",
+  "missing": "当地暂无已批准的产品。",
+  "notes_title": "值得了解",
+  "notes": [
+    {"h": "供货情况", "p": "我们于 2026 年 9 月在制造商和商店的网站上核实了这些产品。供货情况、价格和配送可能会变化，且不作保证。"},
+    {"h": "以包装标签为准", "p": "购买前，请查看包装上的配料和过敏原信息。稀奶油粉和奶粉含有牛奶；蛋黄含有鸡蛋。"},
+    {"h": "稳定剂", "p": "在当地，Gellatti Stabilizer 由一种本地植物胶替代。其作用类似，但并非同一种混合物。"}
+  ],
+  "fine": "此处列出的产品不一定已在 Gellatti App 中提供。Gellatti 不销售其他品牌的产品。",
+  "back_h": "好的意式冰淇淋，从好的基底开始。",
+  "back_p": "配方、用量和制作流程都在 Gellatti App 中。",
+  "back_link": "gellatti.com",
+  "draft": "草稿 · 待审批的提案"
+}

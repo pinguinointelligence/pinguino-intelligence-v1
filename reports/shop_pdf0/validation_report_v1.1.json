@@ -1,0 +1,670 @@
+{
+ "pdf": "GELLATTI_GELATO_BASE_INGREDIENTS_v1.1.pdf",
+ "pdf_sha256": "f92262842f56e4b987ee0ba011cbe2420ddd2a6d3d7798dfa8224821912ca2e8",
+ "v23_sha256": "37afaf6f98bad68d2768c02562f130f0502ba875d3ae4a08f51f420b82de16b4",
+ "v23_is_frozen_authority": true,
+ "pages": 82,
+ "all_pass": true,
+ "checks": {
+  "1_all_75_countries": true,
+  "6_no_missing_country": true,
+  "2_six_roles_each_country": true,
+  "3_mapping_matches_v23": true,
+  "5_no_substitution": true,
+  "4_no_invented_product": true,
+  "7_no_duplicate_or_misassigned_country": true,
+  "8_no_broken_page_or_table_layout": true,
+  "9_no_text_overflow": true,
+  "10_navigation_links_work": true,
+  "11_renders_desktop_and_phone": true,
+  "12_no_old_orange_accent": true,
+  "13_claims_within_v23_scope": true,
+  "14_cover_title_benefit_hierarchy": true,
+  "15_local_sugar_names_d32": true,
+  "16_title_header_metadata": true,
+  "17_changes_vs_baseline_only_allowed": true
+ },
+ "detail": {
+  "countries": {
+   "v23": 75,
+   "in_pdf": 75,
+   "missing": [],
+   "duplicate_titles": [],
+   "duplicate_pages": [],
+   "name_not_on_its_page": [],
+   "pages": "6–80"
+  },
+  "roles": {
+   "pages_checked": 75,
+   "mismatches": {}
+  },
+  "mapping": {
+   "fields_checked_per_country": "name, brand, barcode (where v23 has one), fat % (milk/cream/SMP), sugar rule",
+   "mismatches": {}
+  },
+  "no_invention": {
+   "numbers_not_in_v23_for_that_country": {},
+   "other_country_products_found": {}
+  },
+  "index": {
+   "links_checked": 150,
+   "wrong_targets": [],
+   "countries_missing_from_index": []
+  },
+  "layout": {
+   "pages": 82,
+   "layout_report": "layout_report_v1.1.json",
+   "layout_report_missing_or_stale": false,
+   "dom_overflow_pages": [],
+   "pdf_box_problems": [],
+   "fit_levels_used": {
+    "how-to-use": 1
+   },
+   "fonts_loaded": [
+    "Manrope G 200 800",
+    "Plex G 500",
+    "Plex G 600"
+   ]
+  },
+  "navigation": {
+   "index_links": 150,
+   "back_link_missing": [],
+   "external_links_on_country_pages": 638,
+   "external_not_in_v23": [],
+   "internal_links_on_country_pages": 151,
+   "us_notes_link": [
+    "GELLATTI_GELATO_BASE_INGREDIENTS_v1.1.html#81"
+   ],
+   "front_back_external": [
+    "https://gellatti.com/",
+    "https://gellatti.com/shop"
+   ],
+   "front_back_bad": [],
+   "bookmarks": 80,
+   "bookmark_sections_missing": [],
+   "unexpected_bookmarks": []
+  },
+  "readability": {
+   "renders_dir": "build/v1.1_renders",
+   "renders": [
+    "desk_p01-01.png",
+    "desk_p02-02.png",
+    "desk_p03-03.png",
+    "desk_p04-04.png",
+    "desk_p05-05.png",
+    "desk_p14-14.png",
+    "desk_p25-25.png",
+    "desk_p38-38.png",
+    "desk_p40-40.png",
+    "desk_p58-58.png",
+    "desk_p67-67.png",
+    "desk_p68-68.png",
+    "desk_p72-72.png",
+    "desk_p78-78.png",
+    "desk_p81-81.png",
+    "desk_p82-82.png",
+    "phone_p01-01.png",
+    "phone_p02-02.png",
+    "phone_p03-03.png",
+    "phone_p04-04.png",
+    "phone_p05-05.png",
+    "phone_p14-14.png",
+    "phone_p25-25.png",
+    "phone_p38-38.png",
+    "phone_p40-40.png",
+    "phone_p58-58.png",
+    "phone_p67-67.png",
+    "phone_p68-68.png",
+    "phone_p72-72.png",
+    "phone_p78-78.png",
+    "phone_p81-81.png",
+    "phone_p82-82.png"
+   ],
+   "page_width_pt": 340.07999,
+   "smallest_word_box_pt": 8.82,
+   "p5_word_box_pt": 10.12,
+   "median_word_box_pt": 16.16,
+   "phone_390px_smallest_px": 10.1,
+   "phone_390px_p5_px": 11.6,
+   "phone_390px_median_px": 18.5
+  },
+  "colour": {
+   "old_orange_uses": {},
+   "accent_f0c44c_uses": 156,
+   "distinct_colours": 18,
+   "source_html": "build/guide_v1.1.html",
+   "source_html_found": true,
+   "top_colours": [
+    "#64625e×4138",
+    "#cfc9c1×3200",
+    "#181a1d×2632",
+    "#77736b×1686",
+    "#b8890f×1426",
+    "#ffffff×482",
+    "#e8e3dd×310",
+    "#f6f4ee×274",
+    "#17181c×162",
+    "#efc44b×156",
+    "#795c09×70",
+    "#ded9d0×22"
+   ]
+  },
+  "claims": {
+   "forbidden_patterns": [
+    "(?<!not an )FDA[- ]approv",
+    "approved by (the )?FDA",
+    "guaranteed (stock|delivery|shipping|availability)",
+    "(?<!not )always (in stock|available)",
+    "\\bin stock\\b",
+    "available (in|to) all",
+    "every recipe",
+    "all (the )?ingredients (for|of|in) (all|every)",
+    "\\bships to\\b",
+    "free (shipping|delivery)",
+    "certified",
+    "approved for sale",
+    "matched to a product in each of 75 countries",
+    "the product Gellatti identified for each ingredient"
+   ],
+   "required_phrases": [
+    "does not list every ingredient",
+    "not an FDA approval",
+    "75 countries",
+    "not guaranteed",
+    "Gelato Base Ingredients",
+    "What to buy and where",
+    "PDF shopping guide · Free · €0",
+    "Covers 75 countries — find yours in the index",
+    "a simple buying rule instead of a brand"
+   ],
+   "forbidden_hits": [],
+   "fda_mentions": [
+    "plier's own statement, not an FDA approval. Fat content Where a"
+   ],
+   "required_missing": []
+  },
+  "cover": {
+   "largest_words": [
+    "Gelato",
+    "Base",
+    "Ingredients"
+   ],
+   "title_box_pt": 80.8,
+   "title_bottom_pt": 235.5,
+   "page_height_pt": 594.95996,
+   "benefit_found": true,
+   "benefit_box_pt": 30.8,
+   "largest_other_box_pt": 17.3,
+   "small_lines_found": {
+    "PDF shopping guide · Free · €0": true,
+    "Covers 75 countries — find yours in the index": true
+   },
+   "large_75": [],
+   "old_cover_text_found": []
+  },
+  "local_sugar_names": {
+   "approved_list": "../a03/sucrose_consumer_terms_approved.csv",
+   "approved_list_sha256": "266acc7e166ae6067e181d042852c6cfebecb74b2d02345bd0d105d3b7368066",
+   "approved_markets": 28,
+   "approved_terms": 29,
+   "d32_problems": [],
+   "markets_printed_exactly": 28,
+   "printed": [
+    {
+     "iso": "BD",
+     "page": 11,
+     "printed": [
+      "Local name: চিনি"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "BG",
+     "page": 14,
+     "printed": [
+      "Local name: Захар"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "BR",
+     "page": 13,
+     "printed": [
+      "Local name: Açúcar Refinado"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "CZ",
+     "page": 22,
+     "printed": [
+      "Local name: Cukr krystal"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "DK",
+     "page": 23,
+     "printed": [
+      "Local name: Sukker"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "EE",
+     "page": 26,
+     "printed": [
+      "Local name: Suhkur"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "EG",
+     "page": 25,
+     "printed": [
+      "Local name: ضيبا ركس"
+     ],
+     "comparison": "exact + right-to-left letters as a multiset"
+    },
+    {
+     "iso": "FI",
+     "page": 27,
+     "printed": [
+      "Local names: Taloussokeri (Finnish) ·",
+      "strösocker (Swedish)"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "GR",
+     "page": 31,
+     "printed": [
+      "Local name: Ζάχαρη Λευκή"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "HR",
+     "page": 20,
+     "printed": [
+      "Local name: Šećer kristal"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "HU",
+     "page": 33,
+     "printed": [
+      "Local name: Kristálycukor"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "ID",
+     "page": 36,
+     "printed": [
+      "Local name: Gula Pasir"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "IS",
+     "page": 34,
+     "printed": [
+      "Local name: sykur"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "JP",
+     "page": 40,
+     "printed": [
+      "Local name: グラニュー糖"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "KR",
+     "page": 67,
+     "printed": [
+      "Local name: 백설탕"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "LT",
+     "page": 44,
+     "printed": [
+      "Local name: Cukrus"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "LV",
+     "page": 43,
+     "printed": [
+      "Local name: Cukurs"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "NL",
+     "page": 50,
+     "printed": [
+      "Local name: Kristalsuiker"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "NO",
+     "page": 53,
+     "printed": [
+      "Local name: Sukker"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "PT",
+     "page": 59,
+     "printed": [
+      "Local name: Açúcar Branco"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "RO",
+     "page": 61,
+     "printed": [
+      "Local name: Zahăr alb"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "SE",
+     "page": 70,
+     "printed": [
+      "Local name: Strösocker"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "SI",
+     "page": 65,
+     "printed": [
+      "Local name: Beli kristalni sladkor"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "SK",
+     "page": 64,
+     "printed": [
+      "Local name: Cukor kryštálový biely"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "TH",
+     "page": 73,
+     "printed": [
+      "Local name: น้ำตาลทรายขาวบริสุทธิ์"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "TR",
+     "page": 75,
+     "printed": [
+      "Local name: Toz Şeker"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "TW",
+     "page": 72,
+     "printed": [
+      "Local name: 細砂糖"
+     ],
+     "comparison": "exact"
+    },
+    {
+     "iso": "VN",
+     "page": 80,
+     "printed": [
+      "Local name: Đường trắng"
+     ],
+     "comparison": "exact"
+    }
+   ],
+   "approved_market_mismatches": {},
+   "other_markets_checked": 47,
+   "other_market_mismatches": {},
+   "local_name_lines_outside_sugar_row_or_on_other_markets": {},
+   "local_name_lines_in_document": 28
+  },
+  "title": {
+   "pdf_metadata_title": "Gellatti — Gelato Base Ingredients",
+   "expected": "Gellatti — Gelato Base Ingredients",
+   "header_pages_checked": 80,
+   "header_mismatches": {},
+   "pages_with_old_name": [],
+   "back_cover_has_title": true
+  },
+  "baseline": {
+   "pdf": "GELLATTI_GELATO_BASE_GUIDE_75_COUNTRIES_v1.pdf",
+   "sha256": "e84ebd582bd4539c8e67eb097cfc83e42279c4f199e594564aac3c9f862c6537",
+   "pages": 82,
+   "summary": {
+    "pages_3_80_with_only_allowed_changes": 78,
+    "header_replacements_3_80": 78,
+    "local_name_insertions_3_80": 28,
+    "reading_order_only_ops_3_80": 5,
+    "pages_with_reading_order_only_ops": [
+     25
+    ],
+    "other_changes_3_80": 0,
+    "geometry_pages_identical_or_one_step_shift": 78,
+    "geometry_words_compared_3_80": 11436,
+    "geometry_words_moved_down_3_80": 1753,
+    "geometry_shift_pt_values": [
+     12.75,
+     13.5,
+     24.0,
+     24.75
+    ],
+    "country_pages_with_local_name": [
+     "BD",
+     "BG",
+     "BR",
+     "CZ",
+     "DK",
+     "EE",
+     "EG",
+     "FI",
+     "GR",
+     "HR",
+     "HU",
+     "ID",
+     "IS",
+     "JP",
+     "KR",
+     "LT",
+     "LV",
+     "NL",
+     "NO",
+     "PT",
+     "RO",
+     "SE",
+     "SI",
+     "SK",
+     "TH",
+     "TR",
+     "TW",
+     "VN"
+    ]
+   },
+   "unexpected_changes_pages_3_80": {},
+   "navigation_counts": {
+    "internal_links": {
+     "v1": 301,
+     "v1.1": 301
+    },
+    "index_links_p4_p5": {
+     "v1": 150,
+     "v1.1": 150
+    },
+    "internal_links_country_pages": {
+     "v1": 151,
+     "v1.1": 151
+    },
+    "external_links": {
+     "v1": 641,
+     "v1.1": 641
+    },
+    "external_links_country_pages": {
+     "v1": 638,
+     "v1.1": 638
+    },
+    "bookmarks": {
+     "v1": 80,
+     "v1.1": 80
+    }
+   },
+   "links_identical_per_page": true,
+   "bookmarks_identical": true,
+   "front_and_back_changes": {
+    "1": [
+     {
+      "kind": "other",
+      "removed": [
+       "75",
+       "FREE GUIDE · 0 €",
+       "COUNTRIES",
+       "Gelato Base Guide",
+       "The six ingredients of the Gellatti gelato base,",
+       "matched to a product in each of 75 countries."
+      ],
+      "added": [
+       "PDF SHOPPING GUIDE · FREE · €0",
+       "Gelato Base",
+       "Ingredients",
+       "What to buy and where",
+       "Covers 75 countries — find yours in the index"
+      ]
+     }
+    ],
+    "2": [
+     {
+      "kind": "header",
+      "removed": [
+       "GELATO BASE GUIDE"
+      ],
+      "added": [
+       "GELATO BASE INGREDIENTS"
+      ]
+     },
+     {
+      "kind": "other",
+      "removed": [
+       "Your country page shows the product Gellatti identified for",
+       "each ingredient, with the brand, the pack size and the barcode",
+       "where the product has one."
+      ],
+      "added": [
+       "For milk, cream, skim milk powder, dextrose and tara gum, your",
+       "country page shows the product Gellatti identified, with the",
+       "brand, the pack size and the barcode where the product has",
+       "one. For sugar it gives a simple buying rule instead of a brand,",
+       "plus the local name where Gellatti has confirmed one."
+      ]
+     },
+     {
+      "kind": "other",
+      "removed": [
+       "The shop Gellatti found is outside your country."
+      ],
+      "added": [
+       "FROM ABROAD The shop Gellatti found is outside your country."
+      ]
+     },
+     {
+      "kind": "other",
+      "removed": [
+       "FROM ABROAD"
+      ],
+      "added": []
+     }
+    ],
+    "81": [
+     {
+      "kind": "header",
+      "removed": [
+       "GELATO BASE GUIDE"
+      ],
+      "added": [
+       "GELATO BASE INGREDIENTS"
+      ]
+     },
+     {
+      "kind": "other",
+      "removed": [
+       "Compiled from manufacturer and retailer information, September 2026. Links show where",
+       "each product was found; prices, stock and delivery are not guaranteed. Gellatti is not",
+       "affiliated with the brands shown, and product names and trademarks belong to their"
+      ],
+      "added": [
+       "Compiled from manufacturer and retailer information, September 2026. Local sugar names",
+       "come from a separate Gellatti consumer-term review (September 2026); they are the only",
+       "country-page information not taken from Gellatti's approved product table. Links show",
+       "where each product was found; prices, stock and delivery are not guaranteed. Gellatti is",
+       "not affiliated with the brands shown, and product names and trademarks belong to their"
+      ]
+     }
+    ],
+    "82": [
+     {
+      "kind": "other",
+      "removed": [
+       "Gelato Base Guide · Edition 1 · September 2026 · Free (0 €). Covers the six base"
+      ],
+      "added": [
+       "Gelato Base Ingredients · Edition 1 · September 2026 · Free (0 €). Covers the six base"
+      ]
+     }
+    ]
+   },
+   "side_by_side_renders": {
+    "dir": "build/v1.1_renders/side_by_side",
+    "files": [
+     "pair_p01_cover.png",
+     "pair_p02_how-to-use.png",
+     "pair_p04_index-1.png",
+     "pair_p05_index-2.png",
+     "pair_p14_BG.png",
+     "pair_p38_IL.png",
+     "pair_p40_JP.png",
+     "pair_p58_PL.png",
+     "pair_p67_KR.png",
+     "v1.1_p01_cover.png",
+     "v1.1_p02_how-to-use.png",
+     "v1.1_p04_index-1.png",
+     "v1.1_p05_index-2.png",
+     "v1.1_p14_BG.png",
+     "v1.1_p38_IL.png",
+     "v1.1_p40_JP.png",
+     "v1.1_p58_PL.png",
+     "v1.1_p67_KR.png",
+     "v1_p01_cover.png",
+     "v1_p02_how-to-use.png",
+     "v1_p04_index-1.png",
+     "v1_p05_index-2.png",
+     "v1_p14_BG.png",
+     "v1_p38_IL.png",
+     "v1_p40_JP.png",
+     "v1_p58_PL.png",
+     "v1_p67_KR.png"
+    ]
+   }
+  }
+ }
+}

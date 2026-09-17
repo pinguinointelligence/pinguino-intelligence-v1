@@ -1,0 +1,57 @@
+{
+  "locale": "is",
+  "dir": "ltr",
+  "title": "Hráefni í gelatogrunn",
+  "benefit": "Hvað á að kaupa og hvar",
+  "pill": "PDF · 0 €",
+  "country_label": "Land",
+  "language_label": "Tungumál",
+  "edition": "Útgáfa 1 · september 2026",
+  "cover_items_title": "Hráefnin sjö í Starter Pack",
+  "howto_title": "Svona notarðu leiðarvísinn",
+  "howto_lede": "Fyrir hvert hráefni í Starter Pack nefnum við vöru sem þú getur keypt í þessu landi.",
+  "steps": [
+    {"b": "Veldu eina vöru", "p": "Fyrri varan er okkar val og sú seinni valkostur ef sú fyrri fæst ekki."},
+    {"b": "Skoðaðu merkimiðann", "p": "Innihaldslýsingin á umbúðunum þarf að passa við lýsingu hráefnisins. Ef samsetning vöru er önnur tökum við það fram."},
+    {"b": "Taktu magnið úr appinu", "p": "Þetta PDF nefnir vörur, ekki magn í grömmum. Uppskriftir og magn reiknar Gellatti-appið út."}
+  ],
+  "legend_title": "Skýringar",
+  "tag_from_abroad": "Erlendis frá",
+  "tag_b2b": "Fyrir fyrirtæki",
+  "tag_other_composition": "Önnur samsetning",
+  "tag_alternative": "Staðbundinn valkostur",
+  "tag_unconfirmed": "Óstaðfest",
+  "legend": {
+    "from_abroad": "erlend verslun sem sendir til þessa lands",
+    "b2b": "selt fyrirtækjum eða í stórum pakkningum",
+    "other_composition": "sams konar vara með aðra samsetningu (tilgreind við hliðina)",
+    "alternative": "staðgengill fyrir aðra Gellatti-vöru"
+  },
+  "starter_amount": "Í Starter Pack: {g} g",
+  "option": "Valkostur {n}",
+  "ean": "EAN",
+  "where": "Hvar",
+  "fat": "fita",
+  "items": {
+    "DEX": {"name": "Dextrósi", "ref": "Dextrósi (glúkósi) í duftformi, mónóhýdrat."},
+    "SMP": {"name": "Undanrennuduft", "ref": "Mjólkurduft með um 1% fitu."},
+    "CRP": {"name": "Rjómaduft", "ref": "Þurrkaður rjómi með um 42% fitu."},
+    "FRU": {"name": "Frúktósi", "ref": "Hreinn kristallaður frúktósi."},
+    "INU": {"name": "Ínúlín", "ref": "Ínúlínduft, til dæmis úr síkóríu."},
+    "YOL": {"name": "Þurrkuð eggjarauða", "ref": "Gerilsneydd eggjarauða úr hænueggjum í duftformi."},
+    "STB": {"name": "Stöðgari", "ref": "Gellatti Stabilizer er blanda af taragúmmíi, engisprettubaunagúmmíi og gvargúmmíi."}
+  },
+  "stabilizer_note": "Staðbundinn valkostur við Gellatti-blönduna, ekki sama blandan. Blandaðu honum við þurrefnin og hitaðu grunninn upp í 75–80 °C.",
+  "missing": "Engin samþykkt vara í þessu landi enn.",
+  "notes_title": "Gott að vita",
+  "notes": [
+    {"h": "Framboð", "p": "Við athuguðum þessar vörur á vefsíðum framleiðenda og verslana í september 2026. Framboð, verð og afhending geta breyst og eru ekki tryggð."},
+    {"h": "Merkimiðinn ræður", "p": "Skoðaðu innihaldsefni og ofnæmisvalda á umbúðunum áður en þú kaupir. Rjómaduft og mjólkurduft innihalda mjólk; eggjarauða inniheldur egg."},
+    {"h": "Stöðgari", "p": "Í þessu landi kemur staðbundið plöntugúmmí í stað Gellatti Stabilizer. Það virkar á svipaðan hátt en er ekki sama blandan."}
+  ],
+  "fine": "Vara sem nefnd er hér er ekki endilega fáanleg í Gellatti-appinu enn. Gellatti selur ekki vörur annarra vörumerkja.",
+  "back_h": "Frábær gelato byrjar á góðum grunni.",
+  "back_p": "Uppskriftir, magn og ferlið finnurðu í Gellatti-appinu.",
+  "back_link": "gellatti.com",
+  "draft": "DRÖG · tillögur til samþykktar"
+}

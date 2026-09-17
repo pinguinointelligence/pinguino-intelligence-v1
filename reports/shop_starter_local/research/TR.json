@@ -1,0 +1,371 @@
+{
+  "iso2": "TR",
+  "country": "Türkiye",
+  "agent": "research-eu-south",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:50:00Z",
+  "items": {
+    "CRP": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "krema tozu",
+        "süt kreması tozu",
+        "toz krema"
+      ],
+      "queries": [
+        "hammaddeler.com product sitemap: krema / krema tozu / süt tozu",
+        "arifoglu.com site search 'krema tozu' (0)",
+        "\"krema tozu\" % yağ süt kreması tozu satın al (Brave - HTTP 429)",
+        "\"cream powder\" 42% fat buy online shop Europe (Brave - HTTP 429)"
+      ],
+      "sources_tried": [
+        "ingredientsbar.com (UK; dairy cream powder 75 % fat, generic international delivery - lead)",
+        "hammaddeler.com (Turkish food raw-materials shop, Smart Kimya Tic. Ltd. Şti., İzmir; product sitemap scanned): only 'Krema Ekstraktı' (maltodextrin + natural aroma - flavouring, reject), 'Toz Krema Pasta Kreması' (pastry cream mix - reject), milk powders in 25 kg",
+        "arifoglu.com (herbal/health shop; 0 results)",
+        "migros.com.tr (supermarket; JS app, not searchable without browser)",
+        "carrefoursa.com / a101.com.tr / supplementler.com (HTTP 403 bot walls, inconclusive)",
+        "gourmet-versand.com (ships to Turkey; no dairy cream powder in sitemap)",
+        "meincupcake.de / taste-market.de (no delivery to Türkiye listed)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Ingredients Bar",
+          "product_name": "Cream Powder | Dairy Milk High-Fat 75% (Product ID 0370)",
+          "pack": "200 g / 500 g / 1.5 kg / 4 kg (size selector)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Ingredients Bar (UK; packed in the UK, produced in Germany)",
+          "page_market": "GB",
+          "market_by": "CURRENCY_ONLY",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none for TR: delivery page only states generic international delivery (no country list)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://ingredientsbar.com/payment-delivery/",
+            "quotes": [
+              "International delivery carries additional charges, which are displayed at checkout based on the delivery address"
+            ],
+            "found": [
+              true
+            ],
+            "explicit_country": false
+          },
+          "composition": {
+            "fat_g": 75.0,
+            "protein_g": 8.5,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Per 100 g: Energy 3094 kJ/750 kcal, Fat 75 g (saturates 51 g), Carbohydrates 12 g (sugars 12 g), Protein 8.5 g, Fibre 0 g, Salt 2 g",
+            "from": "shop page",
+            "carbs_g": 12.0
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "Dairy cream powder at 75 % fat (outside 38-48 %). UK seller (post-Brexit import to the EU/TR); delivery to TR not explicitly stated; several pack sizes on one page, no GTIN. schema InStock.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8009acbd08b491f0.json",
+          "checked_at_utc": "2026-09-17T16:41:35Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "No dairy cream powder (38-48 % fat) found for Türkiye (only lead: a UK shop, 75 % fat, generic international delivery); Turkish 'krema tozu' results are flavourings or whipped/pastry-cream mixes. Discovery constrained (WebSearch budget exhausted, Brave HTTP 429, several Turkish retailers HTTP 403)."
+    },
+    "FRU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "fruktoz",
+        "fruktoz tozu",
+        "meyve şekeri"
+      ],
+      "queries": [
+        "hammaddeler.com product sitemap 'fruktoz'",
+        "arifoglu.com site search 'fruktoz' (0)",
+        "fruktoz tozu 500 gr satın al (Brave - HTTP 429)"
+      ],
+      "sources_tried": [
+        "hammaddeler.com (Turkish food raw-materials shop, Smart Kimya Tic. Ltd. Şti., İzmir; product sitemap scanned) (Fruktoz 500 g, no GTIN)",
+        "arifoglu.com (0)",
+        "migros.com.tr (JS app)",
+        "carrefoursa.com / a101.com.tr (HTTP 403)",
+        "gourmet-versand.com (country selector lists Turkey - cross-border)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sosa Ingredients",
+          "product_name": "Sosa fructose powder, 1 kg, PE dose",
+          "pack": "1 kg",
+          "gtin": "8414933026259",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists the market (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+            "quotes": [
+              "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
+              "Thailand Turkey Ukraine"
+            ],
+            "found": [
+              true,
+              true
+            ],
+            "type": "shipping-cost country selector listing the market"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
+            "from": "retailer page ('EAN Code 8414933026259' printed)",
+            "sugars_g": 100.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d803f3424d15075a.json",
+          "checked_at_utc": "2026-09-17T16:17:23Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Takita Smart (as listed)",
+          "product_name": "Fruktoz 500 g",
+          "pack": "500 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.hammaddeler.com/urun/fruktoz-500-g",
+          "source_type": "RETAILER",
+          "seller": "hammaddeler.com (Smart Kimya Tic. Dan. Ltd. Şti., Çiğli-İzmir)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "seller's own delivery/contact pages (check_quotes.py found=true): delivery times to Turkish cities; address Çiğli-İzmir, Türkiye (currency TL is supporting only)",
+          "cross_border": false,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "quotes": [
+              {
+                "url": "https://hammaddeler.com/sayfa/sevkiyat-teslimat",
+                "quote": "Kargosu bir günde ulaşan şehirler: Adapazarı, Afyon, Ankara, Antalya, Aydın, Balıkesir, Bilecik, Bolu, Burdur, Bursa, Çanakkale, Denizli, Düzce, Edirne, Eskişehir, Isparta, İstanbul, İzmir",
+                "found": true
+              },
+              {
+                "url": "https://hammaddeler.com/iletisim",
+                "quote": "Atatürk Organize Sanayi Bölgesi Çiğli-İzmir Ülke Türkiye Şehir İzmir",
+                "found": true
+              }
+            ]
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Gıdanın Adı: Fruktoz; Bileşen Listesi: Fruktoz; 100 g için: Enerji 375 kcal, Yağ 0 g, Karbonhidrat 100 g, Şekerler 100 g, Protein 0 g, Tuz 0 g; Gıda İşletmecisi: Egepak Gıda ve Ambalaj Sanayi A.Ş.; Menşei: Türkiye",
+            "from": "retailer page (ÜRÜN BİLGİSİ)",
+            "sugars_g": 100.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Local Turkish listing (Kod 066.040.01) but no GTIN and not the seller's own brand, so identity is not proven. Non-EU destination for rank 1: customs/duties may apply.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c10bf10b9804e5fa.json",
+          "checked_at_utc": "2026-09-17T16:15:41Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "INU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "inülin",
+        "inülin tozu",
+        "hindiba lifi"
+      ],
+      "queries": [
+        "hammaddeler.com product sitemap 'inulin'",
+        "arifoglu.com site search 'inülin' (0)",
+        "proteinocean.com sitemap 'inulin'",
+        "bigjoy.com.tr / badenatural.com / aksuvital.com sitemaps (no inulin product)"
+      ],
+      "sources_tried": [
+        "hammaddeler.com (Turkish food raw-materials shop, Smart Kimya Tic. Ltd. Şti., İzmir; product sitemap scanned) (İnülin 100 g, no GTIN)",
+        "proteinocean.com (Protein Ocean İnülin; no GTIN, binding only by TRY currency)",
+        "arifoglu.com (0)",
+        "bigjoy.com.tr / badenatural.com / aksuvital.com (no product)",
+        "gourmet-versand.com (country selector lists Turkey - cross-border)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sosa Ingredients",
+          "product_name": "Sosa Inulin Cold (fiber) (50063), 500 g, PE dose",
+          "pack": "500 g",
+          "gtin": "8414933008774",
+          "identifier_confirmed": true,
+          "url": "https://www.gourmet-versand.com/en/article26461/sosa-inulin-cold-fiber-50063-500-g.html",
+          "source_type": "RETAILER",
+          "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists the market (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+            "quotes": [
+              "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
+              "Thailand Turkey Ukraine"
+            ],
+            "found": [
+              true,
+              true
+            ],
+            "type": "shipping-cost country selector listing the market"
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Dietary fiber inulin. Nutritional table per 100 g: carbohydrates 7 g, of which sugars 7 g, salt 0,1 g (fibre line not printed)",
+            "from": "retailer page ('EAN Code 8414933008774' printed)",
+            "sugars_g": 7.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Single-ingredient inulin (cold-soluble), sugars 7 g/100 g; fibre value not printed on the page. 'NOW AVAILABLE'.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5965eff974c80924.json",
+          "checked_at_utc": "2026-09-17T16:17:24Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Tito Smart (as listed; 'Tito İnülin')",
+          "product_name": "İnülin 100 g",
+          "pack": "100 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.hammaddeler.com/urun/inulin-100-g",
+          "source_type": "RETAILER",
+          "seller": "hammaddeler.com (Smart Kimya Tic. Dan. Ltd. Şti., Çiğli-İzmir)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "seller's own delivery/contact pages (check_quotes.py found=true): delivery times to Turkish cities; address Çiğli-İzmir, Türkiye (currency TL is supporting only)",
+          "cross_border": false,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "quotes": [
+              {
+                "url": "https://hammaddeler.com/sayfa/sevkiyat-teslimat",
+                "quote": "Kargosu bir günde ulaşan şehirler: Adapazarı, Afyon, Ankara, Antalya, Aydın, Balıkesir, Bilecik, Bolu, Burdur, Bursa, Çanakkale, Denizli, Düzce, Edirne, Eskişehir, Isparta, İstanbul, İzmir",
+                "found": true
+              },
+              {
+                "url": "https://hammaddeler.com/iletisim",
+                "quote": "Atatürk Organize Sanayi Bölgesi Çiğli-İzmir Ülke Türkiye Şehir İzmir",
+                "found": true
+              }
+            ]
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": 88.0,
+            "fructose_pct": null,
+            "ingredients": "Gıda Katkı Maddesinin Adı: Tito İnülin; Bileşen Listesi: İnülin; kaynak: Hindiba (chicory); 100 g için: Enerji 208 kcal, Karbonhidrat 8 g, Şekerler 8 g, Lif 88 g, Protein 0 g, Tuz 0,4 g",
+            "from": "retailer page (ÜRÜN BİLGİSİ)",
+            "sugars_g": 8.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Chicory inulin, fibre 88 g/100 g. Local Turkish listing (Kod 222.308.41) but no GTIN and 'Tito' is a third-party brand, so identity is not proven.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7cc2b7b0c1bf2e1f.json",
+          "checked_at_utc": "2026-09-17T16:15:43Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "yumurta sarısı tozu",
+        "toz yumurta sarısı"
+      ],
+      "queries": [
+        "hammaddeler.com product sitemap 'yumurta sarısı tozu'",
+        "arifoglu.com site search 'yumurta sarısı' (0)",
+        "myprotein.com.tr product 10529352 (HTTP 403)"
+      ],
+      "sources_tried": [
+        "hammaddeler.com (Turkish food raw-materials shop, Smart Kimya Tic. Ltd. Şti., İzmir; product sitemap scanned) (Yumurta Sarısı Tozu 500 g, no GTIN)",
+        "myprotein.com.tr (HTTP 403 bot wall, inconclusive)",
+        "arifoglu.com (0)",
+        "taste-market.de / sermand.com (delivery lists do not include Türkiye)",
+        "gourmet-versand.com (ships to Turkey; no egg yolk powder)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Kor Yumurta Smart (as listed; operator Kor Agro Organik Gıda)",
+          "product_name": "Yumurta Sarısı Tozu 500 g",
+          "pack": "500 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.hammaddeler.com/urun/yumurta-sarisi-tozu-500-g",
+          "source_type": "RETAILER",
+          "seller": "hammaddeler.com (Smart Kimya Tic. Dan. Ltd. Şti., Çiğli-İzmir)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "seller's own delivery/contact pages (check_quotes.py found=true): delivery times to Turkish cities; address Çiğli-İzmir, Türkiye (currency TL is supporting only)",
+          "cross_border": false,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "quotes": [
+              {
+                "url": "https://hammaddeler.com/sayfa/sevkiyat-teslimat",
+                "quote": "Kargosu bir günde ulaşan şehirler: Adapazarı, Afyon, Ankara, Antalya, Aydın, Balıkesir, Bilecik, Bolu, Burdur, Bursa, Çanakkale, Denizli, Düzce, Edirne, Eskişehir, Isparta, İstanbul, İzmir",
+                "found": true
+              },
+              {
+                "url": "https://hammaddeler.com/iletisim",
+                "quote": "Atatürk Organize Sanayi Bölgesi Çiğli-İzmir Ülke Türkiye Şehir İzmir",
+                "found": true
+              }
+            ]
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Gıda Katkı Maddesinin Adı: Yumurta Sarısı Tozu; Bileşen Listesi: Yumurta Sarısı (Tavuk); Net Miktar: 500 g; Gıda İşletmecisi: Kor Agro Organik Gıda İnş. Enerji San. ve Tic. A.Ş.; Menşei: Türkiye; nutrition not printed",
+            "from": "retailer page (ÜRÜN BİLGİSİ)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % hen egg yolk powder (single ingredient). Local Turkish listing (Kod 111.403.30) but no GTIN and not the seller's own brand, so identity is not proven.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4ca24a07edeeded0.json",
+          "checked_at_utc": "2026-09-17T16:15:46Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "No GTIN-bearing Turkish page and no cross-border seller shipping egg yolk powder to Türkiye was verified."
+    }
+  }
+}

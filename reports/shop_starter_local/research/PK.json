@@ -1,0 +1,112 @@
+{
+  "iso2": "PK",
+  "country": "Pakistan",
+  "agent": "research-south-asia-oceania-africa",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site-search pages. Several Shopify stores answered HTTP 429 'Verifying your connection' on this egress (not bypassed).",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "کریم پاؤڈر (ur)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on metro-online.pk, dvago.pk, dwatson.pk, imtiaz.com.pk, naheed.pk, alfatah.pk, springs.com.pk",
+        "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on alfatah.pk and springs.com.pk",
+        "Urdu terms listed for owner copy; retailer URLs/search are English"
+      ],
+      "sources_tried": [
+        "metro-online.pk (cash & carry/grocer) - 25.6k product URLs scanned: only Rafhan vanilla ice cream powder (dessert mix, rejected)",
+        "dvago.pk (pharmacy chain) - 12k+ product URLs scanned, no match",
+        "dwatson.pk (pharmacy/retail) - 25.9k URLs scanned, no match",
+        "springs.com.pk (supermarket, Shopify search) - only 'Italiano Coconut Cream Powder 120g' and 'Rafhan Vanilla Ice Cream Powder 275g' (rejected types); fructose/inulin/egg yolk: no products",
+        "alfatah.pk (supermarket, Shopify search) - fructose search listed 'FRUITALINE FRUIT SUGAR 200 GM' (discovery only); product page and later searches blocked by Shopify 'Verifying your connection' HTTP 429 - type/composition unverifiable, inconclusive",
+        "naheed.pk (supermarket) - HTTP 403 bot wall, inconclusive",
+        "imtiaz.com.pk - sitemap holds blog posts only",
+        "daraz.pk (marketplace) - not used",
+        "no readable Pakistani baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "Only coconut cream powder and ice cream dessert powders found (rejected types)."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "fructose",
+        "fruit sugar",
+        "فرکٹوز (ur)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on metro-online.pk, dvago.pk, dwatson.pk, imtiaz.com.pk, naheed.pk, alfatah.pk, springs.com.pk",
+        "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on alfatah.pk and springs.com.pk",
+        "Urdu terms listed for owner copy; retailer URLs/search are English"
+      ],
+      "sources_tried": [
+        "metro-online.pk (cash & carry/grocer) - 25.6k product URLs scanned: only Rafhan vanilla ice cream powder (dessert mix, rejected)",
+        "dvago.pk (pharmacy chain) - 12k+ product URLs scanned, no match",
+        "dwatson.pk (pharmacy/retail) - 25.9k URLs scanned, no match",
+        "springs.com.pk (supermarket, Shopify search) - only 'Italiano Coconut Cream Powder 120g' and 'Rafhan Vanilla Ice Cream Powder 275g' (rejected types); fructose/inulin/egg yolk: no products",
+        "alfatah.pk (supermarket, Shopify search) - fructose search listed 'FRUITALINE FRUIT SUGAR 200 GM' (discovery only); product page and later searches blocked by Shopify 'Verifying your connection' HTTP 429 - type/composition unverifiable, inconclusive",
+        "naheed.pk (supermarket) - HTTP 403 bot wall, inconclusive",
+        "imtiaz.com.pk - sitemap holds blog posts only",
+        "daraz.pk (marketplace) - not used",
+        "no readable Pakistani baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "Possible lead for re-check by a browser session: 'Fruitaline Fruit Sugar 200 gm' on alfatah.pk (seen only in a search-results payload; product page bot-walled, so it is not classified - 'fruit sugar' names can be sucrose blends)."
+    },
+    "INU": {
+      "result": "BRAK",
+      "local_terms": [
+        "inulin",
+        "انولن (ur)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on metro-online.pk, dvago.pk, dwatson.pk, imtiaz.com.pk, naheed.pk, alfatah.pk, springs.com.pk",
+        "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on alfatah.pk and springs.com.pk",
+        "Urdu terms listed for owner copy; retailer URLs/search are English"
+      ],
+      "sources_tried": [
+        "metro-online.pk (cash & carry/grocer) - 25.6k product URLs scanned: only Rafhan vanilla ice cream powder (dessert mix, rejected)",
+        "dvago.pk (pharmacy chain) - 12k+ product URLs scanned, no match",
+        "dwatson.pk (pharmacy/retail) - 25.9k URLs scanned, no match",
+        "springs.com.pk (supermarket, Shopify search) - only 'Italiano Coconut Cream Powder 120g' and 'Rafhan Vanilla Ice Cream Powder 275g' (rejected types); fructose/inulin/egg yolk: no products",
+        "alfatah.pk (supermarket, Shopify search) - fructose search listed 'FRUITALINE FRUIT SUGAR 200 GM' (discovery only); product page and later searches blocked by Shopify 'Verifying your connection' HTTP 429 - type/composition unverifiable, inconclusive",
+        "naheed.pk (supermarket) - HTTP 403 bot wall, inconclusive",
+        "imtiaz.com.pk - sitemap holds blog posts only",
+        "daraz.pk (marketplace) - not used",
+        "no readable Pakistani baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No inulin powder found at readable Pakistani retailers."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "انڈے کی زردی پاؤڈر (ur)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on metro-online.pk, dvago.pk, dwatson.pk, imtiaz.com.pk, naheed.pk, alfatah.pk, springs.com.pk",
+        "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on alfatah.pk and springs.com.pk",
+        "Urdu terms listed for owner copy; retailer URLs/search are English"
+      ],
+      "sources_tried": [
+        "metro-online.pk (cash & carry/grocer) - 25.6k product URLs scanned: only Rafhan vanilla ice cream powder (dessert mix, rejected)",
+        "dvago.pk (pharmacy chain) - 12k+ product URLs scanned, no match",
+        "dwatson.pk (pharmacy/retail) - 25.9k URLs scanned, no match",
+        "springs.com.pk (supermarket, Shopify search) - only 'Italiano Coconut Cream Powder 120g' and 'Rafhan Vanilla Ice Cream Powder 275g' (rejected types); fructose/inulin/egg yolk: no products",
+        "alfatah.pk (supermarket, Shopify search) - fructose search listed 'FRUITALINE FRUIT SUGAR 200 GM' (discovery only); product page and later searches blocked by Shopify 'Verifying your connection' HTTP 429 - type/composition unverifiable, inconclusive",
+        "naheed.pk (supermarket) - HTTP 403 bot wall, inconclusive",
+        "imtiaz.com.pk - sitemap holds blog posts only",
+        "daraz.pk (marketplace) - not used",
+        "no readable Pakistani baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No dried egg yolk powder found."
+    }
+  }
+}

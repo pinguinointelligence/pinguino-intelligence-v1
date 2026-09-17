@@ -1,0 +1,152 @@
+{
+  "iso2": "MY",
+  "country": "Malaysia",
+  "agent": "research-east-asia",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:25:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "serbuk krim",
+        "奶油粉"
+      ],
+      "queries": [
+        "cream powder (aapharmacy.com.my)",
+        "cream powder (alpropharmacy.com)",
+        "serbuk krim (alpropharmacy.com)",
+        "cream powder / whipping cream powder (bakewithyen.my)",
+        "cream powder (lazada.com.my)"
+      ],
+      "sources_tried": [
+        "aapharmacy.com.my Shopify predictive search (pharmacy/health)",
+        "alpropharmacy.com Shopify predictive search (pharmacy/health)",
+        "guardian.com.my (pharmacy; no server-side search results)",
+        "watsons.com.my (pharmacy; HTTP 403 Access Denied)",
+        "bigpharmacy.com.my (pharmacy; HTTP 429 bot check)",
+        "caring2u.com (pharmacy; search path 404)",
+        "jayagrocer.com (grocer; HTTP 429 bot check)",
+        "lotuss.com.my (hypermarket; search path 404)",
+        "villagegrocer.com.my (grocer; search path 404)",
+        "mydin.my (hypermarket; client-side search)",
+        "myaeon2go.com (hypermarket; search path 404)",
+        "bakewithyen.my (baking supplier; online shop shows a placeholder, no products)",
+        "lazada.com.my (marketplace; results rendered client-side)",
+        "shopee.com.my (marketplace; client-side)",
+        "iHerb my (Cloudflare challenge, not bypassed)",
+        "results seen: skim/instant milk powders, colostrum and adult milk formulas, whey protein, cosmetics creams — rejected types"
+      ],
+      "candidates": [],
+      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "fructose",
+        "fruktosa",
+        "果糖"
+      ],
+      "queries": [
+        "fructose (aapharmacy.com.my)",
+        "fructose (alpropharmacy.com)",
+        "fruktosa (alpropharmacy.com, aapharmacy.com.my)",
+        "果糖 (aapharmacy.com.my)",
+        "fructose (bakewithyen.my)",
+        "fructose powder (lazada.com.my)"
+      ],
+      "sources_tried": [
+        "aapharmacy.com.my Shopify predictive search (pharmacy/health)",
+        "alpropharmacy.com Shopify predictive search (pharmacy/health)",
+        "guardian.com.my (pharmacy; no server-side search results)",
+        "watsons.com.my (pharmacy; HTTP 403 Access Denied)",
+        "bigpharmacy.com.my (pharmacy; HTTP 429 bot check)",
+        "caring2u.com (pharmacy; search path 404)",
+        "jayagrocer.com (grocer; HTTP 429 bot check)",
+        "lotuss.com.my (hypermarket; search path 404)",
+        "villagegrocer.com.my (grocer; search path 404)",
+        "mydin.my (hypermarket; client-side search)",
+        "myaeon2go.com (hypermarket; search path 404)",
+        "bakewithyen.my (baking supplier; online shop shows a placeholder, no products)",
+        "lazada.com.my (marketplace; results rendered client-side)",
+        "shopee.com.my (marketplace; client-side)",
+        "iHerb my (Cloudflare challenge, not bypassed)",
+        "results seen: diabetic nutrition formulas, cane/coconut sugars — rejected types"
+      ],
+      "candidates": [],
+      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search."
+    },
+    "INU": {
+      "result": "BRAK",
+      "local_terms": [
+        "inulin",
+        "serbuk inulin",
+        "菊粉"
+      ],
+      "queries": [
+        "inulin (aapharmacy.com.my)",
+        "inulin (alpropharmacy.com)",
+        "serbuk inulin (alpropharmacy.com)",
+        "菊粉 (aapharmacy.com.my)",
+        "inulin (bakewithyen.my)",
+        "inulin powder (lazada.com.my)"
+      ],
+      "sources_tried": [
+        "aapharmacy.com.my Shopify predictive search (pharmacy/health)",
+        "alpropharmacy.com Shopify predictive search (pharmacy/health)",
+        "guardian.com.my (pharmacy; no server-side search results)",
+        "watsons.com.my (pharmacy; HTTP 403 Access Denied)",
+        "bigpharmacy.com.my (pharmacy; HTTP 429 bot check)",
+        "caring2u.com (pharmacy; search path 404)",
+        "jayagrocer.com (grocer; HTTP 429 bot check)",
+        "lotuss.com.my (hypermarket; search path 404)",
+        "villagegrocer.com.my (grocer; search path 404)",
+        "mydin.my (hypermarket; client-side search)",
+        "myaeon2go.com (hypermarket; search path 404)",
+        "bakewithyen.my (baking supplier; online shop shows a placeholder, no products)",
+        "lazada.com.my (marketplace; results rendered client-side)",
+        "shopee.com.my (marketplace; client-side)",
+        "iHerb my (Cloudflare challenge, not bypassed)",
+        "results seen: probiotic capsules/sachets and kids' multivitamin syrup containing inulin, fibre drink mixes — rejected (blends, capsules, syrups)"
+      ],
+      "candidates": [],
+      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "serbuk kuning telur",
+        "蛋黄粉"
+      ],
+      "queries": [
+        "egg yolk (aapharmacy.com.my)",
+        "egg yolk (alpropharmacy.com)",
+        "kuning telur (alpropharmacy.com, aapharmacy.com.my)",
+        "egg yolk / egg powder / yolk (bakewithyen.my)",
+        "egg yolk powder (lazada.com.my)"
+      ],
+      "sources_tried": [
+        "aapharmacy.com.my Shopify predictive search (pharmacy/health)",
+        "alpropharmacy.com Shopify predictive search (pharmacy/health)",
+        "guardian.com.my (pharmacy; no server-side search results)",
+        "watsons.com.my (pharmacy; HTTP 403 Access Denied)",
+        "bigpharmacy.com.my (pharmacy; HTTP 429 bot check)",
+        "caring2u.com (pharmacy; search path 404)",
+        "jayagrocer.com (grocer; HTTP 429 bot check)",
+        "lotuss.com.my (hypermarket; search path 404)",
+        "villagegrocer.com.my (grocer; search path 404)",
+        "mydin.my (hypermarket; client-side search)",
+        "myaeon2go.com (hypermarket; search path 404)",
+        "bakewithyen.my (baking supplier; online shop shows a placeholder, no products)",
+        "lazada.com.my (marketplace; results rendered client-side)",
+        "shopee.com.my (marketplace; client-side)",
+        "iHerb my (Cloudflare challenge, not bypassed)",
+        "results seen: kaya spread, nutrition formulas, cosmetics — no dried yolk"
+      ],
+      "candidates": [],
+      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search."
+    }
+  }
+}

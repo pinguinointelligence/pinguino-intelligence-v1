@@ -1,0 +1,57 @@
+{
+  "locale": "tr",
+  "dir": "ltr",
+  "title": "Gelato bazı malzemeleri",
+  "benefit": "Ne alınır, nereden alınır",
+  "pill": "PDF · €0",
+  "country_label": "Ülke",
+  "language_label": "Dil",
+  "edition": "1. baskı · Eylül 2026",
+  "cover_items_title": "Starter Pack’teki yedi malzeme",
+  "howto_title": "Bu rehber nasıl kullanılır",
+  "howto_lede": "Starter Pack’teki her malzeme için bu ülkede satın alabileceğiniz bir ürün belirtiyoruz.",
+  "steps": [
+    {"b": "Bir ürün seçin", "p": "İlki bizim seçimimiz; ikincisi, ilki bulunamazsa alternatif."},
+    {"b": "Etiketi kontrol edin", "p": "Ambalajdaki içerik, malzemenin açıklamasıyla eşleşmelidir. Bileşimi farklı olan ürünlerde bunu belirtiyoruz."},
+    {"b": "Miktarları uygulamadan alın", "p": "Bu PDF ürünleri belirtir, gram miktarlarını değil. Tarifleri ve miktarları Gellatti uygulaması hesaplar."}
+  ],
+  "legend_title": "Açıklamalar",
+  "tag_from_abroad": "Yurt dışından",
+  "tag_b2b": "İşletmeler için",
+  "tag_other_composition": "Farklı bileşim",
+  "tag_alternative": "Yerel alternatif",
+  "tag_unconfirmed": "Doğrulanmadı",
+  "legend": {
+    "from_abroad": "bu ülkeye gönderim yapan yurt dışındaki bir mağaza",
+    "b2b": "işletmelere veya büyük ambalajlarda satılır",
+    "other_composition": "aynı türde ama bileşimi farklı ürün (yanında belirtilir)",
+    "alternative": "başka bir Gellatti ürününün yerine geçen ürün"
+  },
+  "starter_amount": "Starter Pack’te: {g} g",
+  "option": "Seçenek {n}",
+  "ean": "EAN",
+  "where": "Nereden",
+  "fat": "yağ",
+  "items": {
+    "DEX": {"name": "Dekstroz", "ref": "Toz dekstroz (glikoz), monohidrat."},
+    "SMP": {"name": "Yağsız süt tozu", "ref": "Yaklaşık %1 yağlı süt tozu."},
+    "CRP": {"name": "Krema tozu", "ref": "Yaklaşık %42 yağlı kurutulmuş krema."},
+    "FRU": {"name": "Fruktoz", "ref": "Saf kristal fruktoz."},
+    "INU": {"name": "İnülin", "ref": "Toz inülin, örneğin hindibadan."},
+    "YOL": {"name": "Kurutulmuş yumurta sarısı", "ref": "Pastörize tavuk yumurtası sarısı tozu."},
+    "STB": {"name": "Stabilizör", "ref": "Gellatti Stabilizer, tara gamı, keçiboynuzu gamı ve guar gamı karışımıdır."}
+  },
+  "stabilizer_note": "Gellatti karışımının yerel alternatifidir, aynı karışım değildir. Kuru malzemelerle karıştırın ve bazı 75–80 °C sıcaklığa kadar ısıtın.",
+  "missing": "Bu ülkede henüz onaylı bir ürün yok.",
+  "notes_title": "Bilmekte fayda var",
+  "notes": [
+    {"h": "Bulunabilirlik", "p": "Bu ürünleri Eylül 2026’da üretici ve mağaza web sitelerinde kontrol ettik. Bulunabilirlik, fiyatlar ve teslimat değişebilir ve garanti edilmez."},
+    {"h": "Önce etiket", "p": "Satın almadan önce ambalajdaki içerik ve alerjen bilgilerini kontrol edin. Krema tozu ve süt tozu süt, yumurta sarısı yumurta içerir."},
+    {"h": "Stabilizör", "p": "Bu ülkede Gellatti Stabilizer yerine yerel bir bitkisel gam kullanılır. Benzer şekilde işlev görür ancak aynı karışım değildir."}
+  ],
+  "fine": "Burada adı geçen bir ürün, Gellatti uygulamasında henüz mevcut olmayabilir. Gellatti, başka markaların ürünlerini satmaz.",
+  "back_h": "Harika gelato iyi bir bazla başlar.",
+  "back_p": "Tarifler, miktarlar ve hazırlık süreci Gellatti uygulamasında.",
+  "back_link": "gellatti.com",
+  "draft": "TASLAK · onaya sunulan öneriler"
+}

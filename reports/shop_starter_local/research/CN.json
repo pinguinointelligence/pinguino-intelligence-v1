@@ -1,0 +1,149 @@
+{
+  "iso2": "CN",
+  "country": "China",
+  "agent": "research-east-asia",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:25:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "稀奶油粉",
+        "奶油粉",
+        "乳脂粉",
+        "cream powder"
+      ],
+      "queries": [
+        "稀奶油粉 (suning)",
+        "奶油粉 (suning)",
+        "稀奶油粉 (jd)",
+        "cream powder (suning, English — 0 results)"
+      ],
+      "sources_tried": [
+        "search.suning.com (苏宁易购; mix of 苏宁自营 retail and third-party stores)",
+        "search.jd.com (京东; marketplace per protocol; login/risk wall for 菊粉 and 稀奶油粉, client-side results for others)",
+        "s.taobao.com / list.tmall.com (marketplaces; login shell only)",
+        "you.163.com (网易严选; client-side search)",
+        "sams.com.cn / metro.com.cn (connection failed HTTP 000)",
+        "blb-cn.com (保龄宝, B2B fructose/inulin manufacturer; connection failed HTTP 000)",
+        "iHerb cn (Cloudflare challenge, not bypassed)",
+        "results seen on suning: cosmetics and flour only"
+      ],
+      "candidates": [],
+      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "结晶果糖",
+        "果糖粉",
+        "果糖",
+        "fructose"
+      ],
+      "queries": [
+        "结晶果糖 (suning)",
+        "果糖粉 (suning)",
+        "结晶果糖 (jd)",
+        "fructose (suning, English — only projector lamps/books)"
+      ],
+      "sources_tried": [
+        "search.suning.com (苏宁易购; mix of 苏宁自营 retail and third-party stores)",
+        "search.jd.com (京东; marketplace per protocol; login/risk wall for 菊粉 and 稀奶油粉, client-side results for others)",
+        "s.taobao.com / list.tmall.com (marketplaces; login shell only)",
+        "you.163.com (网易严选; client-side search)",
+        "sams.com.cn / metro.com.cn (connection failed HTTP 000)",
+        "blb-cn.com (保龄宝, B2B fructose/inulin manufacturer; connection failed HTTP 000)",
+        "iHerb cn (Cloudflare challenge, not bypassed)",
+        "results seen on suning: fructose-dispensing machines only"
+      ],
+      "candidates": [],
+      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search."
+    },
+    "INU": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "菊粉",
+        "菊苣粉",
+        "菊苣纤维",
+        "inulin"
+      ],
+      "queries": [
+        "菊粉 (suning)",
+        "菊粉 (jd, login/risk wall)",
+        "菊粉 (you.163.com)",
+        "菊粉 (taobao/tmall, login shell)",
+        "inulin (jd, English — client-side results)"
+      ],
+      "sources_tried": [
+        "search.suning.com (苏宁易购; mix of 苏宁自营 retail and third-party stores)",
+        "search.jd.com (京东; marketplace per protocol; login/risk wall for 菊粉 and 稀奶油粉, client-side results for others)",
+        "s.taobao.com / list.tmall.com (marketplaces; login shell only)",
+        "you.163.com (网易严选; client-side search)",
+        "sams.com.cn / metro.com.cn (connection failed HTTP 000)",
+        "blb-cn.com (保龄宝, B2B fructose/inulin manufacturer; connection failed HTTP 000)",
+        "iHerb cn (Cloudflare challenge, not bypassed)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "美莱健 (MEILAIJIAN)",
+          "product_name": "美莱健菊粉300g益生元可溶性膳食纤维低聚果糖比利时进口菊粉原粉…",
+          "pack": "300 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://product.suning.com/0070211624/12394724031.html",
+          "source_type": "MARKETPLACE",
+          "seller": "同堂旗舰店 (third-party store on 苏宁易购, shop code 0070211624; not 苏宁自营 0000000000)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none (generic .com; Suning is a China-only platform but no quote was checked)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not shown in served HTML (title claims 比利时进口菊粉原粉 but also mentions 低聚果糖)"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Chicory inulin powder by title; title also names oligofructose, composition unverified.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/aba214c2c3d5f90e.json",
+          "checked_at_utc": "2026-09-17T16:23:29Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Only a third-party marketplace listing found. WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "蛋黄粉",
+        "全蛋黄粉",
+        "干蛋黄粉",
+        "egg yolk powder"
+      ],
+      "queries": [
+        "蛋黄粉 (suning)",
+        "蛋黄粉 (jd)",
+        "egg yolk powder (suning, English — 0 results)"
+      ],
+      "sources_tried": [
+        "search.suning.com (苏宁易购; mix of 苏宁自营 retail and third-party stores)",
+        "search.jd.com (京东; marketplace per protocol; login/risk wall for 菊粉 and 稀奶油粉, client-side results for others)",
+        "s.taobao.com / list.tmall.com (marketplaces; login shell only)",
+        "you.163.com (网易严选; client-side search)",
+        "sams.com.cn / metro.com.cn (connection failed HTTP 000)",
+        "blb-cn.com (保龄宝, B2B fructose/inulin manufacturer; connection failed HTTP 000)",
+        "iHerb cn (Cloudflare challenge, not bypassed)",
+        "results seen on suning: fresh/salted eggs only"
+      ],
+      "candidates": [],
+      "notes": "WebSearch budget exhausted (session-wide 200/200 calls used by parallel agents) before this country; discovery was limited to retailers' own search pages, many of which are behind bot walls or render results client-side. This BRAK is partly inconclusive and should be re-run with a browser/search."
+    }
+  }
+}

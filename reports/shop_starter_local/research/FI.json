@@ -1,0 +1,336 @@
+{
+  "iso2": "FI",
+  "country": "Finland",
+  "agent": "research-nordic-baltic",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:19:09Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "kermajauhe",
+        "kuivattu kerma",
+        "gräddpulver (sv)"
+      ],
+      "queries": [
+        "kermajauhe osta kuivattu kerma jauhe",
+        "kermajauhe 42% rasvaa",
+        "kermajauhe osta verkkokauppa",
+        "Valio kermajauhe",
+        "Sahnepulver 42% Versand Finnland Schweden Dänemark"
+      ],
+      "sources_tried": [
+        "metrotukku.fi Maito- ja kermajauheet category (only Valio milk powders, Completa kermajauhe 200 g and Sevan kermajauhe sticks: whiteners, no real cream powder)",
+        "sevan.fi Kermajauhe (EAN 8716200177368 on page; URL slug 'graddersattning' = cream substitute; composition not read; rejected as whitener)",
+        "k-ruoka.fi Kermajauheet category (HTTP 403 bot wall, inconclusive)",
+        "s-kaupat.fi (HTTP 429, inconclusive)",
+        "karkkainen.com Kermajauheet (product list not in static page)",
+        "proficient.fi / ptt-kauppa.com / rever.fi Completa kermajauhe 200 g (whitener, rejected) [T]",
+        "valio.fi Jauheet product group (search-result title only; not opened)",
+        "skafferimat.se/fi (Swedish real cream powder 53,5 % fat; shipping policy behind 'Verifying your connection' challenge, not bypassed)",
+        "hobbybaecker.de (Sahnepulver 42 % Fett, GTIN on page, ships to Finland per shipping policy)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Sahnepulver, sprühgetrocknet, 100 g",
+          "pack": "100 g",
+          "gtin": "4250712308666",
+          "identifier_confirmed": true,
+          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
+          "source_type": "RETAILER",
+          "seller": "Hobbybäcker-Versand (Herzlake, Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "foreign page (country domain .de); delivery to the market proven by the seller's shipping-policy country list",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "url": "https://www.hobbybaecker.de/Informationen/Versand-und-Zahlungsbedingungen/",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.",
+            "tool": "check_quotes.py",
+            "found": true,
+            "checked_at_utc": "2026-09-17T15:53:58Z",
+            "page_verdict_file": "~/.cache/gellatti-evidence/verify/e15dfe5c8fe979a6.json"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "carbohydrate_g": 29.0,
+            "sugars_g": 29.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+            "basis": "per 100 g",
+            "from": "page Zutaten + Nährwertangaben"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "spray-dried dairy cream, fat 42 g/100 g = reference; single ingredient",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/95a23044831368ea.json",
+          "checked_at_utc": "2026-09-17T15:51:58Z",
+          "notes": "identity = GTIN (itemprop gtin13) on the cross-border seller's own product page; verifier class EAN_ON_FOREIGN_MARKET_PAGE (page market DE); page states 'Sofort verfügbar, Lieferzeit: 1-3 Tage'",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "No Finnish retail listing of a genuine dairy cream powder was found; domestic 'kermajauhe' products are whiteners. Cross-border proposal from Germany."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "hedelmäsokeri",
+        "fruktoosi",
+        "fruktsocker (sv)"
+      ],
+      "queries": [
+        "hedelmäsokeri fruktoosi 500 g",
+        "s-kaupat hedelmäsokeri 500 g Dansukker"
+      ],
+      "sources_tried": [
+        "minimani.fi (Dansukker Hedelmäsokeri 370 g, GTIN in JSON-LD, Varastossa)",
+        "s-kaupat.fi Dansukker Hedelmäsokeri 370 g (HTTP 429, inconclusive)",
+        "dansukker.fi product page (no GTIN printed)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Dansukker",
+          "product_name": "DANSUKKER HEDELMÄSOKERI 370 G",
+          "pack": "370 g",
+          "gtin": "6414000521740",
+          "identifier_confirmed": true,
+          "url": "https://www.minimani.fi/dansukker-hedelmasokeri-370-g.html",
+          "source_type": "RETAILER",
+          "seller": "Minimani",
+          "page_market": "FI",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .fi",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "carbohydrate_g": 100.0,
+            "sugars_g": 100.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Hedelmäsokeri (fruktoosi)",
+            "basis": "per 100 g",
+            "from": "page Ravintosisältö + Ainesosat"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient fructose; sugars 100 g/100 g",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c751e04f3529f9b1.json",
+          "checked_at_utc": "2026-09-17T15:32:35Z",
+          "notes": "JSON-LD availability InStock; store data 'Varastossa'",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inuliini",
+        "inuliinijauhe",
+        "sikuri-inuliini"
+      ],
+      "queries": [
+        "inuliini jauhe osta",
+        "inuliini 500 g"
+      ],
+      "sources_tried": [
+        "ravinnetukku.fi (OstroVit Inulin 500 g, Varastossa, no GTIN on page; identity via GTIN on craftednature.se)",
+        "verkkokauppa.com (ICONFIT Inuliinijauhe 250 g, EAN in page data, seller addressCountry FI)",
+        "yliopistonapteekki.fi (ICONFIT Inulin Powder 250 g, GTIN, OutOfStock)",
+        "sinunapteekki.fi and iconfit.fi (HTTP 429, inconclusive)",
+        "ecosupplements.fi Inuliinijauhe 227 g (not checked further) [T]"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "OstroVit",
+          "product_name": "OstroVit Inulin 500 g (Natural) - Puhdas sikurista saatava inuliini",
+          "pack": "500 g",
+          "gtin": "5903933918792",
+          "identifier_confirmed": true,
+          "url": "https://www.ravinnetukku.fi/p/ostrovit-inulin-500-g-natural-puhdas-sikurista-saatava-inuliini",
+          "source_type": "RETAILER",
+          "seller": "Ravinnetukku.fi",
+          "page_market": "FI",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "country domain .fi",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "carbohydrate_g": null,
+            "fibre_g": 86.0,
+            "fructose_pct": null,
+            "ingredients": "Sikuri-inuliini (prebiootti)",
+            "basis": "per 100 g",
+            "from": "page description ('100 g tuotetta sisältää peräti 86 g kuitua') + Ainesosat"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % chicory inulin, fibre 86 g/100 g",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7f74f04ee78e5cc4.json",
+          "checked_at_utc": "2026-09-17T15:49:01Z",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_f31212466a625a5c.json",
+          "notes": "identity_match.py: GTIN 5903933918792 on craftednature.se (JSON-LD sku) + brand/name/pack match on the local page; no failed checks. Page: 'Varastossa, Toimitusaika 1-3 arkipäivää'",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "ICONFIT",
+          "product_name": "ICONFIT Inuliinijauhe, 250 g",
+          "pack": "250 g",
+          "gtin": "4744130015621",
+          "identifier_confirmed": true,
+          "url": "https://www.verkkokauppa.com/fi/product/1062325/ICONFIT-Inuliinijauhe-250-g",
+          "source_type": "RETAILER",
+          "seller": "Verkkokauppa.com Oyj",
+          "page_market": "FI",
+          "market_by": "ADDRESS_COUNTRY",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "single seller addressCountry FI (generic .com)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "carbohydrate_g": null,
+            "fibre_g": 85.0,
+            "fructose_pct": null,
+            "ingredients": "Inulin, dvs. cikoriarotspulver (Cichorium intybus L) [yliopistonapteekki.fi, same GTIN]",
+            "basis": "'Sisältää 85 % kuitua'",
+            "from": "verkkokauppa.com bullet text; ingredients from yliopistonapteekki.fi (verdict ~/.cache/gellatti-evidence/verify/b7fd68aaa78952b5.json)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin, fibre 85 % (at threshold)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/b817e9361f8c6dc8.json",
+          "checked_at_utc": "2026-09-17T15:50:24Z",
+          "notes": "store shelf stock shown as 0 at a physical store; web availability not stated in static page",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "munankeltuaisjauhe",
+        "kananmunan keltuaisjauhe",
+        "keltuaisjauhe",
+        "äggulepulver (sv)"
+      ],
+      "queries": [
+        "munankeltuaisjauhe osta",
+        "kananmunankeltuaisjauhe",
+        "keltuaisjauhe leivonta osta",
+        "munankeltuaisjauhe verkkokauppa",
+        "äggulepulver Finland",
+        "egg yolk powder Finland buy",
+        "hobbybaecker.de Eigelbpulver"
+      ],
+      "sources_tried": [
+        "myprotein.fi (Kananmunan keltuaisjauhe 500 g, GTIN in JSON-LD, OutOfStock)",
+        "munax.fi (Finnish egg producer; products page opened, only a whole egg powder surfaced in search results, rejected)",
+        "k-ruoka.fi egg products category (HTTP 403, inconclusive)",
+        "swemed.com/fi and orimattilanapteekki.fi Salovum 25x4 g (medical-food sachets, rejected) [T]",
+        "koro.com/fi (no country binding; not checked further) [T]",
+        "hobbybaecker.de Eigelbpulver 100 g (Cake-Masters Basics, GTIN on page, 'Sofort verfügbar'; ships to this country per shipping policy) -> rank 2 cross-border"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Myprotein",
+          "product_name": "Kananmunan keltuaisjauhe (500 g, Maustamaton)",
+          "pack": "500 g",
+          "gtin": "5055534303733",
+          "identifier_confirmed": true,
+          "url": "https://www.myprotein.fi/p/lisaravinteet/kananmunan-keltuaisjauhe/10529352/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Myprotein",
+          "page_market": "FI",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .fi",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 59.0,
+            "protein_g": 32.0,
+            "carbohydrate_g": 2.1,
+            "sugars_g": 2.1,
+            "salt_g": 2.5,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Kananmunan keltuaisjauhe (100%)",
+            "basis": "per 100 g",
+            "from": "page Ravintosisältö + ingredients"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % egg yolk powder; fat 59 / protein 32 close to reference 56.5 / 34.5",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0ecd6ec20c98712a.json",
+          "checked_at_utc": "2026-09-17T15:50:09Z",
+          "notes": "AVAILABILITY RISK: JSON-LD OutOfStock / 'Out of stock' on 2026-09-17 (12,99 € = 25,98 €/kg)",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Eigelbpulver, 100 g",
+          "pack": "100 g",
+          "gtin": "4250712315510",
+          "identifier_confirmed": true,
+          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
+          "source_type": "RETAILER",
+          "seller": "Hobbybäcker-Versand (Herzlake, Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "foreign page (country domain .de); delivery to the market proven by the seller's shipping-policy country list",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "url": "https://www.hobbybaecker.de/Informationen/Versand-und-Zahlungsbedingungen/",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.",
+            "tool": "check_quotes.py",
+            "found": true,
+            "checked_at_utc": "2026-09-17T15:53:58Z",
+            "page_verdict_file": "~/.cache/gellatti-evidence/verify/e15dfe5c8fe979a6.json"
+          },
+          "composition": {
+            "fat_g": 55.8,
+            "protein_g": 34.3,
+            "carbohydrate_g": 3.6,
+            "sugars_g": 3.6,
+            "salt_g": 0.3,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET",
+            "basis": "per 100 g",
+            "from": "page Zutaten + Nährwertangaben"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 55.8 / protein 34.3 ≈ reference 56.5 / 34.5",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/858f2d62fc977506.json",
+          "checked_at_utc": "2026-09-17T16:11:29Z",
+          "notes": "identity = GTIN (itemprop gtin13) on the cross-border seller's own product page; verifier class EAN_ON_FOREIGN_MARKET_PAGE (page market DE); page states 'Sofort verfügbar, Lieferzeit: 1-3 Tage'; offered as the in-stock alternative because the local listing is out of stock",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Only one Finnish listing of egg yolk powder was found and it is out of stock. Rank 2 is an in-stock, GTIN-proven cross-border A-equivalent from Germany."
+    }
+  },
+  "notes": "sources_tried entries marked [T] were judged from search-result titles/snippets only (page not opened); every other entry was fetched (verify_ean_market.py or a direct fetch). Search results are discovery only, never evidence."
+}

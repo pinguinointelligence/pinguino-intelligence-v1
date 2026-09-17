@@ -1,0 +1,785 @@
+{
+ "DZ": {
+  "country": "Algeria",
+  "region_code": "MAGHREB",
+  "locales": [
+   "fr",
+   "ar"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".dz",
+  "currency": "DZD"
+ },
+ "AR": {
+  "country": "Argentina",
+  "region_code": "LATAM_SOUTH_CONE",
+  "locales": [
+   "es"
+  ],
+  "market_default_locale": "es",
+  "country_domain": ".ar",
+  "currency": "ARS"
+ },
+ "AU": {
+  "country": "Australia",
+  "region_code": "ANZ",
+  "locales": [
+   "en"
+  ],
+  "market_default_locale": "en",
+  "country_domain": ".au",
+  "currency": "AUD"
+ },
+ "AT": {
+  "country": "Austria",
+  "region_code": "EU27",
+  "locales": [
+   "de"
+  ],
+  "market_default_locale": "de",
+  "country_domain": ".at",
+  "currency": "EUR"
+ },
+ "BH": {
+  "country": "Bahrain",
+  "region_code": "GCC",
+  "locales": [
+   "en",
+   "ar"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".bh",
+  "currency": "BHD"
+ },
+ "BD": {
+  "country": "Bangladesh",
+  "region_code": "SOUTH_ASIA",
+  "locales": [
+   "bn"
+  ],
+  "market_default_locale": "bn",
+  "country_domain": ".bd",
+  "currency": "BDT"
+ },
+ "BE": {
+  "country": "Belgium",
+  "region_code": "EU27",
+  "locales": [
+   "de",
+   "fr",
+   "nl"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".be",
+  "currency": "EUR"
+ },
+ "BR": {
+  "country": "Brazil",
+  "region_code": "BRAZIL",
+  "locales": [
+   "pt"
+  ],
+  "market_default_locale": "pt",
+  "country_domain": ".br",
+  "currency": "BRL"
+ },
+ "BG": {
+  "country": "Bulgaria",
+  "region_code": "EU27",
+  "locales": [
+   "bg"
+  ],
+  "market_default_locale": "bg",
+  "country_domain": ".bg",
+  "currency": "EUR"
+ },
+ "CA": {
+  "country": "Canada",
+  "region_code": "CANADA",
+  "locales": [
+   "en",
+   "fr"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".ca",
+  "currency": "CAD"
+ },
+ "CL": {
+  "country": "Chile",
+  "region_code": "LATAM_SOUTH_CONE",
+  "locales": [
+   "es"
+  ],
+  "market_default_locale": "es",
+  "country_domain": ".cl",
+  "currency": "CLP"
+ },
+ "CN": {
+  "country": "China",
+  "region_code": "GREATER_CHINA",
+  "locales": [
+   "zh-Hans"
+  ],
+  "market_default_locale": "zh-Hans",
+  "country_domain": ".cn",
+  "currency": "CNY"
+ },
+ "CO": {
+  "country": "Colombia",
+  "region_code": "LATAM_NORTH_ANDEAN",
+  "locales": [
+   "es"
+  ],
+  "market_default_locale": "es",
+  "country_domain": ".co",
+  "currency": "COP"
+ },
+ "CR": {
+  "country": "Costa Rica",
+  "region_code": "LATAM_NORTH_ANDEAN",
+  "locales": [
+   "es"
+  ],
+  "market_default_locale": "es",
+  "country_domain": ".cr",
+  "currency": "CRC"
+ },
+ "HR": {
+  "country": "Croatia",
+  "region_code": "EU27",
+  "locales": [
+   "hr"
+  ],
+  "market_default_locale": "hr",
+  "country_domain": ".hr",
+  "currency": "EUR"
+ },
+ "CY": {
+  "country": "Cyprus",
+  "region_code": "EU27",
+  "locales": [
+   "tr",
+   "el"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".cy",
+  "currency": "EUR"
+ },
+ "CZ": {
+  "country": "Czechia",
+  "region_code": "EU27",
+  "locales": [
+   "cs"
+  ],
+  "market_default_locale": "cs",
+  "country_domain": ".cz",
+  "currency": "CZK"
+ },
+ "DK": {
+  "country": "Denmark",
+  "region_code": "EU27",
+  "locales": [
+   "da"
+  ],
+  "market_default_locale": "da",
+  "country_domain": ".dk",
+  "currency": "DKK"
+ },
+ "DO": {
+  "country": "Dominican Republic",
+  "region_code": "LATAM_NORTH_ANDEAN",
+  "locales": [
+   "es"
+  ],
+  "market_default_locale": "es",
+  "country_domain": ".do",
+  "currency": "DOP"
+ },
+ "EG": {
+  "country": "Egypt",
+  "region_code": "EGYPT",
+  "locales": [
+   "ar"
+  ],
+  "market_default_locale": "ar",
+  "country_domain": ".eg",
+  "currency": "EGP"
+ },
+ "EE": {
+  "country": "Estonia",
+  "region_code": "EU27",
+  "locales": [
+   "et"
+  ],
+  "market_default_locale": "et",
+  "country_domain": ".ee",
+  "currency": "EUR"
+ },
+ "FI": {
+  "country": "Finland",
+  "region_code": "EU27",
+  "locales": [
+   "sv",
+   "fi"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".fi",
+  "currency": "EUR"
+ },
+ "FR": {
+  "country": "France",
+  "region_code": "EU27",
+  "locales": [
+   "fr"
+  ],
+  "market_default_locale": "fr",
+  "country_domain": ".fr",
+  "currency": "EUR"
+ },
+ "DE": {
+  "country": "Germany",
+  "region_code": "EU27",
+  "locales": [
+   "de"
+  ],
+  "market_default_locale": "de",
+  "country_domain": ".de",
+  "currency": "EUR"
+ },
+ "GH": {
+  "country": "Ghana",
+  "region_code": "WEST_AFRICA",
+  "locales": [
+   "en"
+  ],
+  "market_default_locale": "en",
+  "country_domain": ".gh",
+  "currency": "GHS"
+ },
+ "GR": {
+  "country": "Greece",
+  "region_code": "EU27",
+  "locales": [
+   "el"
+  ],
+  "market_default_locale": "el",
+  "country_domain": ".gr",
+  "currency": "EUR"
+ },
+ "HK": {
+  "country": "Hong Kong SAR China",
+  "region_code": "GREATER_CHINA",
+  "locales": [
+   "en",
+   "zh-Hant"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".hk",
+  "currency": "HKD"
+ },
+ "HU": {
+  "country": "Hungary",
+  "region_code": "EU27",
+  "locales": [
+   "hu"
+  ],
+  "market_default_locale": "hu",
+  "country_domain": ".hu",
+  "currency": "HUF"
+ },
+ "IS": {
+  "country": "Iceland",
+  "region_code": "EEA_NON_EU",
+  "locales": [
+   "is"
+  ],
+  "market_default_locale": "is",
+  "country_domain": ".is",
+  "currency": "ISK"
+ },
+ "IN": {
+  "country": "India",
+  "region_code": "SOUTH_ASIA",
+  "locales": [
+   "en",
+   "hi",
+   "bn",
+   "ta"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".in",
+  "currency": "INR"
+ },
+ "ID": {
+  "country": "Indonesia",
+  "region_code": "ASEAN",
+  "locales": [
+   "id"
+  ],
+  "market_default_locale": "id",
+  "country_domain": ".id",
+  "currency": "IDR"
+ },
+ "IE": {
+  "country": "Ireland",
+  "region_code": "EU27",
+  "locales": [
+   "en"
+  ],
+  "market_default_locale": "en",
+  "country_domain": ".ie",
+  "currency": "EUR"
+ },
+ "IL": {
+  "country": "Israel",
+  "region_code": "ISRAEL",
+  "locales": [
+   "ar",
+   "he"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".il",
+  "currency": "ILS"
+ },
+ "IT": {
+  "country": "Italy",
+  "region_code": "EU27",
+  "locales": [
+   "it"
+  ],
+  "market_default_locale": "it",
+  "country_domain": ".it",
+  "currency": "EUR"
+ },
+ "JP": {
+  "country": "Japan",
+  "region_code": "EAST_ASIA",
+  "locales": [
+   "ja"
+  ],
+  "market_default_locale": "ja",
+  "country_domain": ".jp",
+  "currency": "JPY"
+ },
+ "KE": {
+  "country": "Kenya",
+  "region_code": "KENYA",
+  "locales": [
+   "en",
+   "sw"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".ke",
+  "currency": "KES"
+ },
+ "KW": {
+  "country": "Kuwait",
+  "region_code": "GCC",
+  "locales": [
+   "en",
+   "ar"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".kw",
+  "currency": "KWD"
+ },
+ "LV": {
+  "country": "Latvia",
+  "region_code": "EU27",
+  "locales": [
+   "lv"
+  ],
+  "market_default_locale": "lv",
+  "country_domain": ".lv",
+  "currency": "EUR"
+ },
+ "LT": {
+  "country": "Lithuania",
+  "region_code": "EU27",
+  "locales": [
+   "lt"
+  ],
+  "market_default_locale": "lt",
+  "country_domain": ".lt",
+  "currency": "EUR"
+ },
+ "LU": {
+  "country": "Luxembourg",
+  "region_code": "EU27",
+  "locales": [
+   "de",
+   "fr"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".lu",
+  "currency": "EUR"
+ },
+ "MY": {
+  "country": "Malaysia",
+  "region_code": "ASEAN",
+  "locales": [
+   "en",
+   "ms"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".my",
+  "currency": "MYR"
+ },
+ "MT": {
+  "country": "Malta",
+  "region_code": "EU27",
+  "locales": [
+   "en"
+  ],
+  "market_default_locale": "en",
+  "country_domain": ".mt",
+  "currency": "EUR"
+ },
+ "MX": {
+  "country": "Mexico",
+  "region_code": "LATAM_NORTH_ANDEAN",
+  "locales": [
+   "es"
+  ],
+  "market_default_locale": "es",
+  "country_domain": ".mx",
+  "currency": "MXN"
+ },
+ "MA": {
+  "country": "Morocco",
+  "region_code": "MAGHREB",
+  "locales": [
+   "fr",
+   "ar"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".ma",
+  "currency": "MAD"
+ },
+ "NL": {
+  "country": "Netherlands",
+  "region_code": "EU27",
+  "locales": [
+   "nl"
+  ],
+  "market_default_locale": "nl",
+  "country_domain": ".nl",
+  "currency": "EUR"
+ },
+ "NZ": {
+  "country": "New Zealand",
+  "region_code": "ANZ",
+  "locales": [
+   "en"
+  ],
+  "market_default_locale": "en",
+  "country_domain": ".nz",
+  "currency": "NZD"
+ },
+ "NG": {
+  "country": "Nigeria",
+  "region_code": "WEST_AFRICA",
+  "locales": [
+   "en"
+  ],
+  "market_default_locale": "en",
+  "country_domain": ".ng",
+  "currency": "NGN"
+ },
+ "NO": {
+  "country": "Norway",
+  "region_code": "EEA_NON_EU",
+  "locales": [
+   "nb"
+  ],
+  "market_default_locale": "nb",
+  "country_domain": ".no",
+  "currency": "NOK"
+ },
+ "OM": {
+  "country": "Oman",
+  "region_code": "GCC",
+  "locales": [
+   "en",
+   "ar"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".om",
+  "currency": "OMR"
+ },
+ "PK": {
+  "country": "Pakistan",
+  "region_code": "SOUTH_ASIA",
+  "locales": [
+   "en",
+   "ur"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".pk",
+  "currency": "PKR"
+ },
+ "PA": {
+  "country": "Panama",
+  "region_code": "LATAM_NORTH_ANDEAN",
+  "locales": [
+   "es"
+  ],
+  "market_default_locale": "es",
+  "country_domain": ".pa",
+  "currency": "PAB/USD"
+ },
+ "PH": {
+  "country": "Philippines",
+  "region_code": "ASEAN",
+  "locales": [
+   "en",
+   "fil"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".ph",
+  "currency": "PHP"
+ },
+ "PL": {
+  "country": "Poland",
+  "region_code": "EU27",
+  "locales": [
+   "pl"
+  ],
+  "market_default_locale": "pl",
+  "country_domain": ".pl",
+  "currency": "PLN"
+ },
+ "PT": {
+  "country": "Portugal",
+  "region_code": "EU27",
+  "locales": [
+   "pt"
+  ],
+  "market_default_locale": "pt",
+  "country_domain": ".pt",
+  "currency": "EUR"
+ },
+ "QA": {
+  "country": "Qatar",
+  "region_code": "GCC",
+  "locales": [
+   "en",
+   "ar"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".qa",
+  "currency": "QAR"
+ },
+ "RO": {
+  "country": "Romania",
+  "region_code": "EU27",
+  "locales": [
+   "ro"
+  ],
+  "market_default_locale": "ro",
+  "country_domain": ".ro",
+  "currency": "RON"
+ },
+ "SA": {
+  "country": "Saudi Arabia",
+  "region_code": "GCC",
+  "locales": [
+   "en",
+   "ar"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".sa",
+  "currency": "SAR"
+ },
+ "SG": {
+  "country": "Singapore",
+  "region_code": "ASEAN",
+  "locales": [
+   "en",
+   "zh-Hans",
+   "ta",
+   "ms"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".sg",
+  "currency": "SGD"
+ },
+ "SK": {
+  "country": "Slovakia",
+  "region_code": "EU27",
+  "locales": [
+   "sk"
+  ],
+  "market_default_locale": "sk",
+  "country_domain": ".sk",
+  "currency": "EUR"
+ },
+ "SI": {
+  "country": "Slovenia",
+  "region_code": "EU27",
+  "locales": [
+   "sl"
+  ],
+  "market_default_locale": "sl",
+  "country_domain": ".si",
+  "currency": "EUR"
+ },
+ "ZA": {
+  "country": "South Africa",
+  "region_code": "SOUTH_AFRICA",
+  "locales": [
+   "en",
+   "af"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".za",
+  "currency": "ZAR"
+ },
+ "KR": {
+  "country": "South Korea",
+  "region_code": "EAST_ASIA",
+  "locales": [
+   "ko"
+  ],
+  "market_default_locale": "ko",
+  "country_domain": ".kr",
+  "currency": "KRW"
+ },
+ "ES": {
+  "country": "Spain",
+  "region_code": "EU27",
+  "locales": [
+   "es"
+  ],
+  "market_default_locale": "es",
+  "country_domain": ".es",
+  "currency": "EUR"
+ },
+ "LK": {
+  "country": "Sri Lanka",
+  "region_code": "SOUTH_ASIA",
+  "locales": [
+   "en",
+   "si",
+   "ta"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".lk",
+  "currency": "LKR"
+ },
+ "SE": {
+  "country": "Sweden",
+  "region_code": "EU27",
+  "locales": [
+   "sv"
+  ],
+  "market_default_locale": "sv",
+  "country_domain": ".se",
+  "currency": "SEK"
+ },
+ "CH": {
+  "country": "Switzerland",
+  "region_code": "SWITZERLAND",
+  "locales": [
+   "de",
+   "fr",
+   "it"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".ch",
+  "currency": "CHF"
+ },
+ "TW": {
+  "country": "Taiwan",
+  "region_code": "GREATER_CHINA",
+  "locales": [
+   "zh-Hant"
+  ],
+  "market_default_locale": "zh-Hant",
+  "country_domain": ".tw",
+  "currency": "TWD"
+ },
+ "TH": {
+  "country": "Thailand",
+  "region_code": "ASEAN",
+  "locales": [
+   "th"
+  ],
+  "market_default_locale": "th",
+  "country_domain": ".th",
+  "currency": "THB"
+ },
+ "TN": {
+  "country": "Tunisia",
+  "region_code": "MAGHREB",
+  "locales": [
+   "fr",
+   "ar"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".tn",
+  "currency": "TND"
+ },
+ "TR": {
+  "country": "Türkiye",
+  "region_code": "TURKIYE",
+  "locales": [
+   "tr"
+  ],
+  "market_default_locale": "tr",
+  "country_domain": ".tr",
+  "currency": "TRY"
+ },
+ "AE": {
+  "country": "United Arab Emirates",
+  "region_code": "GCC",
+  "locales": [
+   "en",
+   "ar"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".ae",
+  "currency": "AED"
+ },
+ "GB": {
+  "country": "United Kingdom",
+  "region_code": "UNITED_KINGDOM",
+  "locales": [
+   "en"
+  ],
+  "market_default_locale": "en",
+  "country_domain": ".uk",
+  "currency": "GBP"
+ },
+ "US": {
+  "country": "United States",
+  "region_code": "UNITED_STATES",
+  "locales": [
+   "en",
+   "es"
+  ],
+  "market_default_locale": null,
+  "country_domain": ".us",
+  "currency": "USD"
+ },
+ "UY": {
+  "country": "Uruguay",
+  "region_code": "LATAM_SOUTH_CONE",
+  "locales": [
+   "es"
+  ],
+  "market_default_locale": "es",
+  "country_domain": ".uy",
+  "currency": "UYU"
+ },
+ "VN": {
+  "country": "Vietnam",
+  "region_code": "ASEAN",
+  "locales": [
+   "vi"
+  ],
+  "market_default_locale": "vi",
+  "country_domain": ".vn",
+  "currency": "VND"
+ }
+}

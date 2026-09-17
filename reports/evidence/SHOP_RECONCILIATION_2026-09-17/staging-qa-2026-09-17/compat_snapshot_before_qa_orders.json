@@ -1,0 +1,5 @@
+{
+  "capturedAt": "2026-09-17T12:10Z",
+  "sql": "scratchpad compat_snapshot.sql (sha256 prefix eb1083f24e43ed31), DO block under QA identities, ends in RAISE -> rolled back",
+  "result": {"A_my_documents": null, "A_v1_my_orders": {"count": 12, "types": ["LOCAL_STARTER_PACK", "PHYSICAL"], "documentsListed": 0}, "B_my_documents": null, "orders_by_type": {"PHYSICAL": 8, "LOCAL_STARTER_PACK": 8}, "Finance_documents": null, "Finance_v1_admin_orders": {"count": 16, "documentsListed": 0}, "Finance_v1_revenue_summary": {"paid": 3, "orders": 16, "shipped": 1, "refunded": 0, "localPackOrders": 8, "carrierCostKnown": false, "awaitingFulfilment": 1, "productRevenueCents": 14360, "carrierCostKnownCents": 0, "shippingCollectedCents": 2970}}
+}

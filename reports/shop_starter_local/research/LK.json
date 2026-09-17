@@ -1,0 +1,111 @@
+{
+  "iso2": "LK",
+  "country": "Sri Lanka",
+  "agent": "research-south-asia-oceania-africa",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site-search pages. Several Shopify stores answered HTTP 429 'Verifying your connection' on this egress (not bypassed).",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "ක්‍රීම් කුඩු (si)",
+        "க்ரீம் பவுடர் (ta)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on keellssuper.com, glomark.lk, kapruka.com, cargillsonline.com, arpicosupercentre.com, healthguard.lk, spar2u.lk",
+        "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on spar2u.lk",
+        "Sinhala/Tamil terms listed for owner copy; retailer URLs are English slugs"
+      ],
+      "sources_tried": [
+        "keellssuper.com (supermarket chain) - 10.5k URLs scanned, no match",
+        "glomark.lk (supermarket) - 3.8k URLs scanned, no match",
+        "kapruka.com (online department store/grocer) - sitemap partly scanned (80-file cap), no match",
+        "spar2u.lk (supermarket, Shopify search) - no products for fructose/inulin/egg yolk powder; 'cream powder' search hit HTTP 429 challenge",
+        "healthguard.lk (pharmacy chain) - HTTP 403, inconclusive",
+        "cargillsonline.com - no product sitemap; arpicosupercentre.com - sitemap 404",
+        "daraz.lk (marketplace) - not used",
+        "no readable Sri Lankan baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No dairy cream powder found."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "fructose",
+        "ෆෲක්ටෝස් (si)",
+        "ஃப்ரக்டோஸ் (ta)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on keellssuper.com, glomark.lk, kapruka.com, cargillsonline.com, arpicosupercentre.com, healthguard.lk, spar2u.lk",
+        "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on spar2u.lk",
+        "Sinhala/Tamil terms listed for owner copy; retailer URLs are English slugs"
+      ],
+      "sources_tried": [
+        "keellssuper.com (supermarket chain) - 10.5k URLs scanned, no match",
+        "glomark.lk (supermarket) - 3.8k URLs scanned, no match",
+        "kapruka.com (online department store/grocer) - sitemap partly scanned (80-file cap), no match",
+        "spar2u.lk (supermarket, Shopify search) - no products for fructose/inulin/egg yolk powder; 'cream powder' search hit HTTP 429 challenge",
+        "healthguard.lk (pharmacy chain) - HTTP 403, inconclusive",
+        "cargillsonline.com - no product sitemap; arpicosupercentre.com - sitemap 404",
+        "daraz.lk (marketplace) - not used",
+        "no readable Sri Lankan baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No crystalline fructose found."
+    },
+    "INU": {
+      "result": "BRAK",
+      "local_terms": [
+        "inulin",
+        "ඉනියුලින් (si)",
+        "இனுலின் (ta)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on keellssuper.com, glomark.lk, kapruka.com, cargillsonline.com, arpicosupercentre.com, healthguard.lk, spar2u.lk",
+        "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on spar2u.lk",
+        "Sinhala/Tamil terms listed for owner copy; retailer URLs are English slugs"
+      ],
+      "sources_tried": [
+        "keellssuper.com (supermarket chain) - 10.5k URLs scanned, no match",
+        "glomark.lk (supermarket) - 3.8k URLs scanned, no match",
+        "kapruka.com (online department store/grocer) - sitemap partly scanned (80-file cap), no match",
+        "spar2u.lk (supermarket, Shopify search) - no products for fructose/inulin/egg yolk powder; 'cream powder' search hit HTTP 429 challenge",
+        "healthguard.lk (pharmacy chain) - HTTP 403, inconclusive",
+        "cargillsonline.com - no product sitemap; arpicosupercentre.com - sitemap 404",
+        "daraz.lk (marketplace) - not used",
+        "no readable Sri Lankan baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No inulin powder found."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "බිත්තර කහ මද කුඩු (si)",
+        "முட்டை மஞ்சள் கரு தூள் (ta)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on keellssuper.com, glomark.lk, kapruka.com, cargillsonline.com, arpicosupercentre.com, healthguard.lk, spar2u.lk",
+        "Shopify site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on spar2u.lk",
+        "Sinhala/Tamil terms listed for owner copy; retailer URLs are English slugs"
+      ],
+      "sources_tried": [
+        "keellssuper.com (supermarket chain) - 10.5k URLs scanned, no match",
+        "glomark.lk (supermarket) - 3.8k URLs scanned, no match",
+        "kapruka.com (online department store/grocer) - sitemap partly scanned (80-file cap), no match",
+        "spar2u.lk (supermarket, Shopify search) - no products for fructose/inulin/egg yolk powder; 'cream powder' search hit HTTP 429 challenge",
+        "healthguard.lk (pharmacy chain) - HTTP 403, inconclusive",
+        "cargillsonline.com - no product sitemap; arpicosupercentre.com - sitemap 404",
+        "daraz.lk (marketplace) - not used",
+        "no readable Sri Lankan baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No dried egg yolk powder found."
+    }
+  }
+}

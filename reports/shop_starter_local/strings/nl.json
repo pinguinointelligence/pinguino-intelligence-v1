@@ -1,0 +1,57 @@
+{
+  "locale": "nl",
+  "dir": "ltr",
+  "title": "Ingrediënten voor de gelatobasis",
+  "benefit": "Wat je waar koopt",
+  "pill": "PDF · € 0",
+  "country_label": "Land",
+  "language_label": "Taal",
+  "edition": "Uitgave 1 · september 2026",
+  "cover_items_title": "De zeven Starter Pack-ingrediënten",
+  "howto_title": "Zo gebruik je deze gids",
+  "howto_lede": "Voor elk Starter Pack-ingrediënt noemen we een product dat je in dit land kunt kopen.",
+  "steps": [
+    {"b": "Kies één product", "p": "Het eerste is onze keuze, het tweede een alternatief als het eerste niet verkrijgbaar is."},
+    {"b": "Controleer het etiket", "p": "De ingrediëntenlijst op de verpakking moet overeenkomen met de beschrijving van het ingrediënt. Wijkt de samenstelling van een product af, dan vermelden we dat."},
+    {"b": "Haal de hoeveelheden uit de app", "p": "Deze pdf noemt producten, geen hoeveelheden in grammen. Recepten en hoeveelheden berekent de Gellatti-app."}
+  ],
+  "legend_title": "Legenda",
+  "tag_from_abroad": "Uit het buitenland",
+  "tag_b2b": "Voor bedrijven",
+  "tag_other_composition": "Andere samenstelling",
+  "tag_alternative": "Lokaal alternatief",
+  "tag_unconfirmed": "Onbevestigd",
+  "legend": {
+    "from_abroad": "een winkel in het buitenland die naar dit land levert",
+    "b2b": "verkocht aan bedrijven of in grote verpakkingen",
+    "other_composition": "hetzelfde soort product met een andere samenstelling (ernaast vermeld)",
+    "alternative": "een vervanger van een ander Gellatti-product"
+  },
+  "starter_amount": "In het Starter Pack: {g} g",
+  "option": "Optie {n}",
+  "ean": "EAN",
+  "where": "Waar",
+  "fat": "vet",
+  "items": {
+    "DEX": {"name": "Dextrose", "ref": "Dextrose (glucose) in poedervorm, monohydraat."},
+    "SMP": {"name": "Magere melkpoeder", "ref": "Melkpoeder met ongeveer 1% vet."},
+    "CRP": {"name": "Roompoeder", "ref": "Gedroogde room met ongeveer 42% vet."},
+    "FRU": {"name": "Fructose", "ref": "Zuivere kristallijne fructose."},
+    "INU": {"name": "Inuline", "ref": "Inulinepoeder, bijvoorbeeld uit cichorei."},
+    "YOL": {"name": "Gedroogd eigeel", "ref": "Gepasteuriseerd eigeelpoeder van kippeneieren."},
+    "STB": {"name": "Stabilisator", "ref": "Gellatti Stabilizer is een mengsel van taragom, johannesbroodpitmeel en guargom."}
+  },
+  "stabilizer_note": "Een lokaal alternatief voor het Gellatti-mengsel, niet hetzelfde mengsel. Meng het met de droge ingrediënten en verwarm de basis tot 75–80 °C.",
+  "missing": "Nog geen goedgekeurd product in dit land.",
+  "notes_title": "Goed om te weten",
+  "notes": [
+    {"h": "Beschikbaarheid", "p": "We hebben deze producten in september 2026 gecontroleerd op websites van fabrikanten en winkels. Beschikbaarheid, prijzen en levering kunnen veranderen en zijn niet gegarandeerd."},
+    {"h": "Het etiket gaat voor", "p": "Controleer vóór aankoop de ingrediënten en allergenen op de verpakking. Roompoeder en melkpoeder bevatten melk; eigeel bevat ei."},
+    {"h": "Stabilisator", "p": "In dit land vervangt een lokale plantaardige gom de Gellatti Stabilizer. Die werkt op een vergelijkbare manier, maar is niet hetzelfde mengsel."}
+  ],
+  "fine": "Een hier genoemd product is niet per se al beschikbaar in de Gellatti-app. Gellatti verkoopt geen producten van andere merken.",
+  "back_h": "Geweldige gelato begint bij een goede basis.",
+  "back_p": "Recepten, hoeveelheden en de werkwijze vind je in de Gellatti-app.",
+  "back_link": "gellatti.com",
+  "draft": "CONCEPT · voorstellen ter goedkeuring"
+}

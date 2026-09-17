@@ -1,0 +1,57 @@
+{
+  "locale": "sv",
+  "dir": "ltr",
+  "title": "Ingredienser till gelatobasen",
+  "benefit": "Vad du ska köpa och var",
+  "pill": "PDF · 0 €",
+  "country_label": "Land",
+  "language_label": "Språk",
+  "edition": "Utgåva 1 · september 2026",
+  "cover_items_title": "De sju ingredienserna i Starter Pack",
+  "howto_title": "Så använder du guiden",
+  "howto_lede": "För varje ingrediens i Starter Pack anger vi en produkt som du kan köpa i det här landet.",
+  "steps": [
+    {"b": "Välj en produkt", "p": "Den första är vårt val, den andra ett alternativ om den första inte går att få tag på."},
+    {"b": "Kontrollera etiketten", "p": "Ingrediensförteckningen på förpackningen måste stämma med beskrivningen av ingrediensen. Om en produkt har en annan sammansättning skriver vi det."},
+    {"b": "Ta mängderna från appen", "p": "Den här pdf:en anger produkter, inte mängder i gram. Recept och mängder räknas ut av Gellatti-appen."}
+  ],
+  "legend_title": "Teckenförklaring",
+  "tag_from_abroad": "Från utlandet",
+  "tag_b2b": "För företag",
+  "tag_other_composition": "Annan sammansättning",
+  "tag_alternative": "Lokalt alternativ",
+  "tag_unconfirmed": "Ej bekräftad",
+  "legend": {
+    "from_abroad": "en butik utomlands som levererar till det här landet",
+    "b2b": "säljs till företag eller i stora förpackningar",
+    "other_composition": "samma typ av produkt med en annan sammansättning (anges bredvid)",
+    "alternative": "en ersättning för en annan Gellatti-produkt"
+  },
+  "starter_amount": "I Starter Pack: {g} g",
+  "option": "Alternativ {n}",
+  "ean": "EAN",
+  "where": "Var",
+  "fat": "fett",
+  "items": {
+    "DEX": {"name": "Dextros", "ref": "Dextros (glukos) i pulverform, monohydrat."},
+    "SMP": {"name": "Skummjölkspulver", "ref": "Mjölkpulver med cirka 1 % fett."},
+    "CRP": {"name": "Gräddpulver", "ref": "Torkad grädde med cirka 42 % fett."},
+    "FRU": {"name": "Fruktsocker", "ref": "Ren kristallin fruktos."},
+    "INU": {"name": "Inulin", "ref": "Inulinpulver, till exempel från cikoria."},
+    "YOL": {"name": "Torkad äggula", "ref": "Pastöriserat äggulepulver från hönsägg."},
+    "STB": {"name": "Stabiliseringsmedel", "ref": "Gellatti Stabilizer är en blandning av tarakärnmjöl, johannesbrödkärnmjöl och guarkärnmjöl."}
+  },
+  "stabilizer_note": "Ett lokalt alternativ till Gellatti-blandningen, inte samma blandning. Blanda det med de torra ingredienserna och värm basen till 75–80 °C.",
+  "missing": "Ännu ingen godkänd produkt i det här landet.",
+  "notes_title": "Bra att veta",
+  "notes": [
+    {"h": "Tillgänglighet", "p": "Vi kontrollerade produkterna på tillverkares och butikers webbplatser i september 2026. Tillgänglighet, priser och leverans kan ändras och garanteras inte."},
+    {"h": "Etiketten går före", "p": "Kontrollera ingredienser och allergener på förpackningen innan du köper. Gräddpulver och mjölkpulver innehåller mjölk, äggula innehåller ägg."},
+    {"h": "Stabiliseringsmedel", "p": "I det här landet ersätts Gellatti Stabilizer av ett lokalt växtgummi. Det fungerar på liknande sätt men är inte samma blandning."}
+  ],
+  "fine": "En produkt som nämns här finns inte nödvändigtvis i Gellatti-appen ännu. Gellatti säljer inte andra märkens produkter.",
+  "back_h": "Fantastisk gelato börjar med en bra bas.",
+  "back_p": "Recept, mängder och tillvägagångssätt finns i Gellatti-appen.",
+  "back_link": "gellatti.com",
+  "draft": "UTKAST · förslag för godkännande"
+}

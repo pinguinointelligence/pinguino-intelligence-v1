@@ -1,0 +1,371 @@
+{
+  "iso2": "DK",
+  "country": "Denmark",
+  "agent": "research-nordic-baltic",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:19:09Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "flødepulver",
+        "tørret fløde",
+        "fløde pulver",
+        "piskefløde pulver"
+      ],
+      "queries": [
+        "flødepulver køb fløde pulver fedt",
+        "flødepulver 42% fedt",
+        "tørret fløde pulver ægte fløde",
+        "kokogkage.dk flødepulver",
+        "Sahnepulver 42% Versand Finnland Schweden Dänemark"
+      ],
+      "sources_tried": [
+        "nemlig.com First Price Flødepulver (coffee creamer, rejected) [T]",
+        "lomax.dk Coffee Creamer Flødepulver 250 g and BKI Coffee Whitener (rejected) [T]",
+        "gs-supply.dk / grafical.dk / linds.dk / cares.dk / daarbakredoffice.dk flødepulver (coffee creamers/sticks, rejected) [T]",
+        "bcompany.dk Flødepulver Tør Ermol 750 g ('KUN ERHVERVSSALG', B2B only; composition not shown) [T]",
+        "procudan.dk Flødepulver (B2B ingredient supplier, no retail pack) [T]",
+        "kokogkage.dk (Condi consumer shop; guessed product URLs 404, no cream powder found)",
+        "pricerunner.dk (price comparison, discovery only) [T]",
+        "hobbybaecker.de Sahnepulver 42 % Fett 100 g (GTIN on page; ships to Denmark per shipping policy)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Sahnepulver, sprühgetrocknet, 100 g",
+          "pack": "100 g",
+          "gtin": "4250712308666",
+          "identifier_confirmed": true,
+          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
+          "source_type": "RETAILER",
+          "seller": "Hobbybäcker-Versand (Herzlake, Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "foreign page (country domain .de); delivery to the market proven by the seller's shipping-policy country list",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "url": "https://www.hobbybaecker.de/Informationen/Versand-und-Zahlungsbedingungen/",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.",
+            "tool": "check_quotes.py",
+            "found": true,
+            "checked_at_utc": "2026-09-17T15:53:58Z",
+            "page_verdict_file": "~/.cache/gellatti-evidence/verify/e15dfe5c8fe979a6.json"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "carbohydrate_g": 29.0,
+            "sugars_g": 29.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+            "basis": "per 100 g",
+            "from": "page Zutaten + Nährwertangaben"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "spray-dried dairy cream, fat 42 g/100 g = reference; single ingredient",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9f3efd7a3bb21ac2.json",
+          "checked_at_utc": "2026-09-17T15:51:55Z",
+          "notes": "identity = GTIN (itemprop gtin13) on the cross-border seller's own product page; verifier class EAN_ON_FOREIGN_MARKET_PAGE (page market DE); page states 'Sofort verfügbar, Lieferzeit: 1-3 Tage'",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Danish retail 'flødepulver' is coffee creamer (glucose syrup/vegetable fat); no consumer listing of genuine dairy cream powder found. Cross-border proposal from Germany."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "frugtsukker",
+        "fruktose"
+      ],
+      "queries": [
+        "frugtsukker fruktose 500 g køb"
+      ],
+      "sources_tried": [
+        "gourmetoutlet.dk -> finkost.dk (Fruktose, 1 kg, GTIN in JSON-LD, InStock)",
+        "bioshi24.dk (Dr. Health Fruktose - frugtsukker 500 g, GTIN printed, OutOfStock)",
+        "naturitas.dk (Intracma Fruktose 500 g; only store-internal code, no GTIN)",
+        "thekitchenlab.dk (KitchenLab AB Fruktose 500 g/1000 g; stock 0)",
+        "labdidakt.dk / scandidact.dk (laboratory/school chemical, rejected) [T]",
+        "humlecentralen.dk (brewing supply, not checked) [T]",
+        "mediqdanmark.dk Fructose Module (medical nutrition, rejected) [T]"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "BOS FOOD (packer)",
+          "product_name": "Fruktose, 1 kg",
+          "pack": "1 kg",
+          "gtin": "4025084174078",
+          "identifier_confirmed": true,
+          "url": "https://gourmetoutlet.dk/products/fruchtzucker",
+          "source_type": "RETAILER",
+          "seller": "gourmetoutlet.dk / finkost.dk",
+          "page_market": "DK",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .dk",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.1,
+            "protein_g": 0.1,
+            "carbohydrate_g": 99.8,
+            "sugars_g": 99.8,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Frugtsukker (fruktose), krystallinsk. Ingredienser: Fructose.",
+            "basis": "page table labelled 'pr. 100 ml' (powder)",
+            "from": "page Ernæringstabel + Ingredienser/produktinfo"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "crystalline fructose, sugars 99.8 g/100 g",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e354f55ced876f3b.json",
+          "checked_at_utc": "2026-09-17T15:34:30Z",
+          "notes": "URL redirects to https://finkost.dk/products/fruktose-1-kg (same .dk shop group); JSON-LD availability InStock; 'Abgepackt von: BOS FOOD Duesseldorf'",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "DR ZDROWIE (Dr. Health)",
+          "product_name": "Fruktose - frugtsukker 500 g dr. health",
+          "pack": "500 g",
+          "gtin": "5908249970021",
+          "identifier_confirmed": true,
+          "url": "https://bioshi24.dk/da/products/fruktose-frugtsukker-500-g-dr-health-55655",
+          "source_type": "RETAILER",
+          "seller": "Bioshi24",
+          "page_market": "DK",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .dk",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "carbohydrate_g": null,
+            "fibre_g": 0.0,
+            "fructose_pct": 99.9,
+            "ingredients": "Sammensætning: fruktose 99,9 %",
+            "basis": "per 100 g",
+            "from": "page Næringsværdi + Sammensætning"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "fructose 99.9 %",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/6b92672bfde5ad04.json",
+          "checked_at_utc": "2026-09-17T15:34:29Z",
+          "notes": "AVAILABILITY RISK: JSON-LD OutOfStock. Bioshi24 is a Polish-operated multi-country web shop on a .dk domain",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin",
+        "inulin pulver",
+        "cikorieinulin",
+        "FOS-inulin"
+      ],
+      "queries": [
+        "inulin pulver køb",
+        "Easis inulin 300 g"
+      ],
+      "sources_tried": [
+        "well.dk (Natur Drogeriet Inulin Pulver 150 g, itemprop gtin13, 'På lager')",
+        "matas.dk (same product, GTIN in JSON-LD)",
+        "helsebixen.dk / naturoghelse.dk ('EAN:' label) / okologisk-supermarked.dk / helsekost-ekspres.dk / jala-helsekost.dk / webapoteket.dk / mecindo.dk (same Natur Drogeriet product) [T]",
+        "bulk.com/dk (no country binding) [T]",
+        "easisfoods.com (Easis Inulin 300 g; generic .com) [T]"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Natur Drogeriet",
+          "product_name": "Natur Drogeriet Inulin Pulver (150 g)",
+          "pack": "150 g",
+          "gtin": "5703137403700",
+          "identifier_confirmed": true,
+          "url": "https://well.dk/natur-drogeriet-inulin-pulver-150-gr",
+          "source_type": "RETAILER",
+          "seller": "Well.dk",
+          "page_market": "DK",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .dk",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "carbohydrate_g": 7.0,
+            "sugars_g": 7.0,
+            "fibre_g": 90.0,
+            "salt_g": 0.1,
+            "fructose_pct": null,
+            "ingredients": "Inulin fra cikorierod (Cichorium intybus L.)",
+            "basis": "per 100 g",
+            "from": "page Næringsdeklaration + Ingredienser"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin, fibre 90 g / sugars 7 g per 100 g (reference 89 / 8)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8ff613f3a56c3bc9.json",
+          "checked_at_utc": "2026-09-17T15:56:30Z",
+          "notes": "page shows 'På lager'",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Natur Drogeriet",
+          "product_name": "Inulin Pulver 150 g fra Natur Drogeriet",
+          "pack": "150 g",
+          "gtin": "5703137403700",
+          "identifier_confirmed": true,
+          "url": "https://www.matas.dk/fos-inulin-150-g",
+          "source_type": "RETAILER",
+          "seller": "Matas",
+          "page_market": "DK",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .dk",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "carbohydrate_g": 7.0,
+            "sugars_g": 7.0,
+            "fibre_g": 90.0,
+            "fructose_pct": null,
+            "ingredients": "Inulin fra cikorierod (Cichorium intybus L.)",
+            "basis": "per 100 g",
+            "from": "well.dk label text for the same GTIN (Matas static page shows no table)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "same product as rank 1, national chain Matas",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8b850960e557515f.json",
+          "checked_at_utc": "2026-09-17T15:56:32Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "æggeblommepulver",
+        "æggeblomme pulver",
+        "tørret æggeblomme"
+      ],
+      "queries": [
+        "æggeblommepulver",
+        "æggeblomme pulver køb",
+        "kokogkage.dk æggeblomme pulver",
+        "hobbybaecker.de Eigelbpulver"
+      ],
+      "sources_tried": [
+        "myprotein.dk (Æggeblomme Pulver 500 g, GTIN in JSON-LD, 'Udsolgt')",
+        "vehgroshop.dk (Æggeblomme Pulver Økologisk, configurable packs, no GTIN)",
+        "condi.dk (Louis Francois Æggeblomme pulver 1 kg, B2B only for CVR-registered customers, OutOfStock)",
+        "kokogkage.dk (Condi consumer shop; product not found)",
+        "altvindk.com (generic .com wine/spirits site listing, no market binding; not used)",
+        "aartdevos.dk Sennelier æggeblomme pulver 80 g (artists' material, rejected) [T]",
+        "bode-okologisk.dk (25 kg, B2B) [T]",
+        "hobbybaecker.de Eigelbpulver 100 g (Cake-Masters Basics, GTIN on page, 'Sofort verfügbar'; ships to this country per shipping policy) -> rank 2 cross-border"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Myprotein",
+          "product_name": "Æggeblomme Pulver (500 g, Uden Smag)",
+          "pack": "500 g",
+          "gtin": "5055534303733",
+          "identifier_confirmed": true,
+          "url": "https://www.myprotein.dk/p/sports-nutrition/aeggeblomme-pulver/10529352/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Myprotein",
+          "page_market": "DK",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .dk",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 59.0,
+            "protein_g": 32.0,
+            "carbohydrate_g": 2.1,
+            "sugars_g": 2.1,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Æggeblomme pulver (100%)",
+            "basis": "per 100 g",
+            "from": "ingredients from this page; nutrition values from myprotein.fi page of the same GTIN (verdict ~/.cache/gellatti-evidence/verify/0ecd6ec20c98712a.json)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % egg yolk powder",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/eb312367059a2fea.json",
+          "checked_at_utc": "2026-09-17T15:56:34Z",
+          "notes": "AVAILABILITY RISK: 'Udsolgt' / JSON-LD OutOfStock on 2026-09-17 (99 kr, 198 kr/kg)",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Eigelbpulver, 100 g",
+          "pack": "100 g",
+          "gtin": "4250712315510",
+          "identifier_confirmed": true,
+          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
+          "source_type": "RETAILER",
+          "seller": "Hobbybäcker-Versand (Herzlake, Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "foreign page (country domain .de); delivery to the market proven by the seller's shipping-policy country list",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "url": "https://www.hobbybaecker.de/Informationen/Versand-und-Zahlungsbedingungen/",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.",
+            "tool": "check_quotes.py",
+            "found": true,
+            "checked_at_utc": "2026-09-17T15:53:58Z",
+            "page_verdict_file": "~/.cache/gellatti-evidence/verify/e15dfe5c8fe979a6.json"
+          },
+          "composition": {
+            "fat_g": 55.8,
+            "protein_g": 34.3,
+            "carbohydrate_g": 3.6,
+            "sugars_g": 3.6,
+            "salt_g": 0.3,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET",
+            "basis": "per 100 g",
+            "from": "page Zutaten + Nährwertangaben"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 55.8 / protein 34.3 ≈ reference 56.5 / 34.5",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/ae8a14e5d6c60e56.json",
+          "checked_at_utc": "2026-09-17T16:11:25Z",
+          "notes": "identity = GTIN (itemprop gtin13) on the cross-border seller's own product page; verifier class EAN_ON_FOREIGN_MARKET_PAGE (page market DE); page states 'Sofort verfügbar, Lieferzeit: 1-3 Tage'; offered as the in-stock alternative because the local listing is out of stock",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "The only GTIN-proven Danish listing is out of stock. Rank 2 is an in-stock, GTIN-proven cross-border A-equivalent from Germany."
+    }
+  },
+  "notes": "sources_tried entries marked [T] were judged from search-result titles/snippets only (page not opened); every other entry was fetched (verify_ean_market.py or a direct fetch). Search results are discovery only, never evidence."
+}

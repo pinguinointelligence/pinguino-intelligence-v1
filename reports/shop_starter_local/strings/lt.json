@@ -1,0 +1,57 @@
+{
+  "locale": "lt",
+  "dir": "ltr",
+  "title": "Gelato pagrindo ingredientai",
+  "benefit": "Ką pirkti ir kur",
+  "pill": "PDF · 0 €",
+  "country_label": "Šalis",
+  "language_label": "Kalba",
+  "edition": "1-as leidimas · 2026 m. rugsėjis",
+  "cover_items_title": "Septyni Starter Pack ingredientai",
+  "howto_title": "Kaip naudotis šiuo gidu",
+  "howto_lede": "Kiekvienam Starter Pack ingredientui nurodome produktą, kurį galite nusipirkti šioje šalyje.",
+  "steps": [
+    {"b": "Pasirinkite vieną produktą", "p": "Pirmasis – mūsų pasirinkimas, antrasis – alternatyva, jei pirmojo nėra."},
+    {"b": "Patikrinkite etiketę", "p": "Sudėtis ant pakuotės turi atitikti ingrediento aprašymą. Jei produkto sudėtis kitokia, tai nurodome."},
+    {"b": "Kiekius imkite iš programėlės", "p": "Šiame PDF nurodyti produktai, o ne kiekiai gramais. Receptus ir kiekius apskaičiuoja Gellatti programėlė."}
+  ],
+  "legend_title": "Žymėjimai",
+  "tag_from_abroad": "Iš užsienio",
+  "tag_b2b": "Įmonėms",
+  "tag_other_composition": "Kita sudėtis",
+  "tag_alternative": "Vietinė alternatyva",
+  "tag_unconfirmed": "Nepatvirtinta",
+  "legend": {
+    "from_abroad": "užsienio parduotuvė, pristatanti į šią šalį",
+    "b2b": "parduodama įmonėms arba didelėmis pakuotėmis",
+    "other_composition": "tos pačios rūšies produktas su kitokia sudėtimi (nurodyta šalia)",
+    "alternative": "kito Gellatti produkto pakaitalas"
+  },
+  "starter_amount": "Starter Pack rinkinyje: {g} g",
+  "option": "Variantas {n}",
+  "ean": "EAN",
+  "where": "Kur",
+  "fat": "riebalai",
+  "items": {
+    "DEX": {"name": "Dekstrozė", "ref": "Dekstrozės (gliukozės) milteliai, monohidratas."},
+    "SMP": {"name": "Nugriebto pieno milteliai", "ref": "Pieno milteliai, kuriuose yra apie 1 % riebalų."},
+    "CRP": {"name": "Grietinėlės milteliai", "ref": "Džiovinta grietinėlė, kurioje yra apie 42 % riebalų."},
+    "FRU": {"name": "Fruktozė", "ref": "Gryna kristalinė fruktozė."},
+    "INU": {"name": "Inulinas", "ref": "Inulino milteliai, pavyzdžiui, iš cikorijų."},
+    "YOL": {"name": "Džiovintas kiaušinio trynys", "ref": "Pasterizuoti vištų kiaušinių trynių milteliai."},
+    "STB": {"name": "Stabilizatorius", "ref": "Gellatti Stabilizer – tai taros gumos, saldžiųjų pupmedžių sėklų miltų ir guaro gumos mišinys."}
+  },
+  "stabilizer_note": "Vietinė alternatyva Gellatti mišiniui, ne tas pats mišinys. Sumaišykite ją su sausais ingredientais ir pakaitinkite pagrindą iki 75–80 °C.",
+  "missing": "Šioje šalyje dar nėra patvirtinto produkto.",
+  "notes_title": "Verta žinoti",
+  "notes": [
+    {"h": "Prieinamumas", "p": "Šiuos produktus patikrinome gamintojų ir parduotuvių svetainėse 2026 m. rugsėjį. Prieinamumas, kainos ir pristatymas gali keistis ir nėra garantuojami."},
+    {"h": "Svarbiausia – etiketė", "p": "Prieš pirkdami patikrinkite ingredientus ir alergenus ant pakuotės. Grietinėlės milteliuose ir pieno milteliuose yra pieno, o trynyje – kiaušinių."},
+    {"h": "Stabilizatorius", "p": "Šioje šalyje vietoj Gellatti Stabilizer naudojama vietinė augalinė guma. Ji veikia panašiai, bet tai nėra tas pats mišinys."}
+  ],
+  "fine": "Čia nurodytas produktas nebūtinai jau yra Gellatti programėlėje. Gellatti neparduoda kitų prekių ženklų produktų.",
+  "back_h": "Puikus gelato prasideda nuo gero pagrindo.",
+  "back_p": "Receptus, kiekius ir gamybos eigą rasite Gellatti programėlėje.",
+  "back_link": "gellatti.com",
+  "draft": "JUODRAŠTIS · pasiūlymai tvirtinti"
+}

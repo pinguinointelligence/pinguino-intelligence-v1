@@ -1,0 +1,57 @@
+{
+  "locale": "ro",
+  "dir": "ltr",
+  "title": "Ingrediente pentru baza de gelato",
+  "benefit": "Ce să cumperi și de unde",
+  "pill": "PDF · 0 €",
+  "country_label": "Țara",
+  "language_label": "Limba",
+  "edition": "Ediția 1 · septembrie 2026",
+  "cover_items_title": "Cele șapte ingrediente din Starter Pack",
+  "howto_title": "Cum folosești acest ghid",
+  "howto_lede": "Pentru fiecare ingredient din Starter Pack îți indicăm un produs pe care îl poți cumpăra în această țară.",
+  "steps": [
+    {"b": "Alege un produs", "p": "Primul este alegerea noastră, al doilea o alternativă dacă primul nu este disponibil."},
+    {"b": "Verifică eticheta", "p": "Compoziția de pe ambalaj trebuie să corespundă descrierii ingredientului. Când un produs are altă compoziție, menționăm acest lucru."},
+    {"b": "Ia cantitățile din aplicație", "p": "Acest PDF indică produse, nu gramaje. Rețetele și cantitățile sunt calculate de aplicația Gellatti."}
+  ],
+  "legend_title": "Legendă",
+  "tag_from_abroad": "Din străinătate",
+  "tag_b2b": "Pentru firme",
+  "tag_other_composition": "Altă compoziție",
+  "tag_alternative": "Alternativă locală",
+  "tag_unconfirmed": "Neconfirmat",
+  "legend": {
+    "from_abroad": "un magazin din străinătate care livrează în această țară",
+    "b2b": "vândut firmelor sau în ambalaje mari",
+    "other_composition": "același tip de produs, cu altă compoziție (indicată alături)",
+    "alternative": "un înlocuitor pentru alt produs Gellatti"
+  },
+  "starter_amount": "În Starter Pack: {g} g",
+  "option": "Opțiunea {n}",
+  "ean": "EAN",
+  "where": "Unde",
+  "fat": "grăsime",
+  "items": {
+    "DEX": {"name": "Dextroză", "ref": "Dextroză (glucoză) pudră, monohidrat."},
+    "SMP": {"name": "Lapte praf degresat", "ref": "Lapte praf cu aproximativ 1% grăsime."},
+    "CRP": {"name": "Smântână praf", "ref": "Smântână deshidratată cu aproximativ 42% grăsime."},
+    "FRU": {"name": "Fructoză", "ref": "Fructoză cristalină pură."},
+    "INU": {"name": "Inulină", "ref": "Inulină pudră, de exemplu din cicoare."},
+    "YOL": {"name": "Gălbenuș de ou uscat", "ref": "Gălbenuș de ou de găină praf, pasteurizat."},
+    "STB": {"name": "Stabilizator", "ref": "Gellatti Stabilizer este un amestec de gumă tara, gumă din semințe de roșcove și gumă guar."}
+  },
+  "stabilizer_note": "O alternativă locală la amestecul Gellatti, nu același amestec. Amestecă-o cu ingredientele uscate și încălzește baza la 75–80 °C.",
+  "missing": "Încă nu există un produs aprobat în această țară.",
+  "notes_title": "Bine de știut",
+  "notes": [
+    {"h": "Disponibilitate", "p": "Am verificat aceste produse pe site-urile producătorilor și ale magazinelor în septembrie 2026. Disponibilitatea, prețurile și livrarea se pot schimba și nu sunt garantate."},
+    {"h": "Eticheta are prioritate", "p": "Înainte să cumperi, verifică ingredientele și alergenii de pe ambalaj. Smântâna praf și laptele praf conțin lapte, iar gălbenușul de ou conține ou."},
+    {"h": "Stabilizator", "p": "În această țară, o gumă vegetală locală înlocuiește Gellatti Stabilizer. Funcționează în mod similar, dar nu este același amestec."}
+  ],
+  "fine": "Un produs menționat aici nu este neapărat deja disponibil în aplicația Gellatti. Gellatti nu vinde produse ale altor mărci.",
+  "back_h": "Un gelato excelent începe cu o bază bună.",
+  "back_p": "Rețetele, cantitățile și procesul sunt în aplicația Gellatti.",
+  "back_link": "gellatti.com",
+  "draft": "CIORNĂ · propuneri spre aprobare"
+}

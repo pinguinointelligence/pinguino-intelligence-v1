@@ -1,0 +1,328 @@
+{
+  "iso2": "JP",
+  "country": "Japan",
+  "agent": "research-east-asia",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T15:43:30Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "クリームパウダー",
+        "生クリームパウダー",
+        "乳脂肪粉末",
+        "粉末クリーム"
+      ],
+      "queries": [
+        "生クリームパウダー 乳脂肪 cotta",
+        "クリームパウダー 乳脂肪分 製菓材料 通販 TOMIZ",
+        "\"クリームパウダー\" 北海道 乳脂肪 富澤商店 OR cotta OR 製菓材料",
+        "\"クリームパウダー\" 乳脂肪 通販 製菓 \"脂質\" 100g",
+        "\"生クリームパウダー\" 乳脂肪",
+        "\"クリームパウダー\" \"乳脂肪分\" 種類別 クリームパウダー 商品",
+        "\"クリームパウダー\" 雪印 OR 森永 OR よつ葉 1kg 業務用 通販 乳脂肪",
+        "クリームパウダー 製菓 家庭用 乳脂肪 アイスクリーム 材料 粉末クリーム 無添加 通販",
+        "楽天市場 クリームパウダー 乳脂肪 1kg 種類別 クリームパウダー 業務用",
+        "\"heavy cream powder\" ships to Japan OR 日本 発送 cream powder dairy (English)"
+      ],
+      "sources_tried": [
+        "tomiz.com on-site search 'クリームパウダー' (baking supplier; 4 hits: カスタードパウダー, バタークリーム風ミックス ×2, プードルアクレーム = custard/buttercream mixes, rejected)",
+        "cotta.jp on-site search facets 'クリームパウダー' (baking supplier; 2 hits in custard/cotta-original categories; cotta カスタードパウダー = dessert mix, rejected)",
+        "askul.co.jp / LOHACO on-site search (online grocer; HTTP 403 bot wall, inconclusive, not bypassed)",
+        "yodobashi.com on-site search (online retailer incl. food; connection failed HTTP 000, inconclusive)",
+        "kenko.com (health online shop; connection failed HTTP 000, inconclusive)",
+        "Morinaga Milk B2B site / e-expo: クリームテイストパウダーMF50 (creaming powder, milk fat 50 %, industrial B2B only, no retail listing found)",
+        "Asahi Group Foods クリームパウダーCH (industrial B2B only)",
+        "Rakuten / Yahoo!ショッピング / kakaku.com (marketplace/aggregator search snippets only showed coffee creaming powders, whipped-topping and custard powders — rejected types; Yahoo! JAPAN is not reachable from EEA egress)"
+      ],
+      "candidates": [],
+      "notes": "No retail dairy cream powder (spray-dried cream) found in Japan. Under the Japanese milk ordinance 'クリームパウダー' is an industrial dairy category (milk fat ≥ 50 %) sold B2B; consumer baking shops list only custard/whipped-topping mixes and non-dairy creaming powders, which the protocol rejects. WebSearch budget of the session was exhausted during this country (200/200 calls shared by parallel agents), so later discovery used retailers' own on-site search only."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "果糖",
+        "フルーツシュガー",
+        "フルクトース",
+        "結晶果糖"
+      ],
+      "queries": [
+        "果糖 フルクトース 粉末 製菓 通販 cotta 富澤商店",
+        "cotta 果糖 フルーツシュガー 商品",
+        "日新製糖 カップ印 フルーツシュガー 果糖 純度 結晶果糖",
+        "ウェルネオシュガー カップ印 果糖 フルーツシュガー 製品情報",
+        "ilovesweet.jp 果糖 フルーツシュガー ウェルネオマーケット"
+      ],
+      "sources_tried": [
+        "tomiz.com (baking supplier; product page with JAN — used)",
+        "profoods.co.jp (baking supplier, .co.jp; same product, no JAN — used via identity_match)",
+        "cotta.jp product 021191 日新カップ 果糖（フルーツシュガー）1kg (JP page, but label/JAN fields are rendered client-side; no GTIN in HTML)",
+        "cc-kikuya.co.jp SHOP/36797 フルーツシュガー 果糖 1kg (JP page, no JAN)",
+        "ilovesweet.jp (Wellneo Sugar official store; HTTP 403 bot wall, inconclusive)",
+        "Rakuten / Yahoo!ショッピング listings (marketplaces, not used)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "カップ印 (ウェルネオシュガー, formerly 日新製糖)",
+          "product_name": "カップ印 果糖（フルーツシュガー） / 1kg",
+          "pack": "1 kg",
+          "gtin": "4904001039273",
+          "identifier_confirmed": true,
+          "url": "https://tomiz.com/item/00006300",
+          "source_type": "RETAILER",
+          "seller": "富澤商店 (TOMIZ)",
+          "page_market": "JP",
+          "market_by": "EXPLICIT_QUOTE_ON_LOCAL_SELLER (verifier: GENERIC_TLD)",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "explicit shipping statements on the seller's own site, checked with check_quotes.py (found=true): https://tomiz.com/faq/ \"海外への発送はできますか？ 現在のところ対応しておりません。国内のみお届け可能です。\" + https://tomiz.com/guide/delivery.html delivery-area table of Japanese prefectures \"山梨、茨城、栃木、群馬、東京、神奈川、埼玉、千葉\" (tomiz.com is a generic .com; verifier page_market empty/GENERIC_TLD)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "carbohydrate_g": 99.9,
+            "energy_kcal": 368,
+            "ingredients": "名称 果糖; 原材料名 砂糖; 原料原産地名 フィンランド",
+            "from": "page label table (栄養成分表示 100g当たり)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Crystalline fructose sold under the legal name 果糖, single raw material (sugar it is made from), carbohydrate 99.9 g/100 g. Fructose % itself is not printed.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f04523fc3ba5f26a.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE (clean_hits 1, context '<p>4904001039273</p>' under JANコード)",
+          "checked_at_utc": "2026-09-17T15:32:20Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "カップ印 (ウェルネオシュガー)",
+          "product_name": "カップ印 果糖 1kg",
+          "pack": "1 kg",
+          "gtin": "4904001039273",
+          "identifier_confirmed": true,
+          "url": "https://www.profoods.co.jp/i/1050010",
+          "source_type": "RETAILER",
+          "seller": "プロフーズ (PROFOODS)",
+          "page_market": "JP",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "country domain .co.jp",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "carbohydrate_g": 99.9,
+            "energy_kcal": 375,
+            "ingredients": "名称 果糖; 原材料名 砂糖; 原産国名 フィンランド; 販売者 ウェルネオシュガー株式会社",
+            "from": "page label table (栄養成分 100g当たり)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Same product as rank 1; fructose % not printed.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/74ef919f6d6d2f03.json",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_8f9fc2ef51e9ba13.json",
+          "notes": "identity_match.py: GTIN 4904001039273 on tomiz.com source + brand カップ印 + pack 1kg on both pages, no conflicting GTIN, failed_checks []. The 4+-letter name-word check is vacuous for Japanese (果糖 = 2 characters).",
+          "checked_at_utc": "2026-09-17T15:42:45Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "イヌリン",
+        "イヌリンパウダー",
+        "チコリ由来 イヌリン",
+        "水溶性食物繊維"
+      ],
+      "queries": [
+        "イヌリン 粉末 100% 通販 チコリ",
+        "富澤商店 イヌリン OR 水溶性食物繊維 tomiz.com"
+      ],
+      "sources_tried": [
+        "tomiz.com item 02177400 (baking supplier; JAN printed — used)",
+        "nichie.shop (ニチエー official shop, generic .shop; no JAN — rank 2 LEAD)",
+        "nichiga.net shopdetail/000000000978 (NICHIGA, generic .net; no JAN; fibre 85.1 g)",
+        "yodobashi.com product 100000001007653782 富澤商店 イヌリンパウダー 100g (seen in discovery; site unreachable HTTP 000)",
+        "Rakuten / Yahoo!ショッピング (marketplaces, not used)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "富澤商店 (TOMIZ)",
+          "product_name": "イヌリンパウダー / 100g",
+          "pack": "100 g",
+          "gtin": "4571182553890",
+          "identifier_confirmed": true,
+          "url": "https://tomiz.com/item/02177400",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "富澤商店 (TOMIZ)",
+          "page_market": "JP",
+          "market_by": "EXPLICIT_QUOTE_ON_LOCAL_SELLER (verifier: GENERIC_TLD)",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "explicit shipping statements on the seller's own site, checked with check_quotes.py (found=true): https://tomiz.com/faq/ \"海外への発送はできますか？ 現在のところ対応しておりません。国内のみお届け可能です。\" + https://tomiz.com/guide/delivery.html delivery-area table of Japanese prefectures \"山梨、茨城、栃木、群馬、東京、神奈川、埼玉、千葉\" (tomiz.com is a generic .com; verifier page_market empty/GENERIC_TLD)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.1,
+            "protein_g": 0.2,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "carbohydrate_g": 96.2,
+            "sugars_or_available_carbs_g": 8.6,
+            "energy_kcal": 212,
+            "ingredients": "名称 イヌリンパウダー; 原材料名 イヌリン; 原産国名 オランダ",
+            "from": "page label table (栄養成分表示 100g当り; 糖質 8.6 g)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Sole ingredient inulin (chicory, per product text). Carbohydrate 96.2 g of which 糖質 8.6 g; dietary fibre is not printed as a separate number (96.2 − 8.6 = 87.6 g would be derived, not printed).",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9a813d815a065159.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE (clean_hits 1, context '<p>4571182553890</p>' under JANコード)",
+          "checked_at_utc": "2026-09-17T15:32:20Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "nichie (ニチエー)",
+          "product_name": "天然チコリ根由来 イヌリンパウダー イヌリア 500g",
+          "pack": "500 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://nichie.shop/?pid=152684791",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "ニチエー公式オンラインショップ",
+          "page_market": "JP",
+          "market_by": "CURRENCY_ONLY (does not bind)",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none (generic .shop; JPY currency only)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.2,
+            "protein_g": 0.1,
+            "fibre_g": 86.2,
+            "fructose_pct": null,
+            "carbohydrate_g": 96.1,
+            "sugars_or_available_carbs_g": 9.9,
+            "energy_kcal": 214,
+            "ingredients": "名称 食物繊維加工食品; 原材料 食物繊維（イヌリン）チコリの根 オランダ",
+            "from": "page label (栄養成分 100gあたり)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "fibre 86.2 g/100 g ≥ 85",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4a1808ceaf4fb0b5.json",
+          "checked_at_utc": "2026-09-17T15:43:12Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "乾燥卵黄",
+        "卵黄粉",
+        "卵黄粉末",
+        "卵黄パウダー"
+      ],
+      "queries": [
+        "卵黄粉末 乾燥卵黄 通販 製菓材料",
+        "\"卵黄パウダー\" OR \"卵黄粉\" 製菓材料 通販 100g OR 200g OR 500g",
+        "乾燥卵黄 製菓材料 通販 卵黄100% 原材料 卵黄 粉末 小分け",
+        "キユーピー 乾燥卵黄 No.1 1kg 通販 製菓",
+        "\"乾燥卵黄\" 200g OR 100g OR 500g 製菓材料 ショップ -rakuten -amazon",
+        "\"卵黄粉末\" 通販 原材料 卵黄 国産 パウダー 公式",
+        "NICHIGA ニチガ 卵黄パウダー OR 乾燥卵黄 nichiga.net",
+        "本間商店 OR 粉やの息子 OR TFOODS \"乾燥卵黄\" 1kg",
+        "cotta 乾燥卵黄 OR 卵黄パウダー 商品 cotta.jp"
+      ],
+      "sources_tried": [
+        "tomiz.com on-site search '卵黄' (only frozen 20 % sugared yolk and custard powder)",
+        "cotta.jp on-site search facets '卵黄' (3 hits in dairy/egg category, not resolvable from static HTML)",
+        "shimojima.jp category 乾燥卵白・卵加工品 (frozen sugared yolk only)",
+        "honma-store.com (乾燥全卵 NO1 1kg = whole egg, rejected)",
+        "konaya-oroshi.jp 乾燥卵黄 №1 (product page HTTP 404)",
+        "shokuzai-pro.com (B2B catalogue for Kewpie 乾燥卵黄 No1 1kg, not a shop)",
+        "askul.co.jp (HTTP 403, inconclusive)",
+        "Amazon.co.jp / Rakuten 乾燥卵黄 50 g–1 kg listings (marketplaces, not used)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "キユーピータマゴ (Kewpie)",
+          "product_name": "キユーピータマゴ 業務用 乾燥卵黄 №1 1kg×10袋入 【仕入れ】",
+          "pack": "1 kg bag (sold as case of 10)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.shijoh.com/shopdetail/004008000003/",
+          "source_type": "RETAILER",
+          "seller": "司城商店オンライン",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none (generic .com)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "乾燥卵黄（卵を含む）",
+            "from": "page item description (原材料)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Ingredient list is dried egg yolk only (standard type, reconstitution 1 kg + 1.25 kg water = 2.25 kg liquid yolk). No nutrition numbers printed.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7d9bf638916a7216.json",
+          "notes": "Trade/B2B case pack; no GTIN on page; generic .com so no market binding.",
+          "checked_at_utc": "2026-09-17T15:43:16Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "キユーピー (Kewpie)",
+          "product_name": "キューピー 11746乾燥卵黄 No.1 1kg",
+          "pack": "1 kg × 10 bags (case)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://profoods.business/product.php?id=1520",
+          "source_type": "RETAILER",
+          "seller": "プロフーズビジネス (B2B)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none (generic .business)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "原材料名：乾燥卵黄（卵を含む）",
+            "from": "page (素材)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "dried egg yolk only",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9d2d7a492bb14fd1.json",
+          "notes": "取寄商品, business members site; case of 10.",
+          "checked_at_utc": "2026-09-17T15:43:19Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Only industrial Kewpie 1 kg bags (in cases) found on direct shops; small retail packs appear only on marketplaces (Rakuten/Amazon)."
+    }
+  }
+}

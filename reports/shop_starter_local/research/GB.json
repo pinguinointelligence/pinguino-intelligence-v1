@@ -1,0 +1,384 @@
+{
+  "iso2": "GB",
+  "country": "United Kingdom",
+  "agent": "research-eu-west",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:33:04Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "cream powder",
+        "dried cream",
+        "dairy cream powder"
+      ],
+      "queries": [
+        "cream powder (healthysupplies.co.uk, specialingredients.co.uk, souschef.co.uk, kentfoodsdirect.co.uk, msk-ingredients.com)",
+        "dried cream (specialingredients.co.uk, kentfoodsdirect.co.uk)",
+        "milk powder (healthysupplies.co.uk)"
+      ],
+      "sources_tried": [
+        "healthysupplies.co.uk (only cream alternatives / milk powder categories — no dairy cream powder)",
+        "specialingredients.co.uk (cream of tartar, stabilisers, chargers — rejected)",
+        "souschef.co.uk (nut/coffee creams — rejected)",
+        "kentfoodsdirect.co.uk (ice cream mixes — rejected)",
+        "msk-ingredients.com (no cream powder)",
+        "tesco.com / sainsburys.co.uk / groceries.asda.com / buywholefoodsonline.co.uk / caterite.co.uk / bakerybits.co.uk (HTTP 403 — inconclusive)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Sahnepulver 100g",
+          "pack": "100 g",
+          "gtin": "4250712308666",
+          "identifier_confirmed": true,
+          "url": "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g",
+          "source_type": "RETAILER",
+          "seller": "Backfun (backfun.de), Herzlake DE",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "none for this market (page .de); delivery-country list names Großbritannien",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.backfun.de/versand-bestellabwicklung",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/052a9b3cc9fe8b90.json"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+            "from": "page label (backfun.de: Zutaten + Nährwertangaben Fett 42 g, Eiweiß 19 g, Kohlenhydrate 29 g)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "spray-dried cream 42 % fat = reference",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f7d1f56bdd4c2aca.json",
+          "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:28:09Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": false,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing"
+        }
+      ],
+      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+      "notes": "No UK retailer page with dairy cream powder found. Delivery from DE to GB is outside the EU (customs/VAT may apply). MeinCupcake and Taste Market do not list GB for this item; Pati-Versand lists Großbritannien but shows no GTIN. WebSearch session budget exhausted (200/200, shared session cap); GB discovery used retailer site search only."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fructose",
+        "fruit sugar",
+        "crystalline fructose"
+      ],
+      "queries": [
+        "fructose (healthysupplies.co.uk, specialingredients.co.uk, souschef.co.uk, planetorganic.com, goodnessdirect.co.uk, groceries.morrisons.com)"
+      ],
+      "sources_tried": [
+        "healthysupplies.co.uk (Sussex Wholefoods Fructose 500g, JSON-LD gtin 692456984852 — confirmed)",
+        "specialingredients.co.uk (Fructose (Premium Quality) 500g, Shopify barcode 5060341117152 — confirmed)",
+        "planetorganic.com / goodnessdirect.co.uk (no fructose product)",
+        "groceries.morrisons.com (category filters only)",
+        "souschef.co.uk (no fructose product)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sussex Wholefoods",
+          "product_name": "Fructose 500g (Sussex Wholefoods)",
+          "pack": "500 g",
+          "gtin": "692456984852",
+          "identifier_confirmed": true,
+          "url": "https://www.healthysupplies.co.uk/sussex-wholefoods-fructose-500g.html",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Healthy Supplies (healthysupplies.co.uk; Sussex Wholefoods own brand)",
+          "page_market": "GB",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .co.uk",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": null,
+            "fructose_pct": 99.9,
+            "ingredients": "Crystalline Fructose.",
+            "from": "page (Typical Values Per 100g: Carbohydrates 100g, of which Fructose >99.9g)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "crystalline fructose >99.9 g/100 g (made from high-fructose corn syrup per page)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/db7df91dae0e83ec.json",
+          "verifier_verification_class": "EAN_ON_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:26:44Z",
+          "identity_note": "JSON-LD gtin is the 12-digit form 692456984852 (GTIN-12)",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": true,
+          "local_availability_confirmed": true,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Special Ingredients",
+          "product_name": "Fructose ( Premium Quality ) 500g",
+          "pack": "500 g",
+          "gtin": "5060341117152",
+          "identifier_confirmed": true,
+          "url": "https://specialingredients.co.uk/products/fructose-500-grams",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Special Ingredients (specialingredients.co.uk)",
+          "page_market": "GB",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .co.uk",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Fructose",
+            "from": "page (Nutritional Information per 100g: Carbohydrates 100g, of which sugars 100g)",
+            "sugars_g": 100.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient fine crystalline fructose",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d500943081f9f301.json",
+          "verifier_verification_class": "EAN_ON_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:27:39Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": true,
+          "local_availability_confirmed": true,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+      "notes": ""
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin powder",
+        "chicory root fibre",
+        "prebiotic fibre"
+      ],
+      "queries": [
+        "inulin (healthysupplies.co.uk, specialingredients.co.uk, souschef.co.uk, planetorganic.com, goodnessdirect.co.uk, bodybuildingwarehouse.co.uk, peaksupps.co.uk, detoxtrading.co.uk)"
+      ],
+      "sources_tried": [
+        "healthysupplies.co.uk (Sussex Wholefoods Inulin Powder from Chicory 250g, JSON-LD gtin 5061011257918, fibre 88 g — confirmed)",
+        "specialingredients.co.uk (Inulin Powder 250g, barcode 5056191026348, fibre 86 g — confirmed)",
+        "planetorganic.com (KIKI Inulin Powder 250g — no GTIN; binding only by GBP currency)",
+        "peaksupps.co.uk (Inulin Powder (FOS) — several variant GTINs, not used)",
+        "detoxtrading.co.uk (Agave Inulin Powder — not checked further)",
+        "goodnessdirect.co.uk (0 results)",
+        "souschef.co.uk (no inulin product)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Sussex Wholefoods",
+          "product_name": "Inulin Powder, from Chicory 250g (Sussex Wholefoods)",
+          "pack": "250 g",
+          "gtin": "5061011257918",
+          "identifier_confirmed": true,
+          "url": "https://www.healthysupplies.co.uk/inulin-powder-from-chicory-250g-sussex-wholefoods.html",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Healthy Supplies (healthysupplies.co.uk; Sussex Wholefoods own brand)",
+          "page_market": "GB",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .co.uk",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": 88.0,
+            "fructose_pct": null,
+            "ingredients": "Chicory Root Soluble Fibre Powder (no separate ingredient list seen)",
+            "from": "page (Typical Values per 100g: Carbohydrates 96g, of which sugars 8g, Fibre 88g, Sodium 50mg)",
+            "sugars_g": 8.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin, fibre 88 g/100 g ≈ reference 89",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/df5b7a7893c3997c.json",
+          "verifier_verification_class": "EAN_ON_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:26:45Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": true,
+          "local_availability_confirmed": true,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Special Ingredients",
+          "product_name": "Inulin Powder 250g",
+          "pack": "250 g",
+          "gtin": "5056191026348",
+          "identifier_confirmed": true,
+          "url": "https://specialingredients.co.uk/products/inulin-powder-250g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Special Ingredients (specialingredients.co.uk)",
+          "page_market": "GB",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .co.uk",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": 86.0,
+            "fructose_pct": null,
+            "ingredients": "Inulin Powder (extracted from chicory root)",
+            "from": "page (typical content/100g: Carbohydrates 11g, of which sugars 11g, Fibre 86g)",
+            "sugars_g": 11.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin, fibre 86 g/100 g",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5ffb510c89c17f8e.json",
+          "verifier_verification_class": "EAN_ON_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:27:37Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": true,
+          "local_availability_confirmed": true,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+      "notes": ""
+    },
+    "YOL": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk"
+      ],
+      "queries": [
+        "egg yolk / egg yolk powder (healthysupplies.co.uk, specialingredients.co.uk, souschef.co.uk, kentfoodsdirect.co.uk, msk-ingredients.com, craftcompany.co.uk, thespicery.com)"
+      ],
+      "sources_tried": [
+        "specialingredients.co.uk (only Egg White Albumen Powder and Whole Egg Powder — rejected)",
+        "healthysupplies.co.uk (egg replacers, whole egg powder 25 kg — rejected)",
+        "souschef.co.uk / kentfoodsdirect.co.uk / msk-ingredients.com / thespicery.com (no egg yolk powder)",
+        "craftcompany.co.uk (search needs login redirect — inconclusive)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Taste Market",
+          "product_name": "Eigelbpulver 100 g",
+          "pack": "100 g",
+          "gtin": "4262421423127",
+          "identifier_confirmed": true,
+          "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Taste Market (taste-market.de), DE",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "none for this market (page .de); foreign shipping table lists England (column \"England & Liechtenstein\")",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+            "quote": "Gewicht Österreich Schweiz Belgien Finnland Schweden Italien Niederlande Norwegen England",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/60bc7979bf05ef58.json",
+            "supporting_quote": {
+              "method": "check_quotes.py",
+              "policy_url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+              "quote": "Für eine Lieferung außerhalb Deutschlands fallen für dein Paket (je nach Gesamtgewicht) unterschiedliche Preise an.",
+              "found": true,
+              "http": "200",
+              "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/261d21a811b040cf.json"
+            }
+          },
+          "composition": {
+            "fat_g": 58.0,
+            "protein_g": 34.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Hühner-Eigelb, sprühgetrocknet und pasteurisiert",
+            "from": "page label (Nährwertangaben pro 100 g: Fett 58 g, Kohlenhydrate 2,1 g, Eiweiß 34 g, Salz 0,4 g)",
+            "carbs_g": 2.1
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised egg yolk powder",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d4cb98546ac59f45.json",
+          "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:28:11Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": false,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing"
+        },
+        {
+          "rank": 2,
+          "brand": "Louis François",
+          "product_name": "Jaune d'oeuf séché - pasteurisé - 1 kg - Louis François",
+          "pack": "1 kg",
+          "gtin": "3700434800760",
+          "identifier_confirmed": true,
+          "url": "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/blanc-oeuf/lfr-jaune-oeuf-seche-pasteurise-louis-francois.html",
+          "source_type": "RETAILER",
+          "seller": "Meilleur du Chef (meilleurduchef.com), FR",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "none for this market (generic .com, French storefront); delivery table names Royaume-Uni",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.meilleurduchef.com/fr/boutique/livraison.html",
+            "quote": "République tchèque, Slovaquie, Royaume-Uni 21,90 €",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/fc415d38f2feef05.json"
+          },
+          "composition": {
+            "fat_g": 59.0,
+            "protein_g": 30.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Composition : jaune d'oeuf de poule séché pasteurisé",
+            "from": "page (pour 100 g: Matières grasses 59 g, Glucides 2,5 g, Protéines 30 g, Sel 0,4 g)",
+            "carbs_g": 2.5
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised dried egg yolk",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/79a6b9fa8204b848.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "checked_at_utc": "2026-09-17T16:28:13Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": false,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_GENERIC_TLD_PAGE); no separate local listing"
+        }
+      ],
+      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+      "notes": "No UK retailer page with egg yolk powder found. Both options ship from the EU (customs/VAT may apply). WebSearch session budget exhausted (200/200, shared session cap); GB discovery used retailer site search only."
+    }
+  }
+}

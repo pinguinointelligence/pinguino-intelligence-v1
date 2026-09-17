@@ -1,0 +1,384 @@
+{
+  "iso2": "PL",
+  "country": "Poland",
+  "agent": "research-eu-central-east",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:10:39Z",
+  "items": {
+    "CRP": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "śmietanka w proszku",
+        "śmietana w proszku",
+        "śmietanka w proszku 42%"
+      ],
+      "queries": [
+        "śmietanka w proszku 42% tłuszczu sklep",
+        "\"śmietanka w proszku\" 500g OR 1kg skład śmietanka tłuszcz 42",
+        "\"śmietana w proszku\" sklep spożywczy 1 kg Swojska Piwniczka OR Targroch OR Pięć Przemian",
+        "śmietanka w proszku do lodów sklep cukierniczy",
+        "\"śmietanka w proszku\" 42% OSM Krasnystaw OR Mlekovita OR Polmlek opakowanie 1 kg",
+        "\"śmietanka w proszku\" 250g -kawy sklep",
+        "\"śmietanka w proszku\" cukieteria OR cukiernik OR \"hurtownia cukiernicza\" 1 kg",
+        "\"śmietana w proszku\" \"42%\" 500 g OR 1 kg sklep internetowy",
+        "\"śmietanka w proszku 42%\" 1kg",
+        "on-site search swojskapiwniczka.pl: śmietanka w proszku",
+        "on-site product list mlekovitka.pl (Mlekovita retail shop)",
+        "sitemap grep pati-versand.de: sahnepulver (cross-border)"
+      ],
+      "sources_tried": [
+        "dtpsoft.pl (own shop of DTPsoft Foods 100 g/250 g/1 kg listings: HTTP 404 'Produkt nie jest już dostępny')",
+        "erli.pl (marketplace listing, DTPsoft Foods 1 kg — kept as LEAD)",
+        "mlekovita.com.pl (manufacturer, industrial 25 kg / 1000 kg only — kept as LEAD)",
+        "slodkiedodatki.pl (retailer, Mlekovita 42% 20 kg, 'towar niedostępny'; > 5 kg)",
+        "sklep-galvet.pl (25 kg and 1000 kg big bag only; not fetched)",
+        "mlekovitka.pl (Mlekovita retail shop: only 'Mleko w proszku instant 250 g', no cream powder)",
+        "swojskapiwniczka.pl on-site search (no cream powder)",
+        "hurtownia-bubbletea.pl 'Proszek Śmietanka 1 kg bez laktozy' (non-dairy creamer — rejected)",
+        "esamfix.pl 'Śmietanka w proszku Cremona Classic 200g' (coffee whitener — rejected, not fetched)",
+        "cukieteria.pl / restoquality.pl / goga-gastro.pl (soft-serve ice-cream base mixes — rejected)",
+        "ceneo.pl (price comparison; page not readable, discovery only)",
+        "pati-versand.de (DE, own brand Cake-Masters; shipping policy names Polen) — kept as rank 1 cross-border"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters (own brand of Pati-Versand; same food-business address Siemensstraße 24, 49770 Herzlake)",
+          "product_name": "Sahnepulver 100g sprühgetrocknet",
+          "pack": "100 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/sahnepulver-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Pati-Versand GmbH (DE)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "foreign page (DE); delivery country named in seller's shipping policy",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "url": "https://www.pati-versand.de/zahlung-versand",
+            "tool": "check_quotes.py",
+            "found": true,
+            "http": "200",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn, Zypern.",
+            "checked_at_utc": "2026-09-17T16:08:06Z",
+            "country_named_as": "Polen"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet; per 100 g: 2456 kJ / 587 kcal, fat 42 g (saturates 27.1 g), carbohydrate 29 g (sugars 29 g), protein 19 g, salt 0.75 g; Art.-Nr. 10866; 'Auf Lager'",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "spray-dried dairy cream, fat 42 % (reference 42), protein 19 (ref. 20), sugars/lactose 29 (ref. 30); no GTIN on the page (D-37 own-brand listing: brand, exact name, variant 42 % sprühgetrocknet, 100 g, article no.)",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2bff3f3facf4fa75.json",
+          "verifier_class": "PAGE_FACTS_ONLY",
+          "checked_at_utc": "2026-09-17T16:05:56Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Mlekovita",
+          "product_name": "Śmietanka w proszku 42%",
+          "pack": "25 kg (industrial sack; 1000 kg big bag also listed)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://mlekovita.com.pl/produkt/smietanka-w-proszku-25-kg-594",
+          "source_type": "MANUFACTURER",
+          "seller": "SM Mlekovita, Wysokie Mazowieckie",
+          "page_market": "PL",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .pl",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "spray-dried from sweet, pasteurised, normalised cream (description; no nutrition table, no protein/lactose/moisture published)",
+            "from": "manufacturer product page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "dairy cream powder, fat 42 % in product name = reference; stated use mainly ice cream and confectionery. Industrial 25 kg sack, no retail pack, no EAN, no purchase page — outside the ≤5 kg pack rule, so LEAD only.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f5601b553dab73a5.json",
+          "checked_at_utc": "2026-09-17T15:37:34Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "verifier_class": "PAGE_FACTS_ONLY"
+        }
+      ],
+      "notes": "No direct Polish retailer/manufacturer page with a retail pack (≤5 kg) of dairy cream powder was found; Polish 42 % cream powder is sold as an industrial 25 kg product (Mlekovita; also OSM Krasnystaw, Polmlek). Local purchase path kept as LEAD only: ERLI marketplace listing 'ŚMIETANKA W PROSZKU 42% 1kg naturalna zdrowie' (DTPsoft Foods, fat 42 %, no ingredient list, allergen note 'może zawierać śladowe ilości laktozy'; verdict ~/.cache/gellatti-evidence/verify/75e9ef2189c1598f.json). The verifier types erli.pl as DIRECT, but ERLI is a multi-seller marketplace (protocol rule 4). Cross-border rank 1 ships to Poland per the seller's policy sentence (check_quotes.py found=true)."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fruktoza",
+        "fruktoza krystaliczna",
+        "cukier owocowy"
+      ],
+      "queries": [
+        "fruktoza 500 g sklep EAN",
+        "Naturavena fruktoza 500 g 5902367402402",
+        "fruktoza 500g EAN wartość odżywcza węglowodany 100 g sklep ze zdrową żywnością"
+      ],
+      "sources_tried": [
+        "e-ecolife.pl (EAN + ingredients; 'Produkt niedostępny' at check)",
+        "theplanet.pl (EAN in JSON-LD, 250 g and 500 g variants on one listing, 'Chwilowo niedostępny')",
+        "nabea.pl (EAN label, 'Produkt niedostępny', no ingredients)",
+        "sklep.runo.pl (manufacturer shop, EAN itemprop gtin13, no ingredient/nutrition table, 'Chwilowo niedostępny')",
+        "kol-pol.pl (own brand, ingredients + nutrition, orderable, no EAN)",
+        "doz.pl (pharmacy, BioFan fructose 500 g, 'Fruktoza 99,9%', no EAN)",
+        "radix-bis.pl (prior lead, 500 g, no EAN — not re-fetched)",
+        "leclercdrive.lublin.pl (HTTP 403 bot wall — inconclusive)",
+        "ekospichlerz.pl (HTTP 404)",
+        "biosklep.com.pl ('Ten produkt nie jest już dostępny')",
+        "zdrowe-kalorie.pl (HTTP 404)",
+        "pyszneeko.pl (redirected to shop home, no EAN)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "NATURAVENA",
+          "product_name": "FRUKTOZA 500 g - NATURAVENA",
+          "pack": "500 g",
+          "gtin": "5902367402402",
+          "identifier_confirmed": true,
+          "url": "https://e-ecolife.pl/pl/products/fruktoza-500-g-naturavena-32986.html",
+          "source_type": "RETAILER",
+          "seller": "E-ecolife.pl",
+          "page_market": "PL",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .pl",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": 100.0,
+            "ingredients": "SKŁADNIKI: Fruktoza 100 %",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient fructose 100 % (≥ 98 %). Page showed 'Produkt niedostępny' (out of stock) at check; the same GTIN is also on theplanet.pl (temporarily unavailable) and nabea.pl (unavailable).",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/828bb4f1d40514f0.json",
+          "checked_at_utc": "2026-09-17T15:33:32Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "verifier_class": "EAN_ON_MARKET_PAGE"
+        },
+        {
+          "rank": 2,
+          "brand": "KOL-POL (K&L FOOD Sp. z o.o., Dębica)",
+          "product_name": "Fruktoza krystaliczna 500g",
+          "pack": "500 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://kol-pol.pl/pl/p/Fruktoza-krystaliczna-500g/258",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "KOL-POL / K&L FOOD Sp. z o.o.",
+          "page_market": "PL",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .pl",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Składniki – fruktoza krystaliczna; per 100 g: 1674 kJ / 400 kcal, fat 0 g, carbohydrate 100 g (of which sugars printed as 0 g), fibre 0 g, protein 0 g, salt 0 g",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient crystalline fructose, carbohydrate 100 g/100 g. The page prints 'w tym cukry: 0 g', which is inconsistent with carbohydrate 100 g of fructose (recorded as printed). No GTIN published (D-37 own-brand listing: brand, name, variant 'krystaliczna', 500 g; orderable at check).",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/73832ac46532cea2.json",
+          "checked_at_utc": "2026-09-17T15:32:43Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "verifier_class": "PAGE_FACTS_ONLY"
+        }
+      ],
+      "notes": "Also verified: Runo 'Fruktoza 500 g' GTIN 5903792322501 on the manufacturer shop sklep.runo.pl (EAN_ON_MARKET_PAGE, verdict ~/.cache/gellatti-evidence/verify/64a93b518b692df9.json) — name 'Fruktoza krystaliczna', origin Turkey, no ingredient/nutrition table, 'Chwilowo niedostępny'. Prior lead Radix-Bis fructose 500 g still has no published EAN."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulina",
+        "inulina z cykorii",
+        "błonnik prebiotyczny"
+      ],
+      "queries": [
+        "inulina z cykorii w proszku 500 g sklep"
+      ],
+      "sources_tried": [
+        "ketosklep.pl (GTIN in JSON-LD, fibre 89 g, InStock)",
+        "swojskapiwniczka.pl (prior lead re-verified: GTIN, 'Dostępność: duża ilość', fibre not declared)",
+        "stacjabio.pl (own brand, GTIN, fibre 89 g, 'tymczasowo niedostępny')",
+        "soul-farm.pl (manufacturer, EAN 5902706732740, supplement-style page, no fibre line)",
+        "zielonynurt.pl (Novitum 500 g, fibre 89 g, no EAN)",
+        "allegro.pl (marketplace — not used)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Naturalnie Zdrowe",
+          "product_name": "Inulina z cykorii 500g - Naturalnie Zdrowe",
+          "pack": "500 g",
+          "gtin": "5902721170015",
+          "identifier_confirmed": true,
+          "url": "https://ketosklep.pl/produkt/inulina-z-cykorii-500g-naturalnie-zdrowe/",
+          "source_type": "RETAILER",
+          "seller": "KetoSklep.pl",
+          "page_market": "PL",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .pl",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": 89.0,
+            "fructose_pct": null,
+            "ingredients": "Inulina z korzenia cykorii 100%; per 100 g: 210 kcal, fat 0 g, carbohydrate 8 g, fibre 89 g, protein 0 g, salt 0.5 g (table)",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin 100 %, fibre 89 g/100 g = reference (89). The page FAQ text separately says 150 kcal and 90 g fibre; the nutrition table values are recorded. JSON-LD availability InStock at check.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/38725f799adba8df.json",
+          "checked_at_utc": "2026-09-17T15:35:20Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "verifier_class": "EAN_ON_MARKET_PAGE"
+        },
+        {
+          "rank": 2,
+          "brand": "Swojska Piwniczka",
+          "product_name": "INULINA Z CYKORII Błonnik 1Kg Swojska Piwniczka",
+          "pack": "1 kg",
+          "gtin": "5902751321531",
+          "identifier_confirmed": true,
+          "url": "https://swojskapiwniczka.pl/blonnki-i-inne/inulina-z-cykorii-blonnik-1kg-swojska-piwniczka",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Swojska Piwniczka (repacker, own shop)",
+          "page_market": "PL",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .pl",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "SKŁADNIKI: Inulina z cykorii; origin BELGIA; per 100 g: 848 kJ / 210 kcal, fat 0 g, carbohydrate 8 g, sugars 8 g, protein 0.0 g, salt 0.0 g (fibre not declared)",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient chicory inulin; fibre line missing on the page (same gap as A03 C5), so the ≥85 % fibre figure is not printed. Re-verified 2026-09-17: GTIN as itemprop sku and 'Kod produktu', in stock ('duża ilość').",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5bb13cc4cc326fb8.json",
+          "checked_at_utc": "2026-09-17T15:34:31Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "verifier_class": "EAN_ON_MARKET_PAGE"
+        }
+      ],
+      "notes": "Also verified: Stacja Bio own-brand 'Inulina z cykorii 500 g' GTIN 5904726453940 (EAN_ON_MARKET_PAGE, fibre 89 g, origin Belgium, temporarily unavailable; verdict ~/.cache/gellatti-evidence/verify/10d02aa2df6a6139.json). Also verified: GymBeam 'Inulina z cykorii' 200 g GTIN 8586028133576 on gymbeam.pl (EAN_ON_MARKET_PAGE, fibre 86 g, InStock; verdict ~/.cache/gellatti-evidence/verify/9b90074f4b345e21.json)."
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "żółtko w proszku",
+        "żółtko jaja kurzego w proszku",
+        "suszone żółtko"
+      ],
+      "queries": [
+        "żółtko jaja w proszku suszone sklep"
+      ],
+      "sources_tried": [
+        "kiccake.pl (pastry supplier own brand, GTIN as 'Kod producenta', OutOfStock)",
+        "shop.bakeplus.pl (egg-powder supplier shop, 100 % yolk, in stock, pack selector 100 g–25 kg, no GTIN, no brand statement)",
+        "ovovita.pl (industrial egg products — not fetched)",
+        "holista.pl / czterylapki.pl (pet-food yolk powders — rejected)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "KicCake",
+          "product_name": "Żółtko jaja kurzego w proszku 100g KicCake",
+          "pack": "100 g",
+          "gtin": "5907121508093",
+          "identifier_confirmed": true,
+          "url": "https://kiccake.pl/pl/products/zoltko-jaja-kurzego-w-proszku-100g-kiccake-109331.html",
+          "source_type": "RETAILER",
+          "seller": "KicCake Sklep Cukierniczy",
+          "page_market": "PL",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .pl",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 58.0,
+            "protein_g": 33.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Składniki: 100% żółtko w proszku; klasa A; origin Polska/Kraje UE; per 100 g fat 58 g, protein 33 g, carbohydrate 0 g",
+            "from": "page label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % chicken egg yolk powder (fat 58 / protein 33 vs reference 56.5 / 34.5). GTIN is printed as 'Kod producenta'. JSON-LD availability OutOfStock at check.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/224da2951f7420ad.json",
+          "checked_at_utc": "2026-09-17T15:36:17Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "verifier_class": "EAN_ON_MARKET_PAGE"
+        },
+        {
+          "rank": 2,
+          "brand": "BakePlus (shop brand not stated on the page)",
+          "product_name": "Żółtko w proszku",
+          "pack": "selector 100 g / 200 g / 500 g / 1 kg / 5 kg / 10 kg / 25 kg",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://shop.bakeplus.pl/jaja/23-zoltko-w-proszku.html",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "shop.bakeplus.pl",
+          "page_market": "PL",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .pl",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Skład: 100% żółtka bez dodatków; pasteurised ('Żółtko pasteryzowane w proszku')",
+            "from": "shop product page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "pasteurised 100 % yolk without additives; in stock ('W magazynie'). No GTIN, no brand/manufacturer statement and several pack sizes on one listing, so D-37 is not met — LEAD.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/145beb345a0b499d.json",
+          "checked_at_utc": "2026-09-17T15:35:51Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "verifier_class": "PAGE_FACTS_ONLY"
+        }
+      ],
+      "notes": ""
+    }
+  }
+}

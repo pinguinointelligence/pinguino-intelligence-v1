@@ -1,0 +1,106 @@
+{
+  "iso2": "ID",
+  "country": "Indonesia",
+  "agent": "research-south-asia-oceania-africa",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site-search pages. Several Shopify stores answered HTTP 429 'Verifying your connection' on this egress (not bypassed).",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "krim bubuk",
+        "bubuk krim susu",
+        "cream powder"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' plus Indonesian slugs 'kuning-telur|telur-bubuk|krim-bubuk|bubuk-krim|fruktos' on sayurbox.com, segari.id, k24klik.com, astronauts.id, alfagift.id, klikindomaret.com, guardian.co.id, watsons.co.id"
+      ],
+      "sources_tried": [
+        "sayurbox.com (online grocer) - product/blog sitemaps scanned: 'Krim Bubuk Pelapis Kue Cream of Tartar Koepoe Koepoe' (not cream), 'Krimer Bubuk Krim Kafe Kapal Api' (creamer - rejected), frozen egg yolk 'Kuning Telur Beku' (not dried - rejected), salted egg powders (seasoning - rejected)",
+        "segari.id (online grocer) - 7.7k URLs scanned, no match",
+        "k24klik.com (pharmacy chain online) - 11.9k URLs scanned, no match",
+        "astronauts.id - sitemap covers blog only; alfagift.id - no sitemap",
+        "klikindomaret.com (supermarket) - HTTP 403, inconclusive",
+        "watsons.co.id - HTTP 403, inconclusive",
+        "guardian.co.id - not reachable",
+        "tokopedia.com / shopee.co.id / lazada.co.id (marketplaces) - not used",
+        "no readable Indonesian baking-ingredient web shop (toko bahan kue) could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "Only coffee creamer and cream of tartar products found (rejected types)."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "fruktosa",
+        "gula buah",
+        "fructose"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' plus Indonesian slugs 'kuning-telur|telur-bubuk|krim-bubuk|bubuk-krim|fruktos' on sayurbox.com, segari.id, k24klik.com, astronauts.id, alfagift.id, klikindomaret.com, guardian.co.id, watsons.co.id"
+      ],
+      "sources_tried": [
+        "sayurbox.com (online grocer) - product/blog sitemaps scanned: 'Krim Bubuk Pelapis Kue Cream of Tartar Koepoe Koepoe' (not cream), 'Krimer Bubuk Krim Kafe Kapal Api' (creamer - rejected), frozen egg yolk 'Kuning Telur Beku' (not dried - rejected), salted egg powders (seasoning - rejected)",
+        "segari.id (online grocer) - 7.7k URLs scanned, no match",
+        "k24klik.com (pharmacy chain online) - 11.9k URLs scanned, no match",
+        "astronauts.id - sitemap covers blog only; alfagift.id - no sitemap",
+        "klikindomaret.com (supermarket) - HTTP 403, inconclusive",
+        "watsons.co.id - HTTP 403, inconclusive",
+        "guardian.co.id - not reachable",
+        "tokopedia.com / shopee.co.id / lazada.co.id (marketplaces) - not used",
+        "no readable Indonesian baking-ingredient web shop (toko bahan kue) could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No crystalline fructose found."
+    },
+    "INU": {
+      "result": "BRAK",
+      "local_terms": [
+        "inulin",
+        "serat inulin"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' plus Indonesian slugs 'kuning-telur|telur-bubuk|krim-bubuk|bubuk-krim|fruktos' on sayurbox.com, segari.id, k24klik.com, astronauts.id, alfagift.id, klikindomaret.com, guardian.co.id, watsons.co.id"
+      ],
+      "sources_tried": [
+        "sayurbox.com (online grocer) - product/blog sitemaps scanned: 'Krim Bubuk Pelapis Kue Cream of Tartar Koepoe Koepoe' (not cream), 'Krimer Bubuk Krim Kafe Kapal Api' (creamer - rejected), frozen egg yolk 'Kuning Telur Beku' (not dried - rejected), salted egg powders (seasoning - rejected)",
+        "segari.id (online grocer) - 7.7k URLs scanned, no match",
+        "k24klik.com (pharmacy chain online) - 11.9k URLs scanned, no match",
+        "astronauts.id - sitemap covers blog only; alfagift.id - no sitemap",
+        "klikindomaret.com (supermarket) - HTTP 403, inconclusive",
+        "watsons.co.id - HTTP 403, inconclusive",
+        "guardian.co.id - not reachable",
+        "tokopedia.com / shopee.co.id / lazada.co.id (marketplaces) - not used",
+        "no readable Indonesian baking-ingredient web shop (toko bahan kue) could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No inulin powder found."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "kuning telur bubuk",
+        "bubuk kuning telur",
+        "egg yolk powder"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' plus Indonesian slugs 'kuning-telur|telur-bubuk|krim-bubuk|bubuk-krim|fruktos' on sayurbox.com, segari.id, k24klik.com, astronauts.id, alfagift.id, klikindomaret.com, guardian.co.id, watsons.co.id"
+      ],
+      "sources_tried": [
+        "sayurbox.com (online grocer) - product/blog sitemaps scanned: 'Krim Bubuk Pelapis Kue Cream of Tartar Koepoe Koepoe' (not cream), 'Krimer Bubuk Krim Kafe Kapal Api' (creamer - rejected), frozen egg yolk 'Kuning Telur Beku' (not dried - rejected), salted egg powders (seasoning - rejected)",
+        "segari.id (online grocer) - 7.7k URLs scanned, no match",
+        "k24klik.com (pharmacy chain online) - 11.9k URLs scanned, no match",
+        "astronauts.id - sitemap covers blog only; alfagift.id - no sitemap",
+        "klikindomaret.com (supermarket) - HTTP 403, inconclusive",
+        "watsons.co.id - HTTP 403, inconclusive",
+        "guardian.co.id - not reachable",
+        "tokopedia.com / shopee.co.id / lazada.co.id (marketplaces) - not used",
+        "no readable Indonesian baking-ingredient web shop (toko bahan kue) could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "Only frozen yolk and salted-egg seasoning powders found (rejected types)."
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "locale": "pt",
+  "dir": "ltr",
+  "title": "Ingredientes para a base de gelato",
+  "benefit": "O que comprar e onde",
+  "pill": "PDF · 0 €",
+  "country_label": "País",
+  "language_label": "Idioma",
+  "edition": "Edição 1 · setembro de 2026",
+  "cover_items_title": "Os sete ingredientes do Starter Pack",
+  "howto_title": "Como usar este guia",
+  "howto_lede": "Para cada ingrediente do Starter Pack, indicamos um produto que pode ser comprado neste país.",
+  "steps": [
+    {"b": "Escolha um produto", "p": "O primeiro é a nossa escolha; o segundo é uma alternativa, caso o primeiro não esteja disponível."},
+    {"b": "Verifique o rótulo", "p": "A composição indicada na embalagem deve corresponder à descrição do ingrediente. Quando um produto tem uma composição diferente, isso é indicado."},
+    {"b": "Use as quantidades do app", "p": "Este PDF indica produtos, não quantidades em gramas. As receitas e as quantidades são calculadas pelo app Gellatti."}
+  ],
+  "legend_title": "Legenda",
+  "tag_from_abroad": "Do exterior",
+  "tag_b2b": "Para empresas",
+  "tag_other_composition": "Outra composição",
+  "tag_alternative": "Alternativa local",
+  "tag_unconfirmed": "Não confirmado",
+  "legend": {
+    "from_abroad": "uma loja no exterior que entrega neste país",
+    "b2b": "vendido a empresas ou em embalagens grandes",
+    "other_composition": "o mesmo tipo de produto com outra composição (indicada ao lado)",
+    "alternative": "um substituto de outro produto Gellatti"
+  },
+  "starter_amount": "No Starter Pack: {g} g",
+  "option": "Opção {n}",
+  "ean": "EAN",
+  "where": "Onde",
+  "fat": "gordura",
+  "items": {
+    "DEX": {"name": "Dextrose", "ref": "Dextrose (glicose) em pó, mono-hidratada."},
+    "SMP": {"name": "Leite em pó desnatado", "ref": "Leite em pó com cerca de 1% de gordura."},
+    "CRP": {"name": "Nata em pó", "ref": "Nata desidratada com cerca de 42% de gordura."},
+    "FRU": {"name": "Frutose", "ref": "Frutose cristalina pura."},
+    "INU": {"name": "Inulina", "ref": "Inulina em pó, por exemplo de chicória."},
+    "YOL": {"name": "Gema de ovo desidratada", "ref": "Gema de ovo de galinha em pó, pasteurizada."},
+    "STB": {"name": "Estabilizante", "ref": "Gellatti Stabilizer é uma mistura de goma tara, goma de alfarroba e goma guar."}
+  },
+  "stabilizer_note": "Uma alternativa local à mistura Gellatti, não a mesma mistura. Misture-a com os ingredientes secos e aqueça a base a 75–80 °C.",
+  "missing": "Ainda não há produto aprovado neste país.",
+  "notes_title": "Bom saber",
+  "notes": [
+    {"h": "Disponibilidade", "p": "Estes produtos foram verificados em sites de fabricantes e lojas em setembro de 2026. A disponibilidade, os preços e a entrega podem mudar e não são garantidos."},
+    {"h": "O rótulo vem primeiro", "p": "Antes de comprar, verifique os ingredientes e os alérgenos na embalagem. A nata em pó e o leite em pó contêm leite; a gema de ovo contém ovo."},
+    {"h": "Estabilizante", "p": "Neste país, uma goma vegetal local substitui o Gellatti Stabilizer. Funciona de forma semelhante, mas não é a mesma mistura."}
+  ],
+  "fine": "Um produto indicado aqui não está necessariamente já disponível no app Gellatti. A Gellatti não vende produtos de outras marcas.",
+  "back_h": "Um ótimo gelato começa com uma boa base.",
+  "back_p": "Receitas, quantidades e processo estão no app Gellatti.",
+  "back_link": "gellatti.com",
+  "draft": "RASCUNHO · propostas para aprovação"
+}

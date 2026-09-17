@@ -1,0 +1,57 @@
+{
+  "locale": "hr",
+  "dir": "ltr",
+  "title": "Sastojci za bazu gelata",
+  "benefit": "Što kupiti i gdje",
+  "pill": "PDF · 0 €",
+  "country_label": "Država",
+  "language_label": "Jezik",
+  "edition": "Izdanje 1 · rujan 2026.",
+  "cover_items_title": "Sedam sastojaka iz Starter Packa",
+  "howto_title": "Kako koristiti ovaj vodič",
+  "howto_lede": "Za svaki sastojak iz Starter Packa navodimo proizvod koji možeš kupiti u ovoj zemlji.",
+  "steps": [
+    {"b": "Odaberi jedan proizvod", "p": "Prvi je naš izbor, a drugi alternativa ako prvi nije dostupan."},
+    {"b": "Provjeri deklaraciju", "p": "Sastav na pakiranju mora odgovarati opisu sastojka. Ako proizvod ima drugačiji sastav, to navodimo."},
+    {"b": "Količine uzmi iz aplikacije", "p": "Ovaj PDF navodi proizvode, a ne gramaže. Recepte i količine izračunava aplikacija Gellatti."}
+  ],
+  "legend_title": "Oznake",
+  "tag_from_abroad": "Iz inozemstva",
+  "tag_b2b": "Za tvrtke",
+  "tag_other_composition": "Drugačiji sastav",
+  "tag_alternative": "Lokalna alternativa",
+  "tag_unconfirmed": "Nepotvrđeno",
+  "legend": {
+    "from_abroad": "trgovina u inozemstvu koja dostavlja u ovu zemlju",
+    "b2b": "prodaja tvrtkama ili u velikim pakiranjima",
+    "other_composition": "ista vrsta proizvoda s drugačijim sastavom (naveden pokraj)",
+    "alternative": "zamjena za drugi proizvod Gellatti"
+  },
+  "starter_amount": "U Starter Packu: {g} g",
+  "option": "Opcija {n}",
+  "ean": "EAN",
+  "where": "Gdje",
+  "fat": "masti",
+  "items": {
+    "DEX": {"name": "Dekstroza", "ref": "Dekstroza (glukoza) u prahu, monohidrat."},
+    "SMP": {"name": "Obrano mlijeko u prahu", "ref": "Mlijeko u prahu s oko 1 % masti."},
+    "CRP": {"name": "Vrhnje u prahu", "ref": "Sušeno vrhnje s oko 42 % masti."},
+    "FRU": {"name": "Fruktoza", "ref": "Čista kristalna fruktoza."},
+    "INU": {"name": "Inulin", "ref": "Inulin u prahu, na primjer iz cikorije."},
+    "YOL": {"name": "Sušeni žumanjak", "ref": "Pasterizirani žumanjak kokošjih jaja u prahu."},
+    "STB": {"name": "Stabilizator", "ref": "Gellatti Stabilizer mješavina je tara gume, gume rogača i guar gume."}
+  },
+  "stabilizer_note": "Lokalna alternativa mješavini Gellatti, nije ista mješavina. Umiješaj je sa suhim sastojcima i zagrij bazu na 75–80 °C.",
+  "missing": "U ovoj zemlji još nema odobrenog proizvoda.",
+  "notes_title": "Dobro je znati",
+  "notes": [
+    {"h": "Dostupnost", "p": "Proizvode smo provjerili na web-stranicama proizvođača i trgovina u rujnu 2026. Dostupnost, cijene i dostava mogu se promijeniti i nisu zajamčene."},
+    {"h": "Deklaracija ima prednost", "p": "Prije kupnje provjeri sastojke i alergene na pakiranju. Vrhnje u prahu i mlijeko u prahu sadrže mlijeko, a žumanjak sadrži jaja."},
+    {"h": "Stabilizator", "p": "U ovoj zemlji Gellatti Stabilizer zamjenjuje lokalna biljna guma. Djeluje slično, ali nije ista mješavina."}
+  ],
+  "fine": "Proizvod naveden ovdje nije nužno već dostupan u aplikaciji Gellatti. Gellatti ne prodaje proizvode drugih marki.",
+  "back_h": "Odličan gelato počinje dobrom bazom.",
+  "back_p": "Recepti, količine i postupak nalaze se u aplikaciji Gellatti.",
+  "back_link": "gellatti.com",
+  "draft": "NACRT · prijedlozi za prihvaćanje"
+}

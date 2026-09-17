@@ -1,0 +1,191 @@
+{
+  "iso2": "SG",
+  "country": "Singapore",
+  "agent": "research-east-asia",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:01:30Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "whipping cream powder",
+        "奶油粉",
+        "serbuk krim"
+      ],
+      "queries": [
+        "cream powder (fairprice.com.sg on-site search)",
+        "whipping cream powder (fairprice.com.sg)",
+        "奶油粉 (fairprice.com.sg)",
+        "cream powder (coldstorage.com.sg)",
+        "cream powder (bakeking.com.sg)",
+        "cream powder (phoonhuat.com)"
+      ],
+      "sources_tried": [
+        "fairprice.com.sg search 'cream powder' (supermarket; only full-cream MILK powders Cowhead/Nespray/Fernleaf and Kara coconut cream powder — rejected types) verdict ~/.cache/gellatti-evidence/verify/17ba50e6aaf0b7cb.json",
+        "fairprice.com.sg 'whipping cream powder' and '奶油粉' (0 results)",
+        "coldstorage.com.sg search 'cream powder' (supermarket; Fernleaf / Nespray full-cream milk powder only) verdict ~/.cache/gellatti-evidence/verify/2f3b39c33d9d6308.json",
+        "bakeking.com.sg search 'cream powder' (baking supplier; Bake King Full Cream Milk Powder only — rejected) verdict ~/.cache/gellatti-evidence/verify/229c53fd9d181e07.json",
+        "phoonhuat.com site search (baking supplier corporate site; recipes only; its shop redmanshop.com returned HTTP 429 bot check, inconclusive)",
+        "sunlik.com.sg (dairy/baking distributor; connection failed HTTP 000)",
+        "guardian.com.sg (pharmacy; search page renders no server-side results)",
+        "watsons.com.sg (pharmacy; HTTP 403 Access Denied)",
+        "iHerb sg (Cloudflare challenge, not bypassed)",
+        "modernistpantry.com (US cross-border check; no cream powder listed)"
+      ],
+      "candidates": [],
+      "notes": "No spray-dried dairy cream powder found in Singapore retail; searches return only whole/full-cream milk powder (~26–28 % fat) and coconut cream powder, both rejected by the protocol. WebSearch budget exhausted (session-wide 200/200), discovery done via retailers' own search pages."
+    },
+    "FRU": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "fructose",
+        "fruit sugar",
+        "果糖",
+        "fruktosa"
+      ],
+      "queries": [
+        "fructose (fairprice.com.sg)",
+        "果糖 (fairprice.com.sg, 0 results)",
+        "fructose (coldstorage.com.sg, 0 relevant)",
+        "fructose (bakeking.com.sg, 0 relevant)",
+        "fructose (phoonhuat.com, nothing found)"
+      ],
+      "sources_tried": [
+        "fairprice.com.sg (supermarket; Green Earth Fructose 500 G — used; RedMan Hi-Fructose Corn Syrup rejected)",
+        "coldstorage.com.sg (supermarket; no fructose)",
+        "bakeking.com.sg (baking supplier; no fructose)",
+        "phoonhuat.com (baking supplier; nothing found; redmanshop.com HTTP 429)",
+        "nutrition-depot.com (health; HTTP 429 bot check)",
+        "watsons.com.sg (HTTP 403)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Green Earth",
+          "product_name": "Green Earth Fructose",
+          "pack": "500 G",
+          "gtin": "1111111003114",
+          "identifier_confirmed": false,
+          "url": "https://www.fairprice.com.sg/product/green-earth-fructose-500-g-90080184",
+          "source_type": "RETAILER",
+          "seller": "NTUC FairPrice (sellerType DROPSHIP, vendor code 31210)",
+          "page_market": "SG",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .com.sg",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "page shows only 'Key Information' marketing text and country of origin USA; no ingredients or nutrition panel"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Named fructose, but the page prints no ingredient list or composition.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1acdfc56161cede4.json",
+          "verifier_verification_class": "EAN_ON_MARKET_PAGE (clean hits in JSON-LD mpn / barcodes)",
+          "notes": "The barcode 1111111003114 has a valid check digit but looks seller-constructed ('1111111' + '00311' + check digit; the seller's own product code is '311'), so it is not treated as a genuine GS1 GTIN. Listing is a FairPrice dropship item (vendor-fulfilled).",
+          "checked_at_utc": "2026-09-17T15:53:55Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin",
+        "inulin powder",
+        "菊粉",
+        "inulin serbuk"
+      ],
+      "queries": [
+        "inulin (fairprice.com.sg)",
+        "菊粉 (fairprice.com.sg, 0 results)",
+        "inulin (coldstorage.com.sg)",
+        "inulin (bakeking.com.sg)",
+        "inulin (phoonhuat.com)"
+      ],
+      "sources_tried": [
+        "fairprice.com.sg (supermarket/Unity pharmacy range; NOW Foods Certified Organic Inulin Pure Powder 227 G — used; probiotic capsules rejected)",
+        "coldstorage.com.sg (only a kids' multivitamin syrup with inulin — rejected)",
+        "bakeking.com.sg (no inulin)",
+        "phoonhuat.com (nothing found)",
+        "iHerb sg / nowfoods.com (Cloudflare challenge, not bypassed)",
+        "vitacost.com (US page for the same UPC, used only for the composition facts)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "NOW Foods",
+          "product_name": "Now Foods Certified Organic Inulin Pure Powder",
+          "pack": "227 G",
+          "gtin": "733739029447",
+          "identifier_confirmed": true,
+          "url": "https://www.fairprice.com.sg/product/now-foods-certified-organic-inulin-pure-powder-g-90013004",
+          "source_type": "RETAILER",
+          "seller": "NTUC FairPrice (sellerType DROPSHIP, vendor code 31065, seller product code NOW-2944)",
+          "page_market": "SG",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .com.sg",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "serving_g": 4,
+            "fibre_g_per_serving": 4,
+            "inulin_g_per_serving": 3.3,
+            "ingredients": "Organic Inulin (FOS) (from Blue Agave); other ingredients: none",
+            "from": "Supplement Facts on vitacost.com page for the same UPC 733739029447 (verdict ~/.cache/gellatti-evidence/verify/ee793ca1c3749edb.json); the FairPrice page itself prints no facts"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Single-ingredient inulin powder: per 4 g serving dietary fibre 4 g, organic inulin (FOS) from blue agave 3.3 g. Agave inulin is labelled 'Inulin (FOS)'; owner may treat it as B if short-chain matters.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4e51143daf5c601b.json",
+          "verifier_verification_class": "EAN_ON_MARKET_PAGE (clean_hits 3: JSON-LD mpn and product data 'barcodes')",
+          "notes": "FairPrice lists this as a dropship (vendor-fulfilled) item; not a third-party marketplace storefront, but flagged for owner review.",
+          "checked_at_utc": "2026-09-17T15:53:52Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk",
+        "蛋黄粉",
+        "serbuk kuning telur"
+      ],
+      "queries": [
+        "egg yolk powder (fairprice.com.sg, 0 results)",
+        "egg powder (fairprice.com.sg)",
+        "蛋黄粉 (fairprice.com.sg, 0 results)",
+        "egg yolk (coldstorage.com.sg)",
+        "egg yolk / yolk powder (bakeking.com.sg)",
+        "egg yolk / yolk powder (phoonhuat.com)"
+      ],
+      "sources_tried": [
+        "fairprice.com.sg (supermarket; only Knorr salted-egg seasoning and RedMan egg-yellow colour powder — rejected)",
+        "coldstorage.com.sg (supermarket; salted egg yolk cookies and Knorr salted egg powder — rejected)",
+        "bakeking.com.sg (baking supplier; no yolk powder)",
+        "phoonhuat.com (baking supplier; recipes only; redmanshop.com HTTP 429)",
+        "guardian.com.sg / watsons.com.sg (pharmacy; no server-side results / HTTP 403)",
+        "modernistpantry.com Egg Yolk Powder (US; page states 'Available to US customers only at this time' — not cross-border)"
+      ],
+      "candidates": [],
+      "notes": "No pasteurised dried egg yolk powder found at Singapore retailers; salted-egg seasonings are rejected."
+    }
+  }
+}

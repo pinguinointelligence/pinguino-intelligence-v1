@@ -1,0 +1,270 @@
+{
+  "iso2": "IT",
+  "country": "Italy",
+  "agent": "research-eu-south",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:25:00Z",
+  "items": {
+    "CRP": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "panna in polvere",
+        "latte in polvere arricchito in materia grassa",
+        "panna liofilizzata"
+      ],
+      "queries": [
+        "panna in polvere 42% grassi acquista (Brave)",
+        "lucgel.it site search 'panna in polvere'"
+      ],
+      "sources_tried": [
+        "lucgel.it (gelato/pastry ingredients shop; own-brand 'Panna in Polvere 42% 1 Kg', InStock)",
+        "shop.reire.com (B2B; 'Panna in polvere min. 72 mg da 1 kg' - discovery only)",
+        "eccopassionegourmet.com ('Panna in polvere 42%' in 10/20 kg bags - discovery only)",
+        "dolceideaonline.com / plasticasa.net (vegetable 'panna in polvere' - reject)",
+        "amazon.it (marketplace - not used)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "LUCGEL SRL",
+          "product_name": "Panna in Polvere 42% 1 Kg",
+          "pack": "1 kg",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.lucgel.it/1968-panna-in-polvere-42-1-kg.html",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Lucgel s.r.l. (P.I. IT03542630540)",
+          "page_market": "IT",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .it",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "'Latte in polvere arricchito in materia grassa (panna in polvere)'; 'apporta grassi animali nobili'; no ingredient list or nutrition table printed; fat 42 % from the product name",
+            "from": "shop page (Descrizione + Dettagli: Riferimento 5692, Marca LUCGEL SRL, Peso 1 Kg)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Dairy cream powder at 42 % fat (name). Page says professional use only ('Uso esclusivamente professionale') and 'non ha potere montante'. No GTIN: identity from the seller's own-brand listing (brand LUCGEL SRL, name, 42 %, 1 kg, Riferimento 5692). schema.org InStock.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7fcdf0f26a6d3432.json",
+          "checked_at_utc": "2026-09-17T16:01:34Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fruttosio",
+        "fruttosio cristallino",
+        "fruttosio in polvere",
+        "zucchero della frutta"
+      ],
+      "queries": [
+        "naturasi.it product sitemap scan 'fruttosio' (discovery: Fruttosio cristallino Fior di Loto 702056; Fruttosio Probios 830024)",
+        "fiordiloto.it site search 'fruttosio'",
+        "lucgel.it site search 'fruttosio'",
+        "tuttofarma.it site search 'fruttosio'",
+        "macrolibrarsi.it site search 'fruttosio'",
+        "carrefour.it search 'fruttosio' (HTTP 403)",
+        "fruttosio puro 500g acquista online (Brave - HTTP 429)"
+      ],
+      "sources_tried": [
+        "fiordiloto.it (manufacturer shop; Fruttosio ricarica 500 g, barcode printed, 'Disponibile')",
+        "naturasi.it (organic supermarket chain; product pages are a JS shell - listing seen only in sitemap)",
+        "lucgel.it (only high-fructose glucose syrup 10 kg - reject)",
+        "tuttofarma.it (pharmacy; only products 'senza/in fruttosio')",
+        "macrolibrarsi.it (search requires login redirect)",
+        "carrefour.it (HTTP 403 bot wall, inconclusive)",
+        "hsnstore.it (HSN Italy; HTTP 403 bot wall, inconclusive)",
+        "coopshop.it (JS shell, no results)",
+        "probios.it (HTTP 403)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Fior di Loto",
+          "product_name": "Fruttosio ricarica",
+          "pack": "500 g ('Contenuto 500GR')",
+          "gtin": "8016323003675",
+          "identifier_confirmed": true,
+          "url": "https://fiordiloto.it/fruttosio-ricarica",
+          "source_type": "MANUFACTURER",
+          "seller": "Fior di Loto (fiordiloto.it own shop)",
+          "page_market": "IT",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .it",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredienti: Fruttosio in polvere. (No nutrition table printed.)",
+            "from": "manufacturer shop page (Maggiori Informazioni: SKU 702056, Codice a barre 8016323003675, Minsan 930196908, Marchi FIOR DI LOTO, Contenuto 500GR)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Single-ingredient fructose powder (refill bag). The same SKU 702056 appears in the NaturaSì product sitemap (organic supermarket chain). 'Disponibile' at check time.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/30f4414c0153627e.json",
+          "checked_at_utc": "2026-09-17T16:31:52Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Local confirmation found; cross-border sellers (glaeserundflaschen.de, gourmet-versand.com) not needed."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulina",
+        "inulina in polvere",
+        "inulina di cicoria"
+      ],
+      "queries": [
+        "lucgel.it site search 'inulina'"
+      ],
+      "sources_tried": [
+        "lucgel.it (own-brand Inulina Istantanea 1 kg, GTIN in JSON-LD, InStock)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "LUCGEL SRL",
+          "product_name": "Inulina Istantanea Fibra Alimentare Ideale per Gelato alla Frutta 1 Kg",
+          "pack": "1 kg",
+          "gtin": "8012345001606",
+          "identifier_confirmed": true,
+          "url": "https://www.lucgel.it/563-inulina-istantanea-fibra-alimentare-ideale-per-gelato-alla-frutta-1-kg.html",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Lucgel s.r.l.",
+          "page_market": "IT",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .it",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": 88.0,
+            "fructose_pct": null,
+            "ingredients": "Valori nutrizionali medi /100 g: Energia 208 kcal, Carboidrati 96 g di cui zuccheri 8 g, Fibre 88 g, Sale 0.2 g, Grassi e Proteine 0 g; description: fibra idrosolubile da radici di cicoria o tarassaco",
+            "from": "shop page",
+            "sugars_g": 8.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Fibre 88 g/100 g (reference 89), sugars 8 g. JSON-LD gtin13 8012345001606 with sku 2623; brand LUCGEL SRL; professional-use bag 1 kg. InStock.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a4c4ab6dd567ae2f.json",
+          "checked_at_utc": "2026-09-17T16:18:42Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "tuorlo d'uovo in polvere",
+        "tuorlo in polvere",
+        "uovo in polvere"
+      ],
+      "queries": [
+        "myprotein.it product 10529352 (Tuorlo d'uovo in polvere)",
+        "lucgel.it site search 'tuorlo' / 'uovo in polvere'"
+      ],
+      "sources_tried": [
+        "myprotein.it (GTIN on page, OutOfStock)",
+        "lucgel.it (only liquid sugared yolk 'Tuorlo d'uovo zuccherato 50%' - reject)",
+        "taste-market.de (German shop; EU-Zone 2 lists Italien - cross-border, in stock)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Myprotein",
+          "product_name": "Tuorlo d'uovo in polvere - 500g - Senza aroma",
+          "pack": "500 g",
+          "gtin": "5055534303733",
+          "identifier_confirmed": true,
+          "url": "https://www.myprotein.it/p/nutrizione-sportiva/tuorlo-d-uovo-in-polvere/10529352/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Myprotein (THG) country site",
+          "page_market": "IT",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 59.0,
+            "protein_g": 32.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Senza Aroma: Tuorlo d'uovo in Polvere (100%). Per 100 g: Grassi 59 g (saturi 20 g), Carboidrati 2,1 g (zuccheri 2,1 g), Proteine 32 g, Sale 2,5 g",
+            "from": "official shop page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % egg yolk powder. JSON-LD pairs gtin13 5055534303733 with weight 500 g; schema availability OutOfStock / inStock:false at check time (same on es/pt/it/gr/com.cy). ",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4da51348762bb37c.json",
+          "checked_at_utc": "2026-09-17T15:46:39Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Taste Market",
+          "product_name": "Eigelbpulver 100 g Sprühgetrocknet (Art.-Nr. 123-100g)",
+          "pack": "100 g",
+          "gtin": "4262421423127",
+          "identifier_confirmed": true,
+          "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Taste Market GmbH (Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: seller's EU shipping zones list the market (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+            "quotes": [
+              "Lieferung in das EU-Ausland oder internationaler Versand",
+              "EU-Zone 2:Italien, Slowakei, Slowenien, Spanien &amp; Ungarn",
+              "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
+            ],
+            "found": [
+              true,
+              true,
+              true
+            ]
+          },
+          "composition": {
+            "fat_g": 58.0,
+            "protein_g": 34.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: Hühner-Eigelb, sprühgetrocknet und pasteurisiert. Nährwerte/100 g: Fett 58 g (ges. 18 g), Kohlenhydrate 2,1 g, davon Zucker 0 g, Eiweiß 34 g, Salz 0,4 g",
+            "from": "shop page (Zutaten + Nährwertangaben)",
+            "carbs_g": 2.1
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 58 / protein 34 vs reference 56.5 / 34.5. Page data prints itemprop gtin13 as 14-digit '04262421423127'.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0a737ca07ab7b4ee.json",
+          "checked_at_utc": "2026-09-17T15:57:40Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Rank 1 local but out of stock at check time; rank 2 in stock (cross-border)."
+    }
+  }
+}

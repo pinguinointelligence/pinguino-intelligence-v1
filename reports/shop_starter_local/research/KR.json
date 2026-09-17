@@ -1,0 +1,311 @@
+{
+  "iso2": "KR",
+  "country": "South Korea",
+  "agent": "research-east-asia",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:20:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "크림파우더",
+        "생크림 분말",
+        "크림분말",
+        "유크림 분말"
+      ],
+      "queries": [
+        "크림파우더 (ehomebaking.co.kr)",
+        "크림파우더 (danawa)",
+        "생크림 분말 (danawa)",
+        "크림분말 (jungoneshop.com)",
+        "크림파우더 (lotteon.com)",
+        "생크림 분말 (lotteon.com)",
+        "cream powder (lotteon.com, English — only fashion/cosmetics results)"
+      ],
+      "sources_tried": [
+        "ehomebaking.co.kr on-site search (baking supplier, EUC-KR shop)",
+        "bakingschool.co.kr on-site search (baking supplier; no server-side results)",
+        "breadgarden.co.kr (baking supplier; HTTP 403)",
+        "jungoneshop.com (Daesang official mall; search results rendered client-side)",
+        "cjthemarket.com (CJ CheilJedang official mall; search path 404 / client-side)",
+        "ssg.com / emart (HTTP 403)",
+        "oliveyoung.co.kr (health & beauty; HTTP 403 bot wall)",
+        "kurly.com (online grocer; results rendered client-side)",
+        "front.homeplus.co.kr (HTTP 410)",
+        "lotteon.com search (mixed retailer/open-market; JSON-LD ItemList)",
+        "search.danawa.com (price comparison — discovery only, never evidence)",
+        "item.gmarket.co.kr / smartstore.naver.com (marketplaces; HTTP 403 / 429)",
+        "kr.iherb.com (Cloudflare challenge, not bypassed)",
+        "results seen: coconut milk powder, soft-serve/ice-cream mixes (서강유업, 희창유업), whipping-cream mixes (에버휩, 브레드가든 휘핑크림파우더), Dr. Oetker cake-cream dessert powder, cosmetics — rejected types; '쉐프원 크림분말 1kg' (Daesang food-service brand, danawa pcode 6884173) could not be opened on a retailer page, dairy/vegetable composition unknown, so not listed"
+      ],
+      "candidates": [],
+      "notes": "No verifiable spray-dried dairy cream powder. WebSearch budget exhausted (session-wide 200/200); most Korean retailers are behind bot walls or client-side search, so this BRAK is partly inconclusive."
+    },
+    "FRU": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "결정과당",
+        "과당 분말",
+        "과당",
+        "프럭토스"
+      ],
+      "queries": [
+        "과당 (ehomebaking.co.kr)",
+        "결정과당 (danawa)",
+        "과당 분말 (danawa)",
+        "CJ 결정과당 1200g (danawa)",
+        "결정과당 (lotteon.com)",
+        "과당 분말 (lotteon.com)",
+        "fructose powder (lotteon.com, English)"
+      ],
+      "sources_tried": [
+        "ehomebaking.co.kr on-site search (baking supplier, EUC-KR shop)",
+        "bakingschool.co.kr on-site search (baking supplier; no server-side results)",
+        "breadgarden.co.kr (baking supplier; HTTP 403)",
+        "jungoneshop.com (Daesang official mall; search results rendered client-side)",
+        "cjthemarket.com (CJ CheilJedang official mall; search path 404 / client-side)",
+        "ssg.com / emart (HTTP 403)",
+        "oliveyoung.co.kr (health & beauty; HTTP 403 bot wall)",
+        "kurly.com (online grocer; results rendered client-side)",
+        "front.homeplus.co.kr (HTTP 410)",
+        "lotteon.com search (mixed retailer/open-market; JSON-LD ItemList)",
+        "search.danawa.com (price comparison — discovery only, never evidence)",
+        "item.gmarket.co.kr / smartstore.naver.com (marketplaces; HTTP 403 / 429)",
+        "kr.iherb.com (Cloudflare challenge, not bypassed)",
+        "results seen: ehomebaking only 저감미당S (blend); lotteon CJ 결정과당 20 kg (open-market, bulk pack above 5 kg)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "CJ 제일제당 (백설)",
+          "product_name": "CJ 결정과당 1200g 지퍼백",
+          "pack": "1.2 kg",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://prod.danawa.com/info/?pcode=112333357",
+          "source_type": "AGGREGATOR",
+          "seller": "danawa price-comparison entry (aggregator — discovery pointer only, never evidence) (manufacturer listed as CJ); offers link out to open-market sellers",
+          "page_market": "KR",
+          "market_by": "CURRENCY_ONLY (does not bind)",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none (price-comparison page)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not shown"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Crystalline fructose (결정과당) by name; no label data seen.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7fd646866a263002.json",
+          "notes": "Aggregator entry used only as a pointer to a real retail pack; a CJ The Market or supermarket page with the barcode is needed to confirm.",
+          "checked_at_utc": "2026-09-17T16:18:36Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Dietor",
+          "product_name": "Dietor 프루티 스위트너 500g 2팩 Dietor - My Dietor Fruttil Pure Fructose, Sweetener - Bulk Powder",
+          "pack": "500 g × 2",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.lotteon.com/p/product/LO2648585221",
+          "source_type": "MARKETPLACE",
+          "seller": "롯데ON open-market reseller (LO item; imported listing)",
+          "page_market": "KR",
+          "market_by": "CURRENCY_ONLY (does not bind)",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none (marketplace listing)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "title only ('Pure Fructose'); no label data in served page"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Title says pure fructose powder; not verified.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c3cbc932e1ce234f.json",
+          "checked_at_utc": "2026-09-17T16:25:00Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "INU": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "이눌린",
+        "이눌린 분말",
+        "치커리 식이섬유",
+        "치커리 뿌리 추출물"
+      ],
+      "queries": [
+        "이눌린 (ehomebaking.co.kr, 0 results)",
+        "이눌린 (danawa)",
+        "닥터스원 이눌린 (danawa)",
+        "이눌린 분말 (lotteon.com)",
+        "inulin (lotteon.com)",
+        "이눌린 (kurly.com, client-side)"
+      ],
+      "sources_tried": [
+        "ehomebaking.co.kr on-site search (baking supplier, EUC-KR shop)",
+        "bakingschool.co.kr on-site search (baking supplier; no server-side results)",
+        "breadgarden.co.kr (baking supplier; HTTP 403)",
+        "jungoneshop.com (Daesang official mall; search results rendered client-side)",
+        "cjthemarket.com (CJ CheilJedang official mall; search path 404 / client-side)",
+        "ssg.com / emart (HTTP 403)",
+        "oliveyoung.co.kr (health & beauty; HTTP 403 bot wall)",
+        "kurly.com (online grocer; results rendered client-side)",
+        "front.homeplus.co.kr (HTTP 410)",
+        "lotteon.com search (mixed retailer/open-market; JSON-LD ItemList)",
+        "search.danawa.com (price comparison — discovery only, never evidence)",
+        "item.gmarket.co.kr / smartstore.naver.com (marketplaces; HTTP 403 / 429)",
+        "kr.iherb.com (Cloudflare challenge, not bypassed)",
+        "results seen on lotteon: imported inulin powders from open-market resellers (BulkSupplements, Vivion) — marketplace only"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "닥터스원 (Doctor's One)",
+          "product_name": "닥터스원 치커리식이섬유 이눌린 99 300g",
+          "pack": "300 g (700 g also listed)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://prod.danawa.com/info/?pcode=92422913",
+          "source_type": "AGGREGATOR",
+          "seller": "danawa price-comparison entry (aggregator — discovery pointer only, never evidence); offers link out to open-market sellers",
+          "page_market": "KR",
+          "market_by": "CURRENCY_ONLY (does not bind)",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none (price-comparison page)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not shown (the '99' in the name is not a printed composition)"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Chicory inulin powder by name; no label data seen.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7bd930a980bb98cd.json",
+          "checked_at_utc": "2026-09-17T16:18:39Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "난황분말",
+        "난황 가루",
+        "계란노른자 분말",
+        "노른자 분말"
+      ],
+      "queries": [
+        "난황 (ehomebaking.co.kr, 0 results)",
+        "난황분말 (danawa)",
+        "계란노른자 분말 (danawa)",
+        "난황분말 (lotteon.com, 0)",
+        "노른자 분말 (lotteon.com)",
+        "egg yolk powder (lotteon.com, English — only strollers/unrelated results)"
+      ],
+      "sources_tried": [
+        "ehomebaking.co.kr on-site search (baking supplier, EUC-KR shop)",
+        "bakingschool.co.kr on-site search (baking supplier; no server-side results)",
+        "breadgarden.co.kr (baking supplier; HTTP 403)",
+        "jungoneshop.com (Daesang official mall; search results rendered client-side)",
+        "cjthemarket.com (CJ CheilJedang official mall; search path 404 / client-side)",
+        "ssg.com / emart (HTTP 403)",
+        "oliveyoung.co.kr (health & beauty; HTTP 403 bot wall)",
+        "kurly.com (online grocer; results rendered client-side)",
+        "front.homeplus.co.kr (HTTP 410)",
+        "lotteon.com search (mixed retailer/open-market; JSON-LD ItemList)",
+        "search.danawa.com (price comparison — discovery only, never evidence)",
+        "item.gmarket.co.kr / smartstore.naver.com (marketplaces; HTTP 403 / 429)",
+        "kr.iherb.com (Cloudflare challenge, not bypassed)",
+        "danawa bridge links resolved to G마켓 item 4598390843 and Naver Smartstore product 10377330731 (both marketplaces)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "이든타운에프앤비",
+          "product_name": "이든타운에프앤비 난황 가루 1kg 이든타운 난황 분말 노른자가루 계란 분말",
+          "pack": "1 kg (30 g sachet also listed)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://item.gmarket.co.kr/Item?goodscode=4598390843",
+          "source_type": "MARKETPLACE",
+          "seller": "G마켓 open-market seller",
+          "page_market": "KR",
+          "market_by": "CCTLD (marketplace; HTTP 403, page not readable)",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .co.kr (marketplace, does not confirm)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not readable (HTTP 403)"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Egg-yolk powder by listing title only.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/18ca5470e73a2896.json",
+          "checked_at_utc": "2026-09-17T16:17:49Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "은산푸드",
+          "product_name": "은산푸드 난황 가루 200g 난황 계란노른자 분말 제과제빵용",
+          "pack": "200 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://smartstore.naver.com/inflow/ep/gw?url=%2Finflow%2Fep%2Fdanawa%2Fproducts%2F10377330731",
+          "source_type": "MARKETPLACE",
+          "seller": "Naver Smartstore seller (via danawa)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD (HTTP 429, page not readable)",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not readable (HTTP 429)"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Baking egg-yolk powder by listing title only.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3032d5908b5234f2.json",
+          "checked_at_utc": "2026-09-17T16:18:42Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Only open-market listings found; no direct retailer or manufacturer page could be read."
+    }
+  }
+}

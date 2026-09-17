@@ -1,0 +1,201 @@
+{
+  "iso2": "ZA",
+  "country": "South Africa",
+  "agent": "research-south-asia-oceania-africa",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:10:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant) served bot challenges; discovery used one early Brave result page, retailer site search pages and retailer product sitemaps (keyword scan of product URLs).",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "dried cream powder",
+        "heavy cream powder",
+        "roompoeier (af)"
+      ],
+      "queries": [
+        "site search 'cream powder' on clicks.co.za, checkers.co.za, woolworths.co.za, wellnesswarehouse.com, makro.co.za, pnp.co.za, soaringfree.co.za, bakersparadise.co.za, delitedashfood.co.za",
+        "product-sitemap URL scan (cream-powder|dried-cream|heavy-cream|powdered-cream) on checkers.co.za (99k URLs), pnp.co.za (39k), clicks.co.za (29k), woolworths.co.za, makro.co.za",
+        "site search regex also matched Afrikaans 'roompoeier'"
+      ],
+      "sources_tried": [
+        "checkers.co.za sitemap (supermarket - only 'Crystal Valley full cream powder milk' = milk powder, rejected type)",
+        "pnp.co.za sitemap (supermarket - only 'First Choice instant full cream powder milk', rejected type)",
+        "woolworths.co.za (supermarket - no match)",
+        "makro.co.za (wholesale/marketplace - '15kg premium ice cream powder mix' rejected type; Nestle heavy cream is liquid)",
+        "clicks.co.za (pharmacy - no match)",
+        "wellnesswarehouse.com (health retailer - site search no cream powder)",
+        "bakersparadise.co.za (baking supplier - only UHT dairy cream)",
+        "delitedashfood.co.za (ingredient manufacturer shop - no match)",
+        "dischem.co.za (HTTP 403 bot wall - inconclusive), faithful-to-nature.co.za (HTTP 403 - inconclusive), cabfoods.co.za (HTTP 403 - inconclusive), natureschoice.co.za (HTTP 403 - inconclusive), soaringfree.co.za (HTTP 429 - inconclusive)"
+      ],
+      "candidates": [],
+      "notes": "No spray-dried dairy cream powder found at any readable South African retailer."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fructose",
+        "fruit sugar",
+        "vrugtesuiker (af)"
+      ],
+      "queries": [
+        "Brave web search 'fructose powder site:co.za' (one page, before the engine served a captcha)",
+        "checkers.co.za / pnp.co.za / clicks.co.za product-sitemap scan 'fructo|fruit-sugar'",
+        "site search 'fructose' on clicks.co.za, wellnesswarehouse.com, makro.co.za"
+      ],
+      "sources_tried": [
+        "delitedashfood.co.za (Delite Foods own-brand shop - CONFIRMED via D-37)",
+        "checkers.co.za (supermarket listing 'Tantalize Fruit Sugar Crystalline Fructose 500g', no GTIN - LEAD)",
+        "bakersparadise.co.za (unbranded fructose 1/5/25 kg, no GTIN)",
+        "dischem.co.za 'Nature's Choice Fructose 500g' (HTTP 403 - inconclusive; verdict ~/.cache/gellatti-evidence/verify/72caf7fedaa30f42.json)",
+        "cabfoods.co.za fructose 1 kg (HTTP 403 - inconclusive; verdict ~/.cache/gellatti-evidence/verify/5399bff04a15e5c9.json)",
+        "essentialproducts.co.za / braganingredients.co.za (25 kg bulk - not retail)",
+        "beerlab.co.za, chemlabsupplies, worldofscience.co.za (brewing/lab suppliers - not food retail)",
+        "desertcart.co.za (marketplace)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Delite Foods (Tantalize Sugar Free range)",
+          "product_name": "Fructose/Fruit Sugar",
+          "pack": "Fructose 500g Bag (listing also offers 1kg bag and 12 x 500g carton)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://delitedashfood.co.za/shop/fructose-fruit-sugar/",
+          "source_type": "MANUFACTURER",
+          "seller": "Delite Foods",
+          "page_market": "ZA",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .co.za",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": 0.0,
+            "fructose_pct": 100.0,
+            "ingredients": "Ingredients: Fructose (Fruit Sugar); '100% Fructose/Fruit Sugar'; per 100 g carbohydrates 100 g (page prints 'of which total sugars 0,0' - label inconsistency)",
+            "from": "page ingredients + nutrition table"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single ingredient fructose, printed as 100 %",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8502fd7506322a01.json",
+          "checked_at_utc": "2026-09-17T15:45:25Z"
+        },
+        {
+          "rank": 2,
+          "brand": "Tantalize",
+          "product_name": "Tantalize Fruit Sugar Crystalline Fructose 500g",
+          "pack": "500g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.checkers.co.za/product/tantalize-fruit-sugar-crystalline-fructose-500g-10125696EA",
+          "source_type": "RETAILER",
+          "seller": "Checkers (Sixty60)",
+          "page_market": "ZA",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .co.za",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not printed in page HTML"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "crystalline fructose by name; retailer article 10125696, no GTIN; JSON-LD availability OutOfStock (delivery-address dependent)",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c98e0154602f7923.json",
+          "checked_at_utc": "2026-09-17T15:54:06Z"
+        }
+      ],
+      "notes": "Rank 1 identity rests on D-37 (own-brand listing, no GTIN printed). Rank 2 is the same brand family in a national supermarket, useful as a purchase path once a GTIN is available."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin",
+        "inulin powder",
+        "prebiotic fibre",
+        "inulien (af)"
+      ],
+      "queries": [
+        "site search 'inulin' on clicks.co.za, checkers.co.za, woolworths.co.za, wellnesswarehouse.com, soaringfree.co.za, makro.co.za, pnp.co.za, bakersparadise.co.za, delitedashfood.co.za, healthconnection.co.za",
+        "product-sitemap URL scan 'inulin' on checkers.co.za, pnp.co.za, clicks.co.za, makro.co.za, woolworths.co.za"
+      ],
+      "sources_tried": [
+        "wellnesswarehouse.com (SA health retailer - CONFIRMED via identity_match + store-locator quote)",
+        "makro.co.za 'Life Health Inulin (230 g)' sold by marketplace seller 'Life health' (marketplace - not evidence)",
+        "clicks.co.za (only an inulin body lotion)",
+        "checkers.co.za (only a dog breath freshener)",
+        "bakersparadise.co.za ('No products were found')",
+        "dischem.co.za (HTTP 403 bot wall - inconclusive), faithful-to-nature.co.za (HTTP 403 - inconclusive), cabfoods.co.za (HTTP 403 - inconclusive), natureschoice.co.za (HTTP 403 - inconclusive), soaringfree.co.za (HTTP 429 - inconclusive)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "NOW",
+          "product_name": "NOW Inulin Pure Powder 227g",
+          "pack": "227g",
+          "gtin": "00733739029447",
+          "identifier_confirmed": true,
+          "url": "https://www.wellnesswarehouse.com/products/now-inulin-pure-powder-227g-227g-00448711477197",
+          "source_type": "RETAILER",
+          "seller": "Wellness Warehouse",
+          "page_market": "ZA",
+          "market_by": "CURRENCY_ONLY",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "explicit quote on the seller's own store locator (check_quotes found): 'Find a Store Western Cape Kwa-Zulu Natal Gauteng'; page title 'Wellness Warehouse South Africa'; ZAR currency is supporting only",
+          "cross_border": false,
+          "ships_to_evidence": "https://wellnesswarehouse.com/pages/store-locator",
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredients Organic Inulin (FOS) (from Blue Agave) 2.8 g. Other Ingredients: None.",
+            "from": "page ingredients text"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient agave inulin; fibre g/100 g not printed; the label words it 'Inulin (FOS)' - owner may want the NIP checked (A vs B)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/bf2d83c1e216a340.json",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_7cfee6aa8d9d440b.json",
+          "identity_source_url": "https://www.pharmacydirect.co.nz/Now-Certified-Organic-Inulin-Pure-Powder-227g",
+          "checked_at_utc": "2026-09-17T16:08:01Z"
+        }
+      ],
+      "notes": "The page's own 'barcode' field (00448711477197) fails the GTIN checksum (internal code), so it is not a conflicting GTIN. Wellness Warehouse (a Shopify store) returned HTTP 429 several times before it could be read."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk",
+        "eiergeelpoeier (af)"
+      ],
+      "queries": [
+        "site search 'egg yolk powder' on clicks.co.za, checkers.co.za, woolworths.co.za, wellnesswarehouse.com, makro.co.za, pnp.co.za, soaringfree.co.za, bakersparadise.co.za, delitedashfood.co.za ('egg')",
+        "product-sitemap URL scan 'yolk|egg-powder' on checkers.co.za, pnp.co.za, clicks.co.za, makro.co.za, woolworths.co.za"
+      ],
+      "sources_tried": [
+        "checkers.co.za / pnp.co.za / woolworths.co.za (supermarkets - only fresh eggs and yolk separators)",
+        "makro.co.za (only kitchen tools)",
+        "clicks.co.za, wellnesswarehouse.com (pharmacy/health - no match)",
+        "bakersparadise.co.za, delitedashfood.co.za (baking/ingredient suppliers - no egg yolk powder)",
+        "dischem.co.za (HTTP 403 bot wall - inconclusive), faithful-to-nature.co.za (HTTP 403 - inconclusive), cabfoods.co.za (HTTP 403 - inconclusive), natureschoice.co.za (HTTP 403 - inconclusive), soaringfree.co.za (HTTP 429 - inconclusive)"
+      ],
+      "candidates": [],
+      "notes": "No dried egg yolk powder in retail packs found at readable South African retailers."
+    }
+  }
+}

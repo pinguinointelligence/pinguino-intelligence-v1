@@ -1,0 +1,386 @@
+{
+ "iso2": "CY",
+ "country": "Cyprus",
+ "agent": "research-eu-south",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:35:00Z",
+ "items": {
+  "CRP": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "κρέμα γάλακτος σε σκόνη (el)",
+    "krema tozu / süt kreması tozu (tr)",
+    "cream powder (en)"
+   ],
+   "queries": [
+    "κρέμα γάλακτος σε σκόνη (Brave; results Greek-mainland only)",
+    "alphamega.com.cy / supermarketcy.com.cy site access (HTTP 403)",
+    "hammaddeler.com sitemap (tr): krema/krema tozu (only flavour 'Krema Ekstraktı' = maltodextrin + aroma, reject)",
+    "cream powder 42% fat buy online shop Europe (Brave - HTTP 429)"
+   ],
+   "sources_tried": [
+    "ingredientsbar.com (UK; dairy cream powder 75 % fat, generic international delivery - lead)",
+    "alphamega.com.cy (supermarket; HTTP 403 bot wall, inconclusive)",
+    "supermarketcy.com.cy (online grocer; HTTP 403, inconclusive)",
+    "myprotein.com.cy (sports nutrition; no cream powder)",
+    "kallasinc.com (Greek B2B, 25 kg only; no Cyprus delivery statement)",
+    "meincupcake.de / backfun.de (42 % Sahnepulver; delivery lists do not include Cyprus)",
+    "gourmet-versand.com (ships to Cyprus; sitemap has no dairy cream powder)",
+    "taste-market.de (ships to Zypern; no cream powder)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Cake-Masters (own brand of Pati-Versand; same food-business address Siemensstraße 24, 49770 Herzlake)",
+     "product_name": "Sahnepulver 100g sprühgetrocknet",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.pati-versand.de/torten-kuchen/hilfs-zusatzstoffe/sahnepulver-100g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Pati-Versand GmbH (DE)",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "foreign page (DE); delivery country named in seller's shipping policy",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "url": "https://www.pati-versand.de/zahlung-versand",
+      "tool": "check_quotes.py",
+      "found": true,
+      "http": "200",
+      "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn, Zypern.",
+      "checked_at_utc": "2026-09-17T16:47:24Z",
+      "country_named_as": "Zypern",
+      "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/coordinator/pati-versand-zypern-20260917T164724Z.json"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet; per 100 g: 2456 kJ / 587 kcal, fat 42 g (saturates 27.1 g), carbohydrate 29 g (sugars 29 g), protein 19 g, salt 0.75 g; Art.-Nr. 10866; 'Auf Lager'",
+      "from": "page label"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "spray-dried dairy cream, fat 42 % (reference 42), protein 19 (ref. 20), sugars/lactose 29 (ref. 30); no GTIN on the page (D-37 own-brand listing: brand, exact name, variant 42 % sprühgetrocknet, 100 g, article no.)",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/afcac8071e6099a1.json",
+     "verifier_class": "PAGE_FACTS_ONLY",
+     "checked_at_utc": "2026-09-17T16:47:01Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "added_by": "coordinator (reuse of the PL cross-border listing; Cyprus named in the seller delivery list)"
+    },
+    {
+     "rank": 2,
+     "brand": "Ingredients Bar",
+     "product_name": "Cream Powder | Dairy Milk High-Fat 75% (Product ID 0370)",
+     "pack": "200 g / 500 g / 1.5 kg / 4 kg (size selector)",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://ingredientsbar.com/p/cream-powder-0370t/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Ingredients Bar (UK; packed in the UK, produced in Germany)",
+     "page_market": "GB",
+     "market_by": "CURRENCY_ONLY",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "none for CY: delivery page only states generic international delivery (no country list)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://ingredientsbar.com/payment-delivery/",
+      "quotes": [
+       "International delivery carries additional charges, which are displayed at checkout based on the delivery address"
+      ],
+      "found": [
+       true
+      ],
+      "explicit_country": false
+     },
+     "composition": {
+      "fat_g": 75.0,
+      "protein_g": 8.5,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Dairy cream, milk protein, lactose. Per 100 g: Energy 3094 kJ/750 kcal, Fat 75 g (saturates 51 g), Carbohydrates 12 g (sugars 12 g), Protein 8.5 g, Fibre 0 g, Salt 2 g",
+      "from": "shop page",
+      "carbs_g": 12.0
+     },
+     "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+     "equivalence_note": "Dairy cream powder at 75 % fat (outside 38-48 %). UK seller (post-Brexit import to the EU/TR); delivery to CY not explicitly stated; several pack sizes on one page, no GTIN. schema InStock.",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a3762801f2319d81.json",
+     "checked_at_utc": "2026-09-17T16:41:31Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "No dairy cream powder purchasable in Cyprus and no seller explicitly shipping a 38-48 % cream powder to Cyprus was found. Only lead: a UK shop (75 % fat) with generic international delivery. Discovery constrained (WebSearch budget exhausted, Brave mostly HTTP 429, Cypriot supermarket sites HTTP 403). | Coordinator addition 2026-09-17: Pati-Versand (DE) lists Zypern in its delivery countries (check_quotes found=true); the same Cake-Masters Sahnepulver 42 % own-brand listing already used for PL/CZ/SK/HU is rank 1 as VERIFIED_CROSS_BORDER. Greece and Malta are not in that list (nor in backfun.de / meincupcake.de delivery pages)."
+  },
+  "FRU": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "φρουκτόζη (el)",
+    "fruktoz (tr)"
+   ],
+   "queries": [
+    "alphamega.com.cy / supermarketcy.com.cy (HTTP 403)",
+    "mymarket.gr 'φρουκτόζη' (Greek mainland retailer, no Cyprus delivery checked)",
+    "hammaddeler.com sitemap 'fruktoz' (Turkish seller; no explicit Cyprus delivery)"
+   ],
+   "sources_tried": [
+    "alphamega.com.cy (HTTP 403)",
+    "supermarketcy.com.cy (HTTP 403)",
+    "myprotein.com.cy (no fructose)",
+    "gourmet-versand.com (country selector lists 'Cyprus south republic' - cross-border)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Sosa Ingredients",
+     "product_name": "Sosa fructose powder, 1 kg, PE dose",
+     "pack": "1 kg",
+     "gtin": "8414933026259",
+     "identifier_confirmed": true,
+     "url": "https://www.gourmet-versand.com/en/article13797/sosa-fructose-powder-1-kg.html",
+     "source_type": "RETAILER",
+     "seller": "GOURMET VERSAND online shop (gourmet-versand.com)",
+     "page_market": "",
+     "market_by": "GENERIC_TLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "cross-border: the seller's shipping-cost country selector lists the market (check_quotes.py found=true)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.gourmet-versand.com/index.php?site=versand&language=en",
+      "quotes": [
+       "You can use the following selection fields to calculate the shipping costs in advance. Shipment to the following country:",
+       "Croatia Cyprus south republic Czech Republic"
+      ],
+      "found": [
+       true,
+       true
+      ],
+      "type": "shipping-cost country selector listing the market"
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ingredients: Fructose. Nutritional table per 100 g: carbohydrates 100 g, of which sugars 100 g, protein 0,01 g, salt 0,13 g; manufacturer Sosa Ingredients S.L.U., Navarcles (ES)",
+      "from": "retailer page ('EAN Code 8414933026259' printed)",
+      "sugars_g": 100.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Single-ingredient fructose, sugars 100 g/100 g. Page shows 'NOW AVAILABLE'.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e8e9b6bbb7888a25.json",
+     "checked_at_utc": "2026-09-17T16:17:19Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "No Cypriot retailer page reachable; cross-border only."
+  },
+  "INU": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "ινουλίνη (el)",
+    "inülin (tr)"
+   ],
+   "queries": [
+    "alphamega.com.cy / supermarketcy.com.cy (HTTP 403)",
+    "myprotein.com.cy (no inulin found)",
+    "pharm24.gr product sitemap scan 'inulin' + shipping page 'Κύπρο'",
+    "taste-market.de search 'Inulin'"
+   ],
+   "sources_tried": [
+    "alphamega.com.cy (HTTP 403)",
+    "supermarketcy.com.cy (HTTP 403)",
+    "pharm24.gr (Greek online pharmacy with an explicit Cyprus shipping section - cross-border)",
+    "taste-market.de (EU-Zone 3 lists Zypern - cross-border)",
+    "gourmet-versand.com (country selector lists Cyprus - cross-border)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Now Foods",
+     "product_name": "Now Foods Inulin Prebiotic Pure Powder 227g",
+     "pack": "227 g",
+     "gtin": "733739029447",
+     "identifier_confirmed": true,
+     "url": "https://www.pharm24.gr/now-foods-inulin-prebiotic-pure-powder-227g-p-74386.html",
+     "source_type": "RETAILER",
+     "seller": "Pharm24.gr (online pharmacy, Greece; retailer code 074386)",
+     "page_market": "GR",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "cross-border: seller's shipping page has an explicit Cyprus section (check_quotes.py found=true)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.pharm24.gr/shippinginfo.html",
+      "quotes": [
+       "Αποστολές στην Κύπρο Οι παραγγελίες που αφορούν την Κύπρο αποστέλλονται μέσω της συνεργαζόμενης εταιρείας courier BoxNow"
+      ],
+      "found": [
+       true
+      ]
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Ανά δόση (περίπου 4 γρ.): Θερμίδες 10, Συνολικοί Υδατάνθρακες 4 g, Φυτικές Ίνες 4 g, Βιολογική Ινουλίνη (FOS) (από μπλε αγαύη) 3,3 g",
+      "from": "retailer page (Διατροφικές Πληροφορίες; BARCODE: 733739029447)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Organic agave inulin (labelled FOS); fibre 4 g per ~4 g serving (declared inulin 3.3 g). Page shows 'Άμεση Διαθεσιμότητα (σε απόθεμα)' with only 1 unit left at check time.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/10353d4c0ab57daf.json",
+     "checked_at_utc": "2026-09-17T16:34:33Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
+     "brand": "Taste Market",
+     "product_name": "Inulin Pulver 100 g Ballaststoff-Pulver | Chicorée Wurzel (Art.-Nr. 27-100g)",
+     "pack": "100 g (other sizes 200 g - 20 kg on the same page)",
+     "gtin": "0710535894134",
+     "identifier_confirmed": true,
+     "url": "https://www.taste-market.de/Inulin-Pulver/27-100g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Taste Market GmbH (Germany)",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "cross-border: seller's EU shipping zones list the market (check_quotes.py found=true)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+      "quotes": [
+       "Lieferung in das EU-Ausland oder internationaler Versand",
+       "EU-Zone 2:Italien, Slowakei, Slowenien, Spanien &amp; Ungarn",
+       "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
+      ],
+      "found": [
+       true,
+       true,
+       true
+      ]
+     },
+     "composition": {
+      "fat_g": 0.0,
+      "protein_g": 0.0,
+      "fibre_g": 88.0,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: Inulin (aus der Chicoréewurzel). Nährwerte/100 g: Kohlenhydrate 8,0 g, davon Zucker 8,0 g, Ballaststoffe 88 g, Eiweiß 0 g, Salz 0,20 g",
+      "from": "shop page (Zutaten + Nährwertangaben)",
+      "sugars_g": 8.0
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "Chicory inulin, fibre 88 g/100 g (reference 89). itemprop gtin13 0710535894134 sits in the 27-100g variant page data; page offers 14 sizes (identifier checked only for the 100 g variant URL).",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/86f4823e76397bdb.json",
+     "checked_at_utc": "2026-09-17T15:57:52Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": ""
+  },
+  "YOL": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "κρόκος αυγού σε σκόνη (el)",
+    "yumurta sarısı tozu (tr)"
+   ],
+   "queries": [
+    "myprotein.com.cy product 10529352 (Σκόνη Κρόκου Αυγού)"
+   ],
+   "sources_tried": [
+    "myprotein.com.cy (GTIN on page, OutOfStock)",
+    "taste-market.de (EU-Zone 3 lists Zypern - cross-border, in stock)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Myprotein",
+     "product_name": "Κρόκος αυγού σε σκόνη - 500g - Χωρίς Γεύση",
+     "pack": "500 g",
+     "gtin": "5055534303733",
+     "identifier_confirmed": true,
+     "url": "https://www.myprotein.com.cy/p/sports-nutrition/egg-yolk-powder/10529352/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Myprotein (THG) country site",
+     "page_market": "CY",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": 59.0,
+      "protein_g": 32.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Αυτό το προϊόν είναι 100% κρόκος αυγού σε σκόνη. Ανά 100g: Λιπαρά 59 g (κορεσμένα 20 g), Υδατάνθρακες 2.1 g (σάκχαρα 2.1 g), Πρωτεΐνη 32 g, Αλάτι 2.5 g",
+      "from": "official shop page"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % egg yolk powder. JSON-LD pairs gtin13 5055534303733 with weight 500 g; schema availability OutOfStock / inStock:false at check time (same on es/pt/it/gr/com.cy). ",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4e34c50dc6b78510.json",
+     "checked_at_utc": "2026-09-17T15:46:42Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
+     "brand": "Taste Market",
+     "product_name": "Eigelbpulver 100 g Sprühgetrocknet (Art.-Nr. 123-100g)",
+     "pack": "100 g",
+     "gtin": "4262421423127",
+     "identifier_confirmed": true,
+     "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Taste Market GmbH (Germany)",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "cross-border: seller's EU shipping zones list the market (check_quotes.py found=true)",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "tool": "check_quotes.py",
+      "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+      "quotes": [
+       "Lieferung in das EU-Ausland oder internationaler Versand",
+       "EU-Zone 2:Italien, Slowakei, Slowenien, Spanien &amp; Ungarn",
+       "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
+      ],
+      "found": [
+       true,
+       true,
+       true
+      ]
+     },
+     "composition": {
+      "fat_g": 58.0,
+      "protein_g": 34.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Zutaten: Hühner-Eigelb, sprühgetrocknet und pasteurisiert. Nährwerte/100 g: Fett 58 g (ges. 18 g), Kohlenhydrate 2,1 g, davon Zucker 0 g, Eiweiß 34 g, Salz 0,4 g",
+      "from": "shop page (Zutaten + Nährwertangaben)",
+      "carbs_g": 2.1
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 58 / protein 34 vs reference 56.5 / 34.5. Page data prints itemprop gtin13 as 14-digit '04262421423127'.",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f8d7e59230b12a91.json",
+     "checked_at_utc": "2026-09-17T15:57:53Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "Rank 1 local (myprotein.com.cy, country domain .cy) but out of stock at check time; rank 2 in stock (cross-border)."
+  }
+ }
+}

@@ -1,0 +1,103 @@
+{
+  "iso2": "VN",
+  "country": "Vietnam",
+  "agent": "research-south-asia-oceania-africa",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site-search pages. Several Shopify stores answered HTTP 429 'Verifying your connection' on this egress (not bypassed).",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "bột kem sữa",
+        "bột cream sữa",
+        "cream powder"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' plus Vietnamese slugs 'long-do-trung|bot-kem|kem-sua|duong-trai-cay' on beemart.vn, pharmacity.vn, hasaki.vn, winmart.vn, kingfoodmart.com, nhathuoclongchau.com.vn, guardian.com.vn, bachhoaxanh.com"
+      ],
+      "sources_tried": [
+        "beemart.vn (baking-ingredient retailer) - 7.3k URLs scanned: 'bột kem béo' non-dairy creamers (Luave MT 35, Krub O), 'bột kem trứng' custard powders, 'Bột kem sữa Cremyco Puratos 5kg' (pastry cream mix), 'bột kem sữa chua' (yogurt powder), 'lòng đỏ trứng vịt muối dạng bột' (salted DUCK egg yolk powder, cured flavouring) - all rejected; heavy cream is liquid",
+        "pharmacity.vn (pharmacy chain) - 34k URLs scanned: articles only, no products",
+        "hasaki.vn (health & beauty) - sitemaps partly scanned: hair-dye 'bột kem' products only",
+        "winmart.vn (supermarket) - sitemap holds categories only; kingfoodmart.com - no product URLs",
+        "nhathuoclongchau.com.vn (pharmacy chain) - HTTP 403, inconclusive",
+        "guardian.com.vn - HTTP 403, inconclusive",
+        "bachhoaxanh.com (supermarket) - not readable (empty response)",
+        "shopee.vn / lazada.vn / tiki.vn (marketplaces) - not used"
+      ],
+      "candidates": [],
+      "notes": "Only non-dairy creamers and custard/pastry cream mixes found (rejected types)."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "đường fructose",
+        "đường trái cây",
+        "fructose"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' plus Vietnamese slugs 'long-do-trung|bot-kem|kem-sua|duong-trai-cay' on beemart.vn, pharmacity.vn, hasaki.vn, winmart.vn, kingfoodmart.com, nhathuoclongchau.com.vn, guardian.com.vn, bachhoaxanh.com"
+      ],
+      "sources_tried": [
+        "beemart.vn (baking-ingredient retailer) - 7.3k URLs scanned: 'bột kem béo' non-dairy creamers (Luave MT 35, Krub O), 'bột kem trứng' custard powders, 'Bột kem sữa Cremyco Puratos 5kg' (pastry cream mix), 'bột kem sữa chua' (yogurt powder), 'lòng đỏ trứng vịt muối dạng bột' (salted DUCK egg yolk powder, cured flavouring) - all rejected; heavy cream is liquid",
+        "pharmacity.vn (pharmacy chain) - 34k URLs scanned: articles only, no products",
+        "hasaki.vn (health & beauty) - sitemaps partly scanned: hair-dye 'bột kem' products only",
+        "winmart.vn (supermarket) - sitemap holds categories only; kingfoodmart.com - no product URLs",
+        "nhathuoclongchau.com.vn (pharmacy chain) - HTTP 403, inconclusive",
+        "guardian.com.vn - HTTP 403, inconclusive",
+        "bachhoaxanh.com (supermarket) - not readable (empty response)",
+        "shopee.vn / lazada.vn / tiki.vn (marketplaces) - not used"
+      ],
+      "candidates": [],
+      "notes": "No crystalline fructose found."
+    },
+    "INU": {
+      "result": "BRAK",
+      "local_terms": [
+        "inulin",
+        "bột inulin",
+        "chất xơ inulin"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' plus Vietnamese slugs 'long-do-trung|bot-kem|kem-sua|duong-trai-cay' on beemart.vn, pharmacity.vn, hasaki.vn, winmart.vn, kingfoodmart.com, nhathuoclongchau.com.vn, guardian.com.vn, bachhoaxanh.com"
+      ],
+      "sources_tried": [
+        "beemart.vn (baking-ingredient retailer) - 7.3k URLs scanned: 'bột kem béo' non-dairy creamers (Luave MT 35, Krub O), 'bột kem trứng' custard powders, 'Bột kem sữa Cremyco Puratos 5kg' (pastry cream mix), 'bột kem sữa chua' (yogurt powder), 'lòng đỏ trứng vịt muối dạng bột' (salted DUCK egg yolk powder, cured flavouring) - all rejected; heavy cream is liquid",
+        "pharmacity.vn (pharmacy chain) - 34k URLs scanned: articles only, no products",
+        "hasaki.vn (health & beauty) - sitemaps partly scanned: hair-dye 'bột kem' products only",
+        "winmart.vn (supermarket) - sitemap holds categories only; kingfoodmart.com - no product URLs",
+        "nhathuoclongchau.com.vn (pharmacy chain) - HTTP 403, inconclusive",
+        "guardian.com.vn - HTTP 403, inconclusive",
+        "bachhoaxanh.com (supermarket) - not readable (empty response)",
+        "shopee.vn / lazada.vn / tiki.vn (marketplaces) - not used"
+      ],
+      "candidates": [],
+      "notes": "No inulin powder found."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "bột lòng đỏ trứng",
+        "lòng đỏ trứng sấy khô",
+        "egg yolk powder"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' plus Vietnamese slugs 'long-do-trung|bot-kem|kem-sua|duong-trai-cay' on beemart.vn, pharmacity.vn, hasaki.vn, winmart.vn, kingfoodmart.com, nhathuoclongchau.com.vn, guardian.com.vn, bachhoaxanh.com"
+      ],
+      "sources_tried": [
+        "beemart.vn (baking-ingredient retailer) - 7.3k URLs scanned: 'bột kem béo' non-dairy creamers (Luave MT 35, Krub O), 'bột kem trứng' custard powders, 'Bột kem sữa Cremyco Puratos 5kg' (pastry cream mix), 'bột kem sữa chua' (yogurt powder), 'lòng đỏ trứng vịt muối dạng bột' (salted DUCK egg yolk powder, cured flavouring) - all rejected; heavy cream is liquid",
+        "pharmacity.vn (pharmacy chain) - 34k URLs scanned: articles only, no products",
+        "hasaki.vn (health & beauty) - sitemaps partly scanned: hair-dye 'bột kem' products only",
+        "winmart.vn (supermarket) - sitemap holds categories only; kingfoodmart.com - no product URLs",
+        "nhathuoclongchau.com.vn (pharmacy chain) - HTTP 403, inconclusive",
+        "guardian.com.vn - HTTP 403, inconclusive",
+        "bachhoaxanh.com (supermarket) - not readable (empty response)",
+        "shopee.vn / lazada.vn / tiki.vn (marketplaces) - not used"
+      ],
+      "candidates": [],
+      "notes": "Only salted duck egg yolk powder (cured seasoning) found - rejected type."
+    }
+  }
+}

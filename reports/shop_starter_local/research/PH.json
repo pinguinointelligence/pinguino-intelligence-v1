@@ -1,0 +1,112 @@
+{
+  "iso2": "PH",
+  "country": "Philippines",
+  "agent": "research-south-asia-oceania-africa",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site-search pages. Several Shopify stores answered HTTP 429 'Verifying your connection' on this egress (not bypassed).",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "pulbos na krema (fil)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on smmarkets.ph, shop.healthyoptions.com.ph, rustans.com, landers.ph, rosepharmacy.com, puregold.com.ph, mercurydrug.com",
+        "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on shop.healthyoptions.com.ph, rustans.com, shopmetro.ph, rosepharmacy.com, southstardrug.com.ph",
+        "Filipino terms listed for owner copy; retailer catalogues are in English"
+      ],
+      "sources_tried": [
+        "smmarkets.ph (SM Markets supermarket) - 17k product URLs scanned: 'SM Bonus Sour Cream Powder 50g', coconut cream powders, Birch Tree full cream powdered milk, high fructose corn syrup, monk fruit sweetener (all rejected types)",
+        "shop.healthyoptions.com.ph (health/organic chain, Shopify) - product sitemaps + site search for all four terms: no products",
+        "rustans.com (supermarket) - site search for all four terms: no products",
+        "shopmetro.ph (Metro supermarket) - site search: no products (only a face 'cream powder')",
+        "rosepharmacy.com and southstardrug.com.ph (pharmacies) - site search: no products",
+        "landers.ph (membership store) - text sitemap scanned: no match",
+        "watsons.com.ph - HTTP 403, inconclusive; mercurydrug.com, puregold.com.ph - no sitemap; metromart.com, snrshopping.com - sitemap 404",
+        "chefsandbakers.com - parked domain (not the PH baking chain); PH baking-supplier domains tried (chefsandbakers.ph/.com.ph, bakersmaker.com.ph) not reachable",
+        "lazada.com.ph / shopee.ph (marketplaces) - not used"
+      ],
+      "candidates": [],
+      "notes": "Only sour cream powder, coconut cream powder and milk powders found (rejected types)."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "fructose",
+        "fruit sugar",
+        "asukal mula sa prutas (fil)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on smmarkets.ph, shop.healthyoptions.com.ph, rustans.com, landers.ph, rosepharmacy.com, puregold.com.ph, mercurydrug.com",
+        "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on shop.healthyoptions.com.ph, rustans.com, shopmetro.ph, rosepharmacy.com, southstardrug.com.ph",
+        "Filipino terms listed for owner copy; retailer catalogues are in English"
+      ],
+      "sources_tried": [
+        "smmarkets.ph (SM Markets supermarket) - 17k product URLs scanned: 'SM Bonus Sour Cream Powder 50g', coconut cream powders, Birch Tree full cream powdered milk, high fructose corn syrup, monk fruit sweetener (all rejected types)",
+        "shop.healthyoptions.com.ph (health/organic chain, Shopify) - product sitemaps + site search for all four terms: no products",
+        "rustans.com (supermarket) - site search for all four terms: no products",
+        "shopmetro.ph (Metro supermarket) - site search: no products (only a face 'cream powder')",
+        "rosepharmacy.com and southstardrug.com.ph (pharmacies) - site search: no products",
+        "landers.ph (membership store) - text sitemap scanned: no match",
+        "watsons.com.ph - HTTP 403, inconclusive; mercurydrug.com, puregold.com.ph - no sitemap; metromart.com, snrshopping.com - sitemap 404",
+        "chefsandbakers.com - parked domain (not the PH baking chain); PH baking-supplier domains tried (chefsandbakers.ph/.com.ph, bakersmaker.com.ph) not reachable",
+        "lazada.com.ph / shopee.ph (marketplaces) - not used"
+      ],
+      "candidates": [],
+      "notes": "Only high fructose corn syrup and monk fruit sweetener found (rejected types)."
+    },
+    "INU": {
+      "result": "BRAK",
+      "local_terms": [
+        "inulin",
+        "inulin powder"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on smmarkets.ph, shop.healthyoptions.com.ph, rustans.com, landers.ph, rosepharmacy.com, puregold.com.ph, mercurydrug.com",
+        "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on shop.healthyoptions.com.ph, rustans.com, shopmetro.ph, rosepharmacy.com, southstardrug.com.ph",
+        "Filipino terms listed for owner copy; retailer catalogues are in English"
+      ],
+      "sources_tried": [
+        "smmarkets.ph (SM Markets supermarket) - 17k product URLs scanned: 'SM Bonus Sour Cream Powder 50g', coconut cream powders, Birch Tree full cream powdered milk, high fructose corn syrup, monk fruit sweetener (all rejected types)",
+        "shop.healthyoptions.com.ph (health/organic chain, Shopify) - product sitemaps + site search for all four terms: no products",
+        "rustans.com (supermarket) - site search for all four terms: no products",
+        "shopmetro.ph (Metro supermarket) - site search: no products (only a face 'cream powder')",
+        "rosepharmacy.com and southstardrug.com.ph (pharmacies) - site search: no products",
+        "landers.ph (membership store) - text sitemap scanned: no match",
+        "watsons.com.ph - HTTP 403, inconclusive; mercurydrug.com, puregold.com.ph - no sitemap; metromart.com, snrshopping.com - sitemap 404",
+        "chefsandbakers.com - parked domain (not the PH baking chain); PH baking-supplier domains tried (chefsandbakers.ph/.com.ph, bakersmaker.com.ph) not reachable",
+        "lazada.com.ph / shopee.ph (marketplaces) - not used"
+      ],
+      "candidates": [],
+      "notes": "No inulin powder found at readable Philippine retailers."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "pulbos na pula ng itlog (fil)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on smmarkets.ph, shop.healthyoptions.com.ph, rustans.com, landers.ph, rosepharmacy.com, puregold.com.ph, mercurydrug.com",
+        "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on shop.healthyoptions.com.ph, rustans.com, shopmetro.ph, rosepharmacy.com, southstardrug.com.ph",
+        "Filipino terms listed for owner copy; retailer catalogues are in English"
+      ],
+      "sources_tried": [
+        "smmarkets.ph (SM Markets supermarket) - 17k product URLs scanned: 'SM Bonus Sour Cream Powder 50g', coconut cream powders, Birch Tree full cream powdered milk, high fructose corn syrup, monk fruit sweetener (all rejected types)",
+        "shop.healthyoptions.com.ph (health/organic chain, Shopify) - product sitemaps + site search for all four terms: no products",
+        "rustans.com (supermarket) - site search for all four terms: no products",
+        "shopmetro.ph (Metro supermarket) - site search: no products (only a face 'cream powder')",
+        "rosepharmacy.com and southstardrug.com.ph (pharmacies) - site search: no products",
+        "landers.ph (membership store) - text sitemap scanned: no match",
+        "watsons.com.ph - HTTP 403, inconclusive; mercurydrug.com, puregold.com.ph - no sitemap; metromart.com, snrshopping.com - sitemap 404",
+        "chefsandbakers.com - parked domain (not the PH baking chain); PH baking-supplier domains tried (chefsandbakers.ph/.com.ph, bakersmaker.com.ph) not reachable",
+        "lazada.com.ph / shopee.ph (marketplaces) - not used"
+      ],
+      "candidates": [],
+      "notes": "No dried egg yolk powder found."
+    }
+  }
+}

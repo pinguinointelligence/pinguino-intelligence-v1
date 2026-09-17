@@ -1,0 +1,213 @@
+{
+  "iso2": "IN",
+  "country": "India",
+  "agent": "research-south-asia-oceania-africa",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site-search pages. Several Shopify stores answered HTTP 429 'Verifying your connection' on this egress (not bypassed).",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "dairy cream powder",
+        "क्रीम पाउडर (hi)",
+        "ক্রিম পাউডার (bn)",
+        "க்ரீம் பவுடர் (ta)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on bigbasket.com, pharmeasy.in, 1mg.com, netmeds.com, apollopharmacy.in, nutrabay.com, jiomart.com, blinkit.com, zeptonow.com, dmart.in, spencers.in",
+        "site search 'fructose' / 'inulin' / 'egg yolk powder' / 'cream powder' on healthkart.com, nutrabay.com, 1mg.com, naturesbasket.co.in, bakersmart.in, urbanplatter.com (blocked or JS-rendered)",
+        "Hindi terms listed for owner copy; retailer URLs are English slugs, Hindi site search not available without JS"
+      ],
+      "sources_tried": [
+        "urbanplatter.com site search via WebFetch discovery ('egg yolk powder', 'cream powder'): no egg yolk powder and no dairy cream powder (only cream of tartar, coconut/soy milk powders)",
+        "bigbasket.com (online grocer, India-only) - 157k product URLs scanned: only non-dairy whipping cream powders (Puramate, Bakerswhip, Harima, Chozen), coconut cream powder, 'Nature's Velvet FOS' and 'Nature's Velvet Inulin' listings; product pages return Akamai 'Access Denied' (HTTP 403, inconclusive; verdict ~/.cache/gellatti-evidence/verify/ca69f9566e35d9d4.json)",
+        "naturesvelvet.in (brand D2C shop) - all-products data read",
+        "pharmeasy.in, 1mg.com, netmeds.com, apollopharmacy.in (online pharmacies) - sitemaps partly scanned (80-file cap): only fructose IV infusions, FOS capsules, 'ice cream powder' protein supplements (rejected types)",
+        "nutrabay.com (supplement retailer) - 3k URLs, no match",
+        "jiomart.com - sitemap has no grocery product URLs; blinkit.com, dmart.in, spencers.in, healthkart.com, naturesbasket.co.in - HTTP 403 (inconclusive); zeptonow.com - HTTP 202 empty",
+        "urbanplatter.in -> urbanplatter.com (specialty ingredients D2C) - Shopify 'Verifying your connection' HTTP 429, inconclusive",
+        "bakersmart.in (baking supplier) - HTTP 429 challenge, inconclusive",
+        "amazon.in / flipkart.com (marketplaces) - not used"
+      ],
+      "candidates": [],
+      "notes": "Only non-dairy whipping cream powders and coconut cream powder found (rejected types)."
+    },
+    "FRU": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "fructose",
+        "fruit sugar",
+        "फ्रुक्टोज (hi)",
+        "ফ্রুক্টোজ (bn)",
+        "ஃப்ரக்டோஸ் (ta)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on bigbasket.com, pharmeasy.in, 1mg.com, netmeds.com, apollopharmacy.in, nutrabay.com, jiomart.com, blinkit.com, zeptonow.com, dmart.in, spencers.in",
+        "site search 'fructose' / 'inulin' / 'egg yolk powder' / 'cream powder' on healthkart.com, nutrabay.com, 1mg.com, naturesbasket.co.in, bakersmart.in, urbanplatter.com (blocked or JS-rendered)",
+        "Hindi terms listed for owner copy; retailer URLs are English slugs, Hindi site search not available without JS",
+        "WebFetch discovery of urbanplatter.com site search 'fructose' (after curl was rate-limited)"
+      ],
+      "sources_tried": [
+        "urbanplatter.com (Indian specialty-ingredient D2C brand; urbanplatter.in redirects here) - product found via WebFetch of the store's own search page (discovery only); every direct fetch by the verifier got Shopify 'Verifying your connection' HTTP 429, so composition and market binding are unverified",
+        "bigbasket.com (online grocer, India-only) - 157k product URLs scanned: only non-dairy whipping cream powders (Puramate, Bakerswhip, Harima, Chozen), coconut cream powder, 'Nature's Velvet FOS' and 'Nature's Velvet Inulin' listings; product pages return Akamai 'Access Denied' (HTTP 403, inconclusive; verdict ~/.cache/gellatti-evidence/verify/ca69f9566e35d9d4.json)",
+        "naturesvelvet.in (brand D2C shop) - all-products data read",
+        "pharmeasy.in, 1mg.com, netmeds.com, apollopharmacy.in (online pharmacies) - sitemaps partly scanned (80-file cap): only fructose IV infusions, FOS capsules, 'ice cream powder' protein supplements (rejected types)",
+        "nutrabay.com (supplement retailer) - 3k URLs, no match",
+        "jiomart.com - sitemap has no grocery product URLs; blinkit.com, dmart.in, spencers.in, healthkart.com, naturesbasket.co.in - HTTP 403 (inconclusive); zeptonow.com - HTTP 202 empty",
+        "urbanplatter.in -> urbanplatter.com (specialty ingredients D2C) - Shopify 'Verifying your connection' HTTP 429, inconclusive",
+        "bakersmart.in (baking supplier) - HTTP 429 challenge, inconclusive",
+        "amazon.in / flipkart.com (marketplaces) - not used"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Urban Platter",
+          "product_name": "Pure Fructose Sugar, 400g",
+          "pack": "400g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.urbanplatter.com/products/urban-platter-pure-fructose-sugar-400g-fruit-based-finely-granulated-free-flowing-sugar",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Urban Platter",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none verified (generic .com; INR prices seen only in discovery output, and currency never binds)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "page not readable by verifier (HTTP 429)"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "'Pure Fructose Sugar' by name (slug: fruit-based, finely granulated, free-flowing sugar); ingredients not verified",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/15eec9b1436c3a4f.json",
+          "checked_at_utc": "2026-09-17T16:18:43Z"
+        }
+      ],
+      "notes": "Re-run verify_ean_market.py on the Urban Platter page when the Shopify rate limit clears (or from another network) to read ingredients and a binding signal (e.g. seller address/shipping-within-India quote)."
+    },
+    "INU": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "inulin powder",
+        "prebiotic fiber",
+        "इनुलिन (hi)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on bigbasket.com, pharmeasy.in, 1mg.com, netmeds.com, apollopharmacy.in, nutrabay.com, jiomart.com, blinkit.com, zeptonow.com, dmart.in, spencers.in",
+        "site search 'fructose' / 'inulin' / 'egg yolk powder' / 'cream powder' on healthkart.com, nutrabay.com, 1mg.com, naturesbasket.co.in, bakersmart.in, urbanplatter.com (blocked or JS-rendered)",
+        "Hindi terms listed for owner copy; retailer URLs are English slugs, Hindi site search not available without JS",
+        "WebFetch discovery of urbanplatter.com site search 'fructose' (listed Urban Platter inulin powders)"
+      ],
+      "sources_tried": [
+        "bigbasket.com (online grocer, India-only) - 157k product URLs scanned: only non-dairy whipping cream powders (Puramate, Bakerswhip, Harima, Chozen), coconut cream powder, 'Nature's Velvet FOS' and 'Nature's Velvet Inulin' listings; product pages return Akamai 'Access Denied' (HTTP 403, inconclusive; verdict ~/.cache/gellatti-evidence/verify/ca69f9566e35d9d4.json)",
+        "urbanplatter.com (Indian specialty-ingredient D2C brand; urbanplatter.in redirects here) - product found via WebFetch of the store's own search page (discovery only); every direct fetch by the verifier got Shopify 'Verifying your connection' HTTP 429, so composition and market binding are unverified",
+        "naturesvelvet.in (brand D2C shop) - all-products data read",
+        "pharmeasy.in, 1mg.com, netmeds.com, apollopharmacy.in (online pharmacies) - sitemaps partly scanned (80-file cap): only fructose IV infusions, FOS capsules, 'ice cream powder' protein supplements (rejected types)",
+        "nutrabay.com (supplement retailer) - 3k URLs, no match",
+        "jiomart.com - sitemap has no grocery product URLs; blinkit.com, dmart.in, spencers.in, healthkart.com, naturesbasket.co.in - HTTP 403 (inconclusive); zeptonow.com - HTTP 202 empty",
+        "urbanplatter.in -> urbanplatter.com (specialty ingredients D2C) - Shopify 'Verifying your connection' HTTP 429, inconclusive",
+        "bakersmart.in (baking supplier) - HTTP 429 challenge, inconclusive",
+        "amazon.in / flipkart.com (marketplaces) - not used"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Natures Velvet",
+          "product_name": "Inulin Powder, Prebiotic Fiber 300gms",
+          "pack": "300 gms",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.naturesvelvet.in/product/600655a2-7a02-4fa0-bfc7-00c6f2571076",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Natures Velvet",
+          "page_market": "IN",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .in (naturesvelvet.com redirects to naturesvelvet.in); INR prices, 'Delivered in 3-5 Days'",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "'Inulin Powder is a high-quality plant-based soluble dietary fiber sourced from natural plant roots' - no ingredient list or nutrition table in page text",
+            "from": "page description"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "inulin powder by name/description; plant source and fibre % not printed",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5921977f7f37b11b.json",
+          "checked_at_utc": "2026-09-17T16:12:56Z"
+        },
+        {
+          "rank": 2,
+          "brand": "Urban Platter",
+          "product_name": "Inulin Powder, 300g",
+          "pack": "300g (1Kg variant listed separately)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.urbanplatter.com/products/urban-platter-inulin-powder-fructo-oligo-saccharides-prebiotic-rich-in-fiber-fos",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Urban Platter",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "none verified (generic .com)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "page not readable by verifier (HTTP 429)"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "inulin powder by name, but the slug also says 'fructo-oligo-saccharides ... FOS' - may be class B (short-chain) once the label is read",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4aeca9f0e1846ba7.json",
+          "checked_at_utc": "2026-09-17T16:19:11Z"
+        }
+      ],
+      "notes": "Identity and binding would pass (D-37 own-brand listing on .in, product data barcodeID null, inStock true), but composition is not printed, so it stays LEAD. The same product is listed on bigbasket.com (page bot-walled)."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk",
+        "अंडे की जर्दी का पाउडर (hi)"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on bigbasket.com, pharmeasy.in, 1mg.com, netmeds.com, apollopharmacy.in, nutrabay.com, jiomart.com, blinkit.com, zeptonow.com, dmart.in, spencers.in",
+        "site search 'fructose' / 'inulin' / 'egg yolk powder' / 'cream powder' on healthkart.com, nutrabay.com, 1mg.com, naturesbasket.co.in, bakersmart.in, urbanplatter.com (blocked or JS-rendered)",
+        "Hindi terms listed for owner copy; retailer URLs are English slugs, Hindi site search not available without JS"
+      ],
+      "sources_tried": [
+        "urbanplatter.com site search via WebFetch discovery ('egg yolk powder', 'cream powder'): no egg yolk powder and no dairy cream powder (only cream of tartar, coconut/soy milk powders)",
+        "bigbasket.com (online grocer, India-only) - 157k product URLs scanned: only non-dairy whipping cream powders (Puramate, Bakerswhip, Harima, Chozen), coconut cream powder, 'Nature's Velvet FOS' and 'Nature's Velvet Inulin' listings; product pages return Akamai 'Access Denied' (HTTP 403, inconclusive; verdict ~/.cache/gellatti-evidence/verify/ca69f9566e35d9d4.json)",
+        "naturesvelvet.in (brand D2C shop) - all-products data read",
+        "pharmeasy.in, 1mg.com, netmeds.com, apollopharmacy.in (online pharmacies) - sitemaps partly scanned (80-file cap): only fructose IV infusions, FOS capsules, 'ice cream powder' protein supplements (rejected types)",
+        "nutrabay.com (supplement retailer) - 3k URLs, no match",
+        "jiomart.com - sitemap has no grocery product URLs; blinkit.com, dmart.in, spencers.in, healthkart.com, naturesbasket.co.in - HTTP 403 (inconclusive); zeptonow.com - HTTP 202 empty",
+        "urbanplatter.in -> urbanplatter.com (specialty ingredients D2C) - Shopify 'Verifying your connection' HTTP 429, inconclusive",
+        "bakersmart.in (baking supplier) - HTTP 429 challenge, inconclusive",
+        "amazon.in / flipkart.com (marketplaces) - not used"
+      ],
+      "candidates": [],
+      "notes": "Only yolk separators, double-yolk eggs and 'Yolk' brand tablets found (rejected)."
+    }
+  }
+}

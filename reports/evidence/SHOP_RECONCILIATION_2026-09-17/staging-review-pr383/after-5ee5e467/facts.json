@@ -1,0 +1,1208 @@
+{
+  "url": "https://staging.pinguinoai.com/shop",
+  "capturedAt": "2026-09-17T10:09:11.422Z",
+  "chrome": "Chrome/153.0.8010.48",
+  "profiles": [
+    {
+      "profile": {
+        "id": "desktop-1440x900",
+        "width": 1440,
+        "height": 900,
+        "dpr": 2,
+        "mobile": false,
+        "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36"
+      },
+      "state": {
+        "cards": 7,
+        "loadError": false,
+        "visibility": "visible"
+      },
+      "imagesReady": true,
+      "facts": {
+        "title": "GELLATTI — FRIENDLY LAB",
+        "lang": "pl",
+        "bundle": [
+          "https://staging.pinguinoai.com/assets/index-DUL-tmBT.js"
+        ],
+        "viewport": {
+          "innerWidth": 1440,
+          "innerHeight": 900,
+          "dpr": 2,
+          "pointerCoarse": false
+        },
+        "horizontalOverflow": {
+          "scrollWidth": 1440,
+          "innerWidth": 1440,
+          "overflow": false
+        },
+        "storedCountry": "{\"state\":{\"selected\":null},\"version\":0}",
+        "singlesSection": {
+          "present": true,
+          "heading": "Kup osobno",
+          "box": {
+            "x": 148.14,
+            "y": 898.42,
+            "w": 1143.7,
+            "h": 629.83
+          }
+        },
+        "cards": [
+          {
+            "sku": "GEL-DEX-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Dekstroza",
+              "500 g · Cukier prosty, który obniża punkt zamarzania i zmiękcza strukturę. Podstawowy składnik korekt słodyczy i twardości.",
+              "4,90 €"
+            ],
+            "frame": {
+              "x": 148.14,
+              "y": 1001.48,
+              "w": 67.91,
+              "h": 83.98
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 148.14,
+                "y": 1001.48,
+                "w": 67.91,
+                "h": 83.98
+              }
+            },
+            "contentBox": {
+              "x": 148.14,
+              "y": 1009.51,
+              "w": 67.91,
+              "h": 67.91
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          },
+          {
+            "sku": "GEL-FRU-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Fruktoza",
+              "500 g · Mocniejsza słodycz przy mniejszej masie. Używana, gdy receptura potrzebuje słodyczy bez dodatkowej suchej masy.",
+              "5,90 €"
+            ],
+            "frame": {
+              "x": 745,
+              "y": 1001.48,
+              "w": 67.91,
+              "h": 83.98
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 745,
+                "y": 1001.48,
+                "w": 67.91,
+                "h": 83.98
+              }
+            },
+            "contentBox": {
+              "x": 745,
+              "y": 1009.51,
+              "w": 67.91,
+              "h": 67.91
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          },
+          {
+            "sku": "GEL-INU-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Inulina",
+              "500 g · Błonnik, który buduje suchą masę i ciało bez dodawania cukru. Pomaga w recepturach o niższej słodyczy.",
+              "9,90 €"
+            ],
+            "frame": {
+              "x": 148.14,
+              "y": 1137.89,
+              "w": 67.91,
+              "h": 83.98
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 148.14,
+                "y": 1137.89,
+                "w": 67.91,
+                "h": 83.98
+              }
+            },
+            "contentBox": {
+              "x": 148.14,
+              "y": 1145.93,
+              "w": 67.91,
+              "h": 67.91
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          },
+          {
+            "sku": "GEL-YOL-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Suszone żółtko jaja",
+              "500 g · Naturalny emulgator do klasycznych baz mlecznych. · Zawiera jaja",
+              "14,90 €"
+            ],
+            "frame": {
+              "x": 745,
+              "y": 1137.89,
+              "w": 67.91,
+              "h": 83.98
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 745,
+                "y": 1137.89,
+                "w": 67.91,
+                "h": 83.98
+              }
+            },
+            "contentBox": {
+              "x": 745,
+              "y": 1145.93,
+              "w": 67.91,
+              "h": 67.91
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          },
+          {
+            "sku": "GEL-SMP-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Odtłuszczone mleko w proszku",
+              "500 g · Beztłuszczowa sucha masa mleczna. Podnosi ciało i stabilność bez zmiany zawartości tłuszczu. · Zawiera mleko",
+              "7,90 €"
+            ],
+            "frame": {
+              "x": 148.14,
+              "y": 1274.3,
+              "w": 67.91,
+              "h": 83.98
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 148.14,
+                "y": 1274.3,
+                "w": 67.91,
+                "h": 83.98
+              }
+            },
+            "contentBox": {
+              "x": 148.14,
+              "y": 1282.34,
+              "w": 67.91,
+              "h": 67.91
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          },
+          {
+            "sku": "GEL-CRP-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Śmietanka w proszku 42%",
+              "500 g · Tłuszcz mleczny w formie suchej. Kremowość bez dodatkowej wody. · Zawiera mleko",
+              "10,90 €"
+            ],
+            "frame": {
+              "x": 745,
+              "y": 1274.3,
+              "w": 67.91,
+              "h": 83.98
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 745,
+                "y": 1274.3,
+                "w": 67.91,
+                "h": 83.98
+              }
+            },
+            "contentBox": {
+              "x": 745,
+              "y": 1282.34,
+              "w": 67.91,
+              "h": 67.91
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          },
+          {
+            "sku": "GEL-STB-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Gellatti Stabilizer",
+              "500 g · Mieszanka stabilizująca opracowana dla receptur Gellatti. Kontroluje strukturę i zachowanie po zamrożeniu.",
+              "12,90 €"
+            ],
+            "frame": {
+              "x": 148.14,
+              "y": 1410.7,
+              "w": 67.91,
+              "h": 83.98
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 148.14,
+                "y": 1410.7,
+                "w": 67.91,
+                "h": 83.98
+              }
+            },
+            "contentBox": {
+              "x": 148.14,
+              "y": 1418.74,
+              "w": 67.91,
+              "h": 67.91
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          }
+        ],
+        "cardOverlaps": [],
+        "placeholderImgCount": 7,
+        "placeholderImgOwners": [
+          "shop-card-GEL-DEX-500",
+          "shop-card-GEL-FRU-500",
+          "shop-card-GEL-INU-500",
+          "shop-card-GEL-YOL-500",
+          "shop-card-GEL-SMP-500",
+          "shop-card-GEL-CRP-500",
+          "shop-card-GEL-STB-500"
+        ],
+        "starterOffer": {
+          "box": {
+            "x": 148.14,
+            "y": 194.09,
+            "w": 1143.7,
+            "h": 338.05
+          },
+          "text": [
+            "Zestaw Startowy",
+            "7 składników · 1 125 g",
+            "Siedem składników w proporcjach dobranych pod pierwsze receptury.",
+            "Gdzie zaczynasz?",
+            "Wybierz kraj — pokażemy Ci właściwą wersję zestawu.",
+            "Wybierz kraj"
+          ],
+          "mainShot": {
+            "src": "/shop/starter-front.jpg",
+            "currentSrc": "https://staging.pinguinoai.com/shop/starter-front.jpg",
+            "complete": true,
+            "naturalWidth": 900,
+            "naturalHeight": 1166,
+            "objectFit": "fill"
+          },
+          "thumbs": [
+            {
+              "id": "shop-shot-angle",
+              "src": "/shop/starter-angle-thumb.jpg",
+              "pressed": null
+            },
+            {
+              "id": "shop-shot-side",
+              "src": "/shop/starter-side-thumb.jpg",
+              "pressed": null
+            }
+          ],
+          "allImgSrcs": [
+            "/shop/starter-angle-thumb.jpg",
+            "/shop/starter-side-thumb.jpg",
+            "/shop/starter-front.jpg"
+          ],
+          "countrySelect": {
+            "options": 1,
+            "firstOptions": [
+              "Wybierz kraj"
+            ]
+          }
+        }
+      },
+      "network": {
+        "placeholder": [
+          {
+            "url": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "bytes": 248619,
+            "sha256": "54b5b0203fccc2ef87739b18386a3231627fee279aa478d6ee8c6da4fc1e50bf"
+          }
+        ],
+        "supabase": [
+          {
+            "method": "OPTIONS",
+            "path": "/rest/v1/rpc/gellatti_shop_catalog_v1",
+            "status": 200
+          },
+          {
+            "method": "POST",
+            "path": "/rest/v1/rpc/gellatti_shop_catalog_v1",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/rest/v1/shop_country_local_readiness",
+            "status": 401
+          },
+          {
+            "method": "OPTIONS",
+            "path": "/rest/v1/shop_country_local_readiness",
+            "status": 200
+          }
+        ],
+        "total": 20
+      },
+      "catalog": [
+        {
+          "sku": "GEL-STARTER-PACK",
+          "kind": "bundle",
+          "name": "Gellatti Starter Pack",
+          "image_url": null,
+          "active": null
+        },
+        {
+          "sku": "GEL-DEX-500",
+          "kind": "single",
+          "name": "Dekstroza · 500 g",
+          "image_url": null,
+          "active": null
+        },
+        {
+          "sku": "GEL-FRU-500",
+          "kind": "single",
+          "name": "Fruktoza · 500 g",
+          "image_url": null,
+          "active": null
+        },
+        {
+          "sku": "GEL-INU-500",
+          "kind": "single",
+          "name": "Inulina · 500 g",
+          "image_url": null,
+          "active": null
+        },
+        {
+          "sku": "GEL-YOL-500",
+          "kind": "single",
+          "name": "Suszone żółtko jaja · 500 g",
+          "image_url": null,
+          "active": null
+        },
+        {
+          "sku": "GEL-SMP-500",
+          "kind": "single",
+          "name": "Odtłuszczone mleko w proszku · 500 g",
+          "image_url": null,
+          "active": null
+        },
+        {
+          "sku": "GEL-CRP-500",
+          "kind": "single",
+          "name": "Śmietanka w proszku 42% · 500 g",
+          "image_url": null,
+          "active": null
+        },
+        {
+          "sku": "GEL-STB-500",
+          "kind": "single",
+          "name": "Gellatti Stabilizer · 500 g",
+          "image_url": null,
+          "active": null
+        }
+      ],
+      "consoleErrors": [
+        {
+          "kind": "log",
+          "text": "Failed to load resource: the server responded with a status of 401 () https://tunabqqrwabacxjcxxkz.supabase.co/rest/v1/shop_country_local_readiness?select=iso2%2Cname%2Cactive%2Cphysical_starter_pack_available%2Clocal_starter_pack_available%2Clocal_starter_pack_live%2Cmissing_components%2Ccomponents"
+        }
+      ],
+      "shots": {
+        "starterOffer": {
+          "file": "01-starter-pack.png",
+          "clip": {
+            "x": 140.140625,
+            "y": 186.09375,
+            "width": 1159.703125,
+            "height": 354.046875,
+            "scale": 1
+          },
+          "bytes": 275749
+        },
+        "singles": {
+          "file": "02-kup-osobno-7-cards.png",
+          "clip": {
+            "x": 138.71875,
+            "y": 892.546875,
+            "width": 1162.546875,
+            "height": 647.46875,
+            "scale": 1
+          },
+          "bytes": 332202
+        },
+        "cards": [
+          {
+            "file": "03-card-1-GEL-DEX-500.png",
+            "clip": {
+              "x": 138.71875,
+              "y": 976.890625,
+              "width": 564.1875,
+              "height": 152.78125,
+              "scale": 1
+            },
+            "bytes": 53975
+          },
+          {
+            "file": "03-card-2-GEL-FRU-500.png",
+            "clip": {
+              "x": 737.0625,
+              "y": 976.890625,
+              "width": 564.203125,
+              "height": 152.78125,
+              "scale": 1
+            },
+            "bytes": 54784
+          },
+          {
+            "file": "03-card-3-GEL-INU-500.png",
+            "clip": {
+              "x": 138.71875,
+              "y": 1113.671875,
+              "width": 564.1875,
+              "height": 152.78125,
+              "scale": 1
+            },
+            "bytes": 51708
+          },
+          {
+            "file": "03-card-4-GEL-STB-500.png",
+            "clip": {
+              "x": 138.71875,
+              "y": 1387.234375,
+              "width": 564.1875,
+              "height": 152.78125,
+              "scale": 1
+            },
+            "bytes": 53419
+          },
+          {
+            "file": "03-card-5-GEL-YOL-500.png",
+            "clip": {
+              "x": 737.0625,
+              "y": 1113.671875,
+              "width": 564.203125,
+              "height": 152.78125,
+              "scale": 1
+            },
+            "bytes": 48881
+          },
+          {
+            "file": "03-card-6-GEL-SMP-500.png",
+            "clip": {
+              "x": 138.71875,
+              "y": 1250.453125,
+              "width": 564.1875,
+              "height": 152.78125,
+              "scale": 1
+            },
+            "bytes": 57221
+          },
+          {
+            "file": "03-card-7-GEL-CRP-500.png",
+            "clip": {
+              "x": 737.0625,
+              "y": 1250.453125,
+              "width": 564.203125,
+              "height": 152.78125,
+              "scale": 1
+            },
+            "bytes": 52087
+          }
+        ],
+        "fullPage": "00-full-page-css1x.png"
+      }
+    },
+    {
+      "profile": {
+        "id": "mobile-390x844",
+        "width": 390,
+        "height": 844,
+        "dpr": 3,
+        "mobile": true,
+        "ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1"
+      },
+      "state": {
+        "cards": 7,
+        "loadError": false,
+        "visibility": "visible"
+      },
+      "imagesReady": true,
+      "facts": {
+        "title": "GELLATTI — FRIENDLY LAB",
+        "lang": "pl",
+        "bundle": [
+          "https://staging.pinguinoai.com/assets/index-DUL-tmBT.js"
+        ],
+        "viewport": {
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "dpr": 3,
+          "pointerCoarse": true
+        },
+        "horizontalOverflow": {
+          "scrollWidth": 390,
+          "innerWidth": 390,
+          "overflow": false
+        },
+        "storedCountry": "{\"state\":{\"selected\":null},\"version\":0}",
+        "singlesSection": {
+          "present": true,
+          "heading": "Kup osobno",
+          "box": {
+            "x": 16,
+            "y": 1220.69,
+            "w": 358,
+            "h": 1470.25
+          }
+        },
+        "cards": [
+          {
+            "sku": "GEL-DEX-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Dekstroza",
+              "500 g · Cukier prosty, który obniża punkt zamarzania i zmiękcza strukturę. Podstawowy składnik korekt słodyczy i twardości.",
+              "4,90 €"
+            ],
+            "frame": {
+              "x": 16,
+              "y": 1332.94,
+              "w": 64,
+              "h": 80
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 16,
+                "y": 1332.94,
+                "w": 64,
+                "h": 80
+              }
+            },
+            "contentBox": {
+              "x": 16,
+              "y": 1340.94,
+              "w": 64,
+              "h": 64
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          },
+          {
+            "sku": "GEL-FRU-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Fruktoza",
+              "500 g · Mocniejsza słodycz przy mniejszej masie. Używana, gdy receptura potrzebuje słodyczy bez dodatkowej suchej masy.",
+              "5,90 €"
+            ],
+            "frame": {
+              "x": 16,
+              "y": 1534.69,
+              "w": 64,
+              "h": 80
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 16,
+                "y": 1534.69,
+                "w": 64,
+                "h": 80
+              }
+            },
+            "contentBox": {
+              "x": 16,
+              "y": 1542.69,
+              "w": 64,
+              "h": 64
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          },
+          {
+            "sku": "GEL-INU-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Inulina",
+              "500 g · Błonnik, który buduje suchą masę i ciało bez dodawania cukru. Pomaga w recepturach o niższej słodyczy.",
+              "9,90 €"
+            ],
+            "frame": {
+              "x": 16,
+              "y": 1736.44,
+              "w": 64,
+              "h": 80
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 16,
+                "y": 1736.44,
+                "w": 64,
+                "h": 80
+              }
+            },
+            "contentBox": {
+              "x": 16,
+              "y": 1744.44,
+              "w": 64,
+              "h": 64
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          },
+          {
+            "sku": "GEL-YOL-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Suszone żółtko jaja",
+              "500 g · Naturalny emulgator do klasycznych baz mlecznych. · Zawiera jaja",
+              "14,90 €"
+            ],
+            "frame": {
+              "x": 16,
+              "y": 1938.19,
+              "w": 64,
+              "h": 80
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 16,
+                "y": 1938.19,
+                "w": 64,
+                "h": 80
+              }
+            },
+            "contentBox": {
+              "x": 16,
+              "y": 1946.19,
+              "w": 64,
+              "h": 64
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          },
+          {
+            "sku": "GEL-SMP-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Odtłuszczone mleko w proszku",
+              "500 g · Beztłuszczowa sucha masa mleczna. Podnosi ciało i stabilność bez zmiany zawartości tłuszczu. · Zawiera mleko",
+              "7,90 €"
+            ],
+            "frame": {
+              "x": 16,
+              "y": 2121.81,
+              "w": 64,
+              "h": 80
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 16,
+                "y": 2121.81,
+                "w": 64,
+                "h": 80
+              }
+            },
+            "contentBox": {
+              "x": 16,
+              "y": 2129.81,
+              "w": 64,
+              "h": 64
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          },
+          {
+            "sku": "GEL-CRP-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Śmietanka w proszku 42%",
+              "500 g · Tłuszcz mleczny w formie suchej. Kremowość bez dodatkowej wody. · Zawiera mleko",
+              "10,90 €"
+            ],
+            "frame": {
+              "x": 16,
+              "y": 2323.56,
+              "w": 64,
+              "h": 80
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 16,
+                "y": 2323.56,
+                "w": 64,
+                "h": 80
+              }
+            },
+            "contentBox": {
+              "x": 16,
+              "y": 2331.56,
+              "w": 64,
+              "h": 64
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          },
+          {
+            "sku": "GEL-STB-500",
+            "expectedPlaceholder": true,
+            "text": [
+              "Gellatti Stabilizer",
+              "500 g · Mieszanka stabilizująca opracowana dla receptur Gellatti. Kontroluje strukturę i zachowanie po zamrożeniu.",
+              "12,90 €"
+            ],
+            "frame": {
+              "x": 16,
+              "y": 2507.19,
+              "w": 64,
+              "h": 80
+            },
+            "frameStyle": {
+              "background": "rgb(251, 250, 247)",
+              "radius": "12px",
+              "overflow": "hidden"
+            },
+            "img": {
+              "src": "/shop/single-placeholder.png",
+              "currentSrc": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+              "complete": true,
+              "naturalWidth": 512,
+              "naturalHeight": 512,
+              "objectFit": "contain",
+              "objectPosition": "50% 50%",
+              "mixBlendMode": "normal",
+              "alt": "",
+              "ariaHidden": null,
+              "box": {
+                "x": 16,
+                "y": 2507.19,
+                "w": 64,
+                "h": 80
+              }
+            },
+            "contentBox": {
+              "x": 16,
+              "y": 2515.19,
+              "w": 64,
+              "h": 64
+            },
+            "imgBoxInsideFrame": true,
+            "wholeImageInsideFrame": true
+          }
+        ],
+        "cardOverlaps": [],
+        "placeholderImgCount": 7,
+        "placeholderImgOwners": [
+          "shop-card-GEL-DEX-500",
+          "shop-card-GEL-FRU-500",
+          "shop-card-GEL-INU-500",
+          "shop-card-GEL-YOL-500",
+          "shop-card-GEL-SMP-500",
+          "shop-card-GEL-CRP-500",
+          "shop-card-GEL-STB-500"
+        ],
+        "starterOffer": {
+          "box": {
+            "x": 16,
+            "y": 158,
+            "w": 358,
+            "h": 617.44
+          },
+          "text": [
+            "Zestaw Startowy",
+            "7 składników · 1 125 g",
+            "Siedem składników w proporcjach dobranych pod pierwsze receptury.",
+            "Gdzie zaczynasz?",
+            "Wybierz kraj — pokażemy Ci właściwą wersję zestawu.",
+            "Wybierz kraj"
+          ],
+          "mainShot": {
+            "src": "/shop/starter-front.jpg",
+            "currentSrc": "https://staging.pinguinoai.com/shop/starter-front.jpg",
+            "complete": true,
+            "naturalWidth": 900,
+            "naturalHeight": 1166,
+            "objectFit": "fill"
+          },
+          "thumbs": [
+            {
+              "id": "shop-shot-angle",
+              "src": "/shop/starter-angle-thumb.jpg",
+              "pressed": null
+            },
+            {
+              "id": "shop-shot-side",
+              "src": "/shop/starter-side-thumb.jpg",
+              "pressed": null
+            }
+          ],
+          "allImgSrcs": [
+            "/shop/starter-angle-thumb.jpg",
+            "/shop/starter-side-thumb.jpg",
+            "/shop/starter-front.jpg"
+          ],
+          "countrySelect": {
+            "options": 1,
+            "firstOptions": [
+              "Wybierz kraj"
+            ]
+          }
+        }
+      },
+      "network": {
+        "placeholder": [
+          {
+            "url": "https://staging.pinguinoai.com/shop/single-placeholder.png",
+            "status": 200,
+            "mimeType": "image/png",
+            "bytes": 248619,
+            "sha256": "54b5b0203fccc2ef87739b18386a3231627fee279aa478d6ee8c6da4fc1e50bf"
+          }
+        ],
+        "supabase": [
+          {
+            "method": "POST",
+            "path": "/rest/v1/rpc/gellatti_shop_catalog_v1",
+            "status": 200
+          },
+          {
+            "method": "OPTIONS",
+            "path": "/rest/v1/rpc/gellatti_shop_catalog_v1",
+            "status": 200
+          },
+          {
+            "method": "GET",
+            "path": "/rest/v1/shop_country_local_readiness",
+            "status": 401
+          },
+          {
+            "method": "OPTIONS",
+            "path": "/rest/v1/shop_country_local_readiness",
+            "status": 200
+          }
+        ],
+        "total": 20
+      },
+      "catalog": "unavailable: No resource with given identifier found ",
+      "consoleErrors": [
+        {
+          "kind": "log",
+          "text": "Failed to load resource: the server responded with a status of 401 () https://tunabqqrwabacxjcxxkz.supabase.co/rest/v1/shop_country_local_readiness?select=iso2%2Cname%2Cactive%2Cphysical_starter_pack_available%2Clocal_starter_pack_available%2Clocal_starter_pack_live%2Cmissing_components%2Ccomponents"
+        }
+      ],
+      "shots": {
+        "starterOffer": {
+          "file": "01-starter-pack.png",
+          "clip": {
+            "x": 8,
+            "y": 150,
+            "width": 374,
+            "height": 633.4375,
+            "scale": 1
+          },
+          "bytes": 326916
+        },
+        "singles": {
+          "file": "02-kup-osobno-7-cards.png",
+          "clip": {
+            "x": 8,
+            "y": 1212.6875,
+            "width": 374,
+            "height": 1486.25,
+            "scale": 1
+          },
+          "bytes": 695355
+        },
+        "cards": [
+          {
+            "file": "03-card-1-GEL-DEX-500.png",
+            "clip": {
+              "x": 8,
+              "y": 1306.9375,
+              "width": 374,
+              "height": 217.75,
+              "scale": 1
+            },
+            "bytes": 99133
+          },
+          {
+            "file": "03-card-2-GEL-FRU-500.png",
+            "clip": {
+              "x": 8,
+              "y": 1508.6875,
+              "width": 374,
+              "height": 217.75,
+              "scale": 1
+            },
+            "bytes": 96693
+          },
+          {
+            "file": "03-card-3-GEL-INU-500.png",
+            "clip": {
+              "x": 8,
+              "y": 1710.4375,
+              "width": 374,
+              "height": 217.75,
+              "scale": 1
+            },
+            "bytes": 92878
+          },
+          {
+            "file": "03-card-4-GEL-STB-500.png",
+            "clip": {
+              "x": 8,
+              "y": 2481.1875,
+              "width": 374,
+              "height": 217.75,
+              "scale": 1
+            },
+            "bytes": 97104
+          },
+          {
+            "file": "03-card-5-GEL-YOL-500.png",
+            "clip": {
+              "x": 8,
+              "y": 1912.1875,
+              "width": 374,
+              "height": 199.625,
+              "scale": 1
+            },
+            "bytes": 87124
+          },
+          {
+            "file": "03-card-6-GEL-SMP-500.png",
+            "clip": {
+              "x": 8,
+              "y": 2095.8125,
+              "width": 374,
+              "height": 217.75,
+              "scale": 1
+            },
+            "bytes": 104140
+          },
+          {
+            "file": "03-card-7-GEL-CRP-500.png",
+            "clip": {
+              "x": 8,
+              "y": 2297.5625,
+              "width": 374,
+              "height": 199.625,
+              "scale": 1
+            },
+            "bytes": 92935
+          }
+        ],
+        "fullPage": "00-full-page-css1x.png"
+      }
+    }
+  ]
+}

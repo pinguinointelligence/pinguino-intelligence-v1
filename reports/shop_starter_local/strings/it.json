@@ -1,0 +1,57 @@
+{
+  "locale": "it",
+  "dir": "ltr",
+  "title": "Ingredienti per la base del gelato",
+  "benefit": "Cosa comprare e dove",
+  "pill": "PDF · 0 €",
+  "country_label": "Paese",
+  "language_label": "Lingua",
+  "edition": "Edizione 1 · settembre 2026",
+  "cover_items_title": "I sette ingredienti dello Starter Pack",
+  "howto_title": "Come usare questa guida",
+  "howto_lede": "Per ogni ingrediente dello Starter Pack indichiamo un prodotto che puoi acquistare in questo Paese.",
+  "steps": [
+    {"b": "Scegli un prodotto", "p": "Il primo è la nostra scelta, il secondo un’alternativa se il primo non è disponibile."},
+    {"b": "Controlla l’etichetta", "p": "La composizione sulla confezione deve corrispondere alla descrizione dell’ingrediente. Se un prodotto ha una composizione diversa, lo segnaliamo."},
+    {"b": "Prendi le quantità dall’app", "p": "Questo PDF indica i prodotti, non le grammature. Ricette e quantità le calcola l’app Gellatti."}
+  ],
+  "legend_title": "Legenda",
+  "tag_from_abroad": "Dall’estero",
+  "tag_b2b": "Per aziende",
+  "tag_other_composition": "Composizione diversa",
+  "tag_alternative": "Alternativa locale",
+  "tag_unconfirmed": "Non confermato",
+  "legend": {
+    "from_abroad": "un negozio all’estero che spedisce in questo Paese",
+    "b2b": "venduto ad aziende o in confezioni grandi",
+    "other_composition": "lo stesso tipo di prodotto con una composizione diversa (indicata accanto)",
+    "alternative": "un sostituto di un altro prodotto Gellatti"
+  },
+  "starter_amount": "Nello Starter Pack: {g} g",
+  "option": "Opzione {n}",
+  "ean": "EAN",
+  "where": "Dove",
+  "fat": "grassi",
+  "items": {
+    "DEX": {"name": "Destrosio", "ref": "Destrosio (glucosio) in polvere, monoidrato."},
+    "SMP": {"name": "Latte scremato in polvere", "ref": "Latte in polvere con circa l’1% di grassi."},
+    "CRP": {"name": "Panna in polvere", "ref": "Panna disidratata con circa il 42% di grassi."},
+    "FRU": {"name": "Fruttosio", "ref": "Fruttosio cristallino puro."},
+    "INU": {"name": "Inulina", "ref": "Inulina in polvere, ad esempio da cicoria."},
+    "YOL": {"name": "Tuorlo d’uovo essiccato", "ref": "Tuorlo d’uovo di gallina in polvere, pastorizzato."},
+    "STB": {"name": "Stabilizzante", "ref": "Gellatti Stabilizer è una miscela di gomma di tara, farina di semi di carrube e gomma di guar."}
+  },
+  "stabilizer_note": "Un’alternativa locale alla miscela Gellatti, non la stessa miscela. Mescolala con gli ingredienti secchi e scalda la base a 75–80 °C.",
+  "missing": "Non c’è ancora un prodotto approvato in questo Paese.",
+  "notes_title": "Buono a sapersi",
+  "notes": [
+    {"h": "Disponibilità", "p": "Abbiamo verificato questi prodotti sui siti di produttori e negozi a settembre 2026. Disponibilità, prezzi e consegna possono cambiare e non sono garantiti."},
+    {"h": "L’etichetta viene prima", "p": "Prima dell’acquisto, controlla ingredienti e allergeni sulla confezione. Panna in polvere e latte in polvere contengono latte, il tuorlo d’uovo contiene uova."},
+    {"h": "Stabilizzante", "p": "In questo Paese una gomma vegetale locale sostituisce il Gellatti Stabilizer. Agisce in modo simile, ma non è la stessa miscela."}
+  ],
+  "fine": "Un prodotto indicato qui non è necessariamente già disponibile nell’app Gellatti. Gellatti non vende prodotti di altri marchi.",
+  "back_h": "Un ottimo gelato nasce da una buona base.",
+  "back_p": "Ricette, quantità e procedimento sono nell’app Gellatti.",
+  "back_link": "gellatti.com",
+  "draft": "BOZZA · proposte da approvare"
+}

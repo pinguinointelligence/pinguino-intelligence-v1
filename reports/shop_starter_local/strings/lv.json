@@ -1,0 +1,57 @@
+{
+  "locale": "lv",
+  "dir": "ltr",
+  "title": "Gelato bāzes sastāvdaļas",
+  "benefit": "Ko pirkt un kur",
+  "pill": "PDF · 0 €",
+  "country_label": "Valsts",
+  "language_label": "Valoda",
+  "edition": "1. izdevums · 2026. gada septembris",
+  "cover_items_title": "Septiņas Starter Pack sastāvdaļas",
+  "howto_title": "Kā lietot šo ceļvedi",
+  "howto_lede": "Katrai Starter Pack sastāvdaļai norādām produktu, ko varat nopirkt šajā valstī.",
+  "steps": [
+    {"b": "Izvēlieties vienu produktu", "p": "Pirmais ir mūsu izvēle, otrais – alternatīva, ja pirmais nav pieejams."},
+    {"b": "Pārbaudiet etiķeti", "p": "Sastāvam uz iepakojuma jāatbilst sastāvdaļas aprakstam. Ja produkta sastāvs atšķiras, mēs to norādām."},
+    {"b": "Daudzumus ņemiet no lietotnes", "p": "Šajā PDF ir norādīti produkti, nevis daudzumi gramos. Receptes un daudzumus aprēķina Gellatti lietotne."}
+  ],
+  "legend_title": "Apzīmējumi",
+  "tag_from_abroad": "No ārzemēm",
+  "tag_b2b": "Uzņēmumiem",
+  "tag_other_composition": "Cits sastāvs",
+  "tag_alternative": "Vietēja alternatīva",
+  "tag_unconfirmed": "Nav apstiprināts",
+  "legend": {
+    "from_abroad": "ārzemju veikals, kas piegādā uz šo valsti",
+    "b2b": "pārdod uzņēmumiem vai lielos iepakojumos",
+    "other_composition": "tāda paša veida produkts ar citu sastāvu (norādīts blakus)",
+    "alternative": "aizstājējs citam Gellatti produktam"
+  },
+  "starter_amount": "Starter Pack komplektā: {g} g",
+  "option": "Variants {n}",
+  "ean": "EAN",
+  "where": "Kur",
+  "fat": "tauki",
+  "items": {
+    "DEX": {"name": "Dekstroze", "ref": "Dekstrozes (glikozes) pulveris, monohidrāts."},
+    "SMP": {"name": "Vājpiena pulveris", "ref": "Piena pulveris ar aptuveni 1% tauku."},
+    "CRP": {"name": "Saldā krējuma pulveris", "ref": "Kaltēts saldais krējums ar aptuveni 42% tauku."},
+    "FRU": {"name": "Fruktoze", "ref": "Tīra kristāliska fruktoze."},
+    "INU": {"name": "Inulīns", "ref": "Inulīna pulveris, piemēram, no cigoriņiem."},
+    "YOL": {"name": "Kaltēts olas dzeltenums", "ref": "Pasterizēts vistu olu dzeltenuma pulveris."},
+    "STB": {"name": "Stabilizators", "ref": "Gellatti Stabilizer ir taras sveķu, karobpupiņu sveķu un guāra sveķu maisījums."}
+  },
+  "stabilizer_note": "Vietēja alternatīva Gellatti maisījumam, nevis tas pats maisījums. Sajauciet to ar sausajām sastāvdaļām un uzkarsējiet bāzi līdz 75–80 °C.",
+  "missing": "Šajā valstī vēl nav apstiprināta produkta.",
+  "notes_title": "Noderīgi zināt",
+  "notes": [
+    {"h": "Pieejamība", "p": "Šos produktus pārbaudījām ražotāju un veikalu tīmekļvietnēs 2026. gada septembrī. Pieejamība, cenas un piegāde var mainīties, un tās netiek garantētas."},
+    {"h": "Etiķete ir noteicošā", "p": "Pirms pirkšanas pārbaudiet sastāvdaļas un alergēnus uz iepakojuma. Saldā krējuma pulveris un piena pulveris satur pienu, olas dzeltenums – olas."},
+    {"h": "Stabilizators", "p": "Šajā valstī Gellatti Stabilizer vietā izmanto vietējus augu sveķus. Tie darbojas līdzīgi, taču nav tas pats maisījums."}
+  ],
+  "fine": "Šeit minētais produkts ne obligāti jau ir pieejams Gellatti lietotnē. Gellatti nepārdod citu zīmolu produktus.",
+  "back_h": "Lielisks gelato sākas ar labu bāzi.",
+  "back_p": "Receptes, daudzumi un gatavošanas process ir Gellatti lietotnē.",
+  "back_link": "gellatti.com",
+  "draft": "MELNRAKSTS · priekšlikumi apstiprināšanai"
+}

@@ -1,0 +1,160 @@
+{
+  "iso2": "DO",
+  "country": "Dominican Republic",
+  "agent": "research-americas",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:02:00Z",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": ["crema de leche en polvo", "crema en polvo", "nata en polvo", "cream powder", "heavy cream powder"],
+      "queries": [
+        "site search sirena.do (VTEX public catalog search): crema en polvo",
+        "site search sirena.do (VTEX public catalog search): heavy cream",
+        "site search supermercadosnacional.com: crema en polvo",
+        "site search supermercadosnacional.com: heavy cream",
+        "site search jumbo.com.do: crema en polvo",
+        "site catalog bioeva.com (WooCommerce store API): crema",
+        "site search superbravo.com.do: crema en polvo",
+        "site search farmaciacarol.com: crema en polvo"
+      ],
+      "sources_tried": [
+        "sirena.do (La Sirena, online grocer; only milk powders, Coffee Mate non-dairy creamer, spices - rejected types)",
+        "supermercadosnacional.com (Supermercados Nacional, online grocer; only milk powders / infant formulas - rejected types)",
+        "jumbo.com.do (Jumbo RD, online grocer; only whole/goat milk powders and formulas - rejected types)",
+        "superbravo.com.do (Supermercados Bravo; brochure/promo site, no online product catalog)",
+        "plazalama.com.do (Plaza Lama; Instaleap JS-only storefront, no server-rendered search - inconclusive)",
+        "pricesmart.com/es-do (PriceSmart DO; search results JS-only - inconclusive)",
+        "bioeva.com (Dominican health-food/supplement brand shop; no cream powder)",
+        "farmaciacarol.com (Farmacia Carol; SharePoint corporate site, no online product catalog)",
+        "farmacialoshidalgos.com.do (no connection)",
+        "delcaribeshop.com (food-service distributor; store selector lists only Costa Rica and Panama, no Dominican store)"
+      ],
+      "candidates": [],
+      "notes": "No spray-dried dairy cream powder found at any readable Dominican grocer, health shop or distributor; only milk powders and a non-dairy coffee creamer (rejected). Weak BRAK: no Dominican baking/pastry supplier with an online catalog could be discovered and two large retailers are JS-only. WebSearch budget exhausted before DO research started; all discovery via on-site shop searches only."
+    },
+    "FRU": {
+      "result": "LEAD_ONLY",
+      "local_terms": ["fructosa", "fructosa en polvo", "azúcar de fruta", "endulzante", "fructose"],
+      "queries": [
+        "site search sirena.do (VTEX public catalog search): fructosa",
+        "site search sirena.do (VTEX public catalog search): fructose",
+        "site search sirena.do (VTEX public catalog search): multifoods",
+        "site search supermercadosnacional.com: fructosa",
+        "site search supermercadosnacional.com: fructose",
+        "site search supermercadosnacional.com: endulzante",
+        "site search jumbo.com.do: fructosa",
+        "site catalog bioeva.com (WooCommerce store API): fructosa",
+        "site search superbravo.com.do: fructosa",
+        "site search farmaciacarol.com: fructosa",
+        "pricesmart.com/es-do/busqueda?q=fructosa (JS-only)"
+      ],
+      "sources_tried": [
+        "sirena.do (La Sirena; 'Fructosa Multifood 14 Oz' with EAN as page data, sold by Grupo Ramos S.A - RD) - candidate 1",
+        "supermercadosnacional.com (no fructose; search matched only Fructis shampoos; sweeteners are stevia/monk fruit/erythritol/sucralose)",
+        "jumbo.com.do (no fructose; only Fructis hair products)",
+        "bioeva.com (Dominican health-food brand shop; no fructose)",
+        "superbravo.com.do (no online product catalog)",
+        "pricesmart.com/es-do (search JS-only - inconclusive)",
+        "plazalama.com.do (Instaleap JS-only storefront - inconclusive)",
+        "farmaciacarol.com (no online product catalog)",
+        "modernistpantry.com (US; international shipping only quoted at checkout - no verifiable ships-to-DO statement, not used)",
+        "do.iherb.com (HTTP 403 bot wall - inconclusive, not bypassed)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Multifoods",
+          "product_name": "Fructosa Multifood 14 Oz",
+          "pack": "14 oz (approx. 397 g)",
+          "gtin": "7463516172044",
+          "identifier_confirmed": true,
+          "url": "https://www.sirena.do/multifood-fructosa-14-oz-1707264/p",
+          "source_type": "RETAILER",
+          "seller": "La Sirena (Grupo Ramos S.A - RD)",
+          "page_market": "DO",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .do (CCTLD)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not shown - the page (and the shop's VTEX product data) only describes it as 'Endulzante natural en polvo con bajo índice glucémico ideal como sustituto del azúcar en bebidas y postres.'"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Fructose sold as a powdered sweetener, but no ingredient list, purity or nutrition table is printed, so A/B cannot be decided (a fructose/sweetener blend cannot be excluded). Would become CONFIRMED_LOCAL if the label shows fructose as the only ingredient.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e42c22d5f3d941b9.json",
+          "extra_evidence_files": [],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:56:31Z"
+        }
+      ],
+      "notes": "Identity (EAN 7463516172044 as VTEX page data) and market binding (.do) are both proven; the only gap is composition (C), so the class stays LEAD. WebSearch budget exhausted before DO research started; all discovery via on-site shop searches only."
+    },
+    "INU": {
+      "result": "BRAK",
+      "local_terms": ["inulina", "inulina de agave", "inulina de achicoria", "fibra prebiótica", "inulin"],
+      "queries": [
+        "site search sirena.do (VTEX public catalog search): inulina",
+        "site search sirena.do (VTEX public catalog search): inulin",
+        "site search sirena.do (VTEX public catalog search): prebiotica / prebiotic",
+        "site search sirena.do (VTEX public catalog search): now foods",
+        "site search supermercadosnacional.com: inulina",
+        "site search supermercadosnacional.com: inulin",
+        "site search supermercadosnacional.com: fibra prebiotica",
+        "site search jumbo.com.do: inulina",
+        "site catalog bioeva.com (WooCommerce store API): inulina / fibra",
+        "site search superbravo.com.do: inulina",
+        "site search farmaciacarol.com: inulina"
+      ],
+      "sources_tried": [
+        "sirena.do (no inulin; 'Fibra En Polvo Bioeva 380 Gramos' EAN 7467849561551 described only as 'fibra natural soluble' - fibre type not stated)",
+        "supermercadosnacional.com ('Fibra Prebiotica Bioeva 380 Gr': description and per-serving values (fibra 4 g) but no ingredient list and no mention of inulin - type unproven, not kept; verdict ~/.cache/gellatti-evidence/verify/8dbfc04571053cf3.json)",
+        "bioeva.com (Dominican brand shop; 'BioEva Fibra (380g)' SKU 000460 prints no ingredients in page text, nutrition only as image - type unproven; verdict ~/.cache/gellatti-evidence/verify/be601fea4a83bea9.json; no product named inulina)",
+        "jumbo.com.do (no inulin)",
+        "superbravo.com.do (no online product catalog)",
+        "farmaciacarol.com (no online product catalog)",
+        "farmacialoshidalgos.com.do (no connection)",
+        "pricesmart.com/es-do and plazalama.com.do (JS-only storefronts - inconclusive)",
+        "do.iherb.com (HTTP 403 bot wall - inconclusive, not bypassed)"
+      ],
+      "candidates": [],
+      "notes": "No product identifiable as inulin powder. The Dominican brand BioEva sells a 380 g 'fibra prebiótica / fibra natural soluble' powder at Nacional, La Sirena and its own shop, but no page states the fibre type or ingredients, so it cannot be classed as inulin (possible owner check: the physical label). WebSearch budget exhausted before DO research started; all discovery via on-site shop searches only."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": ["yema de huevo en polvo", "yema deshidratada", "huevo en polvo", "egg yolk powder"],
+      "queries": [
+        "site search sirena.do (VTEX public catalog search): yema",
+        "site search sirena.do (VTEX public catalog search): huevo en polvo",
+        "site search sirena.do (VTEX public catalog search): egg yolk",
+        "site search supermercadosnacional.com: yema",
+        "site search supermercadosnacional.com: huevo en polvo",
+        "site search supermercadosnacional.com: egg yolk",
+        "site search jumbo.com.do: yema de huevo",
+        "site catalog bioeva.com (WooCommerce store API): yema / huevo",
+        "site search superbravo.com.do: yema",
+        "site search farmaciacarol.com: yema"
+      ],
+      "sources_tried": [
+        "sirena.do (no egg powder of any kind)",
+        "supermercadosnacional.com (no egg powder; 'yema' matched only turrón)",
+        "jumbo.com.do (only liquid pasteurised egg white Don Papito and Just Egg substitute - rejected types)",
+        "bioeva.com (no egg products)",
+        "superbravo.com.do (no online product catalog)",
+        "farmaciacarol.com (no online product catalog)",
+        "pricesmart.com/es-do and plazalama.com.do (JS-only storefronts - inconclusive)",
+        "delcaribeshop.com (food-service distributor that lists yolk powder in Costa Rica; its store selector has no Dominican Republic store)",
+        "modernistpantry.com (US; its egg yolk powder is 'Available to US customers only' - no cross-border path)"
+      ],
+      "candidates": [],
+      "notes": "No dried egg yolk found at any readable Dominican retailer. Weak BRAK: no Dominican baking/pastry supplier with an online catalog could be discovered without web search, and two large retailers are JS-only. WebSearch budget exhausted before DO research started; all discovery via on-site shop searches only."
+    }
+  }
+}

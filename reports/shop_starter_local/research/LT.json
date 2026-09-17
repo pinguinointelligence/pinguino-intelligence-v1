@@ -1,0 +1,427 @@
+{
+ "iso2": "LT",
+ "country": "Lithuania",
+ "agent": "research-nordic-baltic",
+ "egress_cc": "ES",
+ "researched_at_utc": "2026-09-17T16:19:09Z",
+ "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+ "items": {
+  "CRP": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "grietinėlės milteliai",
+    "sausa grietinėlė",
+    "džiovinta grietinėlė"
+   ],
+   "queries": [
+    "grietinėlės milteliai pirkti sausa grietinėlė",
+    "grietinėlės milteliai 42% riebalų",
+    "Sahnepulver 42% Versand Finnland Schweden Dänemark"
+   ],
+   "sources_tried": [
+    "spaisvile.lt (Grietinėlės Milteliai 100 g, own spice-shop listing, label: GRIETINĖLĖS milteliai, fat 40,0 g)",
+    "virtuvespasaulis.lt (Grietinėlės milteliai 250 g, SKU 4772122008870 in page data; ingredients 'Grietinėlės milteliai' but no nutrition table and use text 'kavai, arbatai, padažams': insufficient data, not used)",
+    "propasta.lt (Grietinėlės milteliai 100 g: 'grietinėlė 42 % riebumo, džiovinta', printed fat 73,7 g = high-fat powder, B, not used)",
+    "kavoszinovai.lt Venda sausa grietinėlė kavai 1 kg, lavisa.eu sausa augalinė grietinėlė (vegetable creamers, rejected) [T]",
+    "kaina24.lt / kainos.lt (price comparison, discovery only; Coffeeta creamers) [T]",
+    "hobbybaecker.de Sahnepulver 42 % Fett 100 g (GTIN on page; ships to Lithuania) -> rank 2"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Spaisvilė",
+     "product_name": "Grietinėlės Milteliai",
+     "pack": "100 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://spaisvile.lt/produktas/grietineles-milteliai",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Spaisvilė (spice shop, Lithuania)",
+     "page_market": "LT",
+     "market_by": "CCTLD",
+     "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+     "market_binding_signal": "country domain .lt",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": 40.0,
+      "protein_g": 10.0,
+      "carbohydrate_g": 45.0,
+      "sugars_g": 45.0,
+      "salt_g": 0.7,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "GRIETINĖLĖS milteliai",
+      "basis": "per 100 g",
+      "from": "page Sudedamosios dalys + Maistingumo informacija (Kilmės šalis Lenkija)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "declared cream powder with fat 40 g/100 g (38–48 % band); NOTE printed protein 10 g and sugars 45 g are atypical for pure 42 % cream powder (reference protein 20 / lactose 30) — owner should check the pack label",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/cf1667e71fd5c1a0.json",
+     "checked_at_utc": "2026-09-17T16:05:59Z",
+     "notes": "D-37 CHECK REQUIRED: seller-packed listing (Spaisvilė), exact name, pack 100 g (€ 3.69), no SKU or GTIN shown; GTIN never invented. Delivery 1–7 working days, free from € 25",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
+     "brand": "Cake-Masters Basics",
+     "product_name": "Sahnepulver, sprühgetrocknet, 100 g",
+     "pack": "100 g",
+     "gtin": "4250712308666",
+     "identifier_confirmed": true,
+     "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
+     "source_type": "RETAILER",
+     "seller": "Hobbybäcker-Versand (Herzlake, Germany)",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "foreign page (country domain .de); delivery to the market proven by the seller's shipping-policy country list",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "url": "https://www.hobbybaecker.de/Informationen/Versand-und-Zahlungsbedingungen/",
+      "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.",
+      "tool": "check_quotes.py",
+      "found": true,
+      "checked_at_utc": "2026-09-17T15:53:58Z",
+      "page_verdict_file": "~/.cache/gellatti-evidence/verify/e15dfe5c8fe979a6.json"
+     },
+     "composition": {
+      "fat_g": 42.0,
+      "protein_g": 19.0,
+      "carbohydrate_g": 29.0,
+      "sugars_g": 29.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+      "basis": "per 100 g",
+      "from": "page Zutaten + Nährwertangaben"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "spray-dried dairy cream, fat 42 g/100 g = reference; single ingredient",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c164974a9bb7a78d.json",
+     "checked_at_utc": "2026-09-17T15:52:03Z",
+     "notes": "identity = GTIN (itemprop gtin13) on the cross-border seller's own product page; verifier class EAN_ON_FOREIGN_MARKET_PAGE (page market DE); page states 'Sofort verfügbar, Lieferzeit: 1-3 Tage'",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "Local option proven only as a first-party listing and with an atypical nutrition split; rank 2 is the exact 42 % A-equivalent shipped from Germany."
+  },
+  "FRU": {
+   "result": "VERIFIED_CROSS_BORDER",
+   "local_terms": [
+    "fruktozė",
+    "vaisių cukrus",
+    "kristalizuota fruktozė"
+   ],
+   "queries": [
+    "fruktozė 500 g kaina parduotuvė",
+    "\"Alvo\" fruktozė 500 g EAN",
+    "Kristalizuota fruktozė ALVO 500 g",
+    "fruktozė ALVO 500 g lastmile",
+    "fruktozė 500 g e-parduotuvė",
+    "fruktozė vaistinė 500 g",
+    "fruktozė milteliai 1 kg",
+    "Alvo prekyba UAB fruktozė"
+   ],
+   "sources_tried": [
+    "gulbele.lt (Fruktozė ALVO 500 g, full label; shows only a 12-digit 'Kodas 477008217652', not a complete GTIN)",
+    "rimi.lt (Kristalizuota fruktozė ALVO 500 g; no GTIN/label in static page)",
+    "lastmile.lt IKI (same product; ingredients 'Fruktozė.' in page data, no barcode)",
+    "barbora.lt (HTTP 403 bot wall, inconclusive)",
+    "eparduotuve.iki.lt (HTTP 000, not readable)",
+    "iki.lt product page (no GTIN)",
+    "bioshi.lt / bioshi24.lt Naturavena / Dr. Sveikata fruktozė 500 g (HTTP 000, not readable)",
+    "biotus.lt Golden Pharm fruktozė 500 g (HTTP 202 challenge, inconclusive)",
+    "medeja.lt Fruktozė 1 kg (brewing shop, no GTIN)",
+    "bitininkystesreikmenys.lt Fruktozė 1 kg (beekeeping/wine-making shop, no GTIN)",
+    "akciza.net/lt, fermetech.eu/lt (generic domains, not bound) [T]",
+    "kainos.lt (HTTP 403), kaina24.lt, kainora.lt (price comparison, discovery only)",
+    "alvo.lt / alvas.lt (manufacturer sites, no product data)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Sweet Family (Nordzucker)",
+     "product_name": "Fruchtzucker, 500 g",
+     "pack": "500 g",
+     "gtin": "4008671070229",
+     "identifier_confirmed": true,
+     "url": "https://www.glaeserundflaschen.de/fruchtzucker-500-g",
+     "source_type": "RETAILER",
+     "seller": "Gläser & Flaschen (glaeserundflaschen.de), DE",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+     "market_binding_signal": "none for LT (page .de); the seller delivery table names Litauen",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "method": "check_quotes.py",
+      "policy_url": "https://www.glaeserundflaschen.de/shop-service/versand-und-zahlungsinformationen/",
+      "quotes": [
+       "Wir liefern in folgende Länder:",
+       "Litauen bis 2 kg 18,90 EUR"
+      ],
+      "found": [
+       true,
+       true
+      ],
+      "http": "200",
+      "check_quotes_result_files": [
+       "~/.cache/gellatti-evidence/quotes/coordinator/glaeserundflaschen-header.json",
+       "~/.cache/gellatti-evidence/quotes/coordinator/glaeserundflaschen-LT.json"
+      ]
+     },
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "not printed as a list; \"Enthält Fruktose\"",
+      "from": "page (Kohlenhydrate 99,9 g, davon Zucker 99,9 g per 100 g)",
+      "sugars_g": 99.9
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "crystalline fruit sugar, sugars 99.9 g/100 g; fructose % not printed separately",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5ce5ea37d8ab245d.json",
+     "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+     "checked_at_utc": "2026-09-17T16:49:52Z",
+     "exact_product_identity_confirmed": true,
+     "market_binding_confirmed": false,
+     "local_availability_confirmed": false,
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+     "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing",
+     "added_by": "coordinator (reuse of the AT/LU/IE cross-border listing; country named in the seller delivery table)"
+    },
+    {
+     "rank": 2,
+     "brand": "ALVO",
+     "product_name": "Fruktozė ALVO, 500 g",
+     "pack": "500 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://gulbele.lt/cukrus/49115-fruktoze-alvo-500-g.html",
+     "source_type": "RETAILER",
+     "seller": "Gulbelė",
+     "page_market": "LT",
+     "market_by": "CCTLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "country domain .lt",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": 0.0,
+      "protein_g": 0.0,
+      "carbohydrate_g": 99.8,
+      "sugars_g": 99.8,
+      "salt_g": 0.0,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Fruktozė",
+      "basis": "per 100 g",
+      "from": "page Aprašymas (Sudedamosios dalys + Maistinė vertė)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "single-ingredient fructose, sugars 99.8 g/100 g",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/b076e84eac2fa5df.json",
+     "checked_at_utc": "2026-09-17T16:00:43Z",
+     "notes": "the page's 'Kodas 477008217652' is 12 digits (GTIN 4770082176523 minus its check digit); the GTIN is proven only on an Estonian page (sumena.ee), and a cross-language attribute match is not possible, so identity stays unproven (GTIN not completed)",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 3,
+     "brand": "ALVO",
+     "product_name": "Kristalizuota fruktozė ALVO, 500 g",
+     "pack": "500 g",
+     "gtin": null,
+     "identifier_confirmed": false,
+     "url": "https://www.rimi.lt/e-parduotuve/lt/produktai/bakaleja/cukrus-ir-saldikliai/saldikliai-ir-kitas-cukrus/kristalizuota-fruktoze-alvo-500-g/p/171908",
+     "source_type": "RETAILER",
+     "seller": "Rimi Lietuva",
+     "page_market": "LT",
+     "market_by": "CCTLD",
+     "identity_basis": "NOT_PROVEN",
+     "market_binding_signal": "country domain .lt",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "carbohydrate_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "not printed on static page",
+      "from": "n/a"
+     },
+     "equivalence": "C_INSUFFICIENT_DATA",
+     "equivalence_note": "same brand/pack as rank 1 by name",
+     "evidence_class": "LEAD",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/36808d978c5b2ae7.json",
+     "checked_at_utc": "2026-09-17T16:00:42Z",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "ALVO fructose 500 g is sold by Rimi, IKI and Maxima/Barbora in Lithuania, but no readable Lithuanian page prints its full GTIN. | Coordinator addition 2026-09-17: glaeserundflaschen.de (DE) lists Litauen in its delivery table (check_quotes found=true); Sweet Family Fruchtzucker 500 g (GTIN 4008671070229 on the page) is rank 1 as VERIFIED_CROSS_BORDER; the earlier result was LEAD_ONLY."
+  },
+  "INU": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "inulinas",
+    "inulino milteliai",
+    "cikorijų inulinas"
+   ],
+   "queries": [
+    "inulinas milteliai pirkti",
+    "ICONFIT inuliin 250 g"
+   ],
+   "sources_tried": [
+    "camelia.lt (ICONFIT Inulino milteliai 250 g, gtin13 in JSON-LD, InStock)",
+    "myprotein.lt (100 % inulinas 250 g/500 g/1 kg, GTINs, all inStock:false)",
+    "gintarine.lt / eurovaistine.lt / farmaplius.lt / internetinevaistine.lt Biofarmacija INULIN 28 sachets (sachets, rejected as non-bulk) [T]",
+    "livinn.lt Bioplanet inulinas ekologiškas (not checked further) [T]",
+    "kaina24.lt (price comparison, discovery only)"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "ICONFIT",
+     "product_name": "ICONFIT maisto papildas INULIN, 250 g",
+     "pack": "250 g",
+     "gtin": "4744130015621",
+     "identifier_confirmed": true,
+     "url": "https://camelia.lt/p/iconfit-maisto-papildas-inulin-250-g-4744130015621-31224",
+     "source_type": "RETAILER",
+     "seller": "Camelia vaistinė",
+     "page_market": "LT",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .lt",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": 0.0,
+      "protein_g": 0.0,
+      "carbohydrate_g": 12.0,
+      "sugars_g": 12.0,
+      "fibre_g": 85.0,
+      "salt_g": 0.0,
+      "fructose_pct": null,
+      "ingredients": "inulinas iš cikorijų šaknų ('jo sudėtyje yra 85 % skaidulinių medžiagų'); label ingredient 'Cigoriņa saknes pulveris (Cichorium intybus L)' per benu.lv",
+      "basis": "per 100 g",
+      "from": "this page's description (85 % fibre) + benu.lv nutrition table of the same GTIN (verdict ~/.cache/gellatti-evidence/verify/94248d9b60523d94.json)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "chicory inulin, fibre 85 g/100 g (at threshold)",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/41b1f14f5c08cd81.json",
+     "checked_at_utc": "2026-09-17T16:05:37Z",
+     "notes": "GTIN also appears in the URL (echo not counted); clean JSON-LD gtin13 hit; availability InStock",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": ""
+  },
+  "YOL": {
+   "result": "CONFIRMED_LOCAL",
+   "local_terms": [
+    "kiaušinio trynio milteliai",
+    "kiaušinių trynių milteliai",
+    "džiovintas trynys"
+   ],
+   "queries": [
+    "kiaušinių trynių milteliai pirkti",
+    "hobbybaecker.de Eigelbpulver"
+   ],
+   "sources_tried": [
+    "myprotein.lt (Kiaušinio Trynio Milteliai 500 g, GTIN in JSON-LD, OutOfStock)",
+    "groward.eu (Lithuanian egg-products manufacturer; B2B, generic .eu) [T]",
+    "delona.lt (whole egg powder 100 g, rejected) [T]",
+    "varle.lt / kaina24.lt / kainos.lt 'kiaušinių milteliai' (whole egg powder; marketplace/price comparison) [T]",
+    "hobbybaecker.de Eigelbpulver 100 g (GTIN on page, ships to Lithuania) -> rank 2"
+   ],
+   "candidates": [
+    {
+     "rank": 1,
+     "brand": "Myprotein",
+     "product_name": "Kiaušinio Trynio Milteliai - 500g - Be skonio",
+     "pack": "500 g",
+     "gtin": "5055534303733",
+     "identifier_confirmed": true,
+     "url": "https://www.myprotein.lt/p/sports-nutrition/kiausinio-trynio-milteliai/10529352/",
+     "source_type": "OFFICIAL_SHOP",
+     "seller": "Myprotein",
+     "page_market": "LT",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "country domain .lt",
+     "cross_border": false,
+     "ships_to_evidence": null,
+     "composition": {
+      "fat_g": null,
+      "protein_g": null,
+      "carbohydrate_g": null,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "Kiaušinių trynių milteliai (100%)",
+      "from": "page ingredients (nutrition table not in static page)"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % egg yolk powder",
+     "evidence_class": "CONFIRMED_LOCAL",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d9ab62e0c97cf182.json",
+     "checked_at_utc": "2026-09-17T16:04:50Z",
+     "notes": "AVAILABILITY RISK: JSON-LD OutOfStock / inStock:false on 2026-09-17",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    },
+    {
+     "rank": 2,
+     "brand": "Cake-Masters Basics",
+     "product_name": "Eigelbpulver, 100 g",
+     "pack": "100 g",
+     "gtin": "4250712315510",
+     "identifier_confirmed": true,
+     "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
+     "source_type": "RETAILER",
+     "seller": "Hobbybäcker-Versand (Herzlake, Germany)",
+     "page_market": "DE",
+     "market_by": "CCTLD",
+     "identity_basis": "GTIN_ON_LOCAL_PAGE",
+     "market_binding_signal": "foreign page (country domain .de); delivery to the market proven by the seller's shipping-policy country list",
+     "cross_border": true,
+     "ships_to_evidence": {
+      "url": "https://www.hobbybaecker.de/Informationen/Versand-und-Zahlungsbedingungen/",
+      "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.",
+      "tool": "check_quotes.py",
+      "found": true,
+      "checked_at_utc": "2026-09-17T15:53:58Z",
+      "page_verdict_file": "~/.cache/gellatti-evidence/verify/e15dfe5c8fe979a6.json"
+     },
+     "composition": {
+      "fat_g": 55.8,
+      "protein_g": 34.3,
+      "carbohydrate_g": 3.6,
+      "sugars_g": 3.6,
+      "salt_g": 0.3,
+      "fibre_g": null,
+      "fructose_pct": null,
+      "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET",
+      "basis": "per 100 g",
+      "from": "page Zutaten + Nährwertangaben"
+     },
+     "equivalence": "A_EQUIVALENT",
+     "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 55.8 / protein 34.3 ≈ reference 56.5 / 34.5",
+     "evidence_class": "VERIFIED_CROSS_BORDER",
+     "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/727d12b284391ee4.json",
+     "checked_at_utc": "2026-09-17T16:11:33Z",
+     "notes": "identity = GTIN (itemprop gtin13) on the cross-border seller's own product page; verifier class EAN_ON_FOREIGN_MARKET_PAGE (page market DE); page states 'Sofort verfügbar, Lieferzeit: 1-3 Tage'; offered as the in-stock alternative because the local listing is out of stock",
+     "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+    }
+   ],
+   "notes": "Local listing is out of stock; rank 2 is an in-stock, GTIN-proven cross-border A-equivalent from Germany."
+  }
+ },
+ "notes": "sources_tried entries marked [T] were judged from search-result titles/snippets only (page not opened); every other entry was fetched (verify_ean_market.py or a direct fetch). Search results are discovery only, never evidence."
+}

@@ -1,0 +1,342 @@
+{
+  "iso2": "CL",
+  "country": "Chile",
+  "agent": "research-americas",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T15:53:00Z",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "crema de leche en polvo",
+        "crema en polvo",
+        "crema en polvo láctea",
+        "cream powder"
+      ],
+      "queries": [
+        "crema de leche en polvo Chile",
+        "\"crema en polvo\" láctea 40% grasa Chile heladería",
+        "crema en polvo [allowed_domains: mmpp.cl]",
+        "cream powder dairy Chile buy \"crema de leche en polvo\" OR \"crema en polvo\" tienda",
+        "site search jumbo.cl: crema en polvo",
+        "site search super.lider.cl: crema de leche en polvo",
+        "site search mmpp.cl: crema",
+        "site search mmpp.cl: leche",
+        "site search nutrigood.cl: crema",
+        "site search chilefoodreposteria.cl: crema en polvo",
+        "site search cherrychile.cl: crema en polvo",
+        "site search listado.mercadolibre.cl: crema de leche en polvo",
+        "site search bulksupplements.com: cream powder",
+        "site search cl.iherb.com: cream powder"
+      ],
+      "sources_tried": [
+        "jumbo.cl (supermarket; on-site search 'crema en polvo' -> 26 results, only bouillon/sauce powders; no dairy cream powder)",
+        "super.lider.cl (supermarket; on-site search -> CAPTCHA bot wall, inconclusive)",
+        "tottus.cl / colun.cl / quillayessurlat.cl (WebSearch surfaced only liquid creams 'Crema para Batir', 'Crema de Leche Soprole 1 lt', 'CREMA BRIK SURLAT (35% MATERIA GRASA) 1 L' and Colun whole milk powder - rejected types)",
+        "nutrigood.cl (health-food shop; on-site search 'crema' -> Creatina, Carragenina only)",
+        "mmpp.cl (raw-materials/baking supplier; on-site search 'crema' -> cosmetic cream bases; 'leche' page 1 -> milk protein MPC85, flavourings; no cream powder)",
+        "chilefoodreposteria.cl (pastry supplier; on-site search 'crema en polvo' -> no results)",
+        "cherrychile.cl (pastry supplier; on-site search 'crema en polvo' -> royal icing, glaze, corn starch only)",
+        "listado.mercadolibre.cl (marketplace; WebSearch showed 'crema en polvo para cafe' coffee-creamer listings - rejected type; listing page 'crema-de-leche-en-polvo' HTTP 403 bot wall, inconclusive)",
+        "dirind.com (Mexican B2B directory, Ingredientes Funcionales de Mexico / Lactosan Creamline, quote-only, no Chile market; verdict ~/.cache/gellatti-evidence/verify/3a160844a258a78e.json)",
+        "solgi.com / alsec.com.co / ingredients-solutions.com / sparlapalma.com / alibaba (surfaced by WebSearch; foreign B2B, other-market or marketplace pages, no Chilean seller - not pursued)",
+        "bulksupplements.com (US retailer with a Chile shipping page in v23; on-site search 'cream powder' -> no dairy cream powder)",
+        "cl.iherb.com (on-site search -> HTTP 403 bot wall, inconclusive)",
+        "amazon.com (marketplace, surfaced by WebSearch - not evidence)"
+      ],
+      "candidates": [],
+      "notes": "No spray-dried dairy cream powder found at any Chilean direct retailer or manufacturer. Only coffee creamers, liquid creams, whole milk powder and glaze/icing mixes surfaced (all rejected types). Mercado Libre (403), Lider (CAPTCHA) and iHerb CL (403) were bot walls, recorded as inconclusive. Cross-border check: BulkSupplements has no cream powder. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fructosa",
+        "fructosa en polvo",
+        "fructosa cristalina"
+      ],
+      "queries": [
+        "fructosa en polvo Chile comprar",
+        "fructosa [allowed_domains: jumbo.cl, santaisabel.cl, lider.cl, unimarc.cl, tottus.cl]",
+        "site search mmpp.cl: fructosa",
+        "site search santaisabel.cl: fructosa",
+        "site search nutrigood.cl: fructosa",
+        "site search herbolario.cl: fructosa",
+        "site search unimarc.cl: fructosa",
+        "site search jumbo.cl: fructosa"
+      ],
+      "sources_tried": [
+        "nutrigood.cl (health-food brand shop; found own-brand 'Fructosa Cristalina 1 Kilo' - CONFIRMED_LOCAL, rank 1)",
+        "smartbrew.cl (ingredients/brewing shop; found 'Fructosa en Polvo 1 kg Grado Alimenticio', GTIN 653748192645 in Product JSON-LD confirmed, but only 'alta pureza' printed -> C, rank 2)",
+        "mmpp.cl (raw-materials supplier; FRUCTOSA CRISTALINA 100 g / 500 g / 1 Kg, no brand, no purity or ingredient statement -> C; verdict ~/.cache/gellatti-evidence/verify/60272cdd8afe99ed.json)",
+        "agronewen.cl (own-brand 'Fructosa Polvo 1Kg. Agronewen'; description only 'Fructosa en polvo envasada y procesada en formato de 1K' -> C; verdict ~/.cache/gellatti-evidence/verify/c431b392b04e3962.json)",
+        "chilefoodreposteria.cl (pastry supplier; 'FRUCTOSA' with 1 kg / 500 grs / 25 kg selector, no brand, no composition; verdict ~/.cache/gellatti-evidence/verify/d6e00d62f3119708.json)",
+        "reposteriaduce.cl (pastry supplier; 'Fructosa' 500 grs / 1 Kg, 'Edulcorante en polvo cristalino de color blanco', no brand or composition; verdict ~/.cache/gellatti-evidence/verify/51eb418ec7e3a5dd.json)",
+        "cherrychile.cl (pastry supplier; fructose 500 g URL returned HTTP 404; verdict ~/.cache/gellatti-evidence/verify/d4ace545b4bed1e4.json)",
+        "jumbo.cl (supermarket; on-site search 'fructosa' -> only Fructis shampoos)",
+        "santaisabel.cl / unimarc.cl (supermarkets; on-site search JS-only, inconclusive)",
+        "herbolario.cl (natural/cosmetic ingredients shop; on-site search -> no fructose)",
+        "naturalwheysuplementos.com (generic .com surfaced by WebSearch; not pursued, local .cl candidates found)",
+        "listado.mercadolibre.cl / solostocks.cl (marketplaces surfaced by WebSearch - not evidence)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Nutrigood",
+          "product_name": "Fructosa Cristalina 1 Kilo",
+          "pack": "1 kilo",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.nutrigood.cl/fructosa-cristalina-1-kilo",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Nutrigood Chile (nutrigood.cl)",
+          "page_market": "CL",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .cl",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "raw page description (no ingredient list or nutrition table): 'Nutrigood garantiza que su fructosa cristalina está libre de aditivos y conservantes' (quote check found)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Crystalline fructose sold as a single substance and declared free of additives and preservatives -> sole ingredient fructose (A). No numeric purity printed. Page also says 'Imagen referencial, el formato puede variar.'",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/b0f768dad08e2597.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_5a092baf0836307f.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:44:03Z"
+        },
+        {
+          "rank": 2,
+          "brand": "Smart Brew",
+          "product_name": "Fructosa en Polvo 1 kg Grado Alimenticio | Endulzante Natural Chile",
+          "pack": "1 kg",
+          "gtin": "653748192645",
+          "identifier_confirmed": true,
+          "url": "https://smartbrew.cl/tienda/fructosa-pura-1-kg/",
+          "source_type": "RETAILER",
+          "seller": "Smart Brew (smartbrew.cl)",
+          "page_market": "CL",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .cl",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "raw page description: 'Fructosa en polvo de alta pureza', 'Grado alimenticio', 'Polvo cristalino blanco'; no ingredient list or purity %"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Right type (food-grade crystalline fructose powder, 'Marca: Smart Brew', SKU FRUC01) but only a qualitative purity claim ('Alta pureza'); no ingredient list or % -> >= 98 % cannot be confirmed.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/b82d9a1434aa5090.json",
+          "extra_evidence_files": [],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:42:39Z"
+        }
+      ],
+      "notes": "Rank 1 is a first-party own-brand listing on nutrigood.cl (brand Nutrigood in the page's Product JSON-LD and description, exact name, 1 kilo; no SKU or GTIN printed), bound by .cl; its additive-free statement makes it A. Rank 2 Smart Brew has a verified GTIN on a .cl page but only 'alta pureza' is printed, so it stays LEAD (C). WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulina",
+        "inulina en polvo",
+        "inulina orgánica"
+      ],
+      "queries": [
+        "inulina en polvo Chile comprar",
+        "site search nowfoods.com: inulin"
+      ],
+      "sources_tried": [
+        "lafarmacianatural.net (natural pharmacy, generic .net; NOW Inulina Orgánica 227 g in stock; identity via GTIN on mixgreen.cl + attribute match; binding by explicit Chile shipping sentence - CONFIRMED_LOCAL, rank 1)",
+        "mixgreen.cl (health shop; NOW 'Inulina Orgánica en Polvo, 227 g', GTIN 733739029447 in JSON-LD confirmed, '100% pura'; 'No disponible en stock' at check; later quote re-check HTTP 429 rate limit, not retried - rank 2)",
+        "nutrigood.cl (own-brand 'Inulina 500 Grs.' and 'Inulina 1.25 Kilos'; description only, no ingredient list or fibre figure -> C; verdict ~/.cache/gellatti-evidence/verify/dc1e98ff2571e342.json)",
+        "mmpp.cl (raw-materials supplier; 'INULINA - 250 g' no brand, 'Sin existencias', no fibre figure -> C; verdict ~/.cache/gellatti-evidence/verify/24f92d8768c5eae4.json)",
+        "lider.cl (supermarket site; NOW inulin 227 g listing sold by third-party seller Asianskinchile SpA -> marketplace offer; verdict ~/.cache/gellatti-evidence/verify/bde14c5063269d04.json)",
+        "herbolario.cl ('Inulina polvo puro 250 gr' surfaced by WebSearch; not verified, confirmed candidates already found)",
+        "laboratorioavanti.com ('Inulina, 100g', generic .com surfaced by WebSearch; not pursued)",
+        "nowfoods.com (manufacturer; on-site search HTTP 403 bot wall, inconclusive)",
+        "listado.mercadolibre.cl (marketplace surfaced by WebSearch - not evidence)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Now Foods",
+          "product_name": "Inulina Orgánica Polvo Prebiotico (227g) - Now Foods",
+          "pack": "227 g",
+          "gtin": "733739029447",
+          "identifier_confirmed": true,
+          "url": "https://lafarmacianatural.net/intestinal/252-prebiotico-inulina-polvo-227g.html",
+          "source_type": "RETAILER",
+          "seller": "La Farmacia Natural (lafarmacianatural.net)",
+          "page_market": "CL",
+          "market_by": "CURRENCY_ONLY",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "EXPLICIT_QUOTE: 'Envios a todo CHILE desde Las Condes' ~/.cache/gellatti-evidence/verify/quote_7e6cdde41ceecdb1.json (generic .net; the verifier's CURRENCY_ONLY does not bind)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredientes: 1 cucharadita rasa (1 porción), contiene: 2800mg de Inulina Orgánica.",
+            "from": "raw page label text, per serving (quote check found), plus 'Cada envase contiene: 81 porciones' (quote check found); same-GTIN listing on mixgreen.cl describes it as '100% pura'"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Per-serving values only: 2800 mg organic inulin per 1 level teaspoon (1 serving); the 227 g pack has 81 servings, so about 2.80 g per serving, about 100 % inulin (derived from printed per-serving values). The same GTIN on mixgreen.cl is printed as '100% pura'. Sole-ingredient inulin -> A.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/12133a6d05db7e1e.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/identity_461a49eeac7e1407.json",
+            "~/.cache/gellatti-evidence/verify/quote_7e6cdde41ceecdb1.json",
+            "~/.cache/gellatti-evidence/verify/quote_a7dd0f47bac46370.json",
+            "~/.cache/gellatti-evidence/verify/quote_ddeb904e83bc58ed.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:45:19Z"
+        },
+        {
+          "rank": 2,
+          "brand": "Now",
+          "product_name": "Inulina Orgánica en Polvo, 227 g",
+          "pack": "227 g",
+          "gtin": "733739029447",
+          "identifier_confirmed": true,
+          "url": "https://www.mixgreen.cl/products/10748-inulina-organica-en-polvo-227-g-now",
+          "source_type": "RETAILER",
+          "seller": "Mixgreen.cl",
+          "page_market": "CL",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .cl",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "raw page description (verifier cache of the HTTP 200 run): 'Inulina Orgánica en Polvo, 227 g. marca Now. 100% pura. Fibra Prebiótica.'"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Sole-ingredient declaration '100% pura' organic inulin -> A. The listing showed 'No disponible en stock' (Shopify available:false) at check time.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7714e2cc2fdac53c.json",
+          "extra_evidence_files": [],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:45:11Z"
+        }
+      ],
+      "notes": "Same NOW Foods organic inulin 227 g (GTIN 733739029447) at two Chilean shops. Rank 1 is in stock; its identity is proven by identity_match (GTIN on mixgreen.cl plus brand/name/pack match) and it is bound by its own 'Envios a todo CHILE desde Las Condes' sentence. Rank 2 has the GTIN on its own .cl page but was out of stock at check time; a later quote re-check there returned HTTP 429 and was not retried. NOW's own site returned 403. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    },
+    "YOL": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "yema de huevo en polvo",
+        "yema en polvo",
+        "yema deshidratada"
+      ],
+      "queries": [
+        "yema de huevo en polvo Chile",
+        "site search ecoterra.cl: yema",
+        "site search jumbo.cl: yema en polvo",
+        "site search chilefoodreposteria.cl: yema",
+        "site search cherrychile.cl: yema",
+        "site search bulksupplements.com: egg yolk"
+      ],
+      "sources_tried": [
+        "newweb.alimentarichile.cl (egg-products brand's own shop; 'Yema en polvo' Alimentari, formats 500 gr / 1 kg / 5 kg / 25 kg; no ingredient list; shop page shows no technical sheet -> C, rank 1)",
+        "mmpp.cl (raw-materials supplier; 'YEMA DE HUEVO EN POLVO YD05 - 250 g', SKU 2108600250, 'Hecha a partir de yemas pasteurizadas y deshidratadas', no brand or ingredient list -> C, rank 2; WebSearch also surfaced 500 g and 1 Kg listings)",
+        "tottus.cl (supermarket; 'Yema de Huevo en Polvo Gallina Libre Ecoterra 125 g' -> HTTP 403 bot wall, inconclusive; verdict ~/.cache/gellatti-evidence/verify/67e69d4165a76807.json)",
+        "ecoterra.cl (manufacturer shop; old URL /products/125-gr-yema-en-polvo redirects to the homepage (verdict ~/.cache/gellatti-evidence/verify/8d1c9e3df8ca3206.json); on-site search 'yema' shows only whole-egg and egg-white powders - rejected types)",
+        "ovosur.cl (egg-products manufacturer; B2B information page with contact form only, no retail listing; verdict ~/.cache/gellatti-evidence/verify/a3e552f50b0ecb73.json)",
+        "artepapel.cl ('Yema de Huevo en Polvo 80grs.' listed under Sennelier pigments - art-materials egg tempera medium, not food -> rejected; verdict ~/.cache/gellatti-evidence/verify/1378ae02af832216.json)",
+        "jumbo.cl (supermarket; on-site search 'yema en polvo' -> only Ecoterra egg-white powder)",
+        "chilefoodreposteria.cl / cherrychile.cl (pastry suppliers; on-site search 'yema' -> no results)",
+        "bulksupplements.com (cross-border check; on-site search 'egg yolk' -> no egg yolk powder)",
+        "listado.mercadolibre.cl / amazon.com (marketplaces surfaced by WebSearch - not evidence)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Alimentari",
+          "product_name": "Yema en polvo",
+          "pack": "500 gr (listing format options: 500 gr, 1 kg, 5 kg, 25 kg)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://newweb.alimentarichile.cl/producto/yema-en-polvo-cat/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Alimentari Chile (newweb.alimentarichile.cl)",
+          "page_market": "CL",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .cl",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not shown (description only: 'YEMA EN POLVO ALIMENTARI' for bakery, mayonnaise and pastry use; 7 gr powder + 10 ml water per yolk; no ingredient list or nutrition table)"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Right type (own-brand egg yolk powder), but no ingredient list is printed, so 100 % yolk (A) cannot be told apart from yolk with a declared additive (B).",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8089c39635b866e6.json",
+          "extra_evidence_files": [],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:39:30Z"
+        },
+        {
+          "rank": 2,
+          "brand": null,
+          "product_name": "YEMA DE HUEVO EN POLVO YD05 - 250 g",
+          "pack": "250 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://mmpp.cl/producto/yema-de-huevo-en-polvo-yd05/",
+          "source_type": "RETAILER",
+          "seller": "Materias Primas MMPP (mmpp.cl)",
+          "page_market": "CL",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .cl",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "raw page description: 'Hecha a partir de yemas pasteurizadas y deshidratadas' (no ingredient list, no brand)"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Pasteurised dehydrated yolk powder (right type; grade code YD05, SKU 2108600250), but no ingredient list -> A/B undecidable. No brand shown, so identity is not provable.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/bea3571fc8b8c371.json",
+          "extra_evidence_files": [],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:38:30Z"
+        }
+      ],
+      "notes": "No Chilean listing of egg yolk powder prints an ingredient list, so both candidates are the right type but C (LEAD). Alimentari is a first-party own-brand .cl listing using a format selector (SKU N/D); MMPP is an unbranded repack. Ecoterra 125 g (at Tottus) could not be checked: Tottus returned a 403 bot wall and the product is no longer on ecoterra.cl. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    }
+  }
+}

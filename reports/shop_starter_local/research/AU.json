@@ -1,0 +1,237 @@
+{
+  "iso2": "AU",
+  "country": "Australia",
+  "agent": "research-south-asia-oceania-africa",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T15:40:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "dried cream powder",
+        "heavy cream powder",
+        "powdered cream"
+      ],
+      "queries": [
+        "cream powder 42% fat buy Australia",
+        "\"cream powder\" dairy spray dried 1kg Australia shop",
+        "\"heavy cream powder\" OR \"dried cream powder\" site:.com.au",
+        "cream powder gelato ingredient Australia supplier \"cream powder\" 1kg bag",
+        "\"cream powder\" 500g OR 1kg \"ingredients: cream\" Australia",
+        "ktaw cream powder 500g",
+        "product-sitemap URL scan on 15 Australian grocers, health stores and baking suppliers (see sources_tried)"
+      ],
+      "sources_tried": [
+        "woolworths.com.au (only full-cream MILK powders surfaced - rejected type)",
+        "a2milk.com.au / thehubbulkandbare.com.au (full cream milk powder - rejected type)",
+        "cakerswarehouse.com.au, bakeanddeco.com.au, goodfoodwarehouse.com.au (whipping cream powders with vegetable fat/glucose syrup - rejected type)",
+        "polenfood.com.au 'cream powder mixes' (whipped-topping mixes - rejected type)",
+        "gelco.com.au gelato ingredients collection pages 1-3 (no cream powder)",
+        "ktaw.com.au/products/ktaw-cream-powder-500g (INCONCLUSIVE: TLS certificate does not match host - page not readable, product type/composition unknown; verdict ~/.cache/gellatti-evidence/verify/f7d4a21a111e871a.json)",
+        "nzmp.com cream powder (B2B manufacturer, no retail pack)",
+        "hoosierhillfarm.com heavy cream powder (US, 72% butterfat, no AU shipping evidence)",
+        "amazon.com.au / ebay.com.au / etsy.com/au (marketplaces - not evidence)",
+        "follow-up product-sitemap scan 'yolk|cream-powder|dried-cream|heavy-cream|powdered-cream' (after WebSearch budget ran out): bulknutrients.com.au (1.7k URLs, no match), thesourcebulkfoods.com.au (516, no match), healthylife.com.au (Woolworths health store, no match), bakeanddeco.com.au (only 'whipping cream powder 500g' - rejected type)",
+        "bot-walled/unreadable on this egress (inconclusive): woolworths.com.au, chemistwarehouse.com.au, priceline.com.au, kitchenwarehouse.com.au (HTTP 403); nutritionwarehouse.com.au, nourishmeorganics.com.au, cakerswarehouse.com.au, harrisfarm.com.au (Shopify HTTP 429 challenge); honesttogoodness.com.au, theessentialingredient.com.au (no response); goodfoodwarehouse.com.au (no sitemap)"
+      ],
+      "candidates": [],
+      "notes": "No dairy cream powder found at an Australian direct retailer. The only named 'cream powder' retail listing (KTAW Cream Powder 500g) could not be read (broken TLS certificate) and is not classified."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fructose",
+        "fruit sugar"
+      ],
+      "queries": [
+        "fructose powder 500g Australia buy",
+        "Lotus fructose 500g"
+      ],
+      "sources_tried": [
+        "mrvitamins.com.au (health retailer - CONFIRMED)",
+        "norwoodhealthfoods.com.au (health food store - CONFIRMED)",
+        "discounthealthfoods.com.au (Lotus Fructose 500g listing, no GTIN on page)",
+        "kraftkolour.net.au (fructose sold as a dye reducing agent - rejected, not food retail)",
+        "dextrodelight.com.au, bulksupplements.com/en-au (not checked further; local confirmed found)",
+        "amazon.com.au / ebay.com.au (marketplaces)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Lotus",
+          "product_name": "Lotus Fruit Sugar Fructose",
+          "pack": "500g",
+          "gtin": "9317127060611",
+          "identifier_confirmed": true,
+          "url": "https://www.mrvitamins.com.au/products/lotus-fructose-fruit-sugar-500g",
+          "source_type": "RETAILER",
+          "seller": "Mr Vitamins",
+          "page_market": "AU",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .com.au",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": 100.0,
+            "ingredients": "Fructose (fruit sugar) 100%.",
+            "from": "page ingredients text"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "ingredients printed as fructose 100 %",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/49e70d5a13eadfbf.json",
+          "checked_at_utc": "2026-09-17T15:31:50Z"
+        },
+        {
+          "rank": 2,
+          "brand": "Lotus",
+          "product_name": "Lotus Fructose 500g",
+          "pack": "500g",
+          "gtin": "9317127060611",
+          "identifier_confirmed": true,
+          "url": "https://norwoodhealthfoods.com.au/product/lotus-fructose-powder-500g/",
+          "source_type": "RETAILER",
+          "seller": "Norwood Health Foods",
+          "page_market": "AU",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .com.au",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not printed on this page (see rank 1 for the same GTIN)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "same GTIN as rank 1 (fructose 100 % printed there); GTIN shown as SKU on this page",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/81cdfb58f3d1cac6.json",
+          "checked_at_utc": "2026-09-17T15:31:52Z"
+        }
+      ],
+      "notes": ""
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin powder",
+        "chicory root inulin",
+        "chicory root fibre"
+      ],
+      "queries": [
+        "inulin powder chicory Australia buy"
+      ],
+      "sources_tried": [
+        "orku.com.au (own-brand shop - CONFIRMED)",
+        "bulkpowders.com.au/inulin-powder.html (HTTP 403 - inconclusive; verdict ~/.cache/gellatti-evidence/verify/81a98e475c7a8c54.json)",
+        "nourishmeorganics.com.au, theaustralianfoodshop, purewellness.com.au, wholesalehealthfood.com.au, shop.newtonspharmacy.com.au (not checked further)",
+        "ebay.com.au (marketplace)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Orku",
+          "product_name": "Orku Chicory Root Inulin Powder - Unflavoured Food Ingredient - 100g",
+          "pack": "100g (also 400g GTIN 9352827082426, 1Kg GTIN 9352827082433 on the same page)",
+          "gtin": "9352827082419",
+          "identifier_confirmed": true,
+          "url": "https://orku.com.au/products/orku-chicory-root-inulin-powder-supplement-all-sizes",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Orku",
+          "page_market": "AU",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .com.au; page states 'Free Shipping Australia Wide'",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": 88.0,
+            "fructose_pct": null,
+            "ingredients": "chicory root inulin powder, minimum 90 percent inulin on a dry basis; per 100 g: carbohydrate 96 g, sugars 8 g, dietary fibre (inulin) 88 g",
+            "from": "page nutritional information"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "dietary fibre (inulin) 88 g/100 g, sugars 8 g - matches reference (fibre 89, sugars 8)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/fb6c4f7c479a9d1b.json",
+          "checked_at_utc": "2026-09-17T15:32:32Z"
+        }
+      ],
+      "notes": "Barcode 9352827082419 sits next to the 100g variant in the page's own variant data. Page text also shows 'Variant sold out or unavailable' template labels while the variant JSON says available:true - stock state to be rechecked before publication."
+    },
+    "YOL": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk",
+        "powdered egg yolk"
+      ],
+      "queries": [
+        "egg yolk powder dried Australia buy",
+        "\"egg yolk powder\" Australia online store 500g",
+        "\"egg yolk powder\" site:com.au baking supplies",
+        "\"Pure Product Australia\" \"egg yolk\"",
+        "dried egg yolk powder 100% egg yolk buy online Australia shop -vegan",
+        "product-sitemap URL scan on 15 Australian grocers, health stores and baking suppliers (see sources_tried)"
+      ],
+      "sources_tried": [
+        "henfresh.com.au (bakery/foodservice distributor - listing found, no brand/composition/GTIN)",
+        "austegg.com.au egg yolk powder (domain does not resolve - NXDOMAIN; verdict ~/.cache/gellatti-evidence/verify/cd292763a5a64496.json)",
+        "farmpride.com.au/egg-yolk (manufacturer B2B page, egg yolk powder described, no retail pack; verdict ~/.cache/gellatti-evidence/verify/cb11867fc6e1a48d.json)",
+        "store.farmpride.com.au (retail store sells powdered WHOLE eggs only - rejected type)",
+        "woolworths.com.au / pure-product.com (whole egg and egg white powders only - rejected type)",
+        "livingstone.com.au (Yumgo vegan egg yolk replacer - rejected type)",
+        "fluffybabybake.com.au (egg yolk powder marketed for pets - rejected)",
+        "amazon.com.au / ebay.com.au / etsy.com/au (marketplaces)",
+        "follow-up product-sitemap scan 'yolk|cream-powder|dried-cream|heavy-cream|powdered-cream' (after WebSearch budget ran out): bulknutrients.com.au (1.7k URLs, no match), thesourcebulkfoods.com.au (516, no match), healthylife.com.au (Woolworths health store, no match), bakeanddeco.com.au (only 'whipping cream powder 500g' - rejected type)",
+        "bot-walled/unreadable on this egress (inconclusive): woolworths.com.au, chemistwarehouse.com.au, priceline.com.au, kitchenwarehouse.com.au (HTTP 403); nutritionwarehouse.com.au, nourishmeorganics.com.au, cakerswarehouse.com.au, harrisfarm.com.au (Shopify HTTP 429 challenge); honesttogoodness.com.au, theessentialingredient.com.au (no response); goodfoodwarehouse.com.au (no sitemap)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": null,
+          "product_name": "Egg Yolk Powder 500G",
+          "pack": "500G",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.henfresh.com.au/product/5547-egg-yolk-powder-500g",
+          "source_type": "RETAILER",
+          "seller": "Hen Fresh (Schofields NSW foodservice supplier)",
+          "page_market": "AU",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .com.au",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not printed on page (stock code EGGYP00 only)"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "right type by name; no brand, ingredients or nutrition shown; price hidden behind login (possibly trade-only)",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5dc8f66cf4bd9bd7.json",
+          "checked_at_utc": "2026-09-17T15:32:53Z"
+        }
+      ],
+      "notes": "Not a D-37 own-brand listing (distributor, no brand), so identity is not proven."
+    }
+  },
+  "discovery_method_note": "Discovery started with WebSearch; the shared session's WebSearch budget ran out during NZ, so the AU follow-up used retailer product sitemaps. Search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk."
+}

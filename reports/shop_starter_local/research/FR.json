@@ -1,0 +1,462 @@
+{
+  "iso2": "FR",
+  "country": "France",
+  "agent": "research-eu-west",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:33:04Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "crème en poudre",
+        "crème fraîche en poudre",
+        "poudre de crème"
+      ],
+      "queries": [
+        "creme en poudre (toc.fr, planete-gateau.com, cuisineaddict.com, deco-relief.fr, lyophilise.fr, cuisinstore.com, nutrisens.com)",
+        "creme poudre (meilleurduchef.com, gdetou.com)",
+        "poudre de crème / lait en poudre (gdetou.com)"
+      ],
+      "sources_tried": [
+        "meilleurduchef.com (only \"poudre à crème\" = pastry-cream mix — rejected)",
+        "planete-gateau.com (whipping creams, cream mixes — rejected)",
+        "cuisineaddict.com (cream-of-tartar, buttercream mixes — rejected)",
+        "deco-relief.fr (crème pâtissière preparations — rejected)",
+        "toc.fr / gdetou.com / lyophilise.fr / cuisinstore.com (no dairy cream powder)",
+        "carrefour.fr / metro.fr / greenweez.com / aroma-zone.com (HTTP 403 — inconclusive); mathon.fr / chefsquare.fr (HTTP 429 — inconclusive)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Sahnepulver 100g",
+          "pack": "100 g",
+          "gtin": "4250712308666",
+          "identifier_confirmed": true,
+          "url": "https://www.backfun.de/kuchen-torten/backmischungen-mehle/hilfs-zusatzstoffe/sahnepulver-100g",
+          "source_type": "RETAILER",
+          "seller": "Backfun (backfun.de), Herzlake DE",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "none for this market (page .de); delivery-country list names Frankreich",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.backfun.de/versand-bestellabwicklung",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/052a9b3cc9fe8b90.json"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+            "from": "page label (backfun.de: Zutaten + Nährwertangaben Fett 42 g, Eiweiß 19 g, Kohlenhydrate 29 g)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "spray-dried cream 42 % fat = reference",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/71dafb8e2e47e38b.json",
+          "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:20:04Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": false,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing"
+        },
+        {
+          "rank": 2,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Sahnepulver 100g",
+          "pack": "100 g",
+          "gtin": "4250712308666",
+          "identifier_confirmed": true,
+          "url": "https://www.meincupcake.de/shop/sahnepulver-100g.html",
+          "source_type": "RETAILER",
+          "seller": "MEINCUPCAKE Shop (meincupcake.de), Herzlake DE",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "none for this market (page .de); delivery-country list names Frankreich",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.meincupcake.de/shop/popup/Versand-und-Zahlungsbedingungen.html",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende L&auml;nder: Belgien, D&auml;nemark, Estland, Finnland, Frankreich, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/a972e8ac8dd89ee4.json"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+            "from": "page label (meincupcake.de)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "same GTIN as the Backfun listing; policy page encodes umlauts as HTML entities, quote checked in that form",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/71fb5ef86ce79b62.json",
+          "verifier_verification_class": "EAN_ON_FOREIGN_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:20:07Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": false,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "identity_note": "exact GTIN is data on this foreign purchase page itself (verifier EAN_ON_FOREIGN_MARKET_PAGE); no separate local listing"
+        }
+      ],
+      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+      "notes": "No French retailer page with dairy cream powder found. WebSearch session budget exhausted (200/200, shared session cap); FR discovery used retailer site search and category pages only."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fructose",
+        "fructose cristallisé",
+        "sucre de fruits"
+      ],
+      "queries": [
+        "fructose (auchan.fr, toc.fr, meilleurduchef.com, gdetou.com, planete-gateau.com, deco-relief.fr, pharma-gdd.com, naturalia.fr, biocoop.fr, kazidomi.com)"
+      ],
+      "sources_tried": [
+        "auchan.fr (GAYELORD HAUSER Fructose Vivis cristallisé 500g, \"Réf / EAN : 62579 / 3177710001416\" — confirmed)",
+        "meilleurduchef.com (Louis François Fructose 1 kg, JSON-LD gtin13 3700434800807; FR delivery statement — composition not printed)",
+        "toc.fr (Fructose cristallisé en poudre 300 g — no brand/GTIN on page)",
+        "gdetou.com (Fructose 200 g / Louis François Fructose 1 kg — no GTIN)",
+        "pharma-gdd.com (no result)",
+        "kazidomi.com (0 results)",
+        "naturalia.fr / biocoop.fr (client-side search results — inconclusive)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Gayelord Hauser",
+          "product_name": "GAYELORD HAUSER Fructose Vivis cristallisé 500g",
+          "pack": "500 g",
+          "gtin": "3177710001416",
+          "identifier_confirmed": true,
+          "url": "https://www.auchan.fr/gayelord-hauser-fructose-vivis-cristallise/pr-C1274492",
+          "source_type": "RETAILER",
+          "seller": "Auchan (auchan.fr)",
+          "page_market": "FR",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .fr",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": null,
+            "fructose_pct": 100.0,
+            "ingredients": "100 % Fructose",
+            "from": "page (Ingrédients; valeurs pour 100 g: 1700 kJ / 400 kcal, Glucides 100 g dont Sucres 100 g, Sel 0 g)",
+            "sugars_g": 100.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % crystalline fructose",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f4b7dee0bdaefbc8.json",
+          "verifier_verification_class": "EAN_ON_MARKET_PAGE",
+          "checked_at_utc": "2026-09-17T16:14:54Z",
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": true,
+          "local_availability_confirmed": true,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Louis François",
+          "product_name": "Fructose - 1 kg - Louis François",
+          "pack": "1 kg",
+          "gtin": "3700434800807",
+          "identifier_confirmed": true,
+          "url": "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/sucre-edulcorant/lfr-fructose.html",
+          "source_type": "RETAILER",
+          "seller": "Meilleur du Chef (meilleurduchef.com)",
+          "page_market": "FR",
+          "market_by": "EXPLICIT_QUOTE_ON_LOCAL_SELLER",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "generic .com + explicit France delivery statement (check_quotes)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "not printed (description of fructose properties only)",
+            "from": "page"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "professional fructose; purity/ingredients not printed on the page — GTIN and FR delivery are confirmed",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d21b06aa6cfe8df2.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "checked_at_utc": "2026-09-17T16:19:11Z",
+          "verifier_page_market": null,
+          "verifier_market_by": "GENERIC_TLD",
+          "market_binding_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.meilleurduchef.com/fr/boutique/livraison.html",
+            "quote": "Frais de livraison France métropolitaine hors Corse, îles et zones difficiles d'accès",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/1d278e0ae05c6dac.json"
+          },
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": true,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+      "notes": "WebSearch session budget exhausted (200/200, shared session cap); FR discovery used retailer site search and category pages only."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inuline",
+        "inuline de chicorée",
+        "fibre de chicorée"
+      ],
+      "queries": [
+        "inuline (meilleurduchef.com, gdetou.com, toc.fr, cuisineaddict.com, pharma-gdd.com, cocooncenter.com, fr.myprotein.com, kazidomi.com, ecoidees.com, nutriandco.com, deco-relief.fr)"
+      ],
+      "sources_tried": [
+        "meilleurduchef.com (Louis François Inuline 1 kg, gtin13 3700434802382, fibres 85 g — confirmed with FR delivery statement; Sosa Inuline à froid 500 g gtin13 8414933333845 also listed)",
+        "fr.myprotein.com (Myvitamins Fibre prébiotique d'inuline 360 g, gtin13 5056104521052; delivery to France métropolitaine — confirmed)",
+        "gdetou.com (Louis François inulin 250 g tub / 1 kg — no GTIN)",
+        "pharma-gdd.com (Juvamine chicory+fennel sticks — rejected: blend)",
+        "cocooncenter.com (probiotic capsules — rejected)",
+        "toc.fr / cuisineaddict.com (no inulin)",
+        "kazidomi.com / ecoidees.com / nutriandco.com / naturalia.fr / biocoop.fr (client-side results — inconclusive)",
+        "aroma-zone.com / greenweez.com (403)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Louis François",
+          "product_name": "Inuline - 1 kg - Louis François",
+          "pack": "1 kg",
+          "gtin": "3700434802382",
+          "identifier_confirmed": true,
+          "url": "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/stabilisateur/lfr-inuline-1-kg.html",
+          "source_type": "RETAILER",
+          "seller": "Meilleur du Chef (meilleurduchef.com)",
+          "page_market": "FR",
+          "market_by": "EXPLICIT_QUOTE_ON_LOCAL_SELLER",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "generic .com + explicit France delivery statement (check_quotes)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": 85.0,
+            "fructose_pct": null,
+            "ingredients": "Composition : poudre granulée blanche à légèrement jaune 100% naturelle, sans OGM, issue de la chicorée",
+            "from": "page (Valeurs nutritionnelles pour 100 g: Glucides 12 g dont sucre 12 g, Fibres 85 g, Sel 0 g)",
+            "sugars_g": 12.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin, fibre 85 g/100 g (limit 85 %; reference 89); sugars 12 g",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/60b9ca8f0d58cd63.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "checked_at_utc": "2026-09-17T16:19:13Z",
+          "verifier_page_market": null,
+          "verifier_market_by": "GENERIC_TLD",
+          "market_binding_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.meilleurduchef.com/fr/boutique/livraison.html",
+            "quote": "Frais de livraison France métropolitaine hors Corse, îles et zones difficiles d'accès",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/1d278e0ae05c6dac.json",
+            "supporting_quote": {
+              "method": "check_quotes.py",
+              "policy_url": "https://www.meilleurduchef.com/fr/boutique/livraison.html",
+              "quote": "Une livraison dans toute la France en 1 à 2 jours ouvrés",
+              "found": true,
+              "http": "200",
+              "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/28554cb106f4f67e.json"
+            }
+          },
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": true,
+          "local_availability_confirmed": true,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Myvitamins (MYPROTEIN)",
+          "product_name": "Fibre prébiotique d'inuline (Prebiotic Inulin Fibre) 360 g",
+          "pack": "360 g",
+          "gtin": "5056104521052",
+          "identifier_confirmed": true,
+          "url": "https://fr.myprotein.com/p/vitamines/fibre-prebiotique-d-inuline/11397387/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Myprotein France storefront (fr.myprotein.com)",
+          "page_market": "FR",
+          "market_by": "EXPLICIT_QUOTE_ON_LOCAL_SELLER",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "fr. storefront on generic .com + explicit delivery statement for France métropolitaine (check_quotes)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "INGRÉDIENTS: Inuline de chicorée (100%).",
+            "from": "page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % chicory inulin by ingredient list (the brand's nutrition tables in other locales print 89 g as protein — apparent page error)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/6b0ec2e337f20834.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "checked_at_utc": "2026-09-17T16:16:16Z",
+          "verifier_page_market": null,
+          "verifier_market_by": "GENERIC_TLD",
+          "market_binding_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://fr.myprotein.com/c/customer-services/delivery-information/",
+            "quote": "Options de livraison à destination de la France métropolitaine, Belgique et Luxembourg",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/bb09cd51adc48e32.json"
+          },
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": true,
+          "local_availability_confirmed": true,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+      "notes": "WebSearch session budget exhausted (200/200, shared session cap); FR discovery used retailer site search and category pages only."
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "jaune d'œuf en poudre",
+        "jaune d'oeuf séché",
+        "jaune d'œuf déshydraté"
+      ],
+      "queries": [
+        "jaune d'oeuf / jaune oeuf poudre (meilleurduchef.com, toc.fr, planete-gateau.com, scrapcooking.fr, cuisineaddict.com, deco-relief.fr, lyophilise.fr, gdetou.com, mapatisserie.fr, cuisinstore.com)"
+      ],
+      "sources_tried": [
+        "meilleurduchef.com (Louis François Jaune d'oeuf séché pasteurisé 1 kg, gtin13 3700434800760 — confirmed with FR delivery statement)",
+        "gdetou.com (Louis François Dried egg yolk 150g — FR addressCountry, no GTIN → LEAD)",
+        "toc.fr (only Blanc d'œuf déshydraté — rejected: egg white)",
+        "cuisineaddict.com / deco-relief.fr (only egg-yolk-coloured food colouring — rejected)",
+        "planete-gateau.com / scrapcooking.fr / lyophilise.fr / cuisinstore.com / mapatisserie.fr (no egg yolk powder)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Louis François",
+          "product_name": "Jaune d'oeuf séché - pasteurisé - 1 kg - Louis François",
+          "pack": "1 kg",
+          "gtin": "3700434800760",
+          "identifier_confirmed": true,
+          "url": "https://www.meilleurduchef.com/fr/achat/patisserie/ingredients/blanc-oeuf/lfr-jaune-oeuf-seche-pasteurise-louis-francois.html",
+          "source_type": "RETAILER",
+          "seller": "Meilleur du Chef (meilleurduchef.com)",
+          "page_market": "FR",
+          "market_by": "EXPLICIT_QUOTE_ON_LOCAL_SELLER",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "generic .com + explicit France delivery statement (check_quotes)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 59.0,
+            "protein_g": 30.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Composition : jaune d'oeuf de poule séché pasteurisé",
+            "from": "page (Valeurs nutritionnelles pour 100 g: Matières grasses 59 g, Glucides 2,5 g, Protéines 30 g, Sel 0,4 g)",
+            "carbs_g": 2.5
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised dried hen egg yolk; fat 59 / protein 30 vs reference 56.5 / 34.5",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/6d909b8fefd695bc.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "checked_at_utc": "2026-09-17T16:19:09Z",
+          "verifier_page_market": null,
+          "verifier_market_by": "GENERIC_TLD",
+          "market_binding_evidence": {
+            "method": "check_quotes.py",
+            "policy_url": "https://www.meilleurduchef.com/fr/boutique/livraison.html",
+            "quote": "Frais de livraison France métropolitaine hors Corse, îles et zones difficiles d'accès",
+            "found": true,
+            "http": "200",
+            "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/1d278e0ae05c6dac.json",
+            "supporting_quote": {
+              "method": "check_quotes.py",
+              "policy_url": "https://www.meilleurduchef.com/fr/boutique/livraison.html",
+              "quote": "Une livraison dans toute la France en 1 à 2 jours ouvrés",
+              "found": true,
+              "http": "200",
+              "check_quotes_result_file": "~/.cache/gellatti-evidence/quotes/research-eu-west/28554cb106f4f67e.json"
+            }
+          },
+          "exact_product_identity_confirmed": true,
+          "market_binding_confirmed": true,
+          "local_availability_confirmed": true,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Louis François",
+          "product_name": "Dried egg yolk 150g louis f",
+          "pack": "150 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.gdetou.com/shop/loujoe100106-dried-egg-yolk-150g-louis-f-19186",
+          "source_type": "RETAILER",
+          "seller": "G. Detou, Paris (gdetou.com)",
+          "page_market": "FR",
+          "market_by": "ADDRESS_COUNTRY",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "single seller addressCountry FR",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not printed on page"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "same brand, smaller retail pack; no GTIN or label on page",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/406eac821b6fec73.json",
+          "verifier_verification_class": "PAGE_FACTS_ONLY",
+          "checked_at_utc": "2026-09-17T16:14:30Z",
+          "sku": "LOUJOE100106",
+          "exact_product_identity_confirmed": false,
+          "market_binding_confirmed": true,
+          "local_availability_confirmed": false,
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+      "notes": "WebSearch session budget exhausted (200/200, shared session cap); FR discovery used retailer site search and category pages only."
+    }
+  }
+}

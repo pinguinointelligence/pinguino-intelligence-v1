@@ -1,0 +1,270 @@
+{
+  "iso2": "SA",
+  "country": "Saudi Arabia",
+  "agent": "research-mena",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:49Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "heavy cream powder",
+        "بودرة القشطة",
+        "مسحوق الكريمة",
+        "قشطة بودرة"
+      ],
+      "queries": [
+        "sitemap URL scan (cream-powder|heavy-cream): nahdionline.com (en/ar), lifepharmacy.com sa-en, whites.sa (en-sa/ar-sa), shop.tamimimarkets.com, panda.sa, farm.com.sa, othaimmarkets.com, danube.sa",
+        "amazon.sa search: heavy cream powder"
+      ],
+      "sources_tried": [
+        "shop.tamimimarkets.com supermarket ('Cream Powder' = Dream Whip whipped-topping mix - reject)",
+        "nahdionline.com / whites.sa / lifepharmacy.com pharmacies (only protein powders named 'cream')",
+        "panda.sa / farm.com.sa / danube.sa supermarkets (no sitemap, 404) and othaimmarkets.com (sitemap of 328 non-product URLs, no match)",
+        "carrefourksa.com (bot wall)",
+        "amazon.sa marketplace (only whipping-cream powders and full-cream milk powders - reject)"
+      ],
+      "candidates": [],
+      "notes": "Only rejected product types were found (whipped-topping mixes, full-cream milk powders)."
+    },
+    "FRU": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "fructose",
+        "fruit sugar",
+        "سكر الفركتوز",
+        "سكر الفواكه",
+        "فركتوز"
+      ],
+      "queries": [
+        "سكر الفركتوز 500 جرام السعودية (WebSearch)",
+        "Halwani fructose fruit sugar 250g (WebSearch)",
+        "sitemap URL scan (fructos|فركتوز): nahdionline.com, shop.tamimimarkets.com, whites.sa, lifepharmacy.com",
+        "halwani.com products-ksa page + WP API",
+        "vitacost.com NOW Foods fructose (GTIN source)"
+      ],
+      "sources_tried": [
+        "nahdionline.com en-sa pharmacy (found NOW Foods Fructose Sweetener 3 lbs)",
+        "vitacost.com US retailer (UPC 733739069337 printed - GTIN source)",
+        "shop.tamimimarkets.com supermarket (found Halwani Brothers 'Fruit Sugar Fructose-250 G', barcode in page data)",
+        "halwani.com manufacturer (product listed, detail page 404, no composition)",
+        "carrefourksa.com (Halwani fructose 250 g in search results; bot wall)",
+        "shop.alharbistores.com (503)",
+        "whites.sa / lifepharmacy.com (no fructose)",
+        "amazon.sa (Health Paradise fructose 500 g in search results; marketplace, not used)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "NOW Foods (NOW Real Food)",
+          "product_name": "Now Foods Fructose Sweetener 3 Lbs (1361gm)",
+          "pack": "3 lb (1361 g)",
+          "gtin": "733739069337",
+          "identifier_confirmed": true,
+          "url": "https://www.nahdionline.com/en-sa/now-foods-fructose-sweetener-3-lbs-1361gm/pdp/103320411",
+          "source_type": "RETAILER",
+          "seller": "Nahdi Medical Co. (nahdionline.com)",
+          "page_market": "SA",
+          "market_by": "PATH_LOCALE",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country path /en-sa/ (SAR prices)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Crystalline Fructose",
+            "from": "local page ingredients; source page vitacost.com: 'Ingredients Crystalline fructose', 'Pure Crystalline Fructose - No Added Ingredients'"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "pure crystalline fructose, no added ingredients",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/779b4720ba46a7cb.json",
+          "verifier_verification_class": "PAGE_FACTS_ONLY",
+          "checked_at_utc": "2026-09-17T16:04:06Z",
+          "identity_note": "UPC 733739069337 printed on vitacost.com; identity_match.py passed identifier, brand, name 'Fructose Sweetener' and formulation 'Crystalline Fructose' but failed PACK_NOT_ON_LOCAL only because the local page writes the pack as '3 Lbs (1361gm)', which the tool's unit parser does not read (source: '3 lbs (1,361 g)'). Kept as LEAD pending owner acceptance of the pack match. Pack is above 1 kg; no smaller fructose pack with printed composition was found.",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_8a3a79f8c9460d98.json",
+          "identity_match_result": {
+            "identifier_confirmed": true,
+            "exact_product_identity_confirmed": false,
+            "market_binding_confirmed": true,
+            "local_availability_confirmed": false,
+            "failed_checks": [
+              "PACK_NOT_ON_LOCAL"
+            ],
+            "source_url": "https://www.vitacost.com/products/now-foods-fructose-sweetener-3-lbs-1-361-g-7762"
+          }
+        },
+        {
+          "rank": 2,
+          "brand": "Halwani Brothers",
+          "product_name": "Fruit Sugar Fructose-250 G",
+          "pack": "250 g",
+          "gtin": "6281041092818",
+          "identifier_confirmed": true,
+          "url": "https://shop.tamimimarkets.com/product/fruit-sugar-fructose",
+          "source_type": "RETAILER",
+          "seller": "Tamimi Markets (Al Khobar)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "explicit seller address on the page, check_quotes.py found=true: 'Company Address : Kingdom of Saudi Arabia – Al Khobar' (generic .com otherwise)",
+          "cross_border": false,
+          "ships_to_evidence": "check_quotes.py https://shop.tamimimarkets.com/product/fruit-sugar-fructose 'Company Address : Kingdom of Saudi Arabia – Al Khobar' -> found true (2026-09-17)",
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "not printed (product description empty)",
+            "from": "local page data"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Saudi-made fructose retail pack; no ingredients or nutrition printed on Tamimi or halwani.com",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9a7149ef17e2578e.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "checked_at_utc": "2026-09-17T16:10:47Z",
+          "identity_note": "verifier EAN_ON_GENERIC_TLD_PAGE: barcode 6281041092818 in the variant data next to 'Fruit Sugar Fructose-250 G' (in stock, 13.25 SAR); identity and binding both shown, only composition is missing"
+        }
+      ],
+      "notes": "Two near-misses: rank 1 lacks only the tool's pack-notation match, rank 2 lacks only printed composition."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin",
+        "inulin powder",
+        "انولين",
+        "إينولين"
+      ],
+      "queries": [
+        "sitemap URL scan (inulin): nahdionline.com en/ar, lifepharmacy.com sa-en/sa-ar, whites.sa",
+        "vitacost.com Shopify search: now foods inulin (GTIN source)",
+        "kiki-health.com search: inulin (GTIN source)"
+      ],
+      "sources_tried": [
+        "nahdionline.com en-sa pharmacy (found NOW Foods Inulin Prebiotic Powder 227 g and NOW organic inulin 454 g; Bioglan, H&B and Jarrow inulin on ar-sa)",
+        "vitacost.com (UPC 733739029447 printed)",
+        "lifepharmacy.com sa-en (found KIKI Health organic agave inulin 250 g)",
+        "kiki-health.com (GTIN 5060018515847)",
+        "whites.sa pharmacy (no inulin powder)",
+        "sa.iherb.com (403)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "NOW Foods",
+          "product_name": "Now Foods Inulin Prebiotic Powder - 227 g",
+          "pack": "227 g",
+          "gtin": "733739029447",
+          "identifier_confirmed": true,
+          "url": "https://www.nahdionline.com/en-sa/now-foods-inulin-prebiotic-powder-227-g/pdp/102814929",
+          "source_type": "RETAILER",
+          "seller": "Nahdi Medical Co. (nahdionline.com)",
+          "page_market": "SA",
+          "market_by": "PATH_LOCALE",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "country path /en-sa/ (SAR prices)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Organic Inulin (FOS) (from Blue Agave); other ingredients: none",
+            "from": "Supplement Facts on local page: serving 1 level tsp (approx. 4 g): total carbohydrate 4 g, dietary fiber 4 g, organic inulin (FOS) (from blue agave) 3.3 g"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient agave inulin; dietary fibre 4 g per 4 g serving (~100 %), inulin line 3.3 g per 4 g (~82 %) as printed",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/2a0aa08bbbf7bf14.json",
+          "verifier_verification_class": "PAGE_FACTS_ONLY",
+          "checked_at_utc": "2026-09-17T16:04:08Z",
+          "identity_note": "UPC 733739029447 printed on vitacost.com ('NOW Foods, Certified Organic Inulin, Prebiotic Pure Powder, 8 oz (227 g)', identical Supplement Facts); identity_match.py passed brand, name 'Inulin Prebiotic Powder', pack 227 g, formulation 'Blue Agave'",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_85b1f792226dbc8d.json",
+          "identity_match_result": {
+            "identifier_confirmed": true,
+            "exact_product_identity_confirmed": true,
+            "market_binding_confirmed": true,
+            "local_availability_confirmed": true,
+            "failed_checks": [],
+            "source_url": "https://www.vitacost.com/products/now-foods-certified-organic-inulin-prebiotic-pure-powder-8-oz-227-g-1100"
+          }
+        },
+        {
+          "rank": 2,
+          "brand": "KIKI Health",
+          "product_name": "KIKI Health Organic Inulin 100% Blue Agave Powder 250g",
+          "pack": "250 g",
+          "gtin": "5060018515847",
+          "identifier_confirmed": true,
+          "url": "https://www.lifepharmacy.com/sa-en/product/kiki-health-organic-inulin-100-blue-agave-powder-250g-15847",
+          "source_type": "RETAILER",
+          "seller": "Life Pharmacy (Saudi storefront)",
+          "page_market": "SA",
+          "market_by": "PATH_LOCALE",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "country path /sa-en/; title 'online at best price in the Saudi Arabia' (prices shown in AED)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": 93.0,
+            "fructose_pct": null,
+            "ingredients": "100% organic inulin from Blue Agave (Agave tequilana weber blue)",
+            "from": "local page; 93 % soluble fibre from kiki-health.com"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % agave inulin, 93 % soluble fibre",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4f5c04815a91e2eb.json",
+          "verifier_verification_class": "PAGE_FACTS_ONLY",
+          "checked_at_utc": "2026-09-17T16:04:10Z",
+          "identity_note": "identity_match.py passed; the Saudi storefront of a UAE pharmacy chain prices in AED - owner may prefer rank 1",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_6537a3ba9e8794ac.json",
+          "identity_match_result": {
+            "identifier_confirmed": true,
+            "exact_product_identity_confirmed": true,
+            "market_binding_confirmed": true,
+            "local_availability_confirmed": true,
+            "failed_checks": [],
+            "source_url": "https://kiki-health.com/products/inulin-powder-organic-250g"
+          }
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk",
+        "مسحوق صفار البيض",
+        "صفار البيض المجفف",
+        "بودرة صفار البيض"
+      ],
+      "queries": [
+        "sitemap URL scan (yolk|egg-powder|صفار): nahdionline.com, lifepharmacy.com, whites.sa, shop.tamimimarkets.com",
+        "amazon.sa search: egg yolk powder"
+      ],
+      "sources_tried": [
+        "nahdionline.com (egg yolk lecithin capsules only)",
+        "shop.tamimimarkets.com supermarket (no result)",
+        "whites.sa / lifepharmacy.com (no result)",
+        "panda.sa / farm.com.sa / danube.sa (no sitemap, 404); othaimmarkets.com (no match)",
+        "carrefourksa.com (bot wall)",
+        "amazon.sa marketplace (only 'egg yolk colour' powders, whole egg and egg white powders - reject)"
+      ],
+      "candidates": [],
+      "notes": ""
+    }
+  },
+  "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; alternative search engines served CAPTCHAs/firewalls (not bypassed). Discovery used retailer sitemaps. Bot walls / unreadable from the ES egress: carrefourksa.com, al-dawaa.com (403 captcha), sa.iherb.com (403), sporter.com country pages (Cloudflare), shop.alharbistores.com (503), danube.sa / panda.sa / farm.com.sa (no sitemap, 404), othaimmarkets.com (no product URLs in sitemap), halwani.com fructose product page (404)."
+}

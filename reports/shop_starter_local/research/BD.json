@@ -1,0 +1,131 @@
+{
+  "iso2": "BD",
+  "country": "Bangladesh",
+  "agent": "research-south-asia-oceania-africa",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:15:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site search pages.",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "ক্রিম পাউডার (bn)"
+      ],
+      "queries": [
+        "sitemap URL scan 'cream-powder|dried-cream|heavy-cream|powdered-cream' on chaldal.com, shwapno.com, arogga.com, medeasy.health, lazzpharma.com, meenabazaronline.com"
+      ],
+      "sources_tried": [
+        "chaldal.com (online grocer, Dhaka) - product sitemap 17.4k URLs scanned: only coconut cream powder, full cream milk powder, double-yolk eggs (rejected types)",
+        "shwapno.com (supermarket chain) - sitemaps scanned: only 'Haiko ice cream powder' (rejected type)",
+        "arogga.com (online pharmacy, BD seller address) - sitemaps 35.9k+ URLs scanned: fructose IV infusions only (rejected), NOW inulin (see INU)",
+        "medeasy.health (online pharmacy) - sitemap 35.9k URLs: fructose 10% IV infusion only (rejected)",
+        "lazzpharma.com - sitemap has no product URLs",
+        "meenabazaronline.com (supermarket) - not reachable (connection failed)",
+        "no readable Bangladeshi baking/professional ingredient supplier could be identified without a working web search; Bengali-language site search not possible (retailer searches are JS-rendered), product URLs are English slugs"
+      ],
+      "candidates": [],
+      "notes": "No dairy cream powder found."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "fructose",
+        "ফ্রুক্টোজ (bn)",
+        "fruit sugar"
+      ],
+      "queries": [
+        "sitemap URL scan 'fructo|fruit-sugar' on the same Bangladeshi retailers"
+      ],
+      "sources_tried": [
+        "chaldal.com (online grocer, Dhaka) - product sitemap 17.4k URLs scanned: only coconut cream powder, full cream milk powder, double-yolk eggs (rejected types)",
+        "shwapno.com (supermarket chain) - sitemaps scanned: only 'Haiko ice cream powder' (rejected type)",
+        "arogga.com (online pharmacy, BD seller address) - sitemaps 35.9k+ URLs scanned: fructose IV infusions only (rejected), NOW inulin (see INU)",
+        "medeasy.health (online pharmacy) - sitemap 35.9k URLs: fructose 10% IV infusion only (rejected)",
+        "lazzpharma.com - sitemap has no product URLs",
+        "meenabazaronline.com (supermarket) - not reachable (connection failed)",
+        "no readable Bangladeshi baking/professional ingredient supplier could be identified without a working web search; Bengali-language site search not possible (retailer searches are JS-rendered), product URLs are English slugs"
+      ],
+      "candidates": [],
+      "notes": "Only pharmaceutical fructose IV infusions were found (rejected type)."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin",
+        "ইনুলিন (bn)"
+      ],
+      "queries": [
+        "sitemap URL scan 'inulin' on chaldal.com, shwapno.com, arogga.com, medeasy.health"
+      ],
+      "sources_tried": [
+        "arogga.com (online pharmacy - CONFIRMED via identity_match)",
+        "pharmacydirect.co.nz (retailer page used as GTIN source)",
+        "chaldal.com (online grocer, Dhaka) - product sitemap 17.4k URLs scanned: only coconut cream powder, full cream milk powder, double-yolk eggs (rejected types)",
+        "shwapno.com (supermarket chain) - sitemaps scanned: only 'Haiko ice cream powder' (rejected type)",
+        "arogga.com (online pharmacy, BD seller address) - sitemaps 35.9k+ URLs scanned: fructose IV infusions only (rejected), NOW inulin (see INU)",
+        "medeasy.health (online pharmacy) - sitemap 35.9k URLs: fructose 10% IV infusion only (rejected)",
+        "lazzpharma.com - sitemap has no product URLs",
+        "meenabazaronline.com (supermarket) - not reachable (connection failed)",
+        "no readable Bangladeshi baking/professional ingredient supplier could be identified without a working web search; Bengali-language site search not possible (retailer searches are JS-rendered), product URLs are English slugs"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Now Foods",
+          "product_name": "Now Certified Organic Inulin, Pure Powder (227g)",
+          "pack": "227g",
+          "gtin": "00733739029447",
+          "identifier_confirmed": true,
+          "url": "https://www.arogga.com/product/77145/now-certified-organic-inulin-pure-powder-227g",
+          "source_type": "RETAILER",
+          "seller": "Arogga",
+          "page_market": "BD",
+          "market_by": "ADDRESS_COUNTRY",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "single seller addressCountry BD (verifier ADDRESS_COUNTRY); page: delivery 24-48 h inside Dhaka",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Certified Organic Inulin pure powder (NOW Foods; source listing: 'Pure Certified Organic Inulin Powder (from Blue Agave)'); serving size 2.8 g, net quantity 227 g",
+            "from": "local page attributes + GTIN source page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient agave inulin; fibre g/100 g not printed; other retailers word it 'Inulin (FOS)' - owner may want the NIP checked (A vs B)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/d187a8ca4baeb75e.json",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_ea17746b53053ef3.json",
+          "identity_source_url": "https://www.pharmacydirect.co.nz/Now-Certified-Organic-Inulin-Pure-Powder-227g",
+          "checked_at_utc": "2026-09-17T15:58:12Z"
+        }
+      ],
+      "notes": "Stock: the page shows 'Out Of Stock' and JSON-LD OutOfStock at check time (listing still live). The verifier run with the GTIN on the local page returned MARKET_PAGE_WITHOUT_EAN; identity comes from identity_match.py (no failed checks)."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "ডিমের কুসুম পাউডার (bn)"
+      ],
+      "queries": [
+        "sitemap URL scan 'yolk|egg-powder' on the same Bangladeshi retailers"
+      ],
+      "sources_tried": [
+        "chaldal.com (online grocer, Dhaka) - product sitemap 17.4k URLs scanned: only coconut cream powder, full cream milk powder, double-yolk eggs (rejected types)",
+        "shwapno.com (supermarket chain) - sitemaps scanned: only 'Haiko ice cream powder' (rejected type)",
+        "arogga.com (online pharmacy, BD seller address) - sitemaps 35.9k+ URLs scanned: fructose IV infusions only (rejected), NOW inulin (see INU)",
+        "medeasy.health (online pharmacy) - sitemap 35.9k URLs: fructose 10% IV infusion only (rejected)",
+        "lazzpharma.com - sitemap has no product URLs",
+        "meenabazaronline.com (supermarket) - not reachable (connection failed)",
+        "no readable Bangladeshi baking/professional ingredient supplier could be identified without a working web search; Bengali-language site search not possible (retailer searches are JS-rendered), product URLs are English slugs"
+      ],
+      "candidates": [],
+      "notes": "Only fresh double-yolk eggs, a yolk soap and a pet topper were found (rejected types)."
+    }
+  }
+}

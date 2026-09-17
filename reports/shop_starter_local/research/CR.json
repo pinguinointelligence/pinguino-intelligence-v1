@@ -1,0 +1,368 @@
+{
+  "iso2": "CR",
+  "country": "Costa Rica",
+  "agent": "research-americas",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:09:01Z",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "crema de leche en polvo",
+        "crema en polvo",
+        "nata en polvo",
+        "cream powder",
+        "heavy cream powder"
+      ],
+      "queries": [
+        "WebSearch: crema de leche en polvo Costa Rica",
+        "WebSearch (allowed_domains delcaribeshop.com): delcaribeshop crema de leche en polvo",
+        "site search delcaribeshop.com/cr: crema",
+        "site search walmart.co.cr (VTEX catalog search): crema en polvo",
+        "site search walmart.co.cr (VTEX catalog search): cream powder",
+        "site search walmart.co.cr (VTEX catalog search): crema de leche",
+        "site search masxmenos.cr (VTEX catalog search): crema en polvo",
+        "site search belcacr.com: crema",
+        "site search belcacr.com: crema en polvo",
+        "site search belcacr.com: polvo",
+        "site search suplementoscostarica.com: crema en polvo",
+        "site search suplementoscostarica.com: cream powder",
+        "site search crsuplementos.net: crema en polvo",
+        "site search crsuplementos.net: cream powder",
+        "site search bulksupplements.com: cream powder (cross-border check)",
+        "site search hoosierhillfarm.com: cream powder (cross-border check)"
+      ],
+      "sources_tried": [
+        "walmart.co.cr (supermarket; 'crema en polvo' = Ancla crema Chantilly powder mix [rejected: whipped-topping mix], Dos Pinos semi-skimmed/skimmed milk powders [rejected], drink powders; 'crema de leche' = Nestle canned liquid cream / Dos Pinos liquid whipping cream [not powder]; 'cream powder' 0 results)",
+        "masxmenos.cr (supermarket, same group catalogue; chantilly mix and milk powders only)",
+        "automercado.cr (supermarket; on-site search results rendered client-side - JS-only, inconclusive)",
+        "pricesmart.com/es-cr (warehouse club; search page JS-only - inconclusive)",
+        "megasuper.com (supermarket; search page JS-only - inconclusive)",
+        "tienda.pequenomundo.com (discount store; HTTP 403 bot wall - inconclusive)",
+        "fischelenlinea.com, farmacialabomba.com (pharmacies; Blazor JS-only search - inconclusive)",
+        "macrobioticasunidas.com (health/naturista shop; on-site search JS-only - inconclusive)",
+        "suplementoscostarica.com, crsuplementos.net (supplement/health shops; no cream powder)",
+        "delcaribeshop.com/cr (Distribuidora del Caribe, food-ingredient/baking supplier; 'crema' = cosmetic cream bases and a whipped-cream premix 'PREMEZCLA PARA CREMA BATIDA' [rejected]; no dairy cream powder)",
+        "belcacr.com (Belca, food-service/bakery distributor; no cream powder; 'polvo' shows milk powders only [rejected type])",
+        "nidux.shop (Nidux shop aggregator; HTTP 403 - inconclusive)",
+        "bulksupplements.com (US supplement shop that ships to Costa Rica; cross-border check: no dairy cream powder)",
+        "hoosierhillfarm.com/products/heavy-cream-powder (US manufacturer shop; 'Heavy Cream Powder' with printed 72 % butterfat would be type B, but the page shows no statement of shipping to Costa Rica (verifier: US seller address; shipping ETAs given 'from the Midwest') - not a local or verified cross-border purchase path, not used; verdict ~/.cache/gellatti-evidence/verify/3f104c7583393e4b.json)"
+      ],
+      "candidates": [],
+      "notes": "No spray-dried dairy cream powder found at any reachable Costa Rican grocer, health shop or ingredient/food-service supplier; only whipped-topping mixes and milk powders (rejected types). The only right-type product seen (Hoosier Hill Farm, US) has no evidence of delivery to Costa Rica. Several local shops are JS-only or bot-walled (inconclusive). WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    },
+    "FRU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "fructosa",
+        "fructosa cristalina",
+        "fructosa en polvo",
+        "fructose"
+      ],
+      "queries": [
+        "WebSearch: fructosa en polvo pura Costa Rica comprar",
+        "site search delcaribeshop.com/cr: fructosa",
+        "site search walmart.co.cr (VTEX catalog search): fructosa",
+        "site search walmart.co.cr (VTEX catalog search): fructuosa",
+        "site search walmart.co.cr (VTEX catalog search): fructose",
+        "site search masxmenos.cr (VTEX catalog search): fructosa",
+        "site search belcacr.com: fructosa",
+        "site search fischelenlinea.com: fructosa",
+        "site search farmacialabomba.com: fructosa",
+        "site search suplementoscostarica.com: fructosa",
+        "site search crsuplementos.net: fructosa",
+        "site search automercado.cr: fructosa",
+        "site search pricesmart.com/es-cr: fructosa",
+        "site search megasuper.com: fructosa"
+      ],
+      "sources_tried": [
+        "delcaribeshop.com/cr (Distribuidora del Caribe, ingredient supplier; found FRUCTOSA CRISTALINA BOLSA 1 KG, SKU 008517, '17 disponibles' - LEAD, rank 2; 'FRUCTOSA 55' 5 kg / 25 kg items are HFCS syrups - rejected)",
+        "walmart.co.cr, masxmenos.cr (supermarkets; 0 results)",
+        "automercado.cr, pricesmart.com/es-cr, megasuper.com (search pages JS-only - inconclusive)",
+        "fischelenlinea.com, farmacialabomba.com (pharmacies; JS-only search - inconclusive)",
+        "suplementoscostarica.com, crsuplementos.net (health/supplement shops; no fructose)",
+        "belcacr.com (food-service distributor; no result)",
+        "bulksupplements.com/products/fructose-powder (US brand's own shop, surfaced by the WebSearch above; GTIN per pack in page data, 'Ingredients: Fructose', Costa Rica in its shipping-country list and country selector - VERIFIED_CROSS_BORDER, rank 1)",
+        "ubuy.cr (cross-border reseller of Amazon listings - marketplace-type, not used)",
+        "quiminet.com (B2B directory - not evidence)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "BulkSupplements.com",
+          "product_name": "Fructose (Sugar) Powder - Powder / 250 Grams (8.8 oz)",
+          "pack": "250 g (8.8 oz), SKU FRUC250",
+          "gtin": "849720029065",
+          "identifier_confirmed": true,
+          "url": "https://www.bulksupplements.com/products/fructose-powder",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "BulkSupplements.com (United States)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "NONE for CR (generic .com, US seller) - cross-border; delivery to Costa Rica proven by the seller's shipping-country list and country selector (see ships_to_evidence)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "quotes": [
+              {"url": "https://www.bulksupplements.com/policies/shipping-policy", "quote": "We currently ship to the following nations: Andorra Argentina Australia Austria Bahrain Bangladesh", "file": "~/.cache/gellatti-evidence/verify/quote_404e167f3b43c52f.json"},
+              {"url": "https://www.bulksupplements.com/policies/shipping-policy", "quote": "Chile China Colombia Cook Islands Costa Rica Croatia Cyprus Czechia", "file": "~/.cache/gellatti-evidence/verify/quote_8808dc7b4591cd85.json"},
+              {"url": "https://www.bulksupplements.com/products/fructose-powder", "quote": "Please select your shipping country. Buy from the country of your choice. Remember that we can only ship your order to addresses located in the chosen country.", "file": "~/.cache/gellatti-evidence/verify/quote_991bf9d127beb477.json"},
+              {"url": "https://www.bulksupplements.com/products/fructose-powder", "quote": "Eesti / Estonia Costa Rica Hrvatska / Croatia", "file": "~/.cache/gellatti-evidence/verify/quote_af35b726b5b22db7.json"},
+              {"url": "https://www.bulksupplements.com/pages/shipping", "quote": "Central America Belize Costa Rica El Salvador Guatemala Honduras Nicaragua Panama", "file": "~/.cache/gellatti-evidence/verify/quote_5186fd6154614421.json"}
+            ],
+            "found": true
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Fructose",
+            "from": "raw product page text: 'Ingredients: Fructose Free of: Added Sugar, Soy, Dairy, Yeast, Gluten, Additives' (quote_6df2ef3846a3551e.json)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Sole ingredient fructose (no numeric purity printed). GTIN 849720029065 sits next to SKU FRUC250 and the 250 g variant name in the page's own offer data; other packs on the page: 100 g 849720029102, 500 g 849720029072, 1 kg 849720029089.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/3e4f8b88a2cad3f9.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_6df2ef3846a3551e.json",
+            "~/.cache/gellatti-evidence/verify/quote_404e167f3b43c52f.json",
+            "~/.cache/gellatti-evidence/verify/quote_8808dc7b4591cd85.json",
+            "~/.cache/gellatti-evidence/verify/quote_991bf9d127beb477.json",
+            "~/.cache/gellatti-evidence/verify/quote_af35b726b5b22db7.json",
+            "~/.cache/gellatti-evidence/verify/quote_5186fd6154614421.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T16:03:43Z"
+        },
+        {
+          "rank": 2,
+          "brand": null,
+          "product_name": "FRUCTOSA CRISTALINA BOLSA 1 KG",
+          "pack": "1 kg bag",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://delcaribeshop.com/cr/producto/fructosa-cristalina-bolsa-1-kg/",
+          "source_type": "RETAILER",
+          "seller": "Distribuidora del Caribe S.A. (Fragancias del Caribe CR, S.A.)",
+          "page_market": "CR",
+          "market_by": "CURRENCY_ONLY",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "EXPLICIT_QUOTE: 'De la Rotonda de la Guacamaya, 200 m norte, 50 m oeste. Paso Ancho, San José – Costa Rica.' ~/.cache/gellatti-evidence/verify/quote_b75b04fdf66f7c5a.json (seller's store address printed on this /cr/ shop page; the verifier alone reports CURRENCY_ONLY)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not shown (page description only says it is a sweetener sweeter than sucrose, highly soluble, low glycaemic index; SKU 008517)"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Right type by name (crystalline fructose, 1 kg bag), but no ingredient list, purity or nutrition is printed, so A (>= 98 % fructose) cannot be decided from the page.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c5b1083b5ee61289.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_b75b04fdf66f7c5a.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:38:39Z"
+        }
+      ],
+      "notes": "Rank 1 is cross-border (US shop with GTIN identity, sole ingredient fructose, Costa Rica named in its shipping-country list and selector); it outranks the local LEAD per the ranking rule because the only local find cannot be confirmed. Rank 2 is local and in stock, but it is an unbranded distributor bag with no GTIN or brand shown (D-37 not claimed) and no composition; its Costa Rica binding is proven by the address quote. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    },
+    "INU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "inulina",
+        "inulina en polvo",
+        "inulina de agave",
+        "fibra prebiótica",
+        "inulin powder"
+      ],
+      "queries": [
+        "WebSearch: inulina en polvo Costa Rica",
+        "WebSearch (allowed_domains delcaribeshop.com): inulina",
+        "site search delcaribeshop.com/cr: inulina",
+        "site search walmart.co.cr (VTEX catalog search): inulina",
+        "site search walmart.co.cr (VTEX catalog search): inulin",
+        "site search walmart.co.cr (VTEX catalog search): fibra prebiotica",
+        "site search masxmenos.cr (VTEX catalog search): inulina",
+        "site search masxmenos.cr (VTEX catalog search): inulin",
+        "site search fischelenlinea.com: inulina",
+        "site search farmacialabomba.com: inulina",
+        "site search macrobioticasunidas.com: inulina",
+        "site search suplementoscostarica.com: inulina",
+        "site search crsuplementos.net: inulina",
+        "site search belcacr.com: inulina",
+        "site search bulksupplements.com: inulin (cross-border check)"
+      ],
+      "sources_tried": [
+        "bulksupplements.com/products/inulin-fos-powder (US brand's own shop; Organic Inulin Powder, GTIN per pack in page data, Costa Rica in its shipping-country list and selector - VERIFIED_CROSS_BORDER, rank 1)",
+        "macrobioticasunidas.com (Macrobiótica Santa Ana, health shop; found 'Now Foods - Inulina en polvo 8 onzas', internal code only, no composition - LEAD, rank 2)",
+        "bnshop.bncr.fi.cr (BN Shop, Banco Nacional multi-seller marketplace, seller 'Serendiphity'; 'INULINA ORGANICA EN POLVO' NOW 8 oz / 227 g, ingredients 'Inulina Orgánica (de Agave Azul) 2.8 g' per serving; JSON-LD gtin13 1234567896542 is a placeholder; marketplace - not used because a direct retailer page exists; verdict ~/.cache/gellatti-evidence/verify/b84b3f65798633fc.json)",
+        "crsuplementos.net/products/inulina-polvo (redirects to the home page - listing removed; on-site search shows no inulin)",
+        "suplementoscostarica.com (only 'Inulina 1000 mg 100 cápsulas' - capsules, rejected)",
+        "costarica.yaxa.co, ubuy.cr (cross-border Amazon resellers - marketplace-type, not used)",
+        "nidux.shop (HTTP 403 - inconclusive)",
+        "walmart.co.cr, masxmenos.cr (supermarkets; 0 results)",
+        "fischelenlinea.com, farmacialabomba.com (pharmacies; JS-only search - inconclusive)",
+        "delcaribeshop.com/cr, belcacr.com (ingredient / food-service suppliers; no result)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "BulkSupplements.com",
+          "product_name": "Organic Inulin Powder - Powder / 250 Grams (8.8 oz)",
+          "pack": "250 g (8.8 oz), SKU INU250",
+          "gtin": "849720019592",
+          "identifier_confirmed": true,
+          "url": "https://www.bulksupplements.com/products/inulin-fos-powder",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "BulkSupplements.com (United States)",
+          "page_market": "",
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "NONE for CR (generic .com, US seller) - cross-border; delivery to Costa Rica proven by the seller's shipping-country list and country selector (see ships_to_evidence)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "quotes": [
+              {"url": "https://www.bulksupplements.com/policies/shipping-policy", "quote": "We currently ship to the following nations: Andorra Argentina Australia Austria Bahrain Bangladesh", "file": "~/.cache/gellatti-evidence/verify/quote_404e167f3b43c52f.json"},
+              {"url": "https://www.bulksupplements.com/policies/shipping-policy", "quote": "Chile China Colombia Cook Islands Costa Rica Croatia Cyprus Czechia", "file": "~/.cache/gellatti-evidence/verify/quote_8808dc7b4591cd85.json"},
+              {"url": "https://www.bulksupplements.com/products/inulin-fos-powder", "quote": "Please select your shipping country. Buy from the country of your choice. Remember that we can only ship your order to addresses located in the chosen country.", "file": "~/.cache/gellatti-evidence/verify/quote_420823b10f276f77.json"},
+              {"url": "https://www.bulksupplements.com/products/inulin-fos-powder", "quote": "Eesti / Estonia Costa Rica Hrvatska / Croatia", "file": "~/.cache/gellatti-evidence/verify/quote_ccf9981b1d0a7f4b.json"},
+              {"url": "https://www.bulksupplements.com/pages/shipping", "quote": "Central America Belize Costa Rica El Salvador Guatemala Honduras Nicaragua Panama", "file": "~/.cache/gellatti-evidence/verify/quote_5186fd6154614421.json"}
+            ],
+            "found": true
+          },
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Other Ingredients: None (product: Organic Inulin Powder from chicory roots)",
+            "from": "raw product page text: 'Serving Size: 1 tsp (about 2.5g) Other Ingredients: None' (quote_c54f5d43f6e52e3b.json) and 'a remarkable prebiotic fiber extracted from the nutrient-rich chicory roots' (quote_f8ce181228e4b02b.json); the supplement-facts panel exists only as a label image"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Organic chicory inulin powder with no other ingredients (sole-ingredient reading). No fibre g/100 g is printed in page text, and the page title also says 'Inulin (FOS) Powder | Fructooligosaccharide'; if the owner reads it as oligofructose it is B, still the same product type. GTIN 849720019592 sits next to SKU INU250 and the 250 g variant name in the page's own offer data; other packs: 100 g 849720019608, 500 g 849720019585, 1 kg 849720019578.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/24ade90902a8a13b.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_c54f5d43f6e52e3b.json",
+            "~/.cache/gellatti-evidence/verify/quote_f8ce181228e4b02b.json",
+            "~/.cache/gellatti-evidence/verify/quote_404e167f3b43c52f.json",
+            "~/.cache/gellatti-evidence/verify/quote_8808dc7b4591cd85.json",
+            "~/.cache/gellatti-evidence/verify/quote_420823b10f276f77.json",
+            "~/.cache/gellatti-evidence/verify/quote_ccf9981b1d0a7f4b.json",
+            "~/.cache/gellatti-evidence/verify/quote_5186fd6154614421.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T16:03:46Z"
+        },
+        {
+          "rank": 2,
+          "brand": "NOW Foods",
+          "product_name": "Now Foods - Inulina en polvo 8 onzas",
+          "pack": "8 onzas",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.macrobioticasunidas.com/products/1160/now-foods-inulina-en-polvo-8-onzas",
+          "source_type": "RETAILER",
+          "seller": "Macrobiótica Santa Ana",
+          "page_market": "CR",
+          "market_by": "CURRENCY_ONLY",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "NONE (generic .com; CRC price only - currency does not bind)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not shown (empty description; internal code P1726487362745575, brand field 'now essential oils')"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Inulin powder by name; no ingredients or fibre values printed, and the name does not say which NOW inulin powder (organic or non-organic) it is.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/6ce4484988e7a098.json",
+          "extra_evidence_files": [],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:40:20Z"
+        }
+      ],
+      "notes": "Rank 1 is cross-border (US shop, GTIN identity, Costa Rica named in shipping list and selector); A is a sole-ingredient reading because no fibre value is printed (see equivalence_note). Rank 2 is the only local find: a third-party brand without GTIN (identity not proven), no composition, no explicit Costa Rica binding sentence (generic .com), and the page template shows 'Existencias: Agotado'. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    },
+    "YOL": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "yema de huevo en polvo",
+        "yema deshidratada",
+        "egg yolk powder"
+      ],
+      "queries": [
+        "WebSearch: yema de huevo en polvo Costa Rica",
+        "site search walmart.co.cr (VTEX catalog search): yema",
+        "site search walmart.co.cr (VTEX catalog search): huevo en polvo",
+        "site search masxmenos.cr (VTEX catalog search): yema",
+        "site search masxmenos.cr (VTEX catalog search): egg yolk",
+        "site search belcacr.com: yema",
+        "site search belcacr.com: huevo en polvo",
+        "site search macrobioticasunidas.com: yema",
+        "site search bulksupplements.com: egg yolk (cross-border check)",
+        "site search hoosierhillfarm.com: egg yolk (cross-border check)"
+      ],
+      "sources_tried": [
+        "delcaribeshop.com/cr (Distribuidora del Caribe, ingredient supplier; found YEMA DE HUEVO EN POLVO BOLSA 1 KG, SKU 006771, shown 'Agotado' - LEAD)",
+        "belcacr.com (Belca food-service distributor; 'YEMA DE HUEVO, INNOVO' not stated as powder, liquid-egg range - not used)",
+        "yemadorada.com (shell-egg producer, wholesale eggs - rejected type)",
+        "eggsunlimited.com (B2B egg exporter - not retail)",
+        "walmart.co.cr, masxmenos.cr (supermarkets; only 'Yemas' biscuits)",
+        "macrobioticasunidas.com (health shop; JS-only search - inconclusive)",
+        "bulksupplements.com, hoosierhillfarm.com (US shops; no egg yolk powder)",
+        "modernistpantry.com/products/egg-yolk-powder.html (US shop; UPC 852473004784 confirmed on page, 'Ingredient List: Egg Yolks'; its International Shipping page only says to add products to the cart to see whether it ships to a country - not verifiable without a cart, not used; verdicts ~/.cache/gellatti-evidence/verify/6539c42903724e16.json, ~/.cache/gellatti-evidence/verify/6f3fa40a4a739cfb.json)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": null,
+          "product_name": "YEMA DE HUEVO EN POLVO BOLSA 1 KG",
+          "pack": "1 kg bag",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://delcaribeshop.com/cr/producto/yema-de-huevo-en-polvo-bolsa-1-kg/",
+          "source_type": "RETAILER",
+          "seller": "Distribuidora del Caribe S.A. (Fragancias del Caribe CR, S.A.)",
+          "page_market": "CR",
+          "market_by": "CURRENCY_ONLY",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "EXPLICIT_QUOTE: 'De la Rotonda de la Guacamaya, 200 m norte, 50 m oeste. Paso Ancho, San José – Costa Rica.' ~/.cache/gellatti-evidence/verify/quote_6e5c1d813b8768a3.json (seller's store address printed on this /cr/ shop page; the verifier alone reports CURRENCY_ONLY)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": null,
+            "from": "not shown (description: mainly for the food industry; rehydrate 1 part yolk powder with 1.25 parts water; SKU 006771)"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "Egg yolk powder by name; no ingredient list (100 % yolk or additives), species or pasteurisation statement printed.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/cc7b439c767c4be4.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_6e5c1d813b8768a3.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:37:50Z"
+        }
+      ],
+      "notes": "LEAD: unbranded distributor bag, no GTIN or brand shown, no composition, out of stock ('Agotado') at check time. Costa Rica binding via the seller's address quote is proven. No verifiable cross-border source found (Modernist Pantry's shipping coverage can only be seen in a cart). WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    }
+  }
+}

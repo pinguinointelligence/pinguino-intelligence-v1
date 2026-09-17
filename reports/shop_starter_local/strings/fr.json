@@ -1,0 +1,57 @@
+{
+  "locale": "fr",
+  "dir": "ltr",
+  "title": "Ingrédients pour la base de gelato",
+  "benefit": "Quoi acheter et où",
+  "pill": "PDF · 0 €",
+  "country_label": "Pays",
+  "language_label": "Langue",
+  "edition": "Édition 1 · septembre 2026",
+  "cover_items_title": "Les sept ingrédients du Starter Pack",
+  "howto_title": "Comment utiliser ce guide",
+  "howto_lede": "Pour chaque ingrédient du Starter Pack, nous indiquons un produit que vous pouvez acheter dans ce pays.",
+  "steps": [
+    {"b": "Choisissez un produit", "p": "Le premier est notre choix, le second une alternative si le premier n’est pas disponible."},
+    {"b": "Vérifiez l’étiquette", "p": "La composition indiquée sur l’emballage doit correspondre à la description de l’ingrédient. Lorsqu’un produit a une composition différente, nous le signalons."},
+    {"b": "Prenez les quantités dans l’application", "p": "Ce PDF indique des produits, pas des grammages. Les recettes et les quantités sont calculées par l’application Gellatti."}
+  ],
+  "legend_title": "Légende",
+  "tag_from_abroad": "De l’étranger",
+  "tag_b2b": "Pour les entreprises",
+  "tag_other_composition": "Autre composition",
+  "tag_alternative": "Alternative locale",
+  "tag_unconfirmed": "Non confirmé",
+  "legend": {
+    "from_abroad": "une boutique à l’étranger qui livre dans ce pays",
+    "b2b": "vendu aux entreprises ou en grands conditionnements",
+    "other_composition": "le même type de produit avec une autre composition (indiquée à côté)",
+    "alternative": "un substitut d’un autre produit Gellatti"
+  },
+  "starter_amount": "Dans le Starter Pack : {g} g",
+  "option": "Option {n}",
+  "ean": "EAN",
+  "where": "Où",
+  "fat": "matières grasses",
+  "items": {
+    "DEX": {"name": "Dextrose", "ref": "Dextrose (glucose) en poudre, monohydraté."},
+    "SMP": {"name": "Lait écrémé en poudre", "ref": "Lait en poudre à environ 1 % de matières grasses."},
+    "CRP": {"name": "Crème en poudre", "ref": "Crème déshydratée à environ 42 % de matières grasses."},
+    "FRU": {"name": "Fructose", "ref": "Fructose cristallisé pur."},
+    "INU": {"name": "Inuline", "ref": "Inuline en poudre, par exemple de chicorée."},
+    "YOL": {"name": "Jaune d’œuf déshydraté", "ref": "Jaune d’œuf de poule en poudre, pasteurisé."},
+    "STB": {"name": "Stabilisant", "ref": "Gellatti Stabilizer est un mélange de gomme tara, de farine de graines de caroube et de gomme guar."}
+  },
+  "stabilizer_note": "Une alternative locale au mélange Gellatti, pas le même mélange. Mélangez-la aux ingrédients secs et chauffez la base à 75–80 °C.",
+  "missing": "Pas encore de produit validé dans ce pays.",
+  "notes_title": "Bon à savoir",
+  "notes": [
+    {"h": "Disponibilité", "p": "Nous avons vérifié ces produits sur les sites de fabricants et de boutiques en septembre 2026. La disponibilité, les prix et la livraison peuvent changer et ne sont pas garantis."},
+    {"h": "L’étiquette prime", "p": "Avant d’acheter, vérifiez les ingrédients et les allergènes sur l’emballage. La crème en poudre et le lait en poudre contiennent du lait. Le jaune d’œuf contient de l’œuf."},
+    {"h": "Stabilisant", "p": "Dans ce pays, une gomme végétale locale remplace le Gellatti Stabilizer. Elle agit de façon similaire, mais ce n’est pas le même mélange."}
+  ],
+  "fine": "Un produit cité ici n’est pas forcément déjà disponible dans l’application Gellatti. Gellatti ne vend pas de produits d’autres marques.",
+  "back_h": "Un excellent gelato commence par une bonne base.",
+  "back_p": "Les recettes, les quantités et la méthode se trouvent dans l’application Gellatti.",
+  "back_link": "gellatti.com",
+  "draft": "BROUILLON · propositions à valider"
+}

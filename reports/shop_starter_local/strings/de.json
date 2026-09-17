@@ -1,0 +1,57 @@
+{
+  "locale": "de",
+  "dir": "ltr",
+  "title": "Zutaten für die Gelato-Basis",
+  "benefit": "Was du wo kaufst",
+  "pill": "PDF · 0 €",
+  "country_label": "Land",
+  "language_label": "Sprache",
+  "edition": "Ausgabe 1 · September 2026",
+  "cover_items_title": "Die sieben Zutaten im Starter Pack",
+  "howto_title": "So nutzt du diesen Leitfaden",
+  "howto_lede": "Für jede Zutat im Starter Pack nennen wir ein Produkt, das du in diesem Land kaufen kannst.",
+  "steps": [
+    {"b": "Wähle ein Produkt", "p": "Das erste ist unsere Wahl, das zweite eine Alternative, falls das erste nicht erhältlich ist."},
+    {"b": "Prüfe das Etikett", "p": "Die Zutatenliste auf der Packung muss zur Beschreibung der Zutat passen. Ist ein Produkt anders zusammengesetzt, weisen wir darauf hin."},
+    {"b": "Nimm die Mengen aus der App", "p": "Dieses PDF nennt Produkte, keine Grammangaben. Rezepte und Mengen berechnet die Gellatti-App."}
+  ],
+  "legend_title": "Legende",
+  "tag_from_abroad": "Aus dem Ausland",
+  "tag_b2b": "Für Firmen",
+  "tag_other_composition": "Andere Zusammensetzung",
+  "tag_alternative": "Lokale Alternative",
+  "tag_unconfirmed": "Unbestätigt",
+  "legend": {
+    "from_abroad": "ein Shop im Ausland, der in dieses Land liefert",
+    "b2b": "Verkauf an Firmen oder in Großpackungen",
+    "other_composition": "gleiche Produktart mit anderer Zusammensetzung (daneben angegeben)",
+    "alternative": "ein Ersatz für ein anderes Gellatti-Produkt"
+  },
+  "starter_amount": "Im Starter Pack: {g} g",
+  "option": "Option {n}",
+  "ean": "EAN",
+  "where": "Wo",
+  "fat": "Fett",
+  "items": {
+    "DEX": {"name": "Dextrose", "ref": "Dextrose (Traubenzucker) als Pulver, Monohydrat."},
+    "SMP": {"name": "Magermilchpulver", "ref": "Milchpulver mit etwa 1 % Fett."},
+    "CRP": {"name": "Sahnepulver", "ref": "Getrocknete Sahne mit etwa 42 % Fett."},
+    "FRU": {"name": "Fruchtzucker", "ref": "Reine kristalline Fructose."},
+    "INU": {"name": "Inulin", "ref": "Inulinpulver, zum Beispiel aus Chicorée."},
+    "YOL": {"name": "Trockeneigelb", "ref": "Pasteurisiertes Eigelbpulver vom Huhn."},
+    "STB": {"name": "Stabilisator", "ref": "Gellatti Stabilizer ist eine Mischung aus Tarakernmehl, Johannisbrotkernmehl und Guarkernmehl."}
+  },
+  "stabilizer_note": "Eine lokale Alternative zur Gellatti-Mischung, nicht dieselbe Mischung. Vermische sie mit den trockenen Zutaten und erhitze die Basis auf 75–80 °C.",
+  "missing": "In diesem Land noch kein freigegebenes Produkt.",
+  "notes_title": "Gut zu wissen",
+  "notes": [
+    {"h": "Verfügbarkeit", "p": "Wir haben diese Produkte im September 2026 auf Websites von Herstellern und Shops geprüft. Verfügbarkeit, Preise und Lieferung können sich ändern und sind nicht garantiert."},
+    {"h": "Das Etikett hat Vorrang", "p": "Prüfe vor dem Kauf Zutaten und Allergene auf der Packung. Sahnepulver und Milchpulver enthalten Milch, Eigelb enthält Ei."},
+    {"h": "Stabilisator", "p": "In diesem Land ersetzt ein lokales pflanzliches Verdickungsmittel den Gellatti Stabilizer. Es wirkt ähnlich, ist aber nicht dieselbe Mischung."}
+  ],
+  "fine": "Ein hier genanntes Produkt ist nicht unbedingt schon in der Gellatti-App erhältlich. Gellatti verkauft keine Produkte anderer Marken.",
+  "back_h": "Großartiges Gelato beginnt mit einer guten Basis.",
+  "back_p": "Rezepte, Mengen und Zubereitung findest du in der Gellatti-App.",
+  "back_link": "gellatti.com",
+  "draft": "ENTWURF · Vorschläge zur Freigabe"
+}

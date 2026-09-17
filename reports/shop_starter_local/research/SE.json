@@ -1,0 +1,407 @@
+{
+  "iso2": "SE",
+  "country": "Sweden",
+  "agent": "research-nordic-baltic",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:19:29Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "gräddpulver",
+        "torkad grädde",
+        "äkta gräddpulver"
+      ],
+      "queries": [
+        "gräddpulver köpa torkad grädde pulver",
+        "gräddpulver äkta 42% fett",
+        "gräddpulver 42% fett",
+        "gräddpulver 40% fetthalt köp",
+        "gräddpulver friluftsmat grädde",
+        "Sahnepulver 42% Versand Finnland Schweden Dänemark"
+      ],
+      "sources_tried": [
+        "skafferimat.se (Gräddpulver 100 % lufttorkad grädde, 53,5 % fett, GTIN on page)",
+        "exklusivchoklad.com (same Skafferimat product; generic .com, currency-only market signal, no GTIN)",
+        "godturmat.se (Gräddpulver 53 % fett; page not readable, HTTP 000)",
+        "natureoutdoor.se (Friluftsmat Cream Powder 56 % fat; no GTIN on page)",
+        "hemkop.se Gräddpulver = Completa 440 g (stärkelsesirap + fullhärdad kokosolja: coffee whitener, rejected)",
+        "handla.ica.se / coop.se Completa Gräddpulver (whitener, rejected) [T]",
+        "procudan.se (B2B ingredient supplier, no retail listing) [T]",
+        "backstars.de Sahnepulver 42 % Fett (German shop; product data not in static page)",
+        "hobbybaecker.de Sahnepulver 42 % Fett 100 g (GTIN on page; ships to Sweden per shipping policy) -> rank 2 cross-border A-equivalent"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Skafferimat",
+          "product_name": "Gräddpulver | Äkta lufttorkad grädde - Burk - 500 gram",
+          "pack": "500 g",
+          "gtin": "7340102000748",
+          "identifier_confirmed": true,
+          "url": "https://skafferimat.se/products/graddpulver-500g-akta",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Skafferimat (Roschat of Sweden AB, Uppsala)",
+          "page_market": "SE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .se",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 53.5,
+            "protein_g": 15.9,
+            "carbohydrate_g": 24.4,
+            "sugars_g": 24.4,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "100 % lufttorkad GRÄDDE (från komjölk)",
+            "basis": "per 100 g",
+            "from": "page label text (Näringsvärde per 100 g)"
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "genuine dried dairy cream, but fat 53.5 % is above the 38–48 % band (reference 42 %); no additives declared",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/0dd57bc80d242be1.json",
+          "checked_at_utc": "2026-09-17T15:41:58Z",
+          "notes": "URL redirects to /products/graddpulver-akta-lufttorkad-gradde; GTIN is the Shopify barcode of the 'Burk - 500 gram' variant (the 1500 g variant has 7340102001240); variant JSON shows available:true",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Sahnepulver, sprühgetrocknet, 100 g",
+          "pack": "100 g",
+          "gtin": "4250712308666",
+          "identifier_confirmed": true,
+          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Sahnefuellungen/Sahnepulver-spruehgetrocknet-100-g",
+          "source_type": "RETAILER",
+          "seller": "Hobbybäcker-Versand (Herzlake, Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "foreign page (country domain .de); delivery to the market proven by the seller's shipping-policy country list",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "url": "https://www.hobbybaecker.de/Informationen/Versand-und-Zahlungsbedingungen/",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.",
+            "tool": "check_quotes.py",
+            "found": true,
+            "checked_at_utc": "2026-09-17T15:53:58Z",
+            "page_verdict_file": "~/.cache/gellatti-evidence/verify/e15dfe5c8fe979a6.json"
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "carbohydrate_g": 29.0,
+            "sugars_g": 29.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "SAHNE 42% Fett, sprühgetrocknet",
+            "basis": "per 100 g",
+            "from": "page Zutaten + Nährwertangaben"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "spray-dried dairy cream, fat 42 g/100 g = reference; single ingredient",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/85fff322d1dea946.json",
+          "checked_at_utc": "2026-09-17T15:51:57Z",
+          "notes": "identity = GTIN (itemprop gtin13) on the cross-border seller's own product page; verifier class EAN_ON_FOREIGN_MARKET_PAGE (page market DE); page states 'Sofort verfügbar, Lieferzeit: 1-3 Tage'",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "No Swedish retail listing of a 38–48 % fat cream powder was found; supermarket 'gräddpulver' is Completa whitener (vegetable fat), rejected. Local real-cream powders are 53–56 % fat (rank 1, B). Rank 2 is an exact 42 % A-equivalent shipped from Germany."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fruktsocker",
+        "fruktos",
+        "levulos"
+      ],
+      "queries": [
+        "fruktsocker fruktos 500 g köp",
+        "Dansukker Fruktsocker 500g mathem OR willys OR hemkop OR coop"
+      ],
+      "sources_tried": [
+        "delitea.se (Dansukker Fruktsocker 500 g, GTIN in JSON-LD, availability OutOfStock)",
+        "mathem.se (same GTIN matched by identity_match.py; listing marked Discontinued 'Utgått ur sortimentet')",
+        "citygross.se (SPA, no product data in static page)",
+        "dansukker.se all-products page (no fruktsocker product link found)",
+        "kitchenlab.se (The Kitchen Lab Fruktos 500 g/1000 g, GTINs on page, stock 0 in web shop and stores)",
+        "bioshi24.se (Dr. Hälsa Fruktos 500 g; not reachable, HTTP 000)",
+        "naturitas.se (Intracma Fruktos 500 g; only store-internal code, no GTIN)",
+        "olbryggning.se (Fruktos (levulos) 1 kg, in stock, no GTIN)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Dansukker",
+          "product_name": "Dansukker Fruktsocker 500 g",
+          "pack": "500 g",
+          "gtin": "5701259474035",
+          "identifier_confirmed": true,
+          "url": "https://www.delitea.se/dan-s-fruktsocker-500g",
+          "source_type": "RETAILER",
+          "seller": "Delitea",
+          "page_market": "SE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .se",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": 0.0,
+            "carbohydrate_g": 100.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Fruktos",
+            "basis": "per 100 g",
+            "from": "mathem.se listing of the same GTIN (identity_match.py, verdict ~/.cache/gellatti-evidence/verify/identity_c3bd5c348df49a50.json, run 2026-09-17T15:34:01Z); Delitea page shows no label"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient crystalline fructose; carbohydrate 100 g/100 g",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/063fbe8e80ad13a1.json",
+          "checked_at_utc": "2026-09-17T15:32:34Z",
+          "notes": "AVAILABILITY RISK: Delitea JSON-LD availability OutOfStock; Mathem lists the same GTIN as Discontinued; product may be leaving the Swedish range",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": null,
+          "product_name": "Fruktos (levulos) 1 kg",
+          "pack": "1 kg",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.olbryggning.se/spraymalt-og-sukker/110477/fruktos-levulos-1-kg-fruktsocker-f%c3%b6r-s%c3%b6tning-av-dryck-m-dot--m-dot-",
+          "source_type": "RETAILER",
+          "seller": "Ölbryggning AB",
+          "page_market": "SE",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .se",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "carbohydrate_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "not printed; description 'Fruktos (=levulos=fruktsocker) För sötning av drycker, sylt med mera'",
+            "from": "page description"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "sold as fructose for sweetening drinks/jam; no label, no brand, no GTIN; article no. 110477; JSON-LD InStock",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1105a80fbed2e4d5.json",
+          "checked_at_utc": "2026-09-17T15:44:06Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Rank 1 is proven but probably unavailable (OutOfStock / Discontinued at two retailers). Rank 2 is in stock but unproven (home-brewing shop)."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin",
+        "inulinpulver",
+        "cikoriainulin"
+      ],
+      "queries": [
+        "inulin pulver köp cikoria",
+        "inulin pulver 500 g"
+      ],
+      "sources_tried": [
+        "craftednature.se (OstroVit Inulin Pulver 500 g, GTIN, InStock)",
+        "med24.se (Easis Inulin 300 g, GTIN, InStock; Natur-Drogeriet Inulin 150 g, GTIN)",
+        "ortagubben.se (Natur-Drogeriet Inulin 150 g, 'EAN-kod' label, InStock; no nutrition table)",
+        "mecindo.se (Natur-Drogeriet Inulin 150 g)",
+        "viaventri.se (Paleolit Inulin 200 g, no GTIN)",
+        "bulk.com/se (Bulk inulinpulver; no country binding)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "OstroVit",
+          "product_name": "Inulin Pulver 500-gram - OstroVit",
+          "pack": "500 g",
+          "gtin": "5903933918792",
+          "identifier_confirmed": true,
+          "url": "https://www.craftednature.se/produkt/inulin-pulver-500-gram/",
+          "source_type": "RETAILER",
+          "seller": "CraftedNature.se",
+          "page_market": "SE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .se",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "carbohydrate_g": 11.0,
+            "sugars_g": 11.0,
+            "fibre_g": 86.0,
+            "fructose_pct": null,
+            "ingredients": "Cikoria inulin (prebiotika)",
+            "basis": "per 100 g",
+            "from": "page nutrition table"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin, fibre 86 g/100 g (≥85 %); sugars 11 g",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/8cd9a5f894e49ec4.json",
+          "checked_at_utc": "2026-09-17T15:41:58Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Easis",
+          "product_name": "Easis Inulin - 300 g",
+          "pack": "300 g",
+          "gtin": "5703161401093",
+          "identifier_confirmed": true,
+          "url": "https://www.med24.se/kosttillskott/aktiva-ingredienser/prebiotika/easis-inulin-300-g",
+          "source_type": "RETAILER",
+          "seller": "Med24.se",
+          "page_market": "SE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .se",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "carbohydrate_g": 12.0,
+            "sugars_g": 12.0,
+            "fibre_g": 85.0,
+            "fructose_pct": null,
+            "ingredients": "Kostfiber (inulin från cikoriarot)",
+            "basis": "per 100 g",
+            "from": "page nutrition table"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "chicory inulin, fibre 85 g/100 g (at the 85 % threshold); sugars 12 g",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9505a78d5cf5889d.json",
+          "checked_at_utc": "2026-09-17T15:41:58Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Also confirmed: Natur-Drogeriet Inulin 150 g (GTIN 5703137403700, 'EAN-kod' label and InStock on ortagubben.se, verdict ~/.cache/gellatti-evidence/verify/4224c439b2108e13.json); its label (well.dk, same GTIN) prints fibre 90 g / sugars 7 g per 100 g, the closest match to the reference."
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "äggulepulver",
+        "torkad äggula",
+        "äggula pulver"
+      ],
+      "queries": [
+        "äggulepulver köpa",
+        "torkad äggula pulver",
+        "äggulepulver 500 g webbshop",
+        "egg yolk powder Sverige köp",
+        "äggula pulver bakning glass köp",
+        "hobbybaecker.de Eigelbpulver"
+      ],
+      "sources_tried": [
+        "myprotein.se (Äggulepulver 500 g Unflavoured, GTIN in JSON-LD, OutOfStock)",
+        "vehgroshop.se (Äggula Pulver Ekologisk, configurable pack sizes, no GTIN)",
+        "kallbergs.se (Swedish egg-powder manufacturer page, B2B, no retail pack)",
+        "svensktkosttillskott.se (no product data in static page)",
+        "kronansapotek.se / apoteket.se / apotekhjartat.se Salovum 25x4 g (medical-food sachets, rejected) [T]",
+        "konstnarernas.se Äggula i pulverform (artists' tempera material, rejected) [T]",
+        "proteinbolaget.se HeltÄrligt Äggpulver (whole egg, rejected) [T]",
+        "kitchenlab.se (egg white only, rejected) [T]",
+        "hobbybaecker.de Eigelbpulver 100 g (Cake-Masters Basics, GTIN on page, 'Sofort verfügbar'; ships to this country per shipping policy) -> rank 2 cross-border"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Myprotein",
+          "product_name": "Äggulepulver 500g Unflavoured",
+          "pack": "500 g",
+          "gtin": "5055534303733",
+          "identifier_confirmed": true,
+          "url": "https://www.myprotein.se/p/kosttillskott/aggulepulver/10529352/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Myprotein",
+          "page_market": "SE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .se",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 8.5,
+            "protein_g": 5.0,
+            "carbohydrate_g": 1.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Äggulepulver (100%)",
+            "basis": "per 15 g serving as printed (≈ fat 56.7 / protein 33.3 / carbohydrate 6.7 per 100 g by arithmetic)",
+            "from": "page Näringsinformation"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % spray-dried egg yolk powder; fat/protein ratio matches reference",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/a704ab7766de21c5.json",
+          "checked_at_utc": "2026-09-17T15:41:58Z",
+          "notes": "AVAILABILITY RISK: JSON-LD availability OutOfStock (inStock:false) on 2026-09-17",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Eigelbpulver, 100 g",
+          "pack": "100 g",
+          "gtin": "4250712315510",
+          "identifier_confirmed": true,
+          "url": "https://www.hobbybaecker.de/Kuchen-Torten/Backmittel/Eigelbpulver-100-g",
+          "source_type": "RETAILER",
+          "seller": "Hobbybäcker-Versand (Herzlake, Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "foreign page (country domain .de); delivery to the market proven by the seller's shipping-policy country list",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "url": "https://www.hobbybaecker.de/Informationen/Versand-und-Zahlungsbedingungen/",
+            "quote": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, Finnland, Frankreich, Großbritannien, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn.",
+            "tool": "check_quotes.py",
+            "found": true,
+            "checked_at_utc": "2026-09-17T15:53:58Z",
+            "page_verdict_file": "~/.cache/gellatti-evidence/verify/e15dfe5c8fe979a6.json"
+          },
+          "composition": {
+            "fat_g": 55.8,
+            "protein_g": 34.3,
+            "carbohydrate_g": 3.6,
+            "sugars_g": 3.6,
+            "salt_g": 0.3,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "HÜHNEREIGELB, PASTEURISIERT, SPRÜHGETROCKNET",
+            "basis": "per 100 g",
+            "from": "page Zutaten + Nährwertangaben"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 55.8 / protein 34.3 ≈ reference 56.5 / 34.5",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/48af65bbc9e7d0cc.json",
+          "checked_at_utc": "2026-09-17T16:11:27Z",
+          "notes": "identity = GTIN (itemprop gtin13) on the cross-border seller's own product page; verifier class EAN_ON_FOREIGN_MARKET_PAGE (page market DE); page states 'Sofort verfügbar, Lieferzeit: 1-3 Tage'; offered as the in-stock alternative because the local listing is out of stock",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Rank 2 is an in-stock, GTIN-proven cross-border A-equivalent from Germany."
+    }
+  },
+  "notes": "sources_tried entries marked [T] were judged from search-result titles/snippets only (page not opened); every other entry was fetched (verify_ean_market.py or a direct fetch). Search results are discovery only, never evidence."
+}

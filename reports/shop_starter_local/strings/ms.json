@@ -1,0 +1,57 @@
+{
+  "locale": "ms",
+  "dir": "ltr",
+  "title": "Bahan adunan asas gelato",
+  "benefit": "Apa yang perlu dibeli dan di mana",
+  "pill": "PDF · €0",
+  "country_label": "Negara",
+  "language_label": "Bahasa",
+  "edition": "Edisi 1 · September 2026",
+  "cover_items_title": "Tujuh bahan Starter Pack",
+  "howto_title": "Cara menggunakan panduan ini",
+  "howto_lede": "Bagi setiap bahan Starter Pack, kami menamakan produk yang boleh anda beli di negara ini.",
+  "steps": [
+    {"b": "Pilih satu produk", "p": "Yang pertama ialah pilihan kami, yang kedua alternatif jika yang pertama tidak didapati."},
+    {"b": "Semak label", "p": "Ramuan pada pembungkusan mesti sepadan dengan penerangan bahan. Jika komposisi sesuatu produk berbeza, kami nyatakannya."},
+    {"b": "Ambil sukatan daripada aplikasi", "p": "PDF ini menamakan produk, bukan sukatan dalam gram. Resipi dan sukatan dikira oleh aplikasi Gellatti."}
+  ],
+  "legend_title": "Petunjuk",
+  "tag_from_abroad": "Dari luar negara",
+  "tag_b2b": "Untuk perniagaan",
+  "tag_other_composition": "Komposisi berbeza",
+  "tag_alternative": "Alternatif tempatan",
+  "tag_unconfirmed": "Belum disahkan",
+  "legend": {
+    "from_abroad": "kedai di luar negara yang menghantar ke negara ini",
+    "b2b": "dijual kepada perniagaan atau dalam pek besar",
+    "other_composition": "jenis produk yang sama dengan komposisi berbeza (dinyatakan di sebelahnya)",
+    "alternative": "pengganti bagi produk Gellatti yang lain"
+  },
+  "starter_amount": "Dalam Starter Pack: {g} g",
+  "option": "Pilihan {n}",
+  "ean": "EAN",
+  "where": "Di mana",
+  "fat": "lemak",
+  "items": {
+    "DEX": {"name": "Dekstrosa", "ref": "Serbuk dekstrosa (glukosa), monohidrat."},
+    "SMP": {"name": "Susu tepung skim", "ref": "Susu tepung dengan kira-kira 1% lemak."},
+    "CRP": {"name": "Serbuk krim", "ref": "Krim kering dengan kira-kira 42% lemak."},
+    "FRU": {"name": "Fruktosa", "ref": "Fruktosa kristal tulen."},
+    "INU": {"name": "Inulin", "ref": "Serbuk inulin, contohnya daripada cikori."},
+    "YOL": {"name": "Kuning telur kering", "ref": "Serbuk kuning telur ayam yang dipasteur."},
+    "STB": {"name": "Penstabil", "ref": "Gellatti Stabilizer ialah campuran gam tara, gam kacang lokus dan gam guar."}
+  },
+  "stabilizer_note": "Alternatif tempatan kepada campuran Gellatti, bukan campuran yang sama. Campurkan dengan bahan kering, kemudian panaskan adunan asas hingga 75–80 °C.",
+  "missing": "Belum ada produk yang diluluskan di negara ini.",
+  "notes_title": "Baik untuk diketahui",
+  "notes": [
+    {"h": "Ketersediaan", "p": "Kami telah menyemak produk ini di laman web pengeluar dan kedai pada September 2026. Ketersediaan, harga dan penghantaran boleh berubah dan tidak dijamin."},
+    {"h": "Label diutamakan", "p": "Sebelum membeli, semak ramuan dan alergen pada pembungkusan. Serbuk krim dan susu tepung mengandungi susu; kuning telur mengandungi telur."},
+    {"h": "Penstabil", "p": "Di negara ini, gam tumbuhan tempatan menggantikan Gellatti Stabilizer. Ia berfungsi dengan cara yang serupa, tetapi bukan campuran yang sama."}
+  ],
+  "fine": "Produk yang dinamakan di sini belum tentu sudah tersedia dalam aplikasi Gellatti. Gellatti tidak menjual produk jenama lain.",
+  "back_h": "Gelato yang hebat bermula dengan adunan asas yang baik.",
+  "back_p": "Resipi, sukatan dan proses ada dalam aplikasi Gellatti.",
+  "back_link": "gellatti.com",
+  "draft": "DRAF · cadangan untuk kelulusan"
+}

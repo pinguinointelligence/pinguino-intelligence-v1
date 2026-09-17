@@ -1,0 +1,99 @@
+{
+  "iso2": "NG",
+  "country": "Nigeria",
+  "agent": "research-south-asia-oceania-africa",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "discovery_method_note": "WebSearch session budget was exhausted early (shared session) and search engines (DuckDuckGo, Brave, Qwant, Bing) served bot challenges or junk; discovery used retailer product sitemaps (keyword scan of product URLs, up to 80 sitemap files per site) and retailer site-search pages. Several Shopify stores answered HTTP 429 'Verifying your connection' on this egress (not bypassed).",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "cream powder",
+        "dried cream powder"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on medplusnig.com, oja.ng, supermart.ng, healthplusnigeria.com",
+        "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on supermart.ng, healthplusnigeria.com, oja.ng, alphapharmacy.com.ng"
+      ],
+      "sources_tried": [
+        "supermart.ng (online supermarket, Shopify search) - fuzzy results for 'fructose' (416), 'inulin' (47), 'egg yolk powder' (42) contained no matching product; 'cream powder' search hit HTTP 429 challenge",
+        "healthplusnigeria.com (pharmacy chain, Shopify search) - no products for any of the four terms",
+        "medplusnig.com (pharmacy chain) - 1.6k product URLs scanned, no match",
+        "oja.ng (online grocer) - sitemap + site search for all four terms: no products",
+        "alphapharmacy.com.ng (pharmacy) - HTTP 403, inconclusive",
+        "jumia.com.ng / konga.com (marketplaces) - not used",
+        "no readable Nigerian baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No dairy cream powder found."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "fructose",
+        "fruit sugar"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on medplusnig.com, oja.ng, supermart.ng, healthplusnigeria.com",
+        "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on supermart.ng, healthplusnigeria.com, oja.ng, alphapharmacy.com.ng"
+      ],
+      "sources_tried": [
+        "supermart.ng (online supermarket, Shopify search) - fuzzy results for 'fructose' (416), 'inulin' (47), 'egg yolk powder' (42) contained no matching product; 'cream powder' search hit HTTP 429 challenge",
+        "healthplusnigeria.com (pharmacy chain, Shopify search) - no products for any of the four terms",
+        "medplusnig.com (pharmacy chain) - 1.6k product URLs scanned, no match",
+        "oja.ng (online grocer) - sitemap + site search for all four terms: no products",
+        "alphapharmacy.com.ng (pharmacy) - HTTP 403, inconclusive",
+        "jumia.com.ng / konga.com (marketplaces) - not used",
+        "no readable Nigerian baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No crystalline fructose found."
+    },
+    "INU": {
+      "result": "BRAK",
+      "local_terms": [
+        "inulin",
+        "inulin powder"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on medplusnig.com, oja.ng, supermart.ng, healthplusnigeria.com",
+        "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on supermart.ng, healthplusnigeria.com, oja.ng, alphapharmacy.com.ng"
+      ],
+      "sources_tried": [
+        "supermart.ng (online supermarket, Shopify search) - fuzzy results for 'fructose' (416), 'inulin' (47), 'egg yolk powder' (42) contained no matching product; 'cream powder' search hit HTTP 429 challenge",
+        "healthplusnigeria.com (pharmacy chain, Shopify search) - no products for any of the four terms",
+        "medplusnig.com (pharmacy chain) - 1.6k product URLs scanned, no match",
+        "oja.ng (online grocer) - sitemap + site search for all four terms: no products",
+        "alphapharmacy.com.ng (pharmacy) - HTTP 403, inconclusive",
+        "jumia.com.ng / konga.com (marketplaces) - not used",
+        "no readable Nigerian baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No inulin powder found."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk"
+      ],
+      "queries": [
+        "product-sitemap URL scan with regex 'fructo|fruit-sugar|inulin|yolk|egg-powder|cream-powder|dried-cream|heavy-cream|powdered-cream' on medplusnig.com, oja.ng, supermart.ng, healthplusnigeria.com",
+        "site search 'fructose', 'inulin', 'egg yolk powder', 'cream powder' on supermart.ng, healthplusnigeria.com, oja.ng, alphapharmacy.com.ng"
+      ],
+      "sources_tried": [
+        "supermart.ng (online supermarket, Shopify search) - fuzzy results for 'fructose' (416), 'inulin' (47), 'egg yolk powder' (42) contained no matching product; 'cream powder' search hit HTTP 429 challenge",
+        "healthplusnigeria.com (pharmacy chain, Shopify search) - no products for any of the four terms",
+        "medplusnig.com (pharmacy chain) - 1.6k product URLs scanned, no match",
+        "oja.ng (online grocer) - sitemap + site search for all four terms: no products",
+        "alphapharmacy.com.ng (pharmacy) - HTTP 403, inconclusive",
+        "jumia.com.ng / konga.com (marketplaces) - not used",
+        "no readable Nigerian baking/professional ingredient supplier could be identified without a working web search"
+      ],
+      "candidates": [],
+      "notes": "No dried egg yolk powder found."
+    }
+  }
+}

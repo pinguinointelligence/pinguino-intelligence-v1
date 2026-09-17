@@ -1,0 +1,11 @@
+{"t":"2026-09-17T13:15:40.405Z","kind":"navigated","url":"https://staging.pinguinoai.com/shop"}
+{"t":"2026-09-17T13:15:40.805Z","kind":"request","method":"POST","path":"/rest/v1/rpc/gellatti_shop_catalog_v1"}
+{"t":"2026-09-17T13:15:40.912Z","kind":"response","method":"POST","path":"/rest/v1/rpc/gellatti_shop_catalog_v1","status":200}
+{"t":"2026-09-17T13:15:40.916Z","kind":"request","method":"GET","path":"/rest/v1/shop_country_local_readiness"}
+{"t":"2026-09-17T13:15:40.916Z","kind":"request","method":"POST","path":"/rest/v1/rpc/gellatti_shop_document_availability_v1"}
+{"t":"2026-09-17T13:15:41.106Z","kind":"response","method":"POST","path":"/rest/v1/rpc/gellatti_shop_document_availability_v1","status":200}
+{"t":"2026-09-17T13:15:41.107Z","kind":"response","method":"GET","path":"/rest/v1/shop_country_local_readiness","status":200}
+{"t":"2026-09-17T13:15:44.346Z","kind":"race","installedBeforeApp":true}
+{"t":"2026-09-17T13:15:44.346Z","kind":"start","page":"https://staging.pinguinoai.com/shop","race":true}
+{"t":"2026-09-17T13:15:44.348Z","kind":"state","path":"/shop","email":null,"dialog":false,"intent":false,"offer":"order-button:Zamów za 0 €","notice":null,"race":null,"raceStartedAt":null}
+{"t":"2026-09-17T13:31:14.675Z","kind":"stop"}

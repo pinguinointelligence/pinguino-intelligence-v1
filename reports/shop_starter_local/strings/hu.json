@@ -1,0 +1,57 @@
+{
+  "locale": "hu",
+  "dir": "ltr",
+  "title": "A gelatoalap hozzávalói",
+  "benefit": "Mit és hol vegyél",
+  "pill": "PDF · 0 €",
+  "country_label": "Ország",
+  "language_label": "Nyelv",
+  "edition": "1. kiadás · 2026. szeptember",
+  "cover_items_title": "A Starter Pack hét hozzávalója",
+  "howto_title": "Így használd az útmutatót",
+  "howto_lede": "A Starter Pack minden hozzávalójához megnevezünk egy terméket, amelyet ebben az országban megvásárolhatsz.",
+  "steps": [
+    {"b": "Válassz egy terméket", "p": "Az első a mi választásunk, a második pedig alternatíva arra az esetre, ha az első nem kapható."},
+    {"b": "Ellenőrizd a címkét", "p": "A csomagoláson feltüntetett összetételnek meg kell felelnie a hozzávaló leírásának. Ha egy termék összetétele eltér, ezt jelezzük."},
+    {"b": "A mennyiségeket az alkalmazásból vedd", "p": "Ez a PDF termékeket nevez meg, nem grammban megadott mennyiségeket. A recepteket és a mennyiségeket a Gellatti-alkalmazás számolja ki."}
+  ],
+  "legend_title": "Jelölések",
+  "tag_from_abroad": "Külföldről",
+  "tag_b2b": "Cégeknek",
+  "tag_other_composition": "Eltérő összetétel",
+  "tag_alternative": "Helyi alternatíva",
+  "tag_unconfirmed": "Nem megerősített",
+  "legend": {
+    "from_abroad": "külföldi bolt, amely ebbe az országba szállít",
+    "b2b": "cégeknek vagy nagy kiszerelésben árusítják",
+    "other_composition": "azonos típusú termék eltérő összetétellel (mellette feltüntetve)",
+    "alternative": "egy másik Gellatti-termék helyettesítője"
+  },
+  "starter_amount": "A Starter Packban: {g} g",
+  "option": "{n}. lehetőség",
+  "ean": "EAN",
+  "where": "Hol",
+  "fat": "zsír",
+  "items": {
+    "DEX": {"name": "Dextróz", "ref": "Dextróz (glükóz) por, monohidrát."},
+    "SMP": {"name": "Sovány tejpor", "ref": "Tejpor, körülbelül 1% zsírtartalommal."},
+    "CRP": {"name": "Tejszínpor", "ref": "Szárított tejszín, körülbelül 42% zsírtartalommal."},
+    "FRU": {"name": "Fruktóz", "ref": "Tiszta kristályos fruktóz."},
+    "INU": {"name": "Inulin", "ref": "Inulinpor, például cikóriából."},
+    "YOL": {"name": "Szárított tojássárgája", "ref": "Pasztőrözött tyúktojássárgája-por."},
+    "STB": {"name": "Stabilizátor", "ref": "A Gellatti Stabilizer taragumi, szentjánoskenyérmag-liszt és guargumi keveréke."}
+  },
+  "stabilizer_note": "A Gellatti-keverék helyi alternatívája, nem ugyanaz a keverék. Keverd a száraz hozzávalókhoz, és melegítsd fel az alapot 75–80 °C hőmérsékletre.",
+  "missing": "Ebben az országban még nincs jóváhagyott termék.",
+  "notes_title": "Jó tudni",
+  "notes": [
+    {"h": "Elérhetőség", "p": "A termékeket 2026 szeptemberében ellenőriztük a gyártók és a boltok weboldalain. Az elérhetőség, az árak és a szállítás változhat, és nem garantált."},
+    {"h": "A címke az irányadó", "p": "Vásárlás előtt ellenőrizd a csomagoláson az összetevőket és az allergéneket. A tejszínpor és a tejpor tejet, a tojássárgája tojást tartalmaz."},
+    {"h": "Stabilizátor", "p": "Ebben az országban egy helyi növényi gumi lép a Gellatti Stabilizer helyébe. Hasonlóan működik, de nem ugyanaz a keverék."}
+  ],
+  "fine": "Az itt megnevezett termék nem feltétlenül érhető el már a Gellatti-alkalmazásban. A Gellatti nem árusít más márkák termékeit.",
+  "back_h": "A kiváló gelato jó alappal kezdődik.",
+  "back_p": "A receptek, a mennyiségek és az elkészítés menete a Gellatti-alkalmazásban található.",
+  "back_link": "gellatti.com",
+  "draft": "TERVEZET · elfogadásra váró javaslatok"
+}

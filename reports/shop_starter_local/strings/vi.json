@@ -1,0 +1,57 @@
+{
+  "locale": "vi",
+  "dir": "ltr",
+  "title": "Nguyên liệu làm cốt gelato",
+  "benefit": "Mua gì và mua ở đâu",
+  "pill": "PDF · 0 €",
+  "country_label": "Quốc gia",
+  "language_label": "Ngôn ngữ",
+  "edition": "Ấn bản 1 · tháng 9 năm 2026",
+  "cover_items_title": "Bảy nguyên liệu trong Starter Pack",
+  "howto_title": "Cách dùng hướng dẫn này",
+  "howto_lede": "Với mỗi nguyên liệu trong Starter Pack, chúng tôi nêu một sản phẩm bạn có thể mua tại quốc gia này.",
+  "steps": [
+    {"b": "Chọn một sản phẩm", "p": "Sản phẩm đầu tiên là lựa chọn của chúng tôi; sản phẩm thứ hai là phương án thay thế nếu không có sản phẩm đầu tiên."},
+    {"b": "Kiểm tra nhãn", "p": "Thành phần ghi trên bao bì phải khớp với mô tả của nguyên liệu. Sản phẩm nào có thành phần khác, chúng tôi đều ghi rõ."},
+    {"b": "Lấy định lượng từ ứng dụng", "p": "Tệp PDF này nêu sản phẩm, không nêu định lượng theo gam. Công thức và định lượng do ứng dụng Gellatti tính toán."}
+  ],
+  "legend_title": "Chú thích",
+  "tag_from_abroad": "Từ nước ngoài",
+  "tag_b2b": "Cho doanh nghiệp",
+  "tag_other_composition": "Thành phần khác",
+  "tag_alternative": "Thay thế trong nước",
+  "tag_unconfirmed": "Chưa xác nhận",
+  "legend": {
+    "from_abroad": "cửa hàng ở nước ngoài có giao hàng đến quốc gia này",
+    "b2b": "bán cho doanh nghiệp hoặc đóng gói lớn",
+    "other_composition": "cùng loại sản phẩm nhưng thành phần khác (ghi bên cạnh)",
+    "alternative": "sản phẩm thay thế cho một sản phẩm Gellatti khác"
+  },
+  "starter_amount": "Trong Starter Pack: {g} g",
+  "option": "Lựa chọn {n}",
+  "ean": "EAN",
+  "where": "Nơi mua",
+  "fat": "chất béo",
+  "items": {
+    "DEX": {"name": "Đường dextrose", "ref": "Bột dextrose (glucose), dạng monohydrate."},
+    "SMP": {"name": "Sữa bột tách béo", "ref": "Sữa bột có khoảng 1% chất béo."},
+    "CRP": {"name": "Bột kem sữa", "ref": "Kem sữa sấy khô có khoảng 42% chất béo."},
+    "FRU": {"name": "Đường fructose", "ref": "Fructose tinh thể nguyên chất."},
+    "INU": {"name": "Inulin", "ref": "Bột inulin, ví dụ từ rau diếp xoăn."},
+    "YOL": {"name": "Lòng đỏ trứng sấy khô", "ref": "Bột lòng đỏ trứng gà đã thanh trùng."},
+    "STB": {"name": "Chất ổn định", "ref": "Gellatti Stabilizer là hỗn hợp gôm tara, gôm đậu carob và gôm guar."}
+  },
+  "stabilizer_note": "Đây là lựa chọn thay thế trong nước cho hỗn hợp Gellatti, không phải cùng một hỗn hợp. Trộn với các nguyên liệu khô rồi đun nóng cốt đến 75–80 °C.",
+  "missing": "Chưa có sản phẩm được duyệt tại quốc gia này.",
+  "notes_title": "Điều nên biết",
+  "notes": [
+    {"h": "Tình trạng hàng", "p": "Chúng tôi đã kiểm tra các sản phẩm này trên website của nhà sản xuất và cửa hàng vào tháng 9 năm 2026. Tình trạng hàng, giá và giao hàng có thể thay đổi và không được đảm bảo."},
+    {"h": "Nhãn là ưu tiên hàng đầu", "p": "Trước khi mua, hãy kiểm tra thành phần và chất gây dị ứng trên bao bì. Bột kem sữa và sữa bột có chứa sữa; lòng đỏ trứng có chứa trứng."},
+    {"h": "Chất ổn định", "p": "Tại quốc gia này, một loại gôm thực vật địa phương được dùng thay cho Gellatti Stabilizer. Loại gôm này có tác dụng tương tự nhưng không phải cùng một hỗn hợp."}
+  ],
+  "fine": "Sản phẩm được nêu ở đây chưa chắc đã có trong ứng dụng Gellatti. Gellatti không bán sản phẩm của các thương hiệu khác.",
+  "back_h": "Gelato tuyệt hảo bắt đầu từ một cốt ngon.",
+  "back_p": "Công thức, định lượng và quy trình đều có trong ứng dụng Gellatti.",
+  "back_link": "gellatti.com",
+  "draft": "BẢN NHÁP · đề xuất chờ phê duyệt"
+}

@@ -1,0 +1,366 @@
+{
+  "iso2": "CA",
+  "country": "Canada",
+  "agent": "research-americas",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T15:52:50Z",
+  "items": {
+    "CRP": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "heavy cream powder",
+        "cream powder",
+        "dried cream",
+        "crème en poudre",
+        "poudre de crème",
+        "poudre de crème lourde",
+        "crème de lait en poudre"
+      ],
+      "queries": [
+        "heavy cream powder buy Canada",
+        "crème en poudre lait acheter Canada",
+        "\"cream powder\" OR \"heavy cream powder\" site:.ca",
+        "\"poudre de crème\" 35% OR 40% OR 42% gras Québec boutique",
+        "site search mccalls.ca: cream powder",
+        "site search bulknbits.ca: cream powder",
+        "site search ingredientdepot.com: cream powder",
+        "site search qualifirst.com: cream powder",
+        "site search well.ca: cream powder",
+        "site search vanillafoodcompany.ca: cream powder",
+        "site search avron.ca: crème",
+        "site search ingredientscanada.com: cream",
+        "site search boutique.larecolteenvrac.com: crème",
+        "site search goldaskitchen.com: cream powder",
+        "site search realcanadiansuperstore.ca: cream powder",
+        "site search healthyplanetcanada.com: heavy cream powder",
+        "site search laguildeculinaire.com: crème en poudre",
+        "vendor page laguildeculinaire.com: Moléculaire",
+        "shipping policy pages hoosierhillfarm.com / anthonysgoods.com / znaturalfoods.com: Canada"
+      ],
+      "sources_tried": [
+        "laguildeculinaire.com (Quebec culinary retailer; found: Moléculaire 'Heavy Cream Powder' 80g/450g, 72 % fat, both variants OutOfStock)",
+        "mccalls.ca (Toronto baking supplier; on-site search returned a GIF instead of results: inconclusive)",
+        "vanillafoodcompany.ca (baking/pastry supplier; no dairy cream powder: only Whole Milk Powder 453 g, Panna Fit whip stabilizer, crème brûlée mix = rejected types)",
+        "qualifirst.com (fine-food/pastry importer; HTTP 429 rate limit: inconclusive)",
+        "bulknbits.ca (bulk store; no cream powder)",
+        "ingredientdepot.com (ingredient shop, Quebec; no cream powder)",
+        "ingredientscanada.com (ingredient shop; no cream powder)",
+        "avron.ca (Quebec ingredient distributor; search HTTP 405: inconclusive)",
+        "boutique.larecolteenvrac.com (bulk grocer, Quebec; search URL 404: inconclusive)",
+        "goldaskitchen.com (baking supplier; search page empty/JS: inconclusive)",
+        "bulkbarn.ca (bulk grocer; HTTP 404 on root for both fetchers: inconclusive)",
+        "realcanadiansuperstore.ca (supermarket; HTTP 403 bot wall)",
+        "metro.ca (supermarket; HTTP 403 bot wall on product pages)",
+        "well.ca (online health/grocery retailer; no cream powder)",
+        "healthyplanetcanada.com (health store; HTTP 403 bot wall)",
+        "amazon.ca, etsy.com/ca, ebay.com, walmart.com (search results only; marketplaces, not used)",
+        "hoosierhillfarm.com, anthonysgoods.com (US makers of ~72 % fat heavy cream powder; shipping policy has no Canada statement: no cross-border)",
+        "znaturalfoods.com (US; shipping policy HTTP 403: inconclusive)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Moléculaire",
+          "product_name": "Heavy Cream Powder",
+          "pack": "450g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.laguildeculinaire.com/en/products/poudre-de-creme-lourde-heavy-powder",
+          "source_type": "RETAILER",
+          "seller": "La Guilde Culinaire",
+          "page_market": "CA",
+          "market_by": "CURRENCY_ONLY",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "EXPLICIT_QUOTE: 'Fast shipping in Canada' ~/.cache/gellatti-evidence/verify/quote_ee1f04d0d6edec3e.json",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 72.0,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "sweet cream, skim milk, sodium caseinate and an anti-caking agent",
+            "from": "raw page description (EN): 'Spray-dried 72% fat cream. Heavy cream powder contains sweet cream, skim milk, sodium caseinate and an anti-caking agent.' (~/.cache/gellatti-evidence/verify/quote_dc3e02eccd53d40a.json); no nutrition table printed; fat_g read from the printed '72% fat'"
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "Spray-dried dairy cream powder at 72 % fat as printed (reference 42 %, A band 38–48 %), with skim milk + sodium caseinate carriers and an unnamed anti-caking agent. Not a creamer or whipped-topping mix. Brand shown as 'Moléculaire' in JSON-LD/vendor and 'Molecular' in the English visible text; variant 'Heavy Cream Powder - 450g', SKU POUDRE-CREME-450 (80g variant SKU POUDRE-CREME-80).",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/90aafcab95750d85.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_ee1f04d0d6edec3e.json",
+            "~/.cache/gellatti-evidence/verify/quote_dc3e02eccd53d40a.json",
+            "~/.cache/gellatti-evidence/verify/1d32135e937d5f67.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:38:13Z"
+        }
+      ],
+      "notes": "LEAD_ONLY. Only dairy cream powder found at a Canadian direct seller is La Guilde Culinaire's 72 %-fat Heavy Cream Powder (B). Market binding would hold (explicit 'Fast shipping in Canada' quote found) but identity is NOT_PROVEN: 'Moléculaire' is a vendor/category label on 67 molecular-gastronomy items with no own-brand statement (D-37 not applicable), and the JSON-LD/variant barcodes 151429489446 (450g) and 671792489358 (80g) fail the GS1 check digit (identifiers.py CHECKSUM_FAIL). The verifier nevertheless counted 2 clean hits for 151429489446 (verdict 1d32135e937d5f67.json) = verifier false positive; no GTIN is claimed. Both variants OutOfStock at check time. No 38–48 % fat retail cream powder found in Canada; grocers mostly bot-walled (metro.ca, realcanadiansuperstore.ca 403; bulkbarn.ca 404); qualifirst.com 429. No cross-border option: the US heavy-cream-powder makers checked show no Canada shipping statement (znaturalfoods.com 403). WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fructose",
+        "crystalline fructose",
+        "pure crystalline fructose",
+        "fruit sugar",
+        "fructose cristallisé",
+        "fructose pur",
+        "sucre de fruit"
+      ],
+      "queries": [
+        "fructose powder crystalline buy Canada",
+        "site search well.ca: fructose",
+        "site search vanillafoodcompany.ca: fructose",
+        "site search iga.net: fructose",
+        "site search laguildeculinaire.com: fructose"
+      ],
+      "sources_tried": [
+        "bulknbits.ca (bulk store, Etobicoke ON; found: own-label 'Fructose (Fruit Sugar)' 200 grams / 400 grams, ingredients 'Pure Crystalline Fructose.')",
+        "ingredientdepot.com (ingredient shop shipping from Beauharnois, Quebec; found: 'Fructose Crystalline, Food and USP Grade, Non-GMO 1 kg', GTIN 686754869171, > 99.5 % fructose, Sold out)",
+        "metro.ca (supermarket; Tout Naturel 'Pure Crystalline Fructose' 1 kg listing: HTTP 403 bot wall, inconclusive)",
+        "iga.net (supermarket; search HTTP 403 bot wall)",
+        "well.ca (online health/grocery retailer; no pure fructose, only products containing fructose)",
+        "vanillafoodcompany.ca (baking/pastry supplier; 3 unrelated results)",
+        "laguildeculinaire.com (culinary/pastry retailer, Quebec; no pure fructose)",
+        "ingredientscanada.com (ingredient shop; Fructose 1–22.68 kg, all sizes sold out, generic .com, no GTIN: not used)",
+        "tcbrewing.com (Vancouver U-brew supply; crystalline fructose in search results: not checked, local candidates already confirmed)",
+        "nowfoods.com, bakersauthority.com (US; not needed)",
+        "ebay.com, indiamart.com (marketplaces/directories; not used)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Bulk n Bits",
+          "product_name": "Fructose (Fruit Sugar)",
+          "pack": "200 grams",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://bulknbits.ca/products/fruit-sugar",
+          "source_type": "RETAILER",
+          "seller": "Bulk n Bits",
+          "page_market": "CA",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .ca (CCTLD)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Pure Crystalline Fructose.",
+            "from": "raw page 'Ingredients' text (~/.cache/gellatti-evidence/verify/quote_4ac9c73e7a5dd45a.json); no % or nutrition table printed"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Sole ingredient printed as 'Pure Crystalline Fructose' (sole-ingredient fructose counts as A; no % printed). Store own-label listing: Shopify vendor and JSON-LD brand 'Bulk n Bits', exact name 'Fructose (Fruit Sugar)', variants 'Fructose (Fruit Sugar) - 200 grams' (available: true in page data) and '- 400 grams' (available: false); no SKU or barcode exists in page data. Page text also shows a backorder notice.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/75639c6083b941f1.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_4ac9c73e7a5dd45a.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:45:08Z"
+        },
+        {
+          "rank": 2,
+          "brand": "Ingredient Depot",
+          "product_name": "Fructose Crystalline, Food and USP Grade, Non-GMO 1 kg",
+          "pack": "1 kg plastic jar",
+          "gtin": "686754869171",
+          "identifier_confirmed": true,
+          "url": "https://ingredientdepot.com/products/fructose-1-kg",
+          "source_type": "RETAILER",
+          "seller": "Ingredient Depot",
+          "page_market": "CA",
+          "market_by": "CURRENCY_ONLY",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "EXPLICIT_QUOTE: 'Shipping is free to Canada and the United States.' ~/.cache/gellatti-evidence/verify/quote_0b2da5735484c783.json ; seller's own shipping policy also states 'We're ship from Beauharnois, Quebec, Canada.' ~/.cache/gellatti-evidence/verify/quote_27327a12e273b22f.json",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": 99.5,
+            "ingredients": null,
+            "from": "raw page product text: 'fructose content > 99.5% (dry basis)' (lower bound, dry basis); 'Manufactured in Turkey.'; no ingredient list printed"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Printed fructose content > 99.5 % (dry basis), above the 98 % A threshold; crystalline, food and USP grade. GTIN 686754869171 is a valid GTIN-12 in the page's JSON (gtin/sku), 7 clean hits. Sold out at check time.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/9bf26c9eed8f84a0.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_0b2da5735484c783.json",
+            "~/.cache/gellatti-evidence/verify/quote_27327a12e273b22f.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:45:48Z"
+        }
+      ],
+      "notes": "CONFIRMED_LOCAL. Rank 1 is Bulk n Bits' own-label 200 g bag (D-37: own brand, exact name, variant/pack; no SKU/GTIN exists; bound by .ca), marked available in page data. Rank 2 is Ingredient Depot's 1 kg jar with a valid GTIN on the page, bound by an explicit Canada shipping sentence on its own policy page (generic .com; the header banner 'FREE SHIPPING — CANADA & U.S.' could not be matched because the checker does not unescape &amp;). Rank 2 was sold out. A supermarket lead (Tout Naturel Pure Crystalline Fructose 1 kg at metro.ca) sits behind a 403 bot wall and was not used. WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin",
+        "inulin powder",
+        "chicory root inulin",
+        "agave inulin",
+        "prebiotic fibre",
+        "inuline",
+        "inuline en poudre",
+        "fibre d'inuline"
+      ],
+      "queries": [
+        "inulin powder chicory buy Canada",
+        "site search well.ca: inulin",
+        "collection page vitamart.ca: inulin",
+        "site search vanillafoodcompany.ca: inulin",
+        "site search laguildeculinaire.com: inuline"
+      ],
+      "sources_tried": [
+        "vitamart.ca (online supplement retailer; found: 'NOW Organic Inulin Powder, 100% Pure Powder, 227g', GTIN 733739829443 on page, InStock in page data)",
+        "well.ca (online health/grocery retailer; found: 'NOW 100% Pure Organic Inulin Powder' 227 g; also HeLa Nutrition Organic Prebiotic Inulin 300 g and Pure-Le Natural Fiberrific 250/500 g, not verified further)",
+        "laguildeculinaire.com (culinary/pastry retailer, Quebec; found in on-site search: 'Inuline (à froid) en poudre' (Moléculaire) and 'Inuline (à chaud) en poudre' (Sosa), not verified: NOW candidates already confirmed)",
+        "vanillafoodcompany.ca (baking/pastry supplier; 0 results)",
+        "hacanada.com (industrial ingredient supplier in search results; no retail pack: not checked)",
+        "amazon.ca, ebay.ca, ebay.com, amazon.com (marketplaces; not used)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "NOW",
+          "product_name": "NOW Organic Inulin Powder, 100% Pure Powder, 227g",
+          "pack": "227g",
+          "gtin": "733739829443",
+          "identifier_confirmed": true,
+          "url": "https://www.vitamart.ca/products/now-inulin-powder",
+          "source_type": "RETAILER",
+          "seller": "Vitamart.ca",
+          "page_market": "CA",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .ca (CCTLD)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Organic Inulin (from Blue Agave plant (Agave tequilana)) 2.8 g per serving (Serving Size: 1 Teaspoon)",
+            "from": "raw page supplement-facts text (Vitamart.ca); no fibre g/100 g printed"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Sole ingredient organic agave inulin plus the printed name '100% Pure Powder' = sole-ingredient 100 % inulin declaration (A). No fibre g/100 g printed. The page description calls NOW Organic Inulin 'a fructooligosaccharide derived from blue agave'; agave inulin is a shorter-chain fructan than the chicory reference, so the owner may want to note this. Page data shows available: true / schema InStock (theme text also shows 'Sold out' and 'Only 2 left').",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/95bdb812d3a19fe1.json",
+          "extra_evidence_files": [],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:45:04Z"
+        },
+        {
+          "rank": 2,
+          "brand": "NOW",
+          "product_name": "NOW 100% Pure Organic Inulin Powder",
+          "pack": "227 g",
+          "gtin": "733739829443",
+          "identifier_confirmed": true,
+          "url": "https://well.ca/products/now-100-pure-organic-inulin-powder_89288.html",
+          "source_type": "RETAILER",
+          "seller": "Well.ca",
+          "page_market": "CA",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "country domain .ca (CCTLD)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Each teaspoon contains: Organic Inulin (from Blue Agave plant (Agave tequilana)) 2.8 g.",
+            "from": "raw page 'Ingredients' tab text (Well.ca)"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Same product as rank 1 at a second Canadian retailer. GTIN 733739829443 is on vitamart.ca, and brand 'NOW', name 'Organic Inulin Powder' and pack '227 g' match this listing (identity_match passed, no failed checks). Sole ingredient organic agave inulin (A); the description again calls it a fructooligosaccharide (FOS), see rank 1. 'Add to Cart' shown at check time.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/116d4995f53c3600.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/identity_91a34fd16029bf87.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:42:39Z"
+        }
+      ],
+      "notes": "CONFIRMED_LOCAL. NOW Organic Inulin 227 g (agave, sole ingredient, '100% Pure') is confirmed on vitamart.ca (GTIN on page + .ca) and on well.ca (GTIN-on-source + attribute match + .ca). Not researched further: chicory-based alternatives (Purica Fiberlicious 800 g at vitamart.ca, marked sold out; Pure-Le Natural Fiberrific at well.ca) and La Guilde Culinaire's pastry inulins (Moléculaire cold-soluble, Sosa hot-soluble). WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk",
+        "dehydrated egg yolk",
+        "jaune d'œuf en poudre",
+        "poudre de jaune d'œuf",
+        "jaune d'œuf séché"
+      ],
+      "queries": [
+        "egg yolk powder buy Canada",
+        "site search vanillafoodcompany.ca: egg yolk",
+        "site search laguildeculinaire.com: crème en poudre (listing also returned 'Poudre jaune d'oeuf')",
+        "product page laguildeculinaire.com (FR): poudre-de-jaune-doeuf"
+      ],
+      "sources_tried": [
+        "laguildeculinaire.com (culinary/pastry retailer, Quebec; found: own-brand 'Poudre jaune d'oeuf' / 'Egg yolk powder' 50g and 400g, InStock, composition 100 % dried pasteurised hen egg yolk)",
+        "mccalls.ca (Toronto baking/decorating supplier; found: 'Egg Yolk Powder - Dried 450 g / 16 oz', Item #: 9746, Currently Out of Stock; no brand (vendor tag error), no ingredient list, no GTIN: identity not proven, not listed as candidate)",
+        "caneggs.com (Canadian egg-powder manufacturer, Egg Yolk Powder 2 kg; HTTP 403 'Access Restricted - Canadian Visitors Only' geo-block for the ES egress: inconclusive)",
+        "walmart.ca (Caneggs Egg Yolk Powder 2 kg listing seen in search results; marketplace-type listing, not fetched/used)",
+        "frozenfresh.ca (Surrey BC freeze-drying firm; B2B info page only, no pack or composition)",
+        "vanillafoodcompany.ca (baking/pastry supplier; no egg yolk powder, only IRCA meringue egg-white mix = rejected type)",
+        "amazon.ca, etsy.com/ca (marketplaces; not used)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "La Guilde Culinaire",
+          "product_name": "Poudre jaune d'oeuf",
+          "pack": "400g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.laguildeculinaire.com/products/poudre-de-jaune-doeuf",
+          "source_type": "RETAILER",
+          "seller": "La Guilde Culinaire",
+          "page_market": "CA",
+          "market_by": "CURRENCY_ONLY",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "EXPLICIT_QUOTE: 'Livraison rapide au Canada' ~/.cache/gellatti-evidence/verify/quote_0b1987b5be1ae2d1.json",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "jaune d'œuf de poule, séché et pasteurisé",
+            "from": "raw page description (FR): 'Composition : jaune d'œuf de poule, séché et pasteurisé' (~/.cache/gellatti-evidence/verify/quote_b201fa33a607852b.json); no nutrition table printed"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Printed composition is dried, pasteurised hen egg yolk only, no additive declared, so 100 % egg yolk (A). Own-brand listing (D-37): JSON-LD brand and visible vendor 'La Guilde Culinaire', exact name 'Poudre jaune d'oeuf', variant 'Poudre jaune d'oeuf - 400g' with SKU POUDRE-JAUNE-400GR, schema InStock (50g variant SKU POUDRE-JAUNE-50GR also listed). The description also names 'Gallia' ('Le jaune d'œuf de poule séché, pasteurisé Gallia …'), probably the source of the repacked yolk; the owner may want to note this. The JSON-LD 'gtin' values 58722018 / 58754786 are the tails of Shopify variant IDs and fail the GS1 checksum, so no GTIN is claimed.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1134c20ba7ce8021.json",
+          "extra_evidence_files": [
+            "~/.cache/gellatti-evidence/verify/quote_0b1987b5be1ae2d1.json",
+            "~/.cache/gellatti-evidence/verify/quote_b201fa33a607852b.json"
+          ],
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+          "checked_at_utc": "2026-09-17T15:43:54Z"
+        }
+      ],
+      "notes": "CONFIRMED_LOCAL. La Guilde Culinaire (Quebec) sells its own-brand egg yolk powder (400 g, in stock) with a 100 % yolk composition printed on the French page. The generic .com is bound by the explicit 'Livraison rapide au Canada' sentence (the English page says 'Fast shipping in Canada'). Other Canadian paths could not be proven: McCall's 450 g (out of stock; no brand, ingredients or GTIN) and Caneggs 2 kg (manufacturer site geo-blocked to Canadian visitors). WebSearch budget exhausted during research; later discovery via on-site shop searches only."
+    }
+  }
+}

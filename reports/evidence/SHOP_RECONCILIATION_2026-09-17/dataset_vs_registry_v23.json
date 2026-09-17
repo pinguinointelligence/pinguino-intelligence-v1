@@ -1,0 +1,97 @@
+{
+  "recorded": "2026-09-17",
+  "kind": "Data comparison: PDF dataset vs the v23 registry on staging. Analysis only: the PDF was not rebuilt and its text was not re-read.",
+  "inputs": {
+    "pdf_dataset": {
+      "path": "reports/shop_pdf0/guide_dataset.json",
+      "commit": "acdd8e7df11e09c2e3df3fe2cfc5d31059eb6e4e",
+      "git_blob": "6c5a99c67a7b051a7cbf4fe207e2fb0381aee2b2",
+      "sha256": "ed193d9eff3a1e412dc7015507691d308b4835f212ed91c67d841d035087a187"
+    },
+    "registry": {
+      "path": "docs/country-products/gelato-base-v23/registry.json",
+      "commit": "6e83b8d1086fc1b72d6abc06fd525a72f5b561eb (origin/staging)",
+      "git_blob": "12a4b7a4f939f94752d3f51d356a1d6ba775f656",
+      "sha256": "e0799825878c10ba0da2ec14a93ef087f878075c64ca99443d552ba26219eebb",
+      "declared_source_workbook": "GELLATTI_BAZA_GELATO_75_KRAJOW_v23_SYNC_FINAL.xlsx",
+      "declared_source_sha256": "37afaf6f98bad68d2768c02562f130f0502ba875d3ae4a08f51f420b82de16b4",
+      "added_by": "PR #319, commit 4a5a7b4a, merged 2026-09-12"
+    },
+    "manifest_sha256": "baf0c2a2c442917fe301b9c1c6987fe9aca8033afa4d9a4889ab50ebf1a1d225",
+    "pdf": {
+      "path": "reports/shop_pdf0/GELLATTI_GELATO_BASE_GUIDE_75_COUNTRIES_v1.pdf",
+      "sha256": "e84ebd582bd4539c8e67eb097cfc83e42279c4f199e594564aac3c9f862c6537"
+    }
+  },
+  "method": [
+    "Each dataset item (country x role) is matched to its registry selection (country, slot). The TARA role maps to the registry slot STABILIZER.",
+    "SUCROSE: the registry selectionKind must be GLOBAL_PI.",
+    "Every other role compares the dataset against the registry:",
+    "  - product_v23 against selection.localName;",
+    "  - pack_v23 against selection.localPackText;",
+    "  - the EAN digits (leading zeros ignored) against product.identity.gtin;",
+    "  - brand_v23 against product.brand.",
+    "TARA: the 'From abroad' tag must match offerChannel == IMPORT.",
+    "Every link shown in the PDF must appear among the URLs of the sourceIds of that selection or its product.",
+    "Script: compare_dataset_registry.py (same folder). It is read-only and writes nothing."
+  ],
+  "results": {
+    "selections_checked": 450,
+    "missing_selections": 0,
+    "exact_products": {
+      "name_equals_selection_localName": "375/375",
+      "pack_equals_selection_localPackText": "375/375",
+      "ean_equals_product_gtin": "375/375"
+    },
+    "sucrose_is_global_pi": "75/75",
+    "tara_channel_matches_tag": "75/75 (IMPORT 72 -> From abroad; LOCAL 2; 'LOCAL — USA B2B' 1 -> B2B)",
+    "pdf_links_found_in_registry_sources": "638/638",
+    "brand_label_differences": {
+      "count": 12,
+      "decision": "No change. The decisive value is the country row in 04_POKRYCIE_PR ('Marka'), which the PDF already shows. The registry keeps one brand label per deduplicated product; an identical EAN does not justify renaming.",
+      "items": [
+        {"country": "BD", "role": "SMP", "pdf": "NOW Foods", "registry": "NOW Foods Real Food", "gtin": "733739058324"},
+        {"country": "CR", "role": "SMP", "pdf": "NOW Foods / iHerb Costa Rica", "registry": "NOW Foods Real Food", "gtin": "733739058324"},
+        {"country": "FR", "role": "SMP", "pdf": "Régilait", "registry": "Régilait / Delhaize Belgium", "gtin": "3043934232700"},
+        {"country": "IN", "role": "CREAM", "pdf": "Elle & Vire Professionnel", "registry": "Elle & Vire", "gtin": "3161911703385"},
+        {"country": "MX", "role": "SMP", "pdf": "NOW Foods", "registry": "NOW Foods Real Food", "gtin": "733739058324"},
+        {"country": "PK", "role": "SMP", "pdf": "NOW Foods", "registry": "NOW Foods Real Food", "gtin": "733739058324"},
+        {"country": "PA", "role": "SMP", "pdf": "NOW Foods", "registry": "NOW Foods Real Food", "gtin": "733739058324"},
+        {"country": "SI", "role": "MILK", "pdf": "Alpsko mleko", "registry": "Alpsko / Ljubljanske mlekarne", "gtin": "3838800040578"},
+        {"country": "LK", "role": "SMP", "pdf": "NOW Foods", "registry": "NOW Foods Real Food", "gtin": "733739058324"},
+        {"country": "TH", "role": "SMP", "pdf": "NOW Foods / Real Food", "registry": "NOW Foods Real Food", "gtin": "733739058324"},
+        {"country": "US", "role": "SMP", "pdf": "Bob's Red Mill", "registry": "Bob's Red Mill / iHerb Japan", "gtin": "039978115201"},
+        {"country": "UY", "role": "SMP", "pdf": "Bob's Red Mill / iHerb Uruguay", "registry": "Bob's Red Mill / iHerb Japan", "gtin": "039978115201"}
+      ]
+    }
+  },
+  "registry_failed_consistency_checks": [
+    {
+      "id": "CALC_PRODUCT_NAME_MATCH:SMP:IL",
+      "detail": "18_SMP_PRZELICZENIA!A47:AD47 names 'Spinnrad Magermilchpulver 400 g' but 17_PROSZEK_75!A47:Z47 names 'Spinnrad Magermilchpulver'",
+      "pdf_impact": "none: the generator never reads sheet 18. The PDF shows name 'Spinnrad Magermilchpulver' and pack '400 g' from 04_POKRYCIE_PR row 254 and 17_PROSZEK_75 row 47, EAN 4260175411278."
+    },
+    {
+      "id": "CALC_PRODUCT_NAME_MATCH:SMP:LV",
+      "detail": "18_SMP_PRZELICZENIA!A57:AD57 names 'Spinnrad Magermilchpulver 400 g' but 17_PROSZEK_75!A57:Z57 names 'Spinnrad Magermilchpulver'",
+      "pdf_impact": "none: sheet 18 is not read. The PDF data comes from 04_POKRYCIE_PR row 314 and 17_PROSZEK_75 row 57, pack '400 g', EAN 4260175411278."
+    },
+    {
+      "id": "ARTICLES_05_CURRENT_EQUALS_SELECTION_KEYS",
+      "detail": "05_PR_ING_ARTYKULY has 209 current rows vs 194 distinct selection keys; some rows are used by no selection (e.g. CREAM-GTIN-7790742141309, DEX-AR-PRODUCT, DEX-BH-PRODUCT, DEX-BR-PRODUCT)",
+      "pdf_impact": "none: the generator never reads sheet 05 (0 references in build_guide.py @acdd8e7d). The products come from 04_POKRYCIE_PR plus the role sheets."
+    }
+  ],
+  "generator_sheet_usage": {
+    "file": "reports/shop_pdf0/build_guide.py @ acdd8e7d",
+    "reads": ["01_BAZA_PI (line 252, TARA process note)", "02_KRAJE_75 (line 240)", "04_POKRYCIE_PR (line 245)", "11_MLEKO_75, 14_SMIETANKA_75, 17_PROSZEK_75, 20_DEKSTROZA_75, 23_TARA_75 (lines 36-37, 250)"],
+    "never_reads": ["05_PR_ING_ARTYKULY", "18_SMP_PRZELICZENIA"]
+  },
+  "limitations": [
+    "The PDF's data file was compared, not the PDF. PDF text, layout, readability and live links were not re-checked today. The only PDF-level check is the historical 13/13 validation of 2026-09-12, run on the same PDF sha256.",
+    "The registry is a separate derivation of v23 (PR #319). Agreement shows the two derivations agree; it does not re-validate the workbook.",
+    "Fat %, dextrose form, shop codes, notes and the SMP/DEXTROSE 'From abroad' tags were not compared in this run.",
+    "No link was opened. Availability, prices and delivery were not checked.",
+    "The 12 brand differences are reported, not changed; the country row in the approved table is decisive."
+  ]
+}

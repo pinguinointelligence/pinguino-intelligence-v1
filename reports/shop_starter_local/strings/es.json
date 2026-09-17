@@ -1,0 +1,57 @@
+{
+  "locale": "es",
+  "dir": "ltr",
+  "title": "Ingredientes para la base de gelato",
+  "benefit": "Qué comprar y dónde",
+  "pill": "PDF · 0 €",
+  "country_label": "País",
+  "language_label": "Idioma",
+  "edition": "Edición 1 · septiembre de 2026",
+  "cover_items_title": "Los siete ingredientes del Starter Pack",
+  "howto_title": "Cómo usar esta guía",
+  "howto_lede": "Para cada ingrediente del Starter Pack indicamos un producto que puedes comprar en este país.",
+  "steps": [
+    {"b": "Elige un producto", "p": "El primero es nuestra elección; el segundo, una alternativa si el primero no está disponible."},
+    {"b": "Revisa la etiqueta", "p": "La composición que figura en el envase debe coincidir con la descripción del ingrediente. Si un producto tiene otra composición, lo indicamos."},
+    {"b": "Usa las cantidades de la app", "p": "Este PDF indica productos, no cantidades en gramos. Las recetas y las cantidades las calcula la app Gellatti."}
+  ],
+  "legend_title": "Leyenda",
+  "tag_from_abroad": "Del extranjero",
+  "tag_b2b": "Para empresas",
+  "tag_other_composition": "Otra composición",
+  "tag_alternative": "Alternativa local",
+  "tag_unconfirmed": "Sin confirmar",
+  "legend": {
+    "from_abroad": "una tienda en el extranjero que envía a este país",
+    "b2b": "venta a empresas o en envases grandes",
+    "other_composition": "el mismo tipo de producto con otra composición (indicada al lado)",
+    "alternative": "un sustituto de otro producto Gellatti"
+  },
+  "starter_amount": "En el Starter Pack: {g} g",
+  "option": "Opción {n}",
+  "ean": "EAN",
+  "where": "Dónde",
+  "fat": "grasa",
+  "items": {
+    "DEX": {"name": "Dextrosa", "ref": "Dextrosa (glucosa) en polvo, monohidrato."},
+    "SMP": {"name": "Leche descremada en polvo", "ref": "Leche en polvo con aproximadamente 1 % de grasa."},
+    "CRP": {"name": "Crema de leche en polvo", "ref": "Crema deshidratada con aproximadamente 42 % de grasa."},
+    "FRU": {"name": "Fructosa", "ref": "Fructosa cristalina pura."},
+    "INU": {"name": "Inulina", "ref": "Inulina en polvo, por ejemplo de achicoria."},
+    "YOL": {"name": "Yema de huevo deshidratada", "ref": "Yema de huevo de gallina en polvo, pasteurizada."},
+    "STB": {"name": "Estabilizante", "ref": "Gellatti Stabilizer es una mezcla de goma tara, goma de algarrobo y goma guar."}
+  },
+  "stabilizer_note": "Una alternativa local a la mezcla Gellatti, no la misma mezcla. Mézclala con los ingredientes secos y calienta la base a 75–80 °C.",
+  "missing": "Aún no hay ningún producto aprobado en este país.",
+  "notes_title": "Conviene saber",
+  "notes": [
+    {"h": "Disponibilidad", "p": "Verificamos estos productos en sitios web de fabricantes y tiendas en septiembre de 2026. La disponibilidad, los precios y el envío pueden cambiar y no están garantizados."},
+    {"h": "La etiqueta tiene prioridad", "p": "Antes de comprar, revisa los ingredientes y los alérgenos en el envase. La crema de leche en polvo y la leche en polvo contienen leche; la yema de huevo contiene huevo."},
+    {"h": "Estabilizante", "p": "En este país, una goma vegetal local sustituye al Gellatti Stabilizer. Funciona de forma similar, pero no es la misma mezcla."}
+  ],
+  "fine": "Un producto mencionado aquí no está necesariamente disponible aún en la app Gellatti. Gellatti no vende productos de otras marcas.",
+  "back_h": "Un gran gelato empieza con una buena base.",
+  "back_p": "Las recetas, las cantidades y el proceso están en la app Gellatti.",
+  "back_link": "gellatti.com",
+  "draft": "BORRADOR · propuestas para aprobación"
+}

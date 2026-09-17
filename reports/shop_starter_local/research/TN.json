@@ -1,0 +1,168 @@
+{
+  "iso2": "TN",
+  "country": "Tunisia",
+  "agent": "research-mena",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:30:49Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "BRAK",
+      "local_terms": [
+        "crème en poudre",
+        "poudre de crème",
+        "crème de lait en poudre",
+        "بودرة القشدة",
+        "كريمة بودرة"
+      ],
+      "queries": [
+        "parafendri.tn / pharma-shop.tn / pharmashop.tn PrestaShop search: crème en poudre",
+        "parashop.tn OpenCart search: crème en poudre",
+        "parapharmacie.tn WooCommerce Store API search: crème en poudre",
+        "parapharmacie.tn / lapara.tn sitemap URL-slug scan (fructos, inulin, yolk, jaune, oeuf-en-poudre, creme-en-poudre, poudre-de-creme, cream-powder + Arabic فركتوز/نولين/صفار)",
+        "geant.tn search attempt (not server-rendered)"
+      ],
+      "sources_tried": [
+        "parafendri.tn parapharmacy (search: no product)",
+        "pharma-shop.tn parapharmacy (search: no product)",
+        "pharmashop.tn parapharmacy (search: no product)",
+        "parashop.tn parapharmacy (search: no product)",
+        "parapharmacie.tn parapharmacy (39 sitemap files scanned, no match)",
+        "lapara.tn parapharmacy (product sitemap lists 13 products, no match)",
+        "geant.tn hypermarket (search not server-rendered)",
+        "carrefour.tn / monoprix.tn supermarkets (JavaScript shells)",
+        "patisserie.tn pastry shop (no ingredient catalogue)",
+        "jumia.com.tn marketplace (Cloudflare challenge)"
+      ],
+      "candidates": [],
+      "notes": "No dairy cream powder found on any readable source."
+    },
+    "FRU": {
+      "result": "BRAK",
+      "local_terms": [
+        "fructose",
+        "fructose en poudre",
+        "sucre de fruit",
+        "سكر الفركتوز",
+        "فركتوز"
+      ],
+      "queries": [
+        "parafendri.tn / pharma-shop.tn / pharmashop.tn PrestaShop search: fructose",
+        "parashop.tn OpenCart search: fructose",
+        "parapharmacie.tn WooCommerce Store API search: fructose",
+        "parapharmacie.tn / lapara.tn sitemap URL-slug scan (fructos, inulin, yolk, jaune, oeuf-en-poudre, creme-en-poudre, poudre-de-creme, cream-powder + Arabic فركتوز/نولين/صفار)",
+        "geant.tn search attempt (not server-rendered)"
+      ],
+      "sources_tried": [
+        "parafendri.tn parapharmacy (search: no product)",
+        "pharma-shop.tn parapharmacy (search: no product)",
+        "pharmashop.tn parapharmacy (search: no product)",
+        "parashop.tn parapharmacy (search: no product)",
+        "parapharmacie.tn parapharmacy (39 sitemap files scanned, no match)",
+        "lapara.tn parapharmacy (product sitemap lists 13 products, no match)",
+        "geant.tn hypermarket (search not server-rendered)",
+        "carrefour.tn / monoprix.tn supermarkets (JavaScript shells)",
+        "patisserie.tn pastry shop (no ingredient catalogue)",
+        "jumia.com.tn marketplace (Cloudflare challenge)"
+      ],
+      "candidates": [],
+      "notes": "No fructose retail pack found on any readable source."
+    },
+    "INU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "inuline",
+        "inuline en poudre",
+        "inuline de chicorée",
+        "إينولين"
+      ],
+      "queries": [
+        "parafendri.tn / pharma-shop.tn / pharmashop.tn PrestaShop search: inuline",
+        "parashop.tn OpenCart search: inuline",
+        "parapharmacie.tn WooCommerce Store API search: inuline",
+        "parapharmacie.tn / lapara.tn sitemap URL-slug scan (fructos, inulin, yolk, jaune, oeuf-en-poudre, creme-en-poudre, poudre-de-creme, cream-powder + Arabic فركتوز/نولين/صفار)",
+        "geant.tn search attempt (not server-rendered)",
+        "kiki-health.com product page + shipping policy (cross-border)"
+      ],
+      "sources_tried": [
+        "parafendri.tn parapharmacy (search: no product)",
+        "pharma-shop.tn parapharmacy (search: no product)",
+        "pharmashop.tn parapharmacy (search: no product)",
+        "parashop.tn parapharmacy (search: no product)",
+        "parapharmacie.tn parapharmacy (39 sitemap files scanned, no match)",
+        "lapara.tn parapharmacy (product sitemap lists 13 products, no match)",
+        "geant.tn hypermarket (search not server-rendered)",
+        "carrefour.tn / monoprix.tn supermarkets (JavaScript shells)",
+        "patisserie.tn pastry shop (no ingredient catalogue)",
+        "jumia.com.tn marketplace (Cloudflare challenge)",
+        "kiki-health.com UK brand shop (GTIN on page; country selector lists this market)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "KIKI Health",
+          "product_name": "Inulin Powder, Organic - 250g",
+          "pack": "250 g",
+          "gtin": "5060018515847",
+          "identifier_confirmed": true,
+          "url": "https://kiki-health.com/products/inulin-powder-organic-250g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "KIKI Health (UK brand web shop)",
+          "page_market": null,
+          "market_by": "GENERIC_TLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "no local binding (generic .com, UK brand shop); cross-border - see ships_to_evidence",
+          "cross_border": true,
+          "ships_to_evidence": "country selector on the product page lists 'Tunisia (GBP £)'; shipping policy https://kiki-health.com/policies/shipping-policy checked with check_quotes.py (found=true, 2026-09-17): 'For EU and International orders, postage costs vary according to your country.' and 'International Delivery ... Royal Mail International Tracked delivery is used on all orders'",
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": 93.0,
+            "fructose_pct": null,
+            "ingredients": "Made from 100% Blue Agave (organic agave inulin)",
+            "from": "brand product page: '93% soluble plant-based fibre', '5.4g of fibre per serving', 'Completely pure, with no added sugars or sweeteners'"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "pure organic agave inulin, 93 % soluble fibre",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/29914546d209f5b4.json",
+          "verifier_verification_class": "EAN_ON_GENERIC_TLD_PAGE",
+          "checked_at_utc": "2026-09-17T16:26:00Z",
+          "identity_note": "gtin13 5060018515847 as JSON-LD data on this purchase page (verifier EAN_ON_GENERIC_TLD_PAGE); the same GTIN/product is sold locally in UAE/KSA by Life Pharmacy"
+        }
+      ],
+      "notes": "No local direct retailer with inulin powder was readable; cross-border brand shop used."
+    },
+    "YOL": {
+      "result": "BRAK",
+      "local_terms": [
+        "jaune d'oeuf en poudre",
+        "poudre de jaune d'œuf",
+        "صفار البيض المجفف",
+        "بودرة صفار البيض"
+      ],
+      "queries": [
+        "parafendri.tn / pharma-shop.tn / pharmashop.tn PrestaShop search: jaune d'oeuf en poudre",
+        "parashop.tn OpenCart search: jaune d'oeuf en poudre",
+        "parapharmacie.tn WooCommerce Store API search: jaune d'oeuf en poudre",
+        "parapharmacie.tn / lapara.tn sitemap URL-slug scan (fructos, inulin, yolk, jaune, oeuf-en-poudre, creme-en-poudre, poudre-de-creme, cream-powder + Arabic فركتوز/نولين/صفار)",
+        "geant.tn search attempt (not server-rendered)"
+      ],
+      "sources_tried": [
+        "parafendri.tn parapharmacy (search: no product)",
+        "pharma-shop.tn parapharmacy (search: no product)",
+        "pharmashop.tn parapharmacy (search: no product)",
+        "parashop.tn parapharmacy (search: no product)",
+        "parapharmacie.tn parapharmacy (39 sitemap files scanned, no match)",
+        "lapara.tn parapharmacy (product sitemap lists 13 products, no match)",
+        "geant.tn hypermarket (search not server-rendered)",
+        "carrefour.tn / monoprix.tn supermarkets (JavaScript shells)",
+        "patisserie.tn pastry shop (no ingredient catalogue)",
+        "jumia.com.tn marketplace (Cloudflare challenge)"
+      ],
+      "candidates": [],
+      "notes": "No dried egg yolk powder found on any readable source."
+    }
+  },
+  "country_notes": "Discovery constraint: shared WebSearch budget exhausted (200/200) early; DuckDuckGo/Mojeek/Brave/Ecosia/Yandex/Qwant served CAPTCHAs or firewalls (not bypassed). Discovery used shops' own server-rendered search pages, WooCommerce Store API and sitemaps, plus domain probing. No Tunisian baking-ingredient supplier could be discovered without a search engine (guessed domains did not resolve)."
+}

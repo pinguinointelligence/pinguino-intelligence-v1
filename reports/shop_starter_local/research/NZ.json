@@ -1,0 +1,306 @@
+{
+  "iso2": "NZ",
+  "country": "New Zealand",
+  "agent": "research-south-asia-oceania-africa",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T15:45:00Z",
+  "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE",
+  "items": {
+    "CRP": {
+      "result": "LEAD_ONLY",
+      "local_terms": [
+        "cream powder",
+        "dried cream",
+        "heavy cream powder"
+      ],
+      "queries": [
+        "cream powder dairy buy New Zealand shop .co.nz",
+        "\"cream powder\" keto store NZ OR \"heavy cream powder\" New Zealand"
+      ],
+      "sources_tried": [
+        "woolworths.co.nz (full cream MILK powder only - rejected type)",
+        "opencountry.co.nz, awaruaorganics.co.nz, farmfield.co.nz, shop.springsheepnz.com (milk powders - rejected type)",
+        "nzmp.com Cream Powder 55 (B2B ingredient, 55 % fat, no retail pack)",
+        "ketostore.nz (own-brand cream powder - LEAD)",
+        "lifepharmacy.co.nz keto powders collection (not checked further)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Keto Store NZ",
+          "product_name": "Cream Powder - 750g",
+          "pack": "750g (page also mentions a 300g pack)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://ketostore.nz/products/cream-powder-750g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Keto Store NZ Ltd",
+          "page_market": "NZ",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .nz",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredients: Milk (page note: 'This is Cream Powder and Cream comes from Milk'); page text: 'There are 0.2g carbs in each gram of cream powder'; fat per 100 g only in a label image, not in page text",
+            "from": "page text"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "dairy cream powder from NZ milk, exclusive own product (SKU CRM-PWDR-750-BAG-S8-M14); fat % not printed in page text, so A/B cannot be decided",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/6a77a5a0c264c78a.json",
+          "checked_at_utc": "2026-09-17T15:37:50Z"
+        }
+      ],
+      "notes": "Identity and market binding would pass (D-37 own-brand listing, .nz), but the composition gate fails for lack of a printed fat %. Owner could accept after reading the nutrition panel image on the page."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "fructose",
+        "fruit sugar"
+      ],
+      "queries": [
+        "fructose powder New Zealand buy online .co.nz",
+        "fructose 500g site:co.nz health food"
+      ],
+      "sources_tried": [
+        "ohmywellness.co.nz (health food retailer - CONFIRMED via identity_match)",
+        "naturitas.nz (online health retailer .nz storefront - LEAD, no GTIN)",
+        "brewshop.co.nz (home-brew shop, unbranded fructose, several pack sizes on one listing, no GTIN)",
+        "nz.iherb.com NOW Fructose (HTTP 403 - inconclusive; verdict ~/.cache/gellatti-evidence/verify/f15c14fba97dd957.json)",
+        "ecplabchem.co.nz, crescendo.co.nz (lab-grade chemical suppliers - rejected)",
+        "fruugo.co.nz (marketplace)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Lotus",
+          "product_name": "Lotus Fructose (Fruit Sugar) 500g",
+          "pack": "500g",
+          "gtin": "9317127060611",
+          "identifier_confirmed": true,
+          "url": "https://www.ohmywellness.co.nz/shop/product/839021/lotus-fructose-fruit-sugar-500g/",
+          "source_type": "RETAILER",
+          "seller": "Oh My Wellness",
+          "page_market": "NZ",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "country domain .co.nz",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": 100.0,
+            "ingredients": "Ingredients: Fructose 100%",
+            "from": "page ingredients text"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "fructose 100 %",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/7a9913864e2405fa.json",
+          "identity_match_file": "~/.cache/gellatti-evidence/verify/identity_13db00b784cfbfa1.json",
+          "identity_source_url": "https://www.mrvitamins.com.au/products/lotus-fructose-fruit-sugar-500g",
+          "checked_at_utc": "2026-09-17T15:38:22Z"
+        },
+        {
+          "rank": 2,
+          "brand": "El Granero Integral",
+          "product_name": "Fructose 1 kg of powder",
+          "pack": "1 kg",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.naturitas.nz/p/food/sweeteners-and-honey/sugar-substitutes/fructose-1-kg-of-powder-el-granero-integral",
+          "source_type": "RETAILER",
+          "seller": "Naturitas",
+          "page_market": "NZ",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .nz (Naturitas is a Spain-based online retailer running a .nz storefront)",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredients Fructose. Per 100 g: carbohydrates 99.800 g, sugars 99.800 g",
+            "from": "page ingredients + nutrition table"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single ingredient fructose, sugars 99.8 g/100 g (reference 99.8)",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/e92ccc332d785671.json",
+          "checked_at_utc": "2026-09-17T15:37:21Z"
+        }
+      ],
+      "notes": "Rank 1 identity: GTIN 9317127060611 printed on the Australian Mr Vitamins page + brand/name/pack match on the NZ page (identity_match.py, no failed checks)."
+    },
+    "INU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "inulin powder",
+        "prebiotic fibre",
+        "chicory root inulin"
+      ],
+      "queries": [
+        "inulin powder New Zealand buy .co.nz"
+      ],
+      "sources_tried": [
+        "pharmacydirect.co.nz (online pharmacy - CONFIRMED)",
+        "healthpost.co.nz (same NOW product, no GTIN on page)",
+        "nothingnaughty.kiwi.nz (own-brand chicory inulin - LEAD, no composition)",
+        "bulkpowders.co.nz, houseofhealth.co.nz, healthyme.co.nz (Morlife Inulin Plus - blend, not checked)",
+        "nz.iherb.com (bot wall on this network)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "NOW",
+          "product_name": "NOW Certified Organic Inulin Pure Powder 227g",
+          "pack": "227g",
+          "gtin": "00733739029447",
+          "identifier_confirmed": true,
+          "url": "https://www.pharmacydirect.co.nz/Now-Certified-Organic-Inulin-Pure-Powder-227g",
+          "source_type": "RETAILER",
+          "seller": "Pharmacy Direct",
+          "page_market": "NZ",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .co.nz",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Active Ingredients: Pure Certified Organic Inulin Powder (from Blue Agave) net.wt. 8oz (227g)",
+            "from": "page description"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "single-ingredient pure agave inulin powder; fibre g/100 g is not printed on the page. healthpost.co.nz words the same product 'Organic Inulin (FOS) (from Blue Agave)' - owner may want the label panel checked (A vs B)",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/f6ffefb63f0f0aa6.json",
+          "checked_at_utc": "2026-09-17T15:39:22Z"
+        },
+        {
+          "rank": 2,
+          "brand": "Nothing Naughty",
+          "product_name": "Inulin Prebiotic Fibre 250g",
+          "pack": "250g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.nothingnaughty.kiwi.nz/products/inulin-250g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Nothing Naughty Ltd",
+          "page_market": "NZ",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .kiwi.nz",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "'A soluble, dietary fibre extracted exclusively from chicory root ... 100% natural'",
+            "from": "page description (no nutrition table in text)"
+          },
+          "equivalence": "C_INSUFFICIENT_DATA",
+          "equivalence_note": "chicory inulin by description; no fibre % printed",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c6cd00aa80c6060f.json",
+          "checked_at_utc": "2026-09-17T15:38:31Z"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "egg yolk powder",
+        "dried egg yolk"
+      ],
+      "queries": [
+        "egg yolk powder New Zealand buy"
+      ],
+      "sources_tried": [
+        "ketostore.nz (own-brand egg yolk powder - CONFIRMED via D-37)",
+        "nz.myprotein.com (GTIN on page - CONFIRMED, but out of stock at check time)",
+        "vitalnewzealand.com (wholesale 20 kg cartons - not retail)",
+        "etsy.com/nz, u-buy.co.nz (marketplaces)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Keto Store NZ",
+          "product_name": "Egg Yolk Powder 1 kg",
+          "pack": "1 kg (page also mentions a 200g size)",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://ketostore.nz/products/egg-yolk-powder",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Keto Store NZ Ltd",
+          "page_market": "NZ",
+          "market_by": "CCTLD",
+          "identity_basis": "FIRST_PARTY_OWN_BRAND_LISTING",
+          "market_binding_signal": "country domain .nz",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 56.0,
+            "protein_g": 34.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredient: 100% Egg yolk; per 100gm: Net Carbs 1.4g, Fat 56g, Protein 34g, Energy 2699kJ; pasteurised",
+            "from": "page text"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % egg yolk; fat 56 / protein 34 per 100 g vs reference 56.5 / 34.5",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/25b1593d8f3654f0.json",
+          "checked_at_utc": "2026-09-17T15:37:53Z"
+        },
+        {
+          "rank": 2,
+          "brand": "Myprotein",
+          "product_name": "Egg Yolk Powder - 500g - Unflavoured",
+          "pack": "500g (1kg variant GTIN 5055534303726 on the same page)",
+          "gtin": "5055534303733",
+          "identifier_confirmed": true,
+          "url": "https://nz.myprotein.com/p/sports-nutrition/egg-yolk-powder/10529352/",
+          "source_type": "RETAILER",
+          "seller": "Myprotein (THG)",
+          "page_market": "NZ",
+          "market_by": "SUBDOMAIN_LOCALE",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "locale subdomain nz.myprotein.com; page says 'NZ shipping available'",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": 59.0,
+            "protein_g": 32.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Unflavoured: Egg Yolk Powder (100%); per 100g carbohydrates 2.1 g, salt 2.5 g",
+            "from": "page nutrition table"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % egg yolk powder",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/63a1139a8a4798e7.json",
+          "checked_at_utc": "2026-09-17T15:39:24Z"
+        }
+      ],
+      "notes": "Rank 2 variant data shows inStock:false for both 500g and 1kg at check time. Myprotein is UK-based; the nz. subdomain is its NZ storefront."
+    }
+  }
+}

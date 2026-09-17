@@ -1,0 +1,373 @@
+{
+  "iso2": "PT",
+  "country": "Portugal",
+  "agent": "research-eu-south",
+  "egress_cc": "ES",
+  "researched_at_utc": "2026-09-17T16:02:00Z",
+  "items": {
+    "CRP": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "natas em pó",
+        "nata em pó",
+        "creme de leite em pó"
+      ],
+      "queries": [
+        "continente.pt site search 'natas em pó'",
+        "celeiro.pt site search 'natas em pó'",
+        "auchan.pt site search 'natas em pó'",
+        "pingodoce.pt site search 'natas em pó'",
+        "\"cream powder\" 42% fat buy online Europe (Brave - HTTP 429, not run)"
+      ],
+      "sources_tried": [
+        "continente.pt (supermarket; only liquid natas / chantilly categories)",
+        "auchan.pt (supermarket; only UHT liquid natas, e.g. 'natas uht auchan para culinária')",
+        "pingodoce.pt (supermarket; 52 hits, liquid/UHT natas, no powder found)",
+        "celeiro.pt (health-food chain; 4 unrelated hits)",
+        "prozis.com/pt/pt (HTTP 429 rate-limit, inconclusive)",
+        "meincupcake.de (German baking shop; ships to Portugal - cross-border)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Cake-Masters Basics",
+          "product_name": "Sahnepulver 100g",
+          "pack": "100 g",
+          "gtin": "4250712308666",
+          "identifier_confirmed": true,
+          "url": "https://www.meincupcake.de/shop/sahnepulver-100g.html",
+          "source_type": "RETAILER",
+          "seller": "MEINCUPCAKE Shop (Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: seller's delivery-country list includes the market (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.meincupcake.de/shop/info/lieferung-und-versandkosten.html",
+            "quotes": [
+              "Wir liefern zu den oben genannten Konditionen in folgende",
+              "Estland, Finnland, Frankreich, Irland, Italien, Lettland, Litauen, Luxemburg, Niederlande, Polen, Portugal, Schweden, Slowakische Republik, Slowenien, Spanien, Tschechische Republik, Ungarn."
+            ],
+            "found": [
+              true,
+              true
+            ],
+            "context": "Wir liefern zu den oben genannten Konditionen in folgende Länder: Belgien, Dänemark, Estland, … Italien, … Portugal, … Spanien, Tschechische Republik, Ungarn."
+          },
+          "composition": {
+            "fat_g": 42.0,
+            "protein_g": 19.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: SAHNE 42% Fett, sprühgetrocknet. Nährwerte/100 g: Fett 42 g (ges. 27.1 g), Kohlenhydrate 29 g, davon Zucker 29 g, Eiweiß 19 g, Salz 0.75 g",
+            "from": "retailer page (Zutaten + Nährwertangaben); Lebensmittelunternehmen Cake-Masters, Herzlake",
+            "carbs_g": 29.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Spray-dried dairy cream, fat 42 g/100 g = reference 42 %; protein 19 g, sugars (lactose) 29 g. Stock shown: 'Mehr als 5 Stück'. GTIN is on the German seller's page; the page is not bound to PT (cross-border).",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/951ad14619b5cb51.json",
+          "checked_at_utc": "2026-09-17T15:52:38Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "No Portuguese retailer page for dairy cream powder found; local 'natas' results are liquid UHT cream. Web search unavailable during this run (WebSearch session budget exhausted; Brave/DuckDuckGo returned 429/CAPTCHA), so local discovery relied on retailer site searches."
+    },
+    "FRU": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "frutose",
+        "frutose em pó",
+        "açúcar de frutas",
+        "levulose"
+      ],
+      "queries": [
+        "continente.pt site search 'frutose' (0 products)",
+        "celeiro.pt site search 'frutose'",
+        "auchan.pt site search 'frutose' (fuzzy: 'frutos' products only)",
+        "pingodoce.pt site search 'frutose' (157 fuzzy hits)",
+        "prozis.com/pt/pt search 'frutose' (HTTP 429)",
+        "lojaprovida.pt site search 'frutose'"
+      ],
+      "sources_tried": [
+        "lojaprovida.pt (Próvida own shop; Frutose - Açúcar de Frutas 500g, GTIN in JSON-LD, InStock)",
+        "celeiro.pt (health-food chain; 'Frutose' 500 g listed 'Sem Marca', distributed by Próvida; Naturefoods Frutose 500 g / 1 kg without GTIN)",
+        "continente.pt (0 results)",
+        "auchan.pt (no fructose product)",
+        "pingodoce.pt (fuzzy results, no fructose powder identified)",
+        "elcorteingles.pt (HTTP 403)",
+        "hsnstore.pt (HSN Portugal; HTTP 403 bot wall, inconclusive)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Próvida",
+          "product_name": "Frutose - Açúcar de Frutas 500g",
+          "pack": "500 g",
+          "gtin": "5602353181624",
+          "identifier_confirmed": true,
+          "url": "https://lojaprovida.pt/inicio/242-frutose-acucar-de-frutas-500g-5602353181624.html",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Loja Próvida (Próvida - Produtos Naturais, Lda.)",
+          "page_market": "PT",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain .pt",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": 100.0,
+            "ingredients": "Ingredientes: 100% Frutose cristalizada. Declaração nutricional por 100 g: Energia 1700 kJ/400 kcal; Lípidos 0 g; Hidratos de Carbono 100 g dos quais açúcares 100 g; Fibra 0 g; Proteínas 0 g; Sal 0 g",
+            "from": "official shop page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % crystalline fructose. JSON-LD gtin13 5602353181624 with sku 109402C (Artigo 109402C). schema.org InStock. A 1 kg pack is also listed (GTIN 5602353181556 in its URL, not checked).",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/5984823a756c2469.json",
+          "checked_at_utc": "2026-09-17T16:29:23Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Próvida (listed as 'Sem Marca'; 'Distribuído por: Próvida - Produtos Naturais, Lda.')",
+          "product_name": "Frutose (Denominação de Venda: FRUCTOSE 500GR)",
+          "pack": "500 g",
+          "gtin": "5602353181624",
+          "identifier_confirmed": true,
+          "url": "https://www.celeiro.pt/877718-frutose-500-gramas-kg-sem-marca",
+          "source_type": "RETAILER",
+          "seller": "Celeiro",
+          "page_market": "PT",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_SOURCE_PLUS_ATTRIBUTE_MATCH",
+          "market_binding_signal": "country domain .pt",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": 100.0,
+            "ingredients": "Ingredientes: Frutose (Laevulose) cristalina. Per 100 g: energia 1700 kJ/400 kcal, hidratos de carbono 100 g, dos quais açúcares (frutose) 100 g; Origem: PT",
+            "from": "retailer page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "identity_match.py (GTIN 5602353181624 on lojaprovida.pt + brand 'Próvida', name, 500 g on celeiro.pt) passed all checks: ~/.cache/gellatti-evidence/verify/identity_bc980794f52306c6.json. Caveat: Celeiro lists the item as 'Sem Marca'; the brand match rests on the distributor line and the identical description text. 'Produto disponível e em stock'.",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/1ecdf3c9c337befa.json",
+          "checked_at_utc": "2026-09-17T16:30:02Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Local confirmation found; cross-border sellers (glaeserundflaschen.de, gourmet-versand.com) were not needed."
+    },
+    "INU": {
+      "result": "VERIFIED_CROSS_BORDER",
+      "local_terms": [
+        "inulina",
+        "inulina em pó"
+      ],
+      "queries": [
+        "celeiro.pt site search 'inulina'",
+        "continente.pt site search 'inulina'",
+        "auchan.pt site search 'inulina'",
+        "pingodoce.pt site search 'inulina' (0)",
+        "prozis.com/pt/pt search 'inulina' (HTTP 429)"
+      ],
+      "sources_tried": [
+        "celeiro.pt (Now Foods Inulina em pó 227 g - no GTIN)",
+        "continente.pt (only a coffee blend with inulin)",
+        "auchan.pt (0)",
+        "pingodoce.pt (0)",
+        "prozis.com (HTTP 429, inconclusive)",
+        "hsnstore.pt (HSN Portugal; HTTP 403 bot wall, inconclusive)",
+        "farmaciabarreiros.com (results not parseable)",
+        "taste-market.de (German shop; ships to Portugal - cross-border)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Taste Market",
+          "product_name": "Inulin Pulver 100 g Ballaststoff-Pulver | Chicorée Wurzel (Art.-Nr. 27-100g)",
+          "pack": "100 g (other sizes 200 g - 20 kg on the same page)",
+          "gtin": "0710535894134",
+          "identifier_confirmed": true,
+          "url": "https://www.taste-market.de/Inulin-Pulver/27-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Taste Market GmbH (Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: seller's EU shipping zones list the market (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+            "quotes": [
+              "Lieferung in das EU-Ausland oder internationaler Versand",
+              "EU-Zone 2:Italien, Slowakei, Slowenien, Spanien &amp; Ungarn",
+              "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
+            ],
+            "found": [
+              true,
+              true,
+              true
+            ]
+          },
+          "composition": {
+            "fat_g": 0.0,
+            "protein_g": 0.0,
+            "fibre_g": 88.0,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: Inulin (aus der Chicoréewurzel). Nährwerte/100 g: Kohlenhydrate 8,0 g, davon Zucker 8,0 g, Ballaststoffe 88 g, Eiweiß 0 g, Salz 0,20 g",
+            "from": "shop page (Zutaten + Nährwertangaben)",
+            "sugars_g": 8.0
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "Chicory inulin, fibre 88 g/100 g (reference 89). itemprop gtin13 0710535894134 sits in the 27-100g variant page data; page offers 14 sizes (identifier checked only for the 100 g variant URL).",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/4cec733b1fc3a115.json",
+          "checked_at_utc": "2026-09-17T15:57:35Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Now Foods",
+          "product_name": "Inulina Em Pó (Suplemento alimentar - Inulina em pó)",
+          "pack": "227 g",
+          "gtin": null,
+          "identifier_confirmed": false,
+          "url": "https://www.celeiro.pt/534727-inulina-em-po-227-gramas-kg-now-foods",
+          "source_type": "RETAILER",
+          "seller": "Celeiro",
+          "page_market": "PT",
+          "market_by": "CCTLD",
+          "identity_basis": "NOT_PROVEN",
+          "market_binding_signal": "country domain .pt",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredientes: Inulina (FOS - fruto-oligosacarideo) (proveniente da planta de agave azul). Composição por 4 g: Inulina (FOS) 3300 mg",
+            "from": "retailer page"
+          },
+          "equivalence": "B_SAME_TYPE_DIFFERENT_COMPOSITION",
+          "equivalence_note": "Agave inulin labelled 'Inulina (FOS)'; 3300 mg per 4 g serving = 82.5 % declared inulin, below the 85 % A threshold. No GTIN on the page. In stock.",
+          "evidence_class": "LEAD",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/23dd662907fa3c4e.json",
+          "checked_at_utc": "2026-09-17T15:48:03Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": ""
+    },
+    "YOL": {
+      "result": "CONFIRMED_LOCAL",
+      "local_terms": [
+        "gema de ovo em pó",
+        "gema em pó"
+      ],
+      "queries": [
+        "myprotein.pt product 10529352 (Gema de Ovo em pó)",
+        "celeiro.pt site search 'gema'",
+        "auchan.pt site search 'gema em pó'",
+        "pingodoce.pt site search 'gema de ovo em pó'"
+      ],
+      "sources_tried": [
+        "myprotein.pt (GTIN on page, out of stock)",
+        "auchan.pt (no yolk powder)",
+        "pingodoce.pt (no result parsed)",
+        "celeiro.pt ('gema' - many unrelated hits)",
+        "taste-market.de (German shop; ships to Portugal - cross-border, in stock)",
+        "sermand.com (Spanish producer; country selector lists Portugal - not verified further)"
+      ],
+      "candidates": [
+        {
+          "rank": 1,
+          "brand": "Myprotein",
+          "product_name": "Gema de Ovo em Pó - 500g - Sem Sabor",
+          "pack": "500 g",
+          "gtin": "5055534303733",
+          "identifier_confirmed": true,
+          "url": "https://www.myprotein.pt/p/sports-nutrition/gema-de-ovo-em-po/10529352/",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Myprotein (THG) country site",
+          "page_market": "PT",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "country domain",
+          "cross_border": false,
+          "ships_to_evidence": null,
+          "composition": {
+            "fat_g": null,
+            "protein_g": null,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Ingredientes: Este produto é 100% gema de ovo em pó sem adição ou remoção de ingredientes. Cada 15 g: Proteína 5.0 g, Carboidratos 1.0 g, Gordura 8.5 g",
+            "from": "official shop page"
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % egg yolk powder. JSON-LD pairs gtin13 5055534303733 with weight 500 g; schema availability OutOfStock / inStock:false at check time (same on es/pt/it/gr/com.cy). PT page prints nutrition per 15 g serving only (not converted here).",
+          "evidence_class": "CONFIRMED_LOCAL",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/c6454c35ab2a6a7c.json",
+          "checked_at_utc": "2026-09-17T15:46:37Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        },
+        {
+          "rank": 2,
+          "brand": "Taste Market",
+          "product_name": "Eigelbpulver 100 g Sprühgetrocknet (Art.-Nr. 123-100g)",
+          "pack": "100 g",
+          "gtin": "4262421423127",
+          "identifier_confirmed": true,
+          "url": "https://www.taste-market.de/Eigelbpulver/123-100g",
+          "source_type": "OFFICIAL_SHOP",
+          "seller": "Taste Market GmbH (Germany)",
+          "page_market": "DE",
+          "market_by": "CCTLD",
+          "identity_basis": "GTIN_ON_LOCAL_PAGE",
+          "market_binding_signal": "cross-border: seller's EU shipping zones list the market (check_quotes.py found=true)",
+          "cross_border": true,
+          "ships_to_evidence": {
+            "tool": "check_quotes.py",
+            "url": "https://www.taste-market.de/Informationen/Zahlung-Versand/",
+            "quotes": [
+              "Lieferung in das EU-Ausland oder internationaler Versand",
+              "EU-Zone 2:Italien, Slowakei, Slowenien, Spanien &amp; Ungarn",
+              "EU-Zone3: Bulgarien, Estland, Griechenland, Irland, Kroatien, Lettland, Litauen, Malta, Portugal, Rumänien &amp; Zypern"
+            ],
+            "found": [
+              true,
+              true,
+              true
+            ]
+          },
+          "composition": {
+            "fat_g": 58.0,
+            "protein_g": 34.0,
+            "fibre_g": null,
+            "fructose_pct": null,
+            "ingredients": "Zutaten: Hühner-Eigelb, sprühgetrocknet und pasteurisiert. Nährwerte/100 g: Fett 58 g (ges. 18 g), Kohlenhydrate 2,1 g, davon Zucker 0 g, Eiweiß 34 g, Salz 0,4 g",
+            "from": "shop page (Zutaten + Nährwertangaben)",
+            "carbs_g": 2.1
+          },
+          "equivalence": "A_EQUIVALENT",
+          "equivalence_note": "100 % pasteurised spray-dried hen egg yolk; fat 58 / protein 34 vs reference 56.5 / 34.5. Page data prints itemprop gtin13 as 14-digit '04262421423127'.",
+          "evidence_class": "VERIFIED_CROSS_BORDER",
+          "verifier_verdict_file": "~/.cache/gellatti-evidence/verify/487e7d619aaf0535.json",
+          "checked_at_utc": "2026-09-17T15:57:36Z",
+          "selection_status": "PROPOSAL_AWAITING_OWNER_ACCEPTANCE"
+        }
+      ],
+      "notes": "Rank 1 is local but out of stock at check time; rank 2 is in stock (cross-border)."
+    }
+  }
+}
