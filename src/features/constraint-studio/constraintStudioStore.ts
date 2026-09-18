@@ -161,6 +161,7 @@ import type { OptimizePreviewComputation } from './optimizePreviewComputation';
 import {
   applyPreviewInstructions,
   hasCustomerQuantityLock,
+  isBootstrapOnlyInstructionSet,
   type PreviewLineInstruction,
 } from './previewInstructions';
 import { lockConflictDiagnosable, type LockConflictDiagnosis } from './lockRelaxation';
@@ -444,6 +445,76 @@ interface InteractivePreviewStage {
   untouched: CanonicalDraft;
   instructions: PreviewLineInstruction[];
 }
+
+/**
+ * OWNER §18 (2026-09-18) — ONE recipe logic behind HOME and PRO.
+ *
+ * TRUE only for the customer's own edit session inside the preview. A run whose
+ * instructions are ALL HOME's technical bootstraps (owner OD-1: a 0 g priority
+ * line enters the COPY at the 1 g Crown seed) carries no customer edit — it is
+ * the plain recalculation PRO runs on its seeded store, so it gets the plain
+ * run's semantics: the Direction fallback ladder, the Suggested Fix / lock
+ * recovery and the automatic Crown-OFF correction. What stays with EVERY
+ * instruction run is the copy itself: the solver sees `untouched` + the
+ * instructions, every Preview it stages carries that instruction proof, the
+ * Apply door re-derives the same copy from the session authorization, and the
+ * recipe store is written by nothing but „Zastosuj zmiany".
+ */
+const isCustomerInstructionSession = (
+  interactive: { readonly instructions: readonly PreviewLineInstruction[] } | undefined,
+): boolean => interactive !== undefined && !isBootstrapOnlyInstructionSet(interactive.instructions);
+
+/** The session authorization every Preview staged for `stage` carries. */
+const previewInstructionAuthorizationFor = (
+  stage: InteractivePreviewStage,
+): PreviewInstructionSessionAuthorization => ({
+  baseFingerprint: workingStateFingerprint(stage.untouched.input, stage.untouched.constraints),
+  lines: stage.instructions.map((instruction) => ({ ...instruction })),
+});
+
+/**
+ * The draft the staged session was SOLVED for, re-derived from the recipe and
+ * the session's own authorization — never from a Preview payload: the recipe
+ * itself after a plain run, the untouched recipe + the authorized instructions
+ * after an instruction run. `null` once the recipe no longer is that untouched
+ * recipe. The follow-up routes of a staged run (Direction „Ustaw …", the Starter
+ * Pack rescue) bind to this draft exactly as the run's own Preview did.
+ */
+function sessionSolvedDraft(
+  current: CanonicalDraft,
+  authorization: PreviewInstructionSessionAuthorization | null,
+): CanonicalDraft | null {
+  if (authorization === null) return current;
+  if (
+    workingStateFingerprint(current.input, current.constraints) !== authorization.baseFingerprint
+  ) {
+    return null;
+  }
+  const adjusted = applyPreviewInstructions(
+    current.input,
+    current.constraints,
+    authorization.lines,
+  );
+  return adjusted.ok
+    ? { ...current, input: adjusted.input, constraints: adjusted.constraints }
+    : null;
+}
+
+/** A Preview built for the solved draft, stamped with the session's instruction
+ * proof so the customer compares it with the recipe on screen. */
+const withSessionInstructionProof = (
+  preview: ConstraintPreview,
+  current: CanonicalDraft,
+  authorization: PreviewInstructionSessionAuthorization | null,
+): ConstraintPreview =>
+  authorization === null
+    ? preview
+    : attachPreviewInstructionProof(
+        preview,
+        current.input,
+        current.constraints,
+        authorization.lines,
+      );
 
 /** PI terminal preflight. Every selected Base line is a real product choice and
  * therefore needs at least 1 g before formulation. Toppings are stored outside
@@ -845,6 +916,8 @@ interface LockedConstraintFixStageArgs extends ImpossibleConstraintLockRecovery 
   proposedSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>;
   technicalOnlyMainLineIds: readonly string[];
   prebuilt?: BuildPreviewResult;
+  /** A bootstrap-only run: `draft` is its copy of `session.untouched`. */
+  session?: InteractivePreviewStage;
 }
 
 /** Stages one disclosed, Engine-derived lock transition. Runtime may pass the
@@ -862,6 +935,11 @@ function stageLockedConstraintFixPreview(args: LockedConstraintFixStageArgs): bo
   if (!recovered.ok || recovered.preview.diagnosticOnly === true) return false;
 
   recovered.preview.baseDraftRevision = args.draft.revision;
+  // A bootstrap-only run solved its copy: the fix is bound to that copy's
+  // fingerprint, and the instruction proof + authorization let Apply rebuild it.
+  const previewInstructionAuthorization = args.session
+    ? previewInstructionAuthorizationFor(args.session)
+    : null;
   const proposalProductBehaviorAuthorization = args.proposedSnapshots
     ? {
         baseFingerprint: recovered.preview.baseFingerprint,
@@ -889,7 +967,13 @@ function stageLockedConstraintFixPreview(args: LockedConstraintFixStageArgs): bo
     reason: args.reason,
   };
   useConstraintStudioStore.setState({
-    preview: recovered.preview,
+    preview: args.session
+      ? withSessionInstructionProof(
+          recovered.preview,
+          args.session.untouched,
+          previewInstructionAuthorization,
+        )
+      : recovered.preview,
     directionBestCandidate: null,
     directionConsent: null,
     substitutionConsent: null,
@@ -902,6 +986,7 @@ function stageLockedConstraintFixPreview(args: LockedConstraintFixStageArgs): bo
       lineId: args.fix.lineId,
       grams: args.fix.grams,
     },
+    previewInstructionAuthorization,
     previewIssue: null,
     blocked: null,
     recalculationTerminal: { state: 'PREVIEW_READY' },
@@ -1191,6 +1276,10 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         // recalculation stages what the solver built for ITS adjusted draft:
         // the untouched recipe + the customer's preview instructions.
         const draft = interactive?.draft ?? selectCanonicalDraft();
+        // A bootstrap-only run is PRO's plain run on its copy (owner §18); only
+        // the customer's own edit session keeps the interactive semantics.
+        const customerSession = isCustomerInstructionSession(interactive);
+        const plainRunOnCopy = customerSession ? undefined : interactive;
         const recipeState = useRecipeStore.getState();
         const stabilizerSystem = assessOwnerStabilizerSystem(draft.input);
         const stabilizerIssue = stabilizerSystem.issues[0];
@@ -1222,9 +1311,9 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                   }
                 : null;
           if (
-            // A Suggested Fix is authorized against the untouched recipe; an
-            // interactive run keeps the refusal inside its own session.
-            interactive === undefined &&
+            // A Suggested Fix is authorized against the draft the run solved;
+            // the customer's own edit session keeps the refusal inside itself.
+            !customerSession &&
             boundary &&
             onlyLineId &&
             onlyLine?.actual_grams === null &&
@@ -1240,6 +1329,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
               baseSnapshots: recipeState.productBehaviorSnapshots,
               proposedSnapshots: proposalSnapshots,
               technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
+              session: plainRunOnCopy,
             })
           ) {
             return;
@@ -1374,10 +1464,10 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                 ),
               }
             : null;
-        // The one-lock Suggested Fix is authorized against the untouched
-        // recipe; an interactive run answers lock conflicts with the conflict
-        // diagnostic inside the same session instead.
-        const lockRecovery = interactive
+        // The one-lock Suggested Fix is authorized against the draft the run
+        // solved; the customer's own edit session answers lock conflicts with
+        // the conflict diagnostic inside the same session instead.
+        const lockRecovery = customerSession
           ? null
           : impossibleConstraintLockRecovery(result, draft.input);
         if (
@@ -1390,18 +1480,36 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
             baseSnapshots: recipeState.productBehaviorSnapshots,
             proposedSnapshots: proposalSnapshots,
             technicalOnlyMainLineIds: recipeState.ownerReviewGate?.technicalOnlyMainLineIds ?? [],
+            session: plainRunOnCopy,
           })
         )
           return;
+        // NO_CHANGE is a verdict about the recipe ON SCREEN, so it is judged
+        // against the untouched recipe. A customer session always carries the
+        // customer's own instructions, so it is never NO_CHANGE. A bootstrap-only
+        // run's proposal sizes a line that is 0 g on screen, so relative to the
+        // recipe it is a real change — a Preview that „Zastosuj zmiany" applies
+        // (owner OD-1), never „the recipe as it is". Only a proposal identical to
+        // the recipe on screen could be NO_CHANGE, and then it certifies nothing
+        // here: an instruction run judged its copy, never the recipe itself.
         if (
-          // Relative to the untouched recipe an interactive proposal always
-          // carries the customer's own instructions, so it is never NO_CHANGE.
-          interactive === undefined &&
+          !customerSession &&
           result.ok &&
           result.preview.diagnosticOnly !== true &&
-          !optimizePreviewRequiresApply(result.preview, draft.constraints, draft.input)
+          !(plainRunOnCopy
+            ? optimizePreviewRequiresApply(
+                attachPreviewInstructionProof(
+                  result.preview,
+                  plainRunOnCopy.untouched.input,
+                  plainRunOnCopy.untouched.constraints,
+                  plainRunOnCopy.instructions,
+                ),
+                plainRunOnCopy.untouched.constraints,
+                plainRunOnCopy.untouched.input,
+              )
+            : optimizePreviewRequiresApply(result.preview, draft.constraints, draft.input))
         ) {
-          establishCurrentRecipeCalculation();
+          if (interactive === undefined) establishCurrentRecipeCalculation();
           set({
             preview: null,
             directionBestCandidate: null,
@@ -1475,8 +1583,12 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
                 },
           );
         } else {
-          // An interactive run judged a provisional COPY (untouched recipe + preview
+          // An instruction run judged a provisional COPY (untouched recipe + preview
           // instructions), never the recipe itself, so it certifies nothing here.
+          // That includes a bootstrap-only run: the copy it found clean holds the
+          // 1 g seed, the recipe on screen still holds 0 g, and no Preview exists
+          // to carry the difference — calling the 0 g recipe verified would be
+          // a claim nobody checked.
           if (result.code === 'already_clean' || result.code === 'best_safe_result') {
             if (interactive === undefined) establishCurrentRecipeCalculation();
           }
@@ -1573,9 +1685,14 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
       stageDirectionFallbackPreview: (candidate, proposedSnapshots) => {
         const draft = selectCanonicalDraft();
         const currentSnapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        // The ladder ran on the draft the run solved — the recipe itself, or a
+        // bootstrap-only run's copy — so its candidate binds to that draft.
+        const authorization = get().previewInstructionAuthorization;
+        const solved = sessionSolvedDraft(draft, authorization);
         if (
           candidate.directionFallback === undefined ||
-          workingStateFingerprint(draft.input, draft.constraints) !== candidate.baseFingerprint
+          solved === null ||
+          workingStateFingerprint(solved.input, solved.constraints) !== candidate.baseFingerprint
         ) {
           set({ ...CLEAR_STAGED });
           return;
@@ -1591,9 +1708,11 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           return;
         }
         bound.preview.baseDraftRevision = draft.revision;
-        publishRecalculationMarker(draft.input, bound.preview.proposedInput);
+        const staged = withSessionInstructionProof(bound.preview, draft, authorization);
+        publishRecalculationMarker(draft.input, staged.proposedInput);
         set({
-          preview: bound.preview,
+          preview: staged,
+          previewInstructionAuthorization: authorization,
           previewIssue: null,
           directionBestCandidate: null,
           directionFallbackReport: null,
@@ -1626,9 +1745,14 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
       stageStarterPackRescuePreview: (candidate, proposedSnapshots) => {
         const draft = selectCanonicalDraft();
         const currentSnapshots = useRecipeStore.getState().productBehaviorSnapshots;
+        // The rescue searched the draft the run solved (see the Direction
+        // fallback above), so its candidate binds to that same draft.
+        const authorization = get().previewInstructionAuthorization;
+        const solved = sessionSolvedDraft(draft, authorization);
         if (
           candidate.starterPackRescue === undefined ||
-          workingStateFingerprint(draft.input, draft.constraints) !== candidate.baseFingerprint
+          solved === null ||
+          workingStateFingerprint(solved.input, solved.constraints) !== candidate.baseFingerprint
         ) {
           set({ ...CLEAR_STAGED });
           return;
@@ -1652,9 +1776,11 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
         const direction = bound.preview.directionAssessment;
         const needsDirectionConsent =
           direction?.active === true && direction.supportedAxisCount > 0 && !direction.reached;
-        publishRecalculationMarker(draft.input, bound.preview.proposedInput);
+        const staged = withSessionInstructionProof(bound.preview, draft, authorization);
+        publishRecalculationMarker(draft.input, staged.proposedInput);
         set({
-          preview: bound.preview,
+          preview: staged,
+          previewInstructionAuthorization: authorization,
           directionBestCandidate: null,
           directionFallbackReport: null,
           rescueAdvice: null,
@@ -1663,7 +1789,7 @@ export const useConstraintStudioStore = create<ConstraintStudioState>()(
           directionConsent: needsDirectionConsent
             ? {
                 baseFingerprint: bound.preview.baseFingerprint,
-                targetFingerprint: directionTargetFingerprint(draft.input),
+                targetFingerprint: directionTargetFingerprint(solved.input),
                 candidateFingerprint: workingStateFingerprint(
                   bound.preview.proposedInput,
                   bound.preview.nextConstraints,
@@ -3295,6 +3421,12 @@ export async function createOptimizePreviewWithServerAuthority(
     }
     draft = { ...untouched, input: adjusted.input, constraints: adjusted.constraints };
   }
+  // Owner §18: a bootstrap-only run is PRO's plain run on this copy; only the
+  // customer's own edit session keeps the interactive semantics below.
+  const customerSession = isCustomerInstructionSession(interactive);
+  const stage: InteractivePreviewStage | undefined = interactive
+    ? { draft, untouched, instructions }
+    : undefined;
   const missingProductDose = missingProductDosePreviewIssue(draft.input);
   if (missingProductDose) {
     useConstraintStudioStore.setState({
@@ -3396,9 +3528,10 @@ export async function createOptimizePreviewWithServerAuthority(
     signal,
   );
   const rawProposal = computation.result;
-  // The Direction fallback ladder stages Previews against the untouched
-  // recipe; an interactive run stays on the customer's own instructions.
-  const fallbackReport = interactive
+  // The Direction fallback ladder stages Previews against the draft the run
+  // solved (a bootstrap-only run's copy included); the customer's own edit
+  // session stays on the customer's own instructions.
+  const fallbackReport = customerSession
     ? null
     : await computeDirectionFallbackWithServerAuthority({
         generation: ownedGeneration,
@@ -3429,7 +3562,7 @@ export async function createOptimizePreviewWithServerAuthority(
     }
     proposedSnapshots = proposedAuthority.snapshots;
   } else {
-    const lockRecovery = interactive
+    const lockRecovery = customerSession
       ? null
       : impossibleConstraintLockRecovery(rawProposal, draft.input);
     const recoveredProposal = lockRecovery
@@ -3472,6 +3605,7 @@ export async function createOptimizePreviewWithServerAuthority(
           proposedSnapshots: proposedAuthority.snapshots,
           technicalOnlyMainLineIds,
           prebuilt: recoveredProposal,
+          session: customerSession ? undefined : stage,
         })
       ) {
         return;
@@ -3540,7 +3674,7 @@ export async function createOptimizePreviewWithServerAuthority(
     .createOptimizePreview(
       proposedSnapshots,
       { ...computation, createdAt: optimizeCreatedAt },
-      interactive ? { draft, untouched, instructions } : undefined,
+      stage,
     );
   // SYNCHRONOUS with the refusal published above, so both land in one render.
   if (lockConflict !== null && useConstraintStudioStore.getState().preview === null) {
@@ -3557,8 +3691,10 @@ export async function createOptimizePreviewWithServerAuthority(
   const staged = useConstraintStudioStore.getState().preview;
   const correction = staged?.crownOffMainCorrection;
   if (
-    // Inside an interactive preview only „Zastosuj zmiany" commits.
-    !interactive &&
+    // Inside the customer's own edit session only „Zastosuj zmiany" commits. A
+    // bootstrap-only run's correction is staged on its copy with the instruction
+    // proof, so the door below re-derives that copy exactly as for PRO's store.
+    !customerSession &&
     staged &&
     correction &&
     correction.requestPreserved === false &&
@@ -3595,13 +3731,19 @@ export async function createOptimizePreviewWithServerAuthority(
   if (fallbackReport !== null) {
     useConstraintStudioStore.setState({
       directionFallbackReport: fallbackReport,
+      // The ladder's candidates name the copy the run solved; „Ustaw …" and the
+      // Starter Pack rescue re-derive that copy from this session authorization.
+      ...(stage
+        ? { previewInstructionAuthorization: previewInstructionAuthorizationFor(stage) }
+        : {}),
       rescueAdvice: null,
       starterPackRescueReport: null,
       starterPackRescuePending: false,
     });
   }
   // The NO_CHANGE seam below publishes the CURRENT recipe's formal result; an
-  // interactive run describes the provisional draft, never the recipe itself.
+  // instruction run — a bootstrap-only one included — describes its provisional
+  // copy, never the recipe itself.
   if (
     interactive ||
     useConstraintStudioStore.getState().recalculationTerminal?.state !== 'NO_CHANGE_NEEDED'
@@ -4009,7 +4151,11 @@ export async function openDirectionFallbackPreviewWithServerAuthority(): Promise
   const candidate = session.directionFallbackReport?.best?.preview;
   if (!candidate?.directionFallback) return;
   const draft = selectCanonicalDraft();
-  if (workingStateFingerprint(draft.input, draft.constraints) !== candidate.baseFingerprint) {
+  const solved = sessionSolvedDraft(draft, session.previewInstructionAuthorization);
+  if (
+    solved === null ||
+    workingStateFingerprint(solved.input, solved.constraints) !== candidate.baseFingerprint
+  ) {
     useConstraintStudioStore.setState({ ...CLEAR_STAGED });
     return;
   }
@@ -4051,7 +4197,13 @@ export async function requestStarterPackRescueWithServerAuthority(): Promise<voi
   ) {
     return;
   }
-  const draft = selectCanonicalDraft();
+  // The rescue searches the same draft the run's ladder did — the recipe, or a
+  // bootstrap-only run's copy re-derived from the session authorization.
+  const draft = sessionSolvedDraft(selectCanonicalDraft(), session.previewInstructionAuthorization);
+  if (draft === null) {
+    useConstraintStudioStore.setState({ ...CLEAR_STAGED });
+    return;
+  }
   const recipeState = useRecipeStore.getState();
   const validation = await currentRecipeAuthorityReady({
     recipe: draft.input,
@@ -4114,7 +4266,11 @@ export async function openStarterPackRescuePreviewWithServerAuthority(): Promise
   const candidate = session.starterPackRescueReport?.best?.preview;
   if (!candidate) return;
   const draft = selectCanonicalDraft();
-  if (workingStateFingerprint(draft.input, draft.constraints) !== candidate.baseFingerprint) {
+  const solved = sessionSolvedDraft(draft, session.previewInstructionAuthorization);
+  if (
+    solved === null ||
+    workingStateFingerprint(solved.input, solved.constraints) !== candidate.baseFingerprint
+  ) {
     useConstraintStudioStore.setState({ ...CLEAR_STAGED });
     return;
   }
@@ -4243,10 +4399,13 @@ export async function applyPreviewWithServerAuthority(
           preview,
         ))
     ) {
+      // The Direction fallback and the Starter Pack rescue are rebuilt from the
+      // same draft they were searched on: the recipe, or a bootstrap-only run's
+      // copy (owner §18) re-derived above from the session authorization.
       const rescueSimulationInput = preview.starterPackRescue
         ? buildStarterPackRescueSimulationInput(
-            draft.input,
-            draft.constraints,
+            rebuildDraft.input,
+            rebuildDraft.constraints,
             preview.starterPackRescue.mapperId,
             preview.starterPackRescue.seedGrams,
           )
@@ -4256,7 +4415,7 @@ export async function applyPreviewWithServerAuthority(
         return;
       }
       const directionFallbackInput = preview.directionFallback
-        ? buildDirectionFallbackInput(draft.input, preview.directionFallback.fallbackTargets)
+        ? buildDirectionFallbackInput(rebuildDraft.input, preview.directionFallback.fallbackTargets)
         : null;
       const computation = await runtime.runOptimizePreview({
         input: rescueSimulationInput ?? directionFallbackInput ?? rebuildDraft.input,

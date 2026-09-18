@@ -97,6 +97,7 @@ import { sorbetStabilizerWholeGramBand } from '@/features/recipe-constraints/sor
 import { constraintStudioCopy as copy } from './constraintStudioCopy';
 import {
   applyPreviewInstructions,
+  isBootstrapOnlyInstructionSet,
   samePreviewInstructions,
   type PreviewLineInstruction,
 } from './previewInstructions';
@@ -9814,15 +9815,22 @@ export class VerifiedApply {
     if (preview.previewInstructions !== undefined || previewInstructionAuthorization) {
       const proof = preview.previewInstructions;
       const authorized = previewInstructionAuthorization;
+      // OWNER §18 (2026-09-18): a session made ONLY of HOME's technical
+      // bootstraps (read from the trusted session, never from the payload) is the
+      // plain recalculation of the recipe on its bootstrapped copy, so it may
+      // carry every route that plain run stages — the Direction fallback ladder
+      // and its Starter Pack rescue, the Suggested Fix / lock recovery. Each one
+      // is still verified below, on the adjusted draft, by this same door.
+      const plainRunOnCopy = authorized != null && isBootstrapOnlyInstructionSet(authorized.lines);
       if (
         proof === undefined ||
         authorized == null ||
-        preview.kind !== 'optimize' ||
+        (preview.kind !== 'optimize' && !(plainRunOnCopy && preview.kind === 'suggested_fix')) ||
         preview.substitution !== undefined ||
-        preview.suggestedFix !== undefined ||
+        (preview.suggestedFix !== undefined && !plainRunOnCopy) ||
         preview.explicitStandardRemoval !== undefined ||
-        preview.directionFallback !== undefined ||
-        preview.starterPackRescue !== undefined ||
+        (preview.directionFallback !== undefined && !plainRunOnCopy) ||
+        (preview.starterPackRescue !== undefined && !plainRunOnCopy) ||
         authorized.baseFingerprint !== proof.baseFingerprint ||
         !samePreviewInstructions(authorized.lines, proof.lines) ||
         workingStateFingerprint(current, currentConstraints) !== authorized.baseFingerprint ||
@@ -9849,7 +9857,9 @@ export class VerifiedApply {
         null,
         null,
         directionConsent,
-        null,
+        // Bound to the adjusted draft's own fingerprint, exactly as a plain
+        // run's Suggested Fix is bound to the recipe's.
+        plainRunOnCopy ? suggestedFixAuthorization : null,
         currentProductBehaviorSnapshots,
         technicalOnlyMainLineIds,
         proposalAuthorization,
