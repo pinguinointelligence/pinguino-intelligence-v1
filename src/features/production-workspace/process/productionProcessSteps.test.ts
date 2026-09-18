@@ -30,6 +30,8 @@ const line = (
   note: null,
   moved: false,
   afterCooling,
+  illustration: null,
+  illustrationStatus: 'asset_needed' as const,
   sourceIds: [],
 });
 
@@ -54,6 +56,8 @@ const plan: PreparationPlan = {
       heatLineIds: ['tara'],
       precedingLineIds: ['milk', 'tara'],
       details: ['Sposób…', 'Następnie schłódź.'],
+      illustration: null,
+      illustrationStatus: 'asset_needed' as const,
       sourceIds: [],
     },
     line('fruit', 'base', true),
@@ -64,6 +68,7 @@ const plan: PreparationPlan = {
       details: ['Wlej mieszankę', 'Uruchom'],
       timing: null,
       sourceMachineId: 'bowl',
+      illustrationStatus: 'asset_needed' as const,
       illustration: null,
       sourceIds: [],
     },

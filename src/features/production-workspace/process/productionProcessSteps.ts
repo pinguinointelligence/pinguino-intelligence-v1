@@ -39,6 +39,8 @@ export type ProductionProcessStep =
       scope: 'base' | 'addon';
       title: string;
       lines: readonly PreparationLineStep[];
+      /** H4-4 — the owner image of this kind of step, when one is approved. */
+      illustration: PreparationIllustration | null;
     }
   | {
       kind: 'heat';
@@ -48,6 +50,8 @@ export type ProductionProcessStep =
       details: readonly string[];
       /** Lines the plan adds after the heat step and its cooling. */
       afterCoolingNames: readonly string[];
+      /** H4-4 — heating's image, which also stands for the cooling it states. */
+      illustration: PreparationIllustration | null;
     }
   | {
       kind: 'machine';
@@ -113,6 +117,7 @@ export function productionProcessSteps(
               ? copy.heat.afterCoolingTitle
               : copy.baseTitle,
         lines: [step],
+        illustration: step.illustration,
       });
       continue;
     }
@@ -130,6 +135,7 @@ export function productionProcessSteps(
               candidate.kind === 'line' && candidate.afterCooling,
           )
           .map((candidate) => candidate.name),
+        illustration: step.illustration,
       });
       continue;
     }

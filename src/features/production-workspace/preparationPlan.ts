@@ -22,7 +22,11 @@ import { educationCopy } from '@/copy/education.pl';
 import type { RecipeInput } from '@/engine';
 import type { MachineEducationGuide } from '@/features/education/machineEducation';
 import { isVerifiedProcessEvidence } from '@/features/education/processClassification';
-import type { PreparationIllustration } from '@/features/education/preparationIllustrations';
+import {
+  stepIllustrationFor,
+  type PreparationIllustration,
+  type PreparationIllustrationStatus,
+} from '@/features/education/preparationIllustrations';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type { ProductionSession } from './productionSession';
@@ -108,6 +112,12 @@ export type PreparationStep =
       moved: boolean;
       /** Added after the heat step and its cooling (not a Rescue addition). */
       afterCooling: boolean;
+      /**
+       * H4-4 — the owner image of this kind of step, and an honest status when none is
+       * approved yet. A weighed line is a weighing step; a topping is its own kind.
+       */
+      illustration: PreparationIllustration | null;
+      illustrationStatus: PreparationIllustrationStatus;
       sourceIds: readonly string[];
     }
   | {
@@ -119,6 +129,9 @@ export type PreparationStep =
       /** Base lines placed before this step. */
       precedingLineIds: readonly string[];
       details: readonly string[];
+      /** H4-4 — the heat step carries the heating image and, with it, cooling's. */
+      illustration: PreparationIllustration | null;
+      illustrationStatus: PreparationIllustrationStatus;
       sourceIds: readonly string[];
     }
   | {
@@ -130,6 +143,8 @@ export type PreparationStep =
       sourceMachineId: string | null;
       /** The registered owner illustration of this machine's step, if any. */
       illustration: PreparationIllustration | null;
+      /** H4-4 — the machine step reports the same status as every other step. */
+      illustrationStatus: PreparationIllustrationStatus;
       sourceIds: readonly string[];
     };
 
@@ -307,6 +322,8 @@ function baseLineStep(
     note,
     moved: context.moved,
     afterCooling: context.afterHeatStep,
+    // H4-4: a base line is weighed, so it asks the registry for the weighing image.
+    ...stepIllustrationFor('weigh'),
     sourceIds: facts.sourceIds,
   };
 }
@@ -339,6 +356,8 @@ function addonLineStep(
     note: facts.process === 'conflict' && line.grams > 0 ? copy.markers.conflict : null,
     moved: false,
     afterCooling: false,
+    // H4-4: a topping / mix-in is its own kind of step, with its own image.
+    ...stepIllustrationFor('addon'),
     sourceIds: ownerStrawberry
       ? [OWNER_FRESH_STRAWBERRY_TOPPING_RULE.id, ...facts.sourceIds]
       : facts.sourceIds,
@@ -402,6 +421,12 @@ export function buildPreparationPlan(input: PreparationPlanInput): PreparationPl
       heatLineIds: split.heatLineIds,
       precedingLineIds: split.heated.map((line) => line.lineId),
       details: [copy.heat.method, copy.heat.cool],
+      /* H4-4: this step states both the heating and the cooling that follows it
+         (H4-5 — there is no separate cooling step), so it asks for the heating image
+         and falls back to cooling's when only that one is approved. */
+      ...(stepIllustrationFor('heat').illustration
+        ? stepIllustrationFor('heat')
+        : stepIllustrationFor('cool')),
       sourceIds: [...new Set(heatLines.flatMap((line) => facts(line.lineId).sourceIds))],
     });
     for (const line of split.afterCooling) {
@@ -439,6 +464,8 @@ export function buildPreparationPlan(input: PreparationPlanInput): PreparationPl
       timing: guide.category === 'frozen_container' ? guide.timing.text : null,
       sourceMachineId: guide.sourceMachineId,
       illustration: guide.illustration,
+      // H4-4: the machine's own image is registered per machine, not per step kind.
+      illustrationStatus: guide.illustration ? 'registered' : 'asset_needed',
       sourceIds: machineSourceIds,
     });
   }

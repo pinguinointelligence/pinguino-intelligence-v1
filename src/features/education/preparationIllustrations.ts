@@ -96,3 +96,46 @@ export function machineStepIllustrationFor(
   const code = machineId === null ? undefined : MACHINE_STEP_ILLUSTRATION_BY_MACHINE_ID[machineId];
   return code ? PREPARATION_ILLUSTRATIONS[code] : null;
 }
+
+/**
+ * H4-4 (Owner 18.09.2026) — the steps of the preparation plan that may carry an owner
+ * illustration of their own, beside the machine's.
+ *
+ * `cool` is not a step of its own: the plan states cooling inside the heat step (H4-5 —
+ * „Schłódź bazę” exists only after real heating), so its image belongs to that step too.
+ */
+export type PreparationStepIllustrationKind = 'weigh' | 'heat' | 'cool' | 'addon';
+
+/**
+ * Owner-approved images per step kind.
+ *
+ * DELIBERATELY EMPTY: every image in this registry today is the mixture-freezing step of
+ * one Ninja machine, and no weighing / heating / cooling / topping image has been
+ * approved. An unapproved image is worse than none — it would teach a process nobody
+ * verified — so the plan reports the gap (`asset_needed`) and carries on without one.
+ * The day an image is approved, it enters `PREPARATION_ILLUSTRATIONS` and is named here;
+ * no other code changes.
+ */
+export const STEP_ILLUSTRATION_BY_KIND: Readonly<
+  Partial<Record<PreparationStepIllustrationKind, PreparationIllustrationCode>>
+> = {};
+
+/** The status a plan step reports for its own illustration. */
+export type PreparationIllustrationStatus = 'registered' | 'asset_needed';
+
+export function stepIllustrationFor(kind: PreparationStepIllustrationKind): {
+  illustration: PreparationIllustration | null;
+  illustrationStatus: PreparationIllustrationStatus;
+} {
+  const code = STEP_ILLUSTRATION_BY_KIND[kind];
+  return code
+    ? { illustration: PREPARATION_ILLUSTRATIONS[code], illustrationStatus: 'registered' }
+    : { illustration: null, illustrationStatus: 'asset_needed' };
+}
+
+/** Every step kind still waiting for an approved image — the ASSET NEEDED list. */
+export function preparationIllustrationGaps(): readonly PreparationStepIllustrationKind[] {
+  return (['weigh', 'heat', 'cool', 'addon'] as const).filter(
+    (kind) => STEP_ILLUSTRATION_BY_KIND[kind] === undefined,
+  );
+}
