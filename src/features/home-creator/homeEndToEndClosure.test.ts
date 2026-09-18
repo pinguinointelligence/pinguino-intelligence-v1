@@ -159,7 +159,10 @@ describe('GELLATTI HOME end-to-end closure — Owner matrix', () => {
   it('HOME-E2E-17 Preparation reads canonical Production steps', () => {
     expect(preparation).toContain('useProductionSessionStore');
     expect(preparation).toContain('recipeCompositionFromState');
-    expect(preparation).toContain('machineEducationForSelection');
+    // The machine hand-off comes from the ONE authority PRO's Production uses
+    // (`productionMachineGuide`), never from HOME's own reading of the catalog.
+    expect(preparation).toContain('productionMachineGuide');
+    expect(preparation).not.toContain('machineEducationForSelection');
     expect(preparation).toContain('validateRecipeBehaviorOnServer');
     expect(preparation).toContain('evaluateRecipeConstraintAuthority');
   });
