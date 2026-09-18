@@ -222,3 +222,52 @@ export function ProcessTroubleSheet({
     </Frame>
   );
 }
+
+/**
+ * H4-10C — the batch is ending with less in the vessel than the plan asks for.
+ *
+ * It states the two masses and offers exactly two ways on: finish (the real mass is what
+ * gets saved) or go back. It never asks the operator to add the missing grams, and it
+ * says nothing about the recipe's own result — physically getting less product is not a
+ * worse recipe.
+ */
+export function ProcessLowerYieldSheet({
+  frame: Frame,
+  plannedGrams,
+  actualGrams,
+  onConfirm,
+  onBack,
+}: {
+  frame: ProcessSheetFrame;
+  plannedGrams: string;
+  actualGrams: string;
+  onConfirm: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <Frame label={copy.lowerYieldTitle} testId="process-lower-yield" onClose={onBack}>
+      <SheetHeading
+        title={copy.lowerYieldTitle}
+        subtitle={copy.lowerYieldLead(plannedGrams, actualGrams)}
+      />
+      <SheetFoot>
+        <button
+          type="button"
+          className={primaryButton}
+          onClick={onConfirm}
+          data-testid="process-lower-yield-confirm"
+        >
+          {copy.lowerYieldConfirm}
+        </button>
+        <button
+          type="button"
+          className="mt-2 h-11 w-full rounded-full text-[15px] font-medium text-[var(--g-ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30"
+          onClick={onBack}
+          data-testid="process-lower-yield-back"
+        >
+          {copy.lowerYieldBack}
+        </button>
+      </SheetFoot>
+    </Frame>
+  );
+}

@@ -45,6 +45,13 @@ export const productionProcessCopy = {
   degasTitle: 'Najpierw odgazuj',
   degasLead: 'Przed użyciem należy całkowicie odgazować:',
   degasDone: 'Odgazowane',
+  /* H4-10C (Owner 18.09.2026): finishing with less in the vessel than the plan asks for
+     is the operator's decision, not an error and not a request for more grams. */
+  lowerYieldTitle: 'Kończysz partię z niższym wynikiem niż plan.',
+  lowerYieldLead: (planned: string, actual: string) =>
+    `Plan partii: ${planned}. W naczyniu: ${actual}. Zapiszemy to, co naprawdę wyszło.`,
+  lowerYieldConfirm: 'Zakończ partię',
+  lowerYieldBack: 'Wróć',
   troubleTitle: 'Co się stało?',
   troubleLead: 'Partia czeka. Nic się nie zmieni, dopóki czegoś nie wybierzesz.',
   troubleWeighed: 'Zważyłem inną ilość',

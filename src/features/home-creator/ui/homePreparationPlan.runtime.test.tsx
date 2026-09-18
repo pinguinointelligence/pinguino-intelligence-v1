@@ -538,6 +538,9 @@ describe('an official recipe keeps its Professional machine in HOME (served 2026
     ]);
     expect(byTestId('process-machine-step')).toBeNull();
     expect(byTestId('home-production-complete')).not.toBeNull();
+    /* H4-10C: an exact batch is never asked anything on the way out — the confirmation
+       exists only for a batch that ends with LESS in the vessel than the plan. */
+    expect(byTestId('process-lower-yield')).toBeNull();
   });
 
   it('a HOME machine with no confirmed guide still refuses to invent a process', () => {
