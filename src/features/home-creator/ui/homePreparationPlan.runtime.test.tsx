@@ -145,11 +145,15 @@ const click = (id: string) => {
   act(() => element!.click());
 };
 
-function startPreparation(machineId: string, technology: MachineTechnology | null) {
+function startPreparation(
+  machineId: string | null,
+  technology: MachineTechnology | null,
+  machineKind: 'home' | 'professional' = 'home',
+) {
   const { plannedInput, plannedComposition } = fixture();
   useAuthStore.setState({ user: { id: 'owner' } as never, status: 'authed' } as never);
   useRecipeStore.setState({
-    machineKind: 'home',
+    machineKind,
     machineId,
     machineTechnology: technology,
   } as never);
@@ -165,7 +169,7 @@ function startPreparation(machineId: string, technology: MachineTechnology | nul
     plannedInput,
     plannedComposition,
     now: '2026-09-17T10:00:00.000Z',
-    sessionId: `home-plan-${machineId}`,
+    sessionId: `home-plan-${machineId ?? machineKind}`,
     processReadiness: 'READY_WITH_INFO',
     processAdvisories: [
       {
@@ -256,4 +260,29 @@ describe('HOME preparation follows one plan to the end for every supported machi
       ).toBeNull();
     },
   );
+});
+
+describe('an official recipe keeps its Professional machine in HOME (served 2026-09-18)', () => {
+  it('Mango Sorbet → „Zróbmy to”: the batch runs to the end with no machine hand-off, never „Brakuje instrukcji urządzenia”', () => {
+    const plannedInput = startPreparation(null, null, 'professional');
+    expect(byTestId('home-preparation-blocked')).toBeNull();
+    for (let index = 0; index < plannedInput.items.length; index += 1) {
+      expect(byTestId('home-base-step'), `base card ${index}`).not.toBeNull();
+      click('home-production-tare');
+      click('home-production-confirm-line');
+    }
+    // PRO Production runs a Professional batch with no machine guide; so does HOME.
+    expect(byTestId('home-machine-step')).toBeNull();
+    const topping = byTestId('home-topping-step');
+    expect(topping).not.toBeNull();
+    click('home-production-tare');
+    click('home-production-confirm-line');
+    click('home-production-finish');
+    expect(byTestId('home-production-complete')).not.toBeNull();
+  });
+
+  it('a HOME machine with no confirmed guide still refuses to invent a process', () => {
+    startPreparation('unknown-home-machine', null, 'home');
+    expect(byTestId('home-preparation-blocked')).not.toBeNull();
+  });
 });
