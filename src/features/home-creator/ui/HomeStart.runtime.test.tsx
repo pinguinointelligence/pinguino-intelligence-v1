@@ -395,8 +395,10 @@ describe('the page hands the press to its existing doors', () => {
   });
 
   it('a Gellatti recipe goes to adoptOfficialRecipe, as the library handoff does', () => {
-    expect(handler('onOpenOfficial')).toContain(
-      'adoptOfficialRecipe(recipeId, { keepIdea: false, automatic: false })',
-    );
+    // HOME confirms a replacement itself (served 2026-09-18), so the door is told so.
+    const door = page.slice(page.indexOf('onOpenOfficial={'), page.indexOf('onCommunityOpened={'));
+    expect(door).toContain('adoptOfficialRecipe(recipeId, {');
+    expect(door).toContain('keepIdea: false');
+    expect(door).toContain('replaceConfirmed: true');
   });
 });
