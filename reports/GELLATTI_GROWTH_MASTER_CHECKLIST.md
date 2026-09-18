@@ -233,6 +233,40 @@ W06 🔴 STRIPE CONNECTOR STILL NOT VISIBLE AFTER RESTART (re-checked 2026-09-02
     it for Claude Code specifically (connector scope), not just the web app.
     W01 stays blocked behind this.
 
+W07 ⚪ RELEASE GATE - credential review and rotation before public launch
+    Blocks: N23 N24 N25 (final acceptance). RELEASE may not be marked ready while
+            this is open.
+    Owner:  OWNER + BILLING / PLATFORM
+    Decision (owner, 2026-09-17): before the public launch, review the credentials
+    used during development, rotate or revoke the working keys in a controlled
+    way, prepare separate production credentials, and verify every place they
+    are used.
+    Scope:
+      - Stripe API keys: the sandbox/test keys used by QA and development, and
+        the live keys
+      - webhook endpoints and the signing secret of each endpoint and mode
+      - frontend and backend configuration: Vercel env, Supabase Edge Function
+        secrets, Vault secrets
+      - workers and schedules: pg_cron jobs, email-dispatch, payout executors
+      - production product and price IDs: no reference to a sandbox object may
+        remain
+    Procedure: update the configuration, verify it works, then retire the old
+               credentials, coordinated so that running integrations do not
+               break early. A secret exposed before launch is rotated
+               immediately, not at launch.
+    Mandatory before the public release (owner, 2026-09-17):
+      - rotate or revoke every credential used during development;
+      - each environment uses its own keys (production never runs on a
+        development or sandbox key, and QA/staging never on a production key);
+      - after rotation, re-test the webhooks: one real signed delivery per
+        endpoint and mode, received and processed by the environment it
+        belongs to.
+      - Not before the QA campaign ends: do not revoke the sandbox keys of
+        gellatti-qa-growth-e2e (acct_1UGdTdAi07MMapq2) or the signing secret
+        of its endpoint we_1UGdYfAi07MMapq2rQwaGFpG while that campaign runs.
+    Status:  OPEN. This entry is not evidence of rotation; it closes only with
+             proof of each step.
+
 W06-OLD ⏸ (superseded) session restart pending
     The owner authenticated "claude.ai Stripe" (mcpsrv_01ARLfHsyWKYxK3xC48abgbS),
     but MCP servers are enumerated when a session STARTS. Re-checked after the
