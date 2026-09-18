@@ -239,12 +239,15 @@ export function MachineProfileSection({
     }
     const recommendedAfter = container?.recommendedBatchGrams ?? view.recommendedGrams;
     const own = batch !== null && batch === recommendedAfter ? null : batch;
+    // `userDefaultGrams` is the EFFECTIVE default the field starts from (the recommendation when
+    // the user has none); the saved OWN setting is null unless it diverges.
+    const savedOwn = view.usesOwnDefault ? view.userDefaultGrams : null;
     const savedContainer =
       usesOwnContainer && savedCapacity !== null
         ? { capacityMl: savedCapacity, recommendedBatchGrams: savedContainerBatch }
         : null;
     return (
-      own !== savedBatch ||
+      own !== savedOwn ||
       (container === null) !== (savedContainer === null) ||
       (container !== null &&
         savedContainer !== null &&
@@ -592,7 +595,9 @@ export function MachineProfileSection({
           </dl>
           {/* The next action is always offered (§3), now in the contextual summary. */}
           <div className="mt-4">
-            <TouchButton size="lg" onClick={onGoToRecipe}>
+            {/* Produkcja v3: one black action per screen — the save. The next step is
+                secondary (package ODBIOR-WZORCA §5, „jedna czarna akcja”). */}
+            <TouchButton size="lg" variant="secondary" onClick={onGoToRecipe}>
               {goToRecipeLabel}
             </TouchButton>
           </div>

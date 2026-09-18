@@ -404,18 +404,13 @@ export function ProductsHubPage() {
   return (
     <ProductionAreaSurface
       section="products"
+      // On a phone an open product is its own view: the section action steps aside.
+      headingClassName={productOpen ? 'max-lg:hidden' : undefined}
       actions={
         capabilities.canSaveRecipe ? (
-          <div
-            className={cn(
-              'flex w-full flex-wrap items-center gap-2 sm:w-auto',
-              productOpen && 'max-lg:hidden',
-            )}
-          >
-            <Link to="/products/scan" className={applicationPrimaryClasses()}>
-              Skanuj produkt
-            </Link>
-          </div>
+          <Link to="/products/scan" className={applicationPrimaryClasses()}>
+            Skanuj produkt
+          </Link>
         ) : null
       }
     >

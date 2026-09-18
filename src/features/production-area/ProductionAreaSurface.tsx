@@ -19,6 +19,7 @@ import { PageHeading } from '@/components/shared/PageHeading';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { productionAreaCopy } from '@/copy/productionArea';
+import { cn } from '@/lib/cn';
 import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { useAuthStore } from '@/stores/authStore';
@@ -34,6 +35,7 @@ export function ProductionAreaSurface({
   title,
   blurb,
   actions,
+  headingClassName,
   children,
 }: {
   section: ProductionAreaSectionId;
@@ -42,6 +44,8 @@ export function ProductionAreaSurface({
   blurb?: ReactNode;
   /** The section's actions (e.g. „Zapisz ustawienia”, „Skanuj produkt”). */
   actions?: ReactNode;
+  /** Extra classes for the section heading row (e.g. hide it behind a phone detail view). */
+  headingClassName?: string;
   /** Accepted for drop-in parity with `DestinationSurface`; the area has one name. */
   eyebrow?: string;
   contextLabel?: string;
@@ -81,7 +85,12 @@ export function ProductionAreaSurface({
           ) : (
             <>
               {title || blurb || actions ? (
-                <div className="mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+                <div
+                  className={cn(
+                    'mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3',
+                    headingClassName,
+                  )}
+                >
                   <div className="min-w-0">
                     {title ? (
                       <h2 className="text-[17px] leading-[1.3] font-semibold tracking-[-0.01em] text-[var(--g-ink)]">
