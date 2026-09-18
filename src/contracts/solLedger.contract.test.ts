@@ -204,6 +204,26 @@ describe('Gellatti SOL ledger continuity', () => {
     expect(ledger).toContain('`OWNER ACCEPTED: NO`');
   });
 
+  it('records the PI-ING-000516 vanillin-sugar finding as unexecuted SOL-051 QA', () => {
+    expect(entries.find(({ id }) => id === 'SOL-051')?.status).toBe('TODO');
+    expect(ledger).toContain('Evidence: Owner QA 2026-09-13');
+    expect(ledger).toContain('`PI-ING-000516`');
+    expect(ledger).toContain('`vanillin_sugar`');
+    expect(ledger).toContain('„cukier waniliowy”');
+    expect(ledger).toContain('Do przetestowania');
+    expect(ledger).toContain('`SOL-051-QA-001 · NOT_TESTED`');
+    expect(ledger).toContain('`SOL-051-QA-002 · NOT_TESTED`');
+    expect(ledger).toContain('`SOL-051-QA-003 · NOT_TESTED`');
+    expect(ledger).toMatch(/nie\s+może utworzyć drugiego produktu ani zmienić jego\s+`PI-ING`/);
+    const qaIds = [...ledger.matchAll(/`(SOL-051-QA-\d{3}) · (NOT_TESTED|RETEST_REQUIRED)`/g)].map(
+      (match) => match[1],
+    );
+    expect(qaIds).toEqual(['SOL-051-QA-001', 'SOL-051-QA-002', 'SOL-051-QA-003']);
+    expect(new Set(qaIds).size).toBe(qaIds.length);
+    expect(entries).toHaveLength(51);
+    expect(ledger).toContain('`NEXT_FREE_SOL_ID: SOL-052`');
+  });
+
   it('records the proven PR #181 before PR #198 migration order', () => {
     const checkpoint = ledger.slice(
       ledger.indexOf('## SOL-014 migration dependency checkpoint'),
