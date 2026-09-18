@@ -10,27 +10,11 @@
  * §37/§38: derivation, lineage and root attribution are entirely
  * `useRecipeDerivation` + the canonical save's `recordDerivation`. There is no HOME lineage code.
  */
-import { useAuthModalStore } from '@/features/auth/authModalStore';
-import { useRecipeDerivation } from '@/features/community/useRecipeDerivation';
-import { useAuthStore } from '@/stores/authStore';
-import { homeCreatorCopy } from '../homeCreatorCopy';
-import { presentLoadedRecipeInHome } from '../homeLoadedRecipe';
 import type { RecipeMatch } from '../homeRecipeMatching';
 import { HomeSuggestionsSheet } from '../ui/HomeSuggestionsSheet';
 import type { CommunityMatch } from './communityMatchService';
 import type { HomeSuggestionCard } from './homeIdeaSuggestions';
-
-type Derivation = ReturnType<typeof useRecipeDerivation>;
-
-/**
- * A refusal in customer language. `useRecipeDerivation` already produces one through
- * the shared `customerErrorMessage`, so HOME renders it rather than inventing wording
- * — and never shows the raw refusal code.
- */
-const derivationRefusalMessage = (derivation: Derivation): string | null =>
-  derivation.state.status === 'failed'
-    ? (derivation.state.message ?? homeCreatorCopy.match.couldNotOpen)
-    : null;
+import { useHomeCommunityDoor } from './useHomeCommunityDoor';
 
 export function HomeMatchGate({
   cards,
@@ -58,31 +42,9 @@ export function HomeMatchGate({
   busy?: boolean;
   message?: string | null;
 }) {
-  const userId = useAuthStore((state) => state.user?.id ?? null);
-  const openAuthModal = useAuthModalStore((state) => state.open);
-  // The target is addressed by publication, exactly as the Community page does.
-  const derivation = useRecipeDerivation(
-    {
-      source: {
-        kind: 'publication',
-        publicationId: communityMatch?.publicationId ?? '',
-        handle: communityMatch?.handle ?? '',
-        slug: communityMatch?.slug ?? '',
-      },
-      sourceTitle: communityMatch?.title ?? '',
-      sourceCreatorDisplayName: communityMatch?.creatorDisplayName ?? '',
-    },
-    {
-      // The canonical derivation loads the working copy into the shared store; HOME is
-      // already the page that shows it, so it only presents it — no navigation.
-      openWorkingCopy: () =>
-        presentLoadedRecipeInHome({
-          label: communityMatch?.title ?? null,
-          publicationId: communityMatch?.publicationId ?? null,
-          keepIdea: true,
-        }),
-    },
-  );
+  // The same Community door „Receptury → Community” uses. A match chosen from the
+  // customer's own idea keeps that idea next to the recipe it became.
+  const door = useHomeCommunityDoor(communityMatch, { keepIdea: true });
 
   return (
     <HomeSuggestionsSheet
@@ -90,31 +52,17 @@ export function HomeMatchGate({
       ideaLabel={ideaLabel}
       selectedId={selectedId}
       onSelect={onSelect}
-      busy={busy || derivation.state.status === 'working'}
-      message={message ?? derivationRefusalMessage(derivation)}
+      busy={busy || door.busy}
+      message={message ?? door.message}
       onChoose={(card) => {
         if (card.source === 'official') {
           onChooseOfficial(card.match);
           return;
         }
-        if (communityMatch === null) return;
-        // A derivation is saved to an account. A guest is asked to sign in first and the
-        // layer stays with the choice — exactly as the official-recipe path does.
-        if (!userId) {
-          openAuthModal();
-          return;
-        }
-        // §37: the ORIGINAL is never modified — this creates an editable derivation
-        // through the canonical authority, which records lineage and preserves the
-        // root creator. HOME contributes nothing to that decision.
-        //
-        // ONLY a completed derivation may close the layer. `useRecipeDerivation`
-        // returns a TYPED refusal (not entitled, source unavailable, save failed); a
-        // refused derivation must stay on the layer and say so (served QA 2026-08-31:
-        // an unconditional close marked the recipe ready with ZERO lines).
-        // Branch on the RETURNED outcome, never on `derivation.state` after the await.
-        void Promise.resolve(derivation.useThisRecipe()).then((outcome) => {
-          if (outcome.status === 'done') onDerived();
+        // A guest is asked to sign in and the layer stays with the choice; a refused
+        // derivation stays on the layer and says so. Only a completed one closes it.
+        void door.open().then((opened) => {
+          if (opened) onDerived();
         });
       }}
       onCreateOwn={onCreateMyOwn}
