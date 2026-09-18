@@ -26,6 +26,7 @@ import {
 import { constraintStudioCopy } from '@/features/constraint-studio/constraintStudioCopy';
 import { customerStopReasonPl } from '@/features/constraint-studio/customerConstraintStudioPresentation';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { homeCreatorCopy } from '../homeCreatorCopy';
 import { HomeRecalculate } from './HomeRecalculate';
 
 vi.setConfig({ testTimeout: 60_000 });
@@ -426,7 +427,12 @@ describe('OWNER BUGFIX — HOME never shows an empty refusal (#287)', () => {
     });
     const choice = inDocument('[data-testid="home-recalc-direction-best"]');
     expect(choice?.textContent).toContain(constraintStudioCopy.previewIssue.bestSafeResult);
-    expect(choice?.textContent).toContain(constraintStudioCopy.preview.title);
+    // SERVED FLOW 2026-09-18: the consent button named the preview's TITLE
+    // („Gellatti proponuje:”) instead of an action.
+    expect(inDocument('[data-testid="home-recalc-direction-best-open"]')?.textContent).toBe(
+      homeCreatorCopy.recipe.seeProposal,
+    );
+    expect(choice?.textContent).not.toContain(constraintStudioCopy.preview.title);
     expect(inDocument('[data-testid="home-recalc-refusal"]')).toBeNull();
 
     await act(async () => {

@@ -191,6 +191,8 @@ export interface HomeCreatorCopy {
     readonly shareWithCommunity: string;
     readonly letsMakeIt: string;
     readonly recalculate: string;
+    /** Opens the best safe correction CORE staged for the customer's consent. */
+    readonly seeProposal: string;
     /** The first build left a question in the review dialog and the customer closed it. */
     readonly firstBuildNotApplied: string;
     /** The automatic recalculation left a question and the customer closed it. */
@@ -476,6 +478,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     // DESIGN V3.0 (decision 1): „Zaczynamy” replaces „Zróbmy to” on the HOME recipe screen.
     letsMakeIt: 'Zaczynamy',
     recalculate: 'Przelicz i popraw',
+    seeProposal: 'Zobacz propozycję',
     firstBuildNotApplied:
       'Receptura nie została jeszcze przygotowana. Naciśnij „Zamień pomysł w recepturę”, aby wrócić do propozycji.',
     changesNotRecalculated:
@@ -742,6 +745,7 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     shareWithCommunity: 'Share with Community',
     letsMakeIt: "Let's start",
     recalculate: 'Recalculate and fix',
+    seeProposal: 'See the proposal',
     firstBuildNotApplied:
       'The recipe has not been prepared yet. Press “Turn the idea into a recipe” to return to the proposal.',
     changesNotRecalculated:
