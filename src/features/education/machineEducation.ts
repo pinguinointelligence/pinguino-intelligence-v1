@@ -13,7 +13,12 @@ export type MachineEducationCategory =
   | 'frozen_container'
   | 'frozen_bowl'
   | 'compressor'
-  | 'fresh_gelato';
+  | 'fresh_gelato'
+  /* H4-6 (Owner 18.09.2026): a Professional recipe is not a home machine, but it is not
+     „no machine” either — it is a batch freezer, and its three steps are as real as any
+     home card's. It is deliberately NOT part of `categoryForTechnology`, so no home
+     technology can ever resolve to it. */
+  | 'professional';
 
 export interface MachineEducationGuide {
   category: MachineEducationCategory;
@@ -28,6 +33,16 @@ export interface MachineEducationGuide {
   sourceMachineId: string | null;
   /** Owner illustration of this exact machine's step; null for generic or custom machines. */
   illustration: PreparationIllustration | null;
+  /**
+   * H4-3 (Owner 18.09.2026) — the machine's OWN program name („GELATO”, „SORBET”…), and
+   * only when the machine's data confirms one. `null` with `programStatus: 'data_needed'`
+   * means exactly that: we show the technologically correct step WITHOUT a program name
+   * rather than inventing one. The capacity keys in the catalog (`ice_cream`,
+   * `sorbet_granita`) are capacities, not the label printed on the device, so they are
+   * deliberately not used here.
+   */
+  programName: string | null;
+  programStatus: 'confirmed' | 'data_needed';
 }
 
 const categoryForTechnology: Readonly<
@@ -81,7 +96,28 @@ export function machineEducationForProfile(
           },
     sourceMachineId: profile.id,
     illustration: machineStepIllustrationFor(profile.id),
+    /* H4-3: no machine in the catalog carries a CONFIRMED program label yet (the
+       `program` keys it does carry are capacities per program, not the label printed on
+       the device), so every card honestly reports the gap instead of inventing one. */
+    ...machineProgram(profile),
   };
+}
+
+/**
+ * H4-3 — the machine's own program name, from machine data only.
+ *
+ * It reads one field and nothing else: an owner-confirmed label on the machine record.
+ * There is deliberately no fallback to capacity program keys, to the product type, or to
+ * anything else that could look like a program name — a wrong name on a machine card is
+ * worse than no name, because the operator would press the wrong button.
+ */
+function machineProgram(
+  profile: HomeMachineProfile,
+): Pick<MachineEducationGuide, 'programName' | 'programStatus'> {
+  const label = profile.operatingFeatures?.programLabel?.trim();
+  return label
+    ? { programName: label, programStatus: 'confirmed' }
+    : { programName: null, programStatus: 'data_needed' };
 }
 
 export function machineEducationById(machineId: string | null): MachineEducationGuide | null {
@@ -118,13 +154,19 @@ export function productionMachineGuide(recipe: {
   machineId: string | null;
   machineTechnology: MachineTechnology | null;
 }): MachineEducationGuide | null {
-  return recipe.machineKind === 'home'
-    ? machineEducationForSelection(recipe.machineId, recipe.machineTechnology)
-    : null;
+  if (recipe.machineKind === 'home') {
+    return machineEducationForSelection(recipe.machineId, recipe.machineTechnology);
+  }
+  /* H4-6: a Professional recipe runs on a batch freezer, so it gets the professional
+     card — never a home machine's, whatever `machineId` happens to carry. A recipe with
+     no machine kind at all still gets nothing: that is an unfinished choice, not a
+     machine. */
+  return recipe.machineKind === 'professional' ? PROFESSIONAL_EDUCATION : null;
 }
 
 export function genericMachineEducation(category: MachineEducationCategory): MachineEducationGuide {
   if (category === 'fresh_gelato') return FRESH_GELATO_EDUCATION;
+  if (category === 'professional') return PROFESSIONAL_EDUCATION;
   return {
     category,
     title: educationCopy.machine.categories[category].title,
@@ -133,8 +175,30 @@ export function genericMachineEducation(category: MachineEducationCategory): Mac
     timing: { status: 'missing', text: educationCopy.machine.timingMissing, source: null },
     sourceMachineId: null,
     illustration: null,
+    programName: null,
+    programStatus: 'data_needed',
   };
 }
+
+/**
+ * H4-6 (Owner 18.09.2026) — the Professional batch freezer's three steps.
+ *
+ * A Professional recipe has no home machine, and until now that meant no machine step at
+ * all: the batch ended with the base prepared and nothing said about freezing it. These
+ * steps are the neutral technological truth for a batch freezer and carry NO program name
+ * (H4-3) and no timing claim — the product never states a duration it cannot source.
+ */
+export const PROFESSIONAL_EDUCATION: MachineEducationGuide = {
+  category: 'professional',
+  title: educationCopy.machine.categories.professional.title,
+  beforeStartSteps: educationCopy.machine.categories.professional.beforeStartSteps,
+  steps: educationCopy.machine.categories.professional.steps,
+  timing: { status: 'missing', text: educationCopy.machine.timingMissing, source: null },
+  sourceMachineId: null,
+  illustration: null,
+  programName: null,
+  programStatus: 'data_needed',
+};
 
 export const FRESH_GELATO_EDUCATION: MachineEducationGuide = {
   category: 'fresh_gelato',
@@ -144,6 +208,8 @@ export const FRESH_GELATO_EDUCATION: MachineEducationGuide = {
   timing: { status: 'missing', text: educationCopy.machine.timingMissing, source: null },
   sourceMachineId: null,
   illustration: null,
+  programName: null,
+  programStatus: 'data_needed',
 };
 
 export function availableMachineEducationCategories(): readonly MachineEducationCategory[] {

@@ -242,10 +242,11 @@ function startPreparation(
  * `weigh:<row>` for a weighed row, the step kind for a step without weighing, `finish`
  * for „Zakończ produkcję”.
  */
-function driveToTheEnd(): string[] {
+function driveToTheEnd(onStep?: (kind: string | null) => void): string[] {
   const seen: string[] = [];
   for (let guard = 0; guard < 40 && !byTestId('home-production-complete'); guard += 1) {
     const kind = stepKind();
+    onStep?.(kind);
     if (dockAction() === 'Zakończ produkcję') seen.push('finish');
     else if (kind === 'weigh') seen.push(`weigh:${currentRowName()}`);
     else seen.push(kind ?? 'none');
@@ -524,19 +525,35 @@ describe('interruption in HOME: „Wróć” and „Zapisz” keep the batch in 
 });
 
 describe('an official recipe keeps its Professional machine in HOME (served 2026-09-18)', () => {
-  it('Mango Sorbet → „Zróbmy to”: the batch runs to the end with no machine hand-off, never „Brakuje instrukcji urządzenia”', () => {
+  it('Mango Sorbet → „Zróbmy to”: the batch runs to the end and now ends at the batch freezer, never „Brakuje instrukcji urządzenia”', () => {
+    /* H4-6 (Owner 18.09.2026) changes ONE thing about this accepted flow: a Professional
+       recipe used to run with no machine hand-off at all, so the batch ended with the
+       base prepared and nothing said about freezing it. It now ends at the professional
+       card — the same three technologically neutral steps PRO gets, from the same
+       authority. What #422 fixed stays fixed: no dead end, no „Brakuje instrukcji
+       urządzenia”, and no invented program name (H4-3). */
     const plannedInput = startPreparation(null, null, 'professional');
     expect(byTestId('home-preparation-blocked')).toBeNull();
-    expect(byTestId('process-eyebrow')?.textContent).toBe('Produkcja · krok 1 z 4');
-    // PRO Production runs a Professional batch with no machine guide; so does HOME.
-    expect(driveToTheEnd()).toEqual([
+    expect(byTestId('process-eyebrow')?.textContent).toBe('Produkcja · krok 1 z 5');
+    // The machine step is read WHILE it is on screen — after „Zakończ produkcję” the
+    // batch is complete and no step is mounted any more.
+    let machineStepText: string | null = null;
+    const sequence = driveToTheEnd((kind) => {
+      if (kind === 'machine') machineStepText = byTestId('process-machine-step')?.textContent ?? '';
+    });
+    expect(sequence).toEqual([
       ...plannedInput.items.slice(1).map((item) => `weigh:${item.ingredient.name}`),
       'heat',
       `weigh:${plannedInput.items[0]!.ingredient.name}`,
+      // The machine runs the finished BASE; the topping is added after it, as before.
+      'machine',
       'weigh:Milk 3.5 %',
       'finish',
     ]);
-    expect(byTestId('process-machine-step')).toBeNull();
+    expect(machineStepText).not.toBeNull();
+    expect(machineStepText).toContain('Wlej przygotowaną, zimną bazę');
+    expect(machineStepText).toContain('Uruchom proces frezowania');
+    expect(machineStepText).toContain('Wyjmij gotowy produkt');
     expect(byTestId('home-production-complete')).not.toBeNull();
     /* H4-10C: an exact batch is never asked anything on the way out — the confirmation
        exists only for a batch that ends with LESS in the vessel than the plan. */
