@@ -119,6 +119,11 @@ describe('mobile module selection', () => {
     expect(focusEffect).toContain('MutationObserver');
     expect(focusEffect).not.toContain('cancelAnimationFrame');
     expect(focusEffect).toContain('[data-production-active="true"] [role="spinbutton"]');
-    expect(surface).toContain('if (!focusProductionAfterCollapseRef.current) trigger?.focus();');
+    /* DESIGN V3.0 §12: Monitor never TAKES focus from the trigger (it is not modal),
+       so it must not hand it back either — the restore is now guarded by the same
+       `modal` flag that decides the focus trap. Every modal module is unchanged. */
+    expect(surface).toContain(
+      'if (modal && !focusProductionAfterCollapseRef.current) trigger?.focus();',
+    );
   });
 });
