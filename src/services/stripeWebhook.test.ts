@@ -373,6 +373,35 @@ describe('Deno entrypoint — signature-first, insert-first, 2xx after durable r
     expect(/\.eq\('state', 'processing'\)/.test(indexSource)).toBe(true);
   });
 
+  it('lists InvoicePayments and refunds to the last page, never from one expanded page', () => {
+    const code = indexSource.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    // Every list walks to the last page AND carries the account context, so a
+    // connected account's objects are read where they exist.
+    expect(code).toMatch(
+      /for await \(const payment of stripe\.invoicePayments\.list\(\{ invoice: filter, limit: 100 \}, requestOptions\)\)/,
+    );
+    expect(code).toMatch(
+      /for await \(const payment of stripe\.invoicePayments\.list\(\{\s*payment: \{ type: 'payment_intent', payment_intent: filter \},\s*limit: 100,\s*\}, requestOptions\)\)/,
+    );
+    expect(code).toMatch(/for await \(const refund of stripe\.refunds\.list\(\{ charge: filter, limit: 100 \}, requestOptions\)\)/);
+    expect(code).not.toMatch(/expand:/);
+    // No list result is ever read as a single page.
+    expect(code).not.toMatch(/(refunds|payments|list\([^)]*\))\.data\b/);
+    expect(code).toMatch(/\{ db: admin as unknown as DbClient, refetch, listAll \}/);
+  });
+
+  it('refuses a pinned API version older than Basil before anything is received', () => {
+    expect(indexSource).toContain("const BASIL_API_VERSION_DATE = '2025-03-31';");
+    const guard = indexSource.indexOf('if (apiVersion < BASIL_API_VERSION_DATE)');
+    const verify = indexSource.indexOf('constructEventAsync(');
+    const insert = indexSource.indexOf(".from('stripe_webhook_events')");
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(verify);
+    expect(guard).toBeLessThan(insert);
+    // The default the code falls back to is itself Basil.
+    expect(indexSource).toContain("Deno.env.get('STRIPE_API_VERSION') ?? '2025-06-30.basil'");
+  });
+
   it('references env NAMES only (no values) and is labelled NOT DEPLOYED', () => {
     expect(/Deno\.env\.get\('STRIPE_WEBHOOK_SECRET'\)/.test(indexSource)).toBe(true);
     expect(/Deno\.env\.get\('STRIPE_SECRET_KEY'\)/.test(indexSource)).toBe(true);

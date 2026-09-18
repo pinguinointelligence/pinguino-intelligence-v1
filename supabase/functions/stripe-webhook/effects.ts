@@ -230,6 +230,69 @@ export function decideReversal(input: ReversalDecisionInput): ReversalDecision {
   return { apply: true, amountCents: -reversal, fullyReversedAfter: reversal === remaining };
 }
 
+// ── R6 reinstatement MIRROR (refundAdjustments.ts applyDisputeReinstatement) ──
+
+/** One adjustment already on the entry, as the reinstatement decision reads it. */
+export interface PriorAdjustment {
+  amountCents: number;
+  kind: string;
+  sourceEventKey: string;
+}
+
+export type ReinstatementDecision =
+  | { apply: true; amountCents: number }
+  | { apply: false; reason: 'already_reinstated' | 'no_matching_dispute_reversal' };
+
+/**
+ * R6: a dispute later won and the money put back restores EXACTLY what that
+ * dispute reversed, once.
+ *
+ * It restores the dispute's own reversal and nothing else, so money a separate
+ * refund took stays taken: that refund has its own negative adjustment and is
+ * not touched here. Withdrawal and reinstatement are different movements of the
+ * same dispute, so they carry different keys (`obj:dp_x` and `obj:dp_x:reinstated`)
+ * and can never block each other — while a replay of either is refused.
+ */
+export function decideDisputeReinstatement(input: {
+  priorAdjustments: readonly PriorAdjustment[];
+  disputeReversalKey: string;
+  reinstatementKey: string;
+}): ReinstatementDecision {
+  if (input.priorAdjustments.some((a) => a.sourceEventKey === input.reinstatementKey)) {
+    return { apply: false, reason: 'already_reinstated' };
+  }
+  const reversal = input.priorAdjustments.find(
+    (a) => a.kind === 'dispute_reversal' && a.sourceEventKey === input.disputeReversalKey,
+  );
+  if (!reversal) return { apply: false, reason: 'no_matching_dispute_reversal' };
+  const restoredAlready = input.priorAdjustments.some(
+    (a) => a.kind === 'dispute_reinstatement' && a.sourceEventKey.startsWith(`${input.disputeReversalKey}:`),
+  );
+  if (restoredAlready) return { apply: false, reason: 'already_reinstated' };
+  return { apply: true, amountCents: -reversal.amountCents };
+}
+
+/**
+ * What a reinstatement does to the entry's status.
+ *
+ * `reversed` is the ledger's way of saying "nothing left to pay". When money
+ * comes back the entry is payable again, and the hold calendar — not the
+ * dispute — decides whether it is `held` or `eligible`. A `paid` entry keeps
+ * its status: the positive adjustment nets in the next batch instead of
+ * rewriting a payout that already happened.
+ */
+export function decideStatusAfterReinstatement(input: {
+  status: string;
+  commissionCents: number;
+  adjustmentsSumAfterCents: number;
+  eligibleAtUtcMs: number;
+  nowUtcMs: number;
+}): 'held' | 'eligible' | null {
+  if (input.status !== 'reversed') return null;
+  if (input.commissionCents + input.adjustmentsSumAfterCents <= 0) return null;
+  return input.nowUtcMs >= input.eligibleAtUtcMs ? 'eligible' : 'held';
+}
+
 // ── checkout completion → billing_customers (0003) ──────────────────────────
 
 export interface CheckoutMappingRow {
@@ -536,13 +599,14 @@ export interface InvoiceSnapshot {
   amountPaidCents: number;
   customerId: string | null;
   subscriptionId: string | null;
-  paymentIntentId: string | null;
   paidAtEpoch: number | null;
 }
 
 /**
- * Version-robust invoice extraction: `subscription` is top-level pre-Basil
- * and under parent.subscription_details.subscription from 2025+.
+ * Basil invoice (API 2025-03-31.basil and later — index.ts refuses older
+ * versions). The subscription lives under parent.subscription_details, and
+ * the invoice no longer names the PaymentIntent or charge that paid it: that
+ * relation is an InvoicePayment (see extractInvoicePaymentSnapshot).
  */
 export function extractInvoiceSnapshot(invoice: Payload): InvoiceSnapshot {
   const parent = asObject(invoice.parent);
@@ -553,12 +617,88 @@ export function extractInvoiceSnapshot(invoice: Payload): InvoiceSnapshot {
     status: asString(invoice.status) ?? 'unknown',
     amountPaidCents: asNumber(invoice.amount_paid) ?? 0,
     customerId: asId(invoice.customer),
-    subscriptionId:
-      asId(invoice.subscription) ??
-      (subscriptionDetails ? asId(subscriptionDetails.subscription) : null),
-    paymentIntentId: asId(invoice.payment_intent),
+    subscriptionId: subscriptionDetails ? asId(subscriptionDetails.subscription) : null,
     paidAtEpoch: statusTransitions ? asNumber(statusTransitions.paid_at) : null,
   };
+}
+
+// ── invoice ↔ payment relation (Basil InvoicePayment) ────────────────────────
+
+/**
+ * Basil removed Invoice.payment_intent, Invoice.charge, Charge.invoice and
+ * PaymentIntent.invoice. An invoice and the payment that settled it are joined
+ * only by an InvoicePayment, listed through GET /v1/invoice_payments by invoice
+ * or by payment[payment_intent].
+ */
+export interface InvoicePaymentSnapshot {
+  id: string;
+  invoiceId: string | null;
+  status: string;
+  paymentIntentId: string | null;
+  isDefault: boolean;
+}
+
+export function extractInvoicePaymentSnapshot(payment: Payload): InvoicePaymentSnapshot {
+  const settledBy = asObject(payment.payment);
+  return {
+    id: asString(payment.id) ?? '',
+    invoiceId: asId(payment.invoice),
+    status: asString(payment.status) ?? 'unknown',
+    paymentIntentId: settledBy ? asId(settledBy.payment_intent) : null,
+    isDefault: asBoolean(payment.is_default) ?? false,
+  };
+}
+
+/**
+ * The PaymentIntent that PAID an invoice. Basil allows several payments on one
+ * invoice; when more than one PaymentIntent paid it, the default payment names
+ * it, and if even that is ambiguous the answer is null rather than a guess —
+ * reversals find the entry by invoice id either way.
+ */
+export function pickPaidPaymentIntent(
+  invoiceId: string,
+  payments: readonly InvoicePaymentSnapshot[],
+): string | null {
+  const paid = payments.filter(
+    (payment) => payment.invoiceId === invoiceId && payment.status === 'paid' && payment.paymentIntentId !== null,
+  );
+  const intents = [...new Set(paid.map((payment) => payment.paymentIntentId as string))];
+  if (intents.length === 1) return intents[0] ?? null;
+  const defaults = [
+    ...new Set(paid.filter((payment) => payment.isDefault).map((payment) => payment.paymentIntentId as string)),
+  ];
+  return defaults.length === 1 ? (defaults[0] ?? null) : null;
+}
+
+export type PaymentIntentInvoice =
+  | { kind: 'invoice'; invoiceId: string }
+  | { kind: 'none' }
+  | { kind: 'conflict'; invoiceIds: string[] };
+
+/**
+ * The invoice a PaymentIntent paid. A refund or dispute is only ever against a
+ * payment that succeeded, so only `paid` InvoicePayments count. No paid
+ * InvoicePayment means the charge was not an invoice payment (a Shop order);
+ * two different invoices is impossible in Stripe's model and is refused as a
+ * data conflict instead of picking one.
+ */
+export function resolvePaymentIntentInvoice(
+  paymentIntentId: string,
+  payments: readonly InvoicePaymentSnapshot[],
+): PaymentIntentInvoice {
+  const invoiceIds = [
+    ...new Set(
+      payments
+        .filter(
+          (payment) =>
+            payment.paymentIntentId === paymentIntentId && payment.status === 'paid' && payment.invoiceId !== null,
+        )
+        .map((payment) => payment.invoiceId as string),
+    ),
+  ].sort();
+  if (invoiceIds.length === 0) return { kind: 'none' };
+  if (invoiceIds.length === 1) return { kind: 'invoice', invoiceId: invoiceIds[0] as string };
+  return { kind: 'conflict', invoiceIds };
 }
 
 export type CommissionEligibility =
@@ -720,12 +860,15 @@ export function pickLatestRuleVersion(rows: readonly CommissionRuleRow[]): Commi
 // ── adjustments (0018, append-only) ──────────────────────────────────────────
 
 /** The CLOSED commission_adjustments insert payload (0018). */
+/** R1-R6: reversals are negative, a reinstatement is positive. */
+export type CommissionAdjustmentKind = 'refund_reversal' | 'dispute_reversal' | 'dispute_reinstatement';
+
 export interface CommissionAdjustmentRow {
   partner_id: string;
   commission_entry_id: string;
   amount_cents: number;
   currency: 'eur';
-  kind: 'refund_reversal' | 'dispute_reversal';
+  kind: CommissionAdjustmentKind;
   reason: string;
   source_event_key: string;
 }
@@ -744,7 +887,7 @@ export function buildCommissionAdjustmentRow(input: {
   partnerId: string;
   commissionEntryId: string;
   amountCents: number;
-  kind: 'refund_reversal' | 'dispute_reversal';
+  kind: CommissionAdjustmentKind;
   reason: string;
   sourceEventKey: string;
 }): CommissionAdjustmentRow {
@@ -779,28 +922,23 @@ export function extractRefundSnapshot(refund: Payload): RefundSnapshot {
   };
 }
 
+/**
+ * Basil charge: it names its PaymentIntent but not its invoice, and its
+ * refunds are not part of the object unless expanded — and an expanded list is
+ * one page. The dispatcher lists refunds and InvoicePayments separately, to
+ * the last page.
+ */
 export interface ChargeSnapshot {
   id: string;
   amountCents: number;
-  invoiceId: string | null;
   paymentIntentId: string | null;
-  refunds: RefundSnapshot[];
 }
 
 export function extractChargeSnapshot(charge: Payload): ChargeSnapshot {
-  const refundsList = asObject(charge.refunds);
-  const refundsData = refundsList && Array.isArray(refundsList.data) ? (refundsList.data as unknown[]) : [];
-  const refunds: RefundSnapshot[] = [];
-  for (const item of refundsData) {
-    const refund = asObject(item);
-    if (refund) refunds.push(extractRefundSnapshot(refund));
-  }
   return {
     id: asString(charge.id) ?? '',
     amountCents: asNumber(charge.amount) ?? 0,
-    invoiceId: asId(charge.invoice),
     paymentIntentId: asId(charge.payment_intent),
-    refunds,
   };
 }
 
@@ -808,13 +946,36 @@ export interface DisputeSnapshot {
   id: string;
   chargeId: string | null;
   paymentIntentId: string | null;
+  /** Where the CASE stands (needs_response, won, lost …) — never the money. */
+  status: string;
+  /** Sum of the negative balance transactions: what the bank actually took. */
+  withdrawnCents: number;
+  /** Sum of the positive ones: what it actually gave back. */
+  reinstatedCents: number;
 }
 
 export function extractDisputeSnapshot(dispute: Payload): DisputeSnapshot {
+  // The MONEY, read from the dispute's own balance transactions rather than
+  // inferred from `status`: a withdrawal is a negative entry and a
+  // reinstatement a positive one, and a dispute can carry both over its life.
+  // `status` says where the case stands; only these say what the bank did.
+  let withdrawnCents = 0;
+  let reinstatedCents = 0;
+  const transactions = Array.isArray(dispute.balance_transactions) ? dispute.balance_transactions : [];
+  for (const raw of transactions) {
+    const transaction = asObject(raw);
+    const amount = transaction ? asNumber(transaction.amount) : null;
+    if (amount === null) continue;
+    if (amount < 0) withdrawnCents += -amount;
+    else reinstatedCents += amount;
+  }
   return {
     id: asString(dispute.id) ?? '',
     chargeId: asId(dispute.charge),
     paymentIntentId: asId(dispute.payment_intent),
+    status: asString(dispute.status) ?? 'unknown',
+    withdrawnCents,
+    reinstatedCents,
   };
 }
 
@@ -873,7 +1034,6 @@ export const NO_CONTRACT_REASONS: Readonly<Record<string, string>> = {
   'charge.dispute.created': 'no_dispute_mirror_table',
   'charge.dispute.updated': 'no_dispute_mirror_table',
   'charge.dispute.closed': 'no_dispute_mirror_table',
-  'charge.dispute.funds_reinstated': 'adjustment_kind_vocabulary_lacks_reinstatement',
   'transfer.created': 'transfer_linkage_written_by_payout_job',
   'transfer.updated': 'transfer_linkage_written_by_payout_job',
   'transfer.reversed': 'adjustment_requires_single_commission_entry',

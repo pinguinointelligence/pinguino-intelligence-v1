@@ -46,16 +46,22 @@ import {
   extractChargeSnapshot,
   extractConnectAccountSnapshot,
   extractDisputeSnapshot,
+  decideDisputeReinstatement,
+  decideStatusAfterReinstatement,
+  extractInvoicePaymentSnapshot,
   extractInvoiceSnapshot,
   extractRefundSnapshot,
   extractSubscriptionSnapshot,
   noContractNote,
   pickAttributionToLock,
   pickLatestRuleVersion,
+  pickPaidPaymentIntent,
+  resolvePaymentIntentInvoice,
   type AttributionCandidate,
   type CatalogOffer,
   type ChargeSnapshot,
   type CommissionRuleRow,
+  type InvoiceSnapshot,
   type RefundSnapshot,
   extractShopOrderSettlement,
 } from './effects.ts';
@@ -76,6 +82,8 @@ type Row = Record<string, unknown>;
 
 export interface DbSelectQuery extends PromiseLike<DbResult<Row[] | null>> {
   eq(column: string, value: unknown): DbSelectQuery;
+  /** Column ∈ values — one lookup for "pending or active", never two. */
+  in(column: string, values: readonly unknown[]): DbSelectQuery;
   maybeSingle(): PromiseLike<DbResult<Row | null>>;
 }
 
@@ -111,9 +119,23 @@ export interface DbClient {
 export type StripeResource = 'subscription' | 'invoice' | 'charge' | 'refund' | 'dispute' | 'account';
 export type StripeRefetcher = (resource: StripeResource, id: string) => Promise<Row>;
 
+/**
+ * Every item of a Stripe list, walked to the last page. A first page is never
+ * evidence that nothing else exists: a charge can carry more refunds than one
+ * page, and an invoice more payments.
+ */
+export type StripeList =
+  | 'invoice_payments_by_invoice'
+  | 'invoice_payments_by_payment_intent'
+  | 'refunds_by_charge'
+  | 'refunds_by_payment_intent'
+  | 'disputes_by_payment_intent';
+export type StripeListAll = (list: StripeList, filter: string) => Promise<Row[]>;
+
 export interface DispatchDeps {
   db: DbClient;
   refetch: StripeRefetcher;
+  listAll: StripeListAll;
 }
 
 export interface WebhookEventFacts {
@@ -628,13 +650,17 @@ async function applyCommissionablePayment(deps: DispatchDeps, event: WebhookEven
     rateProfileVersionId = eliteVersionId;
   }
 
+  const paidByPaymentIntent = pickPaidPaymentIntent(
+    invoice.id,
+    (await deps.listAll('invoice_payments_by_invoice', invoice.id)).map(extractInvoicePaymentSnapshot),
+  );
   const entry = buildCommissionEntryRow({
     partnerId,
     attributionId,
     subscriptionCacheId: cacheId,
     stripeSubscriptionId: invoice.subscriptionId,
     stripeInvoiceId: invoice.id,
-    stripePaymentIntentId: invoice.paymentIntentId,
+    stripePaymentIntentId: paidByPaymentIntent,
     offerKey,
     product,
     commissionCadence,
@@ -651,7 +677,81 @@ async function applyCommissionablePayment(deps: DispatchDeps, event: WebhookEven
     entry as unknown as Row,
     'commission_entries insert',
   );
-  return outcome === 'duplicate' ? 'skipped_duplicate_invoice_entry' : null;
+  if (outcome === 'duplicate') return 'skipped_duplicate_invoice_entry';
+  // The money may already have moved back before this entry existed.
+  return await reconcileReversalsForPaidInvoice(deps, invoice, paidByPaymentIntent, event);
+}
+
+// ── is a commission entry EXPECTED but not written yet? ─────────────────────
+
+/**
+ * A reversal that finds no entry is not automatically an honest no-op.
+ *
+ * Two different situations produce the same empty lookup:
+ *   - nothing was ever owed here (the invoice was not paid, nobody referred
+ *     this customer, the partner referred themselves) — a real no-op;
+ *   - the money IS commissionable and the entry has simply not been written
+ *     yet, because the paid-invoice delivery is still queued, is parked on a
+ *     missing dependency, or is committing right now in another transaction.
+ *
+ * Treating the second case as a no-op is how a refunded or charged-back
+ * payment keeps its commission: the reversal is dropped, the booking that
+ * follows knows nothing about it, and nothing ever revisits the pair. So the
+ * second case defers instead — the durable event is retried until the entry
+ * exists — while the first keeps its honest note and is never retried.
+ */
+type EntryExpectation = { expected: true } | { expected: false; reason: string };
+
+async function expectCommissionEntry(
+  deps: DispatchDeps,
+  invoiceId: string | null,
+): Promise<EntryExpectation> {
+  if (!invoiceId) return { expected: false, reason: 'no_invoice' };
+  const invoice = extractInvoiceSnapshot(await deps.refetch('invoice', invoiceId));
+  const eligibility = decideCommissionEligibility(invoice);
+  if (!eligibility.eligible) return { expected: false, reason: eligibility.reason };
+  if (!invoice.subscriptionId) return { expected: false, reason: 'no_subscription' };
+
+  const { data: cacheRow, error: cacheError } = await deps.db
+    .from('customer_subscriptions')
+    .select('user_id')
+    .eq('stripe_subscription_id', invoice.subscriptionId)
+    .maybeSingle();
+  throwOnDbError(cacheError, 'customer_subscriptions lookup for reversal expectation');
+  // No cache row yet means the subscription writer has not landed either: the
+  // booking is still ahead of us, not absent.
+  if (!cacheRow) return { expected: true };
+  const customerUserId = typeof cacheRow.user_id === 'string' ? cacheRow.user_id : null;
+  if (!customerUserId) return { expected: true };
+
+  const { data: attributionRows, error: attributionError } = await deps.db
+    .from('referral_attributions')
+    .select('id, partner_id, status')
+    .eq('user_id', customerUserId)
+    .in('status', ['pending', 'active']);
+  throwOnDbError(attributionError, 'referral_attributions lookup for reversal expectation');
+  const attribution = (attributionRows ?? [])[0] ?? null;
+  if (!attribution) return { expected: false, reason: 'no_attribution' };
+
+  const partnerId = typeof attribution.partner_id === 'string' ? attribution.partner_id : null;
+  if (partnerId) {
+    const { data: partnerRow, error: partnerError } = await deps.db
+      .from('partners')
+      .select('user_id')
+      .eq('id', partnerId)
+      .maybeSingle();
+    throwOnDbError(partnerError, 'partners lookup for reversal expectation');
+    if (partnerRow && partnerRow.user_id === customerUserId) {
+      return { expected: false, reason: 'self_referral' };
+    }
+  }
+  return { expected: true };
+}
+
+/** The note a reversal leaves when nothing was owed, with the reason it decided that. */
+function honestNoEntryNote(kind: 'refund' | 'dispute', expectation: EntryExpectation): string {
+  const reason = expectation.expected ? 'expected' : expectation.reason;
+  return `skipped_no_commission_entry_for_${kind}:${reason}`;
 }
 
 // ── reversal plumbing shared by refunds / disputes / voided invoices ─────────
@@ -761,7 +861,9 @@ async function applyInvoiceVoidReversal(deps: DispatchDeps, event: WebhookEventF
   if (!objectId) return 'skipped_no_invoice_id';
   const invoice = extractInvoiceSnapshot(await deps.refetch('invoice', objectId));
   const rewardNote = await reverseReferralRewardForInvoice(deps, invoice.id, event.type);
-  const entry = await findEntryByInvoiceOrPaymentIntent(deps, invoice.id, invoice.paymentIntentId);
+  // A voided or uncollectible invoice was never paid, so it has no payment to
+  // look an entry up by; the invoice id is the whole key.
+  const entry = await findEntryByInvoiceOrPaymentIntent(deps, invoice.id, null);
   // Ledger effect is "full reversal appended IF an entry exists" — no entry,
   // no effect; the (nonexistent) invoice mirror is an honest no-op. The
   // referral reward is a separate ledger and is reversed either way.
@@ -782,16 +884,48 @@ async function applyInvoiceVoidReversal(deps: DispatchDeps, event: WebhookEventF
 
 // ── charge.refunded / refund.* → proportional reversal ───────────────────────
 
+/**
+ * The invoice a charge paid. Basil charges do not name their invoice; the
+ * relation is the InvoicePayment of the charge's PaymentIntent. A charge with
+ * no paid InvoicePayment was not an invoice payment (a Shop order), and one
+ * PaymentIntent paying two invoices is a data conflict for a human.
+ */
+async function invoiceIdForCharge(deps: DispatchDeps, charge: ChargeSnapshot): Promise<string | null> {
+  if (!charge.paymentIntentId) return null;
+  const payments = (await deps.listAll('invoice_payments_by_payment_intent', charge.paymentIntentId)).map(
+    extractInvoicePaymentSnapshot,
+  );
+  const resolution = resolvePaymentIntentInvoice(charge.paymentIntentId, payments);
+  if (resolution.kind === 'conflict') {
+    throw new EffectConflictError(
+      `payment_intent_paid_several_invoices:${charge.paymentIntentId}:${resolution.invoiceIds.join(',')}`,
+    );
+  }
+  return resolution.kind === 'invoice' ? resolution.invoiceId : null;
+}
+
 async function applyOneRefund(
   deps: DispatchDeps,
   charge: ChargeSnapshot,
+  invoiceId: string | null,
   refund: RefundSnapshot,
   event: WebhookEventFacts,
 ): Promise<string | null> {
   if (refund.status !== 'succeeded') return `skipped_refund_not_succeeded:${refund.id}`;
-  const rewardNote = await reverseReferralRewardForInvoice(deps, charge.invoiceId, event.type);
-  const entry = await findEntryByInvoiceOrPaymentIntent(deps, charge.invoiceId, charge.paymentIntentId);
-  if (!entry) return rewardNote ?? 'skipped_no_commission_entry_for_refund';
+  const rewardNote = await reverseReferralRewardForInvoice(deps, invoiceId, event.type);
+  const entry = await findEntryByInvoiceOrPaymentIntent(deps, invoiceId, charge.paymentIntentId);
+  if (!entry) {
+    const expectation = await expectCommissionEntry(deps, invoiceId);
+    if (expectation.expected) {
+      // The paid invoice is commissionable and its entry is still on the way.
+      // Park THIS delivery and let the recovery worker apply it once the entry
+      // exists — the alternative is a refunded payment that keeps its commission.
+      throw new RetryableEffectError(
+        `commission_entry_not_booked_yet:${invoiceId ?? charge.paymentIntentId ?? 'unknown'}`,
+      );
+    }
+    return rewardNote ?? honestNoEntryNote('refund', expectation);
+  }
   if (charge.amountCents <= 0) return rewardNote ?? 'skipped_zero_gross_charge';
   const commissionNote = await appendReversal(deps, entry, {
     refundedGrossCents: refund.amountCents,
@@ -815,9 +949,12 @@ async function applyRefundReversal(deps: DispatchDeps, event: WebhookEventFacts)
 
   if (event.type === 'charge.refunded') {
     const charge = extractChargeSnapshot(await deps.refetch('charge', objectId));
+    const invoiceId = await invoiceIdForCharge(deps, charge);
+    const refunds = (await deps.listAll('refunds_by_charge', charge.id)).map(extractRefundSnapshot);
+    if (refunds.length === 0) return 'skipped_no_refunds_listed_for_charge';
     const notes: string[] = [];
-    for (const refund of charge.refunds) {
-      const note = await applyOneRefund(deps, charge, refund, event);
+    for (const refund of refunds) {
+      const note = await applyOneRefund(deps, charge, invoiceId, refund, event);
       if (note) notes.push(note);
     }
     return notes.length > 0 ? notes.join('; ') : null;
@@ -829,15 +966,16 @@ async function applyRefundReversal(deps: DispatchDeps, event: WebhookEventFacts)
   const refund = extractRefundSnapshot(await deps.refetch('refund', objectId));
   if (!refund.chargeId) return 'skipped_refund_without_charge';
   const charge = extractChargeSnapshot(await deps.refetch('charge', refund.chargeId));
-  return applyOneRefund(deps, charge, refund, event);
+  return applyOneRefund(deps, charge, await invoiceIdForCharge(deps, charge), refund, event);
 }
 
 // ── charge.dispute.* → dispute reversal (funds_withdrawn only) ───────────────
 
 async function applyDisputeLifecycle(deps: DispatchDeps, event: WebhookEventFacts): Promise<string | null> {
+  if (event.type === 'charge.dispute.funds_reinstated') return applyDisputeReinstatement(deps, event);
   if (event.type !== 'charge.dispute.funds_withdrawn') {
-    // created/updated/closed have no dispute mirror table; funds_reinstated
-    // cannot be stored (0018 kind vocabulary) — honest no-ops, see effects.ts.
+    // created/updated/closed have no dispute mirror table — honest no-ops.
+    // The two money movements (withdrawn, reinstated) are handled above.
     return noContractNote(event.type) ?? 'skipped_no_contract:dispute_event_unmapped';
   }
   const objectId = typeof event.object.id === 'string' ? event.object.id : null;
@@ -845,11 +983,20 @@ async function applyDisputeLifecycle(deps: DispatchDeps, event: WebhookEventFact
   const dispute = extractDisputeSnapshot(await deps.refetch('dispute', objectId));
   if (!dispute.chargeId) return 'skipped_dispute_without_charge';
   const charge = extractChargeSnapshot(await deps.refetch('charge', dispute.chargeId));
+  const invoiceId = await invoiceIdForCharge(deps, charge);
   // A lost dispute invalidates the purchase exactly as a refund does, so the
   // referral reward is reversed on the same evidence.
-  const rewardNote = await reverseReferralRewardForInvoice(deps, charge.invoiceId, event.type);
-  const entry = await findEntryByInvoiceOrPaymentIntent(deps, charge.invoiceId, charge.paymentIntentId);
-  if (!entry) return rewardNote ?? 'skipped_no_commission_entry_for_dispute';
+  const rewardNote = await reverseReferralRewardForInvoice(deps, invoiceId, event.type);
+  const entry = await findEntryByInvoiceOrPaymentIntent(deps, invoiceId, charge.paymentIntentId);
+  if (!entry) {
+    const expectation = await expectCommissionEntry(deps, invoiceId);
+    if (expectation.expected) {
+      throw new RetryableEffectError(
+        `commission_entry_not_booked_yet:${invoiceId ?? charge.paymentIntentId ?? 'unknown'}`,
+      );
+    }
+    return rewardNote ?? honestNoEntryNote('dispute', expectation);
+  }
   const commissionNote = await appendReversal(deps, entry, {
     refundedGrossCents: null, // R5: dispute lost → full remaining reversal
     grossCents: Math.max(charge.amountCents, 1),
@@ -862,6 +1009,273 @@ async function applyDisputeLifecycle(deps: DispatchDeps, event: WebhookEventFact
     }),
   });
   return [commissionNote, rewardNote].filter(Boolean).join('; ') || null;
+}
+
+/**
+ * charge.dispute.funds_reinstated → the commission this dispute reversed comes
+ * back (R6), once.
+ *
+ * It restores the dispute's OWN reversal, never a refund's: money a refund took
+ * keeps its own negative adjustment. `reversed` means "nothing left to pay", so
+ * when the balance turns positive again the entry returns to the hold calendar;
+ * a `paid` entry keeps its status and the positive adjustment nets in the next
+ * batch rather than rewriting a payout that already happened.
+ */
+async function applyDisputeReinstatement(deps: DispatchDeps, event: WebhookEventFacts): Promise<string | null> {
+  const objectId = typeof event.object.id === 'string' ? event.object.id : null;
+  if (!objectId) return 'skipped_no_dispute_id';
+  const dispute = extractDisputeSnapshot(await deps.refetch('dispute', objectId));
+  if (dispute.reinstatedCents <= 0) return 'skipped_no_reinstated_funds';
+  if (!dispute.chargeId) return 'skipped_dispute_without_charge';
+  const charge = extractChargeSnapshot(await deps.refetch('charge', dispute.chargeId));
+  const invoiceId = await invoiceIdForCharge(deps, charge);
+  const entry = await findEntryByInvoiceOrPaymentIntent(deps, invoiceId, charge.paymentIntentId);
+  if (!entry) {
+    const expectation = await expectCommissionEntry(deps, invoiceId);
+    if (expectation.expected) {
+      throw new RetryableEffectError(
+        `commission_entry_not_booked_yet:${invoiceId ?? charge.paymentIntentId ?? 'unknown'}`,
+      );
+    }
+    return honestNoEntryNote('dispute', expectation);
+  }
+  if (!charge.paymentIntentId) return 'skipped_dispute_without_payment_intent';
+  /* ORDER DOES NOT MATTER HERE. A reinstatement that arrives before the
+     withdrawal has nothing to restore, and refusing it would lose the movement:
+     Stripe will not send it again. So this goes through the same reconciliation
+     the booking uses — it reads what the dispute actually took and gave back,
+     and writes whichever of the two the ledger is missing, under the same keys.
+     A later withdrawal delivery is then refused as a duplicate. */
+  const notes = await applyMoneyAlreadyMoved(
+    deps,
+    entry,
+    { paymentIntentId: charge.paymentIntentId, grossCents: charge.amountCents },
+    { id: event.id, created: event.created },
+    event.type,
+  );
+  // Nothing appended: either it was restored already, or this dispute never
+  // took anything to give back.
+  return notes.length > 0 ? notes.join('; ') : 'skipped_nothing_to_restore';
+}
+
+async function appendReinstatement(
+  deps: DispatchDeps,
+  entry: EntryForReversal,
+  input: { disputeReversalKey: string; reinstatementKey: string; reason: string },
+): Promise<string | null> {
+  const { data: priorRows, error: priorError } = await deps.db
+    .from('commission_adjustments')
+    .select('amount_cents, kind, source_event_key')
+    .eq('commission_entry_id', entry.id);
+  throwOnDbError(priorError, 'commission_adjustments lookup for reinstatement');
+  const prior = (priorRows ?? []).map((row) => ({
+    amountCents: Number(row.amount_cents ?? 0),
+    kind: String(row.kind ?? ''),
+    sourceEventKey: String(row.source_event_key ?? ''),
+  }));
+  const decision = decideDisputeReinstatement({
+    priorAdjustments: prior,
+    disputeReversalKey: input.disputeReversalKey,
+    reinstatementKey: input.reinstatementKey,
+  });
+  if (!decision.apply) return `skipped_${decision.reason}`;
+
+  const adjustment = buildCommissionAdjustmentRow({
+    partnerId: entry.partnerId,
+    commissionEntryId: entry.id,
+    amountCents: decision.amountCents,
+    kind: 'dispute_reinstatement',
+    reason: input.reason,
+    sourceEventKey: input.reinstatementKey,
+  });
+  const outcome = await insertIgnoringDuplicate(
+    deps.db,
+    'commission_adjustments',
+    adjustment as unknown as Row,
+    'commission_adjustments reinstatement insert',
+  );
+  if (outcome === 'duplicate') return 'skipped_already_reinstated';
+
+  await settleEntryStatus(deps, entry.id);
+  return null;
+}
+
+/**
+ * Money that moved BEFORE this entry existed, applied the moment it does.
+ *
+ * The deferral in expectCommissionEntry keeps a reversal alive until the entry
+ * is written; this closes the other half of the race — a refund or dispute that
+ * was already settled (or delivered while the booking transaction was still
+ * open) leaves no delivery to retry. Both paths write the same adjustment with
+ * the same key, so whichever arrives second is refused as a duplicate.
+ */
+/**
+ * The entry's status follows its BALANCE, not the order the rows arrived in.
+ *
+ * A reversal flips a fully clawed-back entry to `reversed` and a reinstatement
+ * puts it back, but a repair can write both in one pass — and then the second
+ * decision is made against a status the first one already changed. This reads
+ * the ledger as it now stands and states the answer once. It is idempotent, so
+ * every path can end with it, and it never touches a `paid` entry: money that
+ * already moved is settled by the next batch's netting, not by a status.
+ */
+async function settleEntryStatus(deps: DispatchDeps, entryId: string): Promise<void> {
+  const { data: entryRow, error: entryError } = await deps.db
+    .from('commission_entries')
+    .select('amount_cents, status, eligible_at')
+    .eq('id', entryId)
+    .maybeSingle();
+  throwOnDbError(entryError, 'commission_entries status settle read');
+  if (!entryRow) return;
+  const status = String(entryRow.status ?? '');
+  if (status !== 'reversed' && status !== 'held' && status !== 'eligible') return;
+
+  const { data: adjustmentRows, error: adjustmentError } = await deps.db
+    .from('commission_adjustments')
+    .select('amount_cents')
+    .eq('commission_entry_id', entryId);
+  throwOnDbError(adjustmentError, 'commission_adjustments sum for status settle');
+  let net = Number(entryRow.amount_cents ?? 0);
+  for (const row of adjustmentRows ?? []) net += Number(row.amount_cents ?? 0);
+
+  const parsedEligibleAt = typeof entryRow.eligible_at === 'string' ? Date.parse(entryRow.eligible_at) : Number.NaN;
+  const eligibleAtUtcMs = Number.isFinite(parsedEligibleAt) ? parsedEligibleAt : Number.POSITIVE_INFINITY;
+  const next = status === 'reversed'
+    ? decideStatusAfterReinstatement({
+        status,
+        commissionCents: Number(entryRow.amount_cents ?? 0),
+        adjustmentsSumAfterCents: net - Number(entryRow.amount_cents ?? 0),
+        eligibleAtUtcMs,
+        nowUtcMs: Date.now(),
+      })
+    : (net <= 0 ? 'reversed' : null);
+  if (!next) return;
+  const { error } = await deps.db
+    .from('commission_entries')
+    .update({ status: next })
+    .eq('id', entryId)
+    .eq('status', status);
+  throwOnDbError(error, 'commission_entries status settle');
+}
+
+async function applyMoneyAlreadyMoved(
+  deps: DispatchDeps,
+  entry: EntryForReversal,
+  money: { paymentIntentId: string; grossCents: number },
+  keyEvent: { id: string; created: number },
+  reason: string,
+): Promise<string[]> {
+  const notes: string[] = [];
+  const grossCents = Math.max(money.grossCents, 1);
+
+  const refunds = (await deps.listAll('refunds_by_payment_intent', money.paymentIntentId)).map(extractRefundSnapshot);
+  for (const refund of refunds) {
+    if (refund.status !== 'succeeded') continue;
+    const note = await appendReversal(deps, entry, {
+      refundedGrossCents: refund.amountCents,
+      grossCents,
+      kind: 'refund_reversal',
+      reason,
+      sourceEventKey: buildIdempotencyKey('object', {
+        eventId: keyEvent.id,
+        objectId: refund.id,
+        eventCreated: keyEvent.created,
+      }),
+    });
+    if (note === null) notes.push(`reconciled_refund:${refund.id}`);
+  }
+
+  const disputes = (await deps.listAll('disputes_by_payment_intent', money.paymentIntentId)).map(extractDisputeSnapshot);
+  for (const dispute of disputes) {
+    if (dispute.withdrawnCents <= 0) continue;
+    const disputeKey = buildIdempotencyKey('object', {
+      eventId: keyEvent.id,
+      objectId: dispute.id,
+      eventCreated: keyEvent.created,
+    });
+    const reversalNote = await appendReversal(deps, entry, {
+      refundedGrossCents: null, // R5: a withdrawn dispute takes the remaining commission
+      grossCents,
+      kind: 'dispute_reversal',
+      reason,
+      sourceEventKey: disputeKey,
+    });
+    if (reversalNote === null) notes.push(`reconciled_dispute:${dispute.id}`);
+    if (dispute.reinstatedCents > 0) {
+      const restored = await appendReinstatement(deps, entry, {
+        disputeReversalKey: disputeKey,
+        reinstatementKey: `${disputeKey}:reinstated`,
+        reason,
+      });
+      if (restored === null) notes.push(`reconciled_reinstatement:${dispute.id}`);
+    }
+  }
+  // Always, even when nothing was appended: a previous repair may have left the
+  // status behind its own balance.
+  await settleEntryStatus(deps, entry.id);
+  return notes;
+}
+
+async function reconcileReversalsForPaidInvoice(
+  deps: DispatchDeps,
+  invoice: InvoiceSnapshot,
+  paymentIntentId: string | null,
+  event: WebhookEventFacts,
+): Promise<string | null> {
+  if (!paymentIntentId) return null;
+  const entry = await findEntryByInvoiceOrPaymentIntent(deps, invoice.id, paymentIntentId);
+  if (!entry) return null;
+  const notes = await applyMoneyAlreadyMoved(
+    deps,
+    entry,
+    { paymentIntentId, grossCents: invoice.amountPaidCents },
+    { id: event.id, created: event.created },
+    `reconciled_at_booking:${event.type}`,
+  );
+  return notes.length > 0 ? notes.join('; ') : null;
+}
+
+/**
+ * RECONCILIATION, for money that moved while nothing was listening.
+ *
+ * The deferral keeps a reversal alive until its entry exists, and the booking
+ * applies whatever had already moved. Neither helps an entry whose refund or
+ * dispute delivery was ANSWERED before either existed — the code that answered
+ * it is gone, and Stripe will not send it again. This reads the money back from
+ * Stripe for one entry and applies what the ledger is missing, with the same
+ * keys, so a later delivery of the same object is still refused as a duplicate.
+ *
+ * It is a repair, not a second ledger: nothing is deleted, nothing is rewritten,
+ * every row it writes is an ordinary append-only adjustment.
+ */
+export async function reconcileEntryMoney(
+  deps: DispatchDeps,
+  target: { invoiceId: string | null; paymentIntentId: string | null },
+  reason: string,
+): Promise<{ applied: string[]; skipped: string | null }> {
+  const entry = await findEntryByInvoiceOrPaymentIntent(deps, target.invoiceId, target.paymentIntentId);
+  if (!entry) return { applied: [], skipped: 'no_commission_entry' };
+  let paymentIntentId = target.paymentIntentId;
+  let grossCents = 0;
+  if (target.invoiceId) {
+    const invoice = extractInvoiceSnapshot(await deps.refetch('invoice', target.invoiceId));
+    grossCents = invoice.amountPaidCents;
+    if (!paymentIntentId) {
+      paymentIntentId = pickPaidPaymentIntent(
+        invoice.id,
+        (await deps.listAll('invoice_payments_by_invoice', invoice.id)).map(extractInvoicePaymentSnapshot),
+      );
+    }
+  }
+  if (!paymentIntentId) return { applied: [], skipped: 'no_payment_intent' };
+  const applied = await applyMoneyAlreadyMoved(
+    deps,
+    entry,
+    { paymentIntentId, grossCents },
+    { id: `reconcile:${entry.id}`, created: 0 },
+    reason,
+  );
+  return { applied, skipped: applied.length > 0 ? null : 'nothing_missing' };
 }
 
 // ── account.updated → partners status mirror ─────────────────────────────────

@@ -27,6 +27,7 @@ import {
   extractCheckoutMapping,
   extractChargeSnapshot,
   extractConnectAccountSnapshot,
+  extractInvoicePaymentSnapshot,
   extractInvoiceSnapshot,
   extractSubscriptionSnapshot,
   holdEligibilityIso,
@@ -35,7 +36,9 @@ import {
   noContractNote,
   pickAttributionToLock,
   pickLatestRuleVersion,
+  pickPaidPaymentIntent,
   proportionalReversalCents,
+  resolvePaymentIntentInvoice,
 } from '../../supabase/functions/stripe-webhook/effects.ts';
 import {
   SUPPORTED_WEBHOOK_EVENTS,
@@ -342,30 +345,117 @@ describe('extractSubscriptionSnapshot — version-robust period extraction', () 
   });
 });
 
-describe('extractInvoiceSnapshot — version-robust subscription linkage', () => {
-  it('reads the pre-Basil top-level subscription', () => {
-    const snapshot = extractInvoiceSnapshot({
-      id: 'in_fake_1',
-      status: 'paid',
-      amount_paid: 4900,
-      customer: 'cus_fake_1',
-      subscription: 'sub_fake_1',
-      payment_intent: 'pi_fake_1',
-      status_transitions: { paid_at: 1_780_000_000 },
-    });
-    expect(snapshot.subscriptionId).toBe('sub_fake_1');
-    expect(snapshot.paymentIntentId).toBe('pi_fake_1');
-    expect(snapshot.paidAtEpoch).toBe(1_780_000_000);
-  });
-
-  it('reads the Basil parent.subscription_details linkage', () => {
+describe('extractInvoiceSnapshot — Basil invoice', () => {
+  it('reads the subscription from parent.subscription_details and the paid instant', () => {
     const snapshot = extractInvoiceSnapshot({
       id: 'in_fake_2',
+      object: 'invoice',
       status: 'paid',
       amount_paid: 999,
-      parent: { subscription_details: { subscription: 'sub_fake_2' } },
+      customer: 'cus_fake_2',
+      parent: {
+        type: 'subscription_details',
+        quote_details: null,
+        subscription_details: { metadata: {}, subscription: 'sub_fake_2' },
+      },
+      status_transitions: { finalized_at: 1_780_000_000, paid_at: 1_780_000_060 },
     });
-    expect(snapshot.subscriptionId).toBe('sub_fake_2');
+    expect(snapshot).toEqual({
+      id: 'in_fake_2',
+      status: 'paid',
+      amountPaidCents: 999,
+      customerId: 'cus_fake_2',
+      subscriptionId: 'sub_fake_2',
+      paidAtEpoch: 1_780_000_060,
+    });
+  });
+
+  it('an invoice outside a subscription has no subscription id', () => {
+    const snapshot = extractInvoiceSnapshot({
+      id: 'in_fake_3',
+      object: 'invoice',
+      status: 'paid',
+      amount_paid: 500,
+      parent: null,
+    });
+    expect(snapshot.subscriptionId).toBeNull();
+  });
+});
+
+// ── Basil InvoicePayment relations ────────────────────────────────────────────
+
+const invoicePayment = (overrides: Record<string, unknown> = {}) => ({
+  id: 'inpay_fake_1',
+  object: 'invoice_payment',
+  amount_paid: 4900,
+  amount_requested: 4900,
+  created: 1_780_000_000,
+  currency: 'eur',
+  invoice: 'in_fake_1',
+  is_default: true,
+  livemode: false,
+  payment: { type: 'payment_intent', payment_intent: 'pi_fake_1' },
+  status: 'paid',
+  status_transitions: { canceled_at: null, paid_at: 1_780_000_000 },
+  ...overrides,
+});
+
+describe('InvoicePayment — the only invoice ↔ payment relation Basil keeps', () => {
+  it('extracts the invoice, status and the PaymentIntent that settled it', () => {
+    expect(extractInvoicePaymentSnapshot(invoicePayment())).toEqual({
+      id: 'inpay_fake_1',
+      invoiceId: 'in_fake_1',
+      status: 'paid',
+      paymentIntentId: 'pi_fake_1',
+      isDefault: true,
+    });
+  });
+
+  it('a payment made by a charge without a PaymentIntent names no PaymentIntent', () => {
+    const snapshot = extractInvoicePaymentSnapshot(invoicePayment({ payment: { type: 'charge', charge: 'ch_fake_1' } }));
+    expect(snapshot.paymentIntentId).toBeNull();
+  });
+
+  it('pickPaidPaymentIntent ignores open and canceled attempts', () => {
+    const payments = [
+      invoicePayment({ id: 'inpay_a', status: 'canceled', is_default: false, payment: { type: 'payment_intent', payment_intent: 'pi_failed' } }),
+      invoicePayment({ id: 'inpay_b', status: 'open', is_default: false, payment: { type: 'payment_intent', payment_intent: 'pi_pending' } }),
+      invoicePayment({ id: 'inpay_c' }),
+    ].map(extractInvoicePaymentSnapshot);
+    expect(pickPaidPaymentIntent('in_fake_1', payments)).toBe('pi_fake_1');
+  });
+
+  it('pickPaidPaymentIntent uses the default payment when two PaymentIntents paid, and refuses to guess otherwise', () => {
+    const split = [
+      invoicePayment({ id: 'inpay_a', amount_paid: 2000, is_default: true, payment: { type: 'payment_intent', payment_intent: 'pi_part_1' } }),
+      invoicePayment({ id: 'inpay_b', amount_paid: 2900, is_default: false, payment: { type: 'payment_intent', payment_intent: 'pi_part_2' } }),
+    ].map(extractInvoicePaymentSnapshot);
+    expect(pickPaidPaymentIntent('in_fake_1', split)).toBe('pi_part_1');
+    const noDefault = split.map((payment) => ({ ...payment, isDefault: false }));
+    expect(pickPaidPaymentIntent('in_fake_1', noDefault)).toBeNull();
+    expect(pickPaidPaymentIntent('in_other', split)).toBeNull();
+  });
+
+  it('resolvePaymentIntentInvoice finds the one invoice a PaymentIntent paid', () => {
+    const payments = [invoicePayment()].map(extractInvoicePaymentSnapshot);
+    expect(resolvePaymentIntentInvoice('pi_fake_1', payments)).toEqual({ kind: 'invoice', invoiceId: 'in_fake_1' });
+  });
+
+  it('a PaymentIntent with no paid InvoicePayment is not an invoice payment (a Shop order)', () => {
+    expect(resolvePaymentIntentInvoice('pi_shop', [])).toEqual({ kind: 'none' });
+    const canceled = [invoicePayment({ status: 'canceled' })].map(extractInvoicePaymentSnapshot);
+    expect(resolvePaymentIntentInvoice('pi_fake_1', canceled)).toEqual({ kind: 'none' });
+  });
+
+  it('one PaymentIntent paying two invoices is a conflict, never a pick', () => {
+    const payments = [
+      invoicePayment(),
+      invoicePayment({ id: 'inpay_fake_2', invoice: 'in_fake_0' }),
+    ].map(extractInvoicePaymentSnapshot);
+    expect(resolvePaymentIntentInvoice('pi_fake_1', payments)).toEqual({
+      kind: 'conflict',
+      invoiceIds: ['in_fake_0', 'in_fake_1'],
+    });
   });
 });
 
@@ -549,16 +639,17 @@ describe('connect account mirror + no-contract coverage', () => {
     ).toEqual({ id: 'acct_fake_1', detailsSubmitted: true, payoutsEnabled: false });
   });
 
-  it('charge snapshot lists refunds for per-refund reversal keys', () => {
-    const charge = extractChargeSnapshot({
-      id: 'ch_fake_1',
-      amount: 4900,
-      invoice: 'in_fake_1',
-      payment_intent: 'pi_fake_1',
-      refunds: { data: [{ id: 're_fake_1', amount: 1000, status: 'succeeded', charge: 'ch_fake_1' }] },
-    });
-    expect(charge.refunds).toHaveLength(1);
-    expect(charge.refunds[0]?.id).toBe('re_fake_1');
+  it('a Basil charge names its PaymentIntent; refunds and invoice are listed separately', () => {
+    expect(
+      extractChargeSnapshot({
+        id: 'ch_fake_1',
+        object: 'charge',
+        amount: 4900,
+        amount_refunded: 1000,
+        payment_intent: 'pi_fake_1',
+        refunded: false,
+      }),
+    ).toEqual({ id: 'ch_fake_1', amountCents: 4900, paymentIntentId: 'pi_fake_1' });
   });
 
   it('every supported event is either handled by a writer or an explicit no-contract no-op', () => {
@@ -586,9 +677,8 @@ describe('connect account mirror + no-contract coverage', () => {
 
   it('no-contract notes are stable, prefixed strings; contracted events have none', () => {
     expect(noContractNote('payout.paid')).toBe('skipped_no_contract:no_stripe_payout_id_column');
-    expect(noContractNote('charge.dispute.funds_reinstated')).toBe(
-      'skipped_no_contract:adjustment_kind_vocabulary_lacks_reinstatement',
-    );
+    // funds_reinstated is no longer in the map: it has a writer (R6).
+    expect(noContractNote('charge.dispute.funds_reinstated')).toBeNull();
     expect(noContractNote('transfer.reversed')).toBe(
       'skipped_no_contract:adjustment_requires_single_commission_entry',
     );

@@ -113,8 +113,20 @@ describe('nothing the app runs loses access', () => {
       .sort();
     expect(readers).toEqual([
       'supabase/functions/create-checkout-session/index.ts',
+      'supabase/functions/stripe-recovery/index.ts',
       'supabase/functions/stripe-webhook/dispatch.ts',
     ]);
+    // The recovery worker reads the ledger to repair it, and only ever through
+    // the service-role client it builds after authorising its caller.
+    const recovery = read('supabase/functions/stripe-recovery/index.ts');
+    expect(recovery).toMatch(/const serviceRoleKey = Deno\.env\.get\('SUPABASE_SERVICE_ROLE_KEY'\)/);
+    expect(recovery).toMatch(/const admin = createClient\(supabaseUrl, serviceRoleKey/);
+    for (const call of recovery.matchAll(/(\w+)\s*\.from\(\s*'(\w+)'\s*\)/g)) {
+      if ((TABLES as readonly string[]).includes(call[2]!)) expect(call[1]).toBe('admin');
+    }
+    expect(recovery.indexOf('secretEquals(presented, serviceRoleKey)')).toBeLessThan(
+      recovery.indexOf('createClient('),
+    );
     const checkout = read('supabase/functions/create-checkout-session/index.ts');
     expect(checkout).toMatch(/const admin = createClient\([\s\S]{0,200}?SUPABASE_SERVICE_ROLE_KEY/);
     for (const call of checkout.matchAll(/(\w+)\s*\.from\(\s*'(\w+)'\s*\)/g)) {

@@ -69,6 +69,34 @@ const LINK_ADDITION = [
   "      'activeSubscriptions',public.gellatti_partner_active_referred_count_v2(v_partner.id,now(),null,l.id)",
   '',
 ].join('\n');
+/**
+ * The fifth change, and the only one that is not an addition. Measured on the
+ * QA branch (2026-09-17): with two restored disputes the Partner panel reported
+ * 2189 cents "refunded" while the ledger had taken 1791. `abs(sum(...))` over
+ * the negative rows alone cannot see a reinstatement (R6), so money given back
+ * to the Partner was displayed as money taken from them. The counter is now the
+ * NET of that Partner's adjustments, floored at zero.
+ */
+const REFUND_LIVE = [
+  "      'refundCommissionCents',coalesce((select abs(sum(ca.amount_cents))",
+  '        from public.commission_adjustments ca',
+  '        join public.commission_entries ce on ce.id=ca.commission_entry_id',
+  '        join public.referral_attributions ra on ra.id=ce.attribution_id',
+  "        where ra.partner_code_id=c.id and ca.amount_cents<0),0),",
+].join('\n');
+const REFUND_NEXT = [
+  '      -- What is still taken, NET of what came back. Summing only the negative',
+  '      -- rows made a won dispute look like money the Partner had lost: the',
+  '      -- reinstatement (R6) is a positive adjustment on the same entry, and the',
+  '      -- counter must see it. `greatest(…, 0)` keeps the number a claw-back',
+  '      -- total rather than turning a positive net into a negative refund.',
+  "      'refundCommissionCents',coalesce((select greatest(-sum(ca.amount_cents), 0)",
+  '        from public.commission_adjustments ca',
+  '        join public.commission_entries ce on ce.id=ca.commission_entry_id',
+  '        join public.referral_attributions ra on ra.id=ce.attribution_id',
+  "        where ra.partner_code_id=c.id),0),",
+].join('\n');
+
 const NARROWING = [
   '    -- D-LINK-03: narrow to one code or to one campaign link. null narrows',
   '    -- nothing, so (partner, at, null, null) counts exactly what v1 counts.',
@@ -112,13 +140,28 @@ describe('D-LINK-03 migration is handed over, not applied', () => {
   });
 });
 
-describe('the workspace changes by four aggregate keys and nothing else', () => {
+describe('the workspace changes by four aggregate keys, one corrected counter, and nothing else', () => {
   it('is the live definition once the additions are taken out again', () => {
     const reverted = nextWorkspace
       .replace(CODE_ADDITION, '')
-      .replace(`${LINK_CLICKS_END}),\n${LINK_ADDITION}`, `${LINK_CLICKS_END})\n`);
+      .replace(`${LINK_CLICKS_END}),\n${LINK_ADDITION}`, `${LINK_CLICKS_END})\n`)
+      .replace(REFUND_NEXT, REFUND_LIVE);
     expect(nextWorkspace).not.toBe(liveWorkspace);
     expect(reverted).toBe(liveWorkspace);
+  });
+
+  it('nets reinstatements off the refund counter instead of adding them to it', () => {
+    expect(liveWorkspace).toContain(REFUND_LIVE);
+    expect(nextWorkspace).toContain(REFUND_NEXT);
+    // Every adjustment of that Partner is in scope now — a reinstatement is a
+    // positive row, and only the sum decides.
+    expect(REFUND_NEXT).not.toContain('ca.amount_cents<0');
+    // …and a Partner who was given back more than was ever taken reads 0, not
+    // a negative "refund".
+    expect(REFUND_NEXT).toContain('greatest(-sum(ca.amount_cents), 0)');
+    // The rows it reads and the partner it reads them for do not change.
+    const scope = (sql: string) => sql.split('\n').slice(-4, -1).join('\n');
+    expect(scope(REFUND_NEXT)).toBe(scope(REFUND_LIVE));
   });
 
   it('adds only counts, never anything that identifies a customer (D-LINK-04)', () => {
