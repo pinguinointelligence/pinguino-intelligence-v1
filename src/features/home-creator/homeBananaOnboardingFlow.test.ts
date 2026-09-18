@@ -48,7 +48,9 @@ describe('HOME banana onboarding → first recipe', () => {
     );
 
     expect(done).toContain('generateRecipe(amount)');
-    expect(done).toContain('lastGeneratedFor.current = key');
+    // „Gotowe” is the customer answering: it may retry a set that failed, and it
+    // records the start through the one tested gate (HOME-GEN-LOOP).
+    expect(done).toContain('generation.current = generationStarted(key, generationRetried());');
     expect(PAGE).toContain("!draft.presentedStages.includes('machine')");
     expect(firstSolve).toContain('runPiRecalculationWithTerminal()');
     expect(firstSolve.indexOf('runPiRecalculationWithTerminal()')).toBeLessThan(
