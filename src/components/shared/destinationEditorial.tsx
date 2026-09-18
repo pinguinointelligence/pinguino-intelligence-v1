@@ -206,6 +206,7 @@ export function DestinationTop({
   visual,
   actions,
   note,
+  children,
 }: {
   eyebrow?: string;
   title: string;
@@ -214,6 +215,15 @@ export function DestinationTop({
   visual?: ReactNode;
   actions?: ReactNode;
   note?: string;
+  /**
+   * Content the page puts INSIDE the top, under the lede.
+   *
+   * Sklep is why this exists: there the offer itself is the entry block — the
+   * country question, the availability line, the price and the action all stand
+   * on the same dark ground as the title, rather than in a second card below
+   * it. Franchise and Affiliate pass nothing and are unaffected.
+   */
+  children?: ReactNode;
 }) {
   return (
     <section
@@ -249,6 +259,7 @@ export function DestinationTop({
             {lede}
           </p>
         ) : null}
+        {children ? <div className="mt-4 min-w-0">{children}</div> : null}
         {actions ? <div className="mt-4 flex flex-wrap items-center gap-3">{actions}</div> : null}
         {note ? (
           <small className="mt-3 block text-[11.5px] leading-[1.4] text-white/50">{note}</small>

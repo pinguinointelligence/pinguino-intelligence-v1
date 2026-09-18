@@ -17,6 +17,22 @@ export const applicationPrimaryClasses = (className?: string) =>
     className,
   );
 
+/**
+ * The primary action ON A GRAPHITE GROUND (owner, 2026-09-18).
+ *
+ * Same family, same 12 px radius, same size and same disabled treatment as
+ * `applicationPrimaryClasses` — only the fill differs, because the ink fill is
+ * near-black on near-black there and reads as no control at all. This is the
+ * one place the Gellatti accent fills something that carries text, and it is
+ * deliberate: on that ground it is what an action looks like.
+ */
+export const applicationAccentClasses = (className?: string) =>
+  cn(
+    buttonClasses('orange', 'sm'),
+    '!rounded-[var(--radius-pro-studio)] max-sm:min-h-11 max-sm:px-5 max-sm:text-sm',
+    className,
+  );
+
 export const applicationSecondaryClasses = (className?: string) =>
   cn(
     buttonClasses('ghost', 'sm'),
