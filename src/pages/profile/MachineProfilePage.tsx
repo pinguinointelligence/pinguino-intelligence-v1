@@ -14,7 +14,8 @@ import type { ReactNode } from 'react';
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { CustomerSurface } from '@/features/customer-shell/ui/CustomerSurface';
+import { color, type } from '@/features/customer-shell/ui/tokens';
+import { cn } from '@/lib/cn';
 import { TouchButton } from '@/features/customer-shell/ui/TouchButton';
 import {
   MachineOnboarding,
@@ -213,9 +214,9 @@ export function MachineProfilePage() {
       blurb={areaCopy.machine.blurb}
       actions={headingAction}
     >
-      <CustomerSurface measure="workspace">
-        <div className="max-w-4xl">{children}</div>
-      </CustomerSurface>
+      {/* The area frame already owns the gutters and the rhythm: the page keeps the customer
+          type scale without CustomerSurface's second gutter and top padding. */}
+      <div className={cn('max-w-4xl pb-8', type.body, color.textPrimary)}>{children}</div>
     </ProductionAreaSurface>
   );
 

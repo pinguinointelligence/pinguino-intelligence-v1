@@ -143,6 +143,26 @@ describe('Produkcja → Maszyna', () => {
     expect(saveAction()).toBeNull();
   });
 
+  it('an untouched saved machine is not „unsaved”: the bar leaves at once', async () => {
+    seedMachine();
+    await render();
+    expect(batchField().value).not.toBe('');
+    expect(host.querySelector('[data-testid="production-area-section-unsaved"]')).toBeNull();
+    await leaveToProducts();
+    expect(document.querySelector('[data-testid="unsaved-changes-dialog"]')).toBeNull();
+    expect(path()).toBe('/products');
+  });
+
+  it('typing the recommendation back is not an own setting — nothing is unsaved', async () => {
+    seedMachine();
+    await render();
+    const recommended = batchField().value;
+    await act(async () => setValue(batchField(), '999'));
+    expect(host.querySelector('[data-testid="production-area-section-unsaved"]')).not.toBeNull();
+    await act(async () => setValue(batchField(), recommended));
+    expect(host.querySelector('[data-testid="production-area-section-unsaved"]')).toBeNull();
+  });
+
   it('„Zapisz i przejdź” with 0 g stays, keeps the draft and names the rule', async () => {
     seedMachine();
     await render();
