@@ -62,6 +62,10 @@ describe('responsive invariant', () => {
      *  - ProductPickerPopover / productPickerViewport: popover placement
      *  - ProWorkbar: recipe overflow-popover placement inside the viewport
      *  - applicationScaleAuthority: presentation-only whole-application scale
+     *  - GlobalCatalogSearchPanel: scroll restoration. Below 1024 px the product
+     *    detail REPLACES the list, so opening one must start at its top; on the
+     *    two-column desktop the list stays put and keeps its scroll. Nothing but
+     *    window.scrollTo is reached — no product, market or Engine value is read.
      * Anything else must justify itself by being added here deliberately.
      */
     const ALLOWED = [
@@ -73,6 +77,7 @@ describe('responsive invariant', () => {
       'pro-core/ProWorkbar.tsx',
       'components/ui/HoverPreview.tsx',
       'shell/applicationScaleAuthority.ts',
+      'global-catalog/GlobalCatalogSearchPanel.tsx',
     ];
     const offenders = sourceFiles(join(SRC, 'features'))
       .concat(sourceFiles(join(SRC, 'stores')))
