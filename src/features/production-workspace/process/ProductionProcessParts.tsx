@@ -1,30 +1,28 @@
 /**
- * DESIGN V3.0 IV D–I — the presentational pieces of HOME production: the frame, the
- * numbered step cards, the weighed row with its ✓ at the right edge (corrections II/III:
- * one 28 px circle in a 44 px button — active white with a green ring, confirmed green
- * with a white ✓, in the same place), the thumb-zone dock and „Partia gotowa”.
+ * THE batch process presentation — its pieces (DESIGN V3.0 IV D–I, II/III, §13–14): the
+ * column, the numbered step cards, the weighed row with its ✓ at the right edge (one
+ * 28 px circle in a 44 px button — active white with a green ring, confirmed green with a
+ * white ✓, in the same place), the thumb-zone dock and „Partia gotowa”. Shared by HOME
+ * production now and the Produkcja area later.
  *
- * Presentation only: every value and every action comes from `HomePreparation`, which
- * reads the canonical Production session and the ONE preparation plan. The amount field
- * is the canonical `DirectNumberControl` PRO Production uses, in HOME's light skin
- * (`homeProduction.css`).
+ * Presentation only: every value and every action comes from a `ProductionProcessController`.
+ * The amount field is the canonical `DirectNumberControl` PRO Production uses, in the
+ * process's light skin (`productionProcess.css`).
  *
- * HOME look (IV): white, light lines, green only for confirmations, red only for a
- * difference in quantity and „NIE MIKSUJ”.
+ * Look (IV): white, light lines, green only for confirmations, red only for a difference in
+ * quantity and „NIE MIKSUJ”.
  */
 import type { ReactNode } from 'react';
 import { DirectNumberControl } from '@/features/ingredient-builder/DirectNumberControl';
 import { productionControlDecimals } from '@/features/ingredient-builder/directNumberControlModel';
 import { cn } from '@/lib/cn';
-import { homeCreatorCopy } from '../homeCreatorCopy';
-import './homeProduction.css';
-
-const copy = homeCreatorCopy.production;
+import { productionProcessCopy as copy } from './productionProcessCopy';
+import './productionProcess.css';
 
 const GREEN = '#3f9b58';
 const RED = '#a3261d';
 
-function CheckGlyph({ className }: { className?: string }) {
+export function ProcessCheckGlyph({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" className={className}>
       <path
@@ -38,7 +36,8 @@ function CheckGlyph({ className }: { className?: string }) {
   );
 }
 
-export function HomeBackButton({ onClick, testId }: { onClick: () => void; testId: string }) {
+/** „‹ Wróć” — the frame's way back, in the process's own place above the eyebrow. */
+export function ProcessBackButton({ onClick, testId }: { onClick: () => void; testId: string }) {
   return (
     <button
       type="button"
@@ -55,24 +54,18 @@ export function HomeBackButton({ onClick, testId }: { onClick: () => void; testI
           strokeLinejoin="round"
         />
       </svg>
-      {homeCreatorCopy.nav.back}
+      {copy.back}
     </button>
   );
 }
 
-/** The frame's column: HOME's width on every device, the dock ends the page. */
-export function HomeProductionColumn({
-  testId,
-  children,
-}: {
-  testId: string;
-  children: ReactNode;
-}) {
+/** The process column: the same width on every device, the dock ends the page. */
+export function ProcessColumn({ testId, children }: { testId: string; children: ReactNode }) {
   return (
     <section
       id="preparation"
       data-testid={testId}
-      className="home-production mx-auto flex min-h-[calc(100svh-var(--home-header-height,64px))] w-full max-w-[600px] flex-col bg-white px-4 pt-3 sm:px-6"
+      className="production-process mx-auto flex min-h-[calc(100svh-var(--home-header-height,64px))] w-full max-w-[600px] scroll-mt-20 flex-col bg-white px-4 pt-3 sm:px-6"
     >
       {children}
     </section>
@@ -83,24 +76,22 @@ export function HomeProductionColumn({
  * The 44 px confirmation with its one 28 px circle (III). `later` rows keep the quiet
  * grey circle and stay usable: a ✓ there confirms that row at its plan.
  */
-export function HomeTick({
+export function ProcessTick({
   state,
   label,
   onClick,
   testId,
-  disabled = false,
 }: {
   state: 'current' | 'done' | 'later';
   label: string;
   onClick?: () => void;
   testId: string;
-  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled || !onClick}
+      disabled={!onClick}
       aria-label={label}
       aria-pressed={state === 'done'}
       data-testid={testId}
@@ -124,19 +115,19 @@ export function HomeTick({
               : undefined
         }
       >
-        <CheckGlyph className="size-full" />
+        <ProcessCheckGlyph className="size-full" />
       </span>
     </button>
   );
 }
 
 /** Step progress under the title: the current step black, the rest light (IV). */
-export function HomeStepBar({ total, current }: { total: number; current: number }) {
+export function ProcessStepBar({ total, current }: { total: number; current: number }) {
   return (
     <div
       className="mt-3.5 mb-4 grid auto-cols-fr grid-flow-col gap-1"
       aria-hidden="true"
-      data-testid="home-production-bar"
+      data-testid="process-bar"
     >
       {Array.from({ length: total }, (_, index) => (
         <i
@@ -148,11 +139,11 @@ export function HomeStepBar({ total, current }: { total: number; current: number
   );
 }
 
-export function HomeDoneSummary({ names }: { names: readonly string[] }) {
+export function ProcessDoneSummary({ names }: { names: readonly string[] }) {
   return (
     <li
       className="grid grid-cols-[minmax(0,1fr)_26px] items-center gap-2.5 rounded-[14px] border border-[#ebe7e0] bg-white px-3 py-2.5"
-      data-testid="home-production-done-summary"
+      data-testid="process-done-summary"
     >
       <div className="min-w-0">
         <b className="block text-[14.5px] leading-[1.25] font-medium text-[var(--g-ink)]">
@@ -168,13 +159,13 @@ export function HomeDoneSummary({ names }: { names: readonly string[] }) {
         role="img"
         aria-label={copy.added}
       >
-        <CheckGlyph className="size-full" />
+        <ProcessCheckGlyph className="size-full" />
       </span>
     </li>
   );
 }
 
-export function HomeFutureStep({
+export function ProcessFutureStep({
   number,
   title,
   detail,
@@ -186,7 +177,7 @@ export function HomeFutureStep({
   return (
     <li
       className="grid grid-cols-[28px_minmax(0,1fr)] items-center gap-2.5 rounded-[14px] border border-[#f1ede7] bg-white px-3 py-2.5"
-      data-testid="home-production-next-step"
+      data-testid="process-next-step"
     >
       <span className="grid size-[26px] place-items-center rounded-full font-mono text-[12.5px] font-semibold text-[#8a857d] shadow-[inset_0_0_0_1px_#e4e0d9]">
         {number}
@@ -201,7 +192,7 @@ export function HomeFutureStep({
   );
 }
 
-export function HomeCurrentStep({
+export function ProcessCurrentStep({
   number,
   total,
   title,
@@ -216,9 +207,9 @@ export function HomeCurrentStep({
 }) {
   return (
     <li
-      aria-label={`${homeCreatorCopy.production.dockStep(number, total)}: ${title}`}
+      aria-label={`${copy.dockStep(number, total)}: ${title}`}
       className="rounded-[14px] border-[1.5px] border-[var(--g-ink)] bg-white px-3 pt-3.5 pb-3"
-      data-testid="home-production-step"
+      data-testid="process-step"
       data-step-kind={kind}
     >
       <div className="mb-2.5 grid grid-cols-[28px_minmax(0,1fr)] items-center gap-2.5">
@@ -231,7 +222,7 @@ export function HomeCurrentStep({
           </em>
           <b
             className="block text-[16px] leading-[1.2] font-bold text-[var(--g-ink)]"
-            data-testid="home-production-step-title"
+            data-testid="process-step-title"
           >
             {title}
           </b>
@@ -243,7 +234,7 @@ export function HomeCurrentStep({
 }
 
 /** A step's own text: what the plan says to do, and its quieter note. */
-export function HomeStepText({
+export function ProcessStepText({
   text,
   note,
   children,
@@ -265,7 +256,7 @@ export function HomeStepText({
 }
 
 /** „NIE MIKSUJ” — red only for this and for a difference in quantity (IV). */
-export function HomeNoMix({ inBox = false }: { inBox?: boolean }) {
+export function ProcessNoMix({ inBox = false }: { inBox?: boolean }) {
   return (
     <span
       className={cn(
@@ -273,7 +264,7 @@ export function HomeNoMix({ inBox = false }: { inBox?: boolean }) {
         inBox ? 'mb-0.5' : 'mt-2',
       )}
       style={{ borderColor: RED, color: RED }}
-      data-testid="home-production-no-mix"
+      data-testid="process-no-mix"
     >
       {copy.noMix}
     </span>
@@ -281,7 +272,7 @@ export function HomeNoMix({ inBox = false }: { inBox?: boolean }) {
 }
 
 /** A light box inside a step (the heat step's lists, a machine's set-aside toppings). */
-export function HomeStepBox({
+export function ProcessStepBox({
   label,
   tone = 'plain',
   children,
@@ -312,15 +303,15 @@ export function HomeStepBox({
 }
 
 /** The weighed rows of a step: name + state on the left, grams, then the ✓. */
-export function HomeWeighList({ children }: { children: ReactNode }) {
+export function ProcessWeighList({ children }: { children: ReactNode }) {
   return (
-    <div className="grid border-t border-[#f1ede7]" data-testid="home-production-rows">
+    <div className="grid border-t border-[#f1ede7]" data-testid="process-rows">
       {children}
     </div>
   );
 }
 
-export function HomeWeighRow({
+export function ProcessWeighRow({
   rowKey,
   name,
   sub,
@@ -370,7 +361,7 @@ export function HomeWeighRow({
         'grid w-full grid-cols-[minmax(0,1fr)_auto_44px] items-center gap-1 pr-2 pl-3',
         emphasis ? 'pt-0.5' : 'border-b border-[#f1ede7] py-0.5',
       )}
-      data-testid={`home-production-row-${rowKey}`}
+      data-testid={`process-row-${rowKey}`}
       data-row-state={subTone}
     >
       {onOpen ? (
@@ -403,7 +394,7 @@ export function HomeWeighRow({
  * the canonical amount control starting AT the plan. A different number only shows the
  * difference in red; the ✓ (or „Gotowe”) confirms.
  */
-export function HomeWeighCurrent({
+export function ProcessWeighCurrent({
   row,
   lineId,
   name,
@@ -432,7 +423,7 @@ export function HomeWeighCurrent({
       style={{
         boxShadow: deviation ? 'inset 0 0 0 1px rgba(163, 38, 29, 0.5)' : 'inset 0 0 0 1px #d9d5ce',
       }}
-      data-testid="home-production-current-row"
+      data-testid="process-current-row"
       data-deviation={deviation ? 'true' : 'false'}
     >
       {row}
@@ -442,7 +433,7 @@ export function HomeWeighCurrent({
           {copy.vesselQuestion}
         </p>
         <div
-          className="home-production-qty"
+          className="production-process-qty"
           data-deviation={deviation ? 'true' : 'false'}
           onFocus={(event) => {
             if (event.target instanceof HTMLInputElement) onTypingChange(true);
@@ -459,7 +450,7 @@ export function HomeWeighCurrent({
             suffix="g"
             ariaLabel={`${name} — ${copy.vesselQuestion}`}
             onChange={onChange}
-            testId={`home-production-field-${lineId}`}
+            testId={`process-field-${lineId}`}
             preservePrecision
             widthPreset="fluid"
           />
@@ -469,7 +460,7 @@ export function HomeWeighCurrent({
             <b
               className="text-[13.5px] leading-[1.3] font-semibold"
               style={{ color: RED }}
-              data-testid="home-production-difference"
+              data-testid="process-difference"
             >
               {deviation.text}
             </b>
@@ -487,9 +478,9 @@ export function HomeWeighCurrent({
  * The thumb-zone bar: what to do now on the left, ONE black action on the right. Sticky
  * at the bottom of the viewport, in the flow (it reserves its own height, so it never
  * covers the last step), clear of the home indicator — and, on a touch screen, away
- * while the amount is being typed, so it never sits on the keyboard (`homeProduction.css`).
+ * while the amount is being typed, so it never sits on the keyboard (`productionProcess.css`).
  */
-export function HomeProductionDock({
+export function ProcessDock({
   lead,
   detail,
   action,
@@ -506,14 +497,14 @@ export function HomeProductionDock({
 }) {
   return (
     <div
-      className="home-production-dock sticky bottom-0 z-20 -mx-4 mt-auto grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-transparent bg-white px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_0_0_100vmax_#fff] [border-image:linear-gradient(#efebe4,#efebe4)_1/1px_0_0_0/0_100vmax] [clip-path:inset(0_-100vmax)] sm:-mx-6 sm:px-6"
-      data-testid="home-production-dock"
+      className="production-process-dock sticky bottom-0 z-20 -mx-4 mt-auto grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-transparent bg-white px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_0_0_100vmax_#fff] [border-image:linear-gradient(#efebe4,#efebe4)_1/1px_0_0_0/0_100vmax] [clip-path:inset(0_-100vmax)] sm:-mx-6 sm:px-6"
+      data-testid="process-dock"
       data-typing={typing ? 'true' : 'false'}
     >
       <div className="min-w-0">
         <b
           className="block truncate text-[14px] leading-[1.25] font-semibold text-[var(--g-ink)]"
-          data-testid="home-production-dock-lead"
+          data-testid="process-dock-lead"
         >
           {lead}
         </b>
@@ -523,7 +514,7 @@ export function HomeProductionDock({
         type="button"
         onClick={onAction}
         disabled={disabled}
-        data-testid="home-production-next"
+        data-testid="process-next"
         className="inline-flex h-[52px] items-center justify-center rounded-full px-7 text-[16px] font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 disabled:opacity-40"
         style={{ background: 'var(--g-ink)' }}
       >
@@ -533,26 +524,25 @@ export function HomeProductionDock({
   );
 }
 
-/** „Partia gotowa”: every step ✓ on the right, then the page's final actions. */
-export function HomeProductionDone({
+/**
+ * „Partia gotowa”: every step ✓ on the right, the host's note, then the host's actions in
+ * the same sticky bottom bar (HOME: one black main action + Udostępnij / Community).
+ */
+export function ProcessDone({
   subtitle,
   stepTitles,
+  note,
   notice,
-  saved,
-  onSave,
-  onShare,
-  onCommunity,
+  noticeConfirmed = false,
+  actions,
 }: {
   subtitle: string;
   stepTitles: readonly string[];
+  note: string | null;
   notice: string | null;
-  saved: boolean;
-  onSave: () => void;
-  onShare: () => void;
-  onCommunity: () => void;
+  noticeConfirmed?: boolean;
+  actions: ReactNode;
 }) {
-  const pill =
-    'inline-flex h-11 min-w-0 items-center justify-center rounded-full border border-[var(--g-line)] bg-white px-2.5 text-[14px] font-semibold whitespace-nowrap text-[var(--g-ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
   return (
     <>
       <div className="grid justify-items-center gap-1 pt-1 pb-[18px] text-center">
@@ -560,7 +550,7 @@ export function HomeProductionDone({
           className="mb-2 grid size-14 place-items-center rounded-full p-3.5 text-white"
           style={{ background: GREEN }}
         >
-          <CheckGlyph className="size-full" />
+          <ProcessCheckGlyph className="size-full" />
         </span>
         <h2 className="text-[24px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
           {copy.doneTitle}
@@ -569,7 +559,7 @@ export function HomeProductionDone({
       </div>
       <ul
         className="grid grid-cols-2 gap-x-7 gap-y-2 rounded-2xl border border-[#ebe7e0] px-4 py-3.5"
-        data-testid="home-production-done-steps"
+        data-testid="process-done-steps"
       >
         {stepTitles.map((title, index) => (
           <li
@@ -577,54 +567,27 @@ export function HomeProductionDone({
             className="flex min-w-0 items-center justify-between gap-2.5 text-[13.5px] leading-[1.3] font-medium text-[#2f5b3e]"
           >
             <span className="min-w-0">{title}</span>
-            <CheckGlyph className="size-[15px] shrink-0 text-[#3f9b58]" />
+            <ProcessCheckGlyph className="size-[15px] shrink-0 text-[#3f9b58]" />
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-[15px] leading-[1.45] text-[#65635f]">{copy.doneKept}</p>
+      {note ? <p className="mt-4 text-[15px] leading-[1.45] text-[#65635f]">{note}</p> : null}
       {notice ? (
         <p
           className="mt-3 flex items-center justify-between gap-3 text-[14px] font-semibold text-[#2f6b45]"
           role="status"
           aria-live="polite"
-          data-testid="home-production-done-notice"
+          data-testid="process-done-notice"
         >
           <span>{notice}</span>
-          {saved ? <CheckGlyph className="size-4 shrink-0" /> : null}
+          {noticeConfirmed ? <ProcessCheckGlyph className="size-4 shrink-0" /> : null}
         </p>
       ) : null}
       <div
         className="sticky bottom-0 z-20 -mx-4 mt-auto grid gap-2.5 border-t border-transparent bg-white px-4 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_0_0_100vmax_#fff] [border-image:linear-gradient(#efebe4,#efebe4)_1/1px_0_0_0/0_100vmax] [clip-path:inset(0_-100vmax)] sm:-mx-6 sm:px-6"
-        data-testid="home-production-done-actions"
+        data-testid="process-done-actions"
       >
-        <div className="grid grid-cols-2 gap-2">
-          {saved ? (
-            <button type="button" className={pill} onClick={onSave} data-testid="home-done-save">
-              {copy.saveRecipe}
-            </button>
-          ) : (
-            <button type="button" className={pill} onClick={onShare} data-testid="home-done-share">
-              {copy.share}
-            </button>
-          )}
-          <button
-            type="button"
-            className={pill}
-            onClick={onCommunity}
-            data-testid="home-done-community"
-          >
-            {copy.community}
-          </button>
-        </div>
-        <button
-          type="button"
-          onClick={saved ? onShare : onSave}
-          data-testid={saved ? 'home-done-share' : 'home-done-save'}
-          className="inline-flex h-[52px] w-full items-center justify-center rounded-full px-6 text-[16px] font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-          style={{ background: 'var(--g-ink)' }}
-        >
-          {saved ? copy.share : copy.saveRecipe}
-        </button>
+        {actions}
       </div>
     </>
   );

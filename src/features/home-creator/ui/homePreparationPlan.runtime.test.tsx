@@ -152,11 +152,11 @@ const click = (id: string) => {
   act(() => element!.click());
 };
 const text = () => document.body.textContent ?? '';
-const stepKind = () => byTestId('home-production-step')?.dataset.stepKind ?? null;
+const stepKind = () => byTestId('process-step')?.dataset.stepKind ?? null;
 const currentRowName = () =>
-  byTestId('home-production-current-row')?.querySelector('b')?.textContent ?? null;
-const dockAction = () => byTestId('home-production-next')?.textContent ?? null;
-const nextButton = () => byTestId('home-production-next') as HTMLButtonElement | null;
+  byTestId('process-current-row')?.querySelector('b')?.textContent ?? null;
+const dockAction = () => byTestId('process-next')?.textContent ?? null;
+const nextButton = () => byTestId('process-next') as HTMLButtonElement | null;
 const lineState = (lineId: string) =>
   useProductionSessionStore
     .getState()
@@ -165,7 +165,7 @@ const lineState = (lineId: string) =>
 /** Types a number into the row's canonical amount control and leaves the field. */
 function typeAmount(rowId: string, value: string) {
   const input = document.querySelector<HTMLInputElement>(
-    `[data-testid="home-production-field-${rowId}"] input`,
+    `[data-testid="process-field-${rowId}"] input`,
   );
   expect(input, rowId).not.toBeNull();
   act(() => input!.focus());
@@ -249,7 +249,7 @@ function driveToTheEnd(): string[] {
     if (dockAction() === 'Zakończ produkcję') seen.push('finish');
     else if (kind === 'weigh') seen.push(`weigh:${currentRowName()}`);
     else seen.push(kind ?? 'none');
-    click('home-production-next');
+    click('process-next');
   }
   return seen;
 }
@@ -284,14 +284,12 @@ describe('HOME production follows one plan to the end for every supported machin
 
       const bowl = frozenBowl(machineId, technology);
       const total = bowl ? 6 : 5;
-      expect(byTestId('home-production-eyebrow')?.textContent).toBe(
-        `Produkcja · krok 1 z ${total}`,
-      );
-      expect(byTestId('home-production-bar')?.children).toHaveLength(total);
+      expect(byTestId('process-eyebrow')?.textContent).toBe(`Produkcja · krok 1 z ${total}`);
+      expect(byTestId('process-bar')?.children).toHaveLength(total);
       // A frozen bowl is frozen BEFORE the mix is prepared — its own first step, once.
       if (bowl) {
         expect(stepKind()).toBe('before');
-        expect(byTestId('home-preparation-before-start')?.textContent).toContain('Zamroź misę');
+        expect(byTestId('process-before-start')?.textContent).toContain('Zamroź misę');
       }
 
       expect(driveToTheEnd()).toEqual([
@@ -306,7 +304,7 @@ describe('HOME production follows one plan to the end for every supported machin
       ]);
       expect(byTestId('home-production-complete')).not.toBeNull();
       expect(text()).toContain('Partia gotowa');
-      expect(byTestId('home-production-done-steps')?.children).toHaveLength(total);
+      expect(byTestId('process-done-steps')?.children).toHaveLength(total);
       expect(
         useProductionSessionStore.getState().session?.heatInformationAcknowledgedAt ?? null,
       ).toBeNull();
@@ -317,49 +315,47 @@ describe('HOME production follows one plan to the end for every supported machin
     const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     // Step 1: the heated part of the base, weighed row by row.
     expect(stepKind()).toBe('weigh');
-    expect(byTestId('home-base-step')).not.toBeNull();
-    expect(byTestId('home-preparation-heat-step')).toBeNull();
+    expect(byTestId('process-base-step')).not.toBeNull();
+    expect(byTestId('process-heat-step')).toBeNull();
     for (let index = 1; index < plannedInput.items.length; index += 1) {
-      click('home-production-next');
+      click('process-next');
     }
 
     // Step 2: the heat step — information from the plan and one „Gotowe”, no OK reminder.
     expect(stepKind()).toBe('heat');
-    expect(byTestId('home-production-eyebrow')?.textContent).toBe('Produkcja · krok 2 z 5');
-    const heat = byTestId('home-preparation-heat-step')!;
+    expect(byTestId('process-eyebrow')?.textContent).toBe('Produkcja · krok 2 z 5');
+    const heat = byTestId('process-heat-step')!;
     expect(heat.textContent).toContain('Wskazana dla:');
     expect(heat.textContent).toContain(plannedInput.items.at(-1)!.ingredient.name);
     expect(heat.textContent).toContain('Po schłodzeniu');
-    expect(byTestId('home-production-done-summary')?.textContent).toContain('Zrobione: 1 krok');
-    click('home-production-next');
+    expect(byTestId('process-done-summary')?.textContent).toContain('Zrobione: 1 krok');
+    click('process-next');
 
     // Step 3: fresh fruit after cooling, with its own plan instruction.
-    expect(byTestId('home-production-step')?.dataset.stepKind).toBe('weigh');
-    expect(byTestId('home-base-step')?.textContent).toContain('Umyj, dodaj na zimno i zmiksuj');
-    click('home-production-next');
+    expect(byTestId('process-step')?.dataset.stepKind).toBe('weigh');
+    expect(byTestId('process-base-step')?.textContent).toContain('Umyj, dodaj na zimno i zmiksuj');
+    click('process-next');
 
     // Step 4: the machine's own sequence and registered picture; the topping is set aside.
-    const machine = byTestId('home-machine-step')!;
+    const machine = byTestId('process-machine-step')!;
     expect(machine.querySelector('[data-testid="preparation-illustration"]')).not.toBeNull();
     expect(machine.textContent).toContain('Zamroź cały pojemnik');
     expect(machine.textContent).toContain('Zamrażanie mieszanki w pojemniku: 24 h');
     expect(machine.textContent).not.toMatch(/Zamroź misę/);
-    expect(byTestId('home-production-set-aside')?.textContent).toContain('NIE MIKSUJ');
-    click('home-production-next');
+    expect(byTestId('process-set-aside')?.textContent).toContain('NIE MIKSUJ');
+    click('process-next');
 
     // Step 5: the topping — the plan's own instruction and NIE MIKSUJ.
-    const topping = byTestId('home-topping-step')!;
+    const topping = byTestId('process-topping-step')!;
     expect(topping.textContent).toContain(
       'Pokrój truskawki i dodaj przy podaniu. Nie miksuj z bazą.',
     );
-    expect(topping.querySelector('[data-testid="home-production-no-mix"]')?.textContent).toBe(
-      'NIE MIKSUJ',
-    );
-    click('home-production-next');
+    expect(topping.querySelector('[data-testid="process-no-mix"]')?.textContent).toBe('NIE MIKSUJ');
+    click('process-next');
     // Confirming a topping never sends the customer back to the machine step.
-    expect(byTestId('home-machine-step')).toBeNull();
+    expect(byTestId('process-machine-step')).toBeNull();
     expect(dockAction()).toBe('Zakończ produkcję');
-    click('home-production-next');
+    click('process-next');
     expect(byTestId('home-production-complete')).not.toBeNull();
   });
 });
@@ -369,34 +365,32 @@ describe('weighing with ✓ at the right edge (corrections II/III)', () => {
     const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     const milk = plannedInput.items[1]!;
     const cream = plannedInput.items[2]!;
-    const current = byTestId('home-production-current-row')!;
+    const current = byTestId('process-current-row')!;
     expect(current.textContent).toContain('Ile jest w naczyniu?');
     expect(current.textContent).toContain('Teraz · zważ i dodaj');
     const input = document.querySelector<HTMLInputElement>(
-      `[data-testid="home-production-field-${milk.id}"] input`,
+      `[data-testid="process-field-${milk.id}"] input`,
     );
     expect(Number(input?.value)).toBe(milk.planned_grams);
-    expect(byTestId(`home-production-tick-${milk.id}`)?.dataset.tickState).toBe('current');
-    expect(byTestId(`home-production-tick-${cream.id}`)?.dataset.tickState).toBe('later');
+    expect(byTestId(`process-tick-${milk.id}`)?.dataset.tickState).toBe('current');
+    expect(byTestId(`process-tick-${cream.id}`)?.dataset.tickState).toBe('later');
 
-    click(`home-production-tick-${milk.id}`);
+    click(`process-tick-${milk.id}`);
     expect(lineState(milk.id)).toMatchObject({
       confirmed: true,
       physicalAddedGrams: milk.planned_grams,
     });
-    expect(byTestId(`home-production-tick-${milk.id}`)?.dataset.tickState).toBe('done');
-    expect(byTestId(`home-production-row-${milk.id}`)?.textContent).toContain('Dodano');
-    expect(byTestId(`home-production-tick-${cream.id}`)?.dataset.tickState).toBe('current');
-    expect(byTestId('home-production-dock-lead')?.textContent).toBe(
-      `Teraz: ${cream.ingredient.name}`,
-    );
+    expect(byTestId(`process-tick-${milk.id}`)?.dataset.tickState).toBe('done');
+    expect(byTestId(`process-row-${milk.id}`)?.textContent).toContain('Dodano');
+    expect(byTestId(`process-tick-${cream.id}`)?.dataset.tickState).toBe('current');
+    expect(byTestId('process-dock-lead')?.textContent).toBe(`Teraz: ${cream.ingredient.name}`);
   });
 
   it('a later row stays available: its ✓ confirms it at its plan', () => {
     const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     const smp = plannedInput.items[3]!;
-    expect(byTestId(`home-production-tick-${smp.id}`)?.dataset.tickState).toBe('later');
-    click(`home-production-tick-${smp.id}`);
+    expect(byTestId(`process-tick-${smp.id}`)?.dataset.tickState).toBe('later');
+    click(`process-tick-${smp.id}`);
     expect(lineState(smp.id)).toMatchObject({
       confirmed: true,
       physicalAddedGrams: smp.planned_grams,
@@ -409,26 +403,26 @@ describe('a confirmed deviation → „Korekta partii” → „Plan skorygowany
     const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     const milk = plannedInput.items[1]!;
     typeAmount(milk.id, String(milk.planned_grams + 30));
-    expect(byTestId('home-production-current-row')?.dataset.deviation).toBe('true');
-    expect(byTestId('home-production-difference')?.textContent).toBe(
+    expect(byTestId('process-current-row')?.dataset.deviation).toBe('true');
+    expect(byTestId('process-difference')?.textContent).toBe(
       `+30 g względem planu (${milk.planned_grams} g)`,
     );
     expect(text()).toContain('Po potwierdzeniu wybierzesz, jak dostosować partię.');
     // A different number confirms nothing by itself.
     expect(lineState(milk.id).confirmed).toBe(false);
-    expect(byTestId('home-batch-correction')).toBeNull();
+    expect(byTestId('process-correction')).toBeNull();
 
-    click(`home-production-tick-${milk.id}`);
-    const sheet = byTestId('home-batch-correction');
+    click(`process-tick-${milk.id}`);
+    const sheet = byTestId('process-correction');
     expect(sheet).not.toBeNull();
     expect(sheet!.textContent).toContain('Korekta partii');
     expect(sheet!.textContent).toContain('Możemy dostosować tę partię');
-    expect(byTestId('home-batch-correction-what')?.textContent).toBe(
+    expect(byTestId('process-correction-what')?.textContent).toBe(
       `${milk.ingredient.name}: w naczyniu ${milk.planned_grams + 30} g · plan ${milk.planned_grams} g`,
     );
     const options = [
-      ...byTestId('home-batch-correction-options')!.querySelectorAll<HTMLElement>(
-        'button[data-testid^="home-decision-"]',
+      ...byTestId('process-correction-options')!.querySelectorAll<HTMLElement>(
+        'button[data-testid^="process-decision-"]',
       ),
     ];
     expect(options.length).toBeGreaterThan(0);
@@ -441,17 +435,17 @@ describe('a confirmed deviation → „Korekta partii” → „Plan skorygowany
     expect(nextButton()?.disabled).toBe(true);
 
     const chosen =
-      options.find((option) => option.dataset.testid === 'home-decision-keep_original_batch') ??
+      options.find((option) => option.dataset.testid === 'process-decision-keep_original_batch') ??
       options[0]!;
     act(() => chosen.click());
     expect(chosen.getAttribute('aria-pressed')).toBe('true');
     expect(chosen.textContent).toContain('✓ Wybrano');
-    click('home-batch-correction-apply');
+    click('process-correction-apply');
 
-    expect(byTestId('home-batch-correction')).toBeNull();
+    expect(byTestId('process-correction')).toBeNull();
     const strategy = useProductionSessionStore.getState().session!.lastDeviationDecision?.strategy;
-    expect(strategy).toBe(chosen.dataset.testid!.replace('home-decision-', ''));
-    expect(byTestId(`home-production-row-${milk.id}`)?.textContent).toContain(
+    expect(strategy).toBe(chosen.dataset.testid!.replace('process-decision-', ''));
+    expect(byTestId(`process-row-${milk.id}`)?.textContent).toContain(
       `Dodano · ${milk.planned_grams + 30} g · ${
         strategy === 'leave_as_is' ? 'Wynik zaakceptowany' : 'Plan skorygowany'
       }`,
@@ -464,15 +458,15 @@ describe('a confirmed deviation → „Korekta partii” → „Plan skorygowany
     const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     const milk = plannedInput.items[1]!;
     typeAmount(milk.id, String(milk.planned_grams + 30));
-    click(`home-production-tick-${milk.id}`);
-    expect(byTestId('home-batch-correction')).not.toBeNull();
-    click('home-batch-correction-back');
-    expect(byTestId('home-batch-correction')).toBeNull();
-    expect(byTestId(`home-production-tick-${milk.id}`)?.dataset.tickState).toBe('current');
-    expect(byTestId('home-production-current-row')?.textContent).toContain('Poprawiasz zapis');
+    click(`process-tick-${milk.id}`);
+    expect(byTestId('process-correction')).not.toBeNull();
+    click('process-correction-back');
+    expect(byTestId('process-correction')).toBeNull();
+    expect(byTestId(`process-tick-${milk.id}`)?.dataset.tickState).toBe('current');
+    expect(byTestId('process-current-row')?.textContent).toContain('Poprawiasz zapis');
     typeAmount(milk.id, String(milk.planned_grams));
-    click(`home-production-tick-${milk.id}`);
-    expect(byTestId('home-batch-correction')).toBeNull();
+    click(`process-tick-${milk.id}`);
+    expect(byTestId('process-correction')).toBeNull();
     expect(lineState(milk.id)).toMatchObject({
       confirmed: true,
       physicalAddedGrams: milk.planned_grams,
@@ -484,21 +478,21 @@ describe('„Co się stało?” in HOME', () => {
   it('has no „Chcę zmienić smak tej partii”; „Zważyłem inną ilość” opens the amount being weighed', async () => {
     const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     const milk = plannedInput.items[1]!;
-    click('home-production-trouble-open');
-    const sheet = byTestId('home-production-trouble')!;
+    click('process-trouble-open');
+    const sheet = byTestId('process-trouble')!;
     expect(sheet.textContent).toContain('Co się stało?');
     expect(sheet.textContent).toContain(
       'Partia czeka. Nic się nie zmieni, dopóki czegoś nie wybierzesz.',
     );
     expect(sheet.textContent).toContain('Zważyłem inną ilość');
     expect(sheet.textContent).not.toContain('Chcę zmienić smak tej partii');
-    click('home-trouble-weighed');
-    expect(byTestId('home-production-trouble')).toBeNull();
+    click('process-trouble-weighed');
+    expect(byTestId('process-trouble')).toBeNull();
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(document.activeElement).toBe(
-      document.querySelector(`[data-testid="home-production-field-${milk.id}"] input`),
+      document.querySelector(`[data-testid="process-field-${milk.id}"] input`),
     );
   });
 });
@@ -507,11 +501,11 @@ describe('interruption in HOME: „Wróć” and „Zapisz” keep the batch in 
   it('the frame calls back to the recipe, and the next visit opens the same step with the same rows', () => {
     const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     for (let index = 1; index < plannedInput.items.length; index += 1) {
-      click('home-production-next');
+      click('process-next');
     }
     expect(stepKind()).toBe('heat');
-    click('home-production-next');
-    expect(byTestId('home-production-eyebrow')?.textContent).toBe('Produkcja · krok 3 z 5');
+    click('process-next');
+    expect(byTestId('process-eyebrow')?.textContent).toBe('Produkcja · krok 3 z 5');
 
     click('home-production-back');
     expect(callbacks.onBack).toHaveBeenCalledTimes(1);
@@ -523,9 +517,9 @@ describe('interruption in HOME: „Wróć” and „Zapisz” keep the batch in 
     root = createRoot(host);
     render();
     expect(stepKind()).toBe('weigh');
-    expect(byTestId('home-production-eyebrow')?.textContent).toBe('Produkcja · krok 3 z 5');
-    expect(byTestId('home-production-done-summary')?.textContent).toContain('Zrobione: 2 kroki');
-    expect(byTestId('home-base-step')?.textContent).toContain('Umyj, dodaj na zimno i zmiksuj');
+    expect(byTestId('process-eyebrow')?.textContent).toBe('Produkcja · krok 3 z 5');
+    expect(byTestId('process-done-summary')?.textContent).toContain('Zrobione: 2 kroki');
+    expect(byTestId('process-base-step')?.textContent).toContain('Umyj, dodaj na zimno i zmiksuj');
   });
 });
 
@@ -533,7 +527,7 @@ describe('an official recipe keeps its Professional machine in HOME (served 2026
   it('Mango Sorbet → „Zróbmy to”: the batch runs to the end with no machine hand-off, never „Brakuje instrukcji urządzenia”', () => {
     const plannedInput = startPreparation(null, null, 'professional');
     expect(byTestId('home-preparation-blocked')).toBeNull();
-    expect(byTestId('home-production-eyebrow')?.textContent).toBe('Produkcja · krok 1 z 4');
+    expect(byTestId('process-eyebrow')?.textContent).toBe('Produkcja · krok 1 z 4');
     // PRO Production runs a Professional batch with no machine guide; so does HOME.
     expect(driveToTheEnd()).toEqual([
       ...plannedInput.items.slice(1).map((item) => `weigh:${item.ingredient.name}`),
@@ -542,7 +536,7 @@ describe('an official recipe keeps its Professional machine in HOME (served 2026
       'weigh:Milk 3.5 %',
       'finish',
     ]);
-    expect(byTestId('home-machine-step')).toBeNull();
+    expect(byTestId('process-machine-step')).toBeNull();
     expect(byTestId('home-production-complete')).not.toBeNull();
   });
 

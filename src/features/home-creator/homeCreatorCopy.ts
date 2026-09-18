@@ -287,62 +287,14 @@ export interface HomeCreatorCopy {
     readonly toppingStage: string;
     readonly done: string;
   };
-  /** DESIGN V3.0 IV D–I — the HOME production frame over the ONE preparation plan. */
+  /**
+   * DESIGN V3.0 IV D–I — HOME's own words around the shared batch process
+   * (`production-workspace/process`): the process itself speaks `productionProcessCopy`.
+   */
   readonly production: {
-    readonly eyebrow: (step: number, total: number) => string;
-    readonly now: string;
-    readonly weighNow: string;
-    readonly later: string;
-    readonly added: string;
-    readonly addedAmount: (grams: string) => string;
-    readonly planCorrected: string;
-    readonly resultAccepted: string;
-    readonly vesselQuestion: string;
-    readonly difference: (delta: string, plan: string) => string;
-    readonly differenceNext: string;
-    readonly correctingRecord: string;
-    readonly topUpWeighed: (grams: string) => string;
-    readonly confirmAdded: (name: string) => string;
-    readonly reopenAdded: (name: string) => string;
-    readonly doneSteps: (count: number) => string;
-    readonly dockNow: (name: string) => string;
-    readonly dockPlan: (grams: string) => string;
-    readonly dockTopUp: (grams: string) => string;
-    readonly dockThen: (count: number) => string;
-    readonly dockLastInStep: string;
-    readonly dockStep: (step: number, total: number) => string;
-    readonly dockWeighed: string;
-    readonly next: string;
-    readonly finish: string;
-    readonly trouble: string;
     readonly saveBatch: string;
     readonly savedForLater: string;
-    readonly noMix: string;
-    readonly setAside: (names: string) => string;
-    readonly batchChanged: (now: string, was: string) => string;
-    readonly degasTitle: string;
-    readonly degasLead: string;
-    readonly degasDone: string;
-    readonly troubleTitle: string;
-    readonly troubleLead: string;
-    readonly troubleWeighed: string;
-    readonly troubleWeighedHint: string;
-    readonly troubleWeighedUnavailable: string;
-    readonly correctionEyebrow: string;
-    readonly correctionTitle: string;
-    readonly correctionLead: string;
-    readonly correctionInVessel: string;
-    readonly correctionPlan: string;
-    readonly correctionRecommended: string;
-    readonly correctionSelected: string;
-    readonly correctionRestoreApply: string;
-    readonly correctionLeaveApply: string;
-    readonly correctionImpossible: string;
-    readonly doneTitle: string;
     readonly doneKept: string;
-    readonly saveRecipe: string;
-    readonly share: string;
-    readonly community: string;
   };
   readonly draft: {
     readonly continueTitle: string;
@@ -375,14 +327,6 @@ export interface HomeCreatorCopy {
     readonly defaultExperienceHome: string;
   };
 }
-
-/** Polish counting: 1 krok · 2–4 kroki · 5+ kroków (12–14 take the last form). */
-const plPlural = (count: number, one: string, few: string, many: string): string => {
-  if (count === 1) return one;
-  const units = count % 10;
-  const tens = count % 100;
-  return units >= 2 && units <= 4 && (tens < 12 || tens > 14) ? few : many;
-};
 
 const homeCreatorCopyPl: HomeCreatorCopy = {
   switch: { home: 'HOME', pro: 'PRO', ariaLabel: 'Wybór widoku: HOME albo PRO' },
@@ -620,60 +564,9 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     done: 'Gotowe!',
   },
   production: {
-    eyebrow: (step, total) => `Produkcja · krok ${step} z ${total}`,
-    now: 'Teraz',
-    weighNow: 'Teraz · zważ i dodaj',
-    later: 'Potem',
-    added: 'Dodano',
-    addedAmount: (grams) => `Dodano · ${grams}`,
-    planCorrected: 'Plan skorygowany',
-    resultAccepted: 'Wynik zaakceptowany',
-    vesselQuestion: 'Ile jest w naczyniu?',
-    difference: (delta, plan) => `${delta} względem planu (${plan})`,
-    differenceNext: 'Po potwierdzeniu wybierzesz, jak dostosować partię.',
-    correctingRecord: 'Poprawiasz zapis — tylko jeśli wpisana ilość była błędna.',
-    topUpWeighed: (grams) => `Dodaj jeszcze · zważono ${grams}`,
-    confirmAdded: (name) => `${name} — potwierdź, że dodano`,
-    reopenAdded: (name) => `${name} — dodano, popraw zapis`,
-    doneSteps: (count) => `Zrobione: ${count} ${plPlural(count, 'krok', 'kroki', 'kroków')}`,
-    dockNow: (name) => `Teraz: ${name}`,
-    dockPlan: (grams) => `plan ${grams}`,
-    dockTopUp: (grams) => `dodaj jeszcze ${grams}`,
-    dockThen: (count) => `potem ${count} ${plPlural(count, 'składnik', 'składniki', 'składników')}`,
-    dockLastInStep: 'to ostatni w tym kroku',
-    dockStep: (step, total) => `Krok ${step} z ${total}`,
-    dockWeighed: 'zważone',
-    next: 'Gotowe',
-    finish: 'Zakończ produkcję',
-    trouble: 'Coś poszło nie tak?',
     saveBatch: 'Zapisz',
     savedForLater: 'Partia zapisana · wrócisz przez „Wróć do produkcji”.',
-    noMix: 'NIE MIKSUJ',
-    setAside: (names) => `Odłóż: ${names} — dodasz po maszynie.`,
-    batchChanged: (now, was) => `Partia ${now} (było ${was})`,
-    degasTitle: 'Najpierw odgazuj',
-    degasLead: 'Przed użyciem należy całkowicie odgazować:',
-    degasDone: 'Odgazowane',
-    troubleTitle: 'Co się stało?',
-    troubleLead: 'Partia czeka. Nic się nie zmieni, dopóki czegoś nie wybierzesz.',
-    troubleWeighed: 'Zważyłem inną ilość',
-    troubleWeighedHint: 'Wpisz, ile jest w naczyniu — plan partii się przeliczy',
-    troubleWeighedUnavailable: 'Ilość wpisujesz przy składniku, który teraz ważysz.',
-    correctionEyebrow: 'Korekta partii',
-    correctionTitle: 'Możemy dostosować tę partię',
-    correctionLead: 'Zachowamy to, co już jest w naczyniu. Wybierz sposób dalszej pracy.',
-    correctionInVessel: 'w naczyniu',
-    correctionPlan: 'plan',
-    correctionRecommended: 'Rekomendowane',
-    correctionSelected: '✓ Wybrano',
-    correctionRestoreApply: 'Przywróć proporcje',
-    correctionLeaveApply: 'Akceptuję wynik i kontynuuję',
-    correctionImpossible: 'Tej partii nie możemy teraz bezpiecznie dostosować',
-    doneTitle: 'Partia gotowa',
     doneKept: 'Partia została zakończona i zachowana na tym urządzeniu.',
-    saveRecipe: 'Zapisz recepturę',
-    share: 'Udostępnij',
-    community: 'Community',
   },
   draft: {
     continueTitle: 'Dokończ swoją recepturę',
@@ -942,60 +835,9 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     done: 'Done!',
   },
   production: {
-    eyebrow: (step, total) => `Production · step ${step} of ${total}`,
-    now: 'Now',
-    weighNow: 'Now · weigh and add',
-    later: 'Later',
-    added: 'Added',
-    addedAmount: (grams) => `Added · ${grams}`,
-    planCorrected: 'Plan corrected',
-    resultAccepted: 'Result accepted',
-    vesselQuestion: 'How much is in the bowl?',
-    difference: (delta, plan) => `${delta} against the plan (${plan})`,
-    differenceNext: 'After you confirm, you choose how to adjust the batch.',
-    correctingRecord: 'You are correcting the record — only if the entered amount was wrong.',
-    topUpWeighed: (grams) => `Add some more · weighed ${grams}`,
-    confirmAdded: (name) => `${name} — confirm it is added`,
-    reopenAdded: (name) => `${name} — added, correct the record`,
-    doneSteps: (count) => `Done: ${count} ${count === 1 ? 'step' : 'steps'}`,
-    dockNow: (name) => `Now: ${name}`,
-    dockPlan: (grams) => `plan ${grams}`,
-    dockTopUp: (grams) => `add ${grams} more`,
-    dockThen: (count) => `then ${count} ${count === 1 ? 'ingredient' : 'ingredients'}`,
-    dockLastInStep: 'the last one in this step',
-    dockStep: (step, total) => `Step ${step} of ${total}`,
-    dockWeighed: 'weighed',
-    next: 'Done',
-    finish: 'Finish production',
-    trouble: 'Something went wrong?',
     saveBatch: 'Save',
     savedForLater: 'Batch saved · come back with „Back to production”.',
-    noMix: 'DO NOT MIX',
-    setAside: (names) => `Set aside: ${names} — you add it after the machine.`,
-    batchChanged: (now, was) => `Batch ${now} (was ${was})`,
-    degasTitle: 'Degas first',
-    degasLead: 'Fully degas before use:',
-    degasDone: 'Degassed',
-    troubleTitle: 'What happened?',
-    troubleLead: 'The batch waits. Nothing changes until you choose something.',
-    troubleWeighed: 'I weighed a different amount',
-    troubleWeighedHint: 'Enter how much is in the bowl — the batch plan is recalculated',
-    troubleWeighedUnavailable: 'You enter the amount on the ingredient you are weighing now.',
-    correctionEyebrow: 'Batch correction',
-    correctionTitle: 'We can adjust this batch',
-    correctionLead: 'We keep what is already in the bowl. Choose how to continue.',
-    correctionInVessel: 'in the bowl',
-    correctionPlan: 'plan',
-    correctionRecommended: 'Recommended',
-    correctionSelected: '✓ Selected',
-    correctionRestoreApply: 'Restore the proportions',
-    correctionLeaveApply: 'I accept the result and continue',
-    correctionImpossible: 'We cannot safely adjust this batch right now',
-    doneTitle: 'Batch ready',
     doneKept: 'The batch is finished and kept on this device.',
-    saveRecipe: 'Save the recipe',
-    share: 'Share',
-    community: 'Community',
   },
   draft: {
     continueTitle: 'Continue your recipe',

@@ -1,66 +1,71 @@
 /**
- * DESIGN V3.0 IV „Rescue w HOME” + XIII — the two sheets of HOME production, in the one
- * HOME layer frame (a compact bottom sheet on phones and portrait tablets, a light modal
- * from 1024 px):
+ * THE batch process's two sheets (DESIGN V3.0 IV „Rescue w HOME”, XIII, §14):
  *
  *  • „Korekta partii” — the four decisions PRO Production offers after a confirmed
  *    deviation (`productionDecisionOptions.ts`: the same order, words and recommendation),
  *    each with the Score and batch mass the Rescue authority verified. „Wróć” returns to
  *    the row to correct the entry.
- *  • „Co się stało?” — HOME's calm way into that flow, WITHOUT „Chcę zmienić smak tej
- *    partii” (HOME has no versions, no Monitor and no correction of a running batch).
+ *  • „Co się stało?” — the calm way into that flow. The flavour change of a running batch
+ *    („Chcę zmienić smak tej partii”) is not offered: no host has that mechanism.
  *
- * Presentation only; `HomePreparation` owns every value and every action.
+ * The frame is the HOST's layer (`sheetFrame`): HOME passes its bottom-sheet layer, the
+ * Produkcja area can pass its own. Presentation only — every action is the controller's.
  */
+import type { ReactNode } from 'react';
 import { ScoreRing } from '@/features/pro-workbench/ScoreRing';
 import type { TenPointScore } from '@/features/recipe-score';
-import type { ProductionDecisionId } from '@/features/production-workspace/productionDecisionOptions';
 import { cn } from '@/lib/cn';
-import { homeCreatorCopy } from '../homeCreatorCopy';
-import {
-  HomeLayer,
-  HomeLayerFoot,
-  HomeLayerHeading,
-  homeLayerPrimaryButton,
-  homeLayerTextButton,
-} from './HomeLayer';
-import { formatProductionGrams } from '../homeProductionSteps';
+import type { ProductionDecisionId } from '../productionDecisionOptions';
+import { productionProcessCopy as copy } from './productionProcessCopy';
+import { formatProductionGrams, type ProductionCorrectionView } from './productionProcessSteps';
 
-const copy = homeCreatorCopy.production;
+/** The host's layer around a process sheet (e.g. HOME's `HomeLayer`). */
+export type ProcessSheetFrame = (props: {
+  label: string;
+  testId: string;
+  onClose: () => void;
+  onBackdrop?: () => void;
+  returnFocus?: () => HTMLElement | null;
+  children: ReactNode;
+}) => ReactNode;
 
-export interface HomeCorrectionOptionView {
-  id: ProductionDecisionId;
-  title: string;
-  explanation: string;
-  score: TenPointScore | null;
-  finalMassG: number;
+const primaryButton =
+  'pro-focus-ring inline-flex h-12 min-w-0 flex-1 items-center justify-center rounded-full bg-[var(--g-ink)] px-5 text-[15.5px] font-semibold text-white disabled:opacity-40';
+const textButton =
+  'pro-focus-ring inline-flex h-12 shrink-0 items-center justify-center rounded-full px-3.5 text-[15px] font-semibold text-[var(--g-ink)]';
+
+function SheetHeading({ title, subtitle }: { title: ReactNode; subtitle: ReactNode }) {
+  return (
+    <div className="shrink-0">
+      <h2 className="text-[18px] leading-[1.25] font-semibold text-[var(--g-ink)]">{title}</h2>
+      <p className="mt-0.5 text-[13px] leading-[1.35] text-[var(--g-text-muted)]">{subtitle}</p>
+    </div>
+  );
 }
 
-export function HomeBatchCorrectionSheet({
-  what,
-  options,
-  impossibleReason,
-  recommendedId,
-  selectedId,
-  applyLabel,
+/** The actions, last, under the thumb — like every HOME layer. */
+function SheetFoot({ children }: { children: ReactNode }) {
+  return <div className="mt-7 flex shrink-0 items-center gap-3">{children}</div>;
+}
+
+export function ProcessCorrectionSheet({
+  frame: Frame,
+  correction,
   onSelect,
   onApply,
   onBack,
 }: {
-  what: { name: string; actualG: number; planG: number } | null;
-  options: readonly HomeCorrectionOptionView[];
-  impossibleReason: string | null;
-  recommendedId: ProductionDecisionId | null;
-  selectedId: ProductionDecisionId | null;
-  applyLabel: string;
+  frame: ProcessSheetFrame;
+  correction: ProductionCorrectionView;
   onSelect: (id: ProductionDecisionId) => void;
   onApply: () => void;
   onBack: () => void;
 }) {
+  const { what, options, impossibleReason, recommendedId, selectedId, applyLabel } = correction;
   return (
-    <HomeLayer
+    <Frame
       label={copy.correctionEyebrow}
-      testId="home-batch-correction"
+      testId="process-correction"
       onClose={onBack}
       // A decision is required to go on: a stray tap on the dimmed batch is not one.
       onBackdrop={() => undefined}
@@ -68,14 +73,14 @@ export function HomeBatchCorrectionSheet({
       <em className="mb-1 block shrink-0 text-[10.5px] leading-none font-bold tracking-[0.08em] text-[#77736c] uppercase not-italic">
         {copy.correctionEyebrow}
       </em>
-      <HomeLayerHeading
+      <SheetHeading
         title={impossibleReason ? copy.correctionImpossible : copy.correctionTitle}
         subtitle={impossibleReason ?? copy.correctionLead}
       />
       {what ? (
         <p
           className="mt-3 shrink-0 rounded-[10px] px-3 py-[9px] text-[13px] leading-[1.35] text-[#3b3833] shadow-[inset_0_0_0_1px_#ebe7e0]"
-          data-testid="home-batch-correction-what"
+          data-testid="process-correction-what"
         >
           {what.name}: {copy.correctionInVessel}{' '}
           <b className="font-semibold text-[var(--g-ink)]">{formatProductionGrams(what.actualG)}</b>{' '}
@@ -85,7 +90,7 @@ export function HomeBatchCorrectionSheet({
       {options.length > 0 ? (
         <div
           className="mt-2.5 grid min-h-0 gap-2.5 overflow-y-auto overscroll-contain"
-          data-testid="home-batch-correction-options"
+          data-testid="process-correction-options"
         >
           {options.map((option) => {
             const selected = option.id === selectedId;
@@ -95,7 +100,7 @@ export function HomeBatchCorrectionSheet({
                 type="button"
                 onClick={() => onSelect(option.id)}
                 aria-pressed={selected}
-                data-testid={`home-decision-${option.id}`}
+                data-testid={`process-decision-${option.id}`}
                 className={cn(
                   'flex w-full justify-between gap-2.5 rounded-xl border bg-white p-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30',
                   selected
@@ -124,7 +129,10 @@ export function HomeBatchCorrectionSheet({
                       {copy.correctionSelected}
                     </em>
                   ) : null}
-                  <ScoreRing score={option.score} testId={`home-decision-score-${option.id}`} />
+                  <ScoreRing
+                    score={option.score as TenPointScore | null}
+                    testId={`process-decision-score-${option.id}`}
+                  />
                   <span className="font-mono text-[12px] leading-none font-semibold text-[var(--g-ink)]">
                     {formatProductionGrams(option.finalMassG)}
                   </span>
@@ -134,36 +142,38 @@ export function HomeBatchCorrectionSheet({
           })}
         </div>
       ) : null}
-      <HomeLayerFoot>
+      <SheetFoot>
         <button
           type="button"
-          className={homeLayerTextButton}
+          className={textButton}
           onClick={onBack}
-          data-testid="home-batch-correction-back"
+          data-testid="process-correction-back"
         >
-          {homeCreatorCopy.nav.back}
+          {copy.back}
         </button>
         {options.length > 0 ? (
           <button
             type="button"
-            className={homeLayerPrimaryButton}
+            className={primaryButton}
             onClick={onApply}
             disabled={selectedId === null}
-            data-testid="home-batch-correction-apply"
+            data-testid="process-correction-apply"
           >
             {applyLabel}
           </button>
         ) : null}
-      </HomeLayerFoot>
-    </HomeLayer>
+      </SheetFoot>
+    </Frame>
   );
 }
 
-export function HomeTroubleSheet({
+export function ProcessTroubleSheet({
+  frame: Frame,
   onWeighedDifferent,
   onBack,
   returnFocus,
 }: {
+  frame: ProcessSheetFrame;
   /** `null` while no row is being weighed: the amount is entered on the row itself. */
   onWeighedDifferent: (() => void) | null;
   onBack: () => void;
@@ -171,19 +181,19 @@ export function HomeTroubleSheet({
   returnFocus?: () => HTMLElement | null;
 }) {
   return (
-    <HomeLayer
+    <Frame
       label={copy.troubleTitle}
-      testId="home-production-trouble"
+      testId="process-trouble"
       onClose={onBack}
       returnFocus={returnFocus}
     >
-      <HomeLayerHeading title={copy.troubleTitle} subtitle={copy.troubleLead} />
-      <div className="mt-3 grid shrink-0" data-testid="home-production-trouble-options">
+      <SheetHeading title={copy.troubleTitle} subtitle={copy.troubleLead} />
+      <div className="mt-3 grid shrink-0" data-testid="process-trouble-options">
         <button
           type="button"
           onClick={onWeighedDifferent ?? undefined}
           disabled={onWeighedDifferent === null}
-          data-testid="home-trouble-weighed"
+          data-testid="process-trouble-weighed"
           className="grid gap-0.5 border-b border-[#f1ede7] px-0.5 py-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30 disabled:cursor-not-allowed"
         >
           <b
@@ -199,16 +209,16 @@ export function HomeTroubleSheet({
           </small>
         </button>
       </div>
-      <HomeLayerFoot>
+      <SheetFoot>
         <button
           type="button"
-          className={homeLayerPrimaryButton}
+          className={primaryButton}
           onClick={onBack}
-          data-testid="home-production-trouble-back"
+          data-testid="process-trouble-back"
         >
-          {homeCreatorCopy.nav.back}
+          {copy.back}
         </button>
-      </HomeLayerFoot>
-    </HomeLayer>
+      </SheetFoot>
+    </Frame>
   );
 }

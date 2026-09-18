@@ -1,20 +1,17 @@
 /**
- * DESIGN V3.0 IV D–I — HOME's numbered production steps are a presentation of the ONE
- * preparation plan: the plan's order and words, consecutive weighing lines as one step,
- * and the current step read from the canonical Production session.
+ * DESIGN V3.0 IV D–I — the batch process's numbered steps (HOME now, Produkcja later) are a
+ * presentation of the ONE preparation plan: the plan's order and words, consecutive weighing
+ * lines as one step, and the current step read from the canonical Production session.
  */
 import { describe, expect, it } from 'vitest';
 import { educationCopy } from '@/copy/education.pl';
-import type {
-  PreparationPlan,
-  PreparationStep,
-} from '@/features/production-workspace/preparationPlan';
+import type { PreparationPlan, PreparationStep } from '../preparationPlan';
 import {
-  homeCurrentStepIndex,
-  homeProcessStepDone,
-  homeProcessSteps,
-  type HomeProcessState,
-} from './homeProductionSteps';
+  productionProcessCurrentIndex,
+  productionProcessStepDone,
+  productionProcessSteps,
+  type ProductionProcessState,
+} from './productionProcessSteps';
 
 const line = (
   lineId: string,
@@ -74,7 +71,7 @@ const plan: PreparationPlan = {
   ],
 };
 
-const state = (patch: Partial<HomeProcessState> = {}): HomeProcessState => ({
+const state = (patch: Partial<ProductionProcessState> = {}): ProductionProcessState => ({
   confirmedLineIds: new Set(),
   holdLineId: null,
   degassingDone: true,
@@ -83,9 +80,9 @@ const state = (patch: Partial<HomeProcessState> = {}): HomeProcessState => ({
   ...patch,
 });
 
-describe('homeProcessSteps', () => {
+describe('productionProcessSteps', () => {
   it('keeps the plan order and words; consecutive lines are one weighing step', () => {
-    const steps = homeProcessSteps(plan, { degassingTitle: null });
+    const steps = productionProcessSteps(plan, { degassingTitle: null });
     expect(steps.map((step) => `${step.kind}:${step.title}`)).toEqual([
       'before:Zanim zaczniesz',
       `weigh:${educationCopy.preparation.baseTitle}`,
@@ -106,43 +103,48 @@ describe('homeProcessSteps', () => {
   });
 
   it('puts the existing degassing confirmation before the first weighing', () => {
-    const steps = homeProcessSteps(plan, { degassingTitle: 'Najpierw odgazuj' });
+    const steps = productionProcessSteps(plan, { degassingTitle: 'Najpierw odgazuj' });
     expect(steps.map((step) => step.kind).slice(0, 3)).toEqual(['before', 'degas', 'weigh']);
   });
 });
 
 describe('the current step', () => {
-  const steps = homeProcessSteps(plan, { degassingTitle: null });
+  const steps = productionProcessSteps(plan, { degassingTitle: null });
 
   it('starts at the machine preparation and moves on with „Gotowe” or the first weighing', () => {
-    expect(homeCurrentStepIndex(steps, state())).toBe(0);
-    expect(homeCurrentStepIndex(steps, state({ doneStepIds: new Set(['machine:before']) }))).toBe(
-      1,
-    );
+    expect(productionProcessCurrentIndex(steps, state())).toBe(0);
+    expect(
+      productionProcessCurrentIndex(steps, state({ doneStepIds: new Set(['machine:before']) })),
+    ).toBe(1);
     // A batch whose weighing began is past its machine preparation.
-    expect(homeCurrentStepIndex(steps, state({ confirmedLineIds: new Set(['milk']) }))).toBe(1);
+    expect(
+      productionProcessCurrentIndex(steps, state({ confirmedLineIds: new Set(['milk']) })),
+    ).toBe(1);
   });
 
   it('reaches the heat step once its lines are confirmed, and holds a step while a correction waits', () => {
     const weighed = new Set(['milk', 'tara']);
-    expect(homeCurrentStepIndex(steps, state({ confirmedLineIds: weighed }))).toBe(2);
+    expect(productionProcessCurrentIndex(steps, state({ confirmedLineIds: weighed }))).toBe(2);
     expect(
-      homeCurrentStepIndex(steps, state({ confirmedLineIds: weighed, holdLineId: 'tara' })),
+      productionProcessCurrentIndex(
+        steps,
+        state({ confirmedLineIds: weighed, holdLineId: 'tara' }),
+      ),
     ).toBe(1);
   });
 
   it('opens the topping only after the machine hand-off, and ends past the last step', () => {
     const base = new Set(['milk', 'tara', 'fruit']);
-    expect(homeCurrentStepIndex(steps, state({ confirmedLineIds: base }))).toBe(4);
-    expect(homeCurrentStepIndex(steps, state({ confirmedLineIds: base, machineDone: true }))).toBe(
-      5,
-    );
+    expect(productionProcessCurrentIndex(steps, state({ confirmedLineIds: base }))).toBe(4);
     expect(
-      homeCurrentStepIndex(
+      productionProcessCurrentIndex(steps, state({ confirmedLineIds: base, machineDone: true })),
+    ).toBe(5);
+    expect(
+      productionProcessCurrentIndex(
         steps,
         state({ confirmedLineIds: new Set([...base, 'topping']), machineDone: true }),
       ),
     ).toBe(steps.length);
-    expect(homeProcessStepDone(steps, 2, state({ machineDone: true }))).toBe(true);
+    expect(productionProcessStepDone(steps, 2, state({ machineDone: true }))).toBe(true);
   });
 });
