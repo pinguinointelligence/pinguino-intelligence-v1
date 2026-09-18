@@ -143,7 +143,7 @@ export function ShopInfopakOfferView({
                 {c.infopak.chooseCountry}{' '}
                 <a
                   href="#shop-country"
-                  className="pro-focus-ring text-ink underline underline-offset-[3px]"
+                  className="pro-focus-ring inline-flex min-h-11 items-center text-ink underline underline-offset-[3px]"
                   data-testid="shop-infopak-choose-country"
                 >
                   {c.infopak.chooseCountryLink}
@@ -157,7 +157,7 @@ export function ShopInfopakOfferView({
                 {c.infopak.notReady.replace('{country}', countryName ?? '')}{' '}
                 <a
                   href="#shop-country"
-                  className="pro-focus-ring text-ink underline underline-offset-[3px]"
+                  className="pro-focus-ring inline-flex min-h-11 items-center text-ink underline underline-offset-[3px]"
                   data-testid="shop-infopak-choose-country"
                 >
                   {c.infopak.changeCountry}

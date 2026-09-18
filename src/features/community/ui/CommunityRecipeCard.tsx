@@ -81,7 +81,7 @@ export function CommunityRecipeCard({
             ) : null}
             {card.metrics.remix_count > 0 ? (
               <span className="text-stone-500 tabular-nums">
-                {card.metrics.remix_count} {copy.metrics.remixes}
+                {copy.metrics.remixCount(card.metrics.remix_count)}
               </span>
             ) : null}
             <VerifiedRating

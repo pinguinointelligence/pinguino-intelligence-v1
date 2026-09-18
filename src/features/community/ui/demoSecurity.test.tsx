@@ -171,6 +171,8 @@ describe('the acquisition surfaces leak nothing either', () => {
     expect(markup).toContain('Marysia');
     expect(markup).toContain('#3');
     expect(markup).toContain('4.6');
+    // A counted noun, in Polish plural — never „2 Wersji”.
+    expect(markup).toContain('2 wersje');
     for (const grams of SECRET_GRAMS) {
       expect(markup.includes(String(grams)), `${grams} leaked`).toBe(false);
     }

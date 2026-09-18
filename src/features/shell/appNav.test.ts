@@ -39,6 +39,7 @@ describe('plan-aware global navigation', () => {
   it('returns the exact shallow Guest menu', () => {
     expect(ids('guest')).toEqual([
       'tryPinguino',
+      'guestRecipes',
       'howItWorks',
       'guestShop',
       'plans',
@@ -46,6 +47,27 @@ describe('plan-aware global navigation', () => {
       'affiliate',
       'franchise',
     ]);
+  });
+
+  it('sends a guest to the canonical HOME creator, never the legacy /start shell', () => {
+    const entry = APP_NAV_ITEMS.find((item) => item.id === 'tryPinguino');
+    expect(entry?.to).toBe('/home');
+    expect(APP_NAV_ITEMS.some((item) => item.to === '/start')).toBe(false);
+    expect(activeNavId(loc('/home'), 'guest')).toBe('tryPinguino');
+    expect(activeNavId(loc('/'), 'guest')).toBe('tryPinguino');
+    expect(activeNavId(loc('/start'), 'guest')).toBeNull();
+  });
+
+  it('gives a guest the Recipes library without changing the signed-in entry', () => {
+    const guest = APP_NAV_ITEMS.find((item) => item.id === 'guestRecipes');
+    expect(guest?.to).toBe('/recipes');
+    expect(guest?.audiences).toEqual(['guest']);
+    expect(activeNavId(loc('/recipes'), 'guest')).toBe('guestRecipes');
+    const member = APP_NAV_ITEMS.find((item) => item.id === 'recipes');
+    expect(member?.to).toBe('/recipes?tab=mine');
+    expect(member?.audiences).toEqual(['home', 'pro']);
+    expect(ids('home')).not.toContain('guestRecipes');
+    expect(ids('pro')).not.toContain('guestRecipes');
   });
 
   it('returns the exact shallow Home menu', () => {
