@@ -54,6 +54,9 @@ import { customerErrorMessage } from '@/copy/customerError';
 import { PrintMissingDataDialog } from './PrintMissingDataDialog';
 import { printMissingFields, printReadinessForLabel } from './printMissingData';
 import { MissingLabelDataSettings } from './MissingLabelDataFields';
+import { productionBatchesLabelsCopy } from '@/copy/productionBatchesLabels';
+
+const labelsCopy = productionBatchesLabelsCopy.labels;
 
 const MARKET_CODES: readonly MarketProfileCode[] = MARKET_PROFILE_ORDER;
 export type LabelWorkspaceView = 'data' | 'settings' | 'label';
@@ -183,7 +186,12 @@ export function LabelWorkspace({
   const [saved, setSaved] = useState<RunLabelSnapshot | null>(null);
   const [label, setLabel] = useState<MasterLabelData | null>(null);
   const [editing, setEditing] = useState(false);
-  const [saveAsDefault, setSaveAsDefault] = useState(true);
+  /* Production v3 §5 — a change to THIS run's label never becomes the account
+     default unless the reader ticks „Zapisz jako moje ustawienie domyślne”. */
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+  /* An explicitly named saved version that does not exist, or belongs to another
+     run: shown as „not found” — never replaced by a new label from the profile. */
+  const [missingSavedVersion, setMissingSavedVersion] = useState(false);
   const [activeView, setActiveView] = useState<LabelWorkspaceView>(
     initialView === 'settings' && !settingsLiveHere ? 'data' : initialView,
   );
@@ -238,17 +246,20 @@ export function LabelWorkspace({
         const nextProfile = existingProfile ?? defaultAccountLabelProfile(ownerId);
         let nextSnapshot = suppliedSnapshot;
         let nextSaved: RunLabelSnapshot | null = null;
+        let savedVersionMissing = false;
         if (!profileOnly && requestedRunId) {
           nextSnapshot = nextSnapshot ?? (await repository.getCompletedSnapshot(requestedRunId));
           nextSaved = savedSnapshotId
             ? await repository.getRunLabelSnapshotById(savedSnapshotId)
             : await repository.getRunLabelSnapshot(requestedRunId);
-          if (nextSaved && nextSaved.runId !== requestedRunId) {
-            throw new Error('Wybrany zapis etykiety nie należy do wskazanej partii.');
+          if (savedSnapshotId && (!nextSaved || nextSaved.runId !== requestedRunId)) {
+            savedVersionMissing = true;
+            nextSaved = null;
           }
           if (nextSnapshot) await repository.freezeCompletedSnapshot(nextSnapshot);
         }
         if (cancelled) return;
+        setMissingSavedVersion(savedVersionMissing);
         setProfile(nextProfile);
         setProfileWasPersisted(Boolean(existingProfile));
         setSnapshot(nextSnapshot ?? null);
@@ -259,7 +270,7 @@ export function LabelWorkspace({
             ? editingSavedVersion
               ? { ...nextSaved.label, snapshotEvidence: null }
               : nextSaved.label
-            : nextSnapshot
+            : nextSnapshot && !savedVersionMissing
               ? labelFromProfile(nextSnapshot, nextProfile)
               : null,
         );
@@ -441,6 +452,20 @@ export function LabelWorkspace({
           />
         ) : null}
       </div>
+    );
+  }
+
+  if (missingSavedVersion) {
+    return (
+      <WorkflowNotice
+        className="my-3"
+        eyebrow="Etykieta"
+        title={labelsCopy.snapshotNotFoundTitle}
+        description={labelsCopy.snapshotNotFoundBody}
+        variant="blocking"
+        role="alert"
+        testId="label-workspace-version-not-found"
+      />
     );
   }
 
