@@ -1,0 +1,53 @@
+/*
+ * DESIGN V3.0 IV D–I — HOME production: „Ile jest w naczyniu?” is the canonical
+ * `DirectNumberControl` PRO Production uses, painted in HOME's light skin: a 48 px pill
+ * on the #e4e0d9 line with wide − / + segments, a black (never orange) focus, and the
+ * difference red (#a3261d) — the only place besides „NIE MIKSUJ” HOME uses red. Only its
+ * paint changes here, scoped to the HOME production row; PRO keeps its own look.
+ */
+.home-production-qty > [data-control-density] {
+  height: 48px;
+  grid-template-columns: minmax(56px, 92px) minmax(80px, 1fr) minmax(56px, 92px);
+  border-color: #e4e0d9;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: none;
+}
+.home-production-qty > [data-control-density] > button {
+  width: 100%;
+  height: 100%;
+}
+.home-production-qty > [data-control-density] > label {
+  border-color: #e4e0d9;
+}
+.home-production-qty > [data-control-density] input {
+  flex: 0 1 auto;
+  width: 6ch;
+  font-size: 20px;
+  font-weight: 600;
+}
+.home-production-qty > [data-control-density] label > span[aria-hidden] {
+  margin-left: 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #9a948a;
+}
+.home-production-qty > [data-control-density]:focus-within {
+  border-color: #101113;
+  box-shadow: 0 0 0 3px rgba(16, 17, 19, 0.08);
+}
+.home-production-qty[data-deviation='true'] > [data-control-density] {
+  border-color: #a3261d;
+  box-shadow: 0 0 0 3px rgba(163, 38, 29, 0.1);
+}
+/* On a touch screen the dock steps away while the amount is typed: it never sits on the
+   keyboard (the design hides it for the keyboard too). A mouse and keyboard keep it. */
+@media (pointer: coarse) {
+  .home-production-dock[data-typing='true'] {
+    display: none;
+  }
+}
+.home-production-qty > [data-control-density] > button:focus-visible,
+.home-production-qty > [data-control-density] input:focus-visible {
+  outline-color: #101113;
+}

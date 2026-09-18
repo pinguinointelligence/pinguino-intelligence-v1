@@ -185,10 +185,18 @@ describe('PREP-10 one preparation plan in the existing views', () => {
     expect(html).toContain('Pokrój truskawki i dodaj przy podaniu. Nie miksuj z bazą.');
 
     const home = readFileSync(resolve('src/features/home-creator/ui/HomePreparation.tsx'), 'utf8');
+    const homeSteps = readFileSync(
+      resolve('src/features/home-creator/homeProductionSteps.ts'),
+      'utf8',
+    );
+    // DESIGN V3.0 IV D–I: HOME's numbered steps ARE this plan — its order and its words.
     expect(home).toContain('preparationPlanForSession(session, guide)');
-    expect(home).toContain('preparationOrderedBaseLines(');
-    expect(home).toContain('activeStep?.instruction');
+    expect(home).toContain('homeProcessSteps(plan');
+    expect(home).toContain('planLine.instruction');
+    expect(homeSteps).toContain('for (const step of plan.steps)');
     // HOME adds no process wording of its own.
-    expect(home).not.toMatch(/na ciepło'|na zimno'|schłódź|Pokrój/);
+    for (const source of [home, homeSteps]) {
+      expect(source).not.toMatch(/na ciepło'|na zimno'|schłódź|Pokrój/);
+    }
   });
 });

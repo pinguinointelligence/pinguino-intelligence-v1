@@ -160,15 +160,20 @@ describe('GELLATTI HOME end-to-end closure — Owner matrix', () => {
     expect(preparation).toContain('evaluateRecipeConstraintAuthority');
   });
 
-  it('HOME-E2E-18 Dodałem za dużo uses Production Rescue', () => {
-    expect(preparation).toContain('home-production-overage');
+  it('HOME-E2E-18 a confirmed deviation uses Production Rescue („Korekta partii”)', () => {
+    // DESIGN V3.0 IV: „Dodałem za dużo” and TARA are gone — the ✓ with a different amount
+    // opens the same decision PRO Production offers, through the same gate and authority.
+    expect(preparation).not.toContain('home-production-overage');
+    expect(preparation).not.toContain('home-production-tare');
+    expect(preparation).toContain('browserProductionRescueDecision(session)');
     expect(preparation).toContain('assessProductionRescue');
     expect(preparation).toContain('applyVerifiedRescueInput');
+    expect(preparation).toContain('productionDecisionOptions(');
   });
 
   it('HOME-E2E-19 topping appears only after the machine stage', () => {
-    expect(preparation).toContain('baseDone && machineStepCompleted ? activeAddon : activeBase');
-    expect(preparation).toContain("replaceSession({ ...session, stage: 'addons' })");
+    expect(preparation).toContain("machineDone: session.stage === 'addons'");
+    expect(preparation).toContain("replaceSession({ ...current, stage: 'addons' })");
     expect(preparation).toContain('home-topping-step');
   });
 

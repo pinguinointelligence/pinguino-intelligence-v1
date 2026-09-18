@@ -271,6 +271,14 @@ export function HomeCreatorPage() {
    * the amount and usage questions (one burst of edits is one change).
    */
   const [recipeEditorOpen, setRecipeEditorOpen] = useState(false);
+  /**
+   * DESIGN V3.0 IV D–I — production is HOME's own screen („‹ Wróć”, „Produkcja · krok X z
+   * N”). „Wróć” and „Zapisz” leave the batch in its step and show the recipe, whose black
+   * action is then „Wróć do produkcji”. A started batch opens on its screen after a refresh.
+   */
+  const [productionOpen, setProductionOpen] = useState(
+    () => useHomeDraftStore.getState().preparationStarted,
+  );
 
   /**
    * An official Gellatti recipe opened in HOME — the library's „Zrób te lody", a match the
@@ -1138,13 +1146,29 @@ export function HomeCreatorPage() {
     if (!action) return;
     if (action === 'make') {
       useHomeDraftStore.getState().startPreparation();
-      window.setTimeout(() => scrollToStage('preparation'), 60);
+      openProduction();
       return;
     }
     await persistForAction(action);
   };
 
-  const recipeOnScreen = flow.stages.includes('recipe');
+  /** „Zaczynamy” and „Wróć do produkcji”: the batch's own screen, from its top. */
+  const openProduction = () => {
+    setActionNotice(null);
+    setProductionOpen(true);
+    window.setTimeout(() => scrollToStage('preparation'), 60);
+  };
+
+  /** „Wróć” / „Zapisz” in production: the batch stays in its step; the recipe is shown. */
+  const leaveProduction = (notice: string | null) => {
+    setProductionOpen(false);
+    setActionNotice(notice);
+    window.setTimeout(() => scrollToStage('recipe'), 60);
+  };
+
+  /** The production screen replaces the recipe flow while it is open. */
+  const productionScreen = draft.preparationStarted && productionOpen;
+  const recipeOnScreen = !productionScreen && flow.stages.includes('recipe');
   /** IV „Przerwanie w HOME”: a started batch that has not finished yet. */
   const productionActive = draft.preparationStarted && productionStatus !== 'completed';
   /** The products picked for the open recipe that still wait for their amount (5B). */
@@ -1240,16 +1264,17 @@ export function HomeCreatorPage() {
     <AppShell
       navigationPosition="trailing"
       stickyHeader
-      // The start screen's pinned action is the end of the page: no empty band under it.
-      contentClassName={atStart ? undefined : 'pb-24'}
+      // The start screen's pinned action — and production's dock — is the end of the page:
+      // no empty band under it.
+      contentClassName={atStart || productionScreen ? undefined : 'pb-24'}
     >
       <div data-testid="home-creator">
-        {officialAdoption && !libraryRefusal ? (
+        {productionScreen ? null : officialAdoption && !libraryRefusal ? (
           <HomeRecipeOriginNotice adoption={officialAdoption} onCreateOwn={createOwnInstead} />
         ) : draft.recipeReady && recipe.provenance ? (
           <HomeRecipeProvenanceLine provenance={recipe.provenance} />
         ) : null}
-        {flow.stages.includes('intent') ? (
+        {!productionScreen && flow.stages.includes('intent') ? (
           <HomeStart
             draftId={draft.draftId}
             mode={startMode}
@@ -1319,14 +1344,14 @@ export function HomeCreatorPage() {
           />
         ) : null}
 
-        {scanNotice ? (
+        {!productionScreen && scanNotice ? (
           // Polite, dismissible, and never in the way of the recipe itself.
           <p role="status" aria-live="polite" className="px-1 text-sm text-ink/60">
             {scanNotice}
           </p>
         ) : null}
 
-        {flow.stages.includes('profile') ? (
+        {!productionScreen && flow.stages.includes('profile') ? (
           <HomeProfileSection
             selected={draft.profile}
             onSelect={(profile) => {
@@ -1339,7 +1364,7 @@ export function HomeCreatorPage() {
           />
         ) : null}
 
-        {flow.stages.includes('machine') ? (
+        {!productionScreen && flow.stages.includes('machine') ? (
           <HomeMachineSection
             view={machineView}
             amount={amount}
@@ -1429,7 +1454,7 @@ export function HomeCreatorPage() {
         {/* Served 2026-09-18: this notice sat above the profile stage, ~900 px from the
             „Gotowe” and the recipe it is about, so a refusal looked like a dead button.
             It belongs between the answer that produced it and the recipe it describes. */}
-        {recipeNotice ? (
+        {!productionScreen && recipeNotice ? (
           <p
             role="alert"
             className="mx-5 my-4 max-w-2xl rounded-xl border px-4 py-3 text-sm sm:mx-auto"
@@ -1482,7 +1507,7 @@ export function HomeCreatorPage() {
             onBack={flow.backFrom('recipe') ? () => scrollToStage(flow.backFrom('recipe')!) : null}
             onReset={resetToEmptyStart}
             productionActive={productionActive}
-            onResumeProduction={() => scrollToStage('preparation')}
+            onResumeProduction={openProduction}
             pendingAmounts={recipePendingAmounts}
             onConfirmPending={(key, grams) => {
               const waiting = pendingAdds.find((entry) => entry.ingredient.id === key);
@@ -1496,7 +1521,7 @@ export function HomeCreatorPage() {
           />
         ) : null}
 
-        {draft.recipeReady && actionNotice ? (
+        {!productionScreen && draft.recipeReady && actionNotice ? (
           <p
             className="mt-3 text-center text-[13px] leading-snug"
             data-testid="home-action-notice"
@@ -1508,12 +1533,16 @@ export function HomeCreatorPage() {
           </p>
         ) : null}
 
-        {draft.preparationStarted ? (
+        {productionScreen ? (
           <HomePreparation
             name={name}
+            onBack={() => leaveProduction(null)}
+            onSaveBatch={() => leaveProduction(homeCreatorCopy.production.savedForLater)}
             onSave={() => requestFinalAction('save')}
             onShare={() => requestFinalAction('share')}
             onCommunity={() => requestFinalAction('community')}
+            saved={Boolean(recipe.savedRecipeId) && !recipe.dirty}
+            notice={actionNotice}
           />
         ) : null}
       </div>

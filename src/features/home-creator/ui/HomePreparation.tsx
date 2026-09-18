@@ -1,4 +1,20 @@
-import { useEffect, useMemo, useState } from 'react';
+/**
+ * DESIGN V3.0 IV D–I — HOME production: „HOME wygląda jak HOME, a od chwili robienia lodów
+ * działa jak PRO”.
+ *
+ * ONE production system. The batch is the canonical Production session
+ * (`productionSessionStore`: `setDraftActual` / `confirmLine`, `replaceSession`), its
+ * steps are the ONE preparation plan PRO Production renders (`preparationPlanForSession`
+ * + the machine's own guide), a confirmed deviation opens the same „Korekta partii” PRO
+ * offers (the same decision gate `browserProductionRescueDecision`, the Rescue authority
+ * `assessProductionRescue` / `applyVerifiedRescueInput` and `productionDecisionOptions`),
+ * and the finish is the same `completeProductionSession`. HOME only brings its own frame:
+ * „‹ Wróć”, „Produkcja · krok X z N”, the name, the numbered steps and the thumb-zone dock.
+ *
+ * No TARA, no „Dodałem dokładnie / Dodałem za dużo”, no simplified machine step: the row
+ * being weighed opens „Ile jest w naczyniu?” at the plan and the ✓ confirms it.
+ */
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { calculateRecipe } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
@@ -8,14 +24,28 @@ import {
   buildFinalActualInput,
   completeProductionSession,
   confirmProductionTopUpTask,
+  pendingProductionTopUpTasks,
+  productionProgress,
+  productionStepForGrams,
   setProductionTopUpDraftGrams,
   type ProductionLineState,
+  type ProductionTopUpTask,
 } from '@/features/production-workspace/productionSession';
 import { assessProductionRescue } from '@/features/production-workspace/productionRescue';
+import { browserProductionRescueDecision } from '@/features/production-workspace/useProductionWorkspace';
+import {
+  productionDecisionExplanation,
+  productionDecisionOptions,
+  productionDecisionTitle,
+  recommendedProductionDecision,
+  type ProductionDecisionId,
+} from '@/features/production-workspace/productionDecisionOptions';
 import {
   productionSessionAddressKey,
   useProductionSessionStore,
 } from '@/features/production-workspace/productionSessionStore';
+import { monitorScoreView } from '@/features/pro-workbench/monitorSummaryView';
+import type { TenPointScore } from '@/features/recipe-score';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import {
@@ -25,116 +55,92 @@ import {
 import { evaluateRecipeConstraintAuthority } from '@/features/recipe-constraints';
 import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
 import { carbonatedProductsForRecipe } from '@/features/production-workspace/productionDegassing';
-import {
-  preparationOrderedBaseLines,
-  preparationPlanForSession,
-  type PreparationStep,
-} from '@/features/production-workspace/preparationPlan';
+import { preparationPlanForSession } from '@/features/production-workspace/preparationPlan';
 import { educationCopy } from '@/copy/education.pl';
 import { PreparationIllustrationImage } from '@/features/education/PreparationIllustrationImage';
+import { homeCreatorCopy } from '../homeCreatorCopy';
 import { homeCustomerNotice } from '../homeCustomerNotice';
 import { useHomeDraftStore } from '../homeDraftStore';
-import { HomeSection } from './HomeSection';
+import {
+  formatProductionGrams,
+  homeCurrentStepIndex,
+  homeProcessSteps,
+  type HomeProcessState,
+  type HomeProcessStep,
+} from '../homeProductionSteps';
+import {
+  HomeBackButton,
+  HomeCurrentStep,
+  HomeDoneSummary,
+  HomeFutureStep,
+  HomeNoMix,
+  HomeProductionColumn,
+  HomeProductionDock,
+  HomeProductionDone,
+  HomeStepBar,
+  HomeStepBox,
+  HomeStepText,
+  HomeTick,
+  HomeWeighCurrent,
+  HomeWeighList,
+  HomeWeighRow,
+} from './HomeProductionParts';
+import {
+  HomeBatchCorrectionSheet,
+  HomeTroubleSheet,
+  type HomeCorrectionOptionView,
+} from './HomeProductionSheets';
 
-const primary =
-  'inline-flex min-h-12 items-center justify-center rounded-full px-5 text-sm font-semibold text-white disabled:opacity-40';
-const secondary =
-  'inline-flex min-h-11 items-center justify-center rounded-full border px-4 text-sm disabled:opacity-40';
+const copy = homeCreatorCopy.production;
+const GRAMS_EPSILON = 0.000_001;
+/** A shown difference: the same 0.05 g the PRO row treats as exact. */
+const SHOWN_DIFFERENCE_G = 0.05;
 
 const sessionId = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `home-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-function ActualEntry({
-  line,
-  onConfirm,
-}: {
-  line: ProductionLineState;
-  onConfirm: (grams: number) => void;
-}) {
-  const [showActual, setShowActual] = useState(false);
-  const [raw, setRaw] = useState(String(line.targetGrams));
-  const grams = Number(raw.replace(',', '.'));
-  const valid = Number.isFinite(grams) && grams >= 0;
+const scoreFromDisplay = (display: string | undefined): TenPointScore | null => {
+  const value = Number(display?.match(/^(\d{1,2})\/10$/)?.[1]);
+  return Number.isInteger(value) && value >= 1 && value <= 10 ? (value as TenPointScore) : null;
+};
 
-  return (
-    <div className="mt-5 space-y-3" data-testid="home-production-actual">
-      {showActual ? (
-        <label className="flex flex-col gap-2">
-          <span className="text-sm text-stone-600">Ile pokazuje teraz waga?</span>
-          <span className="flex items-center gap-2">
-            <input
-              autoFocus
-              inputMode="decimal"
-              value={raw}
-              onChange={(event) => setRaw(event.currentTarget.value)}
-              className="h-12 w-32 rounded-xl border px-3 text-center font-mono"
-              aria-label="Rzeczywista ilość w gramach"
-              data-testid="home-production-actual-input"
-            />
-            <span>g</span>
-          </span>
-        </label>
-      ) : null}
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className={primary}
-          style={{ background: 'var(--g-ink)' }}
-          onClick={() => onConfirm(showActual ? grams : line.targetGrams)}
-          disabled={showActual && !valid}
-          data-testid="home-production-confirm-line"
-        >
-          {showActual ? 'Potwierdź ilość' : 'Dodałem dokładnie'}
-        </button>
-        {!showActual ? (
-          <button
-            type="button"
-            className={secondary}
-            style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
-            onClick={() => setShowActual(true)}
-            data-testid="home-production-overage"
-          >
-            Dodałem za dużo
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
+const signedGrams = (delta: number): string =>
+  `${delta > 0 ? '+' : '−'}${formatProductionGrams(Math.abs(delta))}`;
 
-/** The plan's heat step at its moment. Information only: no button, no state, no gate. */
-function HeatStepNotice({ step }: { step: Extract<PreparationStep, { kind: 'heat' }> }) {
-  return (
-    <div
-      className="mb-4 rounded-2xl border p-4"
-      style={{ borderColor: 'var(--g-line)' }}
-      data-testid="home-preparation-heat-step"
-    >
-      <h3 className="text-sm font-semibold">{step.title}</h3>
-      <p className="mt-1 text-sm text-stone-700">
-        {educationCopy.preparation.heat.lead} {step.productNames.join(', ')}
-      </p>
-      {step.details.map((detail) => (
-        <p key={detail} className="mt-1 text-sm text-stone-500">
-          {detail}
-        </p>
-      ))}
-    </div>
-  );
-}
+const latestConfirmed = (lines: readonly ProductionLineState[]): ProductionLineState | null =>
+  lines
+    .filter((line) => line.confirmationOrder !== null)
+    .reduce<ProductionLineState | null>(
+      (latest, line) =>
+        latest === null || (line.confirmationOrder ?? 0) > (latest.confirmationOrder ?? 0)
+          ? line
+          : latest,
+      null,
+    );
 
 export function HomePreparation({
   name,
+  onBack,
+  onSaveBatch,
   onSave,
   onShare,
   onCommunity,
+  saved = false,
+  notice = null,
 }: {
   name: string;
+  /** „‹ Wróć” — back to the recipe; the batch stays in its step. */
+  onBack: () => void;
+  /** „Zapisz” — the batch is kept on this device in its step; back to the recipe. */
+  onSaveBatch: () => void;
   onSave: () => void;
   onShare: () => void;
   onCommunity: () => void;
+  /** The recipe is saved and unchanged: „Udostępnij” becomes the one black action. */
+  saved?: boolean;
+  notice?: string | null;
 }) {
   const recipe = useRecipeStore();
   const draft = useHomeDraftStore();
@@ -142,7 +148,14 @@ export function HomePreparation({
   const production = useProductionSessionStore();
   const activateSessionForAddress = production.activateSessionForAddress;
   const [error, setError] = useState<string | null>(null);
-  const [taredLineIds, setTaredLineIds] = useState<readonly string[]>([]);
+  const [openLineId, setOpenLineId] = useState<string | null>(null);
+  const [typing, setTyping] = useState(false);
+  const [troubleOpen, setTroubleOpen] = useState(false);
+  const troubleSuccessor = useRef<(() => HTMLElement | null) | null>(null);
+  const [selectedDecision, setSelectedDecision] = useState<{
+    basis: string;
+    id: ProductionDecisionId;
+  } | null>(null);
   const [productionGate, setProductionGate] = useState<{
     key: string;
     status: 'loading' | 'ready' | 'blocked';
@@ -282,25 +295,6 @@ export function HomePreparation({
     () => machineEducationForSelection(recipe.machineId, recipe.machineTechnology),
     [recipe.machineId, recipe.machineTechnology],
   );
-  const rescue = useMemo(() => (session ? assessProductionRescue(session) : null), [session]);
-  // The same preparation plan PRO Production renders: order, instruction and notes.
-  const plan = useMemo(
-    () => (session ? preparationPlanForSession(session, guide) : null),
-    [guide, session],
-  );
-  const rescueResolved = Boolean(
-    session?.lastDeviationDecision &&
-    session.lastDeviationDecision.sourceActualRevision === session.durableActualRevision &&
-    session.lastDeviationDecision.rescueRevision === session.durableRescueRevision,
-  );
-  const baseDone = Boolean(
-    session && session.lines.length > 0 && session.lines.every((line) => line.confirmed),
-  );
-  const activeBase = session
-    ? (preparationOrderedBaseLines(session).find((line) => !line.confirmed) ?? null)
-    : null;
-  const activeAddon = session?.addonLines.find((line) => !line.confirmed) ?? null;
-  const activeTopUp = session?.topUpTasks.find((task) => task.status === 'pending') ?? null;
   // A Professional recipe (an official Gellatti recipe opened in HOME keeps its
   // Professional machine, §16) has no home-machine guide. PRO Production runs such a
   // batch with no machine hand-off (`machineGuide: null`); HOME does exactly the same
@@ -308,412 +302,753 @@ export function HomePreparation({
   // 2026-09-18: Mango Sorbet → „Zróbmy to”). A HOME machine with no confirmed guide
   // still stops below — that is an unconfirmed process, not a missing hand-off.
   const professionalWithoutGuide = guide === null && recipe.machineKind === 'professional';
-  const machineStepCompleted = Boolean(
-    session && baseDone && (session.stage === 'addons' || professionalWithoutGuide),
+  // The same preparation plan PRO Production renders: order, instructions, the heat step,
+  // the machine's own sequence and its registered illustration.
+  const plan = useMemo(
+    () => (session ? preparationPlanForSession(session, guide) : null),
+    [guide, session],
   );
-  const activeLine = baseDone && machineStepCompleted ? activeAddon : activeBase;
-  const planStepForLine = (lineId: string) =>
-    plan?.steps.find(
-      (step): step is Extract<PreparationStep, { kind: 'line' }> =>
-        step.kind === 'line' && step.lineId === lineId,
-    ) ?? null;
-  const beforeStartStep =
-    plan?.steps.find(
-      (step): step is Extract<PreparationStep, { kind: 'machine_before' }> =>
-        step.kind === 'machine_before',
-    ) ?? null;
-  const machineStep =
-    plan?.steps.find(
-      (step): step is Extract<PreparationStep, { kind: 'machine' }> => step.kind === 'machine',
-    ) ?? null;
-  const heatStep =
-    plan?.steps.find(
-      (step): step is Extract<PreparationStep, { kind: 'heat' }> => step.kind === 'heat',
-    ) ?? null;
-  // Shown once the heated part is weighed, until the machine step is done. Information only.
-  const heatStepDue = Boolean(
-    session &&
-    heatStep &&
-    !machineStepCompleted &&
-    session.addonLines.every((line) => !line.confirmed) &&
-    heatStep.precedingLineIds.every(
-      (lineId) => session.lines.find((line) => line.lineId === lineId)?.confirmed === true,
-    ),
+  const steps = useMemo<HomeProcessStep[]>(
+    () =>
+      plan && session
+        ? homeProcessSteps(plan, {
+            degassingTitle: session.degassingRequired ? copy.degasTitle : null,
+          })
+        : [],
+    [plan, session],
   );
-  // On the machine card only when no Base line is added after the heated part.
-  const heatStepOnMachineCard = Boolean(
-    session &&
-    heatStep &&
-    session.lines.every((line) => heatStep.precedingLineIds.includes(line.lineId)),
+  // The SAME decision gate as PRO Production: a confirmed Base line away from its current
+  // target (and not waiting for an authorised top-up) needs a „Korekta partii” decision.
+  const decisionGate = useMemo(() => browserProductionRescueDecision(session), [session]);
+  const assessment = useMemo(
+    () => (session && decisionGate.state === 'options' ? assessProductionRescue(session) : null),
+    [decisionGate.state, session],
   );
-  const activeStep = activeLine ? planStepForLine(activeLine.lineId) : null;
-  const allDone = Boolean(
-    session &&
-    baseDone &&
-    session.addonLines.every((line) => line.confirmed) &&
-    machineStepCompleted,
+  const decisionNeeded = assessment !== null && assessment.state !== 'not_needed';
+  // The run's frozen plan: later confirmations never change it, so its Score is read once.
+  const frozenPlannedInput = session?.plannedInput ?? null;
+  const plannedScore = useMemo(
+    () =>
+      frozenPlannedInput
+        ? monitorScoreView(calculateRecipe(frozenPlannedInput), frozenPlannedInput).match.score
+        : null,
+    [frozenPlannedInput],
   );
 
-  const confirm = (line: ProductionLineState, grams: number) => {
+  const pendingTopUps: ProductionTopUpTask[] = session ? pendingProductionTopUpTasks(session) : [];
+  const pendingTopUpLineIds = new Set(pendingTopUps.map((task) => task.sourceRecipeLineId));
+  const deviatingLine = session
+    ? latestConfirmed(
+        session.lines.filter(
+          (line) =>
+            line.confirmed &&
+            !pendingTopUpLineIds.has(line.lineId) &&
+            Math.abs(line.physicalAddedGrams - line.targetGrams) > GRAMS_EPSILON,
+        ),
+      )
+    : null;
+  const lastConfirmedBase = session ? latestConfirmed(session.lines) : null;
+  const doneStepIds = new Set(
+    session && draft.preparationSteps?.sessionId === session.sessionId
+      ? draft.preparationSteps.doneStepIds
+      : [],
+  );
+  const processState: HomeProcessState | null = session
+    ? {
+        confirmedLineIds: new Set(
+          [...session.lines, ...session.addonLines]
+            .filter((line) => line.confirmed)
+            .map((line) => line.lineId),
+        ),
+        holdLineId:
+          decisionNeeded || pendingTopUps.length > 0 ? (lastConfirmedBase?.lineId ?? null) : null,
+        degassingDone: !session.degassingRequired || session.degassingAcknowledged,
+        machineDone: session.stage === 'addons',
+        doneStepIds,
+      }
+    : null;
+  const firstUndone = processState ? homeCurrentStepIndex(steps, processState) : 0;
+  const allDone = steps.length > 0 && firstUndone >= steps.length;
+  const currentIndex = Math.min(firstUndone, Math.max(steps.length - 1, 0));
+  const currentStep = steps[currentIndex] ?? null;
+  const isLastStep = currentIndex === steps.length - 1;
+
+  // A new step starts at the top of the frame (the design's „floor” reset).
+  const shownStep = useRef<number | null>(null);
+  useEffect(() => {
+    if (shownStep.current !== null && shownStep.current !== currentIndex) {
+      document.getElementById('preparation')?.scrollIntoView?.({ block: 'start' });
+    }
+    shownStep.current = currentIndex;
+  }, [currentIndex]);
+
+  const now = () => new Date().toISOString();
+  const run = (action: () => void, fallback: string) => {
     setError(null);
     try {
-      useProductionSessionStore.getState().setDraftActual(line.lineId, grams);
-      useProductionSessionStore.getState().confirmLine(line.lineId, new Date().toISOString());
+      action();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : fallback);
+    }
+  };
+
+  const confirmLine = (line: ProductionLineState) =>
+    run(() => {
+      const store = useProductionSessionStore.getState();
+      store.confirmLine(line.lineId, now());
       const confirmed = useProductionSessionStore.getState().session;
       if (confirmed) {
-        // Only a Base confirmation reaches the machine handoff; confirming a topping
-        // must not send the customer back to the machine step.
+        // Only a Base confirmation reaches the machine hand-off; a topping never sends the
+        // customer back to the machine step.
         const justCompletedBase =
           confirmed.lines.some((candidate) => candidate.lineId === line.lineId) &&
           confirmed.lines.every((candidate) => candidate.confirmed);
-        useProductionSessionStore.getState().replaceSession({
+        store.replaceSession({
           ...confirmed,
-          // The shared confirmer opens `addons` as soon as BASE is complete. HOME
-          // holds that existing Production stage until the customer confirms the
-          // canonical machine handoff, then opens the late-addition stage below.
+          // The shared confirmer opens `addons` as soon as BASE is complete. HOME holds
+          // that existing Production stage until the customer finishes the machine step,
+          // then opens the topping stage.
           stage: justCompletedBase && !professionalWithoutGuide ? 'base' : confirmed.stage,
           durableActualRevision: confirmed.durableActualRevision + 1,
-          lastDeviationDecision: null,
         });
       }
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Nie udało się potwierdzić ilości.');
-    }
-  };
+      setOpenLineId(null);
+    }, 'Nie udało się potwierdzić ilości.');
+
+  const setLineDraft = (line: ProductionLineState, grams: number) =>
+    run(
+      () => useProductionSessionStore.getState().setDraftActual(line.lineId, grams),
+      'Nie udało się zapisać ilości.',
+    );
+
+  /** The ✓ of a row already added: the record is corrected, never the vessel emptied. */
+  const reopenLine = (line: ProductionLineState) =>
+    run(() => {
+      useProductionSessionStore.getState().reopenRecord(line.lineId);
+      setOpenLineId(line.lineId);
+    }, 'Nie udało się otworzyć zapisu.');
+
+  const setTopUpDraft = (task: ProductionTopUpTask, grams: number) =>
+    run(() => {
+      const current = useProductionSessionStore.getState().session;
+      if (!current) return;
+      useProductionSessionStore
+        .getState()
+        .replaceSession(setProductionTopUpDraftGrams(current, task.taskId, grams));
+    }, 'Nie udało się zapisać ilości.');
+
+  const confirmTopUp = (task: ProductionTopUpTask) =>
+    run(() => {
+      const current = useProductionSessionStore.getState().session;
+      if (!current) return;
+      useProductionSessionStore
+        .getState()
+        .replaceSession(confirmProductionTopUpTask(current, task.taskId, now()));
+    }, 'Nie udało się potwierdzić korekty.');
+
+  const complete = () =>
+    run(() => {
+      const current = useProductionSessionStore.getState().session;
+      if (!current) return;
+      useProductionSessionStore
+        .getState()
+        .replaceSession(
+          completeProductionSession(
+            current,
+            calculateRecipe(buildFinalActualInput(current)),
+            now(),
+            ownerUserId,
+          ),
+        );
+      document.getElementById('preparation')?.scrollIntoView?.({ block: 'start' });
+    }, 'Nie udało się zakończyć partii.');
+
+  /** „Gotowe” on a step that has no weighing of its own. */
+  const finishDoStep = (step: HomeProcessStep) =>
+    run(() => {
+      const current = useProductionSessionStore.getState().session;
+      if (!current) return;
+      if (step.kind === 'degas') {
+        useProductionSessionStore.getState().replaceSession({
+          ...current,
+          degassingAcknowledged: true,
+          degassingAcknowledgedAt: now(),
+        });
+      } else if (step.kind === 'machine') {
+        // The customer does the machine step and moves on: a missing numeric time never
+        // holds the flow, and the click claims no elapsed time.
+        useProductionSessionStore.getState().replaceSession({ ...current, stage: 'addons' });
+      } else {
+        useHomeDraftStore.getState().markPreparationStepDone(current.sessionId, step.id);
+      }
+    }, 'Nie udało się przejść dalej.');
 
   if (!session) {
     const blocked = productionGate?.key === gateKey && productionGate.status === 'blocked';
     return (
-      <HomeSection
-        id="preparation"
-        fill={false}
-        data-testid={blocked ? 'home-preparation-blocked' : 'home-preparation'}
-      >
-        <p className="text-sm text-stone-600" role={blocked ? 'alert' : undefined}>
+      <HomeProductionColumn testId={blocked ? 'home-preparation-blocked' : 'home-preparation'}>
+        <div className="flex min-h-11 items-center">
+          <HomeBackButton onClick={onBack} testId="home-production-back" />
+        </div>
+        <p className="mt-4 text-sm text-stone-600" role={blocked ? 'alert' : undefined}>
           {blocked
             ? productionGate?.message
             : 'Potwierdzamy kroki przygotowania dla tej receptury…'}
         </p>
-      </HomeSection>
+      </HomeProductionColumn>
     );
   }
 
   if (!guide && !professionalWithoutGuide) {
     return (
-      <HomeSection id="preparation" fill={false} data-testid="home-preparation-blocked">
-        <h2 className="text-2xl font-semibold">Brakuje instrukcji urządzenia</h2>
+      <HomeProductionColumn testId="home-preparation-blocked">
+        <div className="flex min-h-11 items-center">
+          <HomeBackButton onClick={onBack} testId="home-production-back" />
+        </div>
+        <h2 className="mt-4 text-2xl font-semibold">Brakuje instrukcji urządzenia</h2>
         <p className="mt-3 text-sm text-stone-600">
           Wybierz ponownie urządzenie. Nie pokażemy niepotwierdzonego procesu.
         </p>
-      </HomeSection>
+      </HomeProductionColumn>
     );
   }
-
-  const carbonatedProducts = carbonatedProductsForRecipe(
-    session.plannedInput,
-    session.plannedComposition,
-  );
 
   if (session.status === 'completed') {
+    const finalMassG =
+      session.completionSnapshot?.actualFinalMassG ??
+      session.lines.reduce((sum, line) => sum + line.physicalAddedGrams, 0);
     return (
-      <HomeSection id="preparation" fill={false} data-testid="home-production-complete">
-        <p className="text-xs font-bold tracking-[0.12em] text-stone-400 uppercase">Gotowe</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight">{name}</h2>
-        <p className="mt-3 text-sm text-stone-600">
-          Partia została zakończona i zachowana na tym urządzeniu.
-        </p>
-        <div className="mt-7 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={primary}
-            style={{ background: 'var(--g-ink)' }}
-            onClick={onSave}
-          >
-            Zapisz recepturę
-          </button>
-          <button
-            type="button"
-            className={secondary}
-            style={{ borderColor: 'var(--g-line)' }}
-            onClick={onShare}
-          >
-            Udostępnij
-          </button>
-          <button
-            type="button"
-            className={secondary}
-            style={{ borderColor: 'var(--g-line)' }}
-            onClick={onCommunity}
-          >
-            Opublikuj w Community
-          </button>
+      <HomeProductionColumn testId="home-production-complete">
+        <div className="flex min-h-11 items-center">
+          <HomeBackButton onClick={onBack} testId="home-production-back" />
         </div>
-      </HomeSection>
+        <HomeProductionDone
+          subtitle={`${name} · ${formatProductionGrams(finalMassG)}`}
+          stepTitles={steps.map((step) => step.title)}
+          notice={notice}
+          saved={saved}
+          onSave={onSave}
+          onShare={onShare}
+          onCommunity={onCommunity}
+        />
+      </HomeProductionColumn>
     );
   }
 
-  return (
-    <HomeSection id="preparation" fill={false} data-testid="home-preparation">
-      <p className="text-xs font-bold tracking-[0.12em] text-stone-400 uppercase">Przygotowanie</p>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight">{name}</h2>
+  const lineById = new Map(
+    [...session.lines, ...session.addonLines].map((line) => [line.lineId, line] as const),
+  );
+  const progress = productionProgress(session);
 
-      {beforeStartStep && session.lines.every((line) => !line.confirmed) ? (
-        <div
-          className="mt-4 rounded-2xl border p-4"
-          style={{ borderColor: 'var(--g-line)' }}
-          data-testid="home-preparation-before-start"
-        >
-          <h3 className="text-sm font-semibold">{beforeStartStep.title}</h3>
-          <ul className="mt-1 text-sm text-stone-700">
-            {beforeStartStep.details.map((detail) => (
-              <li key={detail}>{detail}</li>
-            ))}
-          </ul>
-          <p className="mt-1 text-sm text-stone-500">{beforeStartStep.timing}</p>
-        </div>
-      ) : null}
+  /* ---------- „Korekta partii” ---------- */
+  const decisionBasis = `${session.sessionId}:${session.durableActualRevision}:${session.durableRescueRevision}`;
+  const correctionOptions: HomeCorrectionOptionView[] = [];
+  let recommendedId: ProductionDecisionId | null = null;
+  if (assessment && decisionNeeded) {
+    const byId = new Map(assessment.options.map((option) => [option.id, option] as const));
+    for (const option of productionDecisionOptions({
+      currentPlanMassG: progress.currentPlanMassG,
+      plannedScore,
+      forecastScore: scoreFromDisplay(assessment.forecastScoreDisplay),
+    })) {
+      const verified = byId.get(option.id);
+      if (!verified) continue;
+      const score = scoreFromDisplay(verified.scoreDisplay);
+      correctionOptions.push({
+        id: option.id,
+        title: productionDecisionTitle(option, verified.finalMassG),
+        explanation: productionDecisionExplanation(option, plannedScore, score),
+        score,
+        finalMassG: verified.finalMassG,
+      });
+    }
+    recommendedId =
+      recommendedProductionDecision(
+        Object.fromEntries(
+          assessment.options.map((option) => [option.id, { scoreDisplay: option.scoreDisplay }]),
+        ),
+      ) ?? null;
+  }
+  const selectedId =
+    (selectedDecision?.basis === decisionBasis ? selectedDecision.id : null) ?? recommendedId;
+  const selectedView = correctionOptions.find((option) => option.id === selectedId) ?? null;
+  const applyLabel =
+    selectedView?.id === 'restore_original_recipe'
+      ? copy.correctionRestoreApply
+      : selectedView?.id === 'leave_as_is'
+        ? copy.correctionLeaveApply
+        : (selectedView?.title ?? copy.correctionTitle);
+  const applyDecision = () =>
+    run(() => {
+      const current = useProductionSessionStore.getState().session;
+      const option = assessment?.options.find((candidate) => candidate.id === selectedId);
+      if (!current || !option) return;
+      const next = applyVerifiedRescueInput(current, option.candidateInput);
+      useProductionSessionStore.getState().replaceSession({
+        ...next,
+        lastDeviationDecision: {
+          strategy: option.id,
+          acceptedAt: now(),
+          sourceActualRevision: current.durableActualRevision,
+          rescueRevision: next.durableRescueRevision,
+          finalMassG: option.finalMassG,
+          scoreDisplay: option.scoreDisplay,
+        },
+      });
+    }, 'Nie udało się zastosować korekty.');
+  /** „Wróć” from the correction: back to the row to correct the entry. */
+  const backFromCorrection = () => {
+    if (deviatingLine) reopenLine(deviatingLine);
+  };
 
-      {/* Owner addendum 2026-09-17: no separate heat reminder with OK — the heat
-          treatment is one step of the plan, shown at its moment below. */}
-      {session.degassingRequired && !session.degassingAcknowledged ? (
-        <div
-          className="mt-6 rounded-2xl border p-5"
-          style={{ borderColor: 'var(--g-line)' }}
-          data-testid="home-production-degassing"
-        >
-          <h3 className="text-lg font-semibold">Najpierw odgazuj</h3>
-          <p className="mt-2 text-sm text-stone-600">Przed użyciem należy całkowicie odgazować:</p>
-          <ul className="mt-2 text-sm text-stone-700">
-            {carbonatedProducts.map((product) => (
-              <li key={product.productId}>• {product.name}</li>
-            ))}
-          </ul>
-          <button
-            type="button"
-            className={`${primary} mt-4`}
-            style={{ background: 'var(--g-ink)' }}
-            onClick={() =>
-              useProductionSessionStore
-                .getState()
-                .replaceSession({
-                  ...session,
-                  degassingAcknowledged: true,
-                  degassingAcknowledgedAt: new Date().toISOString(),
-                })
-            }
-          >
-            Odgazowane
-          </button>
-        </div>
-      ) : !rescueResolved && rescue?.state === 'options' ? (
-        <div
-          className="mt-6 rounded-2xl border p-5"
-          style={{ borderColor: 'var(--g-line)' }}
-          data-testid="home-rescue-options"
-        >
-          <h3 className="text-lg font-semibold">Uratujmy tę partię</h3>
-          <p className="mt-2 text-sm text-stone-600">
-            Wybierz jeden z wariantów sprawdzonych przez silnik.
-          </p>
-          <div className="mt-4 grid gap-2">
-            {rescue.options.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className="rounded-xl border p-4 text-left"
-                style={{ borderColor: 'var(--g-line)' }}
-                data-testid={`home-rescue-${option.id}`}
-                onClick={() => {
-                  try {
-                    const next = applyVerifiedRescueInput(session, option.candidateInput);
-                    useProductionSessionStore.getState().replaceSession({
-                      ...next,
-                      lastDeviationDecision: {
-                        strategy: option.id,
-                        acceptedAt: new Date().toISOString(),
-                        sourceActualRevision: session.durableActualRevision,
-                        rescueRevision: next.durableRescueRevision,
-                        finalMassG: option.finalMassG,
-                        scoreDisplay: option.scoreDisplay,
-                      },
-                    });
-                  } catch (cause) {
-                    setError(
-                      cause instanceof Error ? cause.message : 'Nie udało się zastosować korekty.',
-                    );
-                  }
-                }}
-              >
-                <span className="block font-semibold">{option.title}</span>
-                <span className="mt-1 block text-sm text-stone-600">{option.explanation}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : !rescueResolved && rescue?.state === 'impossible' ? (
-        <p
-          className="mt-6 rounded-xl border p-4 text-sm"
-          role="alert"
-          data-testid="home-rescue-impossible"
-        >
-          {rescue.reason}
-        </p>
-      ) : activeTopUp ? (
-        <div className="mt-6" data-testid="home-rescue-top-up">
-          <p className="text-sm text-stone-500">Korekta partii</p>
-          <div className="mt-2 flex items-baseline justify-between gap-4">
-            <h3 className="text-xl font-semibold">{activeTopUp.ingredientName}</h3>
-            <span className="font-mono text-xl">+{activeTopUp.draftDeltaG} g</span>
-          </div>
-          {!taredLineIds.includes(activeTopUp.taskId) ? (
-            <button
-              type="button"
-              className={`${primary} mt-5`}
-              style={{ background: 'var(--g-ink)' }}
-              onClick={() => setTaredLineIds((current) => [...current, activeTopUp.taskId])}
-              data-testid="home-rescue-top-up-tare"
-            >
-              TARA
-            </button>
-          ) : (
-            <button
-              type="button"
-              className={`${primary} mt-5`}
-              style={{ background: 'var(--g-ink)' }}
-              data-testid="home-rescue-top-up-confirm"
-              onClick={() => {
-                try {
-                  const current = useProductionSessionStore.getState().session;
-                  if (!current) return;
-                  const drafted = setProductionTopUpDraftGrams(
-                    current,
-                    activeTopUp.taskId,
-                    activeTopUp.authorizedDeltaG,
-                  );
-                  useProductionSessionStore
-                    .getState()
-                    .replaceSession(
-                      confirmProductionTopUpTask(
-                        drafted,
-                        activeTopUp.taskId,
-                        new Date().toISOString(),
-                      ),
-                    );
-                } catch (cause) {
-                  setError(
-                    cause instanceof Error ? cause.message : 'Nie udało się potwierdzić korekty.',
-                  );
+  /* ---------- the latest deviation's outcome, on its row ---------- */
+  const latestDeviated = latestConfirmed(
+    session.lines.filter(
+      (line) =>
+        line.confirmed && Math.abs(line.physicalAddedGrams - line.plannedGrams) > GRAMS_EPSILON,
+    ),
+  );
+  const decisionWord = session.lastDeviationDecision
+    ? session.lastDeviationDecision.strategy === 'leave_as_is'
+      ? copy.resultAccepted
+      : copy.planCorrected
+    : null;
+
+  /* ---------- the current step ---------- */
+  const stepNumber = currentIndex + 1;
+  const total = steps.length;
+  let body: ReactNode = null;
+  let dock: { lead: string; detail: string; action: string; onAction: () => void } | null = null;
+  let activeFieldLineId: string | null = null;
+
+  if (currentStep?.kind === 'weigh') {
+    const planLines = currentStep.lines.filter((planLine) => lineById.has(planLine.lineId));
+    const topUps = currentStep.scope === 'base' ? pendingTopUps : [];
+    const activeTopUp = topUps[0] ?? null;
+    const unconfirmed = planLines.filter((planLine) => !lineById.get(planLine.lineId)!.confirmed);
+    const activePlanLine = activeTopUp
+      ? null
+      : (unconfirmed.find((planLine) => planLine.lineId === openLineId) ?? unconfirmed[0] ?? null);
+    const sharedInstruction =
+      new Set(planLines.map((planLine) => planLine.instruction)).size === 1
+        ? (planLines[0]?.instruction ?? null)
+        : null;
+    const canReopen = !decisionNeeded && pendingTopUps.length === 0;
+    const remaining = unconfirmed.length + topUps.length;
+
+    const rows: ReactNode[] = [];
+    topUps.forEach((task, index) => {
+      const current = index === 0;
+      const delta = task.draftDeltaG - task.authorizedDeltaG;
+      const row = (
+        <HomeWeighRow
+          key={task.taskId}
+          rowKey={task.taskId}
+          name={task.ingredientName}
+          sub={copy.topUpWeighed(formatProductionGrams(task.physicalBaselineG))}
+          subTone={current ? 'current' : 'later'}
+          grams={`+${formatProductionGrams(task.authorizedDeltaG)}`}
+          emphasis={current}
+          tick={
+            <HomeTick
+              state={current ? 'current' : 'later'}
+              label={copy.confirmAdded(task.ingredientName)}
+              onClick={() => confirmTopUp(task)}
+              testId={`home-production-tick-${task.taskId}`}
+            />
+          }
+        />
+      );
+      if (!current) {
+        rows.push(row);
+        return;
+      }
+      activeFieldLineId = task.taskId;
+      rows.push(
+        <HomeWeighCurrent
+          key={task.taskId}
+          row={row}
+          lineId={task.taskId}
+          name={task.ingredientName}
+          guidance={null}
+          value={task.draftDeltaG}
+          min={0}
+          step={productionStepForGrams(task.authorizedDeltaG)}
+          deviation={
+            Math.abs(delta) > SHOWN_DIFFERENCE_G
+              ? {
+                  text: copy.difference(
+                    signedGrams(delta),
+                    formatProductionGrams(task.authorizedDeltaG),
+                  ),
+                  next: copy.differenceNext,
                 }
-              }}
-            >
-              Dodałem
-            </button>
-          )}
+              : null
+          }
+          onChange={(grams) => setTopUpDraft(task, grams)}
+          onTypingChange={setTyping}
+        />,
+      );
+    });
+
+    for (const planLine of planLines) {
+      const line = lineById.get(planLine.lineId)!;
+      if (line.confirmed) {
+        const differs = Math.abs(line.physicalAddedGrams - line.plannedGrams) > GRAMS_EPSILON;
+        const sub = differs
+          ? [
+              copy.addedAmount(formatProductionGrams(line.physicalAddedGrams)),
+              latestDeviated?.lineId === line.lineId ? decisionWord : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          : copy.added;
+        rows.push(
+          <HomeWeighRow
+            key={line.lineId}
+            rowKey={line.lineId}
+            name={line.name}
+            sub={sub}
+            subTone="done"
+            grams={formatProductionGrams(line.physicalAddedGrams)}
+            tick={
+              <HomeTick
+                state="done"
+                label={copy.reopenAdded(line.name)}
+                onClick={canReopen ? () => reopenLine(line) : undefined}
+                testId={`home-production-tick-${line.lineId}`}
+              />
+            }
+          />,
+        );
+        continue;
+      }
+      const current = planLine.lineId === activePlanLine?.lineId;
+      const correctionMode = line.recordCorrectionCount > 0;
+      const row = (
+        <HomeWeighRow
+          key={line.lineId}
+          rowKey={line.lineId}
+          name={line.name}
+          sub={current ? (correctionMode ? copy.correctingRecord : copy.weighNow) : copy.later}
+          subTone={current ? 'current' : 'later'}
+          grams={formatProductionGrams(line.targetGrams)}
+          emphasis={current}
+          onOpen={current ? undefined : () => setOpenLineId(line.lineId)}
+          tick={
+            <HomeTick
+              state={current ? 'current' : 'later'}
+              label={copy.confirmAdded(line.name)}
+              onClick={() => confirmLine(line)}
+              testId={`home-production-tick-${line.lineId}`}
+            />
+          }
+        />
+      );
+      if (!current) {
+        rows.push(row);
+        continue;
+      }
+      activeFieldLineId = line.lineId;
+      const delta = line.draftActualGrams - line.targetGrams;
+      const ownInstruction =
+        planLine.instruction !== sharedInstruction ? planLine.instruction : null;
+      rows.push(
+        <HomeWeighCurrent
+          key={line.lineId}
+          row={row}
+          lineId={line.lineId}
+          name={line.name}
+          guidance={
+            ownInstruction || planLine.note ? (
+              <p
+                className="mb-2 text-[13px] leading-[1.4] text-[#3b3833]"
+                data-testid="home-production-line-guidance"
+              >
+                {ownInstruction ? (
+                  <span className="block font-semibold">{ownInstruction}</span>
+                ) : null}
+                {planLine.note ? (
+                  <span className="block text-[#5f5a52]" data-testid="home-production-line-note">
+                    {planLine.note}
+                  </span>
+                ) : null}
+              </p>
+            ) : null
+          }
+          value={line.draftActualGrams}
+          min={correctionMode ? 0 : line.physicalAddedGrams}
+          step={productionStepForGrams(line.targetGrams)}
+          deviation={
+            Math.abs(delta) > SHOWN_DIFFERENCE_G
+              ? {
+                  text: copy.difference(
+                    signedGrams(delta),
+                    formatProductionGrams(line.targetGrams),
+                  ),
+                  // Toppings never start a batch correction (they do not change the base).
+                  next: currentStep.scope === 'base' ? copy.differenceNext : null,
+                }
+              : null
+          }
+          onChange={(grams) => setLineDraft(line, grams)}
+          onTypingChange={setTyping}
+        />,
+      );
+    }
+
+    body = (
+      <div data-testid={currentStep.scope === 'addon' ? 'home-topping-step' : 'home-base-step'}>
+        <HomeStepText text={sharedInstruction}>
+          {currentStep.scope === 'addon' ? <HomeNoMix /> : null}
+        </HomeStepText>
+        <HomeWeighList>{rows}</HomeWeighList>
+      </div>
+    );
+
+    if (activeTopUp) {
+      dock = {
+        lead: copy.dockNow(activeTopUp.ingredientName),
+        detail: [
+          copy.dockTopUp(formatProductionGrams(activeTopUp.authorizedDeltaG)),
+          remaining > 1 ? copy.dockThen(remaining - 1) : copy.dockLastInStep,
+        ].join(' · '),
+        action: copy.next,
+        onAction: () => confirmTopUp(activeTopUp),
+      };
+    } else if (activePlanLine) {
+      const line = lineById.get(activePlanLine.lineId)!;
+      dock = {
+        lead: copy.dockNow(line.name),
+        detail: [
+          copy.dockPlan(formatProductionGrams(line.targetGrams)),
+          remaining > 1 ? copy.dockThen(remaining - 1) : copy.dockLastInStep,
+        ].join(' · '),
+        action: copy.next,
+        onAction: () => confirmLine(line),
+      };
+    } else {
+      dock = {
+        lead: `${copy.dockStep(stepNumber, total)} · ${copy.dockWeighed}`,
+        detail: currentStep.title,
+        action: allDone ? copy.finish : copy.next,
+        onAction: allDone ? complete : () => undefined,
+      };
+    }
+  } else if (currentStep) {
+    const step = currentStep;
+    if (step.kind === 'before') {
+      body = (
+        <div data-testid="home-preparation-before-start">
+          <HomeStepText text={step.details.join(' · ')} note={step.timing} />
         </div>
-      ) : baseDone && !machineStepCompleted && guide ? (
-        <div className="mt-6" data-testid="home-machine-step">
-          {heatStepDue && heatStepOnMachineCard && heatStep ? (
-            <HeatStepNotice step={heatStep} />
+      );
+    } else if (step.kind === 'degas') {
+      body = (
+        <div data-testid="home-production-degassing">
+          <HomeStepText text={copy.degasLead}>
+            <ul className="mt-1 text-[14px] text-[#3b3833]">
+              {carbonatedProductsForRecipe(session.plannedInput, session.plannedComposition).map(
+                (product) => (
+                  <li key={product.productId}>• {product.name}</li>
+                ),
+              )}
+            </ul>
+          </HomeStepText>
+        </div>
+      );
+    } else if (step.kind === 'heat') {
+      body = (
+        <div data-testid="home-preparation-heat-step">
+          <HomeStepText text={step.details[0] ?? null} note={step.details.slice(1).join(' ')} />
+          <HomeStepBox testId="home-preparation-heat-products">
+            <span>
+              {educationCopy.preparation.heat.lead} {step.productNames.join(', ')}
+            </span>
+          </HomeStepBox>
+          {step.afterCoolingNames.length > 0 ? (
+            <HomeStepBox label={educationCopy.preparation.heat.afterCoolingTitle}>
+              <span>{step.afterCoolingNames.join(', ')}</span>
+            </HomeStepBox>
           ) : null}
-          <h3 className="text-xl font-semibold">{guide.title}</h3>
-          {machineStep?.illustration ? (
+        </div>
+      );
+    } else {
+      body = (
+        <div data-testid="home-machine-step" data-machine-id={guide?.sourceMachineId ?? undefined}>
+          {step.illustration ? (
             <PreparationIllustrationImage
-              illustration={machineStep.illustration}
-              sizes="320px"
-              className="mt-4 w-full max-w-xs"
+              illustration={step.illustration}
+              sizes="168px"
+              className="mb-3 w-full max-w-[168px]"
             />
           ) : null}
-          <ol className="mt-4 space-y-3 text-sm text-stone-700">
-            {guide.steps.map((step, index) => (
-              <li key={step}>
-                {index + 1}. {step}
+          <ol className="mb-1 grid gap-1 px-1 text-[16px] leading-[1.3] font-semibold text-[var(--g-ink)]">
+            {step.details.map((detail, index) => (
+              <li key={`${index}:${detail}`}>
+                {step.details.length > 1 ? `${index + 1}. ` : ''}
+                {detail}
               </li>
             ))}
           </ol>
-          {/* The shared plan decides which timing belongs here (a verified bowl
-              pre-freeze was already shown before start). */}
-          {machineStep?.timing ? (
-            <p className="mt-4 text-sm text-stone-500">{machineStep.timing}</p>
+          {/* The shared plan decides which timing belongs here (a verified bowl pre-freeze
+              was already its own step before start). */}
+          {step.timing ? (
+            <p className="px-1 text-[13px] leading-[1.4] text-[#5f5a52]">{step.timing}</p>
           ) : null}
-          {/* The customer does the machine step and moves on: a missing numeric
-              time never holds the flow, and the click claims no elapsed time. */}
-          <button
-            type="button"
-            className={`${primary} mt-6`}
-            style={{ background: 'var(--g-ink)' }}
-            onClick={() =>
-              useProductionSessionStore
-                .getState()
-                .replaceSession({ ...session, stage: 'addons' })
-            }
-            data-testid="home-machine-complete"
-          >
-            Gotowe
-          </button>
+          {step.asideNames.length > 0 ? (
+            <HomeStepBox tone="no-mix" testId="home-production-set-aside">
+              <HomeNoMix inBox />
+              <span>{copy.setAside(step.asideNames.join(', '))}</span>
+            </HomeStepBox>
+          ) : null}
         </div>
-      ) : activeLine ? (
-        <div className="mt-6" data-testid={baseDone ? 'home-topping-step' : 'home-base-step'}>
-          {!baseDone && heatStepDue && heatStep ? <HeatStepNotice step={heatStep} /> : null}
-          <p className="text-sm text-stone-500">
-            {activeStep?.instruction ?? (baseDone ? 'Dodaj po obróbce' : 'Dodaj do naczynia')}
-          </p>
-          <div className="mt-2 flex items-baseline justify-between gap-4">
-            <h3 className="text-xl font-semibold">{activeLine.name}</h3>
-            <span className="font-mono text-xl">{Math.round(activeLine.targetGrams)} g</span>
-          </div>
-          {activeStep?.note ? (
-            <p className="mt-1 text-sm text-stone-500" data-testid="home-production-line-note">
-              {activeStep.note}
-            </p>
-          ) : null}
-          {!taredLineIds.includes(activeLine.lineId) ? (
-            <button
-              type="button"
-              className={`${primary} mt-5`}
-              style={{ background: 'var(--g-ink)' }}
-              onClick={() => setTaredLineIds((current) => [...current, activeLine.lineId])}
-              data-testid="home-production-tare"
-            >
-              TARA
-            </button>
-          ) : (
-            <ActualEntry line={activeLine} onConfirm={(grams) => confirm(activeLine, grams)} />
+      );
+    }
+    dock = {
+      lead: copy.dockStep(stepNumber, total),
+      detail: step.title,
+      action: isLastStep ? copy.finish : step.kind === 'degas' ? copy.degasDone : copy.next,
+      onAction: () => {
+        finishDoStep(step);
+        if (isLastStep) complete();
+      },
+    };
+  }
+
+  const weighingRowId =
+    currentStep?.kind === 'weigh' && activeFieldLineId !== null ? activeFieldLineId : null;
+  const weighedFieldInput = () =>
+    weighingRowId === null
+      ? null
+      : document.querySelector<HTMLInputElement>(
+          `[data-testid="home-production-field-${weighingRowId}"] input`,
+        );
+  /** „Zważyłem inną ilość”: the sheet closes onto the amount of the row being weighed. */
+  const focusWeighedAmount = () => {
+    troubleSuccessor.current = weighedFieldInput;
+    setTroubleOpen(false);
+  };
+
+  return (
+    <HomeProductionColumn testId="home-preparation">
+      <div className="flex min-h-11 items-center">
+        <HomeBackButton onClick={onBack} testId="home-production-back" />
+      </div>
+      <p
+        className="mt-2 text-[11px] leading-none font-bold tracking-[0.12em] text-[#a29d94] uppercase"
+        data-testid="home-production-eyebrow"
+      >
+        {copy.eyebrow(stepNumber, total)}
+      </p>
+      <h2 className="mt-1.5 text-[24px] leading-[1.2] font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
+        {name}
+      </h2>
+      {progress.targetChanged ? (
+        <p
+          className="mt-1 text-[12.5px] leading-[1.3] text-[#65635f]"
+          data-testid="home-production-batch-changed"
+        >
+          {copy.batchChanged(
+            formatProductionGrams(progress.currentPlanMassG),
+            formatProductionGrams(progress.originalTargetMassG),
           )}
-        </div>
-      ) : allDone ? (
+        </p>
+      ) : null}
+      <HomeStepBar total={total} current={currentIndex} />
+
+      <ol className="grid gap-2" data-testid="home-production-steps">
+        {currentIndex > 0 ? (
+          <HomeDoneSummary names={steps.slice(0, currentIndex).map((step) => step.title)} />
+        ) : null}
+        {currentStep ? (
+          <HomeCurrentStep
+            number={stepNumber}
+            total={total}
+            title={currentStep.title}
+            kind={currentStep.kind}
+          >
+            {body}
+          </HomeCurrentStep>
+        ) : null}
+        {steps.slice(currentIndex + 1).map((step, offset) => (
+          <HomeFutureStep
+            key={step.id}
+            number={currentIndex + offset + 2}
+            title={step.title}
+            detail={step.kind === 'weigh' ? step.lines.map((line) => line.name).join(' · ') : null}
+          />
+        ))}
+      </ol>
+
+      <div className="mt-4 flex items-center justify-between gap-2.5">
         <button
           type="button"
-          className={`${primary} mt-6 w-full`}
-          style={{ background: 'var(--g-ink)' }}
-          data-testid="home-production-finish"
-          onClick={() => {
-            try {
-              const current = useProductionSessionStore.getState().session;
-              if (!current) return;
-              useProductionSessionStore
-                .getState()
-                .replaceSession(
-                  completeProductionSession(
-                    current,
-                    calculateRecipe(buildFinalActualInput(current)),
-                    new Date().toISOString(),
-                    ownerUserId,
-                  ),
-                );
-            } catch (cause) {
-              setError(cause instanceof Error ? cause.message : 'Nie udało się zakończyć partii.');
-            }
-          }}
+          onClick={() => setTroubleOpen(true)}
+          data-testid="home-production-trouble-open"
+          className="rounded-full bg-white px-3.5 py-2.5 text-[13.5px] leading-none font-semibold text-[#3b3833] shadow-[inset_0_0_0_1px_#e4e0d9] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
         >
-          Gotowe
+          {copy.trouble}
         </button>
-      ) : null}
+        <button
+          type="button"
+          onClick={onSaveBatch}
+          data-testid="home-production-save"
+          className="inline-flex h-10 items-center rounded-full border border-[var(--g-line)] bg-white px-[18px] text-[14px] font-semibold text-[var(--g-ink)] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+        >
+          {copy.saveBatch}
+        </button>
+      </div>
 
       {error ? (
         <p className="mt-4 text-sm" role="alert" style={{ color: 'var(--g-attention-ink)' }}>
           {error}
         </p>
       ) : null}
-    </HomeSection>
+
+      {dock ? (
+        <HomeProductionDock
+          lead={dock.lead}
+          detail={dock.detail}
+          action={dock.action}
+          onAction={dock.onAction}
+          disabled={decisionNeeded}
+          typing={typing}
+        />
+      ) : null}
+
+      {decisionNeeded ? (
+        <HomeBatchCorrectionSheet
+          what={
+            deviatingLine
+              ? {
+                  name: deviatingLine.name,
+                  actualG: deviatingLine.physicalAddedGrams,
+                  planG: deviatingLine.targetGrams,
+                }
+              : null
+          }
+          options={correctionOptions}
+          impossibleReason={assessment?.state === 'impossible' ? assessment.reason : null}
+          recommendedId={recommendedId}
+          selectedId={selectedId}
+          applyLabel={applyLabel}
+          onSelect={(id) => setSelectedDecision({ basis: decisionBasis, id })}
+          onApply={applyDecision}
+          onBack={backFromCorrection}
+        />
+      ) : null}
+
+      {troubleOpen && !decisionNeeded ? (
+        <HomeTroubleSheet
+          onWeighedDifferent={weighingRowId !== null ? focusWeighedAmount : null}
+          onBack={() => {
+            troubleSuccessor.current = null;
+            setTroubleOpen(false);
+          }}
+          returnFocus={() => troubleSuccessor.current?.() ?? null}
+        />
+      ) : null}
+    </HomeProductionColumn>
   );
 }

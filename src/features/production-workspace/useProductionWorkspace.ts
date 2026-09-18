@@ -85,6 +85,10 @@ import {
 } from './productionReadinessState';
 import { machineEducationForSelection } from '@/features/education';
 import { carbonatedProductsForRecipe } from './productionDegassing';
+import {
+  PRODUCTION_DECISION_ORDER,
+  recommendedProductionDecision,
+} from './productionDecisionOptions';
 import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 
 export type ProductionRescueAuthorizationInvalidation = 'expired' | 'revision_mismatch' | null;
@@ -1107,22 +1111,22 @@ export function useProductionWorkspace(enabled: boolean) {
   const rescueOptionsCalculating = Object.values(currentRescueOptionsEvaluation).some(
     (option) => option?.status === 'loading',
   );
-  const unchangedEvaluation = currentRescueOptionsEvaluation.leave_as_is;
-  const unchangedIsSafeTen =
-    unchangedEvaluation?.status === 'available' &&
-    unchangedEvaluation.authorization.preview.scoreDisplay === '10/10';
+  // The one recommendation rule PRO and HOME share (`productionDecisionOptions.ts`).
   const recommendedRescueOptionId = rescueOptionsCalculating
     ? undefined
-    : unchangedIsSafeTen
-      ? ('leave_as_is' as const)
-      : (
-          [
-            'keep_original_batch',
-            'enlarge_batch',
-            'restore_original_recipe',
-            'leave_as_is',
-          ] as const
-        ).find((optionId) => currentRescueOptionsEvaluation[optionId]?.status === 'available');
+    : recommendedProductionDecision(
+        Object.fromEntries(
+          PRODUCTION_DECISION_ORDER.map((optionId) => {
+            const evaluation = currentRescueOptionsEvaluation[optionId];
+            return [
+              optionId,
+              evaluation?.status === 'available'
+                ? { scoreDisplay: evaluation.authorization.preview.scoreDisplay }
+                : null,
+            ];
+          }),
+        ),
+      );
   const effectiveSelectedRescueOptionId =
     (selectedRescueOption.basisKey === rescueOptionsEvaluationKey
       ? selectedRescueOption.optionId
