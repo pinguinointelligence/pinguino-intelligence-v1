@@ -90,25 +90,20 @@ const renderSection = async () => {
   );
 };
 
+/* DESIGN V3.0 IV-B/C (2026-09-17): the whole row opens the ingredient panel — the
+   „•••” menu and its „Zmień ilość” are gone. The panel is portalled to <body>. */
 const openEditor = async () => {
   const id = currentLine().id;
-  const menu = host.querySelector<HTMLButtonElement>('[data-testid="home-row-menu"]');
-  expect(menu).not.toBeNull();
-  await act(async () => menu!.click());
-  const change = host.querySelector<HTMLButtonElement>(
-    `[data-testid="home-row-change-amount-${id}"]`,
-  );
-  expect(change).not.toBeNull();
-  await act(async () => change!.click());
-  const control = host.querySelector<HTMLElement>('[data-testid="home-change-amount-grams"]');
+  const row = host.querySelector<HTMLButtonElement>(`[data-testid="home-row-${id}"]`);
+  expect(row).not.toBeNull();
+  await act(async () => row!.click());
+  const control = document.querySelector<HTMLElement>('[data-testid="home-panel-grams"]');
   expect(control).not.toBeNull();
   return control!;
 };
 
 const confirm = async () => {
-  const button = host.querySelector<HTMLButtonElement>(
-    '[data-testid="home-change-amount-confirm"]',
-  );
+  const button = document.querySelector<HTMLButtonElement>('[data-testid="home-panel-done"]');
   expect(button).not.toBeNull();
   await act(async () => button!.click());
 };
@@ -183,10 +178,15 @@ describe('HOME manual grams auto-lock', () => {
     });
 
     await renderSection();
-    const crown = host.querySelector<HTMLButtonElement>(`[data-testid="home-crown-${before.id}"]`);
     const amount = host.querySelector<HTMLElement>(`[data-testid="home-amount-${before.id}"]`);
-    expect(crown?.getAttribute('aria-pressed')).toBe('true');
     expect(amount?.dataset.locked).toBe('true');
+    // The Crown moved from the row into the panel (DESIGN IV-B); the row only says „Główny”.
+    expect(host.querySelector(`[data-testid="home-main-chip-${before.id}"]`)).not.toBeNull();
+    await openEditor();
+    const crown = document.querySelector<HTMLButtonElement>(
+      `[data-testid="home-crown-${before.id}"]`,
+    );
+    expect(crown?.getAttribute('aria-pressed')).toBe('true');
 
     await act(async () => crown!.click());
     expect(currentLine()).toMatchObject({
@@ -195,9 +195,10 @@ describe('HOME manual grams auto-lock', () => {
       grams_constraint: { grams: before.planned_grams + 1 },
     });
     await renderSection();
-    const recrown = host.querySelector<HTMLButtonElement>(
+    const recrown = document.querySelector<HTMLButtonElement>(
       `[data-testid="home-crown-${before.id}"]`,
     );
+    expect(recrown?.getAttribute('aria-pressed')).toBe('false');
     await act(async () => recrown!.click());
     expect(currentLine()).toMatchObject({
       planned_grams: before.planned_grams + 1,
@@ -206,12 +207,10 @@ describe('HOME manual grams auto-lock', () => {
     });
 
     await renderSection();
-    const menu = host.querySelector<HTMLButtonElement>('[data-testid="home-row-menu"]')!;
-    await act(async () => menu.click());
-    const unlock = host.querySelector<HTMLButtonElement>(
-      `[data-testid="home-row-toggle-lock-${before.id}"]`,
-    )!;
-    expect(unlock.textContent).toContain('Odblokuj ilość');
+    // The padlock is the panel's amount-pill lock (the row menu's toggle is gone).
+    const unlock = document.querySelector<HTMLButtonElement>('[data-testid="home-panel-lock"]')!;
+    expect(unlock.getAttribute('aria-label')).toContain('Odblokuj ilość');
+    expect(unlock.getAttribute('aria-pressed')).toBe('true');
     await act(async () => unlock.click());
 
     expect(currentLine()).toMatchObject({

@@ -44,7 +44,7 @@ import {
 import { homeCreatorCopy } from '@/features/home-creator/homeCreatorCopy';
 import { homeCustomerNotice } from '@/features/home-creator/homeCustomerNotice';
 import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
-import { queueAmountQuestion } from '@/features/home-creator/homeAmountQueue';
+import { dropAmountQuestion, queueAmountQuestion } from '@/features/home-creator/homeAmountQueue';
 import { toppingCreationDefaultGrams } from '@/features/recipe-composition/toppingCreationDefault';
 import { useCanSeeExactGrams } from '@/features/home-creator/useHomeEntitlement';
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
@@ -105,8 +105,19 @@ import {
 } from '@/features/home-creator/ui/HomeIntentSection';
 import { HomeProfileSection } from '@/features/home-creator/ui/HomeProfileSection';
 import { HomeMachineSection } from '@/features/home-creator/ui/HomeMachineSection';
-import { HomeRecipeSection } from '@/features/home-creator/ui/HomeRecipeSection';
+import {
+  HomeRecipeSection,
+  type HomePendingAmount,
+} from '@/features/home-creator/ui/HomeRecipeSection';
+import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { HomeRecalculate } from '@/features/home-creator/ui/HomeRecalculate';
+import {
+  HomeLayer,
+  HomeLayerFoot,
+  HomeLayerHeading,
+  homeLayerPrimaryButton,
+  homeLayerSecondaryButton,
+} from '@/features/home-creator/ui/HomeLayer';
 import { HomePreparation } from '@/features/home-creator/ui/HomePreparation';
 import { ShareRecipeDialog } from '@/features/community/ui/ShareRecipeDialog';
 import { PublishToCommunityDialog } from '@/features/community/ui/PublishToCommunityDialog';
@@ -254,6 +265,12 @@ export function HomeCreatorPage() {
   const [confirmSaveAction, setConfirmSaveAction] = useState<'share' | 'community' | null>(null);
   const [completionDialog, setCompletionDialog] = useState<'share' | 'community' | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  /**
+   * DESIGN V3.0 (IV-C): the recipe's ingredient panel is open — a question the customer
+   * is answering, so the automatic PRZELICZ waits for „Gotowe”, exactly as it waits for
+   * the amount and usage questions (one burst of edits is one change).
+   */
+  const [recipeEditorOpen, setRecipeEditorOpen] = useState(false);
 
   /**
    * An official Gellatti recipe opened in HOME — the library's „Zrób te lody", a match the
@@ -372,6 +389,7 @@ export function HomeCreatorPage() {
   });
 
   const { result, score } = useHomeRecipeResult(draft.recipeReady);
+  const productionStatus = useProductionSessionStore((state) => state.session?.status ?? null);
 
   // Owner 2026-09-17 (B): recognise the idea and look for matching recipes while it is
   // described — the same resolution door and the same §32–§36 sources as the CTA.
@@ -673,6 +691,39 @@ export function HomeCreatorPage() {
     [],
   );
 
+  /**
+   * The customer answered the amount question for ONE waiting product — in the prompt of
+   * the first build or in the recipe's ingredient panel (DESIGN IV-C). Either way the SAME
+   * doors create the line: `addConfirmedTopping` for a topping, `addIngredientLine` (the
+   * one Base door, with its automatic-priority rule) for everything else.
+   */
+  const confirmPendingAdd = useCallback(
+    (pendingAdd: PendingAdd, grams: number) => {
+      if (pendingAdd.source === 'initial' && pendingAdd.chipId) {
+        useHomeDraftStore.getState().answerAmount(pendingAdd.chipId, grams);
+      }
+      if (pendingAdd.kind === 'topping') {
+        addConfirmedTopping(
+          pendingAdd.ingredient as unknown as RecipeToppingIngredient,
+          pendingAdd.behavior ?? undefined,
+          grams,
+        );
+      } else {
+        addIngredientLine(pendingAdd.ingredient, pendingAdd.behavior, grams);
+      }
+      setPendingAdds((queue) => dropAmountQuestion(queue, pendingAdd.ingredient.id));
+    },
+    [addConfirmedTopping, addIngredientLine],
+  );
+
+  /** Nothing was added for a waiting product; an idea chip that asked it goes with it. */
+  const cancelPendingAdd = useCallback((pendingAdd: PendingAdd) => {
+    if (pendingAdd.source === 'initial' && pendingAdd.chipId) {
+      useHomeDraftStore.getState().removeChip(pendingAdd.chipId);
+    }
+    setPendingAdds((queue) => dropAmountQuestion(queue, pendingAdd.ingredient.id));
+  }, []);
+
   const handleAddTopping = useCallback(
     (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
       setPendingAdd({
@@ -946,7 +997,7 @@ export function HomeCreatorPage() {
     if (initialBuilding || initialFinalizing.current) return;
     // Never behind a question the customer is answering.
     if (reviewAction !== null || automaticReview !== null) return;
-    if (pendingAdd !== null || pendingUsage !== null) return;
+    if (pendingAdd !== null || pendingUsage !== null || recipeEditorOpen) return;
     if (autoRecalculatedFor.current === recipe.draftRevision) return;
     const timer = window.setTimeout(() => {
       autoRecalculatedFor.current = useRecipeStore.getState().draftRevision;
@@ -972,8 +1023,40 @@ export function HomeCreatorPage() {
     automaticReview,
     pendingAdd,
     pendingUsage,
+    recipeEditorOpen,
     recipe.draftRevision,
   ]);
+
+  /**
+   * DESIGN V3.0 (VI) — „Reset receptury?” → „Reset”: back to an empty start. The SAME
+   * new-draft door the Recipes hub uses for HOME (`startNewProRecipe` + the HOME draft's
+   * `startNew`), plus this page's own answers, so nothing of the previous idea, machine
+   * choice or open question survives into the next recipe. Saved recipes and Community are
+   * not touched.
+   */
+  const resetToEmptyStart = () => {
+    startNewProRecipe(useRecipeStore.getState().visibleProductType ?? undefined);
+    useHomeDraftStore.getState().startNew();
+    setMachine(null);
+    setAmount(null);
+    setForceMachineStage(false);
+    setCustomMachineOpen(false);
+    setPendingAdds([]);
+    setPendingUsage(null);
+    setRecipeNotice(null);
+    setActionNotice(null);
+    setScanNotice(null);
+    setOfficialAdoption(null);
+    setReviewAction(null);
+    setAutomaticReview(null);
+    setConfirmSaveAction(null);
+    setCompletionDialog(null);
+    setInitialPrepared(null);
+    setInitialBuilding(false);
+    setSuggestionChoice(null);
+    generation.current = EMPTY_GENERATION_MEMORY;
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 });
+  };
 
   /** §35's automatic choice undone: the customer's own recipe, generated from their idea. */
   const createOwnInstead = () => {
@@ -1060,6 +1143,26 @@ export function HomeCreatorPage() {
     }
     await persistForAction(action);
   };
+
+  const recipeOnScreen = flow.stages.includes('recipe');
+  /** IV „Przerwanie w HOME”: a started batch that has not finished yet. */
+  const productionActive = draft.preparationStarted && productionStatus !== 'completed';
+  /** The products picked for the open recipe that still wait for their amount (5B). */
+  const recipePendingAmounts = useMemo<HomePendingAmount[]>(
+    () =>
+      pendingAdds
+        .filter((entry) => entry.source === 'live')
+        .map((entry) => ({
+          key: entry.ingredient.id,
+          name: entry.ingredient.name,
+          category: entry.ingredient.category,
+          kind: entry.kind,
+          initialGrams: entry.initialGrams,
+          recommendedDose: entry.recommendedDose,
+          behavior: entry.behavior,
+        })),
+    [pendingAdds],
+  );
 
   const machineLine = [
     machineView.label,
@@ -1337,7 +1440,7 @@ export function HomeCreatorPage() {
           </p>
         ) : null}
 
-        {flow.stages.includes('recipe') ? (
+        {recipeOnScreen ? (
           <HomeRecipeSection
             name={name}
             onNameChange={(next) => useHomeDraftStore.getState().setRecipeNameOverride(next)}
@@ -1377,6 +1480,19 @@ export function HomeCreatorPage() {
             onShare={() => requestFinalAction('share')}
             onCommunity={() => requestFinalAction('community')}
             onBack={flow.backFrom('recipe') ? () => scrollToStage(flow.backFrom('recipe')!) : null}
+            onReset={resetToEmptyStart}
+            productionActive={productionActive}
+            onResumeProduction={() => scrollToStage('preparation')}
+            pendingAmounts={recipePendingAmounts}
+            onConfirmPending={(key, grams) => {
+              const waiting = pendingAdds.find((entry) => entry.ingredient.id === key);
+              if (waiting) confirmPendingAdd(waiting, grams);
+            }}
+            onRemovePending={(key) => {
+              const waiting = pendingAdds.find((entry) => entry.ingredient.id === key);
+              if (waiting) cancelPendingAdd(waiting);
+            }}
+            onEditorOpenChange={setRecipeEditorOpen}
           />
         ) : null}
 
@@ -1459,52 +1575,49 @@ export function HomeCreatorPage() {
       />
 
       {confirmSaveAction ? (
-        <div
-          className="fixed inset-0 z-[96] grid place-items-center bg-black/30 p-4"
-          role="dialog"
-          aria-modal="true"
-          data-testid="home-save-before-share"
+        /* DESIGN V3.0 XIII — a HOME question is a compact bottom layer, actions last. */
+        <HomeLayer
+          label={confirmSaveAction === 'share' ? 'Zapisz i udostępnij' : 'Zapisz i opublikuj'}
+          testId="home-save-before-share"
+          onClose={() => setConfirmSaveAction(null)}
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6">
-            <h2 className="text-xl font-semibold">
+          <HomeLayerHeading
+            title={confirmSaveAction === 'share' ? 'Zapisz i udostępnij' : 'Zapisz i opublikuj'}
+            subtitle="Link i publikacja zawsze wskazują jedną dokładną, niezmienną wersję receptury."
+          />
+          <HomeLayerFoot>
+            <button
+              type="button"
+              className={homeLayerSecondaryButton}
+              onClick={() => setConfirmSaveAction(null)}
+            >
+              Wróć
+            </button>
+            <button
+              type="button"
+              className={homeLayerPrimaryButton}
+              onClick={() => {
+                const action = confirmSaveAction;
+                setConfirmSaveAction(null);
+                if (
+                  useRecipeStore.getState().dirty ||
+                  useRecipeStore.getState().practicalRecipeAudit === null
+                )
+                  setReviewAction(action);
+                else void persistForAction(action);
+              }}
+            >
               {confirmSaveAction === 'share' ? 'Zapisz i udostępnij' : 'Zapisz i opublikuj'}
-            </h2>
-            <p className="mt-3 text-sm text-stone-600">
-              Link i publikacja zawsze wskazują jedną dokładną, niezmienną wersję receptury.
-            </p>
-            <div className="mt-6 flex gap-2">
-              <button
-                type="button"
-                className="min-h-11 flex-1 rounded-full bg-ink px-4 text-sm font-semibold text-white"
-                onClick={() => {
-                  const action = confirmSaveAction;
-                  setConfirmSaveAction(null);
-                  if (
-                    useRecipeStore.getState().dirty ||
-                    useRecipeStore.getState().practicalRecipeAudit === null
-                  )
-                    setReviewAction(action);
-                  else void persistForAction(action);
-                }}
-              >
-                {confirmSaveAction === 'share' ? 'Zapisz i udostępnij' : 'Zapisz i opublikuj'}
-              </button>
-              <button
-                type="button"
-                className="min-h-11 rounded-full border px-4 text-sm"
-                onClick={() => setConfirmSaveAction(null)}
-              >
-                Wróć
-              </button>
-            </div>
-          </div>
-        </div>
+            </button>
+          </HomeLayerFoot>
+        </HomeLayer>
       ) : null}
 
       {completionDialog === 'share' && recipe.savedRecipeId && recipe.currentVersionNumber ? (
         <ShareRecipeDialog
           recipeId={recipe.savedRecipeId}
           versionNumber={recipe.currentVersionNumber}
+          frame="home-layer"
           onClose={() => setCompletionDialog(null)}
         />
       ) : null}
@@ -1515,6 +1628,7 @@ export function HomeCreatorPage() {
           defaultTitle={name}
           hasCreatorProfile={hasCreatorProfile}
           completionContext={draft.preparationStarted}
+          placement="home-layer"
           onClose={() => setCompletionDialog(null)}
         />
       ) : null}
@@ -1612,7 +1726,10 @@ export function HomeCreatorPage() {
         />
       ) : null}
 
-      {pendingAdd ? (
+      {/* The first build asks its amount questions here, before a recipe is on screen.
+          Once the recipe is shown, a product picked for it is answered in the recipe's own
+          ingredient panel instead (DESIGN IV-C) — the same confirmation doors either way. */}
+      {pendingAdd && (pendingAdd.source === 'initial' || !recipeOnScreen) ? (
         <HomeAmountPrompt
           key={pendingAdd.ingredient.id}
           productName={pendingAdd.ingredient.name}
@@ -1623,27 +1740,8 @@ export function HomeCreatorPage() {
               ? homeCreatorCopy.recipe.askAmountCancel
               : homeCreatorCopy.draft.cancel
           }
-          onCancel={() => {
-            if (pendingAdd.source === 'initial' && pendingAdd.chipId) {
-              useHomeDraftStore.getState().removeChip(pendingAdd.chipId);
-            }
-            setPendingAdd(null);
-          }}
-          onConfirm={(grams) => {
-            if (pendingAdd.source === 'initial' && pendingAdd.chipId) {
-              useHomeDraftStore.getState().answerAmount(pendingAdd.chipId, grams);
-            }
-            if (pendingAdd.kind === 'topping') {
-              addConfirmedTopping(
-                pendingAdd.ingredient as unknown as RecipeToppingIngredient,
-                pendingAdd.behavior ?? undefined,
-                grams,
-              );
-            } else {
-              addIngredientLine(pendingAdd.ingredient, pendingAdd.behavior, grams);
-            }
-            setPendingAdd(null);
-          }}
+          onCancel={() => cancelPendingAdd(pendingAdd)}
+          onConfirm={(grams) => confirmPendingAdd(pendingAdd, grams)}
         />
       ) : null}
 

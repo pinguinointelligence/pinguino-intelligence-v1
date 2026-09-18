@@ -233,15 +233,24 @@ export function HomeRecalculate({
           testId="home-recalc-dialog"
           panelTestId="home-recalc-panel"
           panelState={terminal?.state ?? 'IDLE'}
-          placement="center"
+          // DESIGN V3.0 XIII: a compact bottom layer on a phone and a portrait tablet (the
+          // actions last, under the thumb), a light centred modal from 1024 px.
+          placement="home-layer"
           size={previewOpen || conflictOpen ? 'wide' : 'default'}
           onClose={close}
           showCloseControl
           closeLabel={working ? homeCreatorCopy.draft.cancel : interactiveCopy.back}
           closeTestId="home-recalc-close"
-          panelClassName="max-h-[92dvh] px-3 py-3 text-black [--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light] sm:max-h-[88vh] sm:px-4 sm:py-4"
+          panelClassName="text-black [--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light]"
         >
-          <div className="space-y-3 pt-8 sm:pt-6">
+          <h2
+            className="shrink-0 pr-12 text-[18px] leading-[1.25] font-semibold text-[var(--g-ink)]"
+            data-testid="home-recalc-title"
+          >
+            {homeCreatorCopy.recipe.recalculate}
+          </h2>
+          {/* Longer content scrolls inside; the layer stays at the bottom (XIII). */}
+          <div className="-mx-1 mt-3 min-h-0 space-y-3 overflow-y-auto px-1 pb-1">
             {working ? (
               <p className="text-[14px] leading-relaxed" data-testid="home-recalc-working">
                 {interactiveCopy.working}
