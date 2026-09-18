@@ -5,6 +5,8 @@ import { MyProductsPanel } from '@/features/products/MyProductsPanel';
 import { ProductsFilterTabs } from '@/features/products/ProductsFilterTabs';
 import { productFilterFromParam } from '@/features/products/productsFilter';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { ProductionAreaSurface } from '@/features/production-area/ProductionAreaSurface';
+import { productionAreaCopy } from '@/copy/productionArea';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { cn } from '@/lib/cn';
@@ -343,6 +345,16 @@ export function FranchisePage() {
   );
 }
 
+/** Produkty's own sub-views (package PRODUKCJA V3 §4): the account's product settings. */
+type ProductsPanel = 'markets' | 'requests';
+const productsPanelFromParam = (value: string | null): ProductsPanel | null =>
+  value === 'markets' || value === 'requests' ? value : null;
+
+const productsCopy = productionAreaCopy().products;
+
+const productsRow =
+  'pro-focus-ring flex min-h-12 items-center justify-between gap-4 border-b border-[var(--g-line)] text-[14px] text-[var(--g-ink)] transition-opacity hover:opacity-70';
+
 export function ProductsHubPage() {
   const [productsParams] = useSearchParams();
   /*
@@ -350,29 +362,56 @@ export function ProductsHubPage() {
     page's action (in `actions` below) and Wszystkie / Moje produkty / Niezweryfikowane are this
     page's filters, not drawer destinations. `?filter=` is unchanged, so „Uzupełnij dane" and every
     saved link still land on the right list.
+
+    Produkcja v3 §4 — Produkty is a section of the one Produkcja area. Its state lives in the
+    address (`filter`, `q`, `fav`, `market`, `retailer`, `product`, `panel`), and the account's
+    product settings moved here from Konto: `?panel=markets` is „Rynki produktów”
+    (AccountProductMarkets) and `?panel=requests` is „Zgłoszenia produktów”
+    (ProductRequestAccountSections) — the same components, the same data.
   */
   const productFilter = productFilterFromParam(productsParams.get('filter'));
+  const panel = productsPanelFromParam(productsParams.get('panel'));
+  const productOpen = productsParams.has('product');
   const persona = useProCorePersona();
   const capabilities = proCoreCapabilitiesFor(persona);
   const canAdmin = useProCoreAccessStore((state) => state.effectiveAccess?.canAdmin === true);
+  const authStatus = useAuthStore((state) => state.status);
+  // The account's product settings follow the account page's rule: any signed-in account.
+  const signedIn = authStatus === 'authed' || import.meta.env.DEV;
+  // „‹ Produkty” returns to the same list — filter and search kept, panel closed.
+  const listParams = new URLSearchParams(productsParams);
+  listParams.delete('panel');
+  listParams.delete('request');
+  const listSearch = listParams.toString();
+  const listPath = listSearch ? `/products?${listSearch}` : '/products';
+
+  if (panel !== null && signedIn) {
+    return (
+      <ProductionAreaSurface section="products">
+        <Link
+          to={listPath}
+          className="pro-focus-ring -ml-1 inline-flex min-h-11 items-center gap-1 rounded-[9px] px-1 text-[14px] font-semibold text-[var(--g-ink)]"
+          data-testid="products-panel-back"
+        >
+          <span aria-hidden>‹</span> {productsCopy.back}
+        </Link>
+        <div className={cn(ACCOUNT_PANEL, 'mt-3')} data-testid={`products-panel-${panel}`}>
+          {panel === 'markets' ? <AccountProductMarkets /> : <ProductRequestAccountSections />}
+        </div>
+      </ProductionAreaSurface>
+    );
+  }
+
   return (
-    <DestinationSurface
-      eyebrow="Katalog Gellatti"
-      title="Produkty"
-      blurb="Produkty, ich zastosowanie, dostępność i Twoja cena — wszystko w jednym miejscu."
-      contextLabel="Produkty"
+    <ProductionAreaSurface
+      section="products"
+      // On a phone an open product is its own view: the section action steps aside.
+      headingClassName={productOpen ? 'max-lg:hidden' : undefined}
       actions={
         capabilities.canSaveRecipe ? (
-          <div className="flex flex-wrap items-center gap-2">
-            {canAdmin ? (
-              <Link to="/products/import" className={buttonClasses('ghost', 'sm')}>
-                Import administracyjny
-              </Link>
-            ) : null}
-            <Link to="/products/scan" className={applicationPrimaryClasses()}>
-              Skanuj produkt
-            </Link>
-          </div>
+          <Link to="/products/scan" className={applicationPrimaryClasses()}>
+            Skanuj produkt
+          </Link>
         ) : null
       }
     >
@@ -396,7 +435,9 @@ export function ProductsHubPage() {
         />
       ) : (
         <>
-          <ProductsFilterTabs />
+          <div className={productOpen ? 'max-lg:hidden' : undefined}>
+            <ProductsFilterTabs />
+          </div>
           {productFilter === 'unverified' ? (
             <>
               <p className="mb-4 max-w-xl text-sm text-[var(--g-text-secondary)]">
@@ -413,14 +454,43 @@ export function ProductsHubPage() {
               <MyProductsPanel />
             </>
           ) : (
-            <GlobalCatalogSearchPanel />
+            /* „Moja cena” is a PRO price — HOME's catalogue shows no price column or row. */
+            <GlobalCatalogSearchPanel showPrivatePrice={capabilities.canUseProductionMode} />
           )}
-          <p className="mt-8 max-w-xl text-xs leading-relaxed text-[var(--g-text-secondary)]">
-            Twoja cena, dostawca, notatki i stan magazynowy pozostają prywatne.
-          </p>
+          <div className={productOpen ? 'max-lg:hidden' : undefined}>
+            <nav
+              aria-label={productsCopy.marketsLink}
+              className="mt-8 max-w-3xl border-t border-[var(--g-line)]"
+              data-testid="products-settings-links"
+            >
+              <Link to="/products?panel=markets" className={productsRow}>
+                <span>{productsCopy.marketsLink}</span>
+                <span aria-hidden className="text-[var(--g-text-secondary)]">
+                  ›
+                </span>
+              </Link>
+              <Link to="/products?panel=requests" className={productsRow}>
+                <span>{productsCopy.requestsLink}</span>
+                <span aria-hidden className="text-[var(--g-text-secondary)]">
+                  ›
+                </span>
+              </Link>
+              {canAdmin ? (
+                <Link to="/products/import" className={productsRow}>
+                  <span>{productsCopy.adminImportLink}</span>
+                  <span aria-hidden className="text-[var(--g-text-secondary)]">
+                    ›
+                  </span>
+                </Link>
+              ) : null}
+            </nav>
+            <p className="mt-6 max-w-xl text-xs leading-relaxed text-[var(--g-text-secondary)]">
+              Twoja cena, dostawca, notatki i stan magazynowy pozostają prywatne.
+            </p>
+          </div>
         </>
       )}
-    </DestinationSurface>
+    </ProductionAreaSurface>
   );
 }
 
@@ -495,11 +565,9 @@ export function ProductionHubPage() {
   const labelSnapshot = activeSnapshot ?? history[0]?.snapshot ?? null;
 
   return (
-    <DestinationSurface
-      eyebrow="Gellatti Pro"
-      title="Produkcja"
+    <ProductionAreaSurface
+      section="batches"
       blurb="Bieżąca partia, zapis zakończonych produkcji i etykiety — zawsze oparte na tych samych danych."
-      contextLabel="Produkcja"
     >
       {!capabilities.canUseProductionMode ? (
         <WorkflowNotice
@@ -709,7 +777,7 @@ export function ProductionHubPage() {
           ) : null}
         </>
       )}
-    </DestinationSurface>
+    </ProductionAreaSurface>
   );
 }
 
@@ -833,7 +901,8 @@ export function LabelsHubPage() {
     });
 
   return (
-    <DestinationSurface
+    <ProductionAreaSurface
+      section="labels"
       eyebrow="Gellatti Pro"
       title="Etykiety"
       blurb="Profil konta i etykiety zakończonych partii — w jednym, spójnym miejscu."
@@ -941,7 +1010,7 @@ export function LabelsHubPage() {
           />
         </div>
       </section>
-    </DestinationSurface>
+    </ProductionAreaSurface>
   );
 }
 
