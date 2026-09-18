@@ -182,8 +182,8 @@ describe('/labels current draft settings round trip', () => {
     ).toBe('profile');
     expect(host.querySelector('[data-testid="label-history"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="label-production-date-setting"]')).toBeNull();
-    // Reached from the menu there is nowhere to go back to, so no back action is invented.
-    expect(host.querySelector('[data-testid="labels-return"]')).toBeNull();
+    // GEL-P0-033: „← Wróć” stays on `/labels` in every context (today's fallback route).
+    expect(host.querySelector('[data-testid="labels-return"]')?.textContent?.trim()).toBe('← Wróć');
     setLabelDraft.mockRestore();
   });
 

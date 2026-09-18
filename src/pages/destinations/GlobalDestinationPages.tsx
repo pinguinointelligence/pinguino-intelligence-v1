@@ -569,8 +569,9 @@ export function LabelsHubPage() {
       state: { labelSettingsRestore: labelSettingsReturn },
     });
   /* The return names where it goes. Without a named source it stays the plain
-     „← Wróć” (GEL-P0-033). Reached from ☰ there is no origin, so the defaults
-     screen shows no back action — a back to a place never visited would be a lie. */
+     „← Wróć” with today's fallback route. GEL-P0-033 keeps „← Wróć” on `/labels`
+     in every context — also when Etykiety is reached from ☰ with no origin (the v3
+     preview shows none there; that difference waits for an Owner decision). */
   const backLabel =
     returnTarget?.origin === 'production-history'
       ? labelsCopy.backToProductionHistory
@@ -579,7 +580,6 @@ export function LabelsHubPage() {
         : returnTarget?.origin === 'current-run'
           ? labelsCopy.backToRun
           : '← Wróć';
-  const showBack = context !== 'defaults' || returnTarget !== null;
 
   /* A new context (or another run) opens at its top, where its back action is — the
      page it came from may have been scrolled far down. Choosing another version of the
@@ -597,16 +597,14 @@ export function LabelsHubPage() {
      the area surface says where the tools live instead of rendering them. */
   return (
     <ProductionAreaSurface section="labels">
-      {showBack ? (
-        <button
-          type="button"
-          onClick={returnToOrigin}
-          className="pro-focus-ring -ml-1 mb-4 inline-flex min-h-11 items-center rounded-full px-1 text-sm font-semibold text-ink transition-opacity hover:opacity-60"
-          data-testid="labels-return"
-        >
-          {backLabel}
-        </button>
-      ) : null}
+      <button
+        type="button"
+        onClick={returnToOrigin}
+        className="pro-focus-ring -ml-1 mb-4 inline-flex min-h-11 items-center rounded-full px-1 text-sm font-semibold text-ink transition-opacity hover:opacity-60"
+        data-testid="labels-return"
+      >
+        {backLabel}
+      </button>
       {context === 'recipe' ? (
         <RecipeLabelSettings onReturn={returnToOrigin} />
       ) : context === 'run' ? (
