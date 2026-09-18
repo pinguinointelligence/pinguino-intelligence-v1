@@ -31,6 +31,7 @@ import { useCodeAvailability } from '@/features/affiliate/codeAvailability';
 import {
   createPartnerContentLink,
   getPartnerWorkspace,
+  getPendingCommission,
   managePartnerCode,
   startConnectOnboarding,
   updatePartnerProfile,
@@ -72,6 +73,13 @@ function Overview({ data }: { data: PartnerWorkspace }) {
   const codes = data.codes ?? [];
   const activeCodes = codes.filter((code) => code.status === 'active');
   const summary = earningsSummary(data.commissions ?? [], new Date());
+  /* "W trakcie" and "Do wypłaty" are the payout authority's NET figures
+     (after refunds, disputes and other corrections), stated on the server by
+     gellatti_partner_pending_commission_v1. They are shown as they come: this
+     page adds and subtracts nothing. Until they arrive — or if the server does
+     not have them yet — the tile says "—" instead of guessing. */
+  const pending = useQuery({ queryKey: ['partner-pending-commission'], queryFn: getPendingCommission });
+  const net = (cents: number | undefined) => (typeof cents === 'number' ? money(cents) : '—');
   const totals = codes.reduce(
     (sum, code) => ({
       clicks: sum.clicks + Number(code.clickCount),
@@ -107,12 +115,12 @@ function Overview({ data }: { data: PartnerWorkspace }) {
           ],
           [
             commissionStatusCopy('held').label,
-            money(summary.heldCents),
+            net(pending.data?.heldNetCents),
             commissionStatusCopy('held').help,
           ],
           [
             commissionStatusCopy('eligible').label,
-            money(summary.eligibleCents),
+            net(pending.data?.readyNetCents),
             commissionStatusCopy('eligible').help,
           ],
         ].map(([label, value, help]) => (

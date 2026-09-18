@@ -11,6 +11,7 @@ import {
   getAdminDirectory,
   getAdminCommissionRules,
   getAdminInvites,
+  getAdminPartnerPendingCommission,
   invitePartnerByEmail,
   provisionPartnerConnect,
   resendPartnerInvitation,
@@ -29,10 +30,8 @@ import {
 
 const field = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
 
-/* `pendingCommission` is integer cents (held + eligible, gross) from
-   gellatti_admin_directory_v1('PARTNERS'). It was printed raw — "25765" beside
-   the Partner panel's "257,65 €" for the same money. Same formatter as the
-   Partner page, so the two panels read the same number the same way. */
+/* Integer cents to pl-PL EUR — the Partner page's formatter, so the two panels
+   read the same number the same way ("25765" printed raw was the old defect). */
 const money = (cents: unknown) =>
   new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'EUR' }).format(Number(cents ?? 0) / 100);
 
@@ -43,6 +42,17 @@ export function AdminPartnersSection() {
     queryFn: () => getAdminDirectory('PARTNERS'),
   });
   const invites = useQuery({ queryKey: ['admin-invites'], queryFn: getAdminInvites });
+  /* "Oczekująca prowizja" is the payout authority's NET figure per partner
+     (gellatti_admin_partner_pending_commission_v1): held + ready, after every
+     correction — the same number the Partner sees as "W trakcie" + "Do
+     wypłaty". The directory's own gross sum is no longer shown. */
+  const pendingCommission = useQuery({
+    queryKey: ['admin-partner-pending-commission'],
+    queryFn: getAdminPartnerPendingCommission,
+  });
+  const pendingByPartner = new Map(
+    (pendingCommission.data ?? []).map((row) => [row.partnerId, row.pendingNetCents]),
+  );
   const commissionRules = useQuery({
     queryKey: ['admin-commission-rules'],
     queryFn: getAdminCommissionRules,
@@ -406,7 +416,10 @@ export function AdminPartnersSection() {
                   </p>
                   <p className="mt-2 text-xs text-[var(--g-text-secondary)]">
                     Kliknięcia {String(partner.clicks)} · Przypisania {String(partner.attributions)}{' '}
-                    · Oczekująca prowizja {money(partner.pendingCommission)}
+                    · Oczekująca prowizja{' '}
+                    {pendingByPartner.has(String(partner.id))
+                      ? money(pendingByPartner.get(String(partner.id)))
+                      : '—'}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {codes.map((code) => (

@@ -79,11 +79,27 @@ const WORKSPACE: PartnerWorkspace = {
   ],
 };
 
-const render = (section: 'overview' | 'earnings' | 'payouts') => {
+/* The payout authority's NET figures for the same partner, as the server states
+   them (gellatti_partner_pending_commission_v1). c1 held 4,99 € carries a
+   −1,00 € partial refund, so "W trakcie" is 3,99 € — not the 4,99 € the rows
+   add up to. The page must show the server's number, never its own sum. */
+const PENDING = {
+  heldNetCents: 399,
+  payableNetCents: 900,
+  inFlightCents: 0,
+  readyNetCents: 900,
+  pendingNetCents: 1299,
+  livemode: false,
+};
+
+const render = (section: 'overview' | 'earnings' | 'payouts', pending: unknown = PENDING) => {
+  // `'absent'` = the server figure never arrived (a default parameter cannot be
+  // omitted by passing undefined).
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
   client.setQueryData(['partner-workspace'], WORKSPACE);
+  if (pending !== 'absent') client.setQueryData(['partner-pending-commission'], pending);
   return renderToStaticMarkup(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[`/partner?section=${section}`]}>
@@ -112,10 +128,21 @@ describe('H-DASH-02 — the Overview leads with money', () => {
     expect(text(render('overview'))).toContain(`Prowizja w tym miesiącu ${eur(1899)}`);
   });
 
-  it('W trakcie and Do wypłaty are the ledger states, labelled with the ledger copy', () => {
+  it('W trakcie and Do wypłaty are the payout authority\'s NET figures, labelled with the ledger copy', () => {
     const overview = text(render('overview'));
-    expect(overview).toContain(`W trakcie ${eur(499)}`);
+    // 3,99 € = held 4,99 € − 1,00 € refund: the server's figure, not the rows' sum.
+    expect(overview).toContain(`W trakcie ${eur(399)}`);
+    expect(overview).not.toContain(`W trakcie ${eur(499)}`);
     expect(overview).toContain(`Do wypłaty ${eur(900)}`);
+  });
+
+  it('without the server figure the tiles say "—" rather than falling back to a browser sum', () => {
+    const overview = text(render('overview', 'absent'));
+    expect(overview).toContain('W trakcie —');
+    expect(overview).toContain('Do wypłaty —');
+    // …and a partner the server does not know (null) reads the same way.
+    const unknown = text(render('overview', null));
+    expect(unknown).toContain('W trakcie —');
   });
 
   it('the activity tiles are still there, below', () => {
