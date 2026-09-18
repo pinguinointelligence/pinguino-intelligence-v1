@@ -171,3 +171,42 @@ describe('a recipe with no machine still asks, unchanged', () => {
     ).toBe(true);
   });
 });
+
+describe('a NEW idea never inherits the previous recipe’s Professional machine (served 2026-09-18)', () => {
+  // After the official Mango Sorbet (Professional, §16) the next idea skipped the machine
+  // question and was built on „Twoja maszyna · 1000 g”, which HOME can neither change
+  // nor prepare. §16 protects a Professional recipe that is OPEN — not a leftover.
+  it('asks for the machine while the new recipe is not built yet', () => {
+    const view = page.slice(
+      page.indexOf('const inheritedProfessional'),
+      page.indexOf('changeRequested: forceMachineStage'),
+    );
+    expect(view).toContain(
+      "const inheritedProfessional = !draft.recipeReady && recipe.machineKind === 'professional';",
+    );
+    expect(view).toContain("machineKind: inheritedProfessional ? 'home' : recipe.machineKind");
+    expect(view).toContain('machineLabel: inheritedProfessional');
+    // …which the presentation turns into the ordinary chooser.
+    expect(
+      buildHomeMachineView({
+        machineKind: 'home',
+        machineLabel: null,
+        targetBatchGrams: 1000,
+        recommendedBatchGrams: null,
+        containers: 1,
+      }).needsMachineChoice,
+    ).toBe(true);
+  });
+
+  it('an OPEN Professional recipe is still shown unchanged (§16)', () => {
+    expect(
+      buildHomeMachineView({
+        machineKind: 'professional',
+        machineLabel: 'Maszyna profesjonalna',
+        targetBatchGrams: 1000,
+        recommendedBatchGrams: null,
+        containers: 1,
+      }).needsMachineChoice,
+    ).toBe(false);
+  });
+});

@@ -314,13 +314,21 @@ export function HomeCreatorPage() {
   );
   const recommendedBatchGrams = derivation?.recommendedBatchGrams ?? null;
 
+  // §16 protects a Professional recipe OPENED in HOME (a saved PRO recipe, an adopted
+  // official one): its machine is shown, never changed. While HOME is still building a
+  // NEW idea there is no such recipe yet — a Professional machine in the store is the
+  // previous recipe's (served 2026-09-18: after the official Mango Sorbet, the next idea
+  // skipped the machine question and built on „Twoja maszyna · 1000 g”, which HOME can
+  // neither change nor prepare). The customer is asked for their machine instead.
+  const inheritedProfessional = !draft.recipeReady && recipe.machineKind === 'professional';
   const machineView = buildHomeMachineView({
-    machineKind: recipe.machineKind,
+    machineKind: inheritedProfessional ? 'home' : recipe.machineKind,
     // The recipe's own label is authoritative — including for a Professional recipe
     // opened in HOME, which §16 requires HOME to show unchanged.
-    machineLabel:
-      recipe.machineLabel ??
-      (recipe.machineKind === 'professional' ? homeCreatorCopy.machine.savedLabel : null),
+    machineLabel: inheritedProfessional
+      ? null
+      : (recipe.machineLabel ??
+        (recipe.machineKind === 'professional' ? homeCreatorCopy.machine.savedLabel : null)),
     targetBatchGrams: amount?.totalGrams ?? recipe.target_batch_grams,
     recommendedBatchGrams,
     containers:
