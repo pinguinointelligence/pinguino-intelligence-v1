@@ -1,17 +1,19 @@
 /**
  * RL-17 — where a HOME recipe starts, and where the current one came from.
  *
- * `HomeRecipeSources` offers the three starting points: the customer's own idea (this page),
- * an official Gellatti recipe and a Community recipe. The other two open their browsing
- * surfaces; „Zrób te lody" there brings the chosen recipe back here as the customer's working
- * copy, through the same adoption every surface uses.
+ * DESIGN V3.0 VI/IX: `HomeStartModes` offers the TWO starting points — „Twój pomysł” (this
+ * page's composer) and „Receptury” (the collections, their carousels and the search, shown
+ * on this page). Community is the sixth collection inside „Receptury”, no longer a third
+ * mode, and neither mode leaves HOME: a chosen recipe opens through the same adoption
+ * every surface uses.
  *
  * `HomeRecipeOriginNotice` says what just happened to an official recipe opened in HOME, and
  * `HomeRecipeProvenanceLine` keeps a working copy's origin visible afterwards.
  */
-import { Link } from 'react-router';
+import type { KeyboardEvent } from 'react';
 import { officialRecipeCopy } from '@/copy/officialRecipeLibrary';
 import type { RecipeProvenance } from '@/features/recipes/recipeProvenance';
+import type { HomeStartMode } from '../homeComposerGate';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 
 /** The same horizontal frame as every HOME section. */
@@ -19,38 +21,51 @@ const FRAME = 'mx-auto w-full max-w-[560px] px-5 sm:px-6 lg:max-w-[720px]';
 const PILL =
   'inline-flex min-h-[44px] items-center rounded-full border px-4 text-[13px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
 
-export function HomeRecipeSources() {
+const START_MODES: readonly HomeStartMode[] = ['idea', 'library'];
+
+/** „Twój pomysł” | „Receptury” — one choice, two pills (styled by `homeStart.css`). */
+export function HomeStartModes({
+  mode,
+  onChange,
+}: {
+  mode: HomeStartMode;
+  onChange: (mode: HomeStartMode) => void;
+}) {
   const c = homeCreatorCopy.sources;
+  const label = (entry: HomeStartMode) => (entry === 'idea' ? c.own : c.library);
+  // A radio group moves with the arrow keys and keeps ONE tab stop.
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    const next = START_MODES[(START_MODES.indexOf(mode) + 1) % START_MODES.length]!;
+    onChange(next);
+    event.currentTarget
+      .querySelector<HTMLButtonElement>(`[data-testid="home-start-mode-${next}"]`)
+      ?.focus();
+  };
   return (
-    <nav
+    <div
+      role="radiogroup"
       aria-label={c.label}
       data-testid="home-recipe-sources"
-      className={`${FRAME} flex flex-wrap items-center gap-2 pt-6`}
+      className="home-start-modes"
+      onKeyDown={onKeyDown}
     >
-      <span
-        aria-current="page"
-        className={PILL}
-        style={{ borderColor: 'var(--g-ink)', color: 'var(--g-ink)' }}
-      >
-        {c.own}
-      </span>
-      <Link
-        to="/recipes"
-        data-testid="home-source-gellatti"
-        className={PILL}
-        style={{ borderColor: 'var(--g-line)', color: 'var(--g-text-secondary)' }}
-      >
-        {c.gellatti}
-      </Link>
-      <Link
-        to="/community"
-        data-testid="home-source-community"
-        className={PILL}
-        style={{ borderColor: 'var(--g-line)', color: 'var(--g-text-secondary)' }}
-      >
-        {c.community}
-      </Link>
-    </nav>
+      {START_MODES.map((entry) => (
+        <button
+          key={entry}
+          type="button"
+          role="radio"
+          aria-checked={mode === entry}
+          tabIndex={mode === entry ? 0 : -1}
+          className="home-start-mode"
+          data-testid={`home-start-mode-${entry}`}
+          onClick={() => onChange(entry)}
+        >
+          {label(entry)}
+        </button>
+      ))}
+    </div>
   );
 }
 

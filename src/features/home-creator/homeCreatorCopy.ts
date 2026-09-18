@@ -11,6 +11,10 @@
  * Polish is the reference locale (`src/copy/locale.ts`) and is what staging serves.
  */
 import { REFERENCE_LOCALE, resolveLocaleResource, type AppLocale } from '@/copy/locale';
+import { officialRecipeCopy } from '@/copy/officialRecipeLibrary';
+
+/** The library's own Polish plural („1 receptura · 3 receptury · 76 receptur”). */
+const officialRecipeCountPl = officialRecipeCopy.recipeCount;
 
 export interface HomeCreatorCopy {
   readonly switch: {
@@ -60,12 +64,42 @@ export interface HomeCreatorCopy {
     readonly whatIsThis: string;
     readonly notFound: string;
   };
-  /** RL-17: where a HOME recipe starts — the customer's idea, Gellatti or Community. */
+  /**
+   * DESIGN V3.0 VI/IX: where a HOME recipe starts — two modes, the customer's idea or the
+   * recipes. Community is one of the collections inside „Receptury”, not a third mode.
+   */
   readonly sources: {
     readonly label: string;
     readonly own: string;
-    readonly gellatti: string;
-    readonly community: string;
+    readonly library: string;
+  };
+  /** DESIGN V3.0 IX — „Receptury”: collections, their carousels and the flavour search. */
+  readonly library: {
+    readonly collectionsLabel: string;
+    readonly backToCollections: string;
+    readonly backToCollectionsLabel: string;
+    readonly searchPlaceholder: string;
+    readonly searchLabel: string;
+    readonly clearSearch: string;
+    readonly resultsTitle: string;
+    /** „truskawka · 5 receptur · 1 z Community”. */
+    readonly resultsSummary: (word: string, officialCount: number, community: boolean) => string;
+    readonly searching: string;
+    readonly searchUnavailable: string;
+    readonly noneTitle: string;
+    readonly noneBody: (word: string) => string;
+    readonly noneAction: string;
+    readonly recipeCount: (count: number) => string;
+    readonly communityName: string;
+    readonly communityTileLine: string;
+    readonly communityLine: string;
+    readonly communityLoading: string;
+    readonly communityEmpty: string;
+    readonly communityUnavailable: string;
+    readonly carouselLabel: (name: string) => string;
+    readonly resultsCarouselLabel: (word: string) => string;
+    /** Shown above „Rozpocznij recepturę” once a card is chosen. */
+    readonly chosen: string;
   };
   readonly match: {
     readonly title: string;
@@ -289,7 +323,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
   switch: { home: 'HOME', pro: 'PRO', ariaLabel: 'Wybór widoku: HOME albo PRO' },
   intent: {
     headline: 'Stwórz własne lody. Jak profesjonalista.',
-    question: 'Jakie lody robimy dzisiaj?',
+    question: 'Jakie lody dziś robimy?',
     placeholder: 'Wpisz składnik lub smak…',
     inputLabel: 'Opisz swój pomysł na lody',
     addByVoice: 'Powiedz',
@@ -305,7 +339,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     chipsLabel: 'Twój pomysł',
     anythingElse: 'Coś jeszcze dodajemy?',
     removeChip: 'Usuń',
-    cta: 'Zamień pomysł w recepturę',
+    cta: 'Rozpocznij recepturę',
     emptyHint: 'Dodaj przynajmniej jeden składnik albo smak.',
     resolving: 'Sprawdzam produkty…',
   },
@@ -327,9 +361,36 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
   },
   sources: {
     label: 'Od czego zaczynasz',
-    own: 'Własny pomysł',
-    gellatti: 'Receptury Gellatti',
-    community: 'Community',
+    own: 'Twój pomysł',
+    library: 'Receptury',
+  },
+  library: {
+    collectionsLabel: 'Kolekcje',
+    backToCollections: 'Kolekcje',
+    backToCollectionsLabel: 'Wszystkie kolekcje',
+    searchPlaceholder: 'Smak lub składnik, np. truskawka',
+    searchLabel: 'Szukaj receptur po smaku lub składniku',
+    clearSearch: 'Wyczyść',
+    resultsTitle: 'Zobacz, co możesz zrobić',
+    resultsSummary: (word, officialCount, community) =>
+      [word, officialRecipeCountPl(officialCount), community ? '1 z Community' : null]
+        .filter(Boolean)
+        .join(' · '),
+    searching: 'Szukam receptur…',
+    searchUnavailable: 'Nie udało się teraz sprawdzić receptur. Spróbuj ponownie za chwilę.',
+    noneTitle: 'Nie mamy jeszcze takich receptur.',
+    noneBody: (word) => `Zacznij od własnego pomysłu z „${word}”.`,
+    noneAction: 'Twój pomysł',
+    recipeCount: (count) => officialRecipeCountPl(count),
+    communityName: 'Community',
+    communityTileLine: 'Od społeczności',
+    communityLine: 'Top 100',
+    communityLoading: 'Wczytuję Community…',
+    communityEmpty: 'W Community nie ma jeszcze receptur.',
+    communityUnavailable: 'Nie udało się teraz wczytać Community.',
+    carouselLabel: (name) => `Receptury · ${name}`,
+    resultsCarouselLabel: (word) => `Receptury: ${word}`,
+    chosen: 'Wybrana:',
   },
   match: {
     title: 'Znaleźliśmy podobne receptury',
@@ -541,7 +602,7 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     chipsLabel: 'Your idea',
     anythingElse: 'Anything else to add?',
     removeChip: 'Remove',
-    cta: 'Turn the idea into a recipe',
+    cta: 'Start the recipe',
     emptyHint: 'Add at least one ingredient or flavour.',
     resolving: 'Checking products…',
   },
@@ -563,9 +624,40 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
   },
   sources: {
     label: 'Where you start',
-    own: 'My own idea',
-    gellatti: 'Gellatti recipes',
-    community: 'Community',
+    own: 'Your idea',
+    library: 'Recipes',
+  },
+  library: {
+    collectionsLabel: 'Collections',
+    backToCollections: 'Collections',
+    backToCollectionsLabel: 'All collections',
+    searchPlaceholder: 'A flavour or ingredient, e.g. strawberry',
+    searchLabel: 'Search recipes by flavour or ingredient',
+    clearSearch: 'Clear',
+    resultsTitle: 'See what you can make',
+    resultsSummary: (word, officialCount, community) =>
+      [
+        word,
+        `${officialCount} ${officialCount === 1 ? 'recipe' : 'recipes'}`,
+        community ? '1 from Community' : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    searching: 'Looking for recipes…',
+    searchUnavailable: "We couldn't check the recipes right now. Please try again in a moment.",
+    noneTitle: "We don't have recipes like that yet.",
+    noneBody: (word) => `Start from your own idea with “${word}”.`,
+    noneAction: 'Your idea',
+    recipeCount: (count) => `${count} ${count === 1 ? 'recipe' : 'recipes'}`,
+    communityName: 'Community',
+    communityTileLine: 'From the community',
+    communityLine: 'Top 100',
+    communityLoading: 'Loading Community…',
+    communityEmpty: 'There are no Community recipes yet.',
+    communityUnavailable: "We couldn't load Community right now.",
+    carouselLabel: (name) => `Recipes · ${name}`,
+    resultsCarouselLabel: (word) => `Recipes: ${word}`,
+    chosen: 'Chosen:',
   },
   match: {
     title: 'We found similar recipes',

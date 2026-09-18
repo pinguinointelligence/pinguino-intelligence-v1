@@ -301,7 +301,16 @@ export function HomePreparation({
     : null;
   const activeAddon = session?.addonLines.find((line) => !line.confirmed) ?? null;
   const activeTopUp = session?.topUpTasks.find((task) => task.status === 'pending') ?? null;
-  const machineStepCompleted = Boolean(session && baseDone && session.stage === 'addons');
+  // A Professional recipe (an official Gellatti recipe opened in HOME keeps its
+  // Professional machine, §16) has no home-machine guide. PRO Production runs such a
+  // batch with no machine hand-off (`machineGuide: null`); HOME does exactly the same
+  // rather than ending in „Brakuje instrukcji urządzenia” with no way on (served
+  // 2026-09-18: Mango Sorbet → „Zróbmy to”). A HOME machine with no confirmed guide
+  // still stops below — that is an unconfirmed process, not a missing hand-off.
+  const professionalWithoutGuide = guide === null && recipe.machineKind === 'professional';
+  const machineStepCompleted = Boolean(
+    session && baseDone && (session.stage === 'addons' || professionalWithoutGuide),
+  );
   const activeLine = baseDone && machineStepCompleted ? activeAddon : activeBase;
   const planStepForLine = (lineId: string) =>
     plan?.steps.find(
@@ -362,7 +371,7 @@ export function HomePreparation({
           // The shared confirmer opens `addons` as soon as BASE is complete. HOME
           // holds that existing Production stage until the customer confirms the
           // canonical machine handoff, then opens the late-addition stage below.
-          stage: justCompletedBase ? 'base' : confirmed.stage,
+          stage: justCompletedBase && !professionalWithoutGuide ? 'base' : confirmed.stage,
           durableActualRevision: confirmed.durableActualRevision + 1,
           lastDeviationDecision: null,
         });
@@ -389,7 +398,7 @@ export function HomePreparation({
     );
   }
 
-  if (!guide) {
+  if (!guide && !professionalWithoutGuide) {
     return (
       <HomeSection id="preparation" fill={false} data-testid="home-preparation-blocked">
         <h2 className="text-2xl font-semibold">Brakuje instrukcji urządzenia</h2>
@@ -601,7 +610,7 @@ export function HomePreparation({
             </button>
           )}
         </div>
-      ) : baseDone && !machineStepCompleted ? (
+      ) : baseDone && !machineStepCompleted && guide ? (
         <div className="mt-6" data-testid="home-machine-step">
           {heatStepDue && heatStepOnMachineCard && heatStep ? (
             <HeatStepNotice step={heatStep} />
