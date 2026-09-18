@@ -29,6 +29,13 @@ import {
 
 const field = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-white px-3 text-sm';
 
+/* `pendingCommission` is integer cents (held + eligible, gross) from
+   gellatti_admin_directory_v1('PARTNERS'). It was printed raw — "25765" beside
+   the Partner panel's "257,65 €" for the same money. Same formatter as the
+   Partner page, so the two panels read the same number the same way. */
+const money = (cents: unknown) =>
+  new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'EUR' }).format(Number(cents ?? 0) / 100);
+
 export function AdminPartnersSection() {
   const queryClient = useQueryClient();
   const partners = useQuery({
@@ -399,7 +406,7 @@ export function AdminPartnersSection() {
                   </p>
                   <p className="mt-2 text-xs text-[var(--g-text-secondary)]">
                     Kliknięcia {String(partner.clicks)} · Przypisania {String(partner.attributions)}{' '}
-                    · Oczekująca prowizja {String(partner.pendingCommission)}
+                    · Oczekująca prowizja {money(partner.pendingCommission)}
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {codes.map((code) => (

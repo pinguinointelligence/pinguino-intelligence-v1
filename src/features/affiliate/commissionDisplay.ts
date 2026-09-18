@@ -135,7 +135,7 @@ export const PAYOUT_STATUS_COPY: Readonly<Record<PayoutStatus, CommissionStatusC
     paid: { label: 'Wypłacona', help: 'Środki zostały przelane.', negative: false },
     failed: {
       label: 'Nieudana',
-      help: 'Przelew się nie powiódł. Sprawdź dane wypłat — kwota nie przepada.',
+      help: 'Przelew się nie powiódł. Sprawdź dane do wypłat u operatora płatności — kwota nie przepada.',
       negative: false,
     },
     skipped_below_threshold: {
@@ -149,8 +149,8 @@ export const PAYOUT_STATUS_COPY: Readonly<Record<PayoutStatus, CommissionStatusC
       negative: false,
     },
     skipped_not_payable: {
-      label: 'Konto niegotowe',
-      help: 'Dane do wypłat nie są jeszcze kompletne. Kwota czeka.',
+      label: 'Czekamy na dane do wypłat',
+      help: 'Twoje dane do wypłat nie są jeszcze potwierdzone. Kwota czeka.',
       negative: false,
     },
   });
