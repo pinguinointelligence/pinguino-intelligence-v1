@@ -47,7 +47,7 @@ export function AppShell({
   contentClassName,
   viewportLock = false,
   navigationPosition = 'leading',
-  stickyHeader = false,
+  pinnedHeader = true,
 }: {
   actions?: ReactNode;
   /** Optional page-owned lockup. The shared Gellatti wordmark is the default. */
@@ -66,12 +66,14 @@ export function AppShell({
    * Pro workbench keeps its accepted leading geometry. */
   navigationPosition?: 'leading' | 'trailing';
   /**
-   * HOME Creator §10: "the header must remain stable while HOME progresses". HOME is
-   * one long sequential document, so its header pins to the top instead of scrolling
-   * away with the first section. OPT-IN and default `false`, so every existing page —
-   * including the frozen Pro workbench — keeps its accepted geometry untouched.
+   * DESIGN V3.0 — correction VII, OWNER 2026-09-18: „jeżeli ekran używa globalnego
+   * Gellatti headera, header jest pinned domyślnie". The pinned header is a property of
+   * THIS shell, not something each page re-decides, so it is the DEFAULT and there is
+   * one opt-out rather than a sticky hack per page. The owner's exclusions are the
+   * surfaces that do not wear this header at all (the marketing landing page, the auth
+   * modal) plus Admin, which opts out explicitly.
    */
-  stickyHeader?: boolean;
+  pinnedHeader?: boolean;
 }) {
   const accountLaneRef = useApplicationScaleAuthority();
 
@@ -97,7 +99,7 @@ export function AppShell({
          and wrong by the whole notch on a real phone, where `env(safe-area-inset-top)`
          grows the row — the sheet then slid under the header it must stop below. */
       root.style.setProperty('--home-layer-top', `${height}px`);
-      if (stickyHeader) root.style.scrollPaddingTop = `${height}px`;
+      if (pinnedHeader) root.style.scrollPaddingTop = `${height}px`;
     };
     reserve();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(reserve);
@@ -107,7 +109,7 @@ export function AppShell({
       root.style.removeProperty('--home-layer-top');
       root.style.scrollPaddingTop = '';
     };
-  }, [stickyHeader]);
+  }, [pinnedHeader]);
   const persona = useProCorePersona();
   const location = useLocation();
   const entitlement = useHomeEntitlement();
@@ -153,7 +155,7 @@ export function AppShell({
              on Shop and PRO — instead of being dragged inward by whatever canvas
              the surface beneath happens to use. */
           'app-shell-header-row',
-          stickyHeader && 'sticky top-0 z-40 bg-paper',
+          pinnedHeader && 'sticky top-0 z-40 bg-paper',
         )}
         /* The notch inset stays at every width; its FLOOR is a token so the
            workbench breakpoint can drop it. An inline style outranks every

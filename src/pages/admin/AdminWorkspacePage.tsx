@@ -70,7 +70,10 @@ export function AdminWorkspacePage() {
   const { section } = useParams();
   const active = validSection(section);
   return (
-    <AppShell>
+    /* OWNER 2026-09-18, correction VII: the pinned global header is the shell default for
+       user-facing Gellatti screens. Admin is named in the owner's exclusions — the
+       operations console keeps its accepted geometry and scrolls its own way. */
+    <AppShell pinnedHeader={false}>
       <div
         className={cn(
           'gellatti-admin mx-auto grid w-full lg:grid-cols-[190px_minmax(0,1fr)]',
