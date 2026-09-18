@@ -173,6 +173,15 @@ export interface ShopCopy {
     readonly filterAll: string;
   };
   /** The free PDF shopping guide, ordered for 0 € (a document, never a parcel). */
+  /**
+   * Ordering anything in the shop (the 0 € PDF included) needs an active HOME or PRO plan (owner, 2026-09-18).
+   * The shop itself stays open to everyone. The server decides; this is only what the customer reads.
+   */
+  readonly orderGate: {
+    readonly planRequired: string;
+    /** The existing way to choose a plan (/subscription). */
+    readonly plansCta: string;
+  };
   readonly infopak: {
     readonly kicker: string;
     readonly name: string;
@@ -439,6 +448,10 @@ export const shopCopyPl: ShopCopy = {
     trackingNumber: 'Numer przesyłki',
     markShipped: 'Oznacz jako wysłane',
     filterAll: 'Wszystkie',
+  },
+  orderGate: {
+    planRequired: 'Zamawianie w sklepie jest dostępne z aktywnym planem Gellatti HOME lub PRO.',
+    plansCta: 'Wybierz plan',
   },
   infopak: {
     kicker: 'Darmowy infopak',
@@ -711,6 +724,10 @@ export const shopCopyEn: ShopCopy = {
     trackingNumber: 'Tracking number',
     markShipped: 'Mark as shipped',
     filterAll: 'All',
+  },
+  orderGate: {
+    planRequired: 'Ordering in the shop is available with an active Gellatti HOME or PRO plan.',
+    plansCta: 'Choose a plan',
   },
   infopak: {
     kicker: 'Free guide',
