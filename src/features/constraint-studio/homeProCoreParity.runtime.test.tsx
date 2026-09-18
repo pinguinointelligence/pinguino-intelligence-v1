@@ -48,6 +48,7 @@ import {
 import {
   applyPreviewWithServerAuthority,
   beginPiRecalculation,
+  openDirectionFallbackPreviewWithServerAuthority,
   runPiRecalculationWithTerminal,
   useConstraintStudioStore,
 } from './constraintStudioStore';
@@ -409,6 +410,10 @@ interface SideRun {
   terminalAfterRun: unknown;
   offeredBestCandidate: boolean;
   offeredDirectionFallback: boolean;
+  /** CORE's Direction fallback report exactly as staged after the run. */
+  fallbackReport: unknown;
+  /** The customer-visible decision surface the side rendered (null for the automatic path). */
+  decisionShown: string | null;
   /** The Preview the Apply button applied (after a Direction consent, if any). */
   staged: { id: string; planned_grams: number; lock_type: string }[] | null;
   stagedInstructions: unknown;
@@ -498,6 +503,18 @@ interface RunHooks {
   beforeRun?: () => void;
 }
 
+/** The customer's „Ustaw …” inside CORE's Direction fallback decision — the SAME
+ * `DirectionFallbackDecision` surface on both sides (PRO panel, HOME dialog). */
+function fallbackUseButton(root: string): HTMLButtonElement | null {
+  const container = document.querySelector(root);
+  if (!container) return null;
+  return (
+    [...container.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
+      (button.textContent ?? '').trim().startsWith('Ustaw'),
+    ) ?? null
+  );
+}
+
 /** HOME through its real review dialog: `runHomeRecalculation` + the bootstrap. */
 async function runHomeDialog(scenario: ParityScenario, hooks: RunHooks = {}): Promise<SideRun> {
   seat(scenario);
@@ -515,9 +532,19 @@ async function runHomeDialog(scenario: ParityScenario, hooks: RunHooks = {}): Pr
     terminalAfterRun: structuredClone(afterRun.recalculationTerminal),
     offeredBestCandidate: afterRun.directionBestCandidate !== null,
     offeredDirectionFallback: afterRun.directionFallbackReport !== null,
+    fallbackReport: structuredClone(afterRun.directionFallbackReport),
   };
+  const decisionShown = inDocument('[data-testid="home-recalc-direction-fallback"]')
+    ? 'direction-fallback'
+    : inDocument('[data-testid="home-recalc-direction-best"]')
+      ? 'direction-best'
+      : null;
+  const useFallback = fallbackUseButton('[data-testid="home-recalc-direction-fallback"]');
   const best = inDocument('[data-testid="home-recalc-direction-best"] button');
-  if (best) await act(async () => best.click());
+  if (useFallback) {
+    await act(async () => useFallback.click());
+    await settled();
+  } else if (best) await act(async () => best.click());
   const staged = stagedFacts();
   const stagedInstructions = structuredClone(
     useConstraintStudioStore.getState().preview?.previewInstructions?.lines ?? null,
@@ -532,6 +559,7 @@ async function runHomeDialog(scenario: ParityScenario, hooks: RunHooks = {}): Pr
   return {
     mainsBefore: before,
     ...run,
+    decisionShown,
     requests: [...solver.requests] as SolverRequest[],
     staged,
     stagedInstructions,
@@ -556,10 +584,22 @@ async function runHomeAutomatic(scenario: ParityScenario, hooks: RunHooks = {}):
     terminalAfterRun: structuredClone(afterRun.recalculationTerminal),
     offeredBestCandidate: afterRun.directionBestCandidate !== null,
     offeredDirectionFallback: afterRun.directionFallbackReport !== null,
+    fallbackReport: structuredClone(afterRun.directionFallbackReport),
   };
   let staged: SideRun['staged'] = null;
   let stagedInstructions: unknown = null;
-  if (outcome === 'decision' && afterRun.directionBestCandidate !== null) {
+  if (outcome === 'decision' && afterRun.directionFallbackReport?.best) {
+    await openDirectionFallbackPreviewWithServerAuthority();
+    staged = stagedFacts();
+    stagedInstructions = structuredClone(
+      useConstraintStudioStore.getState().preview?.previewInstructions?.lines ?? null,
+    );
+    await applyPreviewWithServerAuthority();
+  } else if (
+    outcome === 'decision' &&
+    afterRun.directionFallbackReport === null &&
+    afterRun.directionBestCandidate !== null
+  ) {
     useConstraintStudioStore.getState().acceptBestDirectionCandidate();
     staged = stagedFacts();
     stagedInstructions = structuredClone(
@@ -588,6 +628,7 @@ async function runHomeAutomatic(scenario: ParityScenario, hooks: RunHooks = {}):
   return {
     mainsBefore: before,
     ...run,
+    decisionShown: null,
     requests: [...solver.requests] as SolverRequest[],
     staged,
     stagedInstructions,
@@ -615,9 +656,23 @@ async function runPro(scenario: ParityScenario, hooks: RunHooks = {}): Promise<S
     terminalAfterRun: structuredClone(afterRun.recalculationTerminal),
     offeredBestCandidate: afterRun.directionBestCandidate !== null,
     offeredDirectionFallback: afterRun.directionFallbackReport !== null,
+    fallbackReport: structuredClone(afterRun.directionFallbackReport),
   };
+  const decisionShown = inDocument(
+    '[data-testid="direction-fallback-decision"], [data-testid="direction-fallback-final"], [data-testid="direction-fallback-alternative"]',
+  )
+    ? 'direction-fallback'
+    : inDocument('[data-testid="direction-best-accept"]')
+      ? 'direction-best'
+      : null;
+  const useFallback =
+    fallbackUseButton('[data-testid="direction-fallback-decision"]') ??
+    fallbackUseButton('[data-testid="direction-fallback-final"]');
   const best = inDocument('[data-testid="direction-best-accept"]');
-  if (best) await act(async () => best.click());
+  if (useFallback) {
+    await act(async () => useFallback.click());
+    await settled();
+  } else if (best) await act(async () => best.click());
   const staged = stagedFacts();
   const stagedInstructions = structuredClone(
     useConstraintStudioStore.getState().preview?.previewInstructions?.lines ?? null,
@@ -634,6 +689,7 @@ async function runPro(scenario: ParityScenario, hooks: RunHooks = {}): Promise<S
   return {
     mainsBefore: before,
     ...run,
+    decisionShown,
     requests: [...solver.requests] as SolverRequest[],
     staged,
     stagedInstructions,
@@ -684,6 +740,72 @@ function expectParity(scenario: ParityScenario, seated: RecipeInput, home: SideR
   expect(pro.stagedInstructions).toBeNull();
   // (e) The solver really moved grams.
   expect(gramsById(home.final)).not.toEqual(gramsById(seated.items));
+}
+
+/**
+ * CORE answered with a Direction decision that offers NO applicable fallback
+ * (`directionFallbackReport.best === null` — e.g. a Sorbet whose ±1 sweetness has no
+ * safe neighbour). Then the customer's only options write nothing, on either surface.
+ * Parity here is stricter than „both applied”: the SAME question to CORE, the SAME
+ * report, the SAME decision surface, and NO write anywhere — each side keeps exactly its
+ * own untouched recipe (HOME's Main at 0 g per OD-1, PRO's at its 1 g seed).
+ */
+function expectSameDecision(scenario: ParityScenario, seated: RecipeInput, home: SideRun, pro: SideRun) {
+  // (a) CORE was asked the same question.
+  expect(home.requests.length).toBeGreaterThan(0);
+  expect(home.requests).toEqual(pro.requests);
+  // CORE gave the same answer: the same terminal, the same fallback report.
+  expect(home.terminalAfterRun).toEqual(pro.terminalAfterRun);
+  expect(pro.fallbackReport).not.toBeNull();
+  expect(withoutTiming(home.fallbackReport)).toEqual(withoutTiming(pro.fallbackReport));
+  expect(home.offeredBestCandidate).toBe(pro.offeredBestCandidate);
+  // The customer sees the same decision surface (the automatic path hands the
+  // staged state to that same dialog, so it renders nothing itself).
+  expect(pro.decisionShown).toBe('direction-fallback');
+  if (home.decisionShown !== null) expect(home.decisionShown).toBe(pro.decisionShown);
+  // Nothing was written on either side.
+  expect(home.applied).toBe(false);
+  expect(pro.applied).toBe(false);
+  expect(home.staged).toBeNull();
+  expect(pro.staged).toBeNull();
+  expect(home.audit).toBe(pro.audit);
+  expect(home.target).toBe(pro.target);
+  const mains = new Set(scenario.mains);
+  const seatedGrams = gramsById(seated.items);
+  for (const line of home.final) {
+    expect(line.planned_grams).toBe(mains.has(line.id) ? 0 : seatedGrams[line.id]);
+  }
+  for (const line of pro.final) {
+    expect(line.planned_grams).toBe(mains.has(line.id) ? 1 : seatedGrams[line.id]);
+  }
+  // (d) Branch evidence: the two sides really took their own doors.
+  for (const main of home.mainsBefore) {
+    expect(main).toEqual({ planned_grams: 0, amount_provenance: undefined });
+  }
+  for (const main of pro.mainsBefore) {
+    expect(main).toEqual({ planned_grams: 1, amount_provenance: AUTO_CROWN_SEED });
+  }
+}
+
+/** CORE's report with ONLY its wall-clock measurements removed (runtimeMs,
+ * totalRuntimeMs): timing is how long this machine took, not what CORE answered. */
+function withoutTiming(report: unknown): unknown {
+  return JSON.parse(
+    JSON.stringify(report, (key, value) =>
+      key === 'runtimeMs' || key === 'totalRuntimeMs' ? undefined : value,
+    ),
+  );
+}
+
+/** Decide from CORE's (identical) answer which parity applies — never from the result. */
+function expectSameOutcome(scenario: ParityScenario, seated: RecipeInput, home: SideRun, pro: SideRun) {
+  expect(withoutTiming(home.fallbackReport)).toEqual(withoutTiming(pro.fallbackReport));
+  const report = pro.fallbackReport as { best?: unknown } | null;
+  if (report !== null && (report.best ?? null) === null) {
+    expectSameDecision(scenario, seated, home, pro);
+  } else {
+    expectParity(scenario, seated, home, pro);
+  }
 }
 
 beforeEach(() => {
@@ -739,26 +861,30 @@ const RISK_CELLS: readonly ParityScenario[] = (['gelato', 'sorbet'] as const).fl
  *    (Main 600 g, Σ 1000 g) → (c) differs.
  * The same entry split also skips lock recovery (:3432 and :1380), the Crown-OFF
  * automatic correction (:3560) and the NO_CHANGE seam (:3606, :1399); the gelato cells
- * below do not reach those branches and match. `it.fails` until CORE gives both
- * entries one behaviour — then flip them to `it`.
+ * below do not reach those branches and match.
+ *
+ * FIXED 2026-09-18 in CORE (`fix(core): a bootstrap-only recalculation is PRO's plain
+ * run`): a run whose instructions are all bootstrap takes PRO's plain-run semantics,
+ * and every Preview it stages is bound to the bootstrap authorization so the Apply door
+ * rebuilds the same draft. HOME's review dialog shows CORE's fallback with PRO's own
+ * `DirectionFallbackDecision`. These cells are ordinary tests now.
  */
-const DIVERGENT_CELL = (scenario: ParityScenario) => scenario.seat === sorbet;
 
 describe('HOME ↔ PRO parity — the known-risk Direction cells', () => {
   for (const scenario of RISK_CELLS) {
-    const test = DIVERGENT_CELL(scenario) ? it.fails : it;
+    const test = it;
     test(`${scenario.name}: HOME dialog ≡ PRO panel`, async () => {
       const seated = scenario.seat();
       const home = await runHomeDialog(scenario);
       const pro = await runPro(scenario);
-      expectParity(scenario, seated, home, pro);
+      expectSameOutcome(scenario, seated, home, pro);
     });
 
     test(`${scenario.name}: HOME first-build/automatic path ≡ PRO panel`, async () => {
       const seated = scenario.seat();
       const home = await runHomeAutomatic(scenario);
       const pro = await runPro(scenario);
-      expectParity(scenario, seated, home, pro);
+      expectSameOutcome(scenario, seated, home, pro);
     });
   }
 });
