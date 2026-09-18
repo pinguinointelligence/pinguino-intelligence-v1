@@ -1,0 +1,156 @@
+{
+  "stagingUrlHost": "tunabqqrwabacxjcxxkz.supabase.co",
+  "ranAt": "2026-09-05T06:44:43.854Z",
+  "qaAccount": "home@home.com",
+  "exactAuthority": "gtin_rpc",
+  "readOnly": true,
+  "researchCalls": 0,
+  "A_known_signedIn": {
+    "Hacendado": {
+      "productId": "50c3d0e1-ca37-4891-a744-a3438d6b226a",
+      "productCode": "PR-ING-007173",
+      "displayName": "Leche líquida entera Hacendado",
+      "brand": "Hacendado",
+      "strength": "canonical_shared",
+      "entityKind": "commercial_product",
+      "provenance": "catalog",
+      "confidence": 97,
+      "behaviour": {
+        "outcome": "classified",
+        "bindingId": "44d44d53-dea8-4daa-af69-bd1583ab7e9a"
+      },
+      "evidence": {
+        "matchedFrom": "products",
+        "visibility": "shared",
+        "ownership": "public",
+        "verificationStatus": "manual_unverified",
+        "lifecycleRejected": false,
+        "markets": [
+          "ES"
+        ]
+      },
+      "currentVersionId": "44d44d53-dea8-4daa-af69-bd1583ab7e9a"
+    },
+    "Łaciate": {
+      "productId": "8fc7869c-f779-43c6-b5e6-c25a845f7c0e",
+      "productCode": "PR-ING-007172",
+      "displayName": "Mleko płynne Łaciate 3,5%",
+      "brand": "Łaciate",
+      "strength": "canonical_shared",
+      "entityKind": "commercial_product",
+      "provenance": "catalog",
+      "confidence": 97,
+      "behaviour": {
+        "outcome": "classified",
+        "bindingId": "c71412dc-7818-4655-aa16-03e6dc018179"
+      },
+      "evidence": {
+        "matchedFrom": "products",
+        "visibility": "shared",
+        "ownership": "public",
+        "verificationStatus": "manual_unverified",
+        "lifecycleRejected": false,
+        "markets": [
+          "PL"
+        ]
+      },
+      "currentVersionId": "c71412dc-7818-4655-aa16-03e6dc018179"
+    },
+    "Alsace Lait": {
+      "productId": "db21c569-6427-4457-b1ae-6952a48f75ac",
+      "productCode": "PR-ING-007174",
+      "displayName": "Lait liquide frais entier Alsace Lait",
+      "brand": "Alsace Lait",
+      "strength": "canonical_shared",
+      "entityKind": "commercial_product",
+      "provenance": "catalog",
+      "confidence": 97,
+      "behaviour": {
+        "outcome": "classified",
+        "bindingId": "b31d1e9c-be54-41be-9eef-13fddf7691af"
+      },
+      "evidence": {
+        "matchedFrom": "products",
+        "visibility": "shared",
+        "ownership": "public",
+        "verificationStatus": "manual_unverified",
+        "lifecycleRejected": false,
+        "markets": [
+          "FR"
+        ]
+      },
+      "currentVersionId": "b31d1e9c-be54-41be-9eef-13fddf7691af"
+    }
+  },
+  "A_repeat_same_identity": true,
+  "A_linkCallsRecordedNotWritten": 4,
+  "A_guest_rpc": {
+    "known": {
+      "Hacendado": {
+        "productId": "50c3d0e1-ca37-4891-a744-a3438d6b226a",
+        "strength": "canonical_shared"
+      },
+      "Łaciate": {
+        "productId": "8fc7869c-f779-43c6-b5e6-c25a845f7c0e",
+        "strength": "canonical_shared"
+      },
+      "Alsace Lait": {
+        "productId": "db21c569-6427-4457-b1ae-6952a48f75ac",
+        "strength": "canonical_shared"
+      }
+    },
+    "unknownUpcA": "unknown",
+    "invalid": "invalid_code"
+  },
+  "B_rescan_same_request": {
+    "Milka Choco Mini Wafers": {
+      "ean": "7622201492786",
+      "kind": "discovery_requested",
+      "requestId": "c63c2935-2b50-4e40-8f6d-6c29485c3bf4",
+      "status": "SUBMITTED",
+      "stage": "evidence_collected",
+      "expectedRequestId": "c63c2935-2b50-4e40-8f6d-6c29485c3bf4",
+      "sameIdentity": true,
+      "canonical": false,
+      "engineReady": false
+    },
+    "HARIBO Favoritos Original": {
+      "ean": "8426617014032",
+      "kind": "discovery_requested",
+      "requestId": "2ce135f0-9224-457e-8248-03753fe52fc4",
+      "status": "SUBMITTED",
+      "stage": "evidence_collected",
+      "expectedRequestId": "2ce135f0-9224-457e-8248-03753fe52fc4",
+      "sameIdentity": true,
+      "canonical": false,
+      "engineReady": false
+    },
+    "Cabreiroá 50cl": {
+      "ean": "8411902004089",
+      "kind": "discovery_requested",
+      "requestId": "58d93b61-95be-4202-8431-783ed628c3b0",
+      "status": "SUBMITTED",
+      "stage": "evidence_collected",
+      "expectedRequestId": "58d93b61-95be-4202-8431-783ed628c3b0",
+      "sameIdentity": true,
+      "canonical": false,
+      "engineReady": false
+    },
+    "Nestea can (green)": {
+      "ean": "8411092731130",
+      "kind": "discovery_requested",
+      "requestId": "723cd9a5-f7bf-48ef-94e8-76d7080c9685",
+      "status": "SUBMITTED",
+      "stage": "evidence_collected",
+      "expectedRequestId": "723cd9a5-f7bf-48ef-94e8-76d7080c9685",
+      "sameIdentity": true,
+      "canonical": false,
+      "engineReady": false
+    }
+  },
+  "C_offline": {
+    "cachedHit": "local_cache",
+    "uncachedMiss": "offline",
+    "storeKeys": 3
+  }
+}
