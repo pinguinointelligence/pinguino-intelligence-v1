@@ -2,7 +2,7 @@
  * The ONE host of the durable batch process — Produkcja v3, Etap 2.
  *
  * Both „Partie" and the recipe's Produkcja tab mount THIS component, so there is exactly
- * one `useProductionWorkspace(true)` behind the process wherever it is shown. They are
+ * one live workspace behind the process wherever it is shown. They are
  * different routes, so the two never mount at once. The host brings only its frame: the
  * way back, its own action, and the layer the sheets open in.
  */
@@ -10,8 +10,21 @@ import { useState, type ReactNode } from 'react';
 import { DialogShell } from '@/components/ui/DialogShell';
 import { ProductionProcess } from './process/ProductionProcess';
 import type { ProcessSheetFrame } from './process/ProductionProcessSheets';
-import { useProductionWorkspace } from './useProductionWorkspace';
+import { useProductionWorkspace, type ProductionWorkspaceView } from './useProductionWorkspace';
 import { useDurableProductionProcess } from './useDurableProductionProcess';
+
+/**
+ * THE single entry point to the production workspace — Produkcja v3, Etap 2.
+ *
+ * Every host of a batch goes through here: „Partie" (below, with the shared process
+ * presentation) and the recipe's Produkcja tab (with the PRO cockpit, which the accepted
+ * package keeps until PRO's own pass). They are different ROUTES, so the hook is live in
+ * exactly one place at a time; `productionWorkspaceSingleHost.test.ts` proves no feature
+ * calls `useProductionWorkspace` around this module and grows a second one.
+ */
+export function useProductionHost(enabled: boolean): ProductionWorkspaceView {
+  return useProductionWorkspace(enabled);
+}
 
 export function ProductionProcessHost({
   name,
@@ -33,7 +46,7 @@ export function ProductionProcessHost({
   empty?: ReactNode;
   testId: string;
 }) {
-  const production = useProductionWorkspace(true);
+  const production = useProductionHost(true);
   const [doneStepIds, setDoneStepIds] = useState<{ sessionId: string; ids: string[] } | null>(null);
   const controller = useDurableProductionProcess(production, {
     doneStepIds:
