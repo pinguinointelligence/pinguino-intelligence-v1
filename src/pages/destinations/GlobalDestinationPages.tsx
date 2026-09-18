@@ -27,26 +27,20 @@ import { ProductRequestAccountSections } from '@/features/product-requests/Produ
 import { HomeInviteRedemption } from '@/features/account/HomeInviteRedemption';
 import { HomeBatches, ProductionBatches } from '@/features/production-area/ProductionBatches';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
-import {
-  DestinationHero,
-  DestinationSection,
-  DestinationSectionHead,
-} from '@/components/shared/destinationEditorial';
 import { ShopCatalog } from '@/features/shop/ShopCatalog';
 import { ShopCartCount } from '@/features/shop/ShopCartCount';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
 import { shopCopy } from '@/copy/shop';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
 import { OwnerAssetImage } from '@/features/work-with-us/OwnerAssetImage';
+import { franchiseSourceRouteFrom } from '@/features/franchise/franchiseConcepts';
 import {
-  FRANCHISE_CONCEPT_INITIAL,
-  FRANCHISE_CONCEPT_ORDER,
-  franchiseConceptBlurbPl,
-  franchiseConceptFromRoute,
-  franchiseConceptLabelPl,
-  franchiseSourceRouteFrom,
-} from '@/features/franchise/franchiseConcepts';
-import { FRANCHISE_FORMAT_LINKS, FRANCHISE_PAGE, FRANCHISE_SPLIT } from '@/copy/workWithUsLanes';
+  FRANCHISE_FORMATS,
+  franchiseFormat,
+  franchiseFormatFromRoute,
+  type FranchiseFormatId,
+} from '@/features/franchise/franchiseFormats';
+import { FRANCHISE_PAGE, FRANCHISE_SPLIT_LINE } from '@/copy/workWithUsLanes';
 import { AppShell } from '@/features/shell/AppShell';
 import { KnowledgeTour } from '@/features/knowledge-tour/KnowledgeTour';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -133,213 +127,236 @@ export function ShopPage() {
 
 export function FranchisePage() {
   const [params] = useSearchParams();
+  const { hash } = useLocation();
   const fromRoute = params.get('from');
+  const leadRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * FRANCHISE — DESIGN F1 (owner correction 2026-09-18), implemented 1:1.
+   *
+   * The flow is: the shared dark top on the owner's facade photograph, the four
+   * formats in one row, ONE opened format directly under that row, „Jak działa
+   * Gellatti” in four small points with the one sentence about roles, and the
+   * enquiry form — compact, on the page, last. Nothing follows it.
+   *
+   * What it replaces: the long editorial hero, four concept cards AND a second
+   * grid of links to the same formats, two eight-item responsibility lists, two
+   * captioned figures.
+   *
+   * Nothing behind the page changed. Same route, same form, same RPC, same
+   * `?from=` attribution, same `#lead` anchor every lane CTA points at.
+   */
+  const [formatId, setFormatId] = useState<FranchiseFormatId | null>(
+    () => franchiseFormatFromRoute(fromRoute) ?? null,
+  );
+  const format = formatId ? franchiseFormat(formatId) : null;
+
+  /* `#lead` is the app's existing contract with every lane CTA and every old
+     external link: it has to land on the enquiry, not on the top of the page.
+     The design's contact frame opens scrolled to the form for the same reason. */
+  useEffect(() => {
+    if (hash === '#lead') leadRef.current?.scrollIntoView({ block: 'start' });
+  }, [hash]);
+
   return (
     <DestinationSurface
       eyebrow="Ekosystem Gellatti"
       title="Franchise"
-      blurb="Koncepty biznesowe Gellatti: lokal firmowy, przyczepa, wózek i punkt."
+      blurb={FRANCHISE_PAGE.intro}
       contextLabel="Franchise"
       bare
     >
-      {/* GELLATTI V2.1 §5 — the approved Franchise hero: 380 px band, 1.1 / 0.9
-          split, 66 px inset, the four concepts as the right half. The concepts,
-          the anchor CTA and the inquiry form below are unchanged. */}
-      <DestinationHero
-        variant="franchise"
-        eyebrow="Ekosystem Gellatti"
-        title="Franchise"
-        blurb="Koncepty biznesowe Gellatti: lokal firmowy, przyczepa, wózek i punkt."
-        note="Franchise jest niezależne od planu Home lub Pro. Ten kierunek prowadzi do zapytania biznesowego i nie miesza się z programem Współpraca."
-        actions={
-          <a href="#franchise-inquiry" className={buttonClasses('primary', 'md')}>
-            Zapytaj o Franchise
-          </a>
-        }
-        visual={
-          /* F01 — the owner's Franchise hero. It replaces the four abstract
-             initial tiles that stood here while no photograph existed: a real
-             Gellatti interior says what the lane is faster than four lettered
-             boxes, and the concepts keep their own section below. */
-          <div className="h-full min-h-[240px] overflow-hidden bg-white">
-            <OwnerAssetImage id="F01" priority sizes="(min-width: 1024px) 45vw, 100vw" />
+      {/* 1 · The shared dark top (DESIGN `.d-top`): graphite, light type, the
+          Gellatti accent as a rule at the very top and a 44 px bar under the
+          title, and the photograph fading INTO the ground rather than sitting
+          on it as a pasted rectangle. */}
+      <section className="relative isolate overflow-hidden rounded-[16px] bg-[#0e0f11] before:absolute before:inset-x-0 before:top-0 before:z-[3] before:h-[3px] before:bg-[var(--g-orange)] before:content-['']">
+        <span className="absolute inset-x-0 top-0 z-0 block h-[58%] md:inset-0 md:left-[44%] md:h-auto">
+          <OwnerAssetImage
+            id="F03"
+            priority
+            sizes="(min-width: 768px) 56vw, 100vw"
+            className="h-full w-full object-cover"
+          />
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,15,17,0.28)_0%,rgba(14,15,17,0.62)_46%,rgba(14,15,17,0.94)_82%,#0e0f11_100%)] md:bg-[linear-gradient(90deg,#0e0f11_0%,rgba(14,15,17,0.9)_26%,rgba(14,15,17,0.34)_66%,rgba(14,15,17,0.12)_100%)]"
+          />
+        </span>
+        <div className="relative z-[2] px-5 pt-[150px] pb-[22px] md:w-[56%] md:px-[30px] md:pt-[34px] md:pb-8">
+          <span className="block font-mono text-[10px] leading-[1.2] font-semibold tracking-[0.12em] text-white/60 uppercase">
+            Ekosystem Gellatti
+          </span>
+          <h1 className="mt-[9px] text-[26px] leading-[1.12] font-semibold tracking-[-0.03em] text-white md:text-[32px] lg:text-[36px]">
+            Franchise
+          </h1>
+          <i
+            aria-hidden="true"
+            className="mt-3 block h-[3px] w-11 rounded-[2px] bg-[var(--g-orange)]"
+          />
+          <p className="mt-[10px] max-w-[42ch] text-[13.5px] leading-[1.5] text-white/[0.74]">
+            {FRANCHISE_PAGE.intro}
+          </p>
+        </div>
+      </section>
+
+      {/* 2 · The four formats (DESIGN `.d-fmts`). The CLOSED card already shows
+          what is behind the choice: the format's own photograph, dimmed under
+          its name. 2 × 2 on a phone and iPad portrait breaks at 768 into one
+          row of four — the design's own breakpoint. */}
+      <div
+        role="tablist"
+        aria-label="Formaty"
+        className="mt-5 grid grid-cols-2 gap-2 md:mt-[26px] md:grid-cols-4 md:gap-2.5"
+      >
+        {FRANCHISE_FORMATS.map((option) => {
+          const active = option.id === formatId;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              role="tab"
+              id={`franchise-format-${option.id}`}
+              aria-selected={active}
+              aria-controls="franchise-format-panel"
+              data-testid={`franchise-format-${option.id}`}
+              onClick={() => setFormatId(option.id)}
+              className={cn(
+                'pro-focus-ring group relative h-[88px] min-w-0 overflow-hidden rounded-[12px] bg-[#101113] md:h-[104px]',
+                active
+                  ? 'shadow-[inset_0_0_0_2px_var(--g-orange)]'
+                  : 'shadow-[inset_0_0_0_1px_#e4e0d9]',
+              )}
+            >
+              <OwnerAssetImage
+                id={option.image}
+                sizes="(min-width: 768px) 25vw, 50vw"
+                className={cn(
+                  'absolute inset-0 h-full w-full object-cover transition-[opacity,transform] duration-300 group-hover:scale-[1.03]',
+                  active ? 'opacity-[0.68]' : 'opacity-[0.52] group-hover:opacity-[0.62]',
+                )}
+              />
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,15,17,0.1)_0%,rgba(14,15,17,0.72)_100%)]"
+              />
+              <span className="absolute inset-x-3 bottom-2.5 z-[1] block text-left text-[12.5px] leading-[1.2] font-semibold tracking-[0.05em] text-white uppercase">
+                {active ? (
+                  <i
+                    aria-hidden="true"
+                    className="mb-[7px] block h-[3px] w-[22px] rounded-[2px] bg-[var(--g-orange)]"
+                  />
+                ) : null}
+                {option.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 3 · Exactly ONE opened format, directly under the row that opened it,
+          separated by the accent rule (DESIGN `.d-fdet`). Opening another one
+          closes this. */}
+      {format ? (
+        <section
+          id="franchise-format-panel"
+          role="tabpanel"
+          aria-labelledby={`franchise-format-${format.id}`}
+          data-testid="franchise-format-panel"
+          data-franchise-format={format.id}
+          className="mt-3.5 grid gap-3.5 border-t-2 border-[var(--g-orange)] pt-4 md:mt-[18px] md:grid-cols-2 md:items-start md:gap-6"
+        >
+          <span className="block overflow-hidden rounded-[12px] bg-[#efe8dc]">
+            <span className="block aspect-[16/10]">
+              <OwnerAssetImage
+                key={format.image}
+                id={format.image}
+                sizes="(min-width: 768px) 45vw, 100vw"
+              />
+            </span>
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-[21px] leading-[1.18] font-semibold tracking-[-0.02em] text-[var(--g-ink)] lg:text-[24px]">
+              {format.label}
+            </h2>
+            <p className="mt-[5px] text-[13.5px] leading-[1.4] font-medium text-[var(--g-ink)]">
+              {format.lead}
+            </p>
+            {format.body.map((paragraph) => (
+              <p
+                key={paragraph}
+                className="mt-[9px] max-w-[54ch] text-[13px] leading-[1.5] text-[#6f6b64]"
+              >
+                {paragraph}
+              </p>
+            ))}
+            <ul className="mt-3 grid gap-1.5">
+              {format.points.map((point) => (
+                <li
+                  key={point}
+                  className="relative pl-[15px] text-[12.5px] leading-[1.4] text-[#3b3833] before:absolute before:top-[6px] before:left-0 before:size-[5px] before:rounded-full before:bg-[var(--g-orange)] before:content-['']"
+                >
+                  {point}
+                </li>
+              ))}
+            </ul>
           </div>
-        }
-      />
-      {/* The lane had a hero and an enquiry form with nothing in between: a
-          reader could not learn what a Gellatti lodziarnia actually is before
-          being asked to enquire. These points are the sourced answer — the
-          production model, the app, and how the format is chosen. */}
-      <DestinationSection>
-        <DestinationSectionHead
-          eyebrow="Czym jest Gellatti"
-          title={FRANCHISE_PAGE.headline}
-          helper={FRANCHISE_PAGE.intro}
-        />
-        <div className="grid gap-3 sm:grid-cols-2">
+        </section>
+      ) : null}
+
+      {/* 4 · How Gellatti works — four small points shared by all four formats,
+          and the one sentence left of „Podział ról” (DESIGN `.d-how`). */}
+      <section className="mt-[26px]">
+        <h2 className="text-[18px] leading-[1.2] font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
+          {FRANCHISE_PAGE.headline}
+        </h2>
+        <div className="mt-3 grid gap-2 md:grid-cols-2 md:gap-3 lg:grid-cols-4 lg:gap-3.5">
           {FRANCHISE_PAGE.points.map((point) => (
             <article
               key={point.title}
-              className="rounded-[12px] border border-[var(--g-line)] bg-white p-[18px]"
+              className="min-w-0 rounded-[12px] bg-white p-[13px_15px] shadow-[inset_0_0_0_1px_#efebe4]"
             >
-              <h3 className="text-[19px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+              <b className="block text-[13.5px] leading-[1.25] font-semibold text-[var(--g-ink)]">
                 {point.title}
-              </h3>
-              <p className="mt-2 text-[13px] leading-[1.55] text-[var(--g-text-secondary)]">
+              </b>
+              <small className="mt-[5px] block text-[12px] leading-[1.4] text-[#6f6b64]">
                 {point.body}
-              </p>
+              </small>
             </article>
           ))}
         </div>
-      </DestinationSection>
+        <p className="mt-2.5 text-[12px] leading-[1.45] text-[#8a857d]">{FRANCHISE_SPLIT_LINE}</p>
+      </section>
 
-      <DestinationSection>
-        <DestinationSectionHead
-          eyebrow="Potwierdzone koncepty"
-          title="Cztery formaty. Bez wymyślonych warunków."
-          helper="Karty opisują format. Zakres współpracy i koszty ustalamy przy konkretnym miejscu."
-        />
-        <div className="grid gap-3 sm:grid-cols-2">
-          {FRANCHISE_CONCEPT_ORDER.map((concept) => (
-            <article
-              key={concept}
-              className="rounded-[12px] border border-[var(--g-line)] bg-white p-[18px]"
-            >
-              <span className="grid size-11 place-items-center rounded-[10px] border border-[var(--g-line)] text-lg">
-                {FRANCHISE_CONCEPT_INITIAL[concept]}
-              </span>
-              <h3 className="mt-4 text-[21px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
-                {franchiseConceptLabelPl(concept)}
-              </h3>
-              <p className="mt-2 text-[13px] leading-[1.55] text-[var(--g-text-secondary)]">
-                {franchiseConceptBlurbPl(concept)}
-              </p>
-            </article>
-          ))}
-        </div>
-      </DestinationSection>
-      {/* Who brings what (owner-approved 2026-09-03, non-financial).
-          Same hairline grid the figures below already use, so this is one more
-          instance of an established pattern rather than a new component.
-          Charcoal for Gellatti, white for the operator: the anchor/working-space
-          split the approved Affiliate page established. No number appears here —
-          the commercial terms are deliberately absent, and the note says so. */}
-      <DestinationSection>
-        <DestinationSectionHead eyebrow={FRANCHISE_SPLIT.eyebrow} title={FRANCHISE_SPLIT.title} />
-        <div className="grid gap-px overflow-hidden rounded-[12px] border border-[var(--g-line)] bg-[var(--g-line)] lg:grid-cols-2">
-          <div className="bg-[var(--g-graphite,#191a1d)] px-6 py-7 text-white sm:px-7">
-            <h3 className="text-[19px] leading-[1.2] font-bold tracking-[-0.02em]">
-              {FRANCHISE_SPLIT.gellatti.title}
-            </h3>
-            <p className="mt-2 text-[13px] leading-[1.55] text-[#c9c5bd]">
-              {FRANCHISE_SPLIT.gellatti.lead}
-            </p>
-            <ul className="mt-5 flex flex-col gap-2.5">
-              {FRANCHISE_SPLIT.gellatti.items.map((item) => (
-                <li key={item} className="flex gap-2.5 text-[13px] leading-[1.5] text-[#efe8dc]">
-                  <span
-                    aria-hidden="true"
-                    className="mt-[7px] size-[3px] shrink-0 rounded-full bg-[var(--g-orange)]"
-                  />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="bg-white px-6 py-7 sm:px-7">
-            <h3 className="text-[19px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
-              {FRANCHISE_SPLIT.operator.title}
-            </h3>
-            <p className="mt-2 text-[13px] leading-[1.55] text-[var(--g-text-secondary)]">
-              {FRANCHISE_SPLIT.operator.lead}
-            </p>
-            <ul className="mt-5 flex flex-col gap-2.5">
-              {FRANCHISE_SPLIT.operator.items.map((item) => (
-                <li
-                  key={item}
-                  className="flex gap-2.5 text-[13px] leading-[1.5] text-[var(--g-text-secondary)]"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="mt-[7px] size-[3px] shrink-0 rounded-full bg-[var(--g-line-strong,#c9c5bd)]"
-                  />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-        <p className="mt-4 text-[12px] leading-relaxed text-[var(--g-text-muted)]">
-          {FRANCHISE_SPLIT.note}
-        </p>
-      </DestinationSection>
-
-      <DestinationSection>
-        <div className="grid gap-px overflow-hidden rounded-[12px] border border-[var(--g-line)] bg-[var(--g-line)] lg:grid-cols-2">
-          <figure className="bg-white">
-            <div className="aspect-[16/10] overflow-hidden">
-              <OwnerAssetImage id="F03" sizes="(min-width: 1024px) 45vw, 100vw" />
-            </div>
-            <figcaption className="px-5 py-4 text-[12px] leading-relaxed text-[var(--g-text-muted)]">
-              Lokal od ulicy. Wygląd i układ ustalamy przy konkretnym miejscu.
-            </figcaption>
-          </figure>
-          <figure className="bg-white">
-            <div className="aspect-[16/10] overflow-hidden">
-              <OwnerAssetImage id="W04" sizes="(min-width: 1024px) 45vw, 100vw" />
-            </div>
-            <figcaption className="px-5 py-4 text-[12px] leading-relaxed text-[var(--g-text-muted)]">
-              Sala i ogródek. Skalę dobieramy do lokalu, nie odwrotnie.
-            </figcaption>
-          </figure>
-        </div>
-      </DestinationSection>
-      {/* The formats that keep their own detail page. Franchise is the umbrella,
-          so they are reached from here rather than from a second top-level
-          menu. */}
-      <DestinationSection>
-        <DestinationSectionHead
-          eyebrow="Formaty w szczegółach"
-          title="Zobacz konkretny format."
-          helper="Każdy z nich prowadzi do tego samego zapytania — wybierasz tylko, o czym rozmawiamy."
-        />
-        <div className="grid gap-3 sm:grid-cols-3">
-          {FRANCHISE_FORMAT_LINKS.map((lane) => (
-            <Link
-              key={lane.href}
-              to={lane.href}
-              className="rounded-[12px] border border-[var(--g-line)] bg-white p-[18px] transition-colors hover:border-[var(--g-line-strong,#c9c5bd)]"
-            >
-              <span className="block text-[10px] leading-[1.25] font-bold tracking-[0.16em] text-[var(--g-text-secondary)] uppercase">
-                {lane.kicker}
-              </span>
-              <h3 className="mt-2.5 text-[19px] leading-[1.2] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
-                {lane.title}
-              </h3>
-              <p className="mt-2 text-[13px] leading-[1.55] text-[var(--g-text-secondary)]">
-                {lane.card}
-              </p>
-            </Link>
-          ))}
-        </div>
-      </DestinationSection>
-
-      {/* ONE Franchise enquiry (owner decision 2026-09-03). The legacy general
-          form wrote to a second table with its own Admin queue; the useful half
-          of it — `?from=` context, concept preselection, route attribution and
-          the #lead deep link — lives here instead, so a visitor produces exactly
-          one lead in one place.
+      {/* 5 · The ONE contact on this page (owner decision 2026-09-03, rescaled
+          by DESIGN F1): the form itself, compact, at the foot. The legacy
+          general form wrote to a second table with its own Admin queue; the
+          useful half of it — `?from=` context, concept preselection, route
+          attribution and the #lead deep link — lives here instead, so a visitor
+          produces exactly one lead in one place.
 
           `#lead` is carried by this wrapper because every in-app CTA and every
           old external link points at it. */}
-      <DestinationSection>
-        <div id="lead" className="scroll-mt-28">
+      <section className="mt-[26px]">
+        <div id="lead" ref={leadRef} className="scroll-mt-28">
           <FranchiseInquiryForm
-            initialConcept={franchiseConceptFromRoute(fromRoute) ?? 'lokal'}
-            sourceRoute={franchiseSourceRouteFrom(fromRoute)}
+            title="Kontakt"
+            note={FRANCHISE_PAGE.next}
+            /* The four cards above ARE the subject choice in the design, so the
+               open format carries the concept. With none open the form keeps the
+               same default it has always had. */
+            concept={format?.concept ?? 'lokal'}
+            /* A real arrival always owns the attribution: `?from=` says where
+               the question actually started. Only a format that carries no
+               stored concept — Maszyny — falls back to its own route, which is
+               the signal `source_route` exists to carry. */
+            sourceRoute={
+              franchiseSourceRouteFrom(fromRoute) ??
+              (format && !format.concept ? format.route : undefined)
+            }
           />
         </div>
-      </DestinationSection>
+      </section>
     </DestinationSurface>
   );
 }

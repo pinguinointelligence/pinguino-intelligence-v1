@@ -72,90 +72,55 @@ export const LANES = {
 } as const satisfies Record<string, LaneCopy>;
 
 /**
- * Franchise is the only lane whose page was never given its own copy, so it
- * ran on the hero blurb alone. Everything here is sourced: the production
- * model, the four concepts (`franchiseConcepts.ts`), and what the app actually
- * does. Nothing states a fee, a package, a territory or a split of
- * responsibilities — that is commercial authority this file does not have, and
- * the rule at the top of this file forbids inventing it.
+ * FRANCHISE — the shared block (DESIGN F1, owner correction 2026-09-18).
+ *
+ * `points` is the design's „Jak działa Gellatti”: four small points that hold
+ * for all four formats. They replace four paragraphs about the concept AND the
+ * „Podział ról” section, whose two eight-item lists said at length what the one
+ * sentence below says. Copy transcribed from `F_HOW` in the approved preview.
+ *
+ * Nothing here states a fee, a package, a territory or a split of
+ * responsibilities in commercial terms; that is authority this file does not
+ * have, and the rule at the top of this file forbids inventing it.
  */
 export const FRANCHISE_PAGE: LanePageCopy = {
   ...LANES.franchise,
-  headline: 'Lodziarnia, w której lody powstają na miejscu',
-  intro:
-    'Gellatti nie jest mrożonym produktem z centralnej fabryki. Gelato powstaje w lokalu, w małych partiach, według receptur prowadzonych w aplikacji. Format dobieramy do miejsca — pełny lokal, przyczepa, wózek albo punkt.',
+  headline: 'Jak działa Gellatti',
+  intro: 'Cztery sposoby pracy z Gellatti. Format dobieramy do miejsca, skali i sposobu sprzedaży.',
   points: [
     {
-      title: 'Świeże, robione u Ciebie',
-      body: 'Produkcja idzie na miejscu i w małych partiach — tyle, ile schodzi. Gość dostaje lody zrobione w tym lokalu, a nie przywiezione.',
+      title: 'System i technologia',
+      body: 'Aplikacja, receptury, partie, etykiety i historia produkcji w jednym systemie.',
     },
     {
-      title: 'Aplikacja prowadzi produkcję',
-      body: 'Receptury, profil maszyny, przeliczanie partii, etykiety i historia produkcji są w Gellatti. Powtarzalność nie zależy od pamięci jednej osoby.',
+      title: 'Świeże lody na miejscu',
+      body: 'Produkcja w małych partiach, wtedy kiedy jej potrzebujesz.',
     },
     {
-      title: 'Format pod miejsce, nie odwrotnie',
-      body: 'Zaczynamy od tego, czym dysponujesz i gdzie sprzedajesz. Dopiero z tego wychodzi, który z czterech formatów ma sens.',
+      title: 'Format pod miejsce',
+      body: 'Lokal, food truck, wózek albo same maszyny — zależnie od tego, co ma sens w danym miejscu.',
     },
     {
-      title: 'Warunki ustalamy w rozmowie',
-      body: 'Zakres współpracy i koszty zależą od miejsca i skali. Mówimy o nich przy konkretnym projekcie, a nie jako obietnicę na stronie.',
+      title: 'Prostsze uruchomienie',
+      body: 'Pomagamy poukładać sprzęt, proces i sposób pracy, żeby codzienna obsługa była możliwie prosta.',
     },
   ],
-  next: 'Napisz, jaki format i jakie miejsce masz na myśli. Odzywamy się, wspólnie sprawdzamy, czy to się spina, i dopiero wtedy rozmawiamy o warunkach.',
+  next: 'Konkrety dotyczące miejsca, wyposażenia i uruchomienia ustalamy indywidualnie.',
 };
 
 /**
- * Who brings what — owner-approved 2026-09-03, at a deliberately NON-FINANCIAL
- * level. It is the answer to "what do I get and what is on me", written as two
- * plain columns rather than as a contract.
+ * The legal/operational split, in ONE sentence (owner-approved 2026-09-03,
+ * shortened by DESIGN F1 on 2026-09-18). It replaces the sixteen bullet points
+ * that used to stand under „Podział ról” — the same non-financial answer to
+ * „what do I get and what is on me”, at the length a reader actually reads.
  *
- * The owner's ban list still holds and is the reason nothing below names a
- * number: no franchise fee, royalty, territory exclusivity, ROI, payback,
- * CAPEX, guaranteed revenue, exact equipment package or opening cost. Those
- * stay "ustalane indywidualnie po kwalifikacji projektu", which is what `note`
- * says in customer language.
+ * The owner's ban list is the reason it names no number: no franchise fee,
+ * royalty, territory exclusivity, ROI, payback, CAPEX, guaranteed revenue,
+ * equipment package or opening cost. Those stay in the conversation the enquiry
+ * opens, which is what `FRANCHISE_PAGE.next` says in customer language.
  */
-export const FRANCHISE_SPLIT = {
-  eyebrow: 'Podział ról',
-  title: 'Gellatti daje Ci system. Ty prowadzisz swój biznes.',
-  note: 'Zakres inwestycji i warunki współpracy ustalamy indywidualnie dla wybranego formatu i lokalizacji.',
-  gellatti: {
-    title: 'Po stronie Gellatti',
-    lead: 'Technologia, know-how, standard marki, receptury i wsparcie uruchomienia.',
-    items: [
-      'Marka i system konceptu Gellatti',
-      'Aplikacja Gellatti i technologia receptur',
-      'Receptury, narzędzia do produkcji i prowadzenie produktu',
-      'Wdrożenie, materiały szkoleniowe i wsparcie przy starcie',
-      'Standardy marki i obsługi gościa',
-      'Wskazania produktowe, surowcowe i dostawcze — tam, gdzie je mamy',
-      'Bieżące aktualizacje aplikacji, receptur i konceptu',
-      'Wspólne materiały cyfrowe i marketingowe w zakresie obecnego systemu',
-    ],
-  },
-  operator: {
-    title: 'Po Twojej stronie',
-    lead: 'Lokal, zespół, codzienna operacja i wymagania lokalnego rynku.',
-    items: [
-      'Lokalizacja i przygotowanie miejsca',
-      'Firma, pozwolenia i zgodność z lokalnymi przepisami',
-      'Zespół, zatrudnienie i codzienne zarządzanie',
-      'Media i bieżące koszty prowadzenia punktu',
-      'Zapasy, surowce i materiały eksploatacyjne',
-      'Higiena, BHP i bezpieczeństwo żywności na miejscu',
-      'Lokalne działania marketingowe, o ile nie ustalimy inaczej',
-      'Prace i wyposażenie w zakresie ustalonym dla wybranego formatu',
-    ],
-  },
-} as const;
-
-/**
- * Franchise is the umbrella (owner decision 2026-09-03), so the formats that
- * still have their own detail page must be reachable FROM it. These are the
- * same LANES entries — one source, no second list to drift.
- */
-export const FRANCHISE_FORMAT_LINKS = [LANES.trailer, LANES.mobile, LANES.machines] as const;
+export const FRANCHISE_SPLIT_LINE =
+  'Gellatti dostarcza system, technologię, receptury i standard pracy. Partner prowadzi swój lokalny biznes i codzienną operację.';
 
 export const MACHINES_PAGE: LanePageCopy = {
   ...LANES.machines,
