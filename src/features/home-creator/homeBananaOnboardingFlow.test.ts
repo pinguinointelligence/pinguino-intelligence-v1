@@ -10,6 +10,7 @@ import { EMPTY_HOME_FLOW_ANSWERS, visibleStages } from './homeStageFlow';
 
 const BANANA_ID = 'PI-ING-000345';
 const PAGE = readFileSync('src/pages/home/HomeCreatorPage.tsx', 'utf8');
+const ORCHESTRATION = readFileSync('src/features/home-creator/homeRecalculation.ts', 'utf8');
 const MACHINE = readFileSync('src/features/home-creator/ui/HomeMachineSection.tsx', 'utf8');
 
 const resolvedBanana: IntentChip = {
@@ -52,10 +53,13 @@ describe('HOME banana onboarding → first recipe', () => {
     // records the start through the one tested gate (HOME-GEN-LOOP).
     expect(done).toContain('generation.current = generationStarted(key, generationRetried());');
     expect(PAGE).toContain("!draft.presentedStages.includes('machine')");
-    expect(firstSolve).toContain('runPiRecalculationWithTerminal()');
-    expect(firstSolve.indexOf('runPiRecalculationWithTerminal()')).toBeLessThan(
-      firstSolve.indexOf('markRecipeReady(true)'),
+    // The first solve is HOME's ONE orchestration of the shared PRZELICZ, and the
+    // recipe is ready only after it answered.
+    expect(firstSolve).toContain('await recalculateHomeRecipe()');
+    expect(firstSolve.indexOf('await recalculateHomeRecipe()')).toBeLessThan(
+      firstSolve.indexOf('firstRecipeReady()'),
     );
+    expect(ORCHESTRATION).toContain('runPiRecalculationWithTerminal()');
   });
 
   it('HOME-BANANA-FLOW-04: the calculated first recipe retains canonical Fresh Banana', () => {

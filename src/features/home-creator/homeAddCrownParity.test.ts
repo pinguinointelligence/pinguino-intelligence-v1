@@ -78,7 +78,7 @@ describe('Dodaj topping never crowns', () => {
     // OWNER OD-3: the amount prompt starts at 5 % of the current BASE mass;
     // the topping is created only after the customer confirms that amount.
     expect(addTopping).toContain(
-      'initialGrams: defaultHomeToppingGrams(useRecipeStore.getState().items)',
+      'initialGrams: toppingCreationDefaultGrams(useRecipeStore.getState().items)',
     );
     expect(addTopping).toContain("kind: 'topping'");
     expect(addTopping).not.toContain('setMainIngredient');

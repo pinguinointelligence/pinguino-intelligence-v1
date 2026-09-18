@@ -26,7 +26,7 @@ import { snapshotServerResolvedProductBehavior } from '@/features/product-intell
 import { resolveProductBehaviorForSelection } from '@/services/productIntelligence';
 import { useAuthStore } from '@/stores/authStore';
 import { autoPriorityAppliesToNewLine } from '@/features/recipe-priority';
-import { defaultHomeToppingGrams } from './homeToppingDefault';
+import { toppingCreationDefaultGrams } from '@/features/recipe-composition/toppingCreationDefault';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useHomeDraftStore, type IntentChip } from './homeDraftStore';
 import type { IntentRole } from './homeIntentParsing';
@@ -238,7 +238,7 @@ export function useHomeIntentIngredients() {
         // A topping is never crowned: the Crown is a Main concept and a topping is not
         // a Main. `addTopping` is the collection's own authority.
         // OWNER OD-3: with no confirmed amount a topping starts at 5 % of the BASE.
-        const toppingGrams = grams > 0 ? grams : defaultHomeToppingGrams(store.items);
+        const toppingGrams = grams > 0 ? grams : toppingCreationDefaultGrams(store.items);
         store.addTopping(ingredient as never, toppingGrams);
         return { chipId: key, status: toppingGrams > 0 ? 'added' : 'needs_amount' };
       }
