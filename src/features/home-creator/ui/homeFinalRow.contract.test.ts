@@ -17,39 +17,50 @@
  * left to cancel, and the orange „changed" ring that compared against the opening
  * value existed only because the store had already been written.
  *
- * Neither piece of evidence is deleted; both are recorded here as history.
- * ─────────────────────────────────────────────────────────────────────────────────
- *
- * CURRENT CONTRACT (owner 2026-09-06) — the row is ALWAYS a readout:
+ * ── SUPERSEDED BY THE ACCEPTED DESIGN V3.0 — 2026-09-17 (IV-B, IV-C, XII) ────────
+ * The 2026-09-06 contract was:
  *
  *     ingredient | Crown (only where Main is allowed) | 84 g | [ ⋯ ]
  *
- * „Zmień ilość" opens a stable overlay dialog holding the SAME shared PRO
- * `DirectNumberControl` — minus, field, plus, padlock, masking — plus „Gotowe" and
- * „Anuluj". The value is a DRAFT: nothing reaches the store until it is confirmed, so
- * cancelling is a genuine no-op. Opening it moves nothing on the page.
+ * with „Zmień ilość” in the „•••” menu opening a centred dialog (`HomeChangeAmountDialog`)
+ * that held the amount as a draft with „Gotowe” and „Anuluj”. The owner-accepted DESIGN
+ * V3.0 replaces the row menu, its sheet, the separate „Zmień ilość” view and the row's
+ * Crown button: the WHOLE row is a button that opens the SAME ingredient panel PRO uses,
+ * as a compact bottom layer, with ⓘ · ⇄ · Crown, the amount pill with its padlock, and
+ * „Usuń” | „Gotowe”.
  *
- * Unchanged across all three: the row is a readout by default, the editor is the
- * canonical PRO control rather than a HOME lookalike, and each collection commits
- * through ITS OWN store action (#207).
+ * None of this evidence is deleted; all of it is recorded here as history.
+ * ─────────────────────────────────────────────────────────────────────────────────
+ *
+ * CURRENT CONTRACT (DESIGN V3.0) — the row is ALWAYS a readout, and the row IS the way in:
+ *
+ *     [ ingredient · Główny / Topping (information) ·············· 84 g 🔒 ]
+ *
+ * Unchanged across all four: the row carries no editor of its own, the editor is the
+ * canonical shared control rather than a HOME lookalike, the amount is a DRAFT that only
+ * „Gotowe” commits, and each collection commits through ITS OWN store action (#207).
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const row = readFileSync('src/features/home-creator/ui/HomeRecipeSection.tsx', 'utf8');
 const control = readFileSync('src/features/ingredient-builder/DirectNumberControl.tsx', 'utf8');
-const dialog = readFileSync('src/features/home-creator/ui/HomeChangeAmountDialog.tsx', 'utf8');
+const panel = readFileSync('src/features/home-creator/ui/HomeIngredientPanel.tsx', 'utf8');
+const editor = readFileSync('src/features/ingredient-builder/IngredientLineControls.tsx', 'utf8');
 
-/** The row component — now the readout and nothing else. */
-const defaultRow = row.slice(row.indexOf('function HomeRowAmount({'), row.indexOf('/**\n * Crown'));
+/** The row components — the readout and the row button, and nothing else. */
+const defaultRow = row.slice(
+  row.indexOf('function HomeRowAmount({'),
+  row.indexOf('const pillButton ='),
+);
 
 describe('the default row carries no permanent editor', () => {
   it('renders a plain readout, not a control', () => {
     expect(defaultRow).toContain('data-testid={`home-amount-${lineId}`}');
-    // No stepper, no padlock, no input in the default state.
+    // No stepper, no padlock segment, no input in the row.
     expect(defaultRow).not.toContain('DirectNumberControl');
     expect(defaultRow).not.toContain('lockSegment');
-    expect(defaultRow).not.toContain('<button');
+    expect(defaultRow).not.toContain('<input');
   });
 
   it('shows the amount when entitled and the mask when not', () => {
@@ -61,91 +72,142 @@ describe('the default row carries no permanent editor', () => {
 
   it('rounds like the editor does, so a readout never shows float noise', () => {
     // Served signed-in the rows read „87.10000000000001 g"; the editor renders the same
-    // number with `decimals={0}`, so the readout has to agree.
+    // number with `decimals: 0`, so the readout has to agree.
     expect(defaultRow).toContain('Math.round(grams)');
-    expect(row).toContain('decimals={0}');
+    expect(panel).toContain('decimals: 0');
   });
 
-  it('marks a locked amount without adding a second button', () => {
-    expect(defaultRow).toContain("locked && 'underline decoration-dotted underline-offset-4'");
+  it('marks a locked amount with the padlock icon — information, not a second button', () => {
     expect(defaultRow).toContain("data-locked={locked ? 'true' : undefined}");
+    expect(defaultRow).toContain('<LockGlyph />');
+    // The only button in a row is the row itself.
+    expect(defaultRow.match(/<button/g) ?? []).toHaveLength(1);
+  });
+
+  it('DESIGN IV-B: the whole row opens the panel; the row menu and the row Crown are gone', () => {
+    expect(defaultRow).toContain('onClick={onOpen}');
+    for (const gone of [
+      'home-row-menu',
+      'home-row-change-amount',
+      'home-row-toggle-lock',
+      'function RowMenu',
+      'function CrownControl',
+      'HomeChangeAmountDialog',
+    ]) {
+      expect(row, gone).not.toContain(gone);
+    }
+  });
+
+  it('„Główny” and „Topping” are information only', () => {
+    expect(defaultRow).toContain('data-testid={`home-main-chip-${lineId}`}');
+    expect(defaultRow).toContain('data-testid="home-topping-marker"');
+    // The chip is a span, never a button of its own.
+    const mainChip = defaultRow.slice(
+      defaultRow.indexOf("chip === 'main' ? ("),
+      defaultRow.indexOf("chip === 'topping' ? ("),
+    );
+    expect(mainChip).not.toContain('<button');
+  });
+
+  it('5B: a product without an amount reads „Wpisz ilość”', () => {
+    expect(defaultRow).toContain('screen.enterAmount');
+    expect(row).toContain('data-testid="home-recipe-pending"');
   });
 });
 
-describe('the amount editor is the shared PRO control, summoned not resident', () => {
-  it('opens only for the line being edited', () => {
-    expect(row).toContain(
-      'const [editingLineId, setEditingLineId] = useState<string | null>(null)',
-    );
-    expect(row).toContain('{editingItem ? (');
-    expect(row).toContain('<HomeChangeAmountDialog');
+describe('the ingredient editor is the shared control, summoned not resident', () => {
+  it('opens only for the row being edited', () => {
+    expect(row).toContain('const [editor, setEditor] = useState<EditorTarget | null>(null)');
+    expect(row).toContain('{panelTarget ? (');
+    expect(row).toContain('<HomeIngredientPanel');
   });
 
-  it('overlays instead of expanding the row, so the list never shifts', () => {
-    // The defect the owner reported: editing changed the row's own layout.
-    expect(defaultRow).not.toContain('DirectNumberControl');
-    expect(defaultRow).not.toContain('editing');
-    expect(dialog).toContain('className="fixed inset-0 z-[95] grid place-items-center');
+  it('is the SAME editor PRO uses, from the ingredient builder — not a HOME copy', () => {
+    expect(panel).toContain('IngredientEditorPanel');
+    expect(panel).toContain("from '@/features/ingredient-builder/IngredientLineControls'");
+    expect(editor).toContain('export function IngredientEditorPanel(');
+    // …and the amount inside it is the canonical DirectNumberControl.
+    const editorBody = editor.slice(editor.indexOf('export function IngredientEditorPanel('));
+    expect(editorBody).toContain('<DirectNumberControl');
   });
 
-  it('holds the value as a draft, so Anuluj is a genuine no-op', () => {
-    expect(dialog).toContain('const [draft, setDraft] = useState(grams);');
-    expect(dialog).toContain('onChange={setDraft}');
-    // The ONLY paths that reach the caller's commit.
-    expect(dialog).toContain('onClick={() => onConfirm(draft)}');
-    expect(dialog).toContain("if (event.key === 'Enter') onConfirm(draft);");
-    expect(dialog).toContain("if (event.key === 'Escape') onCancel();");
+  it('holds the value as a draft, so leaving without „Gotowe” is a genuine no-op', () => {
+    expect(panel).toContain('const latest = useRef<number | null>(null);');
+    expect(panel).toContain('onChange: publish,');
+    // The ONLY paths that reach the caller's commit read what the field JUST published
+    // (served 2026-09-18: Enter confirmed a stale draft).
+    expect(panel).toContain('const next = latest.current;');
+    expect(panel).toContain('onClick: finish,');
+    expect(panel).toContain('onBackdrop={finish}');
+    // Escape closes without a commit.
+    expect(panel).toContain('onClose={onClose}');
   });
 
-  it('offers the owner-specified affordances and no invented copy', () => {
-    expect(dialog).toContain('homeCreatorCopy.recipe.doneAmount');
-    expect(dialog).toContain('homeCreatorCopy.recipe.askAmountCancel');
-    expect(dialog).toContain('homeCreatorCopy.recipe.changeAmount');
+  it('opening the panel and pressing „Gotowe” without a change writes nothing', () => {
+    expect(panel).toContain('if (next !== null && next !== target.grams) target.commit(next);');
   });
 
-  it('reuses DirectNumberControl rather than a HOME lookalike', () => {
-    expect(dialog).toContain('DirectNumberControl');
-    expect(dialog).toContain("from '@/features/ingredient-builder/DirectNumberControl'");
+  it('offers the DESIGN affordances and no invented copy', () => {
+    expect(panel).toContain('homeCreatorCopy.recipe.doneAmount');
+    expect(panel).toContain('homeCreatorCopy.recipe.remove');
+    expect(panel).toContain('homeCreatorCopy.recipe.findSubstitute');
+    expect(panel).toContain('homeCreatorCopy.recipe.crown');
+  });
+
+  it('HOME shows no price and no percent in the panel (§52)', () => {
+    for (const forbidden of [
+      'CustomerPriceEditor',
+      'IngredientPriceCell',
+      'priceView',
+      'setPlannedPercent',
+      "suffix: '%'",
+    ]) {
+      expect(panel, forbidden).not.toContain(forbidden);
+    }
   });
 
   it('routes every mutation through canonical store authority', () => {
-    /* The amount control no longer GUESSES which collection owns a row. A recipe line
-       and a topping live in different store collections with different actions, and the
-       control called the Base grams action for both — which looks the line up in
+    /* The amount control never GUESSES which collection owns a row. A recipe line and a
+       topping live in different store collections with different actions, and the
+       control once called the Base grams action for both — which looks the line up in
        `state.items` and returns early when it is not there, so every topping edit was
-       silently dropped. The row now names its own authority. */
+       silently dropped. The row names its own authority. */
     expect(row).toContain('setExactGrams(item.id, next)');
     expect(row).toContain('setToppingGrams(topping.id, next)');
     expect(row).toContain('setGramLock(item.id,');
   });
 
-  it('keeps the padlock and the masking props on the summoned control', () => {
-    expect(dialog).toContain('lockSegment: {');
-    expect(dialog).toContain('maskedValue: homeCreatorCopy.recipe.maskedGramsValue');
-    expect(dialog).toContain('onMaskedInteract: onBlocked');
+  it('keeps the padlock and the masking on the summoned control', () => {
+    expect(panel).toContain("testId: 'home-panel-lock'");
+    expect(panel).toContain('value: homeCreatorCopy.recipe.maskedGramsValue');
+    expect(panel).toContain('onInteract: onBlocked');
+    expect(editor).toContain('maskedValue: amount.masked.value');
+    expect(editor).toContain('onMaskedInteract: amount.masked.onInteract');
   });
 
   it('omits the padlock for a topping, which has no lock to offer', () => {
-    expect(dialog).toContain('{...(onToggleLock');
+    expect(panel).toContain('lock: target.onToggleLock');
     expect(row).toContain('onToggleLock: undefined,');
   });
 
   it('adds no HOME-specific arithmetic', () => {
-    for (const forbidden of [
-      'calculateRecipe(',
-      'Math.round(grams *',
-      'rescale(',
-      'runSolver',
-      'solveRecipe',
-      'solveFor',
-    ]) {
-      expect(row, forbidden).not.toContain(forbidden);
+    for (const source of [row, panel]) {
+      for (const forbidden of [
+        'calculateRecipe(',
+        'Math.round(grams *',
+        'rescale(',
+        'runSolver',
+        'solveRecipe',
+        'solveFor',
+      ]) {
+        expect(source, forbidden).not.toContain(forbidden);
+      }
     }
   });
 });
 
 describe('Crown is a direct action on canonical authority', () => {
-  it('renders only where Main is currently held or canonically selectable', () => {
+  it('is offered only where Main is currently held or canonically selectable', () => {
     expect(row).toContain('crownLineIds.includes(item.id) || mainSelectable(item.id)');
   });
 
@@ -164,32 +226,23 @@ describe('Crown is a direct action on canonical authority', () => {
   });
 
   it('communicates state, not a different glyph', () => {
-    expect(row).toContain('aria-pressed={isMain}');
+    expect(panel).toContain('pressed: target.crown.isMain');
+    expect(editor).toContain('aria-pressed={action.pressed}');
   });
 });
 
-describe('the overflow menu stays a HOME menu', () => {
-  const menu = row.slice(
-    row.indexOf('function RowMenu({'),
-    row.indexOf('export function HomeRecipeSection'),
-  );
-
-  it('offers the compact owner actions plus explicit manual replacement', () => {
-    expect(menu).toContain('homeCreatorCopy.recipe.changeAmount');
-    expect(menu).toContain('homeCreatorCopy.recipe.unlockLabel');
-    expect(menu).toContain('homeCreatorCopy.recipe.lockLabel');
-    expect(menu).toContain('homeCreatorCopy.recipe.findSubstitute');
-    expect(menu).toContain('homeCreatorCopy.recipe.removeIngredient');
-  });
-
-  it('carries no PRO product-data action', () => {
-    for (const gone of ['dontHaveThis', 'Dane składnika']) {
-      expect(menu, gone).not.toContain(gone);
+describe('the panel carries no PRO-only product action', () => {
+  it('shows only the category and „Pełne dane składnika” under ⓘ (DESIGN VI)', () => {
+    expect(panel).toContain('copy.category');
+    expect(panel).toContain('copy.fullData');
+    for (const gone of ['Dostępność', 'W recepturze', 'dontHaveThis', 'confidence_score']) {
+      expect(panel, gone).not.toContain(gone);
     }
   });
 
   it('never falls back to an emoji padlock in HOME', () => {
     expect(row).not.toContain('🔒');
+    expect(panel).not.toContain('🔒');
   });
 });
 

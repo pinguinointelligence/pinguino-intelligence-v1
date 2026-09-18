@@ -272,8 +272,10 @@ Deno.serve(async (req) => {
     const order = data as OrderResult | null;
     if (!order || order.error) {
       const code = order?.error ?? 'order_failed';
+      /* plan_required: the account is signed in but has no active HOME or PRO plan (owner, 2026-09-18). The shop
+         stays public; ordering — the 0 € PDF included — needs a plan. The database decides this, not this function. */
       const status =
-        code === 'document_not_available'
+        code === 'document_not_available' || code === 'plan_required'
           ? 403
           : code === 'document_file_missing'
             ? 503

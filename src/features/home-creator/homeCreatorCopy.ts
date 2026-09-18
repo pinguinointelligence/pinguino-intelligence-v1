@@ -11,6 +11,10 @@
  * Polish is the reference locale (`src/copy/locale.ts`) and is what staging serves.
  */
 import { REFERENCE_LOCALE, resolveLocaleResource, type AppLocale } from '@/copy/locale';
+import { officialRecipeCopy } from '@/copy/officialRecipeLibrary';
+
+/** The library's own Polish plural („1 receptura · 3 receptury · 76 receptur”). */
+const officialRecipeCountPl = officialRecipeCopy.recipeCount;
 
 export interface HomeCreatorCopy {
   readonly switch: {
@@ -60,12 +64,42 @@ export interface HomeCreatorCopy {
     readonly whatIsThis: string;
     readonly notFound: string;
   };
-  /** RL-17: where a HOME recipe starts — the customer's idea, Gellatti or Community. */
+  /**
+   * DESIGN V3.0 VI/IX: where a HOME recipe starts — two modes, the customer's idea or the
+   * recipes. Community is one of the collections inside „Receptury”, not a third mode.
+   */
   readonly sources: {
     readonly label: string;
     readonly own: string;
-    readonly gellatti: string;
-    readonly community: string;
+    readonly library: string;
+  };
+  /** DESIGN V3.0 IX — „Receptury”: collections, their carousels and the flavour search. */
+  readonly library: {
+    readonly collectionsLabel: string;
+    readonly backToCollections: string;
+    readonly backToCollectionsLabel: string;
+    readonly searchPlaceholder: string;
+    readonly searchLabel: string;
+    readonly clearSearch: string;
+    readonly resultsTitle: string;
+    /** „truskawka · 5 receptur · 1 z Community”. */
+    readonly resultsSummary: (word: string, officialCount: number, community: boolean) => string;
+    readonly searching: string;
+    readonly searchUnavailable: string;
+    readonly noneTitle: string;
+    readonly noneBody: (word: string) => string;
+    readonly noneAction: string;
+    readonly recipeCount: (count: number) => string;
+    readonly communityName: string;
+    readonly communityTileLine: string;
+    readonly communityLine: string;
+    readonly communityLoading: string;
+    readonly communityEmpty: string;
+    readonly communityUnavailable: string;
+    readonly carouselLabel: (name: string) => string;
+    readonly resultsCarouselLabel: (word: string) => string;
+    /** Shown above „Rozpocznij recepturę” once a card is chosen. */
+    readonly chosen: string;
   };
   readonly match: {
     readonly title: string;
@@ -125,6 +159,9 @@ export interface HomeCreatorCopy {
     readonly container: string;
     readonly amount: string;
     readonly amountManual: string;
+    /** Applies the typed exact amount — NOT the stage's „Gotowe” (served flow walk 2026-09-18:
+     * two „Gotowe” buttons one under the other). */
+    readonly amountManualApply: string;
     readonly capacityGuidance: string;
     readonly done: string;
   };
@@ -154,6 +191,12 @@ export interface HomeCreatorCopy {
     readonly shareWithCommunity: string;
     readonly letsMakeIt: string;
     readonly recalculate: string;
+    /** Opens the best safe correction CORE staged for the customer's consent. */
+    readonly seeProposal: string;
+    /** The first build left a question in the review dialog and the customer closed it. */
+    readonly firstBuildNotApplied: string;
+    /** The automatic recalculation left a question and the customer closed it. */
+    readonly changesNotRecalculated: string;
     readonly maskedGrams: string;
     readonly maskedGramsLabel: string;
     /** What HOME says when product authority cannot be confirmed (OWNER FROZEN). */
@@ -181,6 +224,14 @@ export interface HomeCreatorCopy {
     readonly next: string;
     /** Leads the HOME trait words a safe recipe could not be moved closer to. */
     readonly notImproved: string;
+    /**
+     * CORE's Main authority refused the priority group itself: the approved amounts of
+     * these products exclude each other in one Base (served 2026-09-18: strawberries +
+     * kiwi in a dairy gelato). Names come from the recipe lines the refusal lists.
+     */
+    readonly priorityGroupExcludes: (names: readonly string[]) => string;
+    /** The next step for that refusal — the only change that helps. */
+    readonly priorityGroupNext: string;
   };
   readonly sweetness: {
     readonly label: string;
@@ -188,12 +239,64 @@ export interface HomeCreatorCopy {
     readonly balanced: string;
     readonly sweeter: string;
   };
+  /**
+   * DESIGN V3.0 — the HOME recipe screen (corrections IV, VI, XI, XII, XIII): the header
+   * with Reset, the name panel, the rows, the ingredient panel, the sweetness layer and
+   * the bottom actions. Words only; every action behind them is an existing HOME door.
+   */
+  readonly recipeScreen: {
+    readonly reset: string;
+    readonly resetTitle: string;
+    readonly resetBody: string;
+    readonly resetConfirm: string;
+    readonly resetKeep: string;
+    readonly nameEdit: string;
+    readonly nameTitle: string;
+    readonly nameHint: string;
+    readonly nameCancel: string;
+    readonly nameDone: string;
+    readonly openRow: string;
+    readonly lockedAmount: string;
+    readonly enterAmount: string;
+    readonly amountCta: string;
+    readonly inProduction: string;
+    readonly backToProduction: string;
+    readonly addIngredientShort: string;
+    readonly addToppingShort: string;
+    readonly addIngredientSubtitle: string;
+    readonly addToppingSubtitle: string;
+    readonly save: string;
+    readonly share: string;
+    readonly community: string;
+    readonly panelLabel: string;
+    readonly tagIngredient: string;
+    readonly tagTopping: string;
+    readonly info: string;
+    readonly category: string;
+    readonly fullData: string;
+    readonly fullDataProcess: string;
+    readonly sweetnessDefault: string;
+    readonly sweetnessFrame: string;
+    readonly sweetnessStepLess: string;
+    readonly sweetnessStepBalanced: string;
+    readonly sweetnessStepSweeter: string;
+    readonly sweetnessDone: string;
+  };
   readonly preparation: {
     readonly title: string;
     readonly addedTooMuch: string;
     readonly scaleQuestion: string;
     readonly toppingStage: string;
     readonly done: string;
+  };
+  /**
+   * DESIGN V3.0 IV D–I — HOME's own words around the shared batch process
+   * (`production-workspace/process`): the process itself speaks `productionProcessCopy`.
+   */
+  readonly production: {
+    readonly saveBatch: string;
+    readonly savedForLater: string;
+    readonly doneKept: string;
   };
   readonly draft: {
     readonly continueTitle: string;
@@ -231,7 +334,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
   switch: { home: 'HOME', pro: 'PRO', ariaLabel: 'Wybór widoku: HOME albo PRO' },
   intent: {
     headline: 'Stwórz własne lody. Jak profesjonalista.',
-    question: 'Jakie lody robimy dzisiaj?',
+    question: 'Jakie lody dziś robimy?',
     placeholder: 'Wpisz składnik lub smak…',
     inputLabel: 'Opisz swój pomysł na lody',
     addByVoice: 'Powiedz',
@@ -247,7 +350,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     chipsLabel: 'Twój pomysł',
     anythingElse: 'Coś jeszcze dodajemy?',
     removeChip: 'Usuń',
-    cta: 'Zamień pomysł w recepturę',
+    cta: 'Rozpocznij recepturę',
     emptyHint: 'Dodaj przynajmniej jeden składnik albo smak.',
     resolving: 'Sprawdzam produkty…',
   },
@@ -269,9 +372,36 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
   },
   sources: {
     label: 'Od czego zaczynasz',
-    own: 'Własny pomysł',
-    gellatti: 'Receptury Gellatti',
-    community: 'Community',
+    own: 'Twój pomysł',
+    library: 'Receptury',
+  },
+  library: {
+    collectionsLabel: 'Kolekcje',
+    backToCollections: 'Kolekcje',
+    backToCollectionsLabel: 'Wszystkie kolekcje',
+    searchPlaceholder: 'Smak lub składnik, np. truskawka',
+    searchLabel: 'Szukaj receptur po smaku lub składniku',
+    clearSearch: 'Wyczyść',
+    resultsTitle: 'Zobacz, co możesz zrobić',
+    resultsSummary: (word, officialCount, community) =>
+      [word, officialRecipeCountPl(officialCount), community ? '1 z Community' : null]
+        .filter(Boolean)
+        .join(' · '),
+    searching: 'Szukam receptur…',
+    searchUnavailable: 'Nie udało się teraz sprawdzić receptur. Spróbuj ponownie za chwilę.',
+    noneTitle: 'Nie mamy jeszcze takich receptur.',
+    noneBody: (word) => `Zacznij od własnego pomysłu z „${word}”.`,
+    noneAction: 'Twój pomysł',
+    recipeCount: (count) => officialRecipeCountPl(count),
+    communityName: 'Community',
+    communityTileLine: 'Od społeczności',
+    communityLine: 'Top 100',
+    communityLoading: 'Wczytuję Community…',
+    communityEmpty: 'W Community nie ma jeszcze receptur.',
+    communityUnavailable: 'Nie udało się teraz wczytać Community.',
+    carouselLabel: (name) => `Receptury · ${name}`,
+    resultsCarouselLabel: (word) => `Receptury: ${word}`,
+    chosen: 'Wybrana:',
   },
   match: {
     title: 'Znaleźliśmy podobne receptury',
@@ -327,6 +457,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     container: 'pojemnik',
     amount: 'Ilość',
     amountManual: 'Wpisz dokładną ilość',
+    amountManualApply: 'Ustaw',
     capacityGuidance: 'To wystarczy na',
     done: 'Gotowe',
   },
@@ -353,8 +484,14 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     save: 'Zapisz recepturę',
     saved: 'Zapisano',
     shareWithCommunity: 'Pokaż w Community',
-    letsMakeIt: 'Zróbmy to',
+    // DESIGN V3.0 (decision 1): „Zaczynamy” replaces „Zróbmy to” on the HOME recipe screen.
+    letsMakeIt: 'Zaczynamy',
     recalculate: 'Przelicz i popraw',
+    seeProposal: 'Zobacz propozycję',
+    firstBuildNotApplied:
+      'Receptura nie została jeszcze przygotowana. Naciśnij „Zamień pomysł w recepturę”, aby wrócić do propozycji.',
+    changesNotRecalculated:
+      'Ostatnie zmiany nie są jeszcze przeliczone — pozostałe ilości nie zostały do nich dopasowane.',
     maskedGrams: '••• g',
     maskedGramsLabel: 'Gramatura ukryta — dostępna w planie HOME lub PRO',
     unresolvedProduct: 'Nie możemy teraz potwierdzić danych jednego ze składników.',
@@ -372,6 +509,10 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     fallback: 'Nie udało się teraz przygotować propozycji.',
     next: 'Twoja receptura się nie zmieniła. Możesz zmienić składniki lub ich ilości i przeliczyć ponownie.',
     notImproved: 'Nie udało się bezpiecznie poprawić:',
+    priorityGroupExcludes: (names) =>
+      `${names.join(' i ')} nie zmieszczą się razem w tej recepturze — zatwierdzone ilości tych składników wykluczają się nawzajem.`,
+    priorityGroupNext:
+      'Twoja receptura się nie zmieniła. Usuń jeden z tych składników albo wybierz inny.',
   },
   sweetness: {
     label: 'Słodycz',
@@ -379,12 +520,56 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     balanced: 'W sam raz',
     sweeter: 'Słodsze',
   },
+  recipeScreen: {
+    reset: 'Reset',
+    resetTitle: 'Reset receptury?',
+    resetBody:
+      'Twój pomysł i niezapisane zmiany w recepturze zostaną usunięte. Zapisane receptury i Community zostają bez zmian.',
+    resetConfirm: 'Reset',
+    resetKeep: 'Wróć',
+    nameEdit: 'Nazwa receptury — wpisz lub zmień',
+    nameTitle: 'Nazwa receptury',
+    nameHint: 'Nazwa zostaje w tej pracy.',
+    nameCancel: 'Anuluj',
+    nameDone: 'Gotowe',
+    openRow: 'otwórz panel składnika',
+    lockedAmount: 'ilość zablokowana',
+    enterAmount: 'Wpisz ilość',
+    amountCta: 'Ilość',
+    inProduction: 'Ta partia jest w produkcji — składniki są zablokowane.',
+    backToProduction: 'Wróć do produkcji',
+    addIngredientShort: 'Składnik',
+    addToppingShort: 'Topping',
+    addIngredientSubtitle: 'Do bazy lodowej',
+    addToppingSubtitle: 'Po produkcji · nie zmienia bilansu bazy',
+    save: 'Zapisz',
+    share: 'Udostępnij',
+    community: 'Community',
+    panelLabel: 'Edycja składnika',
+    tagIngredient: 'Składnik',
+    tagTopping: 'Topping',
+    info: 'Dane składnika',
+    category: 'Kategoria',
+    fullData: 'Pełne dane składnika',
+    fullDataProcess: 'Obróbka',
+    sweetnessDefault: 'Domyślnie: Optymalne',
+    sweetnessFrame: 'Dostosuj recepturę',
+    sweetnessStepLess: '−1',
+    sweetnessStepBalanced: 'Optymalne',
+    sweetnessStepSweeter: '+1',
+    sweetnessDone: 'Gotowe',
+  },
   preparation: {
     title: 'Robimy lody',
     addedTooMuch: 'Wsypałem za dużo',
     scaleQuestion: 'Ile pokazuje teraz waga?',
     toppingStage: 'Na koniec dodaj topping.',
     done: 'Gotowe!',
+  },
+  production: {
+    saveBatch: 'Zapisz',
+    savedForLater: 'Partia zapisana · wrócisz przez „Wróć do produkcji”.',
+    doneKept: 'Partia została zakończona i zachowana na tym urządzeniu.',
   },
   draft: {
     continueTitle: 'Dokończ swoją recepturę',
@@ -434,7 +619,7 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     chipsLabel: 'Your idea',
     anythingElse: 'Anything else to add?',
     removeChip: 'Remove',
-    cta: 'Turn the idea into a recipe',
+    cta: 'Start the recipe',
     emptyHint: 'Add at least one ingredient or flavour.',
     resolving: 'Checking products…',
   },
@@ -456,9 +641,40 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
   },
   sources: {
     label: 'Where you start',
-    own: 'My own idea',
-    gellatti: 'Gellatti recipes',
-    community: 'Community',
+    own: 'Your idea',
+    library: 'Recipes',
+  },
+  library: {
+    collectionsLabel: 'Collections',
+    backToCollections: 'Collections',
+    backToCollectionsLabel: 'All collections',
+    searchPlaceholder: 'A flavour or ingredient, e.g. strawberry',
+    searchLabel: 'Search recipes by flavour or ingredient',
+    clearSearch: 'Clear',
+    resultsTitle: 'See what you can make',
+    resultsSummary: (word, officialCount, community) =>
+      [
+        word,
+        `${officialCount} ${officialCount === 1 ? 'recipe' : 'recipes'}`,
+        community ? '1 from Community' : null,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    searching: 'Looking for recipes…',
+    searchUnavailable: "We couldn't check the recipes right now. Please try again in a moment.",
+    noneTitle: "We don't have recipes like that yet.",
+    noneBody: (word) => `Start from your own idea with “${word}”.`,
+    noneAction: 'Your idea',
+    recipeCount: (count) => `${count} ${count === 1 ? 'recipe' : 'recipes'}`,
+    communityName: 'Community',
+    communityTileLine: 'From the community',
+    communityLine: 'Top 100',
+    communityLoading: 'Loading Community…',
+    communityEmpty: 'There are no Community recipes yet.',
+    communityUnavailable: "We couldn't load Community right now.",
+    carouselLabel: (name) => `Recipes · ${name}`,
+    resultsCarouselLabel: (word) => `Recipes: ${word}`,
+    chosen: 'Chosen:',
   },
   match: {
     title: 'We found similar recipes',
@@ -514,6 +730,7 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     container: 'container',
     amount: 'Amount',
     amountManual: 'Enter an exact amount',
+    amountManualApply: 'Set',
     capacityGuidance: 'That is enough for',
     done: 'Done',
   },
@@ -540,8 +757,13 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     save: 'Save recipe',
     saved: 'Saved',
     shareWithCommunity: 'Share with Community',
-    letsMakeIt: "Let's make it",
+    letsMakeIt: "Let's start",
     recalculate: 'Recalculate and fix',
+    seeProposal: 'See the proposal',
+    firstBuildNotApplied:
+      'The recipe has not been prepared yet. Press “Turn the idea into a recipe” to return to the proposal.',
+    changesNotRecalculated:
+      'Your latest changes are not recalculated yet — the other amounts have not been adjusted to them.',
     maskedGrams: '••• g',
     maskedGramsLabel: 'Amount hidden — available on the HOME or PRO plan',
     unresolvedProduct: "We can't confirm one of the ingredients right now.",
@@ -559,6 +781,10 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     fallback: "We couldn't prepare a proposal right now.",
     next: "Your recipe hasn't changed. You can change the ingredients or their amounts and recalculate.",
     notImproved: 'Could not be improved safely:',
+    priorityGroupExcludes: (names) =>
+      `${names.join(' and ')} can't go together in this recipe — their approved amounts rule each other out.`,
+    priorityGroupNext:
+      "Your recipe hasn't changed. Remove one of these ingredients or choose another one.",
   },
   sweetness: {
     label: 'Sweetness',
@@ -566,12 +792,56 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     balanced: 'Balanced',
     sweeter: 'Sweeter',
   },
+  recipeScreen: {
+    reset: 'Reset',
+    resetTitle: 'Reset the recipe?',
+    resetBody:
+      'Your idea and the unsaved changes in the recipe will be removed. Saved recipes and Community stay as they are.',
+    resetConfirm: 'Reset',
+    resetKeep: 'Back',
+    nameEdit: 'Recipe name — type or change',
+    nameTitle: 'Recipe name',
+    nameHint: 'The name stays with this work.',
+    nameCancel: 'Cancel',
+    nameDone: 'Done',
+    openRow: 'open the ingredient panel',
+    lockedAmount: 'amount locked',
+    enterAmount: 'Enter the amount',
+    amountCta: 'Amount',
+    inProduction: 'This batch is in production — the ingredients are locked.',
+    backToProduction: 'Back to production',
+    addIngredientShort: 'Ingredient',
+    addToppingShort: 'Topping',
+    addIngredientSubtitle: 'Into the ice cream base',
+    addToppingSubtitle: 'After production · does not change the base balance',
+    save: 'Save',
+    share: 'Share',
+    community: 'Community',
+    panelLabel: 'Ingredient editing',
+    tagIngredient: 'Ingredient',
+    tagTopping: 'Topping',
+    info: 'Ingredient data',
+    category: 'Category',
+    fullData: 'Full ingredient data',
+    fullDataProcess: 'Processing',
+    sweetnessDefault: 'Default: Optimal',
+    sweetnessFrame: 'Adjust the recipe',
+    sweetnessStepLess: '−1',
+    sweetnessStepBalanced: 'Optimal',
+    sweetnessStepSweeter: '+1',
+    sweetnessDone: 'Done',
+  },
   preparation: {
     title: "Let's make it",
     addedTooMuch: 'I added too much',
     scaleQuestion: 'How much does the scale show now?',
     toppingStage: 'Add your topping at the end.',
     done: 'Done!',
+  },
+  production: {
+    saveBatch: 'Save',
+    savedForLater: 'Batch saved · come back with „Back to production”.',
+    doneKept: 'The batch is finished and kept on this device.',
   },
   draft: {
     continueTitle: 'Continue your recipe',

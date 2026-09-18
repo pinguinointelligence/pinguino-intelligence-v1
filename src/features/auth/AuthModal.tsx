@@ -181,7 +181,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
           <div className="mt-4 flex items-center justify-between">
             <button
               type="button"
-              className="text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
+              className="-ml-2 inline-flex min-h-11 items-center px-2 text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-ink"
               onClick={() => {
                 setMode((current) => (current === 'signin' ? 'signup' : 'signin'));
                 setError(null);
@@ -192,7 +192,7 @@ export function AuthModal({ onClose }: { onClose: () => void }) {
             </button>
             <button
               type="button"
-              className="text-xs text-stone-400 transition-colors hover:text-ink"
+              className="-mr-2 inline-flex min-h-11 items-center px-2 text-xs text-stone-400 transition-colors hover:text-ink"
               onClick={onClose}
             >
               {a.close}

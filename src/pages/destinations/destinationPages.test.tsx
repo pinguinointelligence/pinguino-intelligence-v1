@@ -88,6 +88,14 @@ describe('Slice 3 destination pages', () => {
     expect(/stripe/i.test(html)).toBe(false); // no payment provider wired
   });
 
+  it('Subscription billing-cycle toggle is a 44 px touch target', () => {
+    const html = render(<SubscriptionPage />);
+    const cycleButtons =
+      html.match(/<button type="button" aria-pressed="(true|false)"[^>]*>/g) ?? [];
+    expect(cycleButtons).toHaveLength(2);
+    for (const button of cycleButtons) expect(button).toMatch(/class="[^"]*\bmin-h-11\b/);
+  });
+
   it('API page lists the informational links', () => {
     const html = render(<APIPage />);
     expect(html).toContain(copy.nav.api.title);

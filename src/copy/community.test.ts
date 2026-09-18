@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   communityCopyEn,
   communityCopyPl,
+  pluralWersja,
   resolveCommunityCopy,
   type CommunityCopy,
 } from './community';
@@ -76,6 +77,29 @@ describe('§63 — the feature is not hardcoded to one language', () => {
     expect(communityCopyPl.partner.eligibilityNote).toMatch(/nie działają wstecz/);
     expect(communityCopyEn.partner.eligibilityNote).toMatch(/aktywnego statusu/);
     expect(communityCopyEn.partner.eligibilityNote).toMatch(/nie działają wstecz/);
+  });
+
+  it('counts versions with the Polish plural, never „1 Wersji”', () => {
+    expect([1, 2, 4, 5, 11, 12, 14, 21, 22, 25, 102].map(pluralWersja)).toEqual([
+      'wersja',
+      'wersje',
+      'wersje',
+      'wersji',
+      'wersji',
+      'wersji',
+      'wersji',
+      'wersji',
+      'wersje',
+      'wersji',
+      'wersje',
+    ]);
+    expect(communityCopyPl.metrics.remixCount(1)).toBe('1 wersja');
+    expect(communityCopyPl.metrics.remixCount(3)).toBe('3 wersje');
+    expect(communityCopyPl.metrics.remixCount(5)).toBe('5 wersji');
+    expect(communityCopyEn.metrics.remixCount(1)).toBe('1 remix');
+    expect(communityCopyEn.metrics.remixCount(2)).toBe('2 remixes');
+    // The metric heading keeps its column form.
+    expect(communityCopyPl.metrics.remixes).toBe('Wersji');
   });
 
   it('never promises a capability the plan matrix does not define', () => {

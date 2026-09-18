@@ -114,7 +114,7 @@ export function ShopPage() {
         </div>
         <a
           href="#shop-cart"
-          className="inline-flex shrink-0 items-center gap-[7px] rounded-full border border-[var(--g-line)] px-3.5 py-[7px] text-[12px] font-semibold text-[var(--g-ink)] transition-colors hover:border-[var(--g-line-strong)] md:px-4 md:py-2 md:text-[12.5px]"
+          className="inline-flex min-h-11 shrink-0 items-center gap-[7px] rounded-full border border-[var(--g-line)] px-3.5 py-[7px] text-[12px] font-semibold text-[var(--g-ink)] transition-colors hover:border-[var(--g-line-strong)] md:px-4 md:py-2 md:text-[12.5px]"
           data-testid="shop-cart-link"
         >
           {shopCopy.page.cartLink}

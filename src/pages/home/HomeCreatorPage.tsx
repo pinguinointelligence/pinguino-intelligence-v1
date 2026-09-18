@@ -10,6 +10,8 @@
  * document itself; a CTA scrolls to the next section and a subtle Back goes up.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DialogShell } from '@/components/ui/DialogShell';
+import { buttonClasses } from '@/components/ui/buttonStyles';
 import type { EngineIngredient } from '@/engine';
 import type { RecipeToppingIngredient } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
@@ -30,7 +32,12 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { AppShell } from '@/features/shell/AppShell';
 import { deriveMachineSetup, type HomeMachineProfile } from '@/features/machine-catalog';
 import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
-import { useRecipeStore } from '@/stores/recipeStore';
+import {
+  RecipeCustomMachineDialog,
+  effectiveDefaultBatchGrams,
+  type MachineOnboardingCompletion,
+} from '@/features/machine-onboarding';
+import { useRecipeStore, type RecipeBatchSource } from '@/stores/recipeStore';
 import {
   DEFAULT_NEW_RECIPE_SERVING_MODE,
   DEFAULT_NEW_RECIPE_STRATEGY,
@@ -39,8 +46,8 @@ import {
 import { homeCreatorCopy } from '@/features/home-creator/homeCreatorCopy';
 import { homeCustomerNotice } from '@/features/home-creator/homeCustomerNotice';
 import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
-import { queueAmountQuestion } from '@/features/home-creator/homeAmountQueue';
-import { defaultHomeToppingGrams } from '@/features/home-creator/homeToppingDefault';
+import { dropAmountQuestion, queueAmountQuestion } from '@/features/home-creator/homeAmountQueue';
+import { toppingCreationDefaultGrams } from '@/features/recipe-composition/toppingCreationDefault';
 import { useCanSeeExactGrams } from '@/features/home-creator/useHomeEntitlement';
 import { useHomeFlow } from '@/features/home-creator/useHomeFlow';
 import { useHomeRecipeResult } from '@/features/home-creator/useHomeRecipeResult';
@@ -66,9 +73,14 @@ import { presentLoadedRecipeInHome } from '@/features/home-creator/homeLoadedRec
 import {
   HomeRecipeOriginNotice,
   HomeRecipeProvenanceLine,
-  HomeRecipeSources,
   type HomeOfficialAdoption,
 } from '@/features/home-creator/ui/HomeRecipeOrigin';
+import { HomeStart } from '@/features/home-creator/ui/HomeStart';
+import {
+  hasBaseIdea,
+  startCtaEnabled,
+  type HomeStartMode,
+} from '@/features/home-creator/homeComposerGate';
 import { officialRecipeCopy } from '@/copy/officialRecipeLibrary';
 import { startNewProRecipe } from '@/pages/destinations/startNewProRecipe';
 import {
@@ -89,22 +101,32 @@ import {
 import type { HomeStage } from '@/features/home-creator/homeStageFlow';
 import { ideaProductsMissingFromRecipe } from '@/features/home-creator/homeIdeaLines';
 import { resolveIdea } from '@/features/home-creator/homeIdeaResolution';
-import { HomeIntentSection } from '@/features/home-creator/ui/HomeIntentSection';
+import {
+  HomeIntentSection,
+  type HomeIntentSectionHandle,
+} from '@/features/home-creator/ui/HomeIntentSection';
 import { HomeProfileSection } from '@/features/home-creator/ui/HomeProfileSection';
 import { HomeMachineSection } from '@/features/home-creator/ui/HomeMachineSection';
-import { HomeRecipeSection } from '@/features/home-creator/ui/HomeRecipeSection';
+import {
+  HomeRecipeSection,
+  type HomePendingAmount,
+} from '@/features/home-creator/ui/HomeRecipeSection';
+import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { HomeRecalculate } from '@/features/home-creator/ui/HomeRecalculate';
+import {
+  HomeLayer,
+  HomeLayerFoot,
+  HomeLayerHeading,
+  homeLayerPrimaryButton,
+  homeLayerSecondaryButton,
+} from '@/features/home-creator/ui/HomeLayer';
 import { HomePreparation } from '@/features/home-creator/ui/HomePreparation';
 import { ShareRecipeDialog } from '@/features/community/ui/ShareRecipeDialog';
 import { PublishToCommunityDialog } from '@/features/community/ui/PublishToCommunityDialog';
 import { useCreatorProfile } from '@/features/community/useCreatorProfile';
-import {
-  applyPreviewWithServerAuthority,
-  runInteractiveRecalculationWithTerminal,
-  runPiRecalculationWithTerminal,
-  useConstraintStudioStore,
-} from '@/features/constraint-studio/constraintStudioStore';
-import { homeRecalculationInstructions } from '@/features/home-creator/homePriorityBootstrap';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import { recalculateHomeRecipe } from '@/features/home-creator/homeRecalculation';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 
 /** Smooth movement to the next section — the only "navigation" HOME has (§83). */
 function useScrollToStage() {
@@ -128,6 +150,10 @@ type PendingAdd = {
 
 type HomeFinalAction = 'make' | 'save' | 'share' | 'community';
 
+/** A burst of edits (three sweetness taps, a crown and its padlock) is one change:
+ * CORE is asked once, after the customer pauses. */
+const HOME_AUTO_RECALCULATION_SETTLE_MS = 400;
+
 export function HomeCreatorPage() {
   // HOME authority closure (owner 2026-09-11): the same managed ProductBehavior
   // pass PRO runs. A product added here, the starter lines and chip lines get
@@ -142,11 +168,29 @@ export function HomeCreatorPage() {
 
   // A machine chosen for THIS recipe (§47: recipe-scoped, never the account default).
   const [machine, setMachine] = useState<HomeMachineProfile | null>(null);
+  /** „Inna maszyna”: the shared custom-machine dialog (Home, the Pro selector, the workbench). */
+  const [customMachineOpen, setCustomMachineOpen] = useState(false);
   const [amount, setAmount] = useState<HomeAmount | null>(null);
   const [forceMachineStage, setForceMachineStage] = useState(false);
   const [resolving, setResolving] = useState(false);
   /** The idea text still in the composer: suggestions never open over a word being typed. */
   const [composerHasText, setComposerHasText] = useState(false);
+  /** DESIGN V3.0 VI: „Rozpocznij recepturę” commits the words still in the composer. */
+  const ideaSection = useRef<HomeIntentSectionHandle>(null);
+  /** DESIGN V3.0 VI/IX — the start screen's two modes. A new draft starts on the idea. */
+  const [startMode, setStartMode] = useState<HomeStartMode>('idea');
+  const [startModeDraft, setStartModeDraft] = useState(draft.draftId);
+  if (startModeDraft !== draft.draftId) {
+    setStartModeDraft(draft.draftId);
+    setStartMode('idea');
+  }
+  /** Nothing was sent or opened yet: HOME is on its start screen. */
+  const atStart = !draft.intentSubmitted && !draft.recipeReady && !draft.preparationStarted;
+  const activeStartMode: HomeStartMode = atStart ? startMode : 'idea';
+  /** The Gellatti recipe „Receptury” asked the official door to open, for its refusal. */
+  const [libraryOpening, setLibraryOpening] = useState<string | null>(null);
+  /** An official recipe chosen in „Receptury” while a real recipe is on screen: ask first. */
+  const [replaceAsk, setReplaceAsk] = useState<string | null>(null);
   /** DESIGN V3.0 VIII — the card chosen on the suggestions layer, for ONE idea version. */
   const [suggestionChoice, setSuggestionChoice] = useState<{
     readonly signature: string;
@@ -213,9 +257,32 @@ export function HomeCreatorPage() {
   const hasCreatorProfile = useCreatorProfile(userId !== null);
   const [searchParams] = useSearchParams();
   const [reviewAction, setReviewAction] = useState<HomeFinalAction | null>(null);
+  /**
+   * The review dialog opened by HOME itself, not by a final action: after the first
+   * build or the automatic recalculation, for a CORE state only the customer may
+   * decide (see `homeRecalculation`).
+   */
+  const [automaticReview, setAutomaticReview] = useState<{
+    context: 'initial' | 'auto';
+    presentCurrent: boolean;
+  } | null>(null);
   const [confirmSaveAction, setConfirmSaveAction] = useState<'share' | 'community' | null>(null);
   const [completionDialog, setCompletionDialog] = useState<'share' | 'community' | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  /**
+   * DESIGN V3.0 (IV-C): the recipe's ingredient panel is open — a question the customer
+   * is answering, so the automatic PRZELICZ waits for „Gotowe”, exactly as it waits for
+   * the amount and usage questions (one burst of edits is one change).
+   */
+  const [recipeEditorOpen, setRecipeEditorOpen] = useState(false);
+  /**
+   * DESIGN V3.0 IV D–I — production is HOME's own screen („‹ Wróć”, „Produkcja · krok X z
+   * N”). „Wróć” and „Zapisz” leave the batch in its step and show the recipe, whose black
+   * action is then „Wróć do produkcji”. A started batch opens on its screen after a refresh.
+   */
+  const [productionOpen, setProductionOpen] = useState(
+    () => useHomeDraftStore.getState().preparationStarted,
+  );
 
   /**
    * An official Gellatti recipe opened in HOME — the library's „Zrób te lody", a match the
@@ -227,7 +294,12 @@ export function HomeCreatorPage() {
   const adoptOfficialRecipe = useCallback(
     async (
       recipeId: string,
-      options: { readonly keepIdea: boolean; readonly automatic: boolean },
+      options: {
+        readonly keepIdea: boolean;
+        readonly automatic: boolean;
+        /** HOME itself already asked (or had nothing to lose): skip the library-page check. */
+        readonly replaceConfirmed?: boolean;
+      },
     ) => {
       if (!userId) {
         openAuthModal();
@@ -240,7 +312,9 @@ export function HomeCreatorPage() {
           userId,
           // Chosen from the customer's own idea: that choice IS their new recipe, exactly as a
           // generated one would be. A library handoff was confirmed on the library page.
-          options.keepIdea ? { hasUnsavedChanges: () => false } : undefined,
+          options.keepIdea || options.replaceConfirmed
+            ? { hasUnsavedChanges: () => false }
+            : undefined,
         );
         presentLoadedRecipeInHome({
           label: materialized.recipe.name,
@@ -288,16 +362,31 @@ export function HomeCreatorPage() {
     void adoptOfficialRecipe(officialHandoffId, { keepIdea: false, automatic: false });
   }, [adoptOfficialRecipe, authStatus, navigate, officialHandoffId, openAuthModal, userId]);
 
-  const derivation = useMemo(() => (machine ? deriveMachineSetup(machine) : null), [machine]);
+  // The machine's batch for THIS product: the Magimix is 950 g for gelato and 1240 g for
+  // sorbet, and the container count, the default amount and the machine re-assertion
+  // must all read the same figure (2026-09-18 audit: a sorbet showed as 2 containers).
+  const derivation = useMemo(
+    () =>
+      machine ? deriveMachineSetup(machine, visibleProductTypeFor(draft.profile ?? 'gelato')) : null,
+    [machine, draft.profile],
+  );
   const recommendedBatchGrams = derivation?.recommendedBatchGrams ?? null;
 
+  // §16 protects a Professional recipe OPENED in HOME (a saved PRO recipe, an adopted
+  // official one): its machine is shown, never changed. While HOME is still building a
+  // NEW idea there is no such recipe yet — a Professional machine in the store is the
+  // previous recipe's (served 2026-09-18: after the official Mango Sorbet, the next idea
+  // skipped the machine question and built on „Twoja maszyna · 1000 g”, which HOME can
+  // neither change nor prepare). The customer is asked for their machine instead.
+  const inheritedProfessional = !draft.recipeReady && recipe.machineKind === 'professional';
   const machineView = buildHomeMachineView({
-    machineKind: recipe.machineKind,
+    machineKind: inheritedProfessional ? 'home' : recipe.machineKind,
     // The recipe's own label is authoritative — including for a Professional recipe
     // opened in HOME, which §16 requires HOME to show unchanged.
-    machineLabel:
-      recipe.machineLabel ??
-      (recipe.machineKind === 'professional' ? homeCreatorCopy.machine.savedLabel : null),
+    machineLabel: inheritedProfessional
+      ? null
+      : (recipe.machineLabel ??
+        (recipe.machineKind === 'professional' ? homeCreatorCopy.machine.savedLabel : null)),
     targetBatchGrams: amount?.totalGrams ?? recipe.target_batch_grams,
     recommendedBatchGrams,
     containers:
@@ -319,6 +408,7 @@ export function HomeCreatorPage() {
   });
 
   const { result, score } = useHomeRecipeResult(draft.recipeReady);
+  const productionStatus = useProductionSessionStore((state) => state.session?.status ?? null);
 
   // Owner 2026-09-17 (B): recognise the idea and look for matching recipes while it is
   // described — the same resolution door and the same §32–§36 sources as the CTA.
@@ -337,6 +427,8 @@ export function HomeCreatorPage() {
     !draft.recipeReady &&
     !resolving &&
     officialAdoption?.state !== 'loading' &&
+    // „Receptury” is browsing, not describing an idea: the layer waits for „Twój pomysł”.
+    activeStartMode === 'idea' &&
     (draft.intentSubmitted || !composerHasText);
   const suggestionsFrom: 'idea' | 'cta' = draft.intentSubmitted ? 'cta' : 'idea';
   const selectedSuggestionId =
@@ -383,10 +475,18 @@ export function HomeCreatorPage() {
    * the account default is untouched (§47).
    */
   const applyMachineSelection = useCallback(
-    (selected: HomeMachineProfile) => {
+    /**
+     * `batchGrams` is the customer's own amount when they chose one (§46: a typed
+     * 1850 g stays 1850 g, two containers stay two). Without it the machine's own
+     * batch applies. Served defect (2026-09-18 audit): the first build re-asserted the
+     * machine with its standard batch AFTER building at the customer's amount, so CORE
+     * solved 670 g while HOME still showed the 1850 g the customer had typed.
+     */
+    (selected: HomeMachineProfile, batchGrams?: number, batchSource?: RecipeBatchSource) => {
       const setup = deriveMachineSetup(selected, visibleProductTypeFor(draft.profile ?? 'gelato'));
       const mode = setup.resolvedVisibleMode;
       if (mode === null) return null;
+      const batch = batchGrams ?? setup.recommendedBatchGrams;
       useRecipeStore.getState().setMachineSelection({
         kind: 'home',
         servingModeId: mode,
@@ -395,9 +495,12 @@ export function HomeCreatorPage() {
         machineTechnology: selected.technology,
         homeFormulationModuleId: selected.homeFormulationModuleId,
         temperatureC: setup.engineTemperatureC,
-        batchGrams: setup.recommendedBatchGrams,
+        batchGrams: batch,
         hardCapacityGrams: setup.hardMaximumBatchGrams,
-        batchSource: 'MACHINE_DEFAULT',
+        // The same provenance HOME's own amount handlers write for a customer amount.
+        batchSource:
+          batchSource ??
+          (batch === setup.recommendedBatchGrams ? 'MACHINE_DEFAULT' : 'USER_OVERRIDE'),
       });
       return setup;
     },
@@ -440,7 +543,7 @@ export function HomeCreatorPage() {
       // account default. So the HOME machine choice must be re-asserted AFTER it —
       // otherwise the user's Ninja silently reverts to Professional, which is exactly
       // what happened before this line existed.
-      if (machine) applyMachineSelection(machine);
+      if (machine) applyMachineSelection(machine, total);
       else if (
         currentMachine.kind === 'home' &&
         currentMachine.servingModeId &&
@@ -592,7 +695,7 @@ export function HomeCreatorPage() {
     (
       ingredient: RecipeToppingIngredient,
       behavior?: ProductBehaviorSnapshot,
-      grams = defaultHomeToppingGrams(useRecipeStore.getState().items),
+      grams = toppingCreationDefaultGrams(useRecipeStore.getState().items),
     ) => {
       useRecipeStore.getState().addTopping(ingredient, grams);
       const topping = useRecipeStore
@@ -607,6 +710,39 @@ export function HomeCreatorPage() {
     [],
   );
 
+  /**
+   * The customer answered the amount question for ONE waiting product — in the prompt of
+   * the first build or in the recipe's ingredient panel (DESIGN IV-C). Either way the SAME
+   * doors create the line: `addConfirmedTopping` for a topping, `addIngredientLine` (the
+   * one Base door, with its automatic-priority rule) for everything else.
+   */
+  const confirmPendingAdd = useCallback(
+    (pendingAdd: PendingAdd, grams: number) => {
+      if (pendingAdd.source === 'initial' && pendingAdd.chipId) {
+        useHomeDraftStore.getState().answerAmount(pendingAdd.chipId, grams);
+      }
+      if (pendingAdd.kind === 'topping') {
+        addConfirmedTopping(
+          pendingAdd.ingredient as unknown as RecipeToppingIngredient,
+          pendingAdd.behavior ?? undefined,
+          grams,
+        );
+      } else {
+        addIngredientLine(pendingAdd.ingredient, pendingAdd.behavior, grams);
+      }
+      setPendingAdds((queue) => dropAmountQuestion(queue, pendingAdd.ingredient.id));
+    },
+    [addConfirmedTopping, addIngredientLine],
+  );
+
+  /** Nothing was added for a waiting product; an idea chip that asked it goes with it. */
+  const cancelPendingAdd = useCallback((pendingAdd: PendingAdd) => {
+    if (pendingAdd.source === 'initial' && pendingAdd.chipId) {
+      useHomeDraftStore.getState().removeChip(pendingAdd.chipId);
+    }
+    setPendingAdds((queue) => dropAmountQuestion(queue, pendingAdd.ingredient.id));
+  }, []);
+
   const handleAddTopping = useCallback(
     (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => {
       setPendingAdd({
@@ -615,7 +751,7 @@ export function HomeCreatorPage() {
         behavior: behavior ?? null,
         recommendedDose: null,
         kind: 'topping',
-        initialGrams: defaultHomeToppingGrams(useRecipeStore.getState().items),
+        initialGrams: toppingCreationDefaultGrams(useRecipeStore.getState().items),
         source: 'live',
       });
     },
@@ -663,51 +799,52 @@ export function HomeCreatorPage() {
     [addIngredientLine, handleAddTopping, setPendingAdd],
   );
 
+  /** The first build (or the customer's answer to it) produced THE recipe. */
+  const firstRecipeReady = useCallback(() => {
+    useHomeDraftStore.getState().markRecipeReady(true);
+    setInitialBuilding(false);
+    // A recipe is „ready” only when it carries the idea it was built from: a recognised
+    // element that reached no line is reported, never quietly dropped.
+    const missing = missingIdeaProducts();
+    if (missing.length > 0) {
+      setRecipeNotice(
+        `Ta receptura nie zawiera jeszcze: ${missing
+          .map((chip) => chip.productName ?? chip.label)
+          .join(', ')}. Dodaj ten składnik ponownie albo wybierz inny produkt.`,
+      );
+    }
+    window.setTimeout(() => scrollToStage('recipe'), 60);
+  }, [missingIdeaProducts, scrollToStage]);
+
+  /**
+   * The first build ends in HOME's ONE orchestration of the shared PRZELICZ
+   * (`recalculateHomeRecipe`): a clean result is applied through the one Apply door,
+   * and a state CORE wants the customer to decide — Direction consent, a lock
+   * conflict, a refusal WITH its reason — opens the same review dialog every HOME
+   * recalculation uses. It used to have its own copy of that decision that knew only
+   * „a Preview” and turned everything else into one generic refusal; a sorbet, whose
+   * exact Direction centre CORE answers with best-achievable consent, could never be
+   * built (served staging 2026-09-18).
+   */
   const finishInitialRecipe = useCallback(async () => {
     if (initialFinalizing.current) return;
     initialFinalizing.current = true;
-    const instructions = homeRecalculationInstructions(useRecipeStore.getState().items, []);
-    if (instructions.length > 0) {
-      await runInteractiveRecalculationWithTerminal(instructions);
-    } else {
-      await runPiRecalculationWithTerminal();
+    let outcome = await recalculateHomeRecipe();
+    // A background authority pass may land while CORE is solving; the newer recipe
+    // gets its own run. Bounded: a recipe that keeps moving is presented, not chased.
+    for (let again = 0; outcome === 'superseded' && again < 2; again += 1) {
+      outcome = await recalculateHomeRecipe();
     }
-    if (
-      useConstraintStudioStore.getState().recalculationTerminal?.state === 'PREVIEW_READY' &&
-      useConstraintStudioStore.getState().preview
-    ) {
-      await applyPreviewWithServerAuthority();
-    }
-    const terminal = useConstraintStudioStore.getState().recalculationTerminal;
-    const ready =
-      useConstraintStudioStore.getState().preview === null &&
-      useConstraintStudioStore.getState().blocked === null &&
-      useRecipeStore.getState().practicalRecipeAudit !== null &&
-      terminal?.state !== 'ERROR' &&
-      terminal?.state !== 'TIMEOUT';
-    if (ready) {
-      useHomeDraftStore.getState().markRecipeReady(true);
-      setInitialBuilding(false);
-      // A recipe is „ready” only when it carries the idea it was built from: a recognised
-      // element that reached no line is reported, never quietly dropped.
-      const missing = missingIdeaProducts();
-      if (missing.length > 0) {
-        setRecipeNotice(
-          `Ta receptura nie zawiera jeszcze: ${missing
-            .map((chip) => chip.productName ?? chip.label)
-            .join(', ')}. Dodaj ten składnik ponownie albo wybierz inny produkt.`,
-        );
-      }
-      window.setTimeout(() => scrollToStage('recipe'), 60);
+    if (outcome === 'applied' || outcome === 'unchanged') {
+      firstRecipeReady();
     } else {
-      setRecipeNotice(
-        'Nie udało się jeszcze bezpiecznie przygotować receptury. Sprawdź wybór produktu i spróbuj ponownie.',
-      );
+      // The answer is already staged — present it instead of solving again. Only a
+      // recipe that kept moving under CORE is solved once more, inside the dialog.
       setInitialBuilding(false);
-      generation.current = generationFailed(generation.current);
+      setAutomaticReview({ context: 'initial', presentCurrent: outcome === 'decision' });
     }
     initialFinalizing.current = false;
-  }, [missingIdeaProducts, scrollToStage]);
+  }, [firstRecipeReady]);
 
   useEffect(() => {
     if (!initialBuilding || pendingAdd || pendingUsage || initialFinalizing.current) return;
@@ -752,7 +889,7 @@ export function HomeCreatorPage() {
           behavior: next.behavior,
           recommendedDose: null,
           kind: 'topping',
-          initialGrams: defaultHomeToppingGrams(useRecipeStore.getState().items),
+          initialGrams: toppingCreationDefaultGrams(useRecipeStore.getState().items),
           source: 'initial',
         });
         return;
@@ -853,6 +990,93 @@ export function HomeCreatorPage() {
     generateRecipe,
   ]);
 
+  /**
+   * OWNER 2026-09-18 (§3, §10): after EVERY change that CORE says needs a new
+   * calculation, HOME runs the shared PRZELICZ on its own — the customer never has to
+   * press the old „Przelicz i popraw” just to make the result describe the recipe on
+   * screen. Adding 100 g of banana to a 1000 g recipe re-balances the rest of the Base
+   * back to the 1000 g target through the SAME solver and whole-gram practicalization
+   * PRO uses; it never leaves 1200 g under a 1000 g header.
+   *
+   * WHAT counts as such a change is CORE's decision, not HOME's: the shared store
+   * bridge raises `awaitingRecalculation` exactly when the Base technical state moved
+   * (a line, grams, a crown, a lock, the batch, the sweetness, the profile, the
+   * machine) and never for a topping, which sits outside the Base. HOME only listens.
+   *
+   * Each recipe revision is recalculated at most once: a state the customer declines
+   * in the dialog is not solved again until they change something.
+   */
+  const recalculationWanted = useRecipeProfileStore((state) => state.awaitingRecalculation);
+  const recalculationWorking = useConstraintStudioStore(
+    (state) => state.recalculationTerminal?.state === 'WORKING',
+  );
+  const autoRecalculatedFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (!draft.recipeReady || !recalculationWanted || recalculationWorking) return;
+    if (initialBuilding || initialFinalizing.current) return;
+    // Never behind a question the customer is answering.
+    if (reviewAction !== null || automaticReview !== null) return;
+    if (pendingAdd !== null || pendingUsage !== null || recipeEditorOpen) return;
+    if (autoRecalculatedFor.current === recipe.draftRevision) return;
+    const timer = window.setTimeout(() => {
+      autoRecalculatedFor.current = useRecipeStore.getState().draftRevision;
+      void recalculateHomeRecipe().then((outcome) => {
+        // `superseded`: a newer change landed while CORE worked — its own run follows.
+        if (outcome === 'decision') setAutomaticReview({ context: 'auto', presentCurrent: true });
+        // The recipe now describes every change again, so the earlier „not recalculated
+        // yet” notice is no longer true (served E2E 2026-09-18: it stayed on screen).
+        if (outcome === 'applied' || outcome === 'unchanged') {
+          setRecipeNotice((current) =>
+            current === homeCreatorCopy.recipe.changesNotRecalculated ? null : current,
+          );
+        }
+      });
+    }, HOME_AUTO_RECALCULATION_SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [
+    draft.recipeReady,
+    recalculationWanted,
+    recalculationWorking,
+    initialBuilding,
+    reviewAction,
+    automaticReview,
+    pendingAdd,
+    pendingUsage,
+    recipeEditorOpen,
+    recipe.draftRevision,
+  ]);
+
+  /**
+   * DESIGN V3.0 (VI) — „Reset receptury?” → „Reset”: back to an empty start. The SAME
+   * new-draft door the Recipes hub uses for HOME (`startNewProRecipe` + the HOME draft's
+   * `startNew`), plus this page's own answers, so nothing of the previous idea, machine
+   * choice or open question survives into the next recipe. Saved recipes and Community are
+   * not touched.
+   */
+  const resetToEmptyStart = () => {
+    startNewProRecipe(useRecipeStore.getState().visibleProductType ?? undefined);
+    useHomeDraftStore.getState().startNew();
+    setMachine(null);
+    setAmount(null);
+    setForceMachineStage(false);
+    setCustomMachineOpen(false);
+    setPendingAdds([]);
+    setPendingUsage(null);
+    setRecipeNotice(null);
+    setActionNotice(null);
+    setScanNotice(null);
+    setOfficialAdoption(null);
+    setReviewAction(null);
+    setAutomaticReview(null);
+    setConfirmSaveAction(null);
+    setCompletionDialog(null);
+    setInitialPrepared(null);
+    setInitialBuilding(false);
+    setSuggestionChoice(null);
+    generation.current = EMPTY_GENERATION_MEMORY;
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0 });
+  };
+
   /** §35's automatic choice undone: the customer's own recipe, generated from their idea. */
   const createOwnInstead = () => {
     setOfficialAdoption(null);
@@ -933,11 +1157,47 @@ export function HomeCreatorPage() {
     if (!action) return;
     if (action === 'make') {
       useHomeDraftStore.getState().startPreparation();
-      window.setTimeout(() => scrollToStage('preparation'), 60);
+      openProduction();
       return;
     }
     await persistForAction(action);
   };
+
+  /** „Zaczynamy” and „Wróć do produkcji”: the batch's own screen, from its top. */
+  const openProduction = () => {
+    setActionNotice(null);
+    setProductionOpen(true);
+    window.setTimeout(() => scrollToStage('preparation'), 60);
+  };
+
+  /** „Wróć” / „Zapisz” in production: the batch stays in its step; the recipe is shown. */
+  const leaveProduction = (notice: string | null) => {
+    setProductionOpen(false);
+    setActionNotice(notice);
+    window.setTimeout(() => scrollToStage('recipe'), 60);
+  };
+
+  /** The production screen replaces the recipe flow while it is open. */
+  const productionScreen = draft.preparationStarted && productionOpen;
+  const recipeOnScreen = !productionScreen && flow.stages.includes('recipe');
+  /** IV „Przerwanie w HOME”: a started batch that has not finished yet. */
+  const productionActive = draft.preparationStarted && productionStatus !== 'completed';
+  /** The products picked for the open recipe that still wait for their amount (5B). */
+  const recipePendingAmounts = useMemo<HomePendingAmount[]>(
+    () =>
+      pendingAdds
+        .filter((entry) => entry.source === 'live')
+        .map((entry) => ({
+          key: entry.ingredient.id,
+          name: entry.ingredient.name,
+          category: entry.ingredient.category,
+          kind: entry.kind,
+          initialGrams: entry.initialGrams,
+          recommendedDose: entry.recommendedDose,
+          behavior: entry.behavior,
+        })),
+    [pendingAdds],
+  );
 
   const machineLine = [
     machineView.label,
@@ -1005,63 +1265,116 @@ export function HomeCreatorPage() {
     })();
   };
 
+  /** The official door refused the recipe chosen in „Receptury”: said next to the action. */
+  const libraryRefusal =
+    atStart && startMode === 'library' && libraryOpening && officialAdoption?.state === 'blocked'
+      ? { recipeId: libraryOpening, message: officialAdoption.message }
+      : null;
+
   return (
-    <AppShell navigationPosition="trailing" stickyHeader contentClassName="pb-24">
+    <AppShell
+      navigationPosition="trailing"
+      stickyHeader
+      // The start screen's pinned action — and production's dock — is the end of the page:
+      // no empty band under it.
+      contentClassName={atStart || productionScreen ? undefined : 'pb-24'}
+    >
       <div data-testid="home-creator">
-        {officialAdoption ? (
+        {productionScreen ? null : officialAdoption && !libraryRefusal ? (
           <HomeRecipeOriginNotice adoption={officialAdoption} onCreateOwn={createOwnInstead} />
         ) : draft.recipeReady && recipe.provenance ? (
           <HomeRecipeProvenanceLine provenance={recipe.provenance} />
-        ) : !draft.recipeReady ? (
-          <HomeRecipeSources />
         ) : null}
-        {flow.stages.includes('intent') ? (
-          <HomeIntentSection
-            onSubmit={submitIdea}
-            resolving={resolving}
-            onDraftTextChange={setComposerHasText}
-            onChooseIdentity={(chip, candidate) => {
-              // §23: the user answered the identity question. Record the real
-              // catalogue identity, clear the question, and — if the recipe already
-              // exists — put the ingredient in it now.
-              useHomeDraftStore.getState().resolveChip(chip.id, {
-                productId: candidate.id,
-                productName: candidate.name,
-                ambiguous: false,
-                candidates: undefined,
-              });
-              const state = useHomeDraftStore.getState();
-              if (state.recipeReady) {
-                const resolved = state.chips.find((entry) => entry.id === chip.id);
-                if (resolved) void intentIngredients.addResolvedChip(resolved).then(askAmountFor);
-              }
-              // The answer changes the idea version, so matching re-runs on the real
-              // identity by itself (useHomeIdeaSuggestions) and a new version's
-              // suggestions are never suppressed by an earlier dismissal.
+        {!productionScreen && flow.stages.includes('intent') ? (
+          <HomeStart
+            draftId={draft.draftId}
+            mode={startMode}
+            onModeChange={setStartMode}
+            atStart={atStart}
+            ideaReady={startCtaEnabled({
+              mode: 'idea',
+              chips: draft.chips,
+              typedText: composerHasText,
+              recipeChosen: false,
+            })}
+            onStartIdea={() => {
+              // The existing CTA handler, exactly as the inline button ran it: the words
+              // still in the field become chips first (the Enter door), then the idea is
+              // sent — and only a base idea is: a topping alone is not a recipe.
+              setLibraryOpening(null);
+              ideaSection.current?.commitTyped();
+              if (hasBaseIdea(useHomeDraftStore.getState().chips)) submitIdea();
             }}
-            onScan={() => setScannerOpen(true)}
+            onOpenOfficial={(recipeId) => {
+              // The library's own door (`/home?source=official_recipe` uses it too): a guest
+              // is asked to sign in, the original never changes, a refusal says why.
+              // Served 2026-09-18: that door's unsaved-changes check expects the library
+              // page's confirmation, which HOME never shows — a fresh HOME (only the untouched
+              // starter) could not open any recipe. HOME asks itself, and only when a real
+              // recipe of the customer's is on screen.
+              if (useHomeDraftStore.getState().recipeReady && useRecipeStore.getState().dirty) {
+                setReplaceAsk(recipeId);
+                return;
+              }
+              setLibraryOpening(recipeId);
+              void adoptOfficialRecipe(recipeId, {
+                keepIdea: false,
+                automatic: false,
+                replaceConfirmed: true,
+              });
+            }}
+            onCommunityOpened={() => {
+              // The Community door already loaded the derived recipe into the shared
+              // store — exactly as the suggestions layer's `onDerived` below: HOME opens
+              // the recipe stage without generating over it.
+              useHomeDraftStore.getState().markRecipeReady(true);
+              generation.current = generationStarted(
+                `${draft.profile}|${machine?.id ?? 'none'}|${amount?.totalGrams ?? 0}`,
+                generation.current,
+              );
+              scrollToStage('recipe');
+            }}
+            busy={resolving || officialAdoption?.state === 'loading'}
+            libraryRefusal={libraryRefusal}
+            idea={
+              <HomeIntentSection
+                ref={ideaSection}
+                resolving={resolving}
+                onDraftTextChange={setComposerHasText}
+                onChooseIdentity={(chip, candidate) => {
+                  // §23: the user answered the identity question. Record the real
+                  // catalogue identity, clear the question, and — if the recipe already
+                  // exists — put the ingredient in it now.
+                  useHomeDraftStore.getState().resolveChip(chip.id, {
+                    productId: candidate.id,
+                    productName: candidate.name,
+                    ambiguous: false,
+                    candidates: undefined,
+                  });
+                  const state = useHomeDraftStore.getState();
+                  if (state.recipeReady) {
+                    const resolved = state.chips.find((entry) => entry.id === chip.id);
+                    if (resolved)
+                      void intentIngredients.addResolvedChip(resolved).then(askAmountFor);
+                  }
+                  // The answer changes the idea version, so matching re-runs on the real
+                  // identity by itself (useHomeIdeaSuggestions) and a new version's
+                  // suggestions are never suppressed by an earlier dismissal.
+                }}
+                onScan={() => setScannerOpen(true)}
+              />
+            }
           />
         ) : null}
 
-        {scanNotice ? (
+        {!productionScreen && scanNotice ? (
           // Polite, dismissible, and never in the way of the recipe itself.
           <p role="status" aria-live="polite" className="px-1 text-sm text-ink/60">
             {scanNotice}
           </p>
         ) : null}
 
-        {recipeNotice ? (
-          <p
-            role="alert"
-            className="mx-auto my-4 max-w-2xl rounded-xl border px-4 py-3 text-sm"
-            style={{ borderColor: 'var(--g-line)', color: 'var(--g-attention-ink)' }}
-            data-testid="home-recipe-notice"
-          >
-            {recipeNotice}
-          </p>
-        ) : null}
-
-        {flow.stages.includes('profile') ? (
+        {!productionScreen && flow.stages.includes('profile') ? (
           <HomeProfileSection
             selected={draft.profile}
             onSelect={(profile) => {
@@ -1074,7 +1387,7 @@ export function HomeCreatorPage() {
           />
         ) : null}
 
-        {flow.stages.includes('machine') ? (
+        {!productionScreen && flow.stages.includes('machine') ? (
           <HomeMachineSection
             view={machineView}
             amount={amount}
@@ -1106,7 +1419,7 @@ export function HomeCreatorPage() {
                 batchSource: 'MACHINE_DEFAULT',
               });
             }}
-            onOtherMachine={() => setForceMachineStage(true)}
+            onOtherMachine={() => setCustomMachineOpen(true)}
             onAmountChange={(next) => {
               setAmount(next);
               if (draft.recipeReady) {
@@ -1122,26 +1435,36 @@ export function HomeCreatorPage() {
               setForceMachineStage(true);
             }}
             onCancelChange={() => setForceMachineStage(false)}
-            onDone={() => {
+            onDone={(typed) => {
+              // A typed exact amount the customer did not apply separately is still
+              // their answer — this render's `amount` has not caught up with it yet.
+              const chosen = typed ?? amount;
+              if (!draft.recipeReady && !userId) {
+                // A guest cannot have a recipe calculated (product data needs an
+                // account), so the answer to „Gotowe” is the same sign-in the official
+                // recipes ask for — never a product error far above the button.
+                openAuthModal();
+                return;
+              }
               // Done also ENDS an open change request, so „Zmień" -> „Gotowe" returns to
               // the summary even when the customer picked nothing. Selecting already
               // clears it; this covers the cancel path.
               setForceMachineStage(false);
               if (!draft.recipeReady) {
-                const key = `${draft.profile}|${machine?.id ?? 'none'}|${amount?.totalGrams ?? 0}`;
+                const key = `${draft.profile}|${machine?.id ?? 'none'}|${chosen?.totalGrams ?? 0}`;
                 // „Gotowe" is the customer answering, so it may retry a set that
                 // failed — but it still starts at most one build per press.
                 if (!initialBuilding) {
                   generation.current = generationStarted(key, generationRetried());
-                  generateRecipe(amount);
+                  generateRecipe(chosen);
                 }
                 return;
               }
               // §85: Done updates the SAME recipe and returns to the live position.
-              if (amount) {
+              if (chosen) {
                 useRecipeStore
                   .getState()
-                  .setBatchGrams(amount.totalGrams, undefined, 'USER_OVERRIDE');
+                  .setBatchGrams(chosen.totalGrams, undefined, 'USER_OVERRIDE');
               }
               scrollToStage('recipe');
             }}
@@ -1151,7 +1474,21 @@ export function HomeCreatorPage() {
           />
         ) : null}
 
-        {flow.stages.includes('recipe') ? (
+        {/* Served 2026-09-18: this notice sat above the profile stage, ~900 px from the
+            „Gotowe” and the recipe it is about, so a refusal looked like a dead button.
+            It belongs between the answer that produced it and the recipe it describes. */}
+        {!productionScreen && recipeNotice ? (
+          <p
+            role="alert"
+            className="mx-5 my-4 max-w-2xl rounded-xl border px-4 py-3 text-sm sm:mx-auto"
+            style={{ borderColor: 'var(--g-line)', color: 'var(--g-attention-ink)' }}
+            data-testid="home-recipe-notice"
+          >
+            {recipeNotice}
+          </p>
+        ) : null}
+
+        {recipeOnScreen ? (
           <HomeRecipeSection
             name={name}
             onNameChange={(next) => useHomeDraftStore.getState().setRecipeNameOverride(next)}
@@ -1167,6 +1504,7 @@ export function HomeCreatorPage() {
             sweetnessStored={recipe.direction_targets.sweetness}
             onSweetness={onSweetness}
             onRemoveItem={(lineId) => useRecipeStore.getState().removeItem(lineId)}
+            onRemoveTopping={(lineId) => useRecipeStore.getState().removeTopping(lineId)}
             onGramsBlocked={() => {
               // The row keeps its controls for everyone (owner, 2026-08-31), so operating
               // a masked one routes to the EXISTING entitlement behaviour rather than
@@ -1190,10 +1528,23 @@ export function HomeCreatorPage() {
             onShare={() => requestFinalAction('share')}
             onCommunity={() => requestFinalAction('community')}
             onBack={flow.backFrom('recipe') ? () => scrollToStage(flow.backFrom('recipe')!) : null}
+            onReset={resetToEmptyStart}
+            productionActive={productionActive}
+            onResumeProduction={openProduction}
+            pendingAmounts={recipePendingAmounts}
+            onConfirmPending={(key, grams) => {
+              const waiting = pendingAdds.find((entry) => entry.ingredient.id === key);
+              if (waiting) confirmPendingAdd(waiting, grams);
+            }}
+            onRemovePending={(key) => {
+              const waiting = pendingAdds.find((entry) => entry.ingredient.id === key);
+              if (waiting) cancelPendingAdd(waiting);
+            }}
+            onEditorOpenChange={setRecipeEditorOpen}
           />
         ) : null}
 
-        {draft.recipeReady && actionNotice ? (
+        {!productionScreen && draft.recipeReady && actionNotice ? (
           <p
             className="mt-3 text-center text-[13px] leading-snug"
             data-testid="home-action-notice"
@@ -1205,21 +1556,112 @@ export function HomeCreatorPage() {
           </p>
         ) : null}
 
-        {draft.preparationStarted ? (
+        {productionScreen ? (
           <HomePreparation
             name={name}
+            onBack={() => leaveProduction(null)}
+            onSaveBatch={() => leaveProduction(homeCreatorCopy.production.savedForLater)}
             onSave={() => requestFinalAction('save')}
             onShare={() => requestFinalAction('share')}
             onCommunity={() => requestFinalAction('community')}
+            saved={Boolean(recipe.savedRecipeId) && !recipe.dirty}
+            notice={actionNotice}
           />
         ) : null}
       </div>
 
+      {replaceAsk !== null ? (
+        <DialogShell
+          label={homeCreatorCopy.draft.replaceTitle}
+          testId="home-library-replace"
+          placement="responsive"
+          onClose={() => setReplaceAsk(null)}
+        >
+          <p className="text-[17px] font-semibold" style={{ color: 'var(--g-ink)' }}>
+            {homeCreatorCopy.draft.replaceTitle}
+          </p>
+          <p className="mt-2 text-[14px]" style={{ color: 'var(--g-text-secondary)' }}>
+            {homeCreatorCopy.draft.replaceBody}
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              className={buttonClasses('ghost', 'md')}
+              data-testid="home-library-replace-cancel"
+              onClick={() => setReplaceAsk(null)}
+            >
+              {homeCreatorCopy.draft.cancel}
+            </button>
+            <button
+              type="button"
+              className={buttonClasses('primary', 'md')}
+              data-testid="home-library-replace-confirm"
+              onClick={() => {
+                const recipeId = replaceAsk;
+                setReplaceAsk(null);
+                setLibraryOpening(recipeId);
+                void adoptOfficialRecipe(recipeId, {
+                  keepIdea: false,
+                  automatic: false,
+                  replaceConfirmed: true,
+                });
+              }}
+            >
+              {homeCreatorCopy.draft.startNew}
+            </button>
+          </div>
+        </DialogShell>
+      ) : null}
+
+      <RecipeCustomMachineDialog
+        open={customMachineOpen}
+        onClose={() => setCustomMachineOpen(false)}
+        onComplete={(completion: MachineOnboardingCompletion) => {
+          // Served 2026-09-18: „Inna maszyna” did nothing. It is the same custom-machine
+          // wizard PRO uses, landing on the same machine door as a listed machine.
+          const batchGrams = effectiveDefaultBatchGrams(completion.record);
+          const setup =
+            batchGrams === null
+              ? applyMachineSelection(completion.profile)
+              : applyMachineSelection(completion.profile, batchGrams, 'CUSTOM_MACHINE_BATCH');
+          if (setup === null) return;
+          setMachine(completion.profile);
+          setForceMachineStage(false);
+          setAmount(defaultHomeAmount(batchGrams ?? setup.recommendedBatchGrams));
+          setCustomMachineOpen(false);
+        }}
+      />
+
       <HomeRecalculate
-        open={reviewAction !== null}
-        context={reviewAction ?? 'make'}
-        onClose={() => setReviewAction(null)}
-        onApplied={continueAfterReview}
+        open={reviewAction !== null || automaticReview !== null}
+        context={reviewAction ?? automaticReview?.context ?? 'make'}
+        presentCurrent={reviewAction === null && automaticReview?.presentCurrent === true}
+        onClose={() => {
+          if (reviewAction !== null) {
+            setReviewAction(null);
+            return;
+          }
+          const closed = automaticReview?.context;
+          setAutomaticReview(null);
+          if (closed === 'initial') {
+            // The customer walked away from CORE's answer to the first build: say so,
+            // and wait for them — the same answers are not rebuilt on their own.
+            setRecipeNotice(homeCreatorCopy.recipe.firstBuildNotApplied);
+            generation.current = generationFailed(generation.current);
+          } else if (closed === 'auto') {
+            setRecipeNotice(homeCreatorCopy.recipe.changesNotRecalculated);
+          }
+        }}
+        onApplied={async () => {
+          if (reviewAction !== null) {
+            await continueAfterReview();
+            return;
+          }
+          const applied = automaticReview?.context;
+          setAutomaticReview(null);
+          setRecipeNotice(null);
+          if (applied === 'initial') firstRecipeReady();
+        }}
         canSeeGrams={canSeeGrams}
         onGramsBlocked={() => {
           if (recipeSave.blocked === 'signin') openAuthModal();
@@ -1228,52 +1670,49 @@ export function HomeCreatorPage() {
       />
 
       {confirmSaveAction ? (
-        <div
-          className="fixed inset-0 z-[96] grid place-items-center bg-black/30 p-4"
-          role="dialog"
-          aria-modal="true"
-          data-testid="home-save-before-share"
+        /* DESIGN V3.0 XIII — a HOME question is a compact bottom layer, actions last. */
+        <HomeLayer
+          label={confirmSaveAction === 'share' ? 'Zapisz i udostępnij' : 'Zapisz i opublikuj'}
+          testId="home-save-before-share"
+          onClose={() => setConfirmSaveAction(null)}
         >
-          <div className="w-full max-w-md rounded-2xl bg-white p-6">
-            <h2 className="text-xl font-semibold">
+          <HomeLayerHeading
+            title={confirmSaveAction === 'share' ? 'Zapisz i udostępnij' : 'Zapisz i opublikuj'}
+            subtitle="Link i publikacja zawsze wskazują jedną dokładną, niezmienną wersję receptury."
+          />
+          <HomeLayerFoot>
+            <button
+              type="button"
+              className={homeLayerSecondaryButton}
+              onClick={() => setConfirmSaveAction(null)}
+            >
+              Wróć
+            </button>
+            <button
+              type="button"
+              className={homeLayerPrimaryButton}
+              onClick={() => {
+                const action = confirmSaveAction;
+                setConfirmSaveAction(null);
+                if (
+                  useRecipeStore.getState().dirty ||
+                  useRecipeStore.getState().practicalRecipeAudit === null
+                )
+                  setReviewAction(action);
+                else void persistForAction(action);
+              }}
+            >
               {confirmSaveAction === 'share' ? 'Zapisz i udostępnij' : 'Zapisz i opublikuj'}
-            </h2>
-            <p className="mt-3 text-sm text-stone-600">
-              Link i publikacja zawsze wskazują jedną dokładną, niezmienną wersję receptury.
-            </p>
-            <div className="mt-6 flex gap-2">
-              <button
-                type="button"
-                className="min-h-11 flex-1 rounded-full bg-ink px-4 text-sm font-semibold text-white"
-                onClick={() => {
-                  const action = confirmSaveAction;
-                  setConfirmSaveAction(null);
-                  if (
-                    useRecipeStore.getState().dirty ||
-                    useRecipeStore.getState().practicalRecipeAudit === null
-                  )
-                    setReviewAction(action);
-                  else void persistForAction(action);
-                }}
-              >
-                {confirmSaveAction === 'share' ? 'Zapisz i udostępnij' : 'Zapisz i opublikuj'}
-              </button>
-              <button
-                type="button"
-                className="min-h-11 rounded-full border px-4 text-sm"
-                onClick={() => setConfirmSaveAction(null)}
-              >
-                Wróć
-              </button>
-            </div>
-          </div>
-        </div>
+            </button>
+          </HomeLayerFoot>
+        </HomeLayer>
       ) : null}
 
       {completionDialog === 'share' && recipe.savedRecipeId && recipe.currentVersionNumber ? (
         <ShareRecipeDialog
           recipeId={recipe.savedRecipeId}
           versionNumber={recipe.currentVersionNumber}
+          frame="home-layer"
           onClose={() => setCompletionDialog(null)}
         />
       ) : null}
@@ -1284,6 +1723,7 @@ export function HomeCreatorPage() {
           defaultTitle={name}
           hasCreatorProfile={hasCreatorProfile}
           completionContext={draft.preparationStarted}
+          placement="home-layer"
           onClose={() => setCompletionDialog(null)}
         />
       ) : null}
@@ -1381,33 +1821,22 @@ export function HomeCreatorPage() {
         />
       ) : null}
 
-      {pendingAdd ? (
+      {/* The first build asks its amount questions here, before a recipe is on screen.
+          Once the recipe is shown, a product picked for it is answered in the recipe's own
+          ingredient panel instead (DESIGN IV-C) — the same confirmation doors either way. */}
+      {pendingAdd && (pendingAdd.source === 'initial' || !recipeOnScreen) ? (
         <HomeAmountPrompt
           key={pendingAdd.ingredient.id}
           productName={pendingAdd.ingredient.name}
           recommendedDose={pendingAdd.recommendedDose}
           initialGrams={pendingAdd.initialGrams}
-          onCancel={() => {
-            if (pendingAdd.source === 'initial' && pendingAdd.chipId) {
-              useHomeDraftStore.getState().removeChip(pendingAdd.chipId);
-            }
-            setPendingAdd(null);
-          }}
-          onConfirm={(grams) => {
-            if (pendingAdd.source === 'initial' && pendingAdd.chipId) {
-              useHomeDraftStore.getState().answerAmount(pendingAdd.chipId, grams);
-            }
-            if (pendingAdd.kind === 'topping') {
-              addConfirmedTopping(
-                pendingAdd.ingredient as unknown as RecipeToppingIngredient,
-                pendingAdd.behavior ?? undefined,
-                grams,
-              );
-            } else {
-              addIngredientLine(pendingAdd.ingredient, pendingAdd.behavior, grams);
-            }
-            setPendingAdd(null);
-          }}
+          cancelLabel={
+            pendingAdd.source === 'initial' && pendingAdd.chipId
+              ? homeCreatorCopy.recipe.askAmountCancel
+              : homeCreatorCopy.draft.cancel
+          }
+          onCancel={() => cancelPendingAdd(pendingAdd)}
+          onConfirm={(grams) => confirmPendingAdd(pendingAdd, grams)}
         />
       ) : null}
 

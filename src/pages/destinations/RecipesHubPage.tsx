@@ -49,6 +49,7 @@ import {
   isRecipeLibraryTab,
   type RecipeLibraryTab,
 } from '@/features/recipes/recipeLibrary';
+import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 
 const r = copy.nav.recipes;
@@ -623,6 +624,8 @@ export function RecipesHubPage() {
   const ownerReviewAccess = useOwnerReviewAccess();
   const persona = useProCorePersona();
   const openAuthModal = useAuthModalStore((state) => state.open);
+  const authAvailable = useAuthStore((state) => state.available);
+  const authed = useAuthStore((state) => state.status === 'authed');
   const currentVisibleProductType = useRecipeStore((state) => state.visibleProductType);
   // Defence in depth: the review hook already requires Pro, but the page also
   // refuses to mount executable Owner Review cards for Demo/Home personas.
@@ -652,7 +655,8 @@ export function RecipesHubPage() {
     if (staleCollection) next.delete('collection');
     setParams(next, { replace: true });
   }, [params, setParams, staleCollection, staleRecipe, staleTab]);
-  const newRecipeHref = persona === 'pro' ? '/pro/recipe' : persona === 'home' ? '/home' : '/start';
+  // A guest starts in the canonical HOME creator too — never the legacy `/start` shell.
+  const newRecipeHref = persona === 'pro' ? '/pro/recipe' : '/home';
   const openNewRecipe = () => {
     // HOME owns a persisted orchestration draft in addition to the shared recipe working copy.
     // A confirmed new-recipe action must clear both, otherwise the old `recipeReady` state turns
@@ -767,7 +771,25 @@ export function RecipesHubPage() {
       ) : null}
       {activeTab === 'shared' ? (
         <div id="recipes-panel-shared" role="tabpanel" aria-labelledby="recipes-tab-shared">
-          <SharedWithMePanel />
+          {/* Received shares belong to an account. Without a session the panel's read fails,
+              and that failure must not read as „nothing was shared with you" — a guest gets
+              the same signed-out state as „Moje". */}
+          {authed ? (
+            <SharedWithMePanel />
+          ) : !authAvailable ? (
+            <p className="text-sm leading-relaxed text-stone-500">{copy.recipes.unavailable}</p>
+          ) : (
+            <div className="flex items-center gap-4" data-testid="recipes-shared-signed-out">
+              <p className="text-sm leading-relaxed text-stone-600">{copy.recipes.signInToView}</p>
+              <button
+                type="button"
+                className={buttonClasses('primary', 'sm')}
+                onClick={openAuthModal}
+              >
+                {copy.recipes.signInCta}
+              </button>
+            </div>
+          )}
         </div>
       ) : null}
       {activeTab === 'pinguino' ? (

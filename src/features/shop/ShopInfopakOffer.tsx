@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/cn';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { shopCopy as c } from '@/copy/shop';
+import { PLAN_REQUIRED, ShopPlanRequired } from '@/features/shop/ShopPlanRequired';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import {
@@ -40,7 +41,8 @@ export const INFOPAK_IMAGE_SRC = '/shop/infopak-pl.png';
 const label =
   'text-[10px] leading-[1.25] font-bold tracking-[0.1em] text-[var(--g-text-secondary)] uppercase';
 
-export type InfopakNotice = 'notAvailable' | 'fileMissing' | 'failed' | 'downloadFailed';
+export type InfopakNotice =
+  'notAvailable' | 'planRequired' | 'fileMissing' | 'failed' | 'downloadFailed';
 
 /** Where the customer stands for the country chosen above. */
 export type InfopakMarketState = 'CHOOSE_COUNTRY' | 'NOT_READY' | 'READY';
@@ -141,7 +143,7 @@ export function ShopInfopakOfferView({
                 {c.infopak.chooseCountry}{' '}
                 <a
                   href="#shop-country"
-                  className="pro-focus-ring text-ink underline underline-offset-[3px]"
+                  className="pro-focus-ring inline-flex min-h-11 items-center text-ink underline underline-offset-[3px]"
                   data-testid="shop-infopak-choose-country"
                 >
                   {c.infopak.chooseCountryLink}
@@ -155,7 +157,7 @@ export function ShopInfopakOfferView({
                 {c.infopak.notReady.replace('{country}', countryName ?? '')}{' '}
                 <a
                   href="#shop-country"
-                  className="pro-focus-ring text-ink underline underline-offset-[3px]"
+                  className="pro-focus-ring inline-flex min-h-11 items-center text-ink underline underline-offset-[3px]"
                   data-testid="shop-infopak-choose-country"
                 >
                   {c.infopak.changeCountry}
@@ -235,7 +237,9 @@ export function ShopInfopakOfferView({
                 </div>
               </>
             )}
-            {notice ? (
+            {notice === 'planRequired' ? (
+              <ShopPlanRequired className="mt-3" testId="shop-infopak-plan-required" />
+            ) : notice ? (
               <p
                 className="mt-3 text-[12px] text-[var(--g-attention-ink)]"
                 role="alert"
@@ -258,6 +262,8 @@ export function ShopInfopakOfferView({
 const noticeFor = (error: unknown): InfopakNotice => {
   const code = error instanceof DocumentOrderError ? error.code : '';
   if (code === 'document_not_available') return 'notAvailable';
+  /* The server's answer, not the UI's guess: the database refuses an order without an active HOME or PRO plan. */
+  if (code === PLAN_REQUIRED) return 'planRequired';
   if (code === 'document_file_missing') return 'fileMissing';
   return 'failed';
 };

@@ -1,0 +1,402 @@
+/*
+ * DESIGN V3.0 VI + IX — the HOME start screen: two modes, the idea or the recipes, and ONE
+ * „Rozpocznij recepturę” pinned to the bottom. Values measured on the frozen DESIGN
+ * (`design-ref-v3/v3.css`: .h-start, .h-src, .h-lib, .h-colls, .h-ctile, .h-libhd, .h-foot).
+ *
+ * Geometry follows the app's own breakpoints: a phone below 640 px (20 px gutters), a
+ * tablet in portrait up to the desktop handoff (68.5 rem: a 600 px start column, the
+ * collections 32 px from the edge), and the desktop frame (a 640 px start column, the
+ * collections across the 1280 px application frame).
+ */
+
+.home-start {
+  background: #ffffff;
+}
+.home-start-body {
+  padding: 14px 0 24px;
+}
+
+.home-start-col {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+.home-start-wide {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ── the two modes (.h-src / .h-pill) ─────────────────────────────────────── */
+.home-start-modes {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 20px;
+}
+.home-start-mode {
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #ded9d0;
+  border-radius: 999px;
+  background: #ffffff;
+  font: 600 13px/1 var(--font-sans, Manrope, sans-serif);
+  color: #65635f;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.home-start-mode[aria-checked='true'] {
+  border-color: #101113;
+  background: #101113;
+  color: #ffffff;
+}
+/* A 44 px thumb target around the 36 px pill, without moving it. */
+.home-start-mode {
+  position: relative;
+}
+.home-start-mode::after {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+.home-start-mode:focus-visible,
+.home-lib-tile:focus-visible,
+.home-lib-back:focus-visible,
+.home-lib-none button:focus-visible,
+.home-lib-search-x:focus-visible {
+  outline: 2px solid #101113;
+  outline-offset: 2px;
+}
+
+/* ── the search pill (.h-search) ──────────────────────────────────────────── */
+.home-lib-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 46px;
+  margin: 0 0 16px;
+  padding: 0 4px 0 15px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #e4e0d9;
+}
+.home-lib-search:focus-within {
+  box-shadow: inset 0 0 0 1.5px #101113;
+}
+.home-lib-search-ic {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: #8a857d;
+}
+.home-lib-search-ic svg {
+  width: 16px;
+  height: 16px;
+}
+/* The pill carries the focus ring; the field inside never draws a second box (§41). */
+html[data-gellatti-input-modality] .theme-pro-light .home-lib-search input:focus,
+html[data-gellatti-input-modality] .theme-pro-light .home-lib-search input:focus-visible,
+.home-lib-search input:focus,
+.home-lib-search input:focus-visible {
+  outline: none !important;
+  outline-offset: 0 !important;
+  box-shadow: none !important;
+}
+.home-lib-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  margin: 0 0 0 9px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: 400 16px/1 var(--font-sans, Manrope, sans-serif);
+  color: #101113;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.home-lib-search input::placeholder {
+  color: #a39e95;
+}
+.home-lib-search input::-webkit-search-cancel-button,
+.home-lib-search input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  display: none;
+}
+.home-lib-search-x {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #77736c;
+  cursor: pointer;
+}
+.home-lib-search-x svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ── level 1: the six collections (.h-colls / .h-ctile) ──────────────────── */
+.home-lib-label {
+  margin: 0 0 8px;
+  font: 700 11px/1 var(--font-sans, Manrope, sans-serif);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #77736c;
+}
+.home-lib-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 12px;
+}
+.home-lib-tile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  text-align: left;
+  color: #101113;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.home-lib-tile-img {
+  display: block;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #f3f0ea;
+}
+.home-lib-tile-img img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.45s ease;
+}
+@media (hover: hover) {
+  .home-lib-tile:hover .home-lib-tile-img img {
+    transform: scale(1.035);
+  }
+}
+.home-lib-tile b {
+  margin-top: 9px;
+  font: 600 14.5px/1.2 var(--font-sans, Manrope, sans-serif);
+  letter-spacing: -0.01em;
+  color: #101113;
+}
+.home-lib-tile small {
+  margin-top: 3px;
+  font: 400 12px/1.25 var(--font-sans, Manrope, sans-serif);
+  color: #8a857d;
+}
+
+/* ── level 2 and results: a title line and the carousel (.h-libhd) ───────── */
+.home-lib-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 44px;
+  margin: -2px 0 8px -10px;
+  padding: 0 12px 0 6px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  font: 600 15px/1 var(--font-sans, Manrope, sans-serif);
+  color: #101113;
+  cursor: pointer;
+}
+.home-lib-back svg {
+  width: 18px;
+  height: 18px;
+}
+.home-lib-hd {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+.home-lib-hd > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.home-lib-title {
+  display: block;
+  margin: 0;
+  font: 600 19px/1.2 var(--font-sans, Manrope, sans-serif);
+  letter-spacing: -0.015em;
+  color: #101113;
+}
+.home-lib-sub {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  font: 400 12.5px/1.3 var(--font-sans, Manrope, sans-serif);
+  color: #8a857d;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.home-lib-note {
+  margin: 4px 0 0;
+  font: 400 13.5px/1.4 var(--font-sans, Manrope, sans-serif);
+  color: #77736c;
+}
+
+/* ── no results (.h-libnone) ──────────────────────────────────────────────── */
+.home-lib-none {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+  padding: 10px 0;
+}
+.home-lib-none b {
+  font: 600 17px/1.25 var(--font-sans, Manrope, sans-serif);
+  color: #101113;
+}
+.home-lib-none small {
+  font: 400 13.5px/1.4 var(--font-sans, Manrope, sans-serif);
+  color: #77736c;
+}
+.home-lib-none button {
+  height: 44px;
+  margin-top: 10px;
+  padding: 0 20px;
+  border: 1px solid #ded9d0;
+  border-radius: 999px;
+  background: #ffffff;
+  font: 600 14px/1 var(--font-sans, Manrope, sans-serif);
+  color: #101113;
+  cursor: pointer;
+}
+
+/* ── ONE „Rozpocznij recepturę” (.h-foot) ────────────────────────────────── */
+.home-start-cta {
+  padding: 12px 0 max(16px, env(safe-area-inset-bottom));
+  background: #ffffff;
+  box-shadow: 0 -1px 0 #efebe4;
+}
+/* Pinned: it stays at the bottom of the screen while the start scrolls under it. Its own
+ * height is reserved at the end of the page (`.home-start-cta-space`, measured), so the
+ * last tile or card can always be scrolled above it — it never covers content. */
+.home-start-cta[data-placement='pinned'] {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+}
+/* After the idea was sent, the same action returns to the document (no second fixed bar
+ * over the next questions). */
+.home-start-cta[data-placement='inline'] {
+  padding-top: 20px;
+  padding-bottom: 8px;
+  box-shadow: none;
+}
+.home-start-chosen,
+.home-start-cta-note {
+  margin: 0;
+  overflow: hidden;
+  font: 400 12.5px/1.3 var(--font-sans, Manrope, sans-serif);
+  color: #77736c;
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.home-start-chosen b {
+  font-weight: 600;
+  color: #101113;
+}
+.home-start-cta-note {
+  white-space: normal;
+  color: #a3261d;
+}
+.home-start-cta .home-cta[aria-busy='true'] {
+  opacity: 0.72;
+  cursor: progress;
+}
+
+/* ── the library's carousels ─────────────────────────────────────────────── */
+.home-lib .home-rcar {
+  margin-top: 0;
+}
+
+/* ── iPad in portrait and other tablets ──────────────────────────────────── */
+@media (min-width: 640px) {
+  .home-start-col {
+    max-width: 600px;
+    padding: 0;
+  }
+  .home-start-wide {
+    padding: 0 32px;
+  }
+  .home-lib-tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 22px 16px;
+  }
+  /* The strip ends at the screen edge; cards 280 px. */
+  .home-lib .home-rcar {
+    gap: 16px;
+    margin: 0 -32px;
+    padding: 4px 32px 10px;
+    scroll-padding: 0 32px;
+  }
+  .home-lib .home-rcard {
+    flex-basis: 280px;
+  }
+}
+
+/* ── desktop: the start column is 640 px, the collections span the frame ─── */
+@media (min-width: 68.5rem) {
+  .home-start-col {
+    max-width: 640px;
+  }
+  .home-start-wide {
+    max-width: min(1280px, 100% - 57.6px);
+    padding: 0;
+  }
+  .home-lib-search {
+    margin-bottom: 30px;
+  }
+  .home-lib-label {
+    display: none;
+  }
+  .home-lib-tiles {
+    gap: 30px 22px;
+  }
+  .home-lib-tile-img {
+    aspect-ratio: 16 / 9;
+    border-radius: 16px;
+  }
+  .home-lib-tile b {
+    margin-top: 12px;
+    font-size: 17px;
+  }
+  .home-lib-tile small {
+    font-size: 12.5px;
+  }
+  .home-lib-hd {
+    margin-bottom: 16px;
+  }
+  .home-lib-title {
+    font-size: 22px;
+  }
+  /* Four or more whole cards in a row; ‹ › scroll it (they choose nothing). */
+  .home-lib .home-rcar {
+    gap: 22px;
+    margin: 0;
+    padding: 2px 0 12px;
+    scroll-padding: 0;
+  }
+  .home-lib .home-rcard {
+    flex-basis: 268px;
+  }
+}

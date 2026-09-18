@@ -15,3 +15,14 @@ export function queueAmountQuestion<Q extends { readonly ingredient: { readonly 
   if (queue.some((pending) => pending.ingredient.id === next.ingredient.id)) return [...queue];
   return [...queue, next];
 }
+
+/**
+ * DESIGN V3.0 (IV-C, 5B): a product waiting for its amount is a row the customer can come
+ * back to, so any one of them — not only the first — may be answered or removed.
+ */
+export function dropAmountQuestion<Q extends { readonly ingredient: { readonly id: string } }>(
+  queue: readonly Q[],
+  ingredientId: string,
+): Q[] {
+  return queue.filter((pending) => pending.ingredient.id !== ingredientId);
+}

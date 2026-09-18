@@ -6,6 +6,7 @@ import { applicationPrimaryClasses } from '@/components/ui/applicationControlSty
 import { shopCopy as c } from '@/copy/shop';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { createLocalStarterPackOrder, LocalPackError } from '@/services/localStarterPack';
+import { PLAN_REQUIRED, ShopPlanRequired } from '@/features/shop/ShopPlanRequired';
 import {
   selectedShopCountry,
   selectedStarterPackMode,
@@ -54,6 +55,8 @@ export function LocalStarterPackPage() {
   const [phone, setPhone] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /* The server refused the order for the account's plan (owner, 2026-09-18): said as such, with the way to a plan. */
+  const [needsPlan, setNeedsPlan] = useState(false);
 
   useEffect(() => {
     void load();
@@ -65,6 +68,7 @@ export function LocalStarterPackPage() {
     if (!country) return;
     setBusy(true);
     setError(null);
+    setNeedsPlan(false);
     try {
       const result = await createLocalStarterPackOrder({
         countryIso2: country.iso2,
@@ -74,7 +78,8 @@ export function LocalStarterPackPage() {
       navigate(`/account?section=orders&order=${result.orderId}&created=1`);
     } catch (cause) {
       const code = cause instanceof LocalPackError ? cause.code : 'local_pack_failed';
-      setError(errorCopy[code] ?? 'Nie udało się utworzyć zamówienia. Spróbuj ponownie.');
+      if (code === PLAN_REQUIRED) setNeedsPlan(true);
+      else setError(errorCopy[code] ?? 'Nie udało się utworzyć zamówienia. Spróbuj ponownie.');
       setBusy(false);
     }
   };
@@ -190,6 +195,7 @@ export function LocalStarterPackPage() {
               {error}
             </p>
           ) : null}
+          {needsPlan ? <ShopPlanRequired testId="local-pack-plan-required" /> : null}
           <button
             type="submit"
             disabled={busy}

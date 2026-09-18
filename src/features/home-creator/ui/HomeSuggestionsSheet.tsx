@@ -18,6 +18,7 @@ import type { HomeSuggestionCard } from '../matching/homeIdeaSuggestions';
 import {
   HomeRecipeCarousel,
   HomeRecipeCarouselNav,
+  type HomeRecipeCarouselEdges,
   type HomeRecipeCarouselHandle,
 } from './HomeRecipeCarousel';
 
@@ -53,6 +54,8 @@ export function HomeSuggestionsSheet({
   const copy = homeCreatorCopy.match;
   const carousel = useRef<HomeRecipeCarouselHandle>(null);
   const [hint, setHint] = useState<string | null>(null);
+  // Unmeasured (`null`) keeps both arrows available; the carousel reports its real edges.
+  const [edges, setEdges] = useState<HomeRecipeCarouselEdges | null>(null);
   const chosen = cards.find((card) => card.id === selectedId) ?? null;
   const alsoIncludesLines = (names: readonly string[]) => {
     if (names.length === 0) return { short: null, full: null };
@@ -74,6 +77,10 @@ export function HomeSuggestionsSheet({
       size="wide"
       dismissOnBackdrop
       onClose={onSkip}
+      /* Opening chooses nothing, so focus must not land on a card (its ring reads as
+         „chosen” while „Wybierz” waits) nor on a dead arrow: it starts on the one action
+         that needs no choice. */
+      initialFocusTestId="home-suggestions-create-own"
     >
       <div className="home-sugg-hd">
         <div>
@@ -84,6 +91,7 @@ export function HomeSuggestionsSheet({
           onScroll={(direction) => carousel.current?.scrollByCard(direction)}
           previousLabel={copy.previousCards}
           nextLabel={copy.nextCards}
+          edges={edges}
         />
       </div>
       <div className="home-sugg-body">
@@ -111,6 +119,7 @@ export function HomeSuggestionsSheet({
           }}
           label={copy.suggestionsCarousel(ideaLabel)}
           testId="home-suggestions-carousel"
+          onEdgesChange={setEdges}
         />
         {chosenAlsoIncludes?.full && chosenAlsoIncludes.full !== chosenAlsoIncludes.short ? (
           <p className="home-sugg-also" data-testid="home-suggestions-also-full">

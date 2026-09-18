@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { shopCopyEn, shopCopyPl } from '@/copy/shop';
 import {
@@ -114,6 +115,38 @@ describe('the infopak offer says what it is', () => {
     );
   });
 
+  it('tells a signed-in account without a plan that ordering needs HOME or PRO, and keeps the offer open', () => {
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <ShopInfopakOfferView {...base} signedIn notice="planRequired" />
+      </MemoryRouter>,
+    );
+    expect(html).toContain(
+      'Zamawianie w sklepie jest dostępne z aktywnym planem Gellatti HOME lub PRO.',
+    );
+    expect(html).toContain('data-testid="shop-infopak-plan-required-plans"');
+    expect(html).toContain('href="/subscription"');
+    expect(html).toContain('Wybierz plan');
+    // No paywall over the shop: the offer, its price and the order button stay where they were.
+    expect(html).toContain('Gellatti — Składniki bazy lodów');
+    expect(html).toContain('PDF · 0 €');
+    expect(html).toContain('data-testid="shop-infopak-order"');
+  });
+
+  it('offers the way to a plan only for the plan refusal', () => {
+    for (const notice of ['notAvailable', 'fileMissing', 'failed', 'downloadFailed'] as const) {
+      const html = render({ signedIn: true, notice });
+      expect(html).toContain('data-testid="shop-infopak-notice"');
+      expect(html).not.toContain('shop-infopak-plan-required');
+    }
+  });
+
+  it('takes the plan refusal from the server, never from a plan flag in the browser', () => {
+    const offer = readFileSync('src/features/shop/ShopInfopakOffer.tsx', 'utf8');
+    expect(offer).toContain("if (code === PLAN_REQUIRED) return 'planRequired';");
+    expect(offer).not.toMatch(/hasHome|hasPro|canHome|canPro|effectiveAccess|useHomeEntitlement/);
+  });
+
   it('renders nothing while no market offers the document', () => {
     expect(render({ offered: false })).toBe('');
   });
@@ -141,6 +174,15 @@ describe('one offer, made per country and language', () => {
     expect(html).toContain('Wybierz kraj, a zamówisz PDF przygotowany dla Twojego kraju.');
     expect(html).toContain('href="#shop-country"');
     expect(html).not.toContain('data-testid="shop-infopak-order"');
+  });
+
+  it('makes the country link a 44 px touch target in both country states', () => {
+    for (const marketState of ['CHOOSE_COUNTRY', 'NOT_READY'] as const) {
+      const html = render({ marketState, countryName: null, languages: [], language: null });
+      expect(html).toMatch(
+        /class="[^"]*\bmin-h-11\b[^"]*"[^>]*data-testid="shop-infopak-choose-country"/,
+      );
+    }
   });
 
   it('says honestly when the chosen country has no PDF yet', () => {
