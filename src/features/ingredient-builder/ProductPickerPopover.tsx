@@ -1380,7 +1380,14 @@ export function ProductPickerPopover({
                             setUnavailableNotice(null);
                             setInformationOption(null);
                           }}
-                          className="h-11 w-full rounded-xl border border-ink/15 bg-white px-4 pr-11 text-sm text-ink outline-none focus:border-[var(--g-orange-line)] focus:ring-2 focus:ring-[var(--g-orange)]/15"
+                          className={cn(
+                            'h-11 w-full border bg-white px-4 pr-11 text-sm text-ink outline-none focus:ring-2',
+                            // HOME's layer (DESIGN IV „Wygląd HOME”): a white pill field with a
+                            // black, never yellow, focus. PRO keeps its accent.
+                            homeLayout
+                              ? 'rounded-full border-[var(--g-line)] focus:border-[var(--g-ink)] focus:ring-[rgba(16,17,19,0.08)]'
+                              : 'rounded-xl border-ink/15 focus:border-[var(--g-orange-line)] focus:ring-[var(--g-orange)]/15',
+                          )}
                         />
                         {query ? (
                           <button

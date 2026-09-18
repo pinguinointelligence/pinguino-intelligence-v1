@@ -822,7 +822,10 @@ export function HomeRecipeSection({
           on screen and part of the flow — it takes its own height, so it never covers the
           last row — and clear of the home indicator. */}
       <div
-        className="sticky bottom-0 z-20 -mx-5 mt-6 -mb-10 grid gap-2.5 bg-white px-5 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_-1px_0_#efebe4] sm:-mx-6 sm:px-6 lg:-mb-16"
+        /* The white ground and the 1 px line run the full width of the screen (DESIGN
+           tablet and desktop frames) as INK overflow only — a spread shadow clipped to the
+           bar's own height and an outset border image — so they never widen the page. */
+        className="sticky bottom-0 z-20 -mx-5 mt-6 -mb-10 grid gap-2.5 border-t border-transparent bg-white px-5 pt-3 pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_0_0_100vmax_#fff] [border-image:linear-gradient(#efebe4,#efebe4)_1/1px_0_0_0/0_100vmax] [clip-path:inset(0_-100vmax)] sm:-mx-6 sm:px-6 lg:-mb-16"
         data-testid="home-recipe-actions"
       >
         <div className="grid grid-cols-3 gap-2">
