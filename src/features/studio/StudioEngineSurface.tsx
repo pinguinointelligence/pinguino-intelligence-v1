@@ -1,4 +1,20 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
+import { cn } from '@/lib/cn';
+import {
+  clampMonitorHeight,
+  monitorHeightForEditor,
+  monitorHeightForKey,
+  MONITOR_DRAG_THRESHOLD_PX,
+  MONITOR_MIN_HEIGHT_PX,
+} from '@/features/studio/monitorPanelResize';
 import { copy } from '@/copy/en';
 import { lockBodyScroll } from '@/components/ui/bodyScrollLock';
 import { usePublishedBottomStackHeight } from '@/features/studio/bottomStackHeight';
@@ -295,6 +311,28 @@ export function StudioEngineSurface({
   const handledSaveRevealRef = useRef(0);
   /** Whether the sheet (not the column) hosts the cockpit, for listeners registered once. */
   const phoneSheetRef = useRef(false);
+  /* DESIGN V3.0 §12 — Monitor on a phone / iPad portrait is NOT the modal cockpit the
+     other modules use: the recipe stays visible and usable underneath it, there is no
+     scrim, and a grip on the panel's bottom edge sets its height. Owner 2026-09-18
+     (OD-20): this is Monitor's rule alone — Produkcja and Etykieta keep the sheet they
+     have until DESIGN says otherwise, so the shared host below branches instead of
+     being generalised. */
+  const monitorPanelMode = mobileCockpitOpen && mobileViewport && activeTab === 'monitor';
+  const monitorHostRef = useRef<HTMLDivElement | null>(null);
+  /** The height the user chose with the grip; null until they touch it (= full). */
+  const [monitorHeight, setMonitorHeight] = useState<number | null>(null);
+  /** The temporary give-way for an open ingredient panel — never the user's own value. */
+  const [monitorFitHeight, setMonitorFitHeight] = useState<number | null>(null);
+  /* §12: „Zjeżdża z góry i startuje na pełną wysokość.” Both values belong to ONE visit
+     to Monitor, so leaving it forgets them and the next visit starts full again. Same
+     shape as the route reconciliation above: a state that has to follow a prop is
+     adjusted during render, not in an effect that would render twice. */
+  const [monitorVisit, setMonitorVisit] = useState(false);
+  if (monitorVisit !== monitorPanelMode) {
+    setMonitorVisit(monitorPanelMode);
+    setMonitorHeight(null);
+    setMonitorFitHeight(null);
+  }
   const previousProductionSessionIdRef = useRef(production.session?.sessionId ?? null);
   const focusProductionAfterCollapseRef = useRef(false);
 
@@ -422,17 +460,22 @@ export function StudioEngineSurface({
         ? Array.from(cockpitPanelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
         : [];
 
+    /* §12: Monitor is not modal. The recipe underneath stays scrollable and keeps its
+       own tab order, so Monitor takes neither the page lock nor the focus trap — only
+       Escape still closes it. Every other module keeps the modal cockpit unchanged. */
+    const modal = !monitorPanelMode;
+
     // One shared, counted page lock (A1). A dialog still open inside this sheet
     // when the recipe context remounts used to restore its saved `hidden` last.
-    const releaseScroll = lockBodyScroll();
-    focusables()[0]?.focus();
+    const releaseScroll = modal ? lockBodyScroll() : null;
+    if (modal) focusables()[0]?.focus();
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         collapseRef.current();
         return;
       }
-      if (e.key !== 'Tab') return;
+      if (!modal || e.key !== 'Tab') return;
 
       const list = focusables();
       const first = list[0];
@@ -451,10 +494,118 @@ export function StudioEngineSurface({
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
-      releaseScroll();
-      if (!focusProductionAfterCollapseRef.current) trigger?.focus();
+      releaseScroll?.();
+      // Focus goes back only where it was taken from the trigger in the first place.
+      if (modal && !focusProductionAfterCollapseRef.current) trigger?.focus();
     };
-  }, [activeTab, mobileCockpitOpen, mobileViewport]);
+  }, [activeTab, mobileCockpitOpen, mobileViewport, monitorPanelMode]);
+
+  /* §12 — what Monitor is drawn at: the temporary give-way for an open ingredient
+     panel wins over the user's own height, and „no height yet” means full. */
+  const monitorPanelHeight = monitorFitHeight ?? monitorHeight;
+
+  /* §12: with an ingredient panel open Monitor gives way only as far as needed, leaving
+     a strip of the recipe between the two, and the user's own height returns afterwards.
+     The room is measured against the height the user ASKED for (or full), never against
+     the height already rendered — measuring the rendered one would shrink, re-measure,
+     find room, grow back, and oscillate. The panel is top-anchored inside its host, so
+     the host's own top is the panel's top. */
+  useEffect(() => {
+    if (!monitorPanelMode) return;
+    const measure = () => {
+      const host = monitorHostRef.current;
+      if (!host) return;
+      const editor = document.querySelector('.ingredient-editor-sheet');
+      if (!editor) {
+        setMonitorFitHeight(null);
+        return;
+      }
+      const hostRect = host.getBoundingClientRect();
+      if (hostRect.height <= 0) return;
+      setMonitorFitHeight(
+        monitorHeightForEditor({
+          panelTop: hostRect.top,
+          editorTop: editor.getBoundingClientRect().top,
+          current: monitorHeight ?? hostRect.height,
+          available: hostRect.height,
+        }),
+      );
+    };
+    measure();
+    // The editor is a portal outside this tree, and the keyboard moves it after it opens.
+    const observer = new MutationObserver(measure);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+    });
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+    // The user's own height is an input here: resizing with a panel open re-measures.
+  }, [monitorPanelMode, monitorHeight]);
+
+  /** The room the grip may move within: the host already ends above the bottom stack. */
+  const monitorGeometry = () => {
+    const host = monitorHostRef.current;
+    const panel = cockpitPanelRef.current;
+    if (!host) return null;
+    const available = host.getBoundingClientRect().height;
+    const rendered = panel?.getBoundingClientRect().height ?? 0;
+    return { available, current: rendered > 0 ? rendered : (monitorHeight ?? available) };
+  };
+
+  /* §12: one finger, pointer events, pointer capture, and a gesture of its OWN — the
+     indicators keep their normal one-finger scroll because only this grip listens, and
+     a move under the threshold stays a tap. */
+  const beginMonitorResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const geometry = monitorGeometry();
+    if (!geometry) return;
+    event.preventDefault();
+    const grip = event.currentTarget;
+    const startY = event.clientY;
+    const startHeight = geometry.current;
+    let moved = false;
+    try {
+      grip.setPointerCapture(event.pointerId);
+    } catch {
+      /* a synthetic pointer (tests) or a browser that refuses capture: the drag still runs */
+    }
+    const move = (moveEvent: PointerEvent) => {
+      const dy = moveEvent.clientY - startY;
+      if (!moved && Math.abs(dy) < MONITOR_DRAG_THRESHOLD_PX) return;
+      moved = true;
+      setMonitorFitHeight(null);
+      setMonitorHeight(clampMonitorHeight(Math.round(startHeight + dy), geometry.available));
+    };
+    const end = () => {
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', end);
+      grip.removeEventListener('pointercancel', end);
+      try {
+        grip.releasePointerCapture(event.pointerId);
+      } catch {
+        /* nothing held it */
+      }
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', end);
+    grip.addEventListener('pointercancel', end);
+  };
+
+  /** §12: „strzałki klawiatury też działają” — the same separator, without a pointer. */
+  const onMonitorGripKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const geometry = monitorGeometry();
+    if (!geometry) return;
+    const next = monitorHeightForKey(event.key, geometry.current, geometry.available);
+    if (next === null) return;
+    event.preventDefault();
+    setMonitorFitHeight(null);
+    setMonitorHeight(next);
+  };
 
   // A3 — land ON the settings. Declared after the modal effect so that, in the
   // commit that opens the sheet, the sheet's own first focus happens first and
@@ -727,31 +878,57 @@ export function StudioEngineSurface({
                backdrop is inset with it, so the header is neither dimmed nor
                swallowed. `--pro-mobile-header-height` is the canonical offset:
                65 px on a phone, 69 px from `sm`, both measured live. */
-            className="pro-workbench-mobile-only fixed inset-x-0 top-[var(--pro-mobile-header-height)] bottom-[var(--pro-mobile-bottom-stack-height,calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom)))] z-50"
+            ref={monitorHostRef}
+            className={cn(
+              'pro-workbench-mobile-only fixed inset-x-0 top-[var(--pro-mobile-header-height)] bottom-[var(--pro-mobile-bottom-stack-height,calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom)))] z-50',
+              /* §12 — with no scrim the host itself must not swallow taps meant for the
+                 recipe below it; only the panel takes pointer events. */
+              monitorPanelMode && 'pointer-events-none',
+            )}
             /* A2 — and it ENDS at the top of the measured bottom stack. It used
                to end at the top of the module bar only, so the score / „Przelicz"
                strip covered its last 62 px (served, 375 × 812), including the
                Etykieta print bar that sticks to the sheet's bottom edge. */
             data-testid="mobile-cockpit-sheet"
           >
-            <button
-              type="button"
-              aria-label="Zamknij kokpit"
-              onClick={collapseMobileCockpit}
-              className="absolute inset-0 bg-black/35"
-            />
+            {/* §12: „Receptura zostaje pod spodem i nie ma zasłony.” Monitor is the one
+                module without the dimming backdrop — every other module keeps it. */}
+            {monitorPanelMode ? null : (
+              <button
+                type="button"
+                aria-label="Zamknij kokpit"
+                onClick={collapseMobileCockpit}
+                className="absolute inset-0 bg-black/35"
+              />
+            )}
             <section
               ref={cockpitPanelRef}
               id="mobile-cockpit-dialog"
-              data-sheet-anchor={activeTab === 'profile' ? 'top' : 'bottom'}
-              role="dialog"
-              aria-modal="true"
+              data-sheet-anchor={monitorPanelMode || activeTab === 'profile' ? 'top' : 'bottom'}
+              data-testid={monitorPanelMode ? 'monitor-resizable-panel' : undefined}
+              /* §12: Monitor is a panel over the recipe, not a dialog over the app — it
+                 takes neither `role="dialog"` nor `aria-modal`, so a screen reader keeps
+                 the recipe underneath in the same document. Its `aria-labelledby` still
+                 names it, which makes the section a region landmark. */
+              role={monitorPanelMode ? undefined : 'dialog'}
+              aria-modal={monitorPanelMode ? undefined : true}
               aria-labelledby="mobile-cockpit-title"
               /* The panel filled 92dvh measured from the VIEWPORT, which is what
                  pushed it up over the header. It now fills its own container,
                  which already starts below the header, so the height follows the
                  offset instead of competing with it. */
-              className="absolute inset-x-0 bottom-0 flex h-full max-h-full flex-col overflow-hidden rounded-t-[22px] border-t border-ink/10 bg-white shadow-pro-e3 [overscroll-behavior:contain]"
+              className={cn(
+                'absolute inset-x-0 flex max-h-full flex-col overflow-hidden border-ink/10 bg-white shadow-pro-e3 [overscroll-behavior:contain]',
+                monitorPanelMode
+                  ? /* §12: it comes DOWN from the top and its height is the grip's business. */
+                    'pointer-events-auto top-0 rounded-b-[22px] border-b'
+                  : 'bottom-0 h-full rounded-t-[22px] border-t',
+              )}
+              style={
+                monitorPanelMode
+                  ? { height: monitorPanelHeight === null ? '100%' : `${monitorPanelHeight}px` }
+                  : undefined
+              }
             >
               <div className="relative z-40 flex shrink-0 items-center justify-between border-b border-ink/10 bg-white px-4 py-3">
                 <h2 id="mobile-cockpit-title" className="text-sm font-semibold text-ink">
@@ -790,6 +967,27 @@ export function StudioEngineSurface({
                   labelSettingsRestoreScrollTop={labelSettingsRestoreScrollTop}
                 />
               </div>
+              {monitorPanelMode ? (
+                /* §12: the grip on the BOTTOM edge. It is a separator, not a button: it
+                   sets a value between two areas, which is exactly what the arrows do
+                   here too. `touch-none` keeps the browser from turning the drag into a
+                   page gesture, and because only this element listens, the indicators
+                   above keep their ordinary one-finger scroll. */
+                <div
+                  role="separator"
+                  aria-orientation="horizontal"
+                  aria-label="Przeciągnij, aby zmienić wysokość Monitora"
+                  aria-valuemin={MONITOR_MIN_HEIGHT_PX}
+                  aria-valuenow={monitorPanelHeight ?? undefined}
+                  tabIndex={0}
+                  data-testid="monitor-resize-handle"
+                  onPointerDown={beginMonitorResize}
+                  onKeyDown={onMonitorGripKeyDown}
+                  className="flex h-9 shrink-0 cursor-row-resize touch-none items-center justify-center border-t border-ink/10 bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ink/40"
+                >
+                  <span aria-hidden="true" className="h-1 w-10 rounded-full bg-ink/20" />
+                </div>
+              ) : null}
             </section>
           </div>
         ) : null}

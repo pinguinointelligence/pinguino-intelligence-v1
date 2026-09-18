@@ -222,3 +222,102 @@ export function decideActiveIntent(
   if (!winner) return { winnerId: null, loserIds: [] };
   return { winnerId: winner.id, loserIds: active.slice(1).map((intent) => intent.id) };
 }
+
+/* ------------------------------------- credit authority (owner 2026-09-18) -- */
+
+/**
+ * How the monthly → annual credit is computed. This is a BUSINESS rule that
+ * deliberately DIVERGES from Stripe's default `create_prorations`:
+ *
+ *   'full_current_period' — the ENTIRE amount paid for the current monthly
+ *   period is credited against the annual price, regardless of how much of
+ *   that month has elapsed. Converting on day 2, day 15 or day 28 costs the
+ *   customer exactly the same. The annual term then STARTS at the current
+ *   monthly period start, so the already-paid month becomes the first month
+ *   of the year — twelve new months are NOT appended after it.
+ *
+ * Stripe's own unused-time proration would credit only the remaining days,
+ * which converting late makes strictly worse for the customer; the owner's
+ * rule is "you lose nothing by starting monthly", so it is fixed-credit.
+ *
+ * The constant is named (not implied) so any future change is a visible edit
+ * to this authority rather than a silent drift inside a UI component.
+ */
+export const MONTHLY_CREDIT_POLICY = 'full_current_period' as const;
+export type MonthlyCreditPolicy = typeof MONTHLY_CREDIT_POLICY;
+
+export interface ConversionQuoteInput {
+  /** Price of the monthly offer the customer is currently paying, in cents. */
+  monthlyAmountCents: number;
+  /** Price of the annual offer being converted to, in cents. */
+  annualAmountCents: number;
+  /**
+   * Start of the CURRENT paid monthly period (ISO date or datetime). The
+   * annual term is anchored here, so the paid month becomes month 1 of 12.
+   */
+  currentPeriodStart: string;
+  /** Stripe proration timestamp the quote is pinned to (epoch seconds). */
+  prorationTimestamp: number;
+  /** Tax on the amount due, in cents. Defaults to 0 (tax computed server-side). */
+  taxCents?: number;
+}
+
+/** The preview quote plus the display figures the conversion screen shows. */
+export interface ConversionQuote extends PreviewQuote {
+  policy: MonthlyCreditPolicy;
+  /** The annual price before the credit, in cents. */
+  annualAmountCents: number;
+  /** ISO date the annual term STARTS on (= the current monthly period start). */
+  annualPeriodStart: string;
+  /** annualAmountCents / 12, rounded to the cent — the effective monthly. */
+  effectiveMonthlyCents: number;
+}
+
+/**
+ * Add twelve months to an ISO date, UTC, clamping an overflowing day-of-month
+ * (29–31 Feb never exists, so 2028-02-29 + 12m → 2029-02-28). Returns `YYYY-MM-DD`.
+ */
+export function addTwelveMonthsUtc(iso: string): string {
+  const base = new Date(iso);
+  if (Number.isNaN(base.getTime())) throw new Error(`invalid period start: ${iso}`);
+  const year = base.getUTCFullYear() + 1;
+  const month = base.getUTCMonth();
+  const day = base.getUTCDate();
+  const lastDayOfTargetMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const target = new Date(Date.UTC(year, month, Math.min(day, lastDayOfTargetMonth)));
+  return target.toISOString().slice(0, 10);
+}
+
+/**
+ * Build the conversion preview quote under `MONTHLY_CREDIT_POLICY`.
+ *
+ * Integer cents only. The credit is the full monthly price, capped at the
+ * annual price so `amountDueCents` can never go negative (a configuration
+ * where a month costs more than a year produces a zero-due quote, never a
+ * refund — refunds are not part of this flow).
+ *
+ * PURE: the server re-computes this same function over the authoritative
+ * subscription row before charging; the client preview is never trusted.
+ */
+export function buildConversionQuote(input: ConversionQuoteInput): ConversionQuote {
+  const { monthlyAmountCents, annualAmountCents, currentPeriodStart, prorationTimestamp } = input;
+  const taxCents = input.taxCents ?? 0;
+
+  const creditCents = Math.min(monthlyAmountCents, annualAmountCents);
+  const amountDueCents = annualAmountCents - creditCents + taxCents;
+  const annualPeriodStart = new Date(currentPeriodStart).toISOString().slice(0, 10);
+
+  return {
+    policy: MONTHLY_CREDIT_POLICY,
+    creditCents,
+    amountDueCents,
+    taxCents,
+    annualAmountCents,
+    annualPeriodStart,
+    // The annual term runs twelve months from the CURRENT period start, so the
+    // already-paid month is month 1 — not a thirteenth month bolted on the end.
+    newRenewalDate: addTwelveMonthsUtc(currentPeriodStart),
+    effectiveMonthlyCents: Math.round(annualAmountCents / 12),
+    prorationTimestamp,
+  };
+}

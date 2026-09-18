@@ -94,7 +94,7 @@ describe('curated recipe discovery candidates', () => {
     expect(intent.canonicalIngredientIds).toEqual(['PI-ING-000444']);
     expect(serialized).not.toMatch(/planned_grams|actual_grams|dose|"grams"/i);
     const href = inspirationStartHref(intent);
-    expect(href.startsWith('/start?')).toBe(true);
+    expect(href.startsWith('/home?')).toBe(true); // the canonical HOME, not the retired /start
     expect(
       parseInspirationStartIntent(new URLSearchParams(href.split('?')[1]))?.canonicalIngredientIds,
     ).toEqual(['PI-ING-000444']);

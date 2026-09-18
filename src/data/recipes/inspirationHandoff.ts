@@ -7,6 +7,7 @@
  */
 import type { CustomerProductType } from '@/features/customer-flow/types';
 import type { FlavorCatalogueEntry } from './flavorCatalogueTypes';
+import { CUSTOMER_HOME_PATH } from '@/app/redirectState';
 
 export interface InspirationStartIntent {
   source: 'flavor_inspiration' | 'curated_collection';
@@ -72,7 +73,7 @@ export function inspirationStartHref(
   // The entitlement authority is evaluated by the caller through
   // useProCorePersona. Non-Pro destinations stay byte-for-byte on the accepted
   // customer handoff; no Home implementation or entitlement gate is bypassed.
-  return `${destination.persona === 'pro' ? '/pro/recipe' : '/start'}?${params.toString()}`;
+  return `${destination.persona === 'pro' ? '/pro/recipe' : CUSTOMER_HOME_PATH}?${params.toString()}`;
 }
 
 const PRODUCT_TYPES: ReadonlySet<string> = new Set(['gelato', 'sorbet', 'vegan', 'protein']);

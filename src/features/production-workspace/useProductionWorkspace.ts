@@ -83,7 +83,7 @@ import {
   productionRecipeLifecycleState,
   productionVersionFingerprint,
 } from './productionReadinessState';
-import { machineEducationForSelection } from '@/features/education';
+import { productionMachineGuide } from '@/features/education';
 import { carbonatedProductsForRecipe } from './productionDegassing';
 import {
   PRODUCTION_DECISION_ORDER,
@@ -955,10 +955,8 @@ export function useProductionWorkspace(enabled: boolean) {
     [plannedInput, session, sessionOwnerMismatch, staleSource],
   );
   const forecastResult = useMemo(() => calculateRecipe(forecastInput), [forecastInput]);
-  const machineGuide =
-    recipe.machineKind === 'home'
-      ? machineEducationForSelection(recipe.machineId, recipe.machineTechnology)
-      : null;
+  // ONE machine hand-off authority, shared with HOME (`productionMachineGuide`).
+  const machineGuide = productionMachineGuide(recipe);
   const rescue = useMemo(() => browserProductionRescueDecision(session), [session]);
   const rescueAuthorizationRunId =
     rescueAuthorization.status === 'preview'
