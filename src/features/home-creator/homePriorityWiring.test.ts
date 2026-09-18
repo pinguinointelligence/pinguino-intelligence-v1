@@ -87,15 +87,19 @@ describe('PACKAGE 2A — HOME wiring', () => {
 
   it("OWNER OD-1: HOME's recalculation hands every 0 g priority line to the solver as the bootstrap", () => {
     const recalc = read('src/features/home-creator/ui/HomeRecalculate.tsx');
-    expect(recalc).toContain(
-      'homeRecalculationInstructions(useRecipeStore.getState().items, instructions)',
+    const orchestration = read('src/features/home-creator/homeRecalculation.ts');
+    // Every HOME run — the dialog, the first build, the automatic recalculation —
+    // goes through the one orchestration, which adds the bootstrap.
+    expect(recalc).toContain('void runHomeRecalculation(instructions)');
+    expect(orchestration).toContain(
+      'homeRecalculationInstructions(useRecipeStore.getState().items, customer)',
     );
     expect(recalc).toContain('customerInstructions(preview.previewInstructions?.lines ?? [])');
     expect(recalc).not.toContain('onClick={() => void runPiRecalculationWithTerminal()}');
   });
 
   it('OWNER OD-3: both HOME topping paths start at 5 % of the BASE', () => {
-    expect(page).toContain('defaultHomeToppingGrams(useRecipeStore.getState().items)');
+    expect(page).toContain('toppingCreationDefaultGrams(useRecipeStore.getState().items)');
     expect(page).toContain("kind: 'topping'");
   });
 
