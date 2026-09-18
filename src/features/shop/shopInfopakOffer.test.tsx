@@ -143,6 +143,15 @@ describe('one offer, made per country and language', () => {
     expect(html).not.toContain('data-testid="shop-infopak-order"');
   });
 
+  it('makes the country link a 44 px touch target in both country states', () => {
+    for (const marketState of ['CHOOSE_COUNTRY', 'NOT_READY'] as const) {
+      const html = render({ marketState, countryName: null, languages: [], language: null });
+      expect(html).toMatch(
+        /class="[^"]*\bmin-h-11\b[^"]*"[^>]*data-testid="shop-infopak-choose-country"/,
+      );
+    }
+  });
+
   it('says honestly when the chosen country has no PDF yet', () => {
     const html = render({
       marketState: 'NOT_READY',

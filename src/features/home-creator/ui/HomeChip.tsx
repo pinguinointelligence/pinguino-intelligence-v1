@@ -59,7 +59,8 @@ export function HomeChip({
         onClick={onRemove}
         aria-label={`${homeCreatorCopy.intent.removeChip} ${label}`}
         data-testid="home-intent-chip-remove"
-        className="ml-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+        /* The 32 px circle is the look; the ::after around it is the 44 px thumb target. */
+        className="relative ml-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors after:absolute after:-inset-1.5 after:content-[''] hover:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
         style={{ color: 'var(--g-text-muted)' }}
       >
         <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none">
