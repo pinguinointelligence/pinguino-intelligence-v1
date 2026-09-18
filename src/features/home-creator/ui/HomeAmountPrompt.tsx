@@ -16,6 +16,7 @@ export function HomeAmountPrompt({
   initialGrams,
   onConfirm,
   onCancel,
+  cancelLabel = homeCreatorCopy.recipe.askAmountCancel,
 }: {
   productName: string;
   /** Canonical dosage authority, or null when the product genuinely carries none. */
@@ -24,6 +25,11 @@ export function HomeAmountPrompt({
   initialGrams?: number | null;
   onConfirm: (grams: number) => void;
   onCancel: () => void;
+  /**
+   * „Usuń” when cancelling removes something the customer already has (an idea chip
+   * waiting for its amount); „Anuluj” when nothing exists yet (a live add).
+   */
+  cancelLabel?: string;
 }) {
   const [raw, setRaw] = useState(
     initialGrams != null && initialGrams > 0 ? String(initialGrams) : '',
@@ -129,7 +135,7 @@ export function HomeAmountPrompt({
             data-testid="home-amount-prompt-cancel"
             onClick={onCancel}
           >
-            {homeCreatorCopy.recipe.askAmountCancel}
+            {cancelLabel}
           </button>
           <button
             type="button"

@@ -8,6 +8,7 @@ import { getShippingRate, type ShopShippingRate } from '@/services/shopCountries
 import { selectedShopCountry, useShopCountryStore } from './shopCountryStore';
 import { shopContentTitle } from './shopContentTitle';
 import { shopCheckoutBlock } from './shopCheckoutReadiness';
+import { ShopPlanRequired } from './ShopPlanRequired';
 import type { ShopCartLine } from './shopCartStore';
 
 /**
@@ -81,6 +82,7 @@ export function ShopCart({
   authed,
   checkoutPending,
   checkoutError,
+  checkoutNeedsPlan = false,
   onQuantity,
   onRemove,
   onCheckout,
@@ -90,6 +92,8 @@ export function ShopCart({
   authed: boolean;
   checkoutPending: boolean;
   checkoutError: string | null;
+  /** The server answered `plan_required`: ordering needs an active HOME or PRO plan. */
+  checkoutNeedsPlan?: boolean;
   onQuantity: (sku: string, quantity: number) => void;
   onRemove: (sku: string) => void;
   onCheckout: () => void;
@@ -293,6 +297,9 @@ export function ShopCart({
               </>
             )}
 
+            {checkoutNeedsPlan ? (
+              <ShopPlanRequired className="mt-3" testId="shop-checkout-plan-required" />
+            ) : null}
             {checkoutError ? (
               <p className="mt-3 text-[12px] text-status-error">{checkoutError}</p>
             ) : null}

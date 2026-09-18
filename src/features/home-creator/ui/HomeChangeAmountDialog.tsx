@@ -14,7 +14,7 @@
  * The row keeps rendering its readout behind this overlay, so opening the editor moves
  * nothing on the page.
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { DirectNumberControl } from '@/features/ingredient-builder/DirectNumberControl';
 import { homeCreatorCopy } from '../homeCreatorCopy';
@@ -45,6 +45,15 @@ export function HomeChangeAmountDialog({
   onCancel: () => void;
 }) {
   const [draft, setDraft] = useState(grams);
+  // Enter commits the typed text (the field blurs and publishes it) and then reaches this
+  // dialog's own Enter handler in the SAME key event, before React re-renders: served
+  // 2026-09-18, typing 50 and pressing Enter kept 34 g. The ref holds what was just
+  // published, so both confirm paths read the amount the customer actually typed.
+  const latest = useRef(grams);
+  const updateDraft = (next: number) => {
+    latest.current = next;
+    setDraft(next);
+  };
 
   return (
     <div
@@ -56,7 +65,7 @@ export function HomeChangeAmountDialog({
       onKeyDown={(event) => {
         if (event.key === 'Escape') onCancel();
         // Enter confirms from anywhere in the dialog, including the stepper's field.
-        if (event.key === 'Enter') onConfirm(draft);
+        if (event.key === 'Enter') onConfirm(latest.current);
       }}
     >
       <div
@@ -79,7 +88,7 @@ export function HomeChangeAmountDialog({
             widthPreset="grams"
             density="responsive"
             // The draft, not the store. This is the whole point of the dialog.
-            onChange={setDraft}
+            onChange={updateDraft}
             {...(onToggleLock
               ? {
                   lockSegment: {
@@ -109,13 +118,14 @@ export function HomeChangeAmountDialog({
             data-testid="home-change-amount-cancel"
             onClick={onCancel}
           >
-            {homeCreatorCopy.recipe.askAmountCancel}
+            {/* Nothing is removed here — the draft is simply dropped. */}
+            {homeCreatorCopy.draft.cancel}
           </button>
           <button
             type="button"
             className={buttonClasses('primary', 'md')}
             data-testid="home-change-amount-confirm"
-            onClick={() => onConfirm(draft)}
+            onClick={() => onConfirm(latest.current)}
           >
             {homeCreatorCopy.recipe.doneAmount}
           </button>

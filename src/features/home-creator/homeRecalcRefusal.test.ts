@@ -318,3 +318,62 @@ describe('OWNER BUGFIX — every HOME refusal explains itself (#287)', () => {
     }
   });
 });
+
+describe('served 2026-09-18 — a priority group whose approved amounts exclude each other', () => {
+  const GROUP: PreviewIssue = {
+    ok: false,
+    code: 'no_proposal',
+    violatedMetrics: ['main_above_hard_limit'],
+    solverInvocations: 0,
+    blockingViolations: [
+      {
+        code: 'main_above_hard_limit',
+        lineIds: ['line-strawberry', 'line-kiwi'],
+        messagePl: 'Grupa Main przekracza twardy limit 20.0%.',
+      },
+    ],
+  };
+  const NAMES = new Map([
+    ['line-strawberry', 'STRAWBERRIES · Fresh Fruit'],
+    ['line-kiwi', 'KIWI · Fresh Fruit'],
+  ]);
+
+  it('names both products and the only change that helps', () => {
+    const refusal = homeRecalcRefusal({
+      previewIssue: GROUP,
+      blocked: null,
+      terminal: TERMINAL,
+      lineNames: NAMES,
+    });
+    expect(refusal.reason).toBe(
+      homeCreatorCopy.recalcRefusal.priorityGroupExcludes([
+        'STRAWBERRIES · Fresh Fruit',
+        'KIWI · Fresh Fruit',
+      ]),
+    );
+    expect(refusal.next).toBe(homeCreatorCopy.recalcRefusal.priorityGroupNext);
+    expect(exposesInternals(refusal.reason)).toBe(false);
+    expect(refusal.reason).not.toMatch(/Main|%/);
+  });
+
+  it('never names half the group: an unknown line falls back to the ordinary refusal', () => {
+    const refusal = homeRecalcRefusal({
+      previewIssue: GROUP,
+      blocked: null,
+      terminal: TERMINAL,
+      lineNames: new Map([['line-strawberry', 'STRAWBERRIES · Fresh Fruit']]),
+    });
+    expect(refusal.reason).not.toContain('STRAWBERRIES');
+    expect(refusal.next).toBe(NEXT);
+  });
+
+  it('an Apply refusal still speaks first', () => {
+    const refusal = homeRecalcRefusal({
+      previewIssue: GROUP,
+      blocked: { messagePl: 'Receptura zmieniła się w międzyczasie.' },
+      terminal: TERMINAL,
+      lineNames: NAMES,
+    });
+    expect(refusal.reason).not.toContain('KIWI');
+  });
+});

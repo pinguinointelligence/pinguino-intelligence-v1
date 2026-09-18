@@ -125,6 +125,9 @@ export interface HomeCreatorCopy {
     readonly container: string;
     readonly amount: string;
     readonly amountManual: string;
+    /** Applies the typed exact amount — NOT the stage's „Gotowe” (served flow walk 2026-09-18:
+     * two „Gotowe” buttons one under the other). */
+    readonly amountManualApply: string;
     readonly capacityGuidance: string;
     readonly done: string;
   };
@@ -185,6 +188,14 @@ export interface HomeCreatorCopy {
     readonly next: string;
     /** Leads the HOME trait words a safe recipe could not be moved closer to. */
     readonly notImproved: string;
+    /**
+     * CORE's Main authority refused the priority group itself: the approved amounts of
+     * these products exclude each other in one Base (served 2026-09-18: strawberries +
+     * kiwi in a dairy gelato). Names come from the recipe lines the refusal lists.
+     */
+    readonly priorityGroupExcludes: (names: readonly string[]) => string;
+    /** The next step for that refusal — the only change that helps. */
+    readonly priorityGroupNext: string;
   };
   readonly sweetness: {
     readonly label: string;
@@ -331,6 +342,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     container: 'pojemnik',
     amount: 'Ilość',
     amountManual: 'Wpisz dokładną ilość',
+    amountManualApply: 'Ustaw',
     capacityGuidance: 'To wystarczy na',
     done: 'Gotowe',
   },
@@ -380,6 +392,10 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     fallback: 'Nie udało się teraz przygotować propozycji.',
     next: 'Twoja receptura się nie zmieniła. Możesz zmienić składniki lub ich ilości i przeliczyć ponownie.',
     notImproved: 'Nie udało się bezpiecznie poprawić:',
+    priorityGroupExcludes: (names) =>
+      `${names.join(' i ')} nie zmieszczą się razem w tej recepturze — zatwierdzone ilości tych składników wykluczają się nawzajem.`,
+    priorityGroupNext:
+      'Twoja receptura się nie zmieniła. Usuń jeden z tych składników albo wybierz inny.',
   },
   sweetness: {
     label: 'Słodycz',
@@ -522,6 +538,7 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     container: 'container',
     amount: 'Amount',
     amountManual: 'Enter an exact amount',
+    amountManualApply: 'Set',
     capacityGuidance: 'That is enough for',
     done: 'Done',
   },
@@ -571,6 +588,10 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     fallback: "We couldn't prepare a proposal right now.",
     next: "Your recipe hasn't changed. You can change the ingredients or their amounts and recalculate.",
     notImproved: 'Could not be improved safely:',
+    priorityGroupExcludes: (names) =>
+      `${names.join(' and ')} can't go together in this recipe — their approved amounts rule each other out.`,
+    priorityGroupNext:
+      "Your recipe hasn't changed. Remove one of these ingredients or choose another one.",
   },
   sweetness: {
     label: 'Sweetness',

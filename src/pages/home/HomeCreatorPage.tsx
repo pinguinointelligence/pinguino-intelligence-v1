@@ -30,7 +30,12 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { AppShell } from '@/features/shell/AppShell';
 import { deriveMachineSetup, type HomeMachineProfile } from '@/features/machine-catalog';
 import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
-import { useRecipeStore } from '@/stores/recipeStore';
+import {
+  RecipeCustomMachineDialog,
+  effectiveDefaultBatchGrams,
+  type MachineOnboardingCompletion,
+} from '@/features/machine-onboarding';
+import { useRecipeStore, type RecipeBatchSource } from '@/stores/recipeStore';
 import {
   DEFAULT_NEW_RECIPE_SERVING_MODE,
   DEFAULT_NEW_RECIPE_STRATEGY,
@@ -142,6 +147,8 @@ export function HomeCreatorPage() {
 
   // A machine chosen for THIS recipe (§47: recipe-scoped, never the account default).
   const [machine, setMachine] = useState<HomeMachineProfile | null>(null);
+  /** „Inna maszyna”: the shared custom-machine dialog (Home, the Pro selector, the workbench). */
+  const [customMachineOpen, setCustomMachineOpen] = useState(false);
   const [amount, setAmount] = useState<HomeAmount | null>(null);
   const [forceMachineStage, setForceMachineStage] = useState(false);
   const [resolving, setResolving] = useState(false);
@@ -406,7 +413,7 @@ export function HomeCreatorPage() {
      * machine with its standard batch AFTER building at the customer's amount, so CORE
      * solved 670 g while HOME still showed the 1850 g the customer had typed.
      */
-    (selected: HomeMachineProfile, batchGrams?: number) => {
+    (selected: HomeMachineProfile, batchGrams?: number, batchSource?: RecipeBatchSource) => {
       const setup = deriveMachineSetup(selected, visibleProductTypeFor(draft.profile ?? 'gelato'));
       const mode = setup.resolvedVisibleMode;
       if (mode === null) return null;
@@ -422,7 +429,9 @@ export function HomeCreatorPage() {
         batchGrams: batch,
         hardCapacityGrams: setup.hardMaximumBatchGrams,
         // The same provenance HOME's own amount handlers write for a customer amount.
-        batchSource: batch === setup.recommendedBatchGrams ? 'MACHINE_DEFAULT' : 'USER_OVERRIDE',
+        batchSource:
+          batchSource ??
+          (batch === setup.recommendedBatchGrams ? 'MACHINE_DEFAULT' : 'USER_OVERRIDE'),
       });
       return setup;
     },
@@ -1131,17 +1140,6 @@ export function HomeCreatorPage() {
           </p>
         ) : null}
 
-        {recipeNotice ? (
-          <p
-            role="alert"
-            className="mx-auto my-4 max-w-2xl rounded-xl border px-4 py-3 text-sm"
-            style={{ borderColor: 'var(--g-line)', color: 'var(--g-attention-ink)' }}
-            data-testid="home-recipe-notice"
-          >
-            {recipeNotice}
-          </p>
-        ) : null}
-
         {flow.stages.includes('profile') ? (
           <HomeProfileSection
             selected={draft.profile}
@@ -1187,7 +1185,7 @@ export function HomeCreatorPage() {
                 batchSource: 'MACHINE_DEFAULT',
               });
             }}
-            onOtherMachine={() => setForceMachineStage(true)}
+            onOtherMachine={() => setCustomMachineOpen(true)}
             onAmountChange={(next) => {
               setAmount(next);
               if (draft.recipeReady) {
@@ -1203,26 +1201,36 @@ export function HomeCreatorPage() {
               setForceMachineStage(true);
             }}
             onCancelChange={() => setForceMachineStage(false)}
-            onDone={() => {
+            onDone={(typed) => {
+              // A typed exact amount the customer did not apply separately is still
+              // their answer — this render's `amount` has not caught up with it yet.
+              const chosen = typed ?? amount;
+              if (!draft.recipeReady && !userId) {
+                // A guest cannot have a recipe calculated (product data needs an
+                // account), so the answer to „Gotowe” is the same sign-in the official
+                // recipes ask for — never a product error far above the button.
+                openAuthModal();
+                return;
+              }
               // Done also ENDS an open change request, so „Zmień" -> „Gotowe" returns to
               // the summary even when the customer picked nothing. Selecting already
               // clears it; this covers the cancel path.
               setForceMachineStage(false);
               if (!draft.recipeReady) {
-                const key = `${draft.profile}|${machine?.id ?? 'none'}|${amount?.totalGrams ?? 0}`;
+                const key = `${draft.profile}|${machine?.id ?? 'none'}|${chosen?.totalGrams ?? 0}`;
                 // „Gotowe" is the customer answering, so it may retry a set that
                 // failed — but it still starts at most one build per press.
                 if (!initialBuilding) {
                   generation.current = generationStarted(key, generationRetried());
-                  generateRecipe(amount);
+                  generateRecipe(chosen);
                 }
                 return;
               }
               // §85: Done updates the SAME recipe and returns to the live position.
-              if (amount) {
+              if (chosen) {
                 useRecipeStore
                   .getState()
-                  .setBatchGrams(amount.totalGrams, undefined, 'USER_OVERRIDE');
+                  .setBatchGrams(chosen.totalGrams, undefined, 'USER_OVERRIDE');
               }
               scrollToStage('recipe');
             }}
@@ -1230,6 +1238,20 @@ export function HomeCreatorPage() {
               flow.backFrom('machine') ? () => scrollToStage(flow.backFrom('machine')!) : null
             }
           />
+        ) : null}
+
+        {/* Served 2026-09-18: this notice sat above the profile stage, ~900 px from the
+            „Gotowe” and the recipe it is about, so a refusal looked like a dead button.
+            It belongs between the answer that produced it and the recipe it describes. */}
+        {recipeNotice ? (
+          <p
+            role="alert"
+            className="mx-5 my-4 max-w-2xl rounded-xl border px-4 py-3 text-sm sm:mx-auto"
+            style={{ borderColor: 'var(--g-line)', color: 'var(--g-attention-ink)' }}
+            data-testid="home-recipe-notice"
+          >
+            {recipeNotice}
+          </p>
         ) : null}
 
         {flow.stages.includes('recipe') ? (
@@ -1296,6 +1318,25 @@ export function HomeCreatorPage() {
           />
         ) : null}
       </div>
+
+      <RecipeCustomMachineDialog
+        open={customMachineOpen}
+        onClose={() => setCustomMachineOpen(false)}
+        onComplete={(completion: MachineOnboardingCompletion) => {
+          // Served 2026-09-18: „Inna maszyna” did nothing. It is the same custom-machine
+          // wizard PRO uses, landing on the same machine door as a listed machine.
+          const batchGrams = effectiveDefaultBatchGrams(completion.record);
+          const setup =
+            batchGrams === null
+              ? applyMachineSelection(completion.profile)
+              : applyMachineSelection(completion.profile, batchGrams, 'CUSTOM_MACHINE_BATCH');
+          if (setup === null) return;
+          setMachine(completion.profile);
+          setForceMachineStage(false);
+          setAmount(defaultHomeAmount(batchGrams ?? setup.recommendedBatchGrams));
+          setCustomMachineOpen(false);
+        }}
+      />
 
       <HomeRecalculate
         open={reviewAction !== null || automaticReview !== null}
@@ -1494,6 +1535,11 @@ export function HomeCreatorPage() {
           productName={pendingAdd.ingredient.name}
           recommendedDose={pendingAdd.recommendedDose}
           initialGrams={pendingAdd.initialGrams}
+          cancelLabel={
+            pendingAdd.source === 'initial' && pendingAdd.chipId
+              ? homeCreatorCopy.recipe.askAmountCancel
+              : homeCreatorCopy.draft.cancel
+          }
           onCancel={() => {
             if (pendingAdd.source === 'initial' && pendingAdd.chipId) {
               useHomeDraftStore.getState().removeChip(pendingAdd.chipId);
