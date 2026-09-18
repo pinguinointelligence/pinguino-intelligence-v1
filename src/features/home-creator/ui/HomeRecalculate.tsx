@@ -25,6 +25,9 @@ import { constraintStudioCopy } from '@/features/constraint-studio/constraintStu
 import {
   applyPreviewWithServerAuthority,
   cancelPiRecalculation,
+  openDirectionFallbackPreviewWithServerAuthority,
+  openStarterPackRescuePreviewWithServerAuthority,
+  requestStarterPackRescueWithServerAuthority,
   useConstraintStudioStore,
 } from '@/features/constraint-studio/constraintStudioStore';
 import {
@@ -36,6 +39,7 @@ import {
   type GramsMask,
 } from '@/features/constraint-studio/ui/ConstraintPreviewCard';
 import { LockConflictPanel } from '@/features/constraint-studio/ui/LockConflictPanel';
+import { DirectionFallbackDecision } from '@/features/pro-core/ProRecalcPanel';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { customerInstructions } from '../homePriorityBootstrap';
@@ -83,6 +87,15 @@ export function HomeRecalculate({
     (state) => state.pendingInstructionCommit,
   );
   const directionBestCandidate = useConstraintStudioStore((state) => state.directionBestCandidate);
+  const directionFallbackReport = useConstraintStudioStore(
+    (state) => state.directionFallbackReport,
+  );
+  const starterPackRescueReport = useConstraintStudioStore(
+    (state) => state.starterPackRescueReport,
+  );
+  const starterPackRescuePending = useConstraintStudioStore(
+    (state) => state.starterPackRescuePending,
+  );
   const terminal = useConstraintStudioStore((state) => state.recalculationTerminal);
   const blocked = useConstraintStudioStore((state) => state.blocked);
   const applyPending = useConstraintStudioStore((state) => state.applyPending);
@@ -163,9 +176,15 @@ export function HomeRecalculate({
   const working = terminal?.state === 'WORKING';
   const previewOpen = !working && preview !== null && terminal?.state === 'PREVIEW_READY';
   const conflictOpen = !working && preview === null && lockConflict !== null;
+  // CORE's Direction fallback ladder answered with an owner-approved adjacent/neutral
+  // Direction („Ustaw 0”). The SAME decision surface and the SAME CORE actions as PRO
+  // (`ProRecalcPanel`), so HOME and PRO customers are offered the identical choice —
+  // and, exactly as in PRO, it takes precedence over the plain best-candidate consent.
+  const fallbackOpen = !working && preview === null && directionFallbackReport !== null;
   const directionChoiceOpen =
     !working &&
     preview === null &&
+    directionFallbackReport === null &&
     directionBestCandidate !== null &&
     terminal?.state === 'PREVIEW_READY';
   const noChange =
@@ -185,6 +204,7 @@ export function HomeRecalculate({
     !working &&
     !previewOpen &&
     !conflictOpen &&
+    !fallbackOpen &&
     !directionChoiceOpen &&
     !noChange &&
     pendingInstructionCommit === null &&
@@ -237,6 +257,26 @@ export function HomeRecalculate({
                 onRecalculate={recalculateInPreview}
                 onBack={close}
               />
+            ) : null}
+
+            {fallbackOpen && directionFallbackReport ? (
+              <div data-testid="home-recalc-direction-fallback">
+                <DirectionFallbackDecision
+                  fallbackReport={directionFallbackReport}
+                  alternativeReport={starterPackRescueReport}
+                  alternativePending={starterPackRescuePending}
+                  onUseFallback={() => {
+                    void openDirectionFallbackPreviewWithServerAuthority();
+                  }}
+                  onTryAlternative={() => {
+                    void requestStarterPackRescueWithServerAuthority();
+                  }}
+                  onOpenAlternative={() => {
+                    void openStarterPackRescuePreviewWithServerAuthority();
+                  }}
+                  onBack={close}
+                />
+              </div>
             ) : null}
 
             {directionChoiceOpen ? (
