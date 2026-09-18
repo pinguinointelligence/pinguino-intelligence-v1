@@ -31,6 +31,7 @@ import {
   type MachineSettingsView,
 } from '../machineSettingsView';
 import type { SavedCustomContainer } from '../preferenceContracts';
+import { useRegisterUnsaved } from '@/features/production-area/useRegisterUnsaved';
 
 export interface MachineSettingsSubmit {
   /** The user's own default batch, or null = follow the recommendation. */
@@ -50,8 +51,18 @@ interface MachineProfileSectionProps {
    * rendered twice.
    *
    * Nothing about what is submitted, or when saving is allowed, changes.
+   *
+   * Produkcja v3 §3: the registered submit resolves `true` after a successful save and
+   * `false` on a validation refusal (`invalidBatch`, `invalidCapacity`) or a failed `onSave`,
+   * so the unsaved-changes question can leave only after a real save. It is registered only
+   * while a machine is saved — with nothing to save there is no heading action.
    */
-  onRegisterSave?: (submit: (() => Promise<void>) | null) => void;
+  onRegisterSave?: (submit: (() => Promise<boolean>) | null) => void;
+  /**
+   * Produkcja v3 §1.5: register this card's draft in the area's unsaved-changes question
+   * (`save` = the same `submit`, `discard` = back to the saved values). Absent = not asked.
+   */
+  unsavedGuard?: { id: string; label: string };
   /** Null = no machine saved yet → the set-up entry point. */
   view: MachineSettingsView | null;
   onSetUp: () => void;
@@ -104,6 +115,7 @@ export function MachineProfileSection({
   onGoToRecipe,
   goToRecipeLabel = copy.settings.goToRecipe,
   onEditCustom,
+  unsavedGuard,
 }: MachineProfileSectionProps) {
   /* Field drafts — seeded from the saved record, re-seeded when it changes. */
   const [batchText, setBatchText] = useState('');
@@ -149,33 +161,34 @@ export function MachineProfileSection({
     setCapacityError(null);
   }
 
-  const submit = async () => {
+  /** Resolves true only after a successful save; false on a refusal or a failed save. */
+  const submit = async (): Promise<boolean> => {
     /* No saved machine means there is nothing to save. The guard also lets
        this closure — and the two hooks below it — live ABOVE the `view === null`
        early return, so every hook runs in the same order on every render. */
-    if (view === null) return;
+    if (view === null) return false;
     setStatus('idle');
     const batch = parseGramsInput(batchText);
     if (batch === 'invalid') {
       setBatchError(copy.settings.invalidBatch);
-      return;
+      return false;
     }
     let container: SavedCustomContainer | null = null;
     if (containerOpen) {
       const capacity = parseGramsInput(capacityText);
       if (capacity === 'invalid' || capacity === null) {
         setCapacityError(copy.settings.invalidCapacity);
-        return;
+        return false;
       }
       const recommended = parseGramsInput(containerBatchText);
       if (recommended === 'invalid') {
         setCapacityError(copy.settings.invalidBatch);
-        return;
+        return false;
       }
       const resolved = recommended ?? suggestRecommendedGramsForContainer(capacity);
       if (resolved === null) {
         setCapacityError(copy.settings.invalidCapacity);
-        return;
+        return false;
       }
       container = { capacityMl: capacity, recommendedBatchGrams: resolved };
     }
@@ -189,21 +202,72 @@ export function MachineProfileSection({
     // The amount is never blocked — an above-recommendation value saves as-is.
     const ok = await onSave({ userDefaultGrams: own, customContainer: container });
     setStatus(ok ? 'saved' : 'failed');
+    return ok;
   };
 
   /* The page renders the approved heading action by calling THIS submit. The
      ref is updated in an effect rather than during render, and the
      registration is withdrawn on unmount so a stale closure can never be
-     invoked against a section that is no longer mounted. */
+     invoked against a section that is no longer mounted. Nothing is registered
+     while no machine is saved: there is nothing to save, so no heading action. */
   const submitRef = useRef(submit);
   useEffect(() => {
     submitRef.current = submit;
   });
+  const hasSavedMachine = view !== null;
   useEffect(() => {
-    if (!onRegisterSave) return;
+    if (!onRegisterSave || !hasSavedMachine) return;
     onRegisterSave(() => submitRef.current());
     return () => onRegisterSave(null);
-  }, [onRegisterSave]);
+  }, [onRegisterSave, hasSavedMachine]);
+
+  /* Produkcja v3 §1.5 — unsaved means „a save would change the saved settings”, not
+     „a field was touched”: the draft is read exactly the way `submit` reads it (a typed-back
+     recommendation is not an own setting), and an unreadable entry counts as unsaved. */
+  const draftDiffersFromSaved = (() => {
+    if (view === null) return false;
+    const batch = parseGramsInput(batchText);
+    if (batch === 'invalid') return true;
+    let container: SavedCustomContainer | null = null;
+    if (containerOpen) {
+      const capacity = parseGramsInput(capacityText);
+      const recommended = parseGramsInput(containerBatchText);
+      if (capacity === 'invalid' || capacity === null || recommended === 'invalid') return true;
+      const resolved = recommended ?? suggestRecommendedGramsForContainer(capacity);
+      if (resolved === null) return true;
+      container = { capacityMl: capacity, recommendedBatchGrams: resolved };
+    }
+    const recommendedAfter = container?.recommendedBatchGrams ?? view.recommendedGrams;
+    const own = batch !== null && batch === recommendedAfter ? null : batch;
+    // `userDefaultGrams` is the EFFECTIVE default the field starts from (the recommendation when
+    // the user has none); the saved OWN setting is null unless it diverges.
+    const savedOwn = view.usesOwnDefault ? view.userDefaultGrams : null;
+    const savedContainer =
+      usesOwnContainer && savedCapacity !== null
+        ? { capacityMl: savedCapacity, recommendedBatchGrams: savedContainerBatch }
+        : null;
+    return (
+      own !== savedOwn ||
+      (container === null) !== (savedContainer === null) ||
+      (container !== null &&
+        savedContainer !== null &&
+        (container.capacityMl !== savedContainer.capacityMl ||
+          container.recommendedBatchGrams !== savedContainer.recommendedBatchGrams))
+    );
+  })();
+  useRegisterUnsaved({
+    id: unsavedGuard?.id ?? 'machine-settings',
+    ...(unsavedGuard ? { label: unsavedGuard.label } : {}),
+    enabled: Boolean(unsavedGuard) && hasSavedMachine,
+    dirty: draftDiffersFromSaved,
+    save: () => submitRef.current().then((ok) => (ok ? { ok: true } : { ok: false })),
+    // Back to the saved values: re-seed every draft on the next render.
+    discard: () => {
+      setSeededFrom(null);
+      setAboveChoice('undecided');
+      setStatus('idle');
+    },
+  });
 
   if (view === null) {
     return (
@@ -531,7 +595,9 @@ export function MachineProfileSection({
           </dl>
           {/* The next action is always offered (§3), now in the contextual summary. */}
           <div className="mt-4">
-            <TouchButton size="lg" onClick={onGoToRecipe}>
+            {/* Produkcja v3: one black action per screen — the save. The next step is
+                secondary (package ODBIOR-WZORCA §5, „jedna czarna akcja”). */}
+            <TouchButton size="lg" variant="secondary" onClick={onGoToRecipe}>
               {goToRecipeLabel}
             </TouchButton>
           </div>

@@ -12,9 +12,10 @@ import type { ReactNode } from 'react';
  * machinePreference) joins the selector once the owner applies migrations
  * 0030 + 0031 to the environment the bundle talks to.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
-import { CustomerSurface } from '@/features/customer-shell/ui/CustomerSurface';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
+import { color, type } from '@/features/customer-shell/ui/tokens';
+import { cn } from '@/lib/cn';
 import { TouchButton } from '@/features/customer-shell/ui/TouchButton';
 import {
   MachineOnboarding,
@@ -44,7 +45,12 @@ import {
 import { copy as appCopy } from '@/copy/en';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { buttonClasses } from '@/components/ui/buttonStyles';
-import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { ProductionAreaSurface } from '@/features/production-area/ProductionAreaSurface';
+import { requestLeave } from '@/features/production-area/unsavedGuard';
+import { useRegisterUnsaved } from '@/features/production-area/useRegisterUnsaved';
+import { productionAreaCopy } from '@/copy/productionArea';
+
+const areaCopy = productionAreaCopy();
 
 type PageMode = 'view' | 'onboarding' | 'edit_custom';
 
@@ -103,12 +109,16 @@ export function MachineProfilePage() {
     writeProfessionalChoice(authUserId, true);
     setProfessionalChosen(true);
     await preference.clear();
+    setChoiceSaveFailed(false);
     setDefaultChangedName(appCopy.proMachine.professionalLabel);
     setMode('view');
   };
   const [mode, setMode] = useState<PageMode>('view');
   // „Domyślna maszyna została zmieniona na …” after a profile default change.
   const [defaultChangedName, setDefaultChangedName] = useState<string | null>(null);
+  /* Produkcja v3 §3: a failed save of the machine CHOICE used to be silent — the page
+     simply went back to the old machine. It now says so with the existing message. */
+  const [choiceSaveFailed, setChoiceSaveFailed] = useState(false);
 
   const settingsView = useMemo(
     () => (preference.record !== null ? buildMachineSettingsView(preference.record) : null),
@@ -120,18 +130,53 @@ export function MachineProfilePage() {
     return resolvePreferenceProfile(preference.record);
   }, [preference.record]);
 
-  const handleComplete = async (completion: MachineOnboardingCompletion) => {
-    writeProfessionalChoice(authUserId, false);
-    setProfessionalChosen(false);
-    const hadDefault = preference.record !== null;
-    const ok = await preference.save(completion.record);
-    // §7: „Zmień domyślną maszynę” explicitly changes the PROFILE default — an
-    // unambiguous confirmation, but only when it was a CHANGE (not first setup).
-    if (ok && hadDefault) {
-      setDefaultChangedName(buildMachineContextView(completion.record)?.name ?? null);
-    }
-    setMode('view');
+  /* The save of the machine choice in flight — awaited by the unsaved-changes question's
+     „Zapisz i przejdź”, which may leave only after this save reports success. */
+  const choiceSaveInFlight = useRef<Promise<boolean> | null>(null);
+  const handleComplete = (completion: MachineOnboardingCompletion): Promise<boolean> => {
+    const run = (async () => {
+      writeProfessionalChoice(authUserId, false);
+      setProfessionalChosen(false);
+      const hadDefault = preference.record !== null;
+      const ok = await preference.save(completion.record);
+      // §7: „Zmień domyślną maszynę” explicitly changes the PROFILE default — an
+      // unambiguous confirmation, but only when it was a CHANGE (not first setup).
+      if (ok && hadDefault) {
+        setDefaultChangedName(buildMachineContextView(completion.record)?.name ?? null);
+      }
+      setChoiceSaveFailed(!ok);
+      setMode('view');
+      return ok;
+    })();
+    choiceSaveInFlight.current = run;
+    return run;
   };
+
+  /* Produkcja v3 §1.5 — „wybór maszyny przed „Zapisz””: a machine picked on „Dopasuj
+     ilość” but not yet saved is an unsaved area form. „Zapisz i przejdź” runs the step's
+     OWN submit (its amount validation and message) and leaves only after the choice is
+     saved; „Odrzuć zmiany” closes the choice without saving anything. */
+  const [pendingChoiceSubmit, setPendingChoiceSubmit] = useState<(() => boolean) | null>(null);
+  const registerPendingChoice = useCallback(
+    (submit: (() => boolean) | null) => setPendingChoiceSubmit(() => submit),
+    [],
+  );
+  useRegisterUnsaved({
+    id: 'machine-choice',
+    label: areaCopy.sections.machine,
+    enabled: mode !== 'view',
+    dirty: pendingChoiceSubmit !== null,
+    save: async () => {
+      choiceSaveInFlight.current = null;
+      if (!pendingChoiceSubmit?.()) return { ok: false };
+      const ok = (await choiceSaveInFlight.current) ?? false;
+      return ok ? { ok: true } : { ok: false };
+    },
+    discard: () => {
+      setPendingChoiceSubmit(null);
+      setMode('view');
+    },
+  });
 
   /** Persist the settings; report an honest false on a store failure. */
   const handleSave = async (submit: MachineSettingsSubmit): Promise<boolean> => {
@@ -154,26 +199,25 @@ export function MachineProfilePage() {
      submit here, so this button and the section's own are one save authority —
      never two. When no section is mounted (loading, onboarding) there is no
      registered submit and the action is simply absent. */
-  const [saveMachineSettings, setSaveMachineSettings] = useState<
-    (() => Promise<void>) | null
-  >(null);
+  const [saveMachineSettings, setSaveMachineSettings] = useState<(() => Promise<boolean>) | null>(
+    null,
+  );
   const registerSave = useCallback(
-    (submit: (() => Promise<void>) | null) => setSaveMachineSettings(() => submit),
+    (submit: (() => Promise<boolean>) | null) => setSaveMachineSettings(() => submit),
     [],
   );
 
   const shell = (children: ReactNode, headingAction?: ReactNode) => (
-    <DestinationSurface
-      eyebrow="Konto"
-      title="Ustawienia maszyny"
-      blurb="Domyślna maszyna i partia są punktem startu dla nowych receptur i nowych Produkcji."
-      contextLabel="Ustawienia maszyny"
+    <ProductionAreaSurface
+      section="machine"
+      title={areaCopy.machine.heading}
+      blurb={areaCopy.machine.blurb}
       actions={headingAction}
     >
-      <CustomerSurface measure="workspace">
-        <div className="max-w-4xl">{children}</div>
-      </CustomerSurface>
-    </DestinationSurface>
+      {/* The area frame already owns the gutters and the rhythm: the page keeps the customer
+          type scale without CustomerSurface's second gutter and top padding. */}
+      <div className={cn('max-w-4xl pb-8', type.body, color.textPrimary)}>{children}</div>
+    </ProductionAreaSurface>
   );
 
   if (preference.status === 'loading') {
@@ -186,7 +230,10 @@ export function MachineProfilePage() {
         <div>
           <MachineOnboarding
             onComplete={(completion) => void handleComplete(completion)}
-            submitLabel={machineOnboardingCopy.settings.saveAndGoToRecipe}
+            /* Produkcja v3 §3: the choice SAVES and stays here — it never went to a recipe,
+               so it no longer says „Zapisz i przejdź do receptury”. */
+            submitLabel={areaCopy.machine.choiceSubmit}
+            onPendingSaveChange={registerPendingChoice}
             onSelectProfessional={() => void chooseProfessional()}
             {...(mode === 'edit_custom' && editableCustomProfile !== null
               ? { editCustomProfile: editableCustomProfile }
@@ -211,6 +258,15 @@ export function MachineProfilePage() {
             className="mb-4 rounded-xl border border-status-ideal/40 bg-status-ideal/10 px-4 py-3 text-[13px] text-stone-700"
           >
             ✓ {machineOnboardingCopy.recipeMachine.defaultChanged(defaultChangedName)}
+          </p>
+        ) : null}
+        {choiceSaveFailed ? (
+          <p
+            role="alert"
+            className="mb-4 rounded-xl border border-status-error/35 bg-status-error/[0.06] px-4 py-3 text-[13px] text-status-error"
+            data-testid="machine-choice-save-failed"
+          >
+            {machineOnboardingCopy.settings.saveFailed}
           </p>
         ) : null}
         {professionalChosen ? (
@@ -240,23 +296,71 @@ export function MachineProfilePage() {
         <MachineProfileSection
           view={settingsView}
           onRegisterSave={registerSave}
+          unsavedGuard={{ id: 'machine-settings', label: areaCopy.sections.machine }}
           onSetUp={() => setMode('onboarding')}
           onChange={() => {
             setDefaultChangedName(null);
+            setChoiceSaveFailed(false);
             setMode('onboarding');
           }}
           onSave={handleSave}
-          onGoToRecipe={() => void navigate(persona === 'pro' ? '/pro/recipe' : '/home')}
+          onGoToRecipe={() =>
+            requestLeave(() => void navigate(persona === 'pro' ? '/pro/recipe' : '/home'))
+          }
           {...(editableCustomProfile !== null
             ? { onEditCustom: () => setMode('edit_custom') }
             : {})}
         />
         )}
+        {/* Produkcja v3 §3 — Maszyna is the ONE place of the default machine and batch. The
+            card states what a save here changes (GEL-P0-022 precedence, unchanged), and the
+            row leads to the rest of the new-recipe settings, which stay in the account. */}
+        <section
+          className="mt-5 rounded-2xl border border-ink/12 bg-white p-4 sm:p-5"
+          aria-labelledby="machine-default-scope"
+          data-testid="machine-default-scope"
+        >
+          <h2 id="machine-default-scope" className="text-[15px] font-semibold text-ink">
+            {areaCopy.machine.defaultsCard.title}
+          </h2>
+          <p className="mt-0.5 text-[12.5px] text-stone-600">
+            {areaCopy.machine.defaultsCard.lead}
+          </p>
+          <dl className="mt-3">
+            {areaCopy.machine.defaultsCard.rows.map(([label, value]) => (
+              <div
+                key={label}
+                className="flex items-baseline justify-between gap-4 border-t border-ink/10 py-2 first:border-t-0"
+              >
+                <dt className="text-[12.5px] text-stone-600">{label}</dt>
+                <dd className="text-right text-[12.5px] text-ink">{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+        <Link
+          to="/account?section=recipe"
+          onClick={(event) => {
+            event.preventDefault();
+            requestLeave(() => void navigate('/account?section=recipe'));
+          }}
+          className="pro-focus-ring mt-5 flex min-h-12 items-center justify-between gap-4 border-y border-ink/10 text-[14px] text-ink"
+          data-testid="machine-recipe-defaults-link"
+        >
+          <span>{areaCopy.machine.recipeDefaultsLink}</span>
+          <span className="text-stone-500">
+            {areaCopy.machine.recipeDefaultsLinkHint} <span aria-hidden>›</span>
+          </span>
+        </Link>
+        <p className="mt-2 text-[12px] leading-relaxed text-stone-600">
+          {areaCopy.machine.recipeDefaultsNote}
+        </p>
       </div>
     </>,
     saveMachineSettings ? (
       <button
         type="button"
+        // The heading action ignores the result: the card shows its own status line.
         onClick={() => void saveMachineSettings()}
         className={buttonClasses('primary', 'sm')}
         data-testid="machine-settings-save"

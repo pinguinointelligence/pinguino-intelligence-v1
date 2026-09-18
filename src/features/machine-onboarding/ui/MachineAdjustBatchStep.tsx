@@ -7,7 +7,7 @@
  * lets the user set their OWN default right away — the proposal is prefilled,
  * an above-recommendation value warns but never blocks the save.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { color, notice, radius, type } from '@/features/customer-shell/ui/tokens';
 import { TextField } from '@/features/customer-shell/ui/TextField';
@@ -31,6 +31,12 @@ interface MachineAdjustBatchStepProps {
   customBatchRequired?: boolean;
   /** The user's own default, or null = follow the recommendation. */
   onSubmit: (userDefaultGrams: number | null) => void;
+  /**
+   * Produkcja v3 §1.5: hands THIS step's own submit upward while it is on screen, so the
+   * area's unsaved-changes question can run the same save („Zapisz i przejdź”). It returns
+   * false when the amount is refused (the step shows its own message), true once submitted.
+   */
+  onRegisterSubmit?: (submit: (() => boolean) | null) => void;
 }
 
 export function MachineAdjustBatchStep({
@@ -41,6 +47,7 @@ export function MachineAdjustBatchStep({
   submitLabel,
   customBatchRequired = false,
   onSubmit,
+  onRegisterSubmit,
 }: MachineAdjustBatchStepProps) {
   const [text, setText] = useState(recommendedGrams !== null ? formatGrams(recommendedGrams) : '');
   const [error, setError] = useState<string | null>(null);
@@ -54,15 +61,26 @@ export function MachineAdjustBatchStep({
       ? containerSplitNotice(guidance.split.totalGrams, recommendedGrams)
       : null;
 
-  const submit = () => {
+  const submit = (): boolean => {
     const value = parseGramsInput(text);
     if (value === 'invalid' || (customBatchRequired && value === null)) {
       setError(copy.settings.invalidBatch);
-      return;
+      return false;
     }
     // Never blocked: an above-recommendation amount is the user's call.
     onSubmit(value);
+    return true;
   };
+
+  const submitRef = useRef(submit);
+  useEffect(() => {
+    submitRef.current = submit;
+  });
+  useEffect(() => {
+    if (!onRegisterSubmit) return;
+    onRegisterSubmit(() => submitRef.current());
+    return () => onRegisterSubmit(null);
+  }, [onRegisterSubmit]);
 
   return (
     <section aria-label={copy.settings.adjustTitle}>

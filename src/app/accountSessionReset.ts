@@ -22,6 +22,7 @@ import { useProductionSessionStore } from '@/features/production-workspace/produ
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
+import { clearProductionAreaMemory } from '@/features/production-area/productionAreaMemory';
 
 export const ACCOUNT_OWNER_STORAGE_KEY = 'pinguino-active-account-owner';
 export const ANONYMOUS_OWNER_MARKER = '__pinguino_anonymous__';
@@ -137,4 +138,7 @@ export function clearAccountScopedClientState(queryClient: QueryClient): void {
   useCustomerPriceStore.getState().clear();
   useProductionSessionStore.getState().clear();
   useIngredientTableUxStore.getState().reset();
+  // Produkcja remembers the last address of each section (a search, a product, a label
+  // version) for ONE account — never offered to the next one.
+  clearProductionAreaMemory();
 }

@@ -10,7 +10,9 @@ import { buttonClasses } from '@/components/ui/buttonStyles';
  * user (the products write is owner-scoped) and otherwise opens the existing auth modal.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import { DestinationSection, DestinationSurface } from '@/components/shared/DestinationSurface';
+import { productionAreaCopy } from '@/copy/productionArea';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { Button } from '@/components/ui/Button';
 import { copy } from '@/copy/en';
@@ -549,6 +551,14 @@ export function ProductImportPage() {
 
   return (
     <DestinationSurface eyebrow={c.eyebrow} title={c.title} blurb={c.blurb}>
+      {/* Produkcja v3 §4 — the admin import is reached from Produkty, so it returns there. */}
+      <Link
+        to="/products"
+        className="pro-focus-ring mb-6 inline-flex min-h-9 items-center text-xs font-semibold text-[var(--g-text-secondary)] hover:text-ink max-sm:min-h-11"
+        data-testid="product-import-back"
+      >
+        {productionAreaCopy().products.importBack}
+      </Link>
       <div className="space-y-12">
         <DestinationSection label={c.sourceLabel}>
           <SourceSelect
