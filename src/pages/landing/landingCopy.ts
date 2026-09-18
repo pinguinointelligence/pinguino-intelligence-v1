@@ -167,7 +167,7 @@ export const landingCopy = {
         savingsLabel: 'Oszczędzasz',
         savingsPerYear: 'rocznie',
         twelveMonthlyLabel: '12 × miesięcznie',
-        equivalentPrefix: 'Oszczędność równa',
+        equivalentPrefix: 'Oszczędność to równowartość',
         equivalentSuffix: 'abonamentu',
         /** The monthly side's no-risk promise (the exact top-up is quoted only
             in the conversion preview, never guessed on a plan card). */

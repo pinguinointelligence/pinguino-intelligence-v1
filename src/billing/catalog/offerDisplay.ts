@@ -202,11 +202,13 @@ export function annualEconomics(
   };
 }
 
-/** Polish plural for „miesiąc" — 1 miesiąc, 2–4 miesiące, 5+ miesięcy. */
-export function monthsPl(n: number): string {
-  if (n === 1) return 'miesiąc';
-  const lastTwo = n % 100;
-  const last = n % 10;
-  if (lastTwo >= 12 && lastTwo <= 14) return 'miesięcy';
-  return last >= 2 && last <= 4 ? 'miesiące' : 'miesięcy';
+/**
+ * Polish GENITIVE form of „miesiąc", which is the case the only construction
+ * using it requires: „równowartość 1 miesiąca", „równowartość 7 miesięcy".
+ * Nominative („7 miesiące") would be ungrammatical there, so the genitive is
+ * what this helper returns — the name says so to keep it from drifting into a
+ * nominative context.
+ */
+export function monthsGenitivePl(n: number): string {
+  return n === 1 ? 'miesiąca' : 'miesięcy';
 }

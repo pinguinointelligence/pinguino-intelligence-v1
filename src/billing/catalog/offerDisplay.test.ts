@@ -13,7 +13,7 @@ import {
   formatEur,
   fromPriceCompact,
   fromPriceLabel,
-  monthsPl,
+  monthsGenitivePl,
   publicOffersForProduct,
   toDisplayOffer,
 } from './offerDisplay';
@@ -198,10 +198,10 @@ describe('annual economics — the real benefit, computed from the catalogue', (
     expect(launch!.savingsCents).toBe(11988 - 3900);
   });
 
-  it('pluralises months the Polish way', () => {
-    expect(monthsPl(1)).toBe('miesiąc');
-    expect(monthsPl(4)).toBe('miesiące');
-    expect(monthsPl(7)).toBe('miesięcy');
-    expect(monthsPl(12)).toBe('miesięcy');
+  it('gives the GENITIVE month form the „równowartość X" phrasing needs', () => {
+    expect(monthsGenitivePl(1)).toBe('miesiąca');
+    expect(monthsGenitivePl(4)).toBe('miesięcy');
+    expect(monthsGenitivePl(7)).toBe('miesięcy');
+    expect(monthsGenitivePl(12)).toBe('miesięcy');
   });
 });

@@ -16,7 +16,7 @@ import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { landingCopy } from '@/pages/landing/landingCopy';
 import {
   annualEconomics,
-  monthsPl,
+  monthsGenitivePl,
   publicOffersForProduct,
   type AnnualEconomics,
 } from '@/billing/catalog/offerDisplay';
@@ -292,7 +292,7 @@ function PlanBook({
                 {economics.freeMonthsEquivalent !== null ? (
                   <span className={cn('mt-1 block', type.caption, color.textSecondary)}>
                     {cy.equivalentPrefix} {economics.freeMonthsEquivalent}{' '}
-                    {monthsPl(economics.freeMonthsEquivalent)} {cy.equivalentSuffix}.
+                    {monthsGenitivePl(economics.freeMonthsEquivalent)} {cy.equivalentSuffix}.
                   </span>
                 ) : null}
                 <span className={cn('mt-1 block', type.caption, color.textMuted)}>
