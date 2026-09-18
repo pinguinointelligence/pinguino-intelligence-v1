@@ -1,6 +1,6 @@
 # Work With Us / Partner — checklist row → automated test map
 
-Prepared 2026-09-17 on branch `claude/wwu-phase2-qa-coverage-drift`, which is `origin/staging` `6e83b8d1` plus this phase's tests and ledger.
+Prepared 2026-09-17 against `origin/staging` `b668349b` plus the tests and ledger of the PR that regenerated it (last: the T-TEST-02 matrix tests).
 
 **Scope:** every Lane A row whose text changed between `27a7cf87` (before this workstream's merge sequence) and this branch — 64 rows. Lane B's only READY row, K16, is listed at the end.
 
@@ -9,7 +9,7 @@ Prepared 2026-09-17 on branch `claude/wwu-phase2-qa-coverage-drift`, which is `o
 - a test file that names the row ID (a mention that is not coverage is removed by hand)
 - where neither exists, tests located by the module or migration the row names, each checked by reading
 
-**Evidence:** all 46 test files in this map pass on the branch — 594 tests, `vitest run`, 2026-09-17 (the count is the files' own tests, run together). Every new test added this phase was also mutation-checked: each failed when the behaviour it pins was broken.
+**Evidence:** all 47 test files in this map pass on the branch — 640 tests, `vitest run`, 2026-09-17 (the count is the files' own tests, run together). Every new test added this phase was also mutation-checked: each failed when the behaviour it pins was broken.
 
 **Coverage legend:**
 - **full**: the row's behaviour is pinned.
@@ -65,12 +65,12 @@ Prepared 2026-09-17 on branch `claude/wwu-phase2-qa-coverage-drift`, which is `o
 | H-DASH-08 | 🟡 | ✅ | partial | `src/pages/community/partnerEarnings.render.test.tsx` | the tests cover the built part; the rest of the row is open (see its Next column) |
 | H-DASH-09 | 🟡 | ⬜ | partial | `src/features/affiliate/partnerAccountDisplay.test.ts`<br>`src/pages/community/partnerPageCopy.render.test.tsx` | status · tier · profile copy covered; notification preferences and the terms link are not built (owner decision) |
 | H-DASH-10 | 🟡 | ⬜ | partial | `src/pages/community/partnerEarnings.render.test.tsx` | the reversal is covered; active · cancels at period end · ended · payment failed are not built (DB) |
-| H-DASH-11 | 🟢 | ✅ | partial | `src/services/renewalCommissionStops.test.ts` | routing, eligibility and the single call site are pinned; no test runs the writer on a renewal, and the writer never reads subscription status (T-TEST-02 matrix §2.8) |
+| H-DASH-11 | 🟢 | ✅ | partial | `src/services/renewalCommissionStops.test.ts`<br>`src/services/stripeWebhookDispatch.test.ts` | routing, eligibility, the single call site and a paid renewal booking a second entry are pinned; the stop condition relies on Stripe — the writer never reads subscription status (T-TEST-02 matrix §2.8) |
 | I-ADM-02 | 🟡 | ✅ | partial | `src/features/admin/adminPartnerFilter.test.ts` | the tests cover the built part; the rest of the row is open (see its Next column) |
 | I-ADM-05 | 🟡 | ✅ | partial | `src/features/admin/adminPartnerActionConfirm.test.ts`<br>`src/features/admin/adminPartnersSection.confirm.test.tsx` | the tests cover the built part; the rest of the row is open (see its Next column) |
 | I-ADM-06 | ⚪ | ⬜ | none | — | not built — needs an admin read RPC (DB) |
 | J-REF-02 | ⚪ | ⬜ | none | — | the live rule differs: after a reversal, a later renewal invoice can earn again — owner rule needed |
-| J-REF-09 | ⚪ | ⬜ | partial | `src/features/referral/referralWebhookWiring.test.ts` | void and a lost dispute reverse the reward; a full refund is untested, and any partial refund reverses the whole reward — owner rule needed |
+| J-REF-09 | ⚪ | ⬜ | partial | `src/features/referral/referralWebhookWiring.test.ts` | void, a lost dispute and a full refund reverse the reward, a pending refund does not; any partial refund reverses the whole reward — owner rule needed, so it is not pinned |
 | J-REF-17 | 🟡 | ✅ | partial | `src/features/referral/referralDashboardPrivacy.migration.test.ts` | the three user RPCs return nothing about the other person; the direct table read is still granted to `authenticated` — closing it is package 6 / PR #380 (owner DB approval) |
 | L-PRICE-02 | 🟢 | ✅ | full | `src/copy/workWithUsOwnerRules.guard.test.ts` | no Incoterm in any public literal, no delivered-pricing phrase on the lanes, the only price is the trailer sentence, transport and taxes left to the quote |
 | L-STORY-02 | 🟡 | ✅ | partial | `src/copy/workWithUsOwnerRules.guard.test.ts` | no manufacturer identity or manufacturing claim in any public literal; naming models on public pages is not built yet |
@@ -83,7 +83,7 @@ Prepared 2026-09-17 on branch `claude/wwu-phase2-qa-coverage-drift`, which is `o
 | S-SEC-03 | 🟢 | ✅ | full | `src/features/affiliate/workspacePayload.contract.test.ts` |  |
 | T-SQA-01 | ⚪ | ⬜ | n/a | — | served QA is not automated; the script is `reports/GELLATTI_WWU_SERVED_OWNER_QA_SCRIPT.md` |
 | T-TEST-01 | 🟡 | ⬜ | n/a | — | a meta row: this map is its evidence |
-| T-TEST-02 | 🟡 | ⬜ | n/a | — | a meta row: the inventory is `reports/GELLATTI_WWU_FINANCIAL_TEST_MATRIX.md` |
+| T-TEST-02 | 🟡 | ✅ | n/a | — | a meta row: the inventory is `reports/GELLATTI_WWU_FINANCIAL_TEST_MATRIX.md` |
 | T-TEST-03 | 🟢 | ✅ | full | `src/billing/domain/attribution.test.ts`<br>`src/billing/domain/attributionOwnership.migration.test.ts`<br>`src/billing/domain/partnerCodeHistory.migration.test.ts`<br>`src/billing/domain/partnerCodeSlots.test.ts`<br>`src/billing/domain/partnerCodes.test.ts`<br>`src/features/affiliate/codeAvailability.test.ts`<br>`src/features/affiliate/partnerLinkOwnership.contract.test.ts` |  |
 
 ## Lane B
@@ -110,8 +110,8 @@ Prepared 2026-09-17 on branch `claude/wwu-phase2-qa-coverage-drift`, which is `o
 | I-ADM-06 | not built | an admin read RPC (owner approval) |
 | J-REF-17 | the RPCs are pinned, but a direct table read is still granted | package 6 / PR #380 (owner DB approval) |
 | L-STORY-02 | public pages name no model yet | name models when the catalogue lands; the guard already holds |
-| H-DASH-11 | the writer is never run on a renewal | a writer-level test: a second paid invoice books a second entry (no DB change); whether a paid invoice after cancellation may book is an owner rule |
+| H-DASH-11 | the stop condition is not enforced by the writer | whether a paid invoice after cancellation may book is an owner rule (the renewal positive control exists since 2026-09-17) |
 | J-REF-02, J-REF-09 | the live reward rules differ from the rows | owner rules first (renewal after a reversal; partial refund) |
 | O-FRAN-05 | not built | an owner call on which CTA takes the wording |
-| T-TEST-02 dimensions | see the matrix | test-only gaps listed in `reports/GELLATTI_WWU_FINANCIAL_TEST_MATRIX.md` §5 |
+| T-TEST-02 dimensions | the test-only gaps are closed (2026-09-17) | the rest needs a `dispatch.ts` fix, a DB change or an owner rule — see the T-TEST-02 row |
 | rows marked partial above | the rest of each row is not built | see each row's Next column |

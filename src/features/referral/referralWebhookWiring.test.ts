@@ -10,6 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyEventEffects,
+  RetryableEffectError,
   type DbClient,
   type DbResult,
   type DbSelectQuery,
@@ -222,5 +223,72 @@ describe('refer-a-friend — the reward lane runs where the commission lane cann
     for (const call of db.calls) {
       expect(call.fn).not.toMatch(/commission|payout|rate_profile|tier_snapshot/);
     }
+  });
+});
+
+// ── T-TEST-02: reward-lane gaps closed (reports/GELLATTI_WWU_FINANCIAL_TEST_MATRIX.md §3) ──
+// A partial refund is deliberately NOT pinned here: today any succeeded refund
+// reverses the whole reward, and J-REF-09 says "fully refunded". That rule is
+// the owner's to set before a test may freeze it.
+
+describe('refer-a-friend — refunds, replays and a failing recorder', () => {
+  const chargeWith = (refunds: Row[]) =>
+    async (resource: StripeResource, id: string): Promise<Row> => {
+      if (resource === 'charge') {
+        return { id: 'ch_ref_1', invoice: 'in_ref_1', amount: 2900, payment_intent: 'pi_1', refunds: { data: refunds } };
+      }
+      throw new Error(`refetch miss: ${resource} ${id}`);
+    };
+
+  it('F7 — a full refund reverses the reward', async () => {
+    const db = new RewardFakeDb(world());
+    db.rpcResult = { ok: true, reason: 'reversed' };
+    const refund = { id: 're_ref_1', amount: 2900, status: 'succeeded', charge: 'ch_ref_1' };
+    const result = await applyEventEffects(
+      { db, refetch: chargeWith([refund]) },
+      event('charge.refunded', 'evt_10', { id: 'ch_ref_1' }),
+    );
+    const call = db.calls.find((c) => c.fn === 'gellatti_reverse_referral_reward_v1');
+    expect(call?.args).toMatchObject({ p_stripe_invoice_id: 'in_ref_1', p_reason: 'charge.refunded' });
+    expect(result.note).toContain('referral_reward_reversed');
+  });
+
+  it('a refund that has not succeeded reverses nothing yet', async () => {
+    const db = new RewardFakeDb(world());
+    const refund = { id: 're_ref_2', amount: 2900, status: 'pending', charge: 'ch_ref_1' };
+    await applyEventEffects(
+      { db, refetch: chargeWith([refund]) },
+      event('charge.refunded', 'evt_11', { id: 'ch_ref_1' }),
+    );
+    expect(db.calls.filter((c) => c.fn === 'gellatti_reverse_referral_reward_v1')).toHaveLength(0);
+  });
+
+  it('the second delivery of a paid invoice is a quiet no-op, not a refusal', async () => {
+    // invoice.paid and invoice.payment_succeeded share one object scope; the
+    // recorder answers duplicate_invoice for the second, and that says nothing.
+    const db = new RewardFakeDb(world());
+    db.rpcResult = { ok: false, reason: 'duplicate_invoice' };
+    const result = await applyEventEffects(
+      { db, refetch: refetch(invoice()) },
+      event('invoice.payment_succeeded', 'evt_12', { id: 'in_ref_1' }),
+    );
+    expect(result.note).toBe('skipped_no_attribution');
+    expect(result.note).not.toContain('referral_reward');
+  });
+
+  it('a failing recorder is retryable, never swallowed', async () => {
+    const db = new RewardFakeDb(world());
+    // The fake's own rpc never errors, so its inferred type has `error: null`;
+    // DbClient allows an error, which is exactly the path under test.
+    db.rpc = (async (fn: string, args: Record<string, unknown>) => {
+      db.calls.push({ fn, args });
+      return { data: null, error: { code: '23505', message: 'duplicate key value violates unique constraint' } };
+    }) as unknown as RewardFakeDb['rpc'];
+    const outcome = applyEventEffects(
+      { db, refetch: refetch(invoice()) },
+      event('invoice.paid', 'evt_13', { id: 'in_ref_1' }),
+    );
+    await expect(outcome).rejects.toThrow(RetryableEffectError);
+    await expect(outcome).rejects.toThrow('referral_reward_rpc_failed:23505');
   });
 });
