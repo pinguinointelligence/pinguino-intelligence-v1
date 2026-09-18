@@ -54,6 +54,18 @@ const secondaryButton =
 const primaryButton =
   'inline-flex min-h-[44px] flex-1 items-center justify-center rounded-full px-4 text-[14px] font-semibold disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
 
+/** What „continue” means in each context when CORE found nothing to change. */
+const NO_CHANGE_CONTINUE: Readonly<
+  Record<'make' | 'save' | 'share' | 'community' | 'initial' | 'auto', string>
+> = {
+  make: homeCreatorCopy.recipe.letsMakeIt,
+  save: homeCreatorCopy.recipe.save,
+  share: 'Udostępnij',
+  community: 'Community',
+  initial: homeCreatorCopy.recipe.doneAmount,
+  auto: homeCreatorCopy.recipe.doneAmount,
+};
+
 export function HomeRecalculate({
   open,
   context,
@@ -124,7 +136,11 @@ export function HomeRecalculate({
   // 2026-09-02: the pipeline's own sentence can name ProductBehavior, the Mapper or a
   // snapshot) and always adds the next step. The verdict is untouched — a refusal is still a
   // refusal.
-  const refusal = homeRecalcRefusal({ previewIssue, blocked, terminal });
+  const lineNames = useMemo(
+    () => new Map(items.map((item) => [item.id, item.ingredient.name])),
+    [items],
+  );
+  const refusal = homeRecalcRefusal({ previewIssue, blocked, terminal, lineNames });
 
   const close = () => {
     if (useConstraintStudioStore.getState().recalculationTerminal?.state === 'WORKING') {
@@ -349,14 +365,10 @@ export function HomeRecalculate({
                   >
                     {interactiveCopy.back}
                   </button>
-                  <button
-                    type="button"
-                    className={secondaryButton}
-                    style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
-                    onClick={() => runWith([])}
-                  >
-                    Przelicz
-                  </button>
+                  {/* Served 2026-09-18 („Zapisz recepturę”): nothing changes here, so the
+                      button continues the action the customer asked for, in its own
+                      words — never „Zastosuj zmiany”, and never a manual „Przelicz”:
+                      HOME recalculates by itself. */}
                   <button
                     type="button"
                     data-testid="home-recalc-apply-no-change"
@@ -364,7 +376,7 @@ export function HomeRecalculate({
                     style={{ background: 'var(--g-ink)', color: '#ffffff' }}
                     onClick={() => void onApplied()}
                   >
-                    Zastosuj zmiany
+                    {NO_CHANGE_CONTINUE[context]}
                   </button>
                 </div>
               </div>

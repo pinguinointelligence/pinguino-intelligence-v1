@@ -36,7 +36,7 @@ import type { IngredientLibrary } from '@/features/ingredient-builder/ingredient
 import { canonicalReplaceContext } from '@/features/ingredient-builder/canonicalProductDiscovery';
 import { createReplacementSearchLineContext } from '@/features/ingredient-builder/replacementSearchContext';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
-import type { RecipeMatchScorePresentation } from '@/features/recipe-score';
+import type { TechnicalFitPresentation } from '@/features/recipe-score';
 import { HomeChangeAmountDialog } from './HomeChangeAmountDialog';
 import { resolveMainCapability } from '@/features/product-intelligence/mainCapability';
 import { useRecipeStore } from '@/stores/recipeStore';
@@ -267,7 +267,7 @@ export function HomeRecipeSection({
 }: {
   name: string;
   onNameChange: (name: string) => void;
-  score: RecipeMatchScorePresentation;
+  score: TechnicalFitPresentation;
   machineLine: string;
   items: readonly RecipeItem[];
   toppings: readonly RecipeToppingItem[];

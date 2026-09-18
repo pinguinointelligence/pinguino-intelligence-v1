@@ -261,6 +261,46 @@ describe('DialogShell semantic focus return', () => {
     expect(document.activeElement).toBe(document.querySelector('[data-testid="root-trigger"]'));
   });
 
+  it('returning focus never scrolls the page — a touch tap leaves no focused trigger', async () => {
+    // Served 2026-09-18 on a phone: the tapped „Zapisz recepturę” never took focus
+    // (touch Safari), so the fallback focused the FIRST action on the page and the
+    // browser jumped to the top, away from the „Zapisano” line.
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <main>
+          <button data-testid="menu">Menu</button>
+          <button data-testid="save" onClick={() => setOpen(true)}>
+            Zapisz
+          </button>
+          {open ? (
+            <DialogShell label="Test" testId="dialog" onClose={() => setOpen(false)}>
+              <button data-testid="close" onClick={() => setOpen(false)}>
+                Close
+              </button>
+            </DialogShell>
+          ) : null}
+        </main>
+      );
+    }
+    await act(async () => root.render(<Harness />));
+    // A touch tap: the click fires, the button is NOT focused first.
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-testid="save"]')!.click();
+    });
+    await flushFocus();
+    const focus = vi.spyOn(HTMLElement.prototype, 'focus');
+    await act(async () => {
+      document.querySelector<HTMLButtonElement>('[data-testid="close"]')!.click();
+    });
+    await flushFocus();
+    expect(focus).toHaveBeenCalled();
+    for (const call of focus.mock.calls) {
+      expect(call[0]).toEqual({ preventScroll: true });
+    }
+    focus.mockRestore();
+  });
+
   it('keeps Tab cycling inside the topmost dialog', async () => {
     await act(async () => {
       root.render(

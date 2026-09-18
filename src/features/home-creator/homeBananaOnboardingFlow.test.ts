@@ -40,15 +40,21 @@ describe('HOME banana onboarding → first recipe', () => {
 
   it('HOME-BANANA-FLOW-03: onboarding Gotowe starts the existing canonical first solve', () => {
     const done = PAGE.slice(
-      PAGE.indexOf('onDone={() => {'),
-      PAGE.indexOf('onBack={', PAGE.indexOf('onDone={() => {')),
+      PAGE.indexOf('onDone={(typed) => {'),
+      PAGE.indexOf('onBack={', PAGE.indexOf('onDone={(typed) => {')),
     );
     const firstSolve = PAGE.slice(
       PAGE.indexOf('const finishInitialRecipe'),
       PAGE.indexOf('/** §57:', PAGE.indexOf('const finishInitialRecipe')),
     );
 
-    expect(done).toContain('generateRecipe(amount)');
+    // The amount is the customer's answer — including one typed and never applied
+    // separately (served 2026-09-18: the main „Gotowe” dropped it).
+    expect(done).toContain('const chosen = typed ?? amount;');
+    expect(done).toContain('generateRecipe(chosen)');
+    // A guest is asked to sign in instead of being shown a product refusal.
+    expect(done).toContain('if (!draft.recipeReady && !userId) {');
+    expect(done.indexOf('openAuthModal()')).toBeLessThan(done.indexOf('generateRecipe(chosen)'));
     // „Gotowe” is the customer answering: it may retry a set that failed, and it
     // records the start through the one tested gate (HOME-GEN-LOOP).
     expect(done).toContain('generation.current = generationStarted(key, generationRetried());');

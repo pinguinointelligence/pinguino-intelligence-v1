@@ -13,6 +13,7 @@ import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { createProductionSession } from '@/features/production-workspace/productionSession';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
+import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
 import {
   DEFAULT_DIRECTION_TARGETS,
   useRecipeProfileStore,
@@ -172,6 +173,24 @@ describe('clearAccountScopedClientState — wipes the previous account private s
       directionTargets: DEFAULT_DIRECTION_TARGETS,
     });
 
+    useHomeDraftStore.setState({
+      chips: [
+        {
+          id: 'chip-a',
+          label: 'truskawkowe',
+          concept: 'strawberry',
+          role: null,
+          source: 'text',
+          productId: 'PI-ING-001553',
+          productName: 'STRAWBERRIES · Fresh Fruit',
+          ambiguous: false,
+        },
+      ],
+      profile: 'gelato',
+      recipeReady: true,
+    });
+    const previousDraftId = useHomeDraftStore.getState().draftId;
+
     clearAccountScopedClientState(qc);
 
     expect(qc.getQueryData(['saved-recipes'])).toBeUndefined();
@@ -183,5 +202,10 @@ describe('clearAccountScopedClientState — wipes the previous account private s
     expect(useProductionSessionStore.getState().session).toBeNull();
     expect(useIngredientTableUxStore.getState().unresolvedRequiredByLineId).toEqual({});
     expect(useRecipeProfileStore.getState().defaultsByOwner).toEqual({});
+    // HOME's draft belongs to the recipe that was just reset (served 2026-09-18).
+    expect(useHomeDraftStore.getState().chips).toEqual([]);
+    expect(useHomeDraftStore.getState().recipeReady).toBe(false);
+    expect(useHomeDraftStore.getState().profile).toBeNull();
+    expect(useHomeDraftStore.getState().draftId).not.toBe(previousDraftId);
   });
 });

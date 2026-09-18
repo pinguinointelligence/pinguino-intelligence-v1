@@ -90,16 +90,19 @@ describe('the amount editor is the shared PRO control, summoned not resident', (
 
   it('holds the value as a draft, so Anuluj is a genuine no-op', () => {
     expect(dialog).toContain('const [draft, setDraft] = useState(grams);');
-    expect(dialog).toContain('onChange={setDraft}');
-    // The ONLY paths that reach the caller's commit.
-    expect(dialog).toContain('onClick={() => onConfirm(draft)}');
-    expect(dialog).toContain("if (event.key === 'Enter') onConfirm(draft);");
+    expect(dialog).toContain('onChange={updateDraft}');
+    // The ONLY paths that reach the caller's commit — both read the amount the field
+    // just published (served 2026-09-18: Enter confirmed the stale draft).
+    expect(dialog).toContain('onClick={() => onConfirm(latest.current)}');
+    expect(dialog).toContain("if (event.key === 'Enter') onConfirm(latest.current);");
     expect(dialog).toContain("if (event.key === 'Escape') onCancel();");
   });
 
   it('offers the owner-specified affordances and no invented copy', () => {
     expect(dialog).toContain('homeCreatorCopy.recipe.doneAmount');
-    expect(dialog).toContain('homeCreatorCopy.recipe.askAmountCancel');
+    // Cancelling an amount edit removes nothing, so it says „Anuluj”, never „Usuń”.
+    expect(dialog).toContain('homeCreatorCopy.draft.cancel');
+    expect(dialog).not.toContain('homeCreatorCopy.recipe.askAmountCancel');
     expect(dialog).toContain('homeCreatorCopy.recipe.changeAmount');
   });
 

@@ -172,7 +172,7 @@ function EditableDiffRow({
       <span className="min-w-0 flex-1 basis-40 truncate text-sm font-medium text-black">
         {line.name}
       </span>
-      <span className="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
+      <span className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-x-2 gap-y-1">
         <span
           className="font-mono text-sm tabular-nums text-black/65"
           data-testid="preview-from-grams"
