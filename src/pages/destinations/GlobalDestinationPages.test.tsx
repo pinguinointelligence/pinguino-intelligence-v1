@@ -77,22 +77,37 @@ describe('canonical global destination hubs', () => {
     expect(html).toContain('★ Ulubione');
   });
 
-  it('exposes one Pro Production hub with Current, History and Labels', () => {
+  /* Production v3 §6 (owner decision 2026-09-18): Partie is one page — the work in
+     progress, a quiet way to the production history, and the history itself (paged).
+     No fifth tab; the former „Etykiety” tab is the Etykiety section (`/labels`). */
+  it('exposes Partie with the work in progress and the production history on one page', () => {
     const html = render(<ProductionHubPage />, '/production');
-    expect(html).toContain('data-testid="production-tab-current"');
-    expect(html).toContain('data-testid="production-tab-history"');
-    expect(html).toContain('data-testid="production-tab-labels"');
+    expect(html).not.toContain('data-testid="production-tab-');
     expect(html).toContain('data-testid="production-current"');
+    expect(html).toContain('data-testid="production-history-jump"');
+    expect(html).toContain('id="production-history"');
+    expect(html).toContain('data-testid="production-history"');
     expect(render(<ProductionHubPage />, '/production?tab=history')).toContain(
       'data-testid="production-history"',
     );
-    expect(render(<ProductionHubPage />, '/production?tab=labels')).toContain(
+    // `?tab=labels` lands on Etykiety instead of a second label viewer.
+    expect(render(<ProductionHubPage />, '/production?tab=labels')).not.toContain(
       'data-testid="production-labels"',
     );
   });
 
-  it('keeps Production gated from Home without pretending it works', () => {
+  it('shows HOME its Partie without production tools, history or a created batch', () => {
     persona = 'home';
+    const html = render(<ProductionHubPage />, '/production');
+    expect(html).toContain('data-testid="production-current"');
+    expect(html).toContain('Nie masz teraz partii w toku.');
+    expect(html).toContain('href="/recipes"');
+    expect(html).not.toContain('data-testid="production-history"');
+    expect(html).not.toContain('Otwórz etykietę');
+  });
+
+  it('keeps Production gated without a plan', () => {
+    persona = 'demo';
     const html = render(<ProductionHubPage />, '/production');
     expect(html).toContain('Produkcja jest dostępna w planie Pro');
     expect(html).not.toContain('data-testid="production-current"');

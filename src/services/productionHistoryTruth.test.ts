@@ -127,9 +127,12 @@ describe('loadCanonicalProductionHistory', () => {
       status: 'completed',
       sort: 'newest',
       limit: 50,
+      offset: 0,
     });
     expect(result.entries.map((entry) => entry.run.runId)).toEqual(['run-2', 'run-1']);
     expect(result.unresolvedRunIds).toEqual([]);
+    expect(result.total).toBe(2);
+    expect(result.readCount).toBe(2);
   });
 
   it('reports missing and mismatched snapshots without manufacturing rows', async () => {
@@ -166,5 +169,68 @@ describe('loadCanonicalProductionHistory', () => {
 
     expect(result.entries.map((entry) => entry.run.runId)).toEqual(['run-1']);
     expect(result.unresolvedRunIds).toEqual(['run-2']);
+  });
+
+  it('reads history in pages: the limit is a page size, and total counts every completed run', async () => {
+    const runs = Array.from({ length: 60 }, (_, index) =>
+      run({
+        runId: `run-${String(index).padStart(2, '0')}`,
+        completedAt: new Date(Date.UTC(2026, 7, 1, 0, 60 - index)).toISOString(),
+      }),
+    );
+    const snapshots = new Map(
+      runs.map((item) => [
+        item.runId,
+        snapshot({ sessionId: item.runId, productionCompletedAt: item.completedAt! }),
+      ]),
+    );
+    const listRuns = vi.fn(async (_owner: string, query: { offset?: number; limit?: number }) => ({
+      total: runs.length,
+      offset: query.offset ?? 0,
+      limit: query.limit ?? null,
+      items: runs.slice(query.offset ?? 0, (query.offset ?? 0) + (query.limit ?? runs.length)),
+    }));
+    const getCompletedSnapshot = vi.fn(async (runId: string) => snapshots.get(runId) ?? null);
+    const productionRepository = { listRuns } as unknown as ProductionRepository;
+    const labelRepository = { getCompletedSnapshot } as unknown as LabelRepository;
+
+    const first = await loadCanonicalProductionHistory({
+      productionRepository,
+      labelRepository,
+      ownerUserId,
+    });
+    expect(first.entries).toHaveLength(50);
+    expect(first.total).toBe(60);
+    expect(first.readCount).toBe(50);
+
+    const second = await loadCanonicalProductionHistory({
+      productionRepository,
+      labelRepository,
+      ownerUserId,
+      offset: first.offset + first.readCount,
+    });
+    expect(listRuns).toHaveBeenLastCalledWith(ownerUserId, {
+      status: 'completed',
+      sort: 'newest',
+      limit: 50,
+      offset: 50,
+    });
+    expect(second.entries.map((entry) => entry.run.runId)).toEqual(
+      runs.slice(50).map((item) => item.runId),
+    );
+    expect(second.total).toBe(60);
+    expect(second.offset).toBe(50);
+  });
+
+  it('counts an unresolved snapshot as read so the next page does not repeat or skip runs', async () => {
+    const repos = repositories([run(), run({ runId: 'run-2' })], new Map([['run-1', snapshot()]]));
+    const result = await loadCanonicalProductionHistory({
+      productionRepository: repos.productionRepository,
+      labelRepository: repos.labelRepository,
+      ownerUserId,
+    });
+    expect(result.entries.map((entry) => entry.run.runId)).toEqual(['run-1']);
+    expect(result.unresolvedRunIds).toEqual(['run-2']);
+    expect(result.readCount).toBe(2);
   });
 });

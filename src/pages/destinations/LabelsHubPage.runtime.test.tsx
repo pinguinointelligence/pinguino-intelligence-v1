@@ -2,13 +2,13 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
+import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { createRecipeLabelDraft } from '@/features/master-label/labelDraftPersistence';
 import { createCompleteLabel } from '@/features/master-label/masterLabelTestFixture';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useAuthStore } from '@/stores/authStore';
-import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { LabelsHubPage } from './GlobalDestinationPages';
 
 function ReturnProbe() {
@@ -20,6 +20,19 @@ function ReturnProbe() {
       data-testid="label-return-probe"
       data-search={location.search}
       data-scroll={restore?.scrollTop ?? ''}
+    />
+  );
+}
+
+function ProductionReturnProbe() {
+  const location = useLocation();
+  const restore = (location.state as { labelSettingsRestore?: unknown } | null)
+    ?.labelSettingsRestore;
+  return (
+    <div
+      data-testid="production-return-probe"
+      data-search={location.search}
+      data-restore={JSON.stringify(restore ?? null)}
     />
   );
 }
@@ -67,25 +80,33 @@ describe('/labels current draft settings round trip', () => {
     useProCoreAccessStore.setState({ devPersona: null });
   });
 
-  const renderPage = async () => {
+  /* Production v3 §5: the current recipe's label draft is context B
+     (`/labels?labelView=recipe`) — the recipe label's „Zmień ustawienia” opens it
+     there (DraftLabelPanel). `/labels` alone is context A (defaults + history). */
+  const renderPage = async (
+    search = '?labelView=recipe',
+    state: unknown = {
+      labelSettingsReturn: {
+        to: '/pro/recipe?panel=summary&version=v1',
+        scrollTop: 321,
+      },
+    },
+  ) => {
     await act(async () => {
       root.render(
         <MemoryRouter
           initialEntries={[
             {
               pathname: '/labels',
-              state: {
-                labelSettingsReturn: {
-                  to: '/pro/recipe?panel=summary&version=v1',
-                  scrollTop: 321,
-                },
-              },
+              search,
+              state,
             },
           ]}
         >
           <Routes>
             <Route path="/labels" element={<LabelsHubPage />} />
             <Route path="/pro/recipe" element={<ReturnProbe />} />
+            <Route path="/production" element={<ProductionReturnProbe />} />
           </Routes>
         </MemoryRouter>,
       );
@@ -134,7 +155,7 @@ describe('/labels current draft settings round trip', () => {
     expect(host.querySelector('[data-testid="label-return-probe"]')).not.toBeNull();
   });
 
-  it('initializes current label settings when opened directly from the hamburger', async () => {
+  it('initializes the current recipe label settings in context B', async () => {
     useRecipeStore.setState({ labelDraft: null });
     await renderPage();
     await act(async () => {
@@ -144,5 +165,107 @@ describe('/labels current draft settings round trip', () => {
     expect(useRecipeStore.getState().labelDraft?.lotCode).toMatch(/^LOT-/);
     expect(useRecipeStore.getState().labelDraft?.label).not.toBeNull();
     expect(host.querySelector('[data-testid="label-production-date-setting"]')).not.toBeNull();
+  });
+
+  it('opens the defaults and label history from ☰ without creating a recipe draft (context A)', async () => {
+    useRecipeStore.setState({ labelDraft: null });
+    const setLabelDraft = vi.spyOn(useRecipeStore.getState(), 'setLabelDraft');
+    await renderPage('', null);
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(setLabelDraft).not.toHaveBeenCalled();
+    expect(useRecipeStore.getState().labelDraft).toBeNull();
+    expect(
+      host.querySelector('[data-testid="label-workspace"]')?.getAttribute('data-workspace-mode'),
+    ).toBe('profile');
+    expect(host.querySelector('[data-testid="label-history"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="label-production-date-setting"]')).toBeNull();
+    // GEL-P0-033: „← Wróć” stays on `/labels` in every context (today's fallback route).
+    expect(host.querySelector('[data-testid="labels-return"]')?.textContent?.trim()).toBe('← Wróć');
+    setLabelDraft.mockRestore();
+  });
+
+  it('names the return after its source and restores that source', async () => {
+    await renderPage('?run=run-missing', {
+      labelSettingsReturn: {
+        to: '/production?tab=history',
+        scrollTop: 923,
+        origin: 'production-history',
+        focusRunId: 'run-missing',
+        historyShown: 60,
+      },
+    });
+    const back = host.querySelector<HTMLButtonElement>('[data-testid="labels-return"]')!;
+    expect(back.textContent?.trim()).toBe('← Wróć do historii produkcji');
+    await act(async () => back.click());
+    const probe = host.querySelector<HTMLElement>('[data-testid="production-return-probe"]')!;
+    expect(probe.getAttribute('data-search')).toBe('?tab=history');
+    expect(JSON.parse(probe.getAttribute('data-restore')!)).toEqual({
+      to: '/production?tab=history',
+      scrollTop: 923,
+      origin: 'production-history',
+      focusRunId: 'run-missing',
+      historyShown: 60,
+    });
+  });
+
+  it('labels the label-history and current-run returns', async () => {
+    await renderPage('?run=run-x', {
+      labelSettingsReturn: {
+        to: '/labels',
+        scrollTop: 260,
+        origin: 'label-history',
+        query: 'L-26',
+      },
+    });
+    expect(host.querySelector('[data-testid="labels-return"]')?.textContent?.trim()).toBe(
+      '← Wróć do historii etykiet',
+    );
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await renderPage('?run=run-x', {
+      labelSettingsReturn: { to: '/production', scrollTop: 0, origin: 'current-run' },
+    });
+    expect(host.querySelector('[data-testid="labels-return"]')?.textContent?.trim()).toBe(
+      '← Wróć do partii',
+    );
+  });
+});
+
+describe('/labels for HOME', () => {
+  let host: HTMLDivElement;
+  let root: ReturnType<typeof createRoot>;
+
+  beforeEach(() => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    useProCoreAccessStore.setState({ devPersona: 'home' });
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    host.remove();
+    useProCoreAccessStore.setState({ devPersona: null });
+  });
+
+  it('says labels are a Pro feature and shows no Pro label tools', async () => {
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={['/labels']}>
+          <Routes>
+            <Route path="/labels" element={<LabelsHubPage />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+    });
+    expect(host.textContent).toContain('Etykiety są dostępne w planie Pro');
+    expect(host.querySelector('[data-testid="label-workspace"]')).toBeNull();
+    expect(host.querySelector('[data-testid="label-history"]')).toBeNull();
   });
 });

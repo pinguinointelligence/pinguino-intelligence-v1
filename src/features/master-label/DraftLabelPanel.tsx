@@ -171,12 +171,14 @@ function DraftLabelPanelContext({
 
   const openSettings = () => {
     const panel = rootRef.current?.closest<HTMLElement>('[role="tabpanel"]');
-    navigate('/labels', {
+    // Produkcja → Etykiety, context B: THIS recipe's label draft, and back to it.
+    navigate('/labels?labelView=recipe', {
       state: {
         labelSettingsReturn: labelSettingsReturn(
           location.pathname,
           location.search,
           panel?.scrollTop ?? window.scrollY,
+          { origin: 'recipe' },
         ),
       },
     });
