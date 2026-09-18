@@ -135,12 +135,14 @@ export function ProductionBatches() {
     focusHistory(true);
   };
 
-  // `?tab=history` (and `/pro/history`) lands on the history, once per arrival.
+  // `?tab=history` (and `/pro/history`) lands on the history, once per arrival; any other
+  // arrival opens Partie at its top (the page it came from may have been scrolled).
   const landedKey = useRef<string | null>(null);
   useEffect(() => {
-    if (restore || params.get('tab') !== 'history' || landedKey.current === location.key) return;
+    if (restore || landedKey.current === location.key) return;
     landedKey.current = location.key;
-    focusHistory(!historyIsColumn());
+    if (params.get('tab') === 'history') focusHistory(!historyIsColumn());
+    else if (typeof window.scrollTo === 'function') window.scrollTo({ top: 0 });
   }, [focusHistory, location.key, params, restore]);
 
   // Back from a label: the same pages, the same place and the same row in focus.

@@ -49,7 +49,10 @@ import { FRANCHISE_FORMAT_LINKS, FRANCHISE_PAGE, FRANCHISE_SPLIT } from '@/copy/
 import { AppShell } from '@/features/shell/AppShell';
 import { KnowledgeTour } from '@/features/knowledge-tour/KnowledgeTour';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { readLabelSettingsReturn } from '@/features/master-label/labelSettingsNavigation';
+import {
+  readLabelSettingsRestore,
+  readLabelSettingsReturn,
+} from '@/features/master-label/labelSettingsNavigation';
 import { RunLabelView } from '@/features/production-area/RunLabelView';
 import { LabelHistorySection } from '@/features/production-area/LabelHistorySection';
 import { productionBatchesLabelsCopy } from '@/copy/productionBatchesLabels';
@@ -500,6 +503,18 @@ export function LabelsHubPage() {
           ? labelsCopy.backToRun
           : '← Wróć';
   const showBack = context !== 'defaults' || returnTarget !== null;
+
+  /* A new context (or another run) opens at its top, where its back action is — the
+     page it came from may have been scrolled far down. Choosing another version of the
+     same run keeps the place; a return to the label history restores its own place. */
+  const arrival = `${context}:${params.get('run') ?? ''}`;
+  const arrivedAt = useRef<string | null>(null);
+  useEffect(() => {
+    if (arrivedAt.current === arrival) return;
+    arrivedAt.current = arrival;
+    if (readLabelSettingsRestore(location.state)) return;
+    if (typeof window.scrollTo === 'function') window.scrollTo({ top: 0 });
+  }, [arrival, location.state]);
 
   /* Etykiety is the Pro-only section of Produkcja: for HOME and signed-out visitors
      the area surface says where the tools live instead of rendering them. */

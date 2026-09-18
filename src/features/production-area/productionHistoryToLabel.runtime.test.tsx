@@ -583,4 +583,46 @@ describe('Produkcja → Historia produkcji → Etykieta → powrót (§8 test 2)
     expect(host.textContent).toContain('Nie znaleźliśmy tej etykiety.');
     expect(host.querySelector('[data-testid="label-workspace"]')).toBeNull();
   });
+
+  it('Historia etykiet → a version → „← Wróć do historii etykiet” keeps the search and the place', async () => {
+    await render('/labels');
+    await vi.waitFor(() =>
+      expect(host.querySelector('[data-testid="label-history-search"]')).not.toBeNull(),
+    );
+    const search = host.querySelector<HTMLInputElement>('[data-testid="label-history-search"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(
+        search,
+        'straw-b',
+      );
+      search.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    // One row per run with a saved label; the search narrows it to that run's versions.
+    const runs = () =>
+      [...host.querySelectorAll<HTMLElement>('[data-label-history-run-id]')].map(
+        (row) => row.dataset.labelHistoryRunId,
+      );
+    expect(runs()).toEqual(['run-straw-b']);
+
+    Object.defineProperty(window, 'scrollY', { value: 260, configurable: true, writable: true });
+    const v1 = [
+      ...host.querySelectorAll<HTMLAnchorElement>('[data-testid="label-history-version"]'),
+    ].find((link) => link.textContent?.includes('v1'))!;
+    await act(async () => v1.click());
+    expect(location()).toBe('/labels?run=run-straw-b&snapshot=b-v1');
+    await vi.waitFor(() => expect(transcript()).toContain('Etykieta B wersja 1'));
+
+    scrollTo.mockClear();
+    await act(async () => byRole('button', '← Wróć do historii etykiet')!.click());
+    expect(location()).toBe('/labels');
+    await vi.waitFor(() =>
+      expect(
+        host.querySelector<HTMLInputElement>('[data-testid="label-history-search"]')?.value,
+      ).toBe('straw-b'),
+    );
+    await vi.waitFor(() => expect(scrollTo).toHaveBeenCalledWith({ top: 260 }));
+    expect(runs()).toEqual(['run-straw-b']);
+    expect(setup.labelRepository.saveRunLabelSnapshot).not.toHaveBeenCalled();
+    expect(setup.labelRepository.saveAccountProfile).not.toHaveBeenCalled();
+  });
 });
