@@ -118,3 +118,22 @@ describe('the four states, run against what the QA branch actually returned', ()
     expect(step.detail).toBe('Dane potwierdzone — wypłaty są aktywne.');
   });
 });
+
+describe('while Gellatti prepares the payout account, every place says the same thing', () => {
+  /* Owner decision 2026-09-18: one sentence for this state, and no promise that
+     nothing will be needed — later the Partner may still have to confirm their
+     identity and payout data with the payment operator. */
+  const SENTENCE = 'Gellatti przygotowuje Twoje konto wypłat. Damy znać, kiedy będzie gotowe.';
+
+  it('the first steps, the overview card and the Wypłaty section use the one sentence', () => {
+    expect(FIRST_STEPS).toContain(`'${SENTENCE}'`);
+    expect(PARTNER_PAGE.split(SENTENCE).length - 1).toBeGreaterThanOrEqual(2);
+    expect(PARTNER_PAGE).not.toContain("'Gellatti przygotowuje Twoje konto wypłat'}");
+  });
+
+  it('no Partner-facing payout copy says "nic nie musisz robić", with or without "więcej"', () => {
+    for (const source of PARTNER_FACING) {
+      expect(source).not.toMatch(/nic (więcej )?nie musisz robić/i);
+    }
+  });
+});

@@ -159,7 +159,7 @@ function Overview({ data }: { data: PartnerWorkspace }) {
                 ? 'Dane wysłane — sprawdź, czy operator płatności czegoś nie potrzebuje'
                 : data.partner?.connectAccountPresent
                   ? 'Potwierdź dane do wypłat'
-                  : 'Gellatti przygotowuje Twoje konto wypłat'}
+                  : 'Gellatti przygotowuje Twoje konto wypłat. Damy znać, kiedy będzie gotowe.'}
           </p>
         </div>
       </div>
