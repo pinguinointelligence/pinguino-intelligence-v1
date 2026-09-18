@@ -25,11 +25,25 @@ describe('/subscription book — runtime page turns', () => {
   let host: HTMLDivElement;
   let root: ReturnType<typeof createRoot>;
 
-  const radios = (product: 'home' | 'pro') =>
-    Array.from(host.querySelectorAll<HTMLButtonElement>(`button[name="cycle-${product}"]`));
-  /** [monthly, annual] — declaration order is the reading order of the spread. */
-  const monthlyPage = (product: 'home' | 'pro') => radios(product)[0];
-  const annualPage = (product: 'home' | 'pro') => radios(product)[1];
+  /**
+   * The plan's two cadence pages, in declaration order — index 0 is monthly,
+   * index 1 is annual (the reading order of the spread). Missing pages throw
+   * here rather than surfacing as a confusing assertion failure ten lines
+   * later, and it keeps the accessors non-optional under
+   * `noUncheckedIndexedAccess`.
+   */
+  const page = (product: 'home' | 'pro', index: 0 | 1): HTMLButtonElement => {
+    const found = Array.from(
+      host.querySelectorAll<HTMLButtonElement>(`button[name="cycle-${product}"]`),
+    );
+    const target = found[index];
+    if (!target) {
+      throw new Error(`cycle-${product} page ${index} missing (found ${found.length})`);
+    }
+    return target;
+  };
+  const monthlyPage = (product: 'home' | 'pro') => page(product, 0);
+  const annualPage = (product: 'home' | 'pro') => page(product, 1);
   const click = async (el: HTMLButtonElement) => {
     await act(async () => {
       el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
