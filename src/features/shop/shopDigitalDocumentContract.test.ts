@@ -5,7 +5,7 @@
  * unchanged v1 reads, refused fulfilment) was exercised against the shared project in a
  * rolled-back transaction before the migration was applied; see the SHOP report.
  */
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const stripComments = (source: string) =>
@@ -23,6 +23,17 @@ const MIGRATION = stripComments(
 const SERVICE = stripComments(readFileSync('src/services/shopDigitalDocument.ts', 'utf8'));
 const MARKET_MIGRATION = stripComments(
   readFileSync('supabase/migrations/20260917153851_shop_document_per_market_language.sql', 'utf8'),
+);
+
+/* The latest definition of the one function that inserts a document order, wherever a later
+   migration moves it: every redefinition has to keep the plan gate. */
+const PLACE_ORDER = /create\s+or\s+replace\s+function\s+public\.shop_document_place_order\s*\(/i;
+const PLACE_ORDER_FILES = readdirSync('supabase/migrations')
+  .filter((name) => name.endsWith('.sql'))
+  .sort()
+  .filter((name) => PLACE_ORDER.test(readFileSync(`supabase/migrations/${name}`, 'utf8')));
+const LATEST_PLACE_ORDER = stripComments(
+  readFileSync(`supabase/migrations/${PLACE_ORDER_FILES.at(-1)}`, 'utf8'),
 );
 
 describe('shop-digital-document: a document order, not a parcel', () => {
@@ -219,5 +230,41 @@ describe('migration: one document per market and language', () => {
   it('keeps one active order per account per document row', () => {
     expect(MARKET_MIGRATION).toContain('on conflict (user_id, document_id)');
     expect(MARKET_MIGRATION).not.toMatch(/insert\s+into\s+public\.shop_products/i);
+  });
+});
+
+describe('ordering needs an active HOME or PRO plan; viewing does not (owner, 2026-09-18)', () => {
+  it('checks the plan with the existing Billing authority inside the only function that inserts the order', () => {
+    expect(PLACE_ORDER_FILES.length).toBeGreaterThan(1);
+    expect(LATEST_PLACE_ORDER).toContain(
+      'if not public.gellatti_has_paid_access_v1(p_user_id) then',
+    );
+    expect(LATEST_PLACE_ORDER).toContain("return jsonb_build_object('error', 'plan_required');");
+    const gate = LATEST_PLACE_ORDER.indexOf('gellatti_has_paid_access_v1(p_user_id)');
+    expect(gate).toBeLessThan(LATEST_PLACE_ORDER.search(/insert\s+into\s+public\.shop_orders/i));
+    expect(gate).toBeLessThan(LATEST_PLACE_ORDER.indexOf("'document_not_available'"));
+  });
+
+  it('never grows a second subscription check of its own', () => {
+    expect(LATEST_PLACE_ORDER).not.toMatch(
+      /public\.entitlements|customer_subscriptions|shop_subscriptions|stripe|price_id|plan_name|qa_role/i,
+    );
+  });
+
+  it('keeps the order function for the service role only and leaves downloads of existing orders alone', () => {
+    expect(LATEST_PLACE_ORDER).toContain(
+      'revoke all on function public.shop_document_place_order(uuid, text, uuid) from public, anon, authenticated;',
+    );
+    expect(LATEST_PLACE_ORDER).not.toMatch(
+      /grant\s+execute[^;]*shop_document_place_order[^;]*authenticated/i,
+    );
+    expect(LATEST_PLACE_ORDER).not.toMatch(/gellatti_shop_document_download_v1/);
+  });
+
+  it('answers the plan refusal as 403 with its own code, so the shop can say it plainly', () => {
+    expect(FUNCTION).toMatch(
+      /code === 'document_not_available' \|\| code === 'plan_required'\s*\?\s*403/,
+    );
+    expect(FUNCTION).toContain('return json(status, { error: code });');
   });
 });

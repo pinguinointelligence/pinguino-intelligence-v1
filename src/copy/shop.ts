@@ -190,6 +190,10 @@ export interface ShopCopy {
     readonly downloadBusy: string;
     readonly signInFirst: string;
     readonly notAvailable: string;
+    /** Signed in without an active HOME or PRO plan: the shop stays open, ordering needs a plan. */
+    readonly planRequired: string;
+    /** The existing way to choose a plan (/subscription). */
+    readonly plansCta: string;
     readonly fileMissing: string;
     readonly failed: string;
     readonly downloadFailed: string;
@@ -472,6 +476,8 @@ export const shopCopyPl: ShopCopy = {
     downloadBusy: 'Przygotowuję plik…',
     signInFirst: 'Zaloguj się, aby zamówić infopak za 0 €.',
     notAvailable: 'Ten infopak nie jest jeszcze dostępny dla Twojego konta.',
+    planRequired: 'Zamawianie w sklepie jest dostępne z aktywnym planem Gellatti HOME lub PRO.',
+    plansCta: 'Wybierz plan',
     fileMissing:
       'Plik jest chwilowo niedostępny. Spróbuj ponownie za chwilę; zamówienie jest w Konto → Zamówienia.',
     failed: 'Nie udało się złożyć zamówienia. Spróbuj ponownie.',
@@ -744,6 +750,8 @@ export const shopCopyEn: ShopCopy = {
     downloadBusy: 'Preparing the file…',
     signInFirst: 'Sign in to get the guide for €0.',
     notAvailable: 'This guide is not available for your account yet.',
+    planRequired: 'Ordering in the shop is available with an active Gellatti HOME or PRO plan.',
+    plansCta: 'Choose a plan',
     fileMissing:
       'The file is temporarily unavailable. Try again shortly; your order is in Account → Orders.',
     failed: 'The order could not be placed. Please try again.',

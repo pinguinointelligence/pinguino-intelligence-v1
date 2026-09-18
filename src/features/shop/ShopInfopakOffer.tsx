@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router';
 import { cn } from '@/lib/cn';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { shopCopy as c } from '@/copy/shop';
@@ -40,7 +41,8 @@ export const INFOPAK_IMAGE_SRC = '/shop/infopak-pl.png';
 const label =
   'text-[10px] leading-[1.25] font-bold tracking-[0.1em] text-[var(--g-text-secondary)] uppercase';
 
-export type InfopakNotice = 'notAvailable' | 'fileMissing' | 'failed' | 'downloadFailed';
+export type InfopakNotice =
+  'notAvailable' | 'planRequired' | 'fileMissing' | 'failed' | 'downloadFailed';
 
 /** Where the customer stands for the country chosen above. */
 export type InfopakMarketState = 'CHOOSE_COUNTRY' | 'NOT_READY' | 'READY';
@@ -244,6 +246,16 @@ export function ShopInfopakOfferView({
                 {c.infopak[notice]}
               </p>
             ) : null}
+            {notice === 'planRequired' ? (
+              /* The existing way to choose a plan — no second checkout, no paywall over the shop itself. */
+              <Link
+                to="/subscription"
+                className="mt-2 inline-block text-[12px] font-semibold text-[var(--g-text-primary)] underline underline-offset-2"
+                data-testid="shop-infopak-plans"
+              >
+                {c.infopak.plansCta}
+              </Link>
+            ) : null}
           </div>
 
           <p className="mt-5 max-w-[68ch] text-[11px] leading-relaxed text-[var(--g-text-muted)]">
@@ -258,6 +270,8 @@ export function ShopInfopakOfferView({
 const noticeFor = (error: unknown): InfopakNotice => {
   const code = error instanceof DocumentOrderError ? error.code : '';
   if (code === 'document_not_available') return 'notAvailable';
+  /* The server's answer, not the UI's guess: the database refuses an order without an active HOME or PRO plan. */
+  if (code === 'plan_required') return 'planRequired';
   if (code === 'document_file_missing') return 'fileMissing';
   return 'failed';
 };

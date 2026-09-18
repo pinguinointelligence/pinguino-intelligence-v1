@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { shopCopyEn, shopCopyPl } from '@/copy/shop';
 import {
@@ -112,6 +113,42 @@ describe('the infopak offer says what it is', () => {
     expect(render({ signedIn: true, notice: 'fileMissing' })).toContain(
       'Plik jest chwilowo niedostępny.',
     );
+  });
+
+  it('tells a signed-in account without a plan that ordering needs HOME or PRO, and keeps the offer open', () => {
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <ShopInfopakOfferView {...base} signedIn notice="planRequired" />
+      </MemoryRouter>,
+    );
+    expect(html).toContain(
+      'Zamawianie w sklepie jest dostępne z aktywnym planem Gellatti HOME lub PRO.',
+    );
+    expect(html).toContain('data-testid="shop-infopak-plans"');
+    expect(html).toContain('href="/subscription"');
+    expect(html).toContain('Wybierz plan');
+    // No paywall over the shop: the offer, its price and the order button stay where they were.
+    expect(html).toContain('Gellatti — Składniki bazy lodów');
+    expect(html).toContain('PDF · 0 €');
+    expect(html).toContain('data-testid="shop-infopak-order"');
+    for (const copy of [shopCopyPl, shopCopyEn]) {
+      expect(copy.infopak.planRequired).not.toMatch(/tylko dla abonent|subscribers only/i);
+    }
+    expect(shopCopyEn.infopak.planRequired).toBe(
+      'Ordering in the shop is available with an active Gellatti HOME or PRO plan.',
+    );
+  });
+
+  it('offers the way to a plan only for the plan refusal', () => {
+    for (const notice of ['notAvailable', 'fileMissing', 'failed', 'downloadFailed'] as const) {
+      expect(render({ signedIn: true, notice })).not.toContain('shop-infopak-plans');
+    }
+  });
+
+  it('takes the plan refusal from the server, never from a plan flag in the browser', () => {
+    const offer = readFileSync('src/features/shop/ShopInfopakOffer.tsx', 'utf8');
+    expect(offer).toContain("if (code === 'plan_required') return 'planRequired';");
+    expect(offer).not.toMatch(/hasHome|hasPro|canHome|canPro|effectiveAccess|useHomeEntitlement/);
   });
 
   it('renders nothing while no market offers the document', () => {
