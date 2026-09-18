@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { copy } from '@/copy/en';
@@ -74,6 +74,32 @@ export function AppShell({
   stickyHeader?: boolean;
 }) {
   const accountLaneRef = useApplicationScaleAuthority();
+
+  /* Correction VII again: content scrolls UNDER the pinned header, but „pierwszy
+     fragment strony i tytuły sekcji po przewinięciu do nich nie chowają się pod
+     nagłówkiem". HOME's only navigation is `scrollIntoView({ block: 'start' })`, which
+     would park each stage's heading behind the header. The offset is measured, not
+     assumed: the row is 65 px on a phone and `--pro-header-height` from the workbench
+     breakpoint up, and it grows with the notch inset. */
+  const headerRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const element = headerRef.current;
+    if (!stickyHeader || !element) return;
+    const root = document.documentElement;
+    const reserve = () => {
+      // The PAINTED height, not `offsetHeight`: the desktop scale authority zooms the
+      // body, and page scrolling happens in the unzoomed viewport, so the pre-zoom
+      // number over-reserved by the scale factor (82 px for a 73 px header at 1440).
+      root.style.scrollPaddingTop = `${element.getBoundingClientRect().height}px`;
+    };
+    reserve();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(reserve);
+    observer?.observe(element);
+    return () => {
+      observer?.disconnect();
+      root.style.scrollPaddingTop = '';
+    };
+  }, [stickyHeader]);
   const persona = useProCorePersona();
   const location = useLocation();
   const entitlement = useHomeEntitlement();
@@ -101,6 +127,7 @@ export function AppShell({
       )}
     >
       <header
+        ref={headerRef}
         className={cn(
           APP_HEADER_ROW,
           maxWidthClass,
