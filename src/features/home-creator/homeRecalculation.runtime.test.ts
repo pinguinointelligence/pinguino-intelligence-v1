@@ -15,15 +15,17 @@
  * the real runtime).
  */
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EngineIngredient, RecipeInput, RecipeItem } from '@/engine';
+import { OWNER_IDS } from '@/features/constraint-studio/__fixtures__/ownerFruitMainFixture';
 import {
-  OWNER_IDS,
-  ownerFruitRecipe,
-  ownerFruitSnapshots,
-} from '@/features/constraint-studio/__fixtures__/ownerFruitMainFixture';
+  publishedDairyMainPolicy,
+  withPublishedDairyMainPolicy,
+  type PublishedDairyMainPolicy,
+} from '@/features/constraint-studio/__fixtures__/servedDairyMainPolicy';
 import {
   SERVED_FRUIT,
   servedSorbetRecipe,
@@ -33,7 +35,9 @@ import {
   applyPreviewWithServerAuthority,
   useConstraintStudioStore,
 } from '@/features/constraint-studio/constraintStudioStore';
+import { lockRelaxationInstructions } from '@/features/constraint-studio/lockRelaxation';
 import type { OptimizePreviewComputationRequest } from '@/features/constraint-studio/optimizePreviewComputation';
+import { mergePreviewInstructions } from '@/features/constraint-studio/previewInstructions';
 import { AUTO_CROWN_SEED } from '@/features/formulation/crownBootstrapProvenance';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
@@ -47,7 +51,11 @@ import {
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { recalculateHomeRecipe } from './homeRecalculation';
+import {
+  recalculateHomeRecipe,
+  runHomeRecalculation,
+  stagedResultIsClean,
+} from './homeRecalculation';
 import { HomeRecalculate } from './ui/HomeRecalculate';
 
 vi.setConfig({ testTimeout: 180_000 });
@@ -128,21 +136,23 @@ const SORBET_MAIN_FIELDS = [
   'formId',
   'blockReasons',
 ] as const;
-/** The published fresh-fruit dairy Main policy fields (ownerFruitMainFixture). */
-const DAIRY_MAIN_FIELDS = [
-  'familyId',
-  'formId',
-  'mainClassification',
-  'mainPolicyId',
-  'mainPolicyVersion',
-  'ecoFloorPercent',
-  'optimalCeilingPercent',
-  'hardLimitPercent',
-  'mainEquivalentFactor',
-  'mainBasis',
-  'requiresLiquidDairyCarrier',
-  'liquidDairyCarrierFloorPercent',
-] as const;
+/** The migration that publishes staging's Main policies (the served rows, read as data). */
+const SERVED_POLICY_SQL = readFileSync(
+  resolve(
+    process.cwd(),
+    'supabase/migrations/20260813110400_product_behavior_classification_queue.sql',
+  ),
+  'utf8',
+);
+/** The SERVED milk_gelato Main policy of each Main-capable fruit (STRAWBERRIES:
+ * `main-berry-fresh-dairy` v2, Main floor 25 %, liquid dairy carrier ≥ 30 %). */
+const SERVED_DAIRY_POLICY: Readonly<Record<string, PublishedDairyMainPolicy>> = {
+  [SORBET_MAIN_IDS.strawberry]: publishedDairyMainPolicy(
+    SERVED_POLICY_SQL,
+    'main-berry-fresh-dairy',
+  ),
+  [SORBET_MAIN_IDS.lime]: publishedDairyMainPolicy(SERVED_POLICY_SQL, 'main-fruit-fresh-dairy'),
+};
 
 const pick = (from: object, fields: readonly string[]) =>
   Object.fromEntries(
@@ -155,8 +165,9 @@ const canonicalOf = (item: { ingredient: { id: string; canonical_ingredient_id?:
 /**
  * The shared test snapshots (`productBehaviorTestSnapshots`, STANDARD_ONLY), with the
  * Main-capable fruit carrying a published Main policy — Sorbet: the served exact
- * strawberry policy; gelato: the fresh-fruit dairy policy with milk as its approved
- * carrier. Banana and kiwi keep the fixture default (they are not Main-capable here).
+ * strawberry policy; gelato: the SERVED dairy policy row, read from the migration that
+ * publishes it, with milk as its approved carrier. Banana and kiwi keep the fixture
+ * default (they are not Main-capable here).
  */
 function authorityFor(
   input: RecipeInput,
@@ -164,7 +175,6 @@ function authorityFor(
 ): Record<string, ProductBehaviorSnapshot> {
   const table = productBehaviorTestSnapshots(input, toppings);
   const servedFruit = servedSorbetSnapshots(servedSorbetRecipe())[SERVED_FRUIT.strawberry]!;
-  const owner = ownerFruitSnapshots(ownerFruitRecipe());
   for (const item of input.items) {
     const base = table[item.id]!;
     if (MAIN_CAPABLE_FRUIT.has(canonicalOf(item))) {
@@ -179,7 +189,7 @@ function authorityFor(
                 profileEligibility: [...servedFruit.sharedFacts!.profileEligibility],
               },
             } as ProductBehaviorSnapshot)
-          : ({ ...base, ...pick(owner.watermelon!, DAIRY_MAIN_FIELDS) } as ProductBehaviorSnapshot);
+          : withPublishedDairyMainPolicy(base, SERVED_DAIRY_POLICY[canonicalOf(item)]!);
     }
     if (input.category !== 'sorbet' && canonicalOf(item) === OWNER_IDS.milk) {
       table[item.id] = { ...base, approvedLiquidDairyCarrier: true };
@@ -525,14 +535,49 @@ describe('HOME recalculation orchestration — runtime', () => {
     // The served state: 1200 g of lines under a 1000 g header, and CORE says so.
     expect(baseSum()).toBe(target + given[banana]! + given[kiwi]!);
     expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+    const before = recipeSnapshot();
 
-    expect(await recalculateHomeRecipe()).toBe('applied');
+    // Under the SERVED berry policy (Main ≥ 25 %, liquid dairy carrier ≥ 30 %) no 1000 g
+    // recipe keeps both fruit amounts at the customer's Direction. CORE says so with its
+    // typed lock conflict on the customer's own amounts — never an over-target Apply, never
+    // the carrier share of a vector nobody proposed — and nothing is written.
+    expect(await recalculateHomeRecipe()).toBe('decision');
+    expect(recipeSnapshot()).toEqual(before);
+    expect(studio().preview).toBeNull();
+    expect(studio().directionBestCandidate).toBeNull();
+    expect(studio().recalculationTerminal).toMatchObject({
+      state: 'LOCK_CHANGE_REQUIRED',
+      code: 'impossible_under_constraints',
+    });
+    const issue = studio().previewIssue;
+    expect(issue?.ok === false && issue.code).toBe('impossible_under_constraints');
+    const conflict = studio().lockConflict!;
+    expect(conflict.diagnosis.status).toBe('relaxation_found');
+    if (conflict.diagnosis.status !== 'relaxation_found') return;
+    expect(conflict.diagnosis.locks.map((lock) => lock.lineId)).toEqual([banana, kiwi]);
+    const relaxed = Object.fromEntries(
+      conflict.diagnosis.changes.map((change) => [change.lineId, change.toGrams]),
+    );
+
+    // „Użyj propozycji" through HOME's dialog door: a clean Preview (the customer's
+    // Direction is kept — no consent asked), still nothing written…
+    await runHomeRecalculation(
+      mergePreviewInstructions(
+        conflict.sessionInstructions,
+        lockRelaxationInstructions(conflict.diagnosis),
+      ),
+    );
+    expect(stagedResultIsClean()).toBe(true);
+    expect(recipeSnapshot()).toEqual(before);
+    // …and „Zastosuj zmiany" brings the lines back to the header.
+    await applyPreviewWithServerAuthority();
 
     for (const lineId of [banana, kiwi]) {
+      const grams = relaxed[lineId] ?? given[lineId];
       expect(line(lineId)).toMatchObject({
-        planned_grams: given[lineId],
+        planned_grams: grams,
         lock_type: 'grams',
-        grams_constraint: { grams: given[lineId] },
+        grams_constraint: { grams },
       });
     }
     expect(line(strawberry).lock_type).toBe('main');

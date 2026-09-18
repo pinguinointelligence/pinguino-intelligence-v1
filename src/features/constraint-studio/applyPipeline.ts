@@ -6985,7 +6985,17 @@ export function buildOptimizePreview(
     // Exact Direction owns its own hard-safe projection. Its Main proof is
     // rebuilt only to keep Apply trustless; it is not a request to enforce the
     // Main floor as a separate optimization objective.
-    if (hasActiveExactDirectionObjective(input)) return result;
+    //
+    // GEL-P0-027 („an empty sweep is a refusal, never an echo"): that holds
+    // only for a REAL Main proposal. A refused Main sweep (`crownRefusal`) hands
+    // back the unsized draft, and a diagnostic-only vector is not a proposal at
+    // all; letting either through published the served 1340 g banana + kiwi
+    // refusal as „nośnik mleczny ma 22.8%" — the carrier share of a vector
+    // nobody proposed. Those two answer to the Main safety check below.
+    const realMainProposal =
+      result.preview.mainObjective?.crownRefusal === undefined &&
+      result.preview.diagnosticOnly !== true;
+    if (hasActiveExactDirectionObjective(input) && realMainProposal) return result;
     // Exact Sorbet Direction owns its own already-verified projection and does
     // not carry a Main-objective proof. This backstop is intentionally scoped
     // to the Main search/fallback path that produced the invalid Owner result.
@@ -7016,6 +7026,18 @@ export function buildOptimizePreview(
     // eligibility failures retain their existing owning path (notably the
     // accepted managed Protein flow whose test snapshots are STANDARD_ONLY).
     if (quantityViolations.length === 0) return result;
+    // The refusal is typed from this verdict, but its EVIDENCE (the measured
+    // shares the conflict view shows) must describe a recipe that exists: a
+    // real proposal, or the customer's own recipe exactly as it stands (the
+    // owner's „Przy obecnych ustawieniach…" gap, 2026-09-11). A refused
+    // sweep's diagnostic reformulation is neither — served 1000 g banana +
+    // kiwi measured „płynna baza ma 20,3%" on MILK 203 / STRAWBERRIES 378, a
+    // vector nobody proposed — so its shares are not handed on and the
+    // lock-conflict diagnosis names what has to move.
+    const evidence =
+      realMainProposal || isCompositionUnchanged(input, result.preview.proposedInput)
+        ? quantityViolations
+        : [];
 
     const constrainedMains = captureMainIngredientIntent(input).filter((main) => {
       const constraint = set.byLineId[main.lineId];
@@ -7031,7 +7053,7 @@ export function buildOptimizePreview(
           `Blokady lub zakresy składników Głównych ` +
           `(${constrainedMains.map((main) => main.ingredientName).join(', ')}) ` +
           `nie pozwalają osiągnąć zatwierdzonego minimum Main. Gellatti nie zmieniło receptury.`,
-        blockingViolations: quantityViolations,
+        blockingViolations: evidence,
       };
     }
 
@@ -7061,7 +7083,7 @@ export function buildOptimizePreview(
         code: 'impossible_under_constraints',
         conflict: flavourConflict,
         hardViolatedMetrics: [],
-        residualViolatedMetrics: quantityViolations.map((violation) => violation.code),
+        residualViolatedMetrics: evidence.map((violation) => violation.code),
         capReached: iteration.capped,
         nearestFeasibleGrams: null,
         alternativeProductType: null,
@@ -7069,7 +7091,7 @@ export function buildOptimizePreview(
         iteration,
         templateId: result.preview.formulation?.templateId ?? 'none',
         templateStatus: result.preview.formulation?.templateStatus ?? 'approved',
-        blockingViolations: quantityViolations,
+        blockingViolations: evidence,
       };
     }
 
@@ -7078,14 +7100,14 @@ export function buildOptimizePreview(
       code: 'no_proposal',
       violatedMetrics: [
         ...new Set([
-          ...quantityViolations.map((violation) => violation.code),
+          ...evidence.map((violation) => violation.code),
           ...(result.preview.mainObjective?.limitingTechnicalRules ?? []),
         ]),
       ],
       solverInvocations:
         result.preview.iteration?.solverInvocations ?? result.preview.mainObjective?.attempts ?? 0,
       iteration: result.preview.iteration,
-      blockingViolations: quantityViolations,
+      blockingViolations: evidence,
     };
   }
   // Crown OFF backstop.
