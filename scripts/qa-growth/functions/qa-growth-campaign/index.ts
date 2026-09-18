@@ -295,8 +295,9 @@ Deno.serve(async (req) => {
         break;
       }
       case 'connect_v2_account_get':
+        // v2 rejects the [] array syntax: the indexes must be explicit.
         result = await stripe.rawRequest('GET', `/v2/core/accounts/${String(p.accountId)}` +
-          '?include[]=configuration.recipient&include[]=identity&include[]=requirements&include[]=defaults',
+          '?include[0]=configuration.recipient&include[1]=identity&include[2]=requirements&include[3]=defaults',
           {}, { apiVersion: V2_VERSION });
         break;
       case 'connect_v2_account_update':

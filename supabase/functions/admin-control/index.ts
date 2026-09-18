@@ -1,6 +1,10 @@
 import Stripe from 'npm:stripe@18';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
+/* Accounts v2 lives on its own API version; the rest of this project's Stripe
+   calls stay on STRIPE_API_VERSION. */
+const CONNECT_ACCOUNTS_API_VERSION = '2026-08-26.dahlia';
+
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -209,13 +213,45 @@ Deno.serve(async (req) => {
     const { data: authUser } = await service.auth.admin.getUserById(partner.user_id);
     const apiVersion = Deno.env.get('STRIPE_API_VERSION') ?? '2025-06-30.basil';
     const stripe = new Stripe(stripeKey, { apiVersion: apiVersion as Stripe.LatestApiVersion });
-    let account: Stripe.Account;
+    /* Accounts v2. Measured on the sandbox (2026-09-18): `/v1/accounts` is
+       refused outright — "Stripe no longer recommends Accounts v1 for new
+       Connect integrations. Create connected accounts with POST
+       /v2/core/accounts instead." The v1 call also asked for NO capabilities,
+       which let Express defaults decide; this asks for exactly one.
+
+       A Partner receives commission and nothing else, so the account gets the
+       Recipient configuration with `stripe_balance.stripe_transfers` — the
+       capability that lets it receive /v1/transfers — and no Merchant
+       configuration at all, so it can never take a payment. `dashboard:
+       express` keeps the hosted dashboard the onboarding link already uses, and
+       Stripe requires application/application responsibilities with it.
+
+       Everything after this line is unchanged: the same admin RPC binds the
+       account, the same onboarding link function sends the Partner to Stripe,
+       the same `accounts.retrieve` reads it back and the same
+       `transfers.create` pays it. Only the create call moved. */
+    const country = /^[A-Za-z]{2}$/.test(String(body.country ?? ''))
+      ? String(body.country).toLowerCase()
+      : (Deno.env.get('GELLATTI_CONNECT_DEFAULT_COUNTRY') ?? 'es').toLowerCase();
+    let account: { id: string };
     try {
-      account = await stripe.accounts.create({
-        type: 'express',
-        email: authUser.user?.email,
+      account = await stripe.rawRequest('POST', '/v2/core/accounts', {
+        contact_email: authUser.user?.email,
+        identity: { country, entity_type: 'individual' },
+        configuration: {
+          recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } },
+        },
+        dashboard: 'express',
+        defaults: {
+          currency: 'eur',
+          responsibilities: { fees_collector: 'application', losses_collector: 'application' },
+        },
         metadata: { gellatti_partner_id: partnerId, environment: 'staging' },
-      }, { idempotencyKey: `gellatti-partner-connect-${partnerId}` });
+        include: ['configuration.recipient'],
+      }, {
+        apiVersion: CONNECT_ACCOUNTS_API_VERSION,
+        idempotencyKey: `gellatti-partner-connect-${partnerId}`,
+      }) as unknown as { id: string };
     } catch {
       return json(502, { error: 'stripe_connect_provision_failed' });
     }
@@ -229,8 +265,11 @@ Deno.serve(async (req) => {
       notification_type: 'PARTNER_CONNECT_ACTION_REQUIRED',
       entity_type: 'partners',
       entity_id: partnerId,
-      title: 'Dokończ konfigurację wypłat',
-      body: 'Konto Stripe Connect jest gotowe. Otwórz Partner → Payouts i dokończ bezpieczny onboarding.',
+      // The Partner configures no payout: the only thing they can do is confirm
+      // identity and payout data with the payment operator. Same wording as the
+      // panel (#406), including no vendor name.
+      title: 'Potwierdź dane do wypłat',
+      body: 'Gellatti przygotowało Twoje konto wypłat. Otwórz Partner → Wypłaty i potwierdź tożsamość oraz dane u naszego operatora płatności.',
       deep_link: '/partner?section=payouts',
       dedupe_key: `partner-connect-ready:${partnerId}`,
     });
