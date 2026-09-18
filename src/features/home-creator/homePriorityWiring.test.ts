@@ -63,7 +63,9 @@ describe('PACKAGE 2A — HOME wiring', () => {
   it("HOME's padlock names HOME's surface, so a lock never ends AUTO", () => {
     const homeSurface =
       /setGramLock\(\s*item\.id,\s*(?:gramsLocked|hasExactGramLock\(item\)) \? null : item\.planned_grams,?\s*\)/g;
-    expect(section.match(homeSurface)?.length).toBe(2);
+    // DESIGN V3.0 IV-B (2026-09-17): the row's „•••” menu — the second padlock door — is
+    // gone; the ONE padlock is the ingredient panel's, with the same HOME-surface call.
+    expect(section.match(homeSurface)?.length).toBe(1);
     expect(section).not.toMatch(/setLockType\(\s*item\.id,[^)]*'grams'/);
   });
 

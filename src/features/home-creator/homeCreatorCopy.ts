@@ -203,6 +203,49 @@ export interface HomeCreatorCopy {
     readonly balanced: string;
     readonly sweeter: string;
   };
+  /**
+   * DESIGN V3.0 — the HOME recipe screen (corrections IV, VI, XI, XII, XIII): the header
+   * with Reset, the name panel, the rows, the ingredient panel, the sweetness layer and
+   * the bottom actions. Words only; every action behind them is an existing HOME door.
+   */
+  readonly recipeScreen: {
+    readonly reset: string;
+    readonly resetTitle: string;
+    readonly resetBody: string;
+    readonly resetConfirm: string;
+    readonly resetKeep: string;
+    readonly nameEdit: string;
+    readonly nameTitle: string;
+    readonly nameHint: string;
+    readonly nameCancel: string;
+    readonly nameDone: string;
+    readonly openRow: string;
+    readonly lockedAmount: string;
+    readonly enterAmount: string;
+    readonly amountCta: string;
+    readonly inProduction: string;
+    readonly backToProduction: string;
+    readonly addIngredientShort: string;
+    readonly addToppingShort: string;
+    readonly addIngredientSubtitle: string;
+    readonly addToppingSubtitle: string;
+    readonly save: string;
+    readonly share: string;
+    readonly community: string;
+    readonly panelLabel: string;
+    readonly tagIngredient: string;
+    readonly tagTopping: string;
+    readonly info: string;
+    readonly category: string;
+    readonly fullData: string;
+    readonly fullDataProcess: string;
+    readonly sweetnessDefault: string;
+    readonly sweetnessFrame: string;
+    readonly sweetnessStepLess: string;
+    readonly sweetnessStepBalanced: string;
+    readonly sweetnessStepSweeter: string;
+    readonly sweetnessDone: string;
+  };
   readonly preparation: {
     readonly title: string;
     readonly addedTooMuch: string;
@@ -369,7 +412,8 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     save: 'Zapisz recepturę',
     saved: 'Zapisano',
     shareWithCommunity: 'Pokaż w Community',
-    letsMakeIt: 'Zróbmy to',
+    // DESIGN V3.0 (decision 1): „Zaczynamy” replaces „Zróbmy to” on the HOME recipe screen.
+    letsMakeIt: 'Zaczynamy',
     recalculate: 'Przelicz i popraw',
     firstBuildNotApplied:
       'Receptura nie została jeszcze przygotowana. Naciśnij „Zamień pomysł w recepturę”, aby wrócić do propozycji.',
@@ -402,6 +446,45 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     less: 'Mniej słodkie',
     balanced: 'W sam raz',
     sweeter: 'Słodsze',
+  },
+  recipeScreen: {
+    reset: 'Reset',
+    resetTitle: 'Reset receptury?',
+    resetBody:
+      'Twój pomysł i niezapisane zmiany w recepturze zostaną usunięte. Zapisane receptury i Community zostają bez zmian.',
+    resetConfirm: 'Reset',
+    resetKeep: 'Wróć',
+    nameEdit: 'Nazwa receptury — wpisz lub zmień',
+    nameTitle: 'Nazwa receptury',
+    nameHint: 'Nazwa zostaje w tej pracy.',
+    nameCancel: 'Anuluj',
+    nameDone: 'Gotowe',
+    openRow: 'otwórz panel składnika',
+    lockedAmount: 'ilość zablokowana',
+    enterAmount: 'Wpisz ilość',
+    amountCta: 'Ilość',
+    inProduction: 'Ta partia jest w produkcji — składniki są zablokowane.',
+    backToProduction: 'Wróć do produkcji',
+    addIngredientShort: 'Składnik',
+    addToppingShort: 'Topping',
+    addIngredientSubtitle: 'Do bazy lodowej',
+    addToppingSubtitle: 'Po produkcji · nie zmienia bilansu bazy',
+    save: 'Zapisz',
+    share: 'Udostępnij',
+    community: 'Community',
+    panelLabel: 'Edycja składnika',
+    tagIngredient: 'Składnik',
+    tagTopping: 'Topping',
+    info: 'Dane składnika',
+    category: 'Kategoria',
+    fullData: 'Pełne dane składnika',
+    fullDataProcess: 'Obróbka',
+    sweetnessDefault: 'Domyślnie: Optymalne',
+    sweetnessFrame: 'Dostosuj recepturę',
+    sweetnessStepLess: '−1',
+    sweetnessStepBalanced: 'Optymalne',
+    sweetnessStepSweeter: '+1',
+    sweetnessDone: 'Gotowe',
   },
   preparation: {
     title: 'Robimy lody',
@@ -565,7 +648,7 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     save: 'Save recipe',
     saved: 'Saved',
     shareWithCommunity: 'Share with Community',
-    letsMakeIt: "Let's make it",
+    letsMakeIt: "Let's start",
     recalculate: 'Recalculate and fix',
     firstBuildNotApplied:
       'The recipe has not been prepared yet. Press “Turn the idea into a recipe” to return to the proposal.',
@@ -598,6 +681,45 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     less: 'Less sweet',
     balanced: 'Balanced',
     sweeter: 'Sweeter',
+  },
+  recipeScreen: {
+    reset: 'Reset',
+    resetTitle: 'Reset the recipe?',
+    resetBody:
+      'Your idea and the unsaved changes in the recipe will be removed. Saved recipes and Community stay as they are.',
+    resetConfirm: 'Reset',
+    resetKeep: 'Back',
+    nameEdit: 'Recipe name — type or change',
+    nameTitle: 'Recipe name',
+    nameHint: 'The name stays with this work.',
+    nameCancel: 'Cancel',
+    nameDone: 'Done',
+    openRow: 'open the ingredient panel',
+    lockedAmount: 'amount locked',
+    enterAmount: 'Enter the amount',
+    amountCta: 'Amount',
+    inProduction: 'This batch is in production — the ingredients are locked.',
+    backToProduction: 'Back to production',
+    addIngredientShort: 'Ingredient',
+    addToppingShort: 'Topping',
+    addIngredientSubtitle: 'Into the ice cream base',
+    addToppingSubtitle: 'After production · does not change the base balance',
+    save: 'Save',
+    share: 'Share',
+    community: 'Community',
+    panelLabel: 'Ingredient editing',
+    tagIngredient: 'Ingredient',
+    tagTopping: 'Topping',
+    info: 'Ingredient data',
+    category: 'Category',
+    fullData: 'Full ingredient data',
+    fullDataProcess: 'Processing',
+    sweetnessDefault: 'Default: Optimal',
+    sweetnessFrame: 'Adjust the recipe',
+    sweetnessStepLess: '−1',
+    sweetnessStepBalanced: 'Optimal',
+    sweetnessStepSweeter: '+1',
+    sweetnessDone: 'Done',
   },
   preparation: {
     title: "Let's make it",

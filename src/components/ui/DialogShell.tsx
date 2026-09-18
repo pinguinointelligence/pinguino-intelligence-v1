@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/cn';
 import { isTopmostDialogShell, openDialogCount, registerDialogShell } from './dialogShellRegistry';
@@ -100,6 +100,8 @@ export function DialogShell({
   panelState,
   initialFocusTestId,
   returnFocus,
+  onBackdrop,
+  panelStyle,
 }: {
   label: string;
   testId: string;
@@ -157,9 +159,18 @@ export function DialogShell({
    * control (for example Apply -> Cofnij), never a decorative/tabindex target.
    */
   returnFocus?: () => HTMLElement | null;
+  /**
+   * DESIGN V3.0 HOME (IV-C): a tap on the dimmed recipe around a HOME layer is that
+   * layer's own main action („Gotowe”), not a dismissal. When set, the backdrop calls
+   * this instead of `onClose`; Escape still calls `onClose`.
+   */
+  onBackdrop?: () => void;
+  /** Inline panel style — the HOME layers use it for the keyboard inset only. */
+  panelStyle?: CSSProperties;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose);
+  const onBackdropRef = useRef(onBackdrop);
   const returnFocusRef = useRef(returnFocus);
   const isTopmostRef = useRef(true);
   const hadUnderlyingDialogRef = useRef(false);
@@ -181,6 +192,9 @@ export function DialogShell({
   useEffect(() => {
     returnFocusRef.current = returnFocus;
   }, [returnFocus]);
+  useEffect(() => {
+    onBackdropRef.current = onBackdrop;
+  }, [onBackdrop]);
   useEffect(() => {
     const previousFocus =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -328,7 +342,9 @@ export function DialogShell({
       data-dialog-active={isTopmost ? 'true' : 'false'}
       data-overlay-scope="viewport"
       onMouseDown={(event) => {
-        if (dismissOnBackdrop && event.target === event.currentTarget) onCloseRef.current();
+        if (event.target !== event.currentTarget) return;
+        if (onBackdropRef.current) onBackdropRef.current();
+        else if (dismissOnBackdrop) onCloseRef.current();
       }}
     >
       <section
@@ -343,6 +359,7 @@ export function DialogShell({
         data-dialog-active={isTopmost ? 'true' : 'false'}
         aria-hidden={isTopmost ? undefined : true}
         data-dialog-state={panelState}
+        style={panelStyle}
         data-terminal-state={panelState}
         data-home-layer-size={placement === 'home-layer' ? size : undefined}
         className={

@@ -187,6 +187,11 @@ const publicPickerUnavailableReason = (option: PickerOption, scope: ProductPicke
     : `${option.name} nie ma obecnie kompletnych danych do użycia jako topping. Uzupełnij dane lub wybierz inny produkt.`;
 };
 
+/** The sticky header (64 px) plus the layer's own 8 px — HOME's layer begins below it. */
+const HOME_LAYER_HEADER_GAP = 64;
+/** The HOME layer's width on a portrait tablet (`homeLayer.css`: 640 px). */
+const HOME_LAYER_MAX_WIDTH = 640;
+
 interface PickerPosition {
   desktop: boolean;
   left: number;
@@ -217,6 +222,23 @@ type ProductPickerPopoverProps = {
    * beside it.
    */
   triggerVariant?: 'pill' | 'icon';
+  /**
+   * DESIGN V3.0 HOME (IV, XI). `home` paints the pill trigger as HOME's 48 px white pill
+   * („+ Składnik”); `default` is the unchanged PRO pill. Presentation only.
+   */
+  triggerAppearance?: 'default' | 'home';
+  /** Visible trigger text when it is shorter than the accessible label („Składnik”). */
+  triggerText?: string;
+  /**
+   * DESIGN V3.0 HOME (XI) — `home` adds the layer's title („Dodaj składnik” · „Do bazy
+   * lodowej”) and a bottom „Anuluj”, and — on a phone and a portrait tablet, where the
+   * picker is the tall keyboard-safe sheet — moves the filters, the search and „Anuluj”
+   * under the thumb: title on top, the list in the middle. The anchored desktop picker
+   * keeps its natural order (search on top). Same search, same list, same behaviour.
+   */
+  layout?: 'default' | 'home';
+  sheetTitle?: string;
+  sheetSubtitle?: string;
   /**
    * Icon-variant size. `md` (default) is the 44 px control used beside the recipe list;
    * `sm` is the more compact refinement control, which still clears 44 px on touch.
@@ -270,6 +292,11 @@ export function ProductPickerPopover({
   onAdd,
   triggerLabel,
   triggerVariant = 'pill',
+  triggerAppearance = 'default',
+  triggerText,
+  layout = 'default',
+  sheetTitle,
+  sheetSubtitle,
   triggerSize = 'md',
   className,
   behaviorContext,
@@ -1126,6 +1153,9 @@ export function ProductPickerPopover({
   const listId = `product-picker-${scope.toLowerCase()}-${pickerInstanceId}`;
   const dialogId = `${listId}-dialog`;
   const anchored = position?.desktop === true;
+  /** HOME's layer (XI): title + „Anuluj”; under the thumb only on the tall sheet. */
+  const homeLayout = layout === 'home';
+  const thumbZone = homeLayout && !anchored;
   const dialogStyle: CSSProperties | undefined = position
     ? anchored
       ? {
@@ -1135,10 +1165,17 @@ export function ProductPickerPopover({
           height: position.height,
         }
       : {
-          left: position.left,
+          // HOME's tall layer is at most 640 px wide, centred (a portrait tablet), and
+          // starts under the sticky header (DESIGN VIII / XI), so the header stays in view
+          // above it; everything else keeps the full-width, full-height sheet.
+          left: thumbZone
+            ? position.left + Math.max(0, position.width - HOME_LAYER_MAX_WIDTH) / 2
+            : position.left,
           bottom: position.bottom,
-          width: position.width,
-          height: position.height,
+          width: thumbZone ? Math.min(position.width, HOME_LAYER_MAX_WIDTH) : position.width,
+          height: thumbZone
+            ? Math.max(Math.min(position.height, 320), position.height - HOME_LAYER_HEADER_GAP)
+            : position.height,
         }
     : undefined;
   return (
@@ -1166,6 +1203,32 @@ export function ProductPickerPopover({
             data-testid={scope === 'BASE_FORMULATION' ? 'ingredient-add-core' : undefined}
           >
             ＋
+          </span>
+        </button>
+      ) : triggerAppearance === 'home' ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          className="pro-focus-ring relative inline-flex h-12 w-full min-w-0 items-center justify-center gap-1.5 rounded-full border border-[var(--g-line)] bg-white px-4 text-[15px] font-semibold whitespace-nowrap text-[var(--g-ink)] transition-colors hover:border-[var(--g-line-strong)]"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          aria-controls={dialogId}
+          aria-label={label}
+          onClick={toggle}
+        >
+          <span
+            className="inline-flex min-w-0 items-center justify-center gap-1.5"
+            data-testid={scope === 'BASE_FORMULATION' ? 'ingredient-add-core' : undefined}
+          >
+            <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M8 3v10M3 8h10"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="truncate">{triggerText ?? label}</span>
           </span>
         </button>
       ) : (
@@ -1262,9 +1325,38 @@ export function ProductPickerPopover({
                   }
                 }}
               >
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
-                  <div className="z-10 shrink-0 border-b border-ink/10 bg-white p-3 sm:p-4">
-                    <div className="flex items-center gap-2">
+                <div
+                  className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white"
+                  data-picker-layout={thumbZone ? 'home-thumb' : homeLayout ? 'home' : 'default'}
+                >
+                  {thumbZone && sheetTitle ? (
+                    <div
+                      className="order-1 shrink-0 border-b border-ink/10 bg-white px-4 pt-4 pb-3"
+                      data-testid="product-picker-title"
+                    >
+                      <h2 className="text-[17px] leading-tight font-semibold text-ink">
+                        {sheetTitle}
+                      </h2>
+                      {sheetSubtitle ? (
+                        <p className="mt-0.5 text-[13px] text-[var(--g-text-muted)]">
+                          {sheetSubtitle}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div
+                    className={cn(
+                      'z-10 shrink-0 bg-white p-3 sm:p-4',
+                      thumbZone
+                        ? 'order-3 flex flex-col border-t border-ink/10'
+                        : 'border-b border-ink/10',
+                    )}
+                    data-testid="product-picker-controls"
+                  >
+                    <div
+                      className={cn('flex items-center gap-2', thumbZone && 'order-2 mt-2')}
+                      data-testid="product-picker-search-row"
+                    >
                       <div className="relative min-w-0 flex-1">
                         <input
                           ref={inputRef}
@@ -1323,18 +1415,36 @@ export function ProductPickerPopover({
                       >
                         <span aria-hidden>▣</span>
                       </button>
-                      <button
-                        type="button"
-                        aria-label="Zamknij wyszukiwarkę produktów"
-                        title="Zamknij"
-                        className="pro-focus-ring grid size-11 shrink-0 place-items-center rounded-full border border-ink/15 bg-white text-lg font-semibold text-stone-600 hover:border-ink/35 hover:text-ink lg:size-10"
-                        onClick={() => close()}
-                      >
-                        <span aria-hidden>×</span>
-                      </button>
+                      {/* HOME's layer closes with its own „Anuluj” at the bottom (XI). */}
+                      {homeLayout ? null : (
+                        <button
+                          type="button"
+                          aria-label="Zamknij wyszukiwarkę produktów"
+                          title="Zamknij"
+                          className="pro-focus-ring grid size-11 shrink-0 place-items-center rounded-full border border-ink/15 bg-white text-lg font-semibold text-stone-600 hover:border-ink/35 hover:text-ink lg:size-10"
+                          onClick={() => close()}
+                        >
+                          <span aria-hidden>×</span>
+                        </button>
+                      )}
                     </div>
+                    {homeLayout && !thumbZone && sheetTitle ? (
+                      <div className="mt-3" data-testid="product-picker-title">
+                        <h2 className="text-[16px] leading-tight font-semibold text-ink">
+                          {sheetTitle}
+                        </h2>
+                        {sheetSubtitle ? (
+                          <p className="mt-0.5 text-[12.5px] text-[var(--g-text-muted)]">
+                            {sheetSubtitle}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div
-                      className="product-picker-filter-row mt-2 flex items-center gap-1.5 overflow-x-auto pb-1 whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      className={cn(
+                        'product-picker-filter-row flex items-center gap-1.5 overflow-x-auto pb-1 whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+                        thumbZone ? 'order-1 mt-1' : 'mt-2',
+                      )}
                       aria-label={discoveryCopy.filtersLabel}
                     >
                       {PRODUCT_DISCOVERY_TOP_FILTERS.map((filter) => (
@@ -1367,7 +1477,10 @@ export function ProductPickerPopover({
                     </div>
                     {contextualSubfilters.length > 0 ? (
                       <div
-                        className="mt-1.5 flex items-center gap-1.5 overflow-x-auto pb-1 whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                        className={cn(
+                          'mt-1.5 flex items-center gap-1.5 overflow-x-auto pb-1 whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+                          thumbZone && 'order-1',
+                        )}
                         aria-label={discoveryCopy.subfiltersLabel}
                         data-testid="product-picker-contextual-filters"
                       >
@@ -1396,14 +1509,23 @@ export function ProductPickerPopover({
                         ))}
                       </div>
                     ) : null}
-                    <p className="mt-2 text-xs text-stone-600" role="status" aria-live="polite">
+                    <p
+                      className={cn('text-xs text-stone-600', thumbZone ? 'order-0 mb-1' : 'mt-2')}
+                      role="status"
+                      aria-live="polite"
+                    >
                       {library.serverSearch && query.trim() && !globalCatalog.isSettled
                         ? 'Szukam…'
                         : `Znaleziono ${uniqueOptionCount} ${uniqueOptionCount === 1 ? 'składnik' : 'składników'}`}
                     </p>
                   </div>
                   {scanning ? (
-                    <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-6">
+                    <div
+                      className={cn(
+                        'min-h-0 flex-1 overflow-y-auto px-4 pb-6',
+                        thumbZone && 'order-2',
+                      )}
+                    >
                       <ScanFlow
                         mode="recipe"
                         entryContext={
@@ -1426,7 +1548,7 @@ export function ProductPickerPopover({
                       />
                     </div>
                   ) : (
-                    <div className="relative min-h-0 flex-1">
+                    <div className={cn('relative min-h-0 flex-1', thumbZone && 'order-2')}>
                       <div
                         id={listId}
                         ref={listRef}
@@ -1835,13 +1957,33 @@ export function ProductPickerPopover({
                   )}
                   {unavailableNotice ? (
                     <p
-                      className="shrink-0 border-t border-attention/25 bg-pro-amber/35 px-3 py-2 text-xs leading-relaxed text-stone-700"
+                      className={cn(
+                        'shrink-0 border-t border-attention/25 bg-pro-amber/35 px-3 py-2 text-xs leading-relaxed text-stone-700',
+                        thumbZone && 'order-2',
+                      )}
                       role="status"
                       aria-live="polite"
                       data-testid="product-picker-unavailable-reason"
                     >
                       {unavailableNotice}
                     </p>
+                  ) : null}
+                  {homeLayout ? (
+                    <div
+                      className={cn(
+                        'shrink-0 border-t border-ink/10 bg-white px-3 py-3 sm:px-4',
+                        thumbZone && 'order-4',
+                      )}
+                    >
+                      <button
+                        type="button"
+                        data-testid="product-picker-cancel"
+                        onClick={() => close()}
+                        className="pro-focus-ring inline-flex h-12 w-full items-center justify-center rounded-full border border-[var(--g-line)] bg-white px-5 text-[15px] font-semibold text-[var(--g-ink)]"
+                      >
+                        Anuluj
+                      </button>
+                    </div>
                   ) : null}
                 </div>
               </div>
