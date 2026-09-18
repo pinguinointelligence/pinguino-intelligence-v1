@@ -78,10 +78,18 @@ describe('B9 — every cockpit change moves spatially, phone only, reduced motio
 });
 
 describe('B3/B6/B7 — profile first, one next step, the one save card', () => {
-  it('opens a NEW unconfirmed recipe on its settings once, then reveals the workspace', () => {
-    expect(surface).toContain(`activeDraftIdentity.startsWith('["unsaved-draft"')`);
-    expect(surface).toContain("collapseWithMove('reveal')");
-    expect(surface).toContain('profileFirstIdentityRef.current === activeDraftIdentity');
+  /* DESIGN V3.0 §3 (owner-LOCKED Points 1–4) supersedes B3's settings sheet: a
+     NEW unsaved recipe starts with the full-screen setup, the workbench under
+     it is inert, and the recipe is revealed from above when it is done. The
+     runtime behaviour is covered by ProSetupFlow.runtime.test.tsx. */
+  it('opens a NEW recipe on the V3 setup, keeps the workbench inert, then reveals it', () => {
+    const gate = read('features', 'pro-workbench', 'proSetupFlowGate.ts');
+    expect(gate).toContain(`identity.startsWith('["unsaved-draft"')`);
+    expect(surface).toContain('const setup = useProSetupFlowGate({');
+    expect(surface).toContain('inert={setupOpen || undefined}');
+    expect(surface).toContain("runSpatialTransition(!mobileViewport ? null : 'reveal', apply)");
+    expect(surface).toContain('mobileCockpitOpen && mobileViewport && !setupOpen');
+    expect(surface).not.toContain('profileFirstIdentityRef');
   });
 
   it('passes the phone flow to the phone dock only — the desktop dock is unchanged', () => {

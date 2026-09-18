@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 /**
- * PRO MOBILE UX v2 · B4 / B5 / B8 — the settings line in the guided phone flow.
+ * PRO MOBILE UX v2 · B5 / B8 and DESIGN V3.0 correction I — the settings line.
  *
- * B4 the first settings of a new recipe come as a three-step sequence (the CSS
- *    shows one step at a time below the workbench breakpoint; jsdom applies no
- *    CSS, so the steps are asserted through their data attributes).
+ * I  the panel's Ustawienia box: summary on two lines with the status under it
+ *    on a phone, the fields in the design's order, the serving segments, the
+ *    OPTIMAL / ECO tiles and „[ ] Ustaw jako domyślne" — every one wired through
+ *    the panel's existing handlers. (It supersedes B4's three-step pager, which
+ *    is now the full-screen setup — see ProSetupFlow.runtime.test.tsx.)
  * B5 the target mass reads as a parameter of the whole batch, beside the
  *    recipe's current total, and never disappears from the collapsed row.
  * B8 a saved recipe reopened unchanged is not asked to re-confirm settings it
@@ -64,50 +66,109 @@ afterEach(async () => {
   host.remove();
 });
 
-describe('B4 — the first-run settings come as a three-step sequence', () => {
-  it('opens a new recipe on step 1 of 3, titled „Jakie lody robisz?", with back and forward', async () => {
-    await render();
-    expect(surface().getAttribute('data-settings-pager-scope')).toBe('on');
-    expect(surface().getAttribute('data-settings-active-step')).toBe('1');
-    expect(q('profile-settings-pager')?.textContent).toContain('Krok 1 z 3');
-    expect(q('profile-settings-pager-title')?.textContent).toBe('Jakie lody robisz?');
-    expect(q<HTMLButtonElement>('profile-settings-pager-back')?.disabled).toBe(true);
-    expect(q('profile-settings-pager-next')).not.toBeNull();
-  });
+describe('DESIGN V3.0 correction I — the Ustawienia box of the one settings panel', () => {
+  const OWNER_KEY = 'local-device:gelato';
+  const cellOrder = (cell: string) => {
+    const element = host.querySelector(`[data-settings-cell="${cell}"]`);
+    // jsdom applies no CSS: the design's phone order is carried by `order-N`
+    // (unprefixed), the frozen desktop grid by `min-[68.5rem]:order-N`.
+    const phone = element?.className.match(/(?:^|\s)order-(\d)/);
+    return phone ? Number(phone[1]) : null;
+  };
 
-  it('gives every setting one step: type → machine and serving → batch, mode and confirmation', async () => {
-    await render();
-    const step = (selector: string) =>
-      host.querySelector(selector)?.getAttribute('data-settings-step');
-    expect(step('[data-settings-cell="product-type"]')).toBe('1');
-    expect(step('[data-settings-cell="machine"]')).toBe('2');
-    expect(step('[data-settings-cell="serving"]')).toBe('2');
-    expect(step('[data-settings-cell="batch"]')).toBe('3');
-    expect(step('[data-settings-cell="strategy"]')).toBe('3');
-    expect(step('[data-settings-cell="actions"]')).toBe('3');
-  });
-
-  it('moves forward and back; the last step offers the confirmation instead of „Dalej"', async () => {
-    await render();
-    await click(q('profile-settings-pager-next'));
-    expect(surface().getAttribute('data-settings-active-step')).toBe('2');
-    expect(q('profile-settings-pager')?.textContent).toContain('Krok 2 z 3');
-    await click(q('profile-settings-pager-next'));
-    expect(surface().getAttribute('data-settings-active-step')).toBe('3');
-    expect(q('profile-settings-pager-next')).toBeNull();
-    expect(q('profile-settings-confirm')).not.toBeNull();
-    await click(q('profile-settings-pager-back'));
-    expect(surface().getAttribute('data-settings-active-step')).toBe('2');
-  });
-
-  it('ends at the confirmation; reopening confirmed settings shows the whole grid, never the sequence', async () => {
+  it('wraps the collapsed summary on a phone and puts the status under it', async () => {
     await render();
     await click(q('profile-settings-confirm'));
-    expect(q('profile-settings-pager')).toBeNull();
-    expect(surface().getAttribute('data-settings-pager-scope')).toBeNull();
+    const row = q('settings-grid-status')!;
+    expect(row.className).toContain('grid-cols-[38px_minmax(0,1fr)_15px]');
+    const summary = q('settings-summary')!;
+    expect(summary.className).toContain('row-start-1');
+    // Nothing is cut on a phone; only the frozen desktop row still truncates.
+    expect(summary.className).not.toMatch(/(?:^|\s)truncate(?:\s|$)/);
+    expect(summary.className).toContain('min-[68.5rem]:truncate');
+    const status = q('settings-status')!;
+    expect(status.className).toContain('row-start-2');
+    expect(status.className).toContain('justify-self-end');
+    expect(status.textContent).toContain('Zatwierdzone');
+  });
+
+  it('lays the fields out in the design order: type · batch · machine · serving · OPTIMAL/ECO', async () => {
+    await render();
+    expect(cellOrder('product-type')).toBe(1);
+    expect(cellOrder('batch')).toBe(2);
+    expect(cellOrder('machine')).toBe(3);
+    expect(cellOrder('serving')).toBe(4);
+    expect(cellOrder('strategy')).toBe(5);
+    expect(q('workbench-product-type-row')?.closest('label')?.textContent).toContain(
+      'Rodzaj lodów',
+    );
+    expect(q('workbench-batch-scope')?.textContent).toBe(
+      'Cała receptura bazy — nie pojedynczy składnik',
+    );
+    expect(q('workbench-batch-shortcut')).toBeNull();
+    expect(q<HTMLSelectElement>('workbench-machine-field')?.value).toBe('professional');
+    // The panel's pill carries no „quick shortcut" sentence (Step 2 keeps it).
+    expect(host.textContent).not.toContain('szybki skrót');
+  });
+
+  it('serves as ONE segmented control (Świeże kept as a fourth segment) through pickServing', async () => {
+    await render();
+    const group = q('workbench-serving-segments')!;
+    const radios = [...group.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+    expect(radios.map((radio) => radio.getAttribute('aria-label'))).toEqual([
+      'Miękkie · −11 °C',
+      'Klasyczne · −12 °C',
+      'Twardsze · −13 °C',
+      'Świeże',
+    ]);
+    expect(radios[1]!.getAttribute('aria-checked')).toBe('true');
+    await click(radios[0]!);
+    expect(useRecipeStore.getState().target_temperature_c).toBe(-11);
+    expect(useRecipeStore.getState().servingModeId).toBe('temp_minus_11');
+    expect(radios[0]!.getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('offers OPTIMAL / ECO as two tiles with „Priorytet smaku / kosztu" and no „Tryb" heading', async () => {
+    await render();
+    const tiles = q('workbench-strategy')!;
+    expect(tiles.getAttribute('role')).toBe('radiogroup');
+    expect(tiles.textContent).toBe('OPTIMALPriorytet smakuECOPriorytet kosztu');
+    expect(tiles.closest('[data-settings-cell="strategy"]')?.textContent).not.toContain('Tryb');
+    await click(q('workbench-strategy-eco'));
+    expect(useRecipeStore.getState().formulation_strategy).toBe('eco');
+    expect(q('workbench-strategy-eco')?.getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('saves the defaults only through the confirmation when „Ustaw jako domyślne" is ticked', async () => {
+    await render();
+    // First confirmation of a brand-new user still establishes the defaults (§8).
+    await click(q('profile-settings-confirm'));
+    expect(surface().getAttribute('data-settings-surface')).toBe('collapsed');
+    const seeded = useRecipeProfileStore.getState().defaultsFor(OWNER_KEY);
+    expect(seeded?.formulationStrategy).toBe('optimal');
+
+    // A later, unticked confirmation never rewrites them.
     await click(q('settings-grid-status'));
-    expect(surface().getAttribute('data-settings-surface')).toBe('expanded');
-    expect(q('profile-settings-pager')).toBeNull();
+    await click(q('workbench-strategy-eco'));
+    await click(q('profile-settings-confirm'));
+    expect(useRecipeProfileStore.getState().defaultsFor(OWNER_KEY)?.formulationStrategy).toBe(
+      'optimal',
+    );
+
+    // Ticking the box on confirmed settings brings the confirmation back —
+    // nothing is written by the tick itself.
+    await click(q('settings-grid-status'));
+    expect(q('profile-settings-confirm')).toBeNull();
+    await click(q<HTMLInputElement>('profile-settings-default'));
+    expect(q<HTMLInputElement>('profile-settings-default')?.checked).toBe(true);
+    expect(useRecipeProfileStore.getState().defaultsFor(OWNER_KEY)?.formulationStrategy).toBe(
+      'optimal',
+    );
+    await click(q('profile-settings-confirm'));
+    expect(useRecipeProfileStore.getState().defaultsFor(OWNER_KEY)?.formulationStrategy).toBe(
+      'eco',
+    );
+    expect(host.textContent).toContain('Ustawienia zapisane jako domyślne.');
   });
 });
 

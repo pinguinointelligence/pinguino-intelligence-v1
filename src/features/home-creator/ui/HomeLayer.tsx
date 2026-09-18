@@ -30,6 +30,7 @@ export function HomeLayer({
   onClose,
   onBackdrop,
   initialFocusTestId,
+  returnFocus,
   size = 'default',
   children,
 }: {
@@ -41,6 +42,8 @@ export function HomeLayer({
   /** A tap on the dimmed page around the layer; defaults to `onClose`. */
   onBackdrop?: () => void;
   initialFocusTestId?: string;
+  /** Where focus goes when the layer closes, if the layer's choice named a successor. */
+  returnFocus?: () => HTMLElement | null;
   size?: 'default' | 'wide';
   children: ReactNode;
 }) {
@@ -55,6 +58,7 @@ export function HomeLayer({
       onClose={onClose}
       onBackdrop={onBackdrop ?? onClose}
       initialFocusTestId={initialFocusTestId}
+      returnFocus={returnFocus}
       panelStyle={
         keyboardInset > 0
           ? ({ '--home-layer-keyboard': `${keyboardInset}px` } as CSSProperties)

@@ -122,10 +122,11 @@ describe('responsive invariant', () => {
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     const uses = surface.split('\n').filter((line) => line.includes('mobileViewport'));
     for (const line of uses) {
-      // PRO MOBILE UX v2 · B3 adds one deliberate use: the first-run settings sheet
-      // opens only where the sheet hosts the cockpit — modal behaviour, never a value.
+      // DESIGN V3.0 §3 adds one deliberate use (replacing B3's first-run sheet):
+      // the new-recipe setup is hosted only where the phone composition is —
+      // passed as `mobileViewport,` — modal behaviour, never a value.
       expect(
-        /useState|setMobileViewport|shouldActivateMobileCockpitModal|mobileCockpitOpen && mobileViewport|!mobileViewport|shouldRevealProductionWeighingOnNarrowViewport|\[activeTab, mobileCockpitOpen, mobileViewport\]|\[activeDraftIdentity, firstRunSettings, mobileViewport\]/.test(
+        /useState|setMobileViewport|shouldActivateMobileCockpitModal|mobileCockpitOpen && mobileViewport|!mobileViewport|shouldRevealProductionWeighingOnNarrowViewport|\[activeTab, mobileCockpitOpen, mobileViewport\]/.test(
           line,
         ) || line.trim() === 'mobileViewport,',
         line.trim(),
