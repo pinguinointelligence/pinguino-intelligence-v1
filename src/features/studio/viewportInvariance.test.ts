@@ -66,6 +66,11 @@ describe('responsive invariant', () => {
      *    detail REPLACES the list, so opening one must start at its top; on the
      *    two-column desktop the list stays put and keeps its scroll. Nothing but
      *    window.scrollTo is reached — no product, market or Engine value is read.
+     *  - ProductionBatches: the same question for „Partie”. Below 1024 px the
+     *    history is stacked UNDER the batches, so arriving at `?tab=history`
+     *    must scroll it into view; from `lg` it is already the right column and
+     *    scrolling would be wrong. The answer only chooses whether to scroll —
+     *    the same runs, pages and rows are read either way.
      * Anything else must justify itself by being added here deliberately.
      */
     const ALLOWED = [
@@ -78,6 +83,7 @@ describe('responsive invariant', () => {
       'components/ui/HoverPreview.tsx',
       'shell/applicationScaleAuthority.ts',
       'global-catalog/GlobalCatalogSearchPanel.tsx',
+      'production-area/ProductionBatches.tsx',
     ];
     const offenders = sourceFiles(join(SRC, 'features'))
       .concat(sourceFiles(join(SRC, 'stores')))

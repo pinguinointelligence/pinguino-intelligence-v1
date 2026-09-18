@@ -85,7 +85,9 @@ export function LegacyStudioRedirect() {
   return <Navigate to={studioRedirectTo(location.search, location.hash)} replace />;
 }
 
-/** Preserve recipe/session query state while consolidating a legacy destination. */
+/** Preserve recipe/session query state — and the navigation state, e.g. a label
+ * screen's return route (`labelSettingsReturn` on `/label`) — while consolidating
+ * a legacy destination. */
 export function LegacyDestinationRedirect({
   pathname,
   forcedSearch,
@@ -97,6 +99,7 @@ export function LegacyDestinationRedirect({
   return (
     <Navigate
       to={legacyDestinationRedirectTo(pathname, location.search, forcedSearch, location.hash)}
+      state={location.state}
       replace
     />
   );

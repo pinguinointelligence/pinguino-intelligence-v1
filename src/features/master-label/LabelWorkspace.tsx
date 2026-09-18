@@ -54,6 +54,10 @@ import { customerErrorMessage } from '@/copy/customerError';
 import { PrintMissingDataDialog } from './PrintMissingDataDialog';
 import { printMissingFields, printReadinessForLabel } from './printMissingData';
 import { MissingLabelDataSettings } from './MissingLabelDataFields';
+import { productionBatchesLabelsCopy } from '@/copy/productionBatchesLabels';
+import { useRegisterUnsaved } from '@/features/production-area/useRegisterUnsaved';
+
+const labelsCopy = productionBatchesLabelsCopy.labels;
 
 const MARKET_CODES: readonly MarketProfileCode[] = MARKET_PROFILE_ORDER;
 export type LabelWorkspaceView = 'data' | 'settings' | 'label';
@@ -183,7 +187,12 @@ export function LabelWorkspace({
   const [saved, setSaved] = useState<RunLabelSnapshot | null>(null);
   const [label, setLabel] = useState<MasterLabelData | null>(null);
   const [editing, setEditing] = useState(false);
-  const [saveAsDefault, setSaveAsDefault] = useState(true);
+  /* Production v3 §5 — a change to THIS run's label never becomes the account
+     default unless the reader ticks „Zapisz jako moje ustawienie domyślne”. */
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+  /* An explicitly named saved version that does not exist, or belongs to another
+     run: shown as „not found” — never replaced by a new label from the profile. */
+  const [missingSavedVersion, setMissingSavedVersion] = useState(false);
   const [activeView, setActiveView] = useState<LabelWorkspaceView>(
     initialView === 'settings' && !settingsLiveHere ? 'data' : initialView,
   );
@@ -238,17 +247,20 @@ export function LabelWorkspace({
         const nextProfile = existingProfile ?? defaultAccountLabelProfile(ownerId);
         let nextSnapshot = suppliedSnapshot;
         let nextSaved: RunLabelSnapshot | null = null;
+        let savedVersionMissing = false;
         if (!profileOnly && requestedRunId) {
           nextSnapshot = nextSnapshot ?? (await repository.getCompletedSnapshot(requestedRunId));
           nextSaved = savedSnapshotId
             ? await repository.getRunLabelSnapshotById(savedSnapshotId)
             : await repository.getRunLabelSnapshot(requestedRunId);
-          if (nextSaved && nextSaved.runId !== requestedRunId) {
-            throw new Error('Wybrany zapis etykiety nie należy do wskazanej partii.');
+          if (savedSnapshotId && (!nextSaved || nextSaved.runId !== requestedRunId)) {
+            savedVersionMissing = true;
+            nextSaved = null;
           }
           if (nextSnapshot) await repository.freezeCompletedSnapshot(nextSnapshot);
         }
         if (cancelled) return;
+        setMissingSavedVersion(savedVersionMissing);
         setProfile(nextProfile);
         setProfileWasPersisted(Boolean(existingProfile));
         setSnapshot(nextSnapshot ?? null);
@@ -259,7 +271,7 @@ export function LabelWorkspace({
             ? editingSavedVersion
               ? { ...nextSaved.label, snapshotEvidence: null }
               : nextSaved.label
-            : nextSnapshot
+            : nextSnapshot && !savedVersionMissing
               ? labelFromProfile(nextSnapshot, nextProfile)
               : null,
         );
@@ -426,14 +438,17 @@ export function LabelWorkspace({
             logoUrl={logoUrl}
             repository={repository}
             onClose={() => setEditing(false)}
+            unsavedGuard={{ id: 'labels-profile', label: labelsCopy.unsavedProfile }}
             onSave={async (next) => {
               setBusy(true);
               setError(null);
               try {
                 await persistProfile(next);
                 setEditing(false);
+                return true;
               } catch (caught) {
                 setError(customerErrorMessage(caught, 'labels', 'LABEL_SAVE_FAILED'));
+                return false;
               } finally {
                 setBusy(false);
               }
@@ -441,6 +456,20 @@ export function LabelWorkspace({
           />
         ) : null}
       </div>
+    );
+  }
+
+  if (missingSavedVersion) {
+    return (
+      <WorkflowNotice
+        className="my-3"
+        eyebrow="Etykieta"
+        title={labelsCopy.snapshotNotFoundTitle}
+        description={labelsCopy.snapshotNotFoundBody}
+        variant="blocking"
+        role="alert"
+        testId="label-workspace-version-not-found"
+      />
     );
   }
 
@@ -562,6 +591,11 @@ export function LabelWorkspace({
             saveAsDefault={saveAsDefault}
             onSaveAsDefaultChange={setSaveAsDefault}
             onClose={() => openView('label')}
+            unsavedGuard={
+              settingsLiveHere
+                ? { id: 'labels-run-settings', label: labelsCopy.unsavedRunSettings }
+                : undefined
+            }
             onSave={async (next) => {
               setBusy(true);
               setError(null);
@@ -574,8 +608,10 @@ export function LabelWorkspace({
                 onSaved?.(frozen);
                 setTransitionDirection('forward');
                 setActiveView(nextReady ? 'label' : 'data');
+                return true;
               } catch (caught) {
                 setError(customerErrorMessage(caught, 'labels', 'LABEL_SAVE_FAILED'));
+                return false;
               } finally {
                 setBusy(false);
               }
@@ -667,15 +703,28 @@ function ProfileEditor({
   repository,
   onClose,
   onSave,
+  unsavedGuard,
 }: {
   profile: AccountLabelProfile;
   logoUrl: string | null;
   repository: LabelRepository;
   onClose: () => void;
-  onSave: (profile: AccountLabelProfile) => Promise<void>;
+  /** Resolves `false` when the save failed (its own message is already shown). */
+  onSave: (profile: AccountLabelProfile) => Promise<boolean | void>;
+  /** Produkcja → Etykiety: ask before this form is left with unsaved changes. */
+  unsavedGuard?: { id: string; label: string };
 }) {
   const [draft, setDraft] = useState(profile);
   const [uploading, setUploading] = useState(false);
+  useRegisterUnsaved({
+    id: unsavedGuard?.id ?? 'label-profile-editor',
+    label: unsavedGuard?.label,
+    enabled: Boolean(unsavedGuard),
+    dirty: JSON.stringify(draft) !== JSON.stringify(profile),
+    // „Zapisz i przejdź” is this form's own „Zapisz profil”.
+    save: async () => ({ ok: (await onSave(draft)) !== false }),
+    discard: onClose,
+  });
   return (
     <DialogShell
       label="Edytuj domyślny profil etykiet"
@@ -1011,6 +1060,7 @@ export function CompactRunLabelSettings({
   onSave,
   showSaveAsDefault = true,
   showDraftData = false,
+  unsavedGuard,
 }: {
   label: MasterLabelData;
   logoUrl?: string | null;
@@ -1018,11 +1068,23 @@ export function CompactRunLabelSettings({
   saveAsDefault: boolean;
   onSaveAsDefaultChange: (value: boolean) => void;
   onClose: () => void;
-  onSave: (label: MasterLabelData) => Promise<void>;
+  /** Resolves `false` when the save failed (its own message is already shown). */
+  onSave: (label: MasterLabelData) => Promise<boolean | void>;
   showSaveAsDefault?: boolean;
   showDraftData?: boolean;
+  /** Produkcja → Etykiety (a run's label): ask before this form is left unsaved. */
+  unsavedGuard?: { id: string; label: string };
 }) {
   const [draft, setDraft] = useState(label);
+  useRegisterUnsaved({
+    id: unsavedGuard?.id ?? 'label-run-settings',
+    label: unsavedGuard?.label,
+    enabled: Boolean(unsavedGuard),
+    dirty: JSON.stringify(draft) !== JSON.stringify(label),
+    // „Zapisz i przejdź” is this form's own „Zastosuj ustawienia”.
+    save: async () => ({ ok: (await onSave(draft)) !== false }),
+    discard: onClose,
+  });
   const draftGeometry = useMemo(() => buildLabelPreflight(draft).geometry, [draft]);
   const finalMass = draft.actualBatchQuantityG ?? draft.netQuantityG ?? 0;
   const initialPackageMass = draft.packageQuantity?.netWeightG ?? finalMass;
