@@ -24,6 +24,7 @@ import {
 } from '../homeViewMode';
 import { useHomeViewStore } from '../homeViewStore';
 import { homeCreatorCopy } from '../homeCreatorCopy';
+import { requestLeave } from '@/features/production-area/unsavedGuard';
 
 const SEGMENT_LABEL: Readonly<Record<HomeViewMode, string>> = {
   home: homeCreatorCopy.switch.home,
@@ -53,20 +54,23 @@ export function HomeProSwitch({
   // OWNER OVERRIDE 2026-09-01: the switch renders for EVERY audience, so the global
   // header keeps one geometry and one x-coordinate regardless of plan. Visibility is
   // not access — see `go`.
-  const go = (segment: HomeViewMode) => {
-    if (segmentAccess(segment, presentation) === 'upgrade_required') {
-      // The canonical upgrade route, the same one the canonical Save uses when the
-      // blocker is `plan`. No entitlement is granted and no PRO content is reached.
-      navigate('/subscription');
-      return;
-    }
-    setView(segment);
-    // §15: returning to PRO restores the module the user left. HOME goes to `/home`
-    // rather than `/` because that says HOME explicitly: `/` is the ambiguous entry
-    // the account's default experience answers, so a PRO subscriber sent there was
-    // redirected straight back to PRO and never reached HOME.
-    navigate(segment === 'pro' ? proModulePath(lastProModule) : '/home');
-  };
+  // Produkcja v3 §1.5: switching away from a half-edited area form (machine settings,
+  // product markets, label settings) asks first; with nothing unsaved it switches at once.
+  const go = (segment: HomeViewMode) =>
+    requestLeave(() => {
+      if (segmentAccess(segment, presentation) === 'upgrade_required') {
+        // The canonical upgrade route, the same one the canonical Save uses when the
+        // blocker is `plan`. No entitlement is granted and no PRO content is reached.
+        navigate('/subscription');
+        return;
+      }
+      setView(segment);
+      // §15: returning to PRO restores the module the user left. HOME goes to `/home`
+      // rather than `/` because that says HOME explicitly: `/` is the ambiguous entry
+      // the account's default experience answers, so a PRO subscriber sent there was
+      // redirected straight back to PRO and never reached HOME.
+      navigate(segment === 'pro' ? proModulePath(lastProModule) : '/home');
+    });
 
   return (
     <div

@@ -31,7 +31,7 @@ vi.mock('@/features/global-catalog/GlobalCatalogSearchPanel', () => ({
 import { AppShell } from '@/features/shell/AppShell';
 import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { useAuthStore } from '@/stores/authStore';
-import { ProductsHubPage } from '@/pages/destinations/GlobalDestinationPages';
+import { ProductionHubPage, ProductsHubPage } from '@/pages/destinations/GlobalDestinationPages';
 import { ProductScannerV1Page } from '@/pages/products/ProductScannerV1Page';
 
 const fakes = () =>
@@ -48,7 +48,7 @@ const flush = async () => {
   await act(async () => new Promise((resolve) => setTimeout(resolve, 30)));
 };
 
-describe('real Hamburger → Produkty → Skanuj route', () => {
+describe('real Hamburger → Produkcja → Produkty → Skanuj route', () => {
   let host: HTMLDivElement;
   let root: Root;
 
@@ -122,6 +122,7 @@ describe('real Hamburger → Produkty → Skanuj route', () => {
         <MemoryRouter initialEntries={['/home']}>
           <Routes>
             <Route path="/home" element={<AppShell>Home</AppShell>} />
+            <Route path="/production" element={<ProductionHubPage />} />
             <Route path="/products" element={<ProductsHubPage />} />
             <Route path="/products/scan" element={<ProductScannerV1Page />} />
           </Routes>
@@ -132,8 +133,14 @@ describe('real Hamburger → Produkty → Skanuj route', () => {
     await act(async () =>
       host.querySelector<HTMLButtonElement>('[data-testid="app-nav-trigger"]')!.click(),
     );
+    // Owner decision 2026-09-17: ☰ carries ONE „Produkcja” entry; Produkty is its section.
     await act(async () =>
-      host.querySelector<HTMLAnchorElement>('[data-testid="app-nav-item-products"]')!.click(),
+      host.querySelector<HTMLAnchorElement>('[data-testid="app-nav-item-production"]')!.click(),
+    );
+    await act(async () =>
+      host
+        .querySelector<HTMLAnchorElement>('[data-testid="production-area-section-products"]')!
+        .click(),
     );
     expect(host.textContent).toContain('Produkty');
     await act(async () => {

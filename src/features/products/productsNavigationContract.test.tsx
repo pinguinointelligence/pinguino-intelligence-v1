@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { visibleNavItems } from '../shell/appNav';
+import { PRODUCTION_AREA_SECTIONS } from '../production-area/productionAreaSections';
 import { ProductsFilterTabs } from './ProductsFilterTabs';
 import { productsReturnPath } from './productsFilter';
 import { UnverifiedProductsPanel } from './UnverifiedProductsPanel';
@@ -27,12 +28,19 @@ import { fetchMyUnverifiedProducts } from '@/services/unverifiedProducts';
 
 describe('the hamburger carries one product entry', () => {
   for (const audience of ['home', 'pro'] as const) {
-    it(`1. ${audience}: exactly one „Produkty"`, () => {
+    /* OWNER DECISION 2026-09-17 (Produkcja area): the one product entry is now the Produkty
+       SECTION of the one „Produkcja” entry — ☰ Produkcja → Produkty → /products. The drawer
+       carries no separate „Produkty” row; exactly one drawer entry owns every /products URL. */
+    it(`1. ${audience}: Produkty is reached through the one „Produkcja” entry`, () => {
       const items = visibleNavItems(audience);
-      expect(items.filter((item) => item.label === 'Produkty')).toHaveLength(1);
+      expect(items.filter((item) => item.label === 'Produkty')).toHaveLength(0);
+      const owners = items.filter((item) => item.isActive({ pathname: '/products', search: '' }));
+      expect(owners.map((item) => item.id)).toEqual(['production']);
       expect(
-        items.filter((item) => item.group === 'product' && item.to.startsWith('/products')).length,
-      ).toBe(1);
+        PRODUCTION_AREA_SECTIONS.filter((section) => section.to.startsWith('/products')).map(
+          (section) => [section.id, section.label, section.to],
+        ),
+      ).toEqual([['products', 'Produkty', '/products']]);
     });
 
     it(`2. ${audience}: no „Dodaj produkt"`, () => {
