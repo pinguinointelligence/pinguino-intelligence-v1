@@ -215,6 +215,14 @@ describe('Gellatti Visual System V2', () => {
     expect(picker).toContain('data-testid="product-data-status-dialog"');
     expect(cockpit).toContain('data-testid="mobile-cockpit-sheet"');
     expect(cockpit).toContain('id="mobile-cockpit-dialog"');
+
+    // DESIGN V3.0 §3 (owner-locked Points 1–4): the phone/iPad-portrait setup is a
+    // full-screen step of the workbench under the header — navigation, not an
+    // outcome/refusal notice — so it is pinned by structure like the cockpit.
+    const setup = read('features', 'pro-workbench', 'ProSetupFlow.tsx');
+    expect(setup).toContain('data-testid="pro-setup-flow"');
+    expect(setup).toContain('data-setup-step={step}');
+    expect(setup).toContain('pro-workbench-mobile-only fixed inset-x-0');
   });
 
   it('rejects any unlisted raw overlay added to the PRO Recipe feature roots', () => {
@@ -233,6 +241,7 @@ describe('Gellatti Visual System V2', () => {
       'features/ingredient-builder/ProductPickerPopover.tsx',
       'features/pro-core/ProWorkbar.tsx',
       'features/studio/StudioEngineSurface.tsx',
+      'features/pro-workbench/ProSetupFlow.tsx',
     ]);
     const rawOverlayPattern = /role=["']dialog["']|aria-modal=["']true["']|fixed\s+inset-0/;
     const unapproved = roots
