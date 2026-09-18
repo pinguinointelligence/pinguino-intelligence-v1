@@ -84,19 +84,27 @@ export function AppShell({
   const headerRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
     const element = headerRef.current;
-    if (!stickyHeader || !element) return;
+    if (!element) return;
     const root = document.documentElement;
     const reserve = () => {
       // The PAINTED height, not `offsetHeight`: the desktop scale authority zooms the
       // body, and page scrolling happens in the unzoomed viewport, so the pre-zoom
       // number over-reserved by the scale factor (82 px for a 73 px header at 1440).
-      root.style.scrollPaddingTop = `${element.getBoundingClientRect().height}px`;
+      const height = element.getBoundingClientRect().height;
+      /* Correction XIII: a HOME sheet's „maks. wysokość = miejsce pod nagłówkiem".
+         `homeLayer.css` had to guess that room as a literal 64 px, which is already
+         wrong at every breakpoint measured (65 px phone, 69 px at 1024, 73 px at 1440)
+         and wrong by the whole notch on a real phone, where `env(safe-area-inset-top)`
+         grows the row — the sheet then slid under the header it must stop below. */
+      root.style.setProperty('--home-layer-top', `${height}px`);
+      if (stickyHeader) root.style.scrollPaddingTop = `${height}px`;
     };
     reserve();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(reserve);
     observer?.observe(element);
     return () => {
       observer?.disconnect();
+      root.style.removeProperty('--home-layer-top');
       root.style.scrollPaddingTop = '';
     };
   }, [stickyHeader]);

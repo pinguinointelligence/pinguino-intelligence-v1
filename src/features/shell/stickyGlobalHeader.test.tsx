@@ -97,3 +97,33 @@ describe('section headings never hide under the pinned header', () => {
     expect(document.documentElement.style.scrollPaddingTop).toBe('');
   });
 });
+
+/**
+ * Correction XIII: a HOME sheet is „maks. wysokość = miejsce pod nagłówkiem". `homeLayer.css`
+ * had to guess that room as a literal 64 px — already wrong at every measured breakpoint
+ * (65 px phone, 69 px at 1024, 73 px at 1440) and wrong by the whole notch on a real phone,
+ * where `env(safe-area-inset-top)` grows the row and the sheet slid under the header.
+ */
+describe('a HOME sheet stops below the header it must stop below', () => {
+  it('publishes the measured header height as the sheet ceiling', () => {
+    mount(true);
+    expect(document.documentElement.style.getPropertyValue('--home-layer-top')).toBe('65px');
+  });
+
+  it('publishes it on every page, pinned header or not — the sheet is not HOME-only', () => {
+    mount(false);
+    expect(document.documentElement.style.getPropertyValue('--home-layer-top')).toBe('65px');
+  });
+
+  it('keeps the literal 64 px only as the stylesheet fallback', () => {
+    const css = rules(read('components/ui/homeLayer.css'));
+    expect(block(css, '.home-layer-panel')).toContain('var(--home-layer-top, 64px)');
+  });
+
+  it('drops the ceiling when the shell unmounts', () => {
+    mount(true);
+    act(() => root.unmount());
+    root = createRoot(host);
+    expect(document.documentElement.style.getPropertyValue('--home-layer-top')).toBe('');
+  });
+});
