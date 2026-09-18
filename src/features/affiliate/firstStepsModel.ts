@@ -74,7 +74,7 @@ export function partnerFirstSteps(data: PartnerWorkspace): readonly FirstStep[] 
           done: false,
           title: 'Wypłaty',
           detail:
-            'Gellatti przygotowuje Twoje konto wypłat — nic nie musisz robić. Kody i linki działają już teraz.',
+            'Gellatti przygotowuje Twoje konto wypłat. Damy znać, kiedy będzie gotowe.',
         };
 
   return [code, link, payouts];
