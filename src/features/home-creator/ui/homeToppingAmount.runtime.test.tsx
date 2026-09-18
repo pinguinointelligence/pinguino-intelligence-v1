@@ -119,23 +119,18 @@ const renderSection = async () => {
   );
 };
 
+/* DESIGN V3.0 IV-B/C: the whole topping row opens the ingredient panel (portalled). */
 const openEditorForToppingRow = async (id: string) => {
-  const menus = host.querySelectorAll<HTMLButtonElement>('[data-testid="home-row-menu"]');
-  // the topping row is the last one on screen
-  await act(async () => menus[menus.length - 1]!.click());
-  const change = host.querySelector<HTMLButtonElement>(
-    `[data-testid="home-row-change-amount-${id}"]`,
-  );
-  expect(change, 'the topping row offers "Zmień ilość"').not.toBeNull();
-  await act(async () => change!.click());
-  const dialog = host.querySelector('[data-testid="home-change-amount"]');
-  expect(dialog, 'the amount dialog is on screen').not.toBeNull();
+  const row = host.querySelector<HTMLButtonElement>(`[data-testid="home-row-${id}"]`);
+  expect(row, 'the topping row is a button').not.toBeNull();
+  await act(async () => row!.click());
+  const panel = document.querySelector('[data-testid="home-ingredient-panel"]');
+  expect(panel, 'the ingredient panel is on screen').not.toBeNull();
+  expect(panel!.querySelector('[data-testid="home-panel-tag"]')?.textContent).toBe('Topping');
   const input =
-    dialog!.querySelector<HTMLInputElement>(
-      '[data-testid="home-change-amount-grams"] [role="spinbutton"]',
-    ) ??
-    dialog!.querySelector<HTMLInputElement>('[role="spinbutton"]') ??
-    null;
+    panel!.querySelector<HTMLInputElement>(
+      '[data-testid="home-panel-grams"] [role="spinbutton"]',
+    ) ?? null;
   expect(input, 'the amount control is on screen for the topping').not.toBeNull();
   return input!;
 };
@@ -151,12 +146,10 @@ describe('a customer edits a topping amount', () => {
     await act(async () => type(input, '25'));
     await act(async () => input.blur());
 
-    // The dialog holds a DRAFT — nothing reaches the store until „Gotowe".
+    // The panel holds a DRAFT — nothing reaches the store until „Gotowe".
     expect(topping().planned_grams).not.toBe(25);
 
-    const confirm = host.querySelector<HTMLButtonElement>(
-      '[data-testid="home-change-amount-confirm"]',
-    );
+    const confirm = document.querySelector<HTMLButtonElement>('[data-testid="home-panel-done"]');
     expect(confirm, '„Gotowe" is offered').not.toBeNull();
     await act(async () => confirm!.click());
 
@@ -182,15 +175,15 @@ describe('a customer edits a topping amount', () => {
     await act(async () => type(input, '99'));
     await act(async () => input.blur());
 
-    const cancel = host.querySelector<HTMLButtonElement>(
-      '[data-testid="home-change-amount-cancel"]',
-    );
-    expect(cancel, '„Anuluj" is offered').not.toBeNull();
-    await act(async () => cancel!.click());
+    // DESIGN V3.0 IV-C: the panel has „Usuń” | „Gotowe” and no „Anuluj”; leaving it with
+    // Escape is the cancel, and it confirms nothing.
+    await act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
 
     expect(topping().planned_grams).toBe(before);
     expect(lineGrams()).toEqual(baseBefore);
-    expect(host.querySelector('[data-testid="home-change-amount"]')).toBeNull();
+    expect(document.querySelector('[data-testid="home-ingredient-panel"]')).toBeNull();
   });
 
   it('HOME-REPLACE-01 opens manual compatibility-first Replace for Base and Topping rows', async () => {
@@ -198,31 +191,32 @@ describe('a customer edits a topping amount', () => {
     const baseId = useRecipeStore.getState().items[0]!.id;
     const toppingId = topping().id;
 
-    const menus = host.querySelectorAll<HTMLButtonElement>('[data-testid="home-row-menu"]');
-    await act(async () => menus[0]!.click());
-    const baseReplace = host.querySelector<HTMLButtonElement>(
-      `[data-testid="home-row-replace-${baseId}"]`,
+    // DESIGN V3.0 IV-C: „⇄” in the ingredient panel replaces the row menu's „Zamień produkt”.
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>(`[data-testid="home-row-${baseId}"]`)!.click(),
     );
-    expect(baseReplace?.textContent).toContain('Zamień produkt');
+    const baseReplace = document.querySelector<HTMLButtonElement>(
+      '[data-testid="home-panel-replace"]',
+    );
+    expect(baseReplace?.getAttribute('aria-label')).toContain('Zamień produkt');
     await act(async () => baseReplace?.click());
+    expect(document.querySelector('[data-testid="home-ingredient-panel"]')).toBeNull();
     expect(
       document.querySelector('[data-testid="product-picker-no-compatible-replacements"]')
         ?.textContent,
     ).toContain('Brak zgodnych zamienników');
 
+    // HOME's picker closes with its own „Anuluj” at the bottom (DESIGN XI).
     await act(async () =>
-      document
-        .querySelector<HTMLButtonElement>('[aria-label="Zamknij wyszukiwarkę produktów"]')
-        ?.click(),
+      document.querySelector<HTMLButtonElement>('[data-testid="product-picker-cancel"]')?.click(),
     );
-    const refreshedMenus = host.querySelectorAll<HTMLButtonElement>(
-      '[data-testid="home-row-menu"]',
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>(`[data-testid="home-row-${toppingId}"]`)!.click(),
     );
-    await act(async () => refreshedMenus[refreshedMenus.length - 1]!.click());
-    const toppingReplace = host.querySelector<HTMLButtonElement>(
-      `[data-testid="home-row-replace-${toppingId}"]`,
+    const toppingReplace = document.querySelector<HTMLButtonElement>(
+      '[data-testid="home-panel-replace"]',
     );
-    expect(toppingReplace?.textContent).toContain('Zamień produkt');
+    expect(toppingReplace?.getAttribute('aria-label')).toContain('Zamień produkt');
     await act(async () => toppingReplace?.click());
     expect(
       document.querySelector('[data-testid="product-picker-no-compatible-replacements"]')

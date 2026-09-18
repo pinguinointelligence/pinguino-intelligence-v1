@@ -9,11 +9,11 @@
  * No preset flavour tiles (§17): the field is open, because the owner rule is that any
  * idea may be described, and a tile grid quietly teaches the opposite.
  */
-import { useCallback, useId, useState, type ReactNode } from 'react';
+import { useCallback, useId, useImperativeHandle, useState, type ReactNode, type Ref } from 'react';
 import { cn } from '@/lib/cn';
 import { homeCreatorCopy } from '../homeCreatorCopy';
-import { shouldOfferRecipeCta } from '../homeComposerGate';
-import { parseIntent } from '../homeIntentParsing';
+import { hasBaseIdea } from '../homeComposerGate';
+import { ingestIdeaText } from '../homeIdeaIngest';
 import { useHomeDraftStore, type IntentChip } from '../homeDraftStore';
 import { useVoiceIntent } from '../useVoiceIntent';
 import { HomeChip } from './HomeChip';
@@ -21,8 +21,15 @@ import { HomeIdentityChoice } from './HomeIdentityChoice';
 import { HomeSection } from './HomeSection';
 import { HomeVisionCapture } from './HomeVisionCapture';
 
-const chipId = (): string =>
-  `chip_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}`;
+/**
+ * DESIGN V3.0 VI — „Rozpocznij recepturę” stands at the bottom of the start screen, outside
+ * this section, so it reaches the composer through this handle: pressing it first turns the
+ * text still in the field into chips — the same door Enter uses — exactly as the inline
+ * CTA it replaces did.
+ */
+export interface HomeIntentSectionHandle {
+  commitTyped: () => void;
+}
 
 /**
  * §27 — one control shape for the four ways into the composer.
@@ -31,6 +38,10 @@ const chipId = (): string =>
  * carried by `aria-label` for assistive technology and by `title` as the
  * desktop tooltip the owner asked for. A 44 px hit area is kept even though the
  * glyph is 17 px, because these are thumb targets on the phone.
+ *
+ * DESIGN V3.0 IV-A/VI: HOME's controls are thin light OUTLINES without fills — a
+ * 1 px #e4e0d9 ring drawn inside the 44 px circle. The send arrow is the same quiet
+ * ring; it only darkens once there is something to add.
  */
 function ComposerIconButton({
   testId,
@@ -66,15 +77,20 @@ function ComposerIconButton({
       data-state={dataState}
       className={cn(
         'inline-flex size-11 items-center justify-center rounded-full transition-colors',
-        disabled && 'cursor-not-allowed opacity-35',
+        disabled && 'cursor-not-allowed',
+        // The send arrow says „nothing to add” with its own quieter ring; any other
+        // unavailable control (voice in a browser without speech) fades as before.
+        disabled && variant !== 'send' && 'opacity-35',
         !disabled && !active && 'hover:bg-[var(--g-ivory-deep)]',
       )}
       style={
         active
           ? { background: 'var(--g-ink)', color: '#ffffff' }
-          : variant === 'send' && !disabled
-            ? { background: 'var(--g-ink)', color: '#ffffff' }
-            : { color: 'var(--g-text-secondary)' }
+          : variant === 'send'
+            ? disabled
+              ? { color: '#c9c4bc', boxShadow: 'inset 0 0 0 1px #efebe4' }
+              : { color: '#3b3833', boxShadow: 'inset 0 0 0 1px #e4e0d9' }
+            : { color: 'var(--g-text-secondary)', boxShadow: 'inset 0 0 0 1px #e4e0d9' }
       }
     >
       {children}
@@ -83,14 +99,15 @@ function ComposerIconButton({
 }
 
 export function HomeIntentSection({
-  onSubmit,
+  ref,
   onScan,
   onChipClick,
   onChooseIdentity,
   resolving = false,
   onDraftTextChange,
 }: {
-  onSubmit: () => void;
+  /** The start screen's „Rozpocznij recepturę” commits the typed idea through it. */
+  ref?: Ref<HomeIntentSectionHandle>;
   onScan: () => void;
   onChipClick?: (chip: IntentChip) => void;
   /** §23: the user picked one of the offered real products. */
@@ -111,41 +128,20 @@ export function HomeIntentSection({
      ingestion path voice already uses. */
   const [visionOpen, setVisionOpen] = useState(false);
   const fieldId = useId();
+  const questionId = useId();
   const chips = useHomeDraftStore((state) => state.chips);
-  const addChip = useHomeDraftStore((state) => state.addChip);
   const removeChip = useHomeDraftStore((state) => state.removeChip);
-  const setProfile = useHomeDraftStore((state) => state.setProfile);
-  const storedProfile = useHomeDraftStore((state) => state.profile);
   /** OWNER FROZEN §4: one idea is enough to turn the prompt into „Jeszcze coś?". */
   const hasIdea = chips.length > 0;
-  /* §28: the CTA does not exist before the first BASE idea — not greyed out,
-     not present. A topping alone is a decoration, not a recipe. */
-  const offerCta = shouldOfferRecipeCta(chips);
+  /* DESIGN V3.0 VI (replaces §28's hidden CTA): while there is no BASE idea, the empty
+     field says what is missing — „Dodaj przynajmniej jeden składnik albo smak.” — and
+     the start screen's „Rozpocznij recepturę” stays visibly inactive. */
+  const showEmptyHint = !hasBaseIdea(chips);
 
   /** One ingestion path for all three inputs (§19). */
   const ingest = useCallback(
-    (text: string, source: IntentChip['source']) => {
-      const parsed = parseIntent(text);
-      // §31: a stated profile is remembered so it is never asked again. An earlier
-      // explicit profile wins — a later sentence should not silently retype it.
-      if (parsed.profile && storedProfile === null) setProfile(parsed.profile);
-      for (const term of parsed.terms) {
-        addChip({
-          id: chipId(),
-          label: term.raw,
-          concept: term.concept,
-          role: term.role,
-          segment: term.segment,
-          utterance: term.utterance,
-          segmentIndex: term.segmentIndex,
-          source,
-          productId: null,
-          productName: null,
-          ambiguous: false,
-        });
-      }
-    },
-    [addChip, setProfile, storedProfile],
+    (text: string, source: IntentChip['source']) => ingestIdeaText(text, source),
+    [],
   );
 
   const voice = useVoiceIntent({ onTranscript: (transcript) => ingest(transcript, 'voice') });
@@ -156,21 +152,26 @@ export function HomeIntentSection({
     ingest(text, 'text');
     changeValue('');
   };
+  useImperativeHandle(ref, () => ({ commitTyped }));
 
   return (
-    <HomeSection id="intent" data-testid="home-section-intent">
+    <HomeSection id="intent" data-testid="home-section-intent" bare>
       <h1
         className="text-[26px] leading-[1.18] font-semibold tracking-[-0.02em] sm:text-[32px]"
         style={{ color: 'var(--g-ink)' }}
       >
         {homeCreatorCopy.intent.headline}
       </h1>
-      <p
-        className="mt-3 text-[17px] leading-snug sm:text-[19px]"
-        style={{ color: 'var(--g-text-secondary)' }}
+      {/* BRIEF 6.2 / DESIGN V3.0: the question is the invitation that leads into the field —
+          a visible 21 px heading, not a small grey line under the hero. */}
+      <h2
+        id={questionId}
+        data-testid="home-intent-question"
+        className="mt-[26px] text-[21px] leading-[1.25] font-bold tracking-[-0.01em]"
+        style={{ color: 'var(--g-ink)' }}
       >
         {homeCreatorCopy.intent.question}
-      </p>
+      </h2>
 
       {/* ── §27 THE COMPOSER ────────────────────────────────────────────────
           ONE central field, in the shape a modern chat composer has: the four
@@ -187,7 +188,11 @@ export function HomeIntentSection({
           They used to be split — resting colour inline, focus colour in CSS —
           and an inline style beats any rule without `!important`, so the focus
           treatment was written, shipped and never painted. */}
-      <div className="home-composer mt-7 rounded-[18px] border p-2" data-testid="home-composer">
+      {/* DESIGN V3.0 IV-A: a white field with a light 1 px line (`home-composer.css`). */}
+      <div
+        className="home-composer mt-2.5 rounded-[22px] border pt-0.5 pr-2.5 pb-2.5 pl-1"
+        data-testid="home-composer"
+      >
         <label htmlFor={fieldId} className="sr-only">
           {homeCreatorCopy.intent.inputLabel}
         </label>
@@ -229,6 +234,7 @@ export function HomeIntentSection({
               }
             }}
             onBlur={commitTyped}
+            aria-describedby={questionId}
             rows={2}
             placeholder={
               hasIdea ? homeCreatorCopy.intent.anythingElse : homeCreatorCopy.intent.placeholder
@@ -243,7 +249,7 @@ export function HomeIntentSection({
 
         {/* The controls belong to the field, so they sit on its own baseline row
             — small, quiet, and always in the same place. */}
-        <div className="flex items-center gap-1 px-1 pb-0.5">
+        <div className="mt-1.5 flex items-center gap-1.5 pl-3">
           <ComposerIconButton
             testId="home-intent-voice"
             label={
@@ -257,7 +263,7 @@ export function HomeIntentSection({
             pressed={voice.state === 'listening'}
             dataState={voice.state}
           >
-            <svg width="17" height="17" viewBox="0 0 16 16" aria-hidden="true" fill="none">
+            <svg width="19" height="19" viewBox="0 0 16 16" aria-hidden="true" fill="none">
               <rect
                 x="5.5"
                 y="1.5"
@@ -282,7 +288,7 @@ export function HomeIntentSection({
             tooltip={homeCreatorCopy.intent.scanTooltip}
             onClick={onScan}
           >
-            <svg width="17" height="17" viewBox="0 0 16 16" aria-hidden="true" fill="none">
+            <svg width="19" height="19" viewBox="0 0 16 16" aria-hidden="true" fill="none">
               <path
                 d="M1.5 5V2.5A1 1 0 0 1 2.5 1.5H5M11 1.5h2.5a1 1 0 0 1 1 1V5M14.5 11v2.5a1 1 0 0 1-1 1H11M5 14.5H2.5a1 1 0 0 1-1-1V11"
                 stroke="currentColor"
@@ -302,7 +308,7 @@ export function HomeIntentSection({
             tooltip={homeCreatorCopy.intent.visionTooltip}
             onClick={() => setVisionOpen(true)}
           >
-            <svg width="17" height="17" viewBox="0 0 16 16" aria-hidden="true" fill="none">
+            <svg width="19" height="19" viewBox="0 0 16 16" aria-hidden="true" fill="none">
               <path
                 d="M8 1.5 9.3 5 12.8 6.3 9.3 7.6 8 11.1 6.7 7.6 3.2 6.3 6.7 5 8 1.5Z"
                 stroke="currentColor"
@@ -353,14 +359,14 @@ export function HomeIntentSection({
       ) : null}
 
       {chips.length > 0 ? (
-        <div className="mt-6" data-testid="home-intent-chips">
+        <div className="mt-[22px]" data-testid="home-intent-chips">
           <p
             className="text-[11px] font-bold tracking-[0.12em] uppercase"
             style={{ color: 'var(--g-text-muted)' }}
           >
             {homeCreatorCopy.intent.chipsLabel}
           </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             {chips.map((chip) => (
               <HomeChip
                 key={chip.id}
@@ -385,34 +391,20 @@ export function HomeIntentSection({
         </div>
       ) : null}
 
-      {offerCta ? (
-        <button
-          type="button"
-          onClick={() => {
-            commitTyped();
-            onSubmit();
-          }}
-          data-testid="home-intent-cta"
-          className={cn(
-            // OWNER 2026-09-02: full width on mobile is an easy thumb target; on desktop
-            // the same bar dominated the whole screen, so it settles to a restrained
-            // centred button. A max-width, not a hardcoded viewport position.
-            'mt-8 flex min-h-[52px] w-full items-center justify-center rounded-full px-6 text-[15px] font-semibold transition-opacity',
-            'sm:mx-auto sm:max-w-[360px]',
-            'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
-          )}
-          style={{ background: 'var(--g-ink)', color: '#ffffff' }}
+      {showEmptyHint ? (
+        <p
+          className="mt-3.5 text-[13.5px] leading-[1.4]"
+          data-testid="home-intent-empty-hint"
+          style={{ color: 'var(--g-text-muted)' }}
         >
-          {homeCreatorCopy.intent.cta}
-        </button>
+          {homeCreatorCopy.intent.emptyHint}
+        </p>
       ) : null}
-      {/* §28: the empty-screen hint is gone with the greyed-out CTA it explained.
-          Before the first idea the customer looks at the composer and nothing
-          else; its placeholder already says what to type. The resolving line
-          stays, because it reports work that is actually happening. */}
+      {/* The resolving line stays, because it reports work that is actually happening.
+          The CTA it used to stand under now lives at the bottom of the start screen. */}
       {resolving ? (
         <p
-          className="mt-3 text-center text-[12px]"
+          className="mt-3 text-[12px]"
           data-testid="home-intent-resolving"
           style={{ color: 'var(--g-text-muted)' }}
         >

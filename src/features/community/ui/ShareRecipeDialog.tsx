@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { buttonClasses } from '@/components/ui/buttonStyles';
+import { DialogShell } from '@/components/ui/DialogShell';
 import { SectionLabel } from '@/components/shared/SectionLabel';
 import { communityCopy } from '@/copy/community';
 import { absoluteUrl, canWebShare, sharePath } from '@/features/community/domain/shareUrls';
@@ -33,11 +34,18 @@ export function ShareRecipeDialog({
   recipeId,
   versionNumber,
   publicationId = null,
+  frame = 'default',
   onClose,
 }: {
   recipeId: string;
   versionNumber: number;
   publicationId?: string | null;
+  /**
+   * DESIGN V3.0 HOME (XIII): `home-layer` shows the SAME content as HOME's compact bottom
+   * layer on a phone and a portrait tablet (a light centred modal from 1024 px). Every
+   * other caller keeps the default frame, byte for byte.
+   */
+  frame?: 'default' | 'home-layer';
   onClose: () => void;
 }) {
   const copy = communityCopy;
@@ -83,6 +91,102 @@ export function ShareRecipeDialog({
     await navigator.share({ title: copy.share.dialogTitle, url });
   };
 
+  const body = (
+    <>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <SectionLabel>{copy.roles.creator}</SectionLabel>
+          <h2 id="share-dialog-title" className="mt-2 text-xl font-medium text-ink">
+            {copy.share.dialogTitle}
+          </h2>
+        </div>
+        <button
+          ref={closeRef}
+          type="button"
+          onClick={onClose}
+          aria-label="Zamknij"
+          className="rounded-sm px-2 py-1 text-stone-400 hover:text-ink"
+        >
+          ×
+        </button>
+      </div>
+
+      <p className="mt-4 text-sm leading-relaxed text-stone-500">{copy.share.dialogBody}</p>
+      <p className="mt-2 text-sm text-stone-500">{copy.share.versionNote(versionNumber)}</p>
+
+      {error ? (
+        <p role="alert" className="mt-4 text-sm text-ink">
+          {error}
+        </p>
+      ) : null}
+
+      {!link ? (
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            className={buttonClasses('primary')}
+            onClick={create}
+            disabled={pending}
+          >
+            {pending ? '…' : copy.actions.shareRecipe}
+          </button>
+          <button type="button" className={buttonClasses('ghost')} onClick={onClose}>
+            Anuluj
+          </button>
+        </div>
+      ) : (
+        <div className="mt-6 flex flex-col gap-4">
+          <label className="flex flex-col gap-2">
+            <span className="text-xs tracking-label uppercase text-stone-400">Link</span>
+            <input
+              readOnly
+              value={url ?? ''}
+              onFocus={(event) => event.currentTarget.select()}
+              className="w-full rounded-sm border border-ink/15 bg-shell-raised px-3 py-2 font-mono text-xs text-ink"
+            />
+          </label>
+
+          <p className="text-xs text-stone-400">{copy.share.unlistedNote}</p>
+          {link.partner_attribution ? (
+            <p className={cn('text-xs leading-relaxed text-stone-500')}>{copy.share.partnerNote}</p>
+          ) : null}
+
+          <ShareRecipePhoto shareLinkId={link.share_link_id} />
+
+          <div className="flex flex-wrap gap-3">
+            <button type="button" className={buttonClasses('primary')} onClick={copyLink}>
+              {copied ? copy.actions.linkCopied : copy.actions.copyLink}
+            </button>
+            {canWebShare(typeof navigator === 'undefined' ? undefined : navigator) ? (
+              <button type="button" className={buttonClasses('ghost')} onClick={webShare}>
+                {copy.actions.share}
+              </button>
+            ) : null}
+            <button type="button" className={buttonClasses('ghost')} onClick={onClose}>
+              Gotowe
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  if (frame === 'home-layer') {
+    return (
+      <DialogShell
+        label={copy.share.dialogTitle}
+        testId="share-recipe-dialog"
+        placement="home-layer"
+        onClose={onClose}
+        dismissOnBackdrop
+      >
+        <div className="min-h-0 overflow-y-auto" data-testid="share-recipe-dialog-body">
+          {body}
+        </div>
+      </DialogShell>
+    );
+  }
+
   return (
     <div
       role="dialog"
@@ -91,83 +195,7 @@ export function ShareRecipeDialog({
       className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
     >
       <div className="max-h-full w-full max-w-lg overflow-y-auto rounded-md border border-ink/10 bg-paper p-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <SectionLabel>{copy.roles.creator}</SectionLabel>
-            <h2 id="share-dialog-title" className="mt-2 text-xl font-medium text-ink">
-              {copy.share.dialogTitle}
-            </h2>
-          </div>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={onClose}
-            aria-label="Zamknij"
-            className="rounded-sm px-2 py-1 text-stone-400 hover:text-ink"
-          >
-            ×
-          </button>
-        </div>
-
-        <p className="mt-4 text-sm leading-relaxed text-stone-500">{copy.share.dialogBody}</p>
-        <p className="mt-2 text-sm text-stone-500">{copy.share.versionNote(versionNumber)}</p>
-
-        {error ? (
-          <p role="alert" className="mt-4 text-sm text-ink">
-            {error}
-          </p>
-        ) : null}
-
-        {!link ? (
-          <div className="mt-6 flex gap-3">
-            <button
-              type="button"
-              className={buttonClasses('primary')}
-              onClick={create}
-              disabled={pending}
-            >
-              {pending ? '…' : copy.actions.shareRecipe}
-            </button>
-            <button type="button" className={buttonClasses('ghost')} onClick={onClose}>
-              Anuluj
-            </button>
-          </div>
-        ) : (
-          <div className="mt-6 flex flex-col gap-4">
-            <label className="flex flex-col gap-2">
-              <span className="text-xs tracking-label uppercase text-stone-400">Link</span>
-              <input
-                readOnly
-                value={url ?? ''}
-                onFocus={(event) => event.currentTarget.select()}
-                className="w-full rounded-sm border border-ink/15 bg-shell-raised px-3 py-2 font-mono text-xs text-ink"
-              />
-            </label>
-
-            <p className="text-xs text-stone-400">{copy.share.unlistedNote}</p>
-            {link.partner_attribution ? (
-              <p className={cn('text-xs leading-relaxed text-stone-500')}>
-                {copy.share.partnerNote}
-              </p>
-            ) : null}
-
-            <ShareRecipePhoto shareLinkId={link.share_link_id} />
-
-            <div className="flex flex-wrap gap-3">
-              <button type="button" className={buttonClasses('primary')} onClick={copyLink}>
-                {copied ? copy.actions.linkCopied : copy.actions.copyLink}
-              </button>
-              {canWebShare(typeof navigator === 'undefined' ? undefined : navigator) ? (
-                <button type="button" className={buttonClasses('ghost')} onClick={webShare}>
-                  {copy.actions.share}
-                </button>
-              ) : null}
-              <button type="button" className={buttonClasses('ghost')} onClick={onClose}>
-                Gotowe
-              </button>
-            </div>
-          </div>
-        )}
+        {body}
       </div>
     </div>
   );
