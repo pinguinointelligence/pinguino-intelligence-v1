@@ -72,14 +72,17 @@ export function useHomeIntentIngredients() {
 
   /** Resolve a chip's identity and record it on the chip (§22, §23). */
   const resolveOne = useCallback(
-    async (chip: IntentChip): Promise<IntentIngredientOutcome> => {
+    async (chip: IntentChip, signal?: AbortSignal): Promise<IntentIngredientOutcome> => {
       // The chip's own utterance element goes to the central selection stage, so a
       // generic idea consumes the frozen concept default while explicit words around
       // it (a form, a brand) keep their meaning. A known profile narrows the frozen
       // order by its SA-04 recipe scope.
-      const resolution = await resolveChipTerm(chipTermOf(chip), undefined, {
+      const resolution = await resolveChipTerm(chipTermOf(chip), signal, {
         profile: useHomeDraftStore.getState().profile,
       });
+      // A cancelled resolution (the idea changed, the chip was removed) must not write a
+      // late answer onto the draft.
+      if (signal?.aborted) return { chipId: chip.id, status: 'unavailable' };
       switch (resolution.kind) {
         case 'covered':
           // One phrase, one product: the owning chip carries it.
@@ -87,11 +90,13 @@ export function useHomeIntentIngredients() {
           return { chipId: chip.id, status: 'duplicate' };
         case 'resolved':
           if (
-            useHomeDraftStore
-              .getState()
-              .chips.some(
-                (other) => other.id !== chip.id && other.productId === resolution.row.ingredient_id,
-              )
+            useHomeDraftStore.getState().chips.some(
+              (other) =>
+                other.id !== chip.id &&
+                other.productId === resolution.row.ingredient_id &&
+                // Another role is another use, not a repetition (§33).
+                (other.role ?? null) === (chip.role ?? null),
+            )
           ) {
             // The same product the customer already named: never a second chip or line.
             useHomeDraftStore.getState().removeChip(chip.id);
@@ -283,8 +288,12 @@ export function useHomeIntentIngredients() {
     async (chip: IntentChip, grams = 0): Promise<IntentIngredientOutcome> => {
       if (chip.productId === null) return { chipId: chip.id, status: 'unresolved' };
       // The chip's own role travels with it, so the row the customer ends up looking at
-      // says the same thing the chip said.
-      return await addByProductId(chip.id, chip.productId, chip.role ?? 'ingredient', grams);
+      // says the same thing the chip said — with the customer's §58 answer, when they gave
+      // one, outranking it. The presence check reads the SAME precedence, so the door and
+      // the check can never disagree about which collection a product belongs to.
+      const statedRole =
+        useHomeDraftStore.getState().usageAnswersByChipId[chip.id] ?? chip.role ?? 'ingredient';
+      return await addByProductId(chip.id, chip.productId, statedRole, grams);
     },
     [addByProductId],
   );

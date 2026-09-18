@@ -151,7 +151,11 @@ function ProcessKnowledge({
   const heat = classification.status.startsWith('heat_required');
   const cold = classification.status === 'cold_process_ok';
   const guide = machineEducationById(machineId) ?? FRESH_GELATO_EDUCATION;
-  const steps = heat ? copy.process.heatSteps : cold ? copy.process.coldSteps : guide.steps;
+  const steps = heat
+    ? copy.process.heatSteps
+    : cold
+      ? copy.process.coldSteps
+      : [...guide.beforeStartSteps, ...guide.steps];
 
   return (
     <section data-testid="process-knowledge" data-process-status={classification.status}>

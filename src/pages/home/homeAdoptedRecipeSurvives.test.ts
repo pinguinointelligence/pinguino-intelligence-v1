@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 const page = readFileSync('src/pages/home/HomeCreatorPage.tsx', 'utf8');
 
 const generateEffect = (): string => {
-  const start = page.indexOf('const lastGeneratedFor = useRef');
+  const start = page.indexOf('const generation = useRef<GenerationMemory>');
   const end = page.indexOf('generateRecipe();', start);
   expect(start, 'generate effect not found').toBeGreaterThan(-1);
   expect(end, 'generateRecipe() call not found').toBeGreaterThan(start);
@@ -37,8 +37,10 @@ describe('HOME never generates a recipe behind an unanswered question', () => {
   });
 
   it('derives the popup-open condition from the same state that renders the popup', () => {
-    expect(page).toContain('const matchPopupOpen = matchPopup !== null && !matchDismissed;');
-    expect(page).toContain('{matchPopupOpen ? (');
+    // DESIGN V3.0 VIII: the suggestions layer is ONE derived condition — it both holds
+    // generation back and renders the layer, so the two can never disagree.
+    expect(page).toContain('const matchPopupOpen = suggestionsVisible;');
+    expect(page).toContain('{suggestionsVisible ? (');
   });
 });
 
@@ -48,7 +50,7 @@ describe('an adopted recipe is not regenerated over', () => {
       page.indexOf('onDerived={() => {'),
       page.indexOf('onDerived={() => {') + 900,
     );
-    expect(onDerived).toContain('lastGeneratedFor.current =');
+    expect(onDerived).toContain('generation.current = generationStarted(');
     expect(onDerived).toContain('markRecipeReady(true)');
     // It must claim the key, never call the generator.
     expect(onDerived).not.toContain('generateRecipe(');

@@ -145,12 +145,15 @@ export const useHomeDraftStore = create<HomeDraftState>()(
 
       addChip: (chip) =>
         set((state) =>
-          // Same resolved product twice is one chip — the user meant it once.
+          // Same resolved product twice is one chip — the user meant it once. A DIFFERENT
+          // stated role is not a repetition: „truskawki i truskawki jako posypka” is two
+          // deliberate uses of one product (§33), and each gets its own line.
           state.chips.some(
             (existing) =>
               existing.id === chip.id ||
-              (chip.productId !== null && existing.productId === chip.productId) ||
-              (chip.concept !== null && existing.concept === chip.concept),
+              (((chip.productId !== null && existing.productId === chip.productId) ||
+                (chip.concept !== null && existing.concept === chip.concept)) &&
+                (existing.role ?? null) === (chip.role ?? null)),
           )
             ? state
             : { chips: [...state.chips, chip] },

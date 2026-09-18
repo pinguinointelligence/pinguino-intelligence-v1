@@ -317,6 +317,8 @@ export function detectStatedRole(text: string): IntentRole | null {
 
 const STOP_WORDS = new Set([
   'i',
+  // „truskawki jako posypka”: „jako” introduces the role, it is not an ingredient.
+  'jako',
   'a',
   'an',
   'the',
@@ -425,8 +427,8 @@ export function parseIntent(text: string): ParsedIntent {
 
     // Phrases first — longest wins, so compound concepts survive tokenisation.
     for (const [phrase, concept] of PHRASE_ENTRIES) {
-      if (remaining.includes(phrase) && !seen.has(concept)) {
-        seen.add(concept);
+      if (remaining.includes(phrase) && !seen.has(`${concept}|${statedRole ?? ''}`)) {
+        seen.add(`${concept}|${statedRole ?? ''}`);
         terms.push({
           raw: phrase,
           normalized: phrase,
@@ -449,7 +451,9 @@ export function parseIntent(text: string): ParsedIntent {
 
       const exact = TOKEN_INDEX.get(token) ?? null;
       const concept = exact ?? fuzzyConcept(token);
-      const key = concept ?? `raw:${token}`;
+      // The same thing said twice is one request — UNLESS the customer gave it a different
+      // role („truskawki i truskawki jako posypka”): that is two deliberate uses (§33).
+      const key = `${concept ?? `raw:${token}`}|${statedRole ?? ''}`;
       if (seen.has(key)) continue;
       seen.add(key);
       terms.push({

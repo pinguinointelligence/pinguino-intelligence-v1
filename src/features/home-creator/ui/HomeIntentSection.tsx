@@ -88,16 +88,24 @@ export function HomeIntentSection({
   onChipClick,
   onChooseIdentity,
   resolving = false,
+  onDraftTextChange,
 }: {
   onSubmit: () => void;
   onScan: () => void;
   onChipClick?: (chip: IntentChip) => void;
   /** §23: the user picked one of the offered real products. */
   onChooseIdentity?: (chip: IntentChip, candidate: { id: string; name: string }) => void;
-  /** §18: identity resolution runs only after `Create my recipe`. */
+  /** True while `Create my recipe` finishes resolution and matching. */
   resolving?: boolean;
+  /** Whether an uncommitted idea is still in the field (suggestions wait for it). */
+  onDraftTextChange?: (hasText: boolean) => void;
 }) {
   const [value, setValue] = useState('');
+  /** One place that changes the field, so the page learns about a draft without an effect. */
+  const changeValue = (next: string) => {
+    setValue(next);
+    onDraftTextChange?.(next.trim().length > 0);
+  };
   /* §31: the fruit camera is the composer's own, so HOME's page does not have to
      learn a fourth entry point — the recognised fruit lands through exactly the
      ingestion path voice already uses. */
@@ -146,7 +154,7 @@ export function HomeIntentSection({
     const text = value.trim();
     if (!text) return;
     ingest(text, 'text');
-    setValue('');
+    changeValue('');
   };
 
   return (
@@ -207,7 +215,7 @@ export function HomeIntentSection({
             id={fieldId}
             data-testid="home-intent-input"
             value={value}
-            onChange={(event) => setValue(event.target.value)}
+            onChange={(event) => changeValue(event.target.value)}
             onKeyDown={(event) => {
               // `key` is the normal identity, but some keyboards and input drivers send
               // the commit key with an empty `key` name; `code` still identifies it.
