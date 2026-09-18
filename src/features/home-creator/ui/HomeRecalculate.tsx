@@ -314,11 +314,12 @@ export function HomeRecalculate({
                     type="button"
                     className={primaryButton}
                     style={{ background: 'var(--g-ink)', color: '#ffffff' }}
+                    data-testid="home-recalc-direction-best-open"
                     onClick={() =>
                       useConstraintStudioStore.getState().acceptBestDirectionCandidate()
                     }
                   >
-                    {constraintStudioCopy.preview.title}
+                    {homeCreatorCopy.recipe.seeProposal}
                   </button>
                   <button
                     type="button"
