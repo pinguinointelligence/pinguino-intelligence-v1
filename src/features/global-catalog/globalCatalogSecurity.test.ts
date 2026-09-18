@@ -25,12 +25,23 @@ const productDiscoveryCopy = fs.readFileSync(
   'utf8',
 );
 const ingredientService = fs.readFileSync(path.join(ROOT, 'src/services/ingredients.ts'), 'utf8');
-const productionFiles = fs
-  .readdirSync(path.join(ROOT, 'src/features/production-workspace'))
-  .map((file) =>
-    fs.readFileSync(path.join(ROOT, 'src/features/production-workspace', file), 'utf8'),
-  )
-  .join('\n');
+/**
+ * Every source under production-workspace, subdirectories included. A flat
+ * readdir read only the top level, so the day the shared batch process moved
+ * into `production-workspace/process/` the guard below would have stopped
+ * covering it — and a directory handed to readFileSync fails with EISDIR
+ * rather than saying so. Walking the tree keeps the answer honest wherever
+ * Production's files are organised.
+ */
+const readSourcesUnder = (dir: string): string[] =>
+  fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) return readSourcesUnder(full);
+    return /\.(ts|tsx|css)$/.test(entry.name) ? [fs.readFileSync(full, 'utf8')] : [];
+  });
+const productionFiles = readSourcesUnder(
+  path.join(ROOT, 'src/features/production-workspace'),
+).join('\n');
 
 describe('global catalog RLS and trust boundaries', () => {
   it('keeps shared facts read-only and verification fields service-controlled', () => {
