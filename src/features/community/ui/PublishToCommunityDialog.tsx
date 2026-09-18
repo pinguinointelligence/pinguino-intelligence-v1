@@ -35,6 +35,7 @@ export function PublishToCommunityDialog({
   defaultTitle,
   hasCreatorProfile,
   completionContext = false,
+  placement = 'responsive',
   onPublished,
   onClose,
 }: {
@@ -43,6 +44,12 @@ export function PublishToCommunityDialog({
   defaultTitle: string;
   hasCreatorProfile: boolean;
   completionContext?: boolean;
+  /**
+   * DESIGN V3.0 HOME (XIII): `home-layer` = HOME's compact bottom layer on a phone and a
+   * portrait tablet, a light centred modal from 1024 px. Every other caller keeps
+   * `responsive`, unchanged.
+   */
+  placement?: 'responsive' | 'home-layer';
   onPublished?: (result: { publication_id: string; handle: string; slug: string }) => void;
   onClose: () => void;
 }) {
@@ -108,11 +115,11 @@ export function PublishToCommunityDialog({
     <DialogShell
       label={dialogTitle}
       testId="publish-community-dialog"
-      placement="responsive"
-      panelClassName="p-0 sm:p-0"
+      placement={placement}
+      panelClassName={placement === 'home-layer' ? undefined : 'p-0 sm:p-0'}
       onClose={onClose}
     >
-      <div className="p-5 sm:p-6">
+      <div className={placement === 'home-layer' ? 'min-h-0 overflow-y-auto' : 'p-5 sm:p-6'}>
         <div className="flex items-start justify-between gap-4">
           <div>
             <SectionLabel>{copy.nav.community}</SectionLabel>
