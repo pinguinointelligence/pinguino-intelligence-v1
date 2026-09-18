@@ -18,6 +18,7 @@
  */
 import Stripe from 'npm:stripe@18';
 import postgres from 'https://deno.land/x/postgresjs@v3.4.5/mod.js';
+import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const QA_REF = 'ncmsonfwbgsqedgnzofg';
 const EXPECTED_ACCOUNT = 'acct_1UGdTdAi07MMapq2';
@@ -221,6 +222,27 @@ Deno.serve(async (req) => {
       case 'dispute_get':
         result = await stripe.disputes.retrieve(String(p.disputeId));
         break;
+      case 'qa_session_link': {
+        /* QA ONLY — a one-time sign-in link for one of the two synthetic QA
+           accounts, so the campaign can open the Partner and admin panels
+           without a human password. Restricted to those two addresses, nonce
+           protected like every other action, and refused outside the QA project.
+           The owner authorised this route explicitly (2026-09-18). */
+        const allowed = ['qa.growth.partner.a@example.invalid', 'qa.growth.admin@example.invalid'];
+        const email = String(p.email ?? '');
+        if (!allowed.includes(email)) return json(403, { error: 'email_not_in_qa_allowlist' });
+        const admin = createClient(Deno.env.get('SUPABASE_URL') ?? '', Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data, error } = await admin.auth.admin.generateLink({
+          type: 'magiclink',
+          email,
+          options: { redirectTo: String(p.redirectTo ?? 'http://localhost:5188/partner') },
+        });
+        if (error) return json(502, { step, action: body.action, error: 'generate_link_failed', message: error.message });
+        result = { email, url: data.properties?.action_link ?? null };
+        break;
+      }
       case 'connect_endpoint_provision': {
         /* Connected-account events are delivered to a DIFFERENT destination with
            its OWN signing secret. This creates that destination for the sandbox
