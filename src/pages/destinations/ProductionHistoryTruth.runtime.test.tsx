@@ -22,7 +22,8 @@ vi.mock('@/stores/authStore', () => ({
 }));
 
 vi.mock('@/features/production-workspace/productionSessionStore', () => ({
-  useProductionSessionStore: (selector: (state: unknown) => unknown) => selector({ session: null }),
+  useProductionSessionStore: (selector: (state: unknown) => unknown) =>
+    selector({ session: null, sessionsById: {} }),
 }));
 
 vi.mock('@/features/pro-core/proCoreProductionRepo', () => ({
@@ -105,6 +106,7 @@ describe('Production History ↔ Label canonical truth', () => {
       status: 'completed',
       sort: 'newest',
       limit: 50,
+      offset: 0,
     });
     expect(mocks.getCompletedSnapshot).toHaveBeenCalledWith(run.runId);
     expect(container.querySelector('[data-production-run-id="run-persisted-1"]')).not.toBeNull();
@@ -128,6 +130,7 @@ describe('Production History ↔ Label canonical truth', () => {
         status: 'completed',
         sort: 'newest',
         limit: 50,
+        offset: 0,
       });
     });
 
