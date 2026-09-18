@@ -124,30 +124,26 @@ describe('the infopak offer says what it is', () => {
     expect(html).toContain(
       'Zamawianie w sklepie jest dostępne z aktywnym planem Gellatti HOME lub PRO.',
     );
-    expect(html).toContain('data-testid="shop-infopak-plans"');
+    expect(html).toContain('data-testid="shop-infopak-plan-required-plans"');
     expect(html).toContain('href="/subscription"');
     expect(html).toContain('Wybierz plan');
     // No paywall over the shop: the offer, its price and the order button stay where they were.
     expect(html).toContain('Gellatti — Składniki bazy lodów');
     expect(html).toContain('PDF · 0 €');
     expect(html).toContain('data-testid="shop-infopak-order"');
-    for (const copy of [shopCopyPl, shopCopyEn]) {
-      expect(copy.infopak.planRequired).not.toMatch(/tylko dla abonent|subscribers only/i);
-    }
-    expect(shopCopyEn.infopak.planRequired).toBe(
-      'Ordering in the shop is available with an active Gellatti HOME or PRO plan.',
-    );
   });
 
   it('offers the way to a plan only for the plan refusal', () => {
     for (const notice of ['notAvailable', 'fileMissing', 'failed', 'downloadFailed'] as const) {
-      expect(render({ signedIn: true, notice })).not.toContain('shop-infopak-plans');
+      const html = render({ signedIn: true, notice });
+      expect(html).toContain('data-testid="shop-infopak-notice"');
+      expect(html).not.toContain('shop-infopak-plan-required');
     }
   });
 
   it('takes the plan refusal from the server, never from a plan flag in the browser', () => {
     const offer = readFileSync('src/features/shop/ShopInfopakOffer.tsx', 'utf8');
-    expect(offer).toContain("if (code === 'plan_required') return 'planRequired';");
+    expect(offer).toContain("if (code === PLAN_REQUIRED) return 'planRequired';");
     expect(offer).not.toMatch(/hasHome|hasPro|canHome|canPro|effectiveAccess|useHomeEntitlement/);
   });
 
