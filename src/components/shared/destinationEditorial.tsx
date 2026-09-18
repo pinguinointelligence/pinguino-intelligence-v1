@@ -127,7 +127,8 @@ export function DestinationHero({
         graphite
           ? 'border-transparent bg-[var(--g-graphite)] text-white lg:min-h-[372px] lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]'
           : 'border-[var(--g-line)] bg-[#e7e3dd]',
-        variant === 'shop' && 'lg:min-h-[470px] lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]',
+        variant === 'shop' &&
+          'lg:min-h-[470px] lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]',
         variant === 'franchise' &&
           'lg:min-h-[380px] lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]',
       )}
@@ -175,6 +176,85 @@ export function DestinationHero({
       </div>
       {visual}
     </div>
+  );
+}
+
+/**
+ * THE shared top for Sklep, Affiliate and Franchise (DESIGN, owner correction
+ * 2026-09-18). One component, because the three are meant to read as one
+ * family — the same body, the same radius, the same accent and the same way a
+ * photograph meets the ground. There is no second copy of this anywhere.
+ *
+ * The rules it exists to keep:
+ *  * ONE rounded graphite body, copy on the left and the photograph on the
+ *    right — not a card with a picture card inside it.
+ *  * a 6 px Gellatti bar down the very left edge, full height.
+ *  * the photograph is PART of the body: no frame, no light band above or
+ *    below it, no hard edge. It fades into the ground through a gradient —
+ *    downward on a phone, where it sits across the top, and sideways from the
+ *    tablet up, where it takes the right-hand side.
+ *  * the photograph stays plainly visible. The gradient is there to hand the
+ *    copy a readable ground, not to sink the picture into the black.
+ *
+ * PRESENTATION ONLY. It renders copy and the children it is handed; the page
+ * owns its own photograph, its actions and everything behind them.
+ */
+export function DestinationTop({
+  eyebrow,
+  title,
+  lede,
+  visual,
+  actions,
+  note,
+}: {
+  eyebrow?: string;
+  title: string;
+  lede?: string;
+  /** The page's own photograph. It fills the slot; the frame belongs here. */
+  visual?: ReactNode;
+  actions?: ReactNode;
+  note?: string;
+}) {
+  return (
+    <section
+      data-destination-top="gellatti"
+      className="relative isolate overflow-hidden rounded-[16px] bg-[#0e0f11] before:absolute before:inset-y-0 before:left-0 before:z-[3] before:w-[6px] before:bg-[var(--g-orange)] before:content-['']"
+    >
+      {visual ? (
+        <span className="absolute inset-x-0 top-0 z-0 block h-[58%] md:inset-0 md:left-[44%] md:h-auto">
+          {visual}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,15,17,0.28)_0%,rgba(14,15,17,0.62)_46%,rgba(14,15,17,0.94)_82%,#0e0f11_100%)] md:bg-[linear-gradient(90deg,#0e0f11_0%,rgba(14,15,17,0.9)_26%,rgba(14,15,17,0.34)_66%,rgba(14,15,17,0.12)_100%)]"
+          />
+        </span>
+      ) : null}
+      {/* The copy clears the accent bar rather than sitting under it. */}
+      <div
+        className={cn(
+          'relative z-[2] pr-5 pb-[22px] pl-[26px] md:pt-[34px] md:pr-[30px] md:pb-8 md:pl-9',
+          visual ? 'pt-[150px] md:w-[56%]' : 'pt-8',
+        )}
+      >
+        {eyebrow ? <DestinationEyebrow tone="inverse">{eyebrow}</DestinationEyebrow> : null}
+        <h1 className="mt-[9px] text-[26px] leading-[1.12] font-semibold tracking-[-0.03em] text-white md:text-[32px] lg:text-[36px]">
+          {title}
+        </h1>
+        <i
+          aria-hidden="true"
+          className="mt-3 block h-[3px] w-11 rounded-[2px] bg-[var(--g-orange)]"
+        />
+        {lede ? (
+          <p className="mt-[10px] max-w-[42ch] text-[13.5px] leading-[1.5] text-white/[0.74]">
+            {lede}
+          </p>
+        ) : null}
+        {actions ? <div className="mt-4 flex flex-wrap items-center gap-3">{actions}</div> : null}
+        {note ? (
+          <small className="mt-3 block text-[11.5px] leading-[1.4] text-white/50">{note}</small>
+        ) : null}
+      </div>
+    </section>
   );
 }
 

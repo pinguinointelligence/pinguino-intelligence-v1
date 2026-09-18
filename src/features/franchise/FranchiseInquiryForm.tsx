@@ -101,7 +101,9 @@ export function FranchiseInquiryForm({
         </small>
       </div>
 
-      <div className="grid grid-cols-2 gap-[10px] md:grid-cols-3 md:gap-3">
+      {/* Owner 2026-09-18: one column on a phone, two on iPad portrait, three
+          where the desktop has the room. */}
+      <div className="grid grid-cols-1 gap-[10px] md:grid-cols-2 md:gap-3 lg:grid-cols-3">
         <label className="block min-w-0">
           <span className={LABEL}>{c.nameLabel}</span>
           <input

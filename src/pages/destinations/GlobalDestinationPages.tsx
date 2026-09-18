@@ -31,6 +31,7 @@ import { ShopCatalog } from '@/features/shop/ShopCatalog';
 import { ShopCartCount } from '@/features/shop/ShopCartCount';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
 import { shopCopy } from '@/copy/shop';
+import { DestinationTop } from '@/components/shared/destinationEditorial';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
 import { OwnerAssetImage } from '@/features/work-with-us/OwnerAssetImage';
 import { franchiseSourceRouteFrom } from '@/features/franchise/franchiseConcepts';
@@ -166,39 +167,24 @@ export function FranchisePage() {
       contextLabel="Franchise"
       bare
     >
-      {/* 1 · The shared dark top (DESIGN `.d-top`): graphite, light type, the
-          Gellatti accent as a rule at the very top and a 44 px bar under the
-          title, and the photograph fading INTO the ground rather than sitting
-          on it as a pasted rectangle. */}
-      <section className="relative isolate overflow-hidden rounded-[16px] bg-[#0e0f11] before:absolute before:inset-x-0 before:top-0 before:z-[3] before:h-[3px] before:bg-[var(--g-orange)] before:content-['']">
-        <span className="absolute inset-x-0 top-0 z-0 block h-[58%] md:inset-0 md:left-[44%] md:h-auto">
+      {/* 1 · THE shared destination top (DESIGN, owner correction 2026-09-18).
+          Sklep, Affiliate and Franchise read as one family, so the body, the
+          radius, the 6 px Gellatti bar and the way the photograph meets the
+          ground live in ONE component. Franchise brings the owner's street
+          facade to it and nothing else. */}
+      <DestinationTop
+        eyebrow="Ekosystem Gellatti"
+        title="Franchise"
+        lede={FRANCHISE_PAGE.intro}
+        visual={
           <OwnerAssetImage
             id="F03"
             priority
             sizes="(min-width: 768px) 56vw, 100vw"
             className="h-full w-full object-cover"
           />
-          <span
-            aria-hidden="true"
-            className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,15,17,0.28)_0%,rgba(14,15,17,0.62)_46%,rgba(14,15,17,0.94)_82%,#0e0f11_100%)] md:bg-[linear-gradient(90deg,#0e0f11_0%,rgba(14,15,17,0.9)_26%,rgba(14,15,17,0.34)_66%,rgba(14,15,17,0.12)_100%)]"
-          />
-        </span>
-        <div className="relative z-[2] px-5 pt-[150px] pb-[22px] md:w-[56%] md:px-[30px] md:pt-[34px] md:pb-8">
-          <span className="block font-mono text-[10px] leading-[1.2] font-semibold tracking-[0.12em] text-white/60 uppercase">
-            Ekosystem Gellatti
-          </span>
-          <h1 className="mt-[9px] text-[26px] leading-[1.12] font-semibold tracking-[-0.03em] text-white md:text-[32px] lg:text-[36px]">
-            Franchise
-          </h1>
-          <i
-            aria-hidden="true"
-            className="mt-3 block h-[3px] w-11 rounded-[2px] bg-[var(--g-orange)]"
-          />
-          <p className="mt-[10px] max-w-[42ch] text-[13.5px] leading-[1.5] text-white/[0.74]">
-            {FRANCHISE_PAGE.intro}
-          </p>
-        </div>
-      </section>
+        }
+      />
 
       {/* 2 · The four formats (DESIGN `.d-fmts`). The CLOSED card already shows
           what is behind the choice: the format's own photograph, dimmed under
