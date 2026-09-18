@@ -208,6 +208,17 @@ export interface MachineOperatingFeatures {
   readonly dessertFamilies: readonly string[];
   readonly operationalInstructions?: readonly string[];
   readonly instructionTitle?: string;
+  /**
+   * H4-3 (Owner 18.09.2026) — the name of the program the operator actually presses on
+   * THIS machine („GELATO”, „SORBET”…), exactly as the manufacturer prints it.
+   *
+   * Absent until an owner-confirmed source states it. It is deliberately separate from
+   * `programCapacities[].program`, whose keys (`ice_cream`, `sorbet_granita`) describe a
+   * CAPACITY per product program and are not what the device's button says — promoting
+   * those to a displayed program name would be a guess, and the step then tells the
+   * operator to press a button that may not exist.
+   */
+  readonly programLabel?: string;
 }
 
 /** Electrical facts stay in data and are not rendered by normal Home UX. */
