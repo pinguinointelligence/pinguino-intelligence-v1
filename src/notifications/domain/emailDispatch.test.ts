@@ -75,9 +75,20 @@ describe('a missing credential blocks delivery but never fakes success', () => {
     expect(missingCredentialOutcome('resend').failureKind).toBe('retryable');
   });
 
-  it('the worker checks the key BEFORE calling the provider', () => {
-    expect(INDEX).toContain("apiKey.trim() === ''");
-    expect(INDEX).toContain('missingCredentialOutcome(providerName)');
+  it('the worker refuses to CLAIM anything while the key is absent', () => {
+    /* The ORDERING is the whole protection, not the refusal message.
+       Claiming first spends one attempt per pass, and
+       `gellatti_mark_email_failed_v1` abandons a job once
+       `attempts >= max_attempts` — so a scheduled dispatcher running against a
+       missing key would have destroyed real customer mail in five passes
+       (`abandoned`, `next_attempt_at = null`) rather than holding it. The
+       guard must therefore sit BEFORE the claim, not inside the send loop. */
+    const guard = INDEX.indexOf("if (apiKey.trim() === '')");
+    const claim = INDEX.indexOf('gellatti_claim_email_jobs_v1');
+    expect(guard).toBeGreaterThan(-1);
+    expect(claim).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(claim);
+    expect(INDEX).toContain("skipped: 'missing_credential'");
   });
 });
 
@@ -198,5 +209,16 @@ describe('worker invariants (source scan of index.ts)', () => {
 
   it('is the ONLY place that names the vendor endpoint', () => {
     expect(INDEX).toContain('https://api.resend.com/emails');
+  });
+
+  it('sends to the real provider unless an environment deliberately redirects it', () => {
+    /* One literal, one override. Unset — every environment that sends real
+       mail — is the provider itself; an isolated QA branch points
+       EMAIL_PROVIDER_ENDPOINT at its own capture sink so the lane can be
+       exercised without reaching a recipient. */
+    expect(INDEX).toContain("const DEFAULT_PROVIDER_ENDPOINT = 'https://api.resend.com/emails';");
+    expect(INDEX).toContain(
+      "const PROVIDER_ENDPOINT = Deno.env.get('EMAIL_PROVIDER_ENDPOINT')?.trim() || DEFAULT_PROVIDER_ENDPOINT;",
+    );
   });
 });
