@@ -102,6 +102,27 @@ export function machineEducationForSelection(
   return category === null ? null : genericMachineEducation(category);
 }
 
+/**
+ * The ONE machine hand-off a batch is run with — for HOME and for PRO alike.
+ *
+ * Production reads the plan from `preparationPlanForSession`, and the plan's machine
+ * steps come from this guide, so the same recipe must answer the same guide whichever
+ * side started the batch. The rule itself is not new: only a HOME machine carries a
+ * home guide, and a Professional recipe runs with no machine hand-off (§16) — it used
+ * to be written out twice (`useProductionWorkspace` and `HomePreparation`), which is
+ * exactly the shape of duplicated authority that lets the two sides drift apart on a
+ * recipe whose kind and machine disagree. One function, one answer.
+ */
+export function productionMachineGuide(recipe: {
+  machineKind: 'professional' | 'home' | null;
+  machineId: string | null;
+  machineTechnology: MachineTechnology | null;
+}): MachineEducationGuide | null {
+  return recipe.machineKind === 'home'
+    ? machineEducationForSelection(recipe.machineId, recipe.machineTechnology)
+    : null;
+}
+
 export function genericMachineEducation(category: MachineEducationCategory): MachineEducationGuide {
   if (category === 'fresh_gelato') return FRESH_GELATO_EDUCATION;
   return {
