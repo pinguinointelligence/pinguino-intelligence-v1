@@ -71,9 +71,14 @@ import { presentLoadedRecipeInHome } from '@/features/home-creator/homeLoadedRec
 import {
   HomeRecipeOriginNotice,
   HomeRecipeProvenanceLine,
-  HomeRecipeSources,
   type HomeOfficialAdoption,
 } from '@/features/home-creator/ui/HomeRecipeOrigin';
+import { HomeStart } from '@/features/home-creator/ui/HomeStart';
+import {
+  hasBaseIdea,
+  startCtaEnabled,
+  type HomeStartMode,
+} from '@/features/home-creator/homeComposerGate';
 import { officialRecipeCopy } from '@/copy/officialRecipeLibrary';
 import { startNewProRecipe } from '@/pages/destinations/startNewProRecipe';
 import {
@@ -94,7 +99,10 @@ import {
 import type { HomeStage } from '@/features/home-creator/homeStageFlow';
 import { ideaProductsMissingFromRecipe } from '@/features/home-creator/homeIdeaLines';
 import { resolveIdea } from '@/features/home-creator/homeIdeaResolution';
-import { HomeIntentSection } from '@/features/home-creator/ui/HomeIntentSection';
+import {
+  HomeIntentSection,
+  type HomeIntentSectionHandle,
+} from '@/features/home-creator/ui/HomeIntentSection';
 import { HomeProfileSection } from '@/features/home-creator/ui/HomeProfileSection';
 import { HomeMachineSection } from '@/features/home-creator/ui/HomeMachineSection';
 import { HomeRecipeSection } from '@/features/home-creator/ui/HomeRecipeSection';
@@ -154,6 +162,20 @@ export function HomeCreatorPage() {
   const [resolving, setResolving] = useState(false);
   /** The idea text still in the composer: suggestions never open over a word being typed. */
   const [composerHasText, setComposerHasText] = useState(false);
+  /** DESIGN V3.0 VI: „Rozpocznij recepturę” commits the words still in the composer. */
+  const ideaSection = useRef<HomeIntentSectionHandle>(null);
+  /** DESIGN V3.0 VI/IX — the start screen's two modes. A new draft starts on the idea. */
+  const [startMode, setStartMode] = useState<HomeStartMode>('idea');
+  const [startModeDraft, setStartModeDraft] = useState(draft.draftId);
+  if (startModeDraft !== draft.draftId) {
+    setStartModeDraft(draft.draftId);
+    setStartMode('idea');
+  }
+  /** Nothing was sent or opened yet: HOME is on its start screen. */
+  const atStart = !draft.intentSubmitted && !draft.recipeReady && !draft.preparationStarted;
+  const activeStartMode: HomeStartMode = atStart ? startMode : 'idea';
+  /** The Gellatti recipe „Receptury” asked the official door to open, for its refusal. */
+  const [libraryOpening, setLibraryOpening] = useState<string | null>(null);
   /** DESIGN V3.0 VIII — the card chosen on the suggestions layer, for ONE idea version. */
   const [suggestionChoice, setSuggestionChoice] = useState<{
     readonly signature: string;
@@ -360,6 +382,8 @@ export function HomeCreatorPage() {
     !draft.recipeReady &&
     !resolving &&
     officialAdoption?.state !== 'loading' &&
+    // „Receptury” is browsing, not describing an idea: the layer waits for „Twój pomysł”.
+    activeStartMode === 'idea' &&
     (draft.intentSubmitted || !composerHasText);
   const suggestionsFrom: 'idea' | 'cta' = draft.intentSubmitted ? 'cta' : 'idea';
   const selectedSuggestionId =
@@ -1095,41 +1119,92 @@ export function HomeCreatorPage() {
     })();
   };
 
+  /** The official door refused the recipe chosen in „Receptury”: said next to the action. */
+  const libraryRefusal =
+    atStart && startMode === 'library' && libraryOpening && officialAdoption?.state === 'blocked'
+      ? { recipeId: libraryOpening, message: officialAdoption.message }
+      : null;
+
   return (
-    <AppShell navigationPosition="trailing" stickyHeader contentClassName="pb-24">
+    <AppShell
+      navigationPosition="trailing"
+      stickyHeader
+      // The start screen's pinned action is the end of the page: no empty band under it.
+      contentClassName={atStart ? undefined : 'pb-24'}
+    >
       <div data-testid="home-creator">
-        {officialAdoption ? (
+        {officialAdoption && !libraryRefusal ? (
           <HomeRecipeOriginNotice adoption={officialAdoption} onCreateOwn={createOwnInstead} />
         ) : draft.recipeReady && recipe.provenance ? (
           <HomeRecipeProvenanceLine provenance={recipe.provenance} />
-        ) : !draft.recipeReady ? (
-          <HomeRecipeSources />
         ) : null}
         {flow.stages.includes('intent') ? (
-          <HomeIntentSection
-            onSubmit={submitIdea}
-            resolving={resolving}
-            onDraftTextChange={setComposerHasText}
-            onChooseIdentity={(chip, candidate) => {
-              // §23: the user answered the identity question. Record the real
-              // catalogue identity, clear the question, and — if the recipe already
-              // exists — put the ingredient in it now.
-              useHomeDraftStore.getState().resolveChip(chip.id, {
-                productId: candidate.id,
-                productName: candidate.name,
-                ambiguous: false,
-                candidates: undefined,
-              });
-              const state = useHomeDraftStore.getState();
-              if (state.recipeReady) {
-                const resolved = state.chips.find((entry) => entry.id === chip.id);
-                if (resolved) void intentIngredients.addResolvedChip(resolved).then(askAmountFor);
-              }
-              // The answer changes the idea version, so matching re-runs on the real
-              // identity by itself (useHomeIdeaSuggestions) and a new version's
-              // suggestions are never suppressed by an earlier dismissal.
+          <HomeStart
+            draftId={draft.draftId}
+            mode={startMode}
+            onModeChange={setStartMode}
+            atStart={atStart}
+            ideaReady={startCtaEnabled({
+              mode: 'idea',
+              chips: draft.chips,
+              typedText: composerHasText,
+              recipeChosen: false,
+            })}
+            onStartIdea={() => {
+              // The existing CTA handler, exactly as the inline button ran it: the words
+              // still in the field become chips first (the Enter door), then the idea is
+              // sent — and only a base idea is: a topping alone is not a recipe.
+              setLibraryOpening(null);
+              ideaSection.current?.commitTyped();
+              if (hasBaseIdea(useHomeDraftStore.getState().chips)) submitIdea();
             }}
-            onScan={() => setScannerOpen(true)}
+            onOpenOfficial={(recipeId) => {
+              // The library's own door (`/home?source=official_recipe` uses it too): a guest
+              // is asked to sign in, the original never changes, a refusal says why.
+              setLibraryOpening(recipeId);
+              void adoptOfficialRecipe(recipeId, { keepIdea: false, automatic: false });
+            }}
+            onCommunityOpened={() => {
+              // The Community door already loaded the derived recipe into the shared
+              // store — exactly as the suggestions layer's `onDerived` below: HOME opens
+              // the recipe stage without generating over it.
+              useHomeDraftStore.getState().markRecipeReady(true);
+              generation.current = generationStarted(
+                `${draft.profile}|${machine?.id ?? 'none'}|${amount?.totalGrams ?? 0}`,
+                generation.current,
+              );
+              scrollToStage('recipe');
+            }}
+            busy={resolving || officialAdoption?.state === 'loading'}
+            libraryRefusal={libraryRefusal}
+            idea={
+              <HomeIntentSection
+                ref={ideaSection}
+                resolving={resolving}
+                onDraftTextChange={setComposerHasText}
+                onChooseIdentity={(chip, candidate) => {
+                  // §23: the user answered the identity question. Record the real
+                  // catalogue identity, clear the question, and — if the recipe already
+                  // exists — put the ingredient in it now.
+                  useHomeDraftStore.getState().resolveChip(chip.id, {
+                    productId: candidate.id,
+                    productName: candidate.name,
+                    ambiguous: false,
+                    candidates: undefined,
+                  });
+                  const state = useHomeDraftStore.getState();
+                  if (state.recipeReady) {
+                    const resolved = state.chips.find((entry) => entry.id === chip.id);
+                    if (resolved)
+                      void intentIngredients.addResolvedChip(resolved).then(askAmountFor);
+                  }
+                  // The answer changes the idea version, so matching re-runs on the real
+                  // identity by itself (useHomeIdeaSuggestions) and a new version's
+                  // suggestions are never suppressed by an earlier dismissal.
+                }}
+                onScan={() => setScannerOpen(true)}
+              />
+            }
           />
         ) : null}
 

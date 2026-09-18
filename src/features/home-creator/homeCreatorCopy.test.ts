@@ -35,7 +35,9 @@ describe('HOME creator copy', () => {
   });
 
   it('defaults to Polish — the served reference locale', () => {
-    expect(homeCreatorCopy.intent.question).toBe('Jakie lody robimy dzisiaj?');
+    // DESIGN V3.0 (BRIEF §6.2, owner annotation 17 Sep): „Jakie lody robimy dzisiaj?”
+    // → „Jakie lody dziś robimy?”.
+    expect(homeCreatorCopy.intent.question).toBe('Jakie lody dziś robimy?');
     expect(resolveHomeCreatorCopy('pl')).toBe(homeCreatorCopy);
   });
 
@@ -49,7 +51,9 @@ describe('HOME creator copy', () => {
     // SUPERSEDED BY OWNER — 2026-09-02: the CTA now names what Gellatti does with the
     // idea, rather than asking the customer to create the recipe themselves.
     // Was: 'Create your recipe' / „Stwórz swoją recepturę".
-    expect(HOME_CREATOR_COPY_BY_LOCALE.en.intent.cta).toBe('Turn the idea into a recipe');
+    // SUPERSEDED BY DESIGN V3.0 VI/IX — 2026-09-17: ONE start action in both modes,
+    // „Rozpocznij recepturę” (was 'Turn the idea into a recipe' / „Zamień pomysł w recepturę”).
+    expect(HOME_CREATOR_COPY_BY_LOCALE.en.intent.cta).toBe('Start the recipe');
   });
 
   it('never shows a fabricated gram value in the masked state (§54)', () => {

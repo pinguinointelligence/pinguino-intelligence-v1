@@ -10,6 +10,7 @@
 import {
   officialCollectionById,
   officialRecipeById,
+  type OfficialRecipe,
 } from '@/data/recipes/official/officialRecipeLibrary';
 import {
   officialProductTypeLabelPl,
@@ -75,10 +76,30 @@ export interface HomeSuggestionCard {
   readonly match: RecipeMatch;
 }
 
-const joinQuiet = (parts: readonly (string | null | undefined)[]): string | null => {
+export const joinQuiet = (parts: readonly (string | null | undefined)[]): string | null => {
   const text = parts.filter((part): part is string => Boolean(part?.trim())).join(' · ');
   return text || null;
 };
+
+/**
+ * DESIGN V3.0 IX — the ONE quiet line an official recipe card carries, wherever it is
+ * shown (suggestions, a collection, search results): „typ · pochodzenie”.
+ */
+export const officialRecipeSubline = (recipe: OfficialRecipe): string | null =>
+  joinQuiet([
+    officialProductTypeLabelPl(recipe.productType),
+    officialRecipeOriginLabelPl(recipe.origin),
+  ]);
+
+/** …and a Community card's: „autor · miejsce N” in the Top 100. */
+export const communityRecipeSubline = (
+  authorName: string | null | undefined,
+  rank: number | null | undefined,
+): string | null =>
+  joinQuiet([
+    authorName ?? null,
+    typeof rank === 'number' ? homeCreatorCopy.match.rankShort(rank) : null,
+  ]);
 
 export function suggestionCards(input: {
   readonly official: readonly RecipeMatch[];
@@ -96,12 +117,7 @@ export function suggestionCards(input: {
       title: match.candidate.title,
       imageUrl: match.candidate.imageUrl,
       eyebrow: collection,
-      subline: recipe
-        ? joinQuiet([
-            officialProductTypeLabelPl(recipe.productType),
-            officialRecipeOriginLabelPl(recipe.origin),
-          ])
-        : null,
+      subline: recipe ? officialRecipeSubline(recipe) : null,
       alsoIncludes: match.alsoIncludes,
       basedOn: null,
       usedForm: match.usedForms?.join(', ') || null,
@@ -117,10 +133,7 @@ export function suggestionCards(input: {
       title: candidate.title,
       imageUrl: candidate.imageUrl,
       eyebrow: copy.communityEyebrow,
-      subline: joinQuiet([
-        candidate.authorName ?? null,
-        typeof candidate.rank === 'number' ? copy.rankShort(candidate.rank) : null,
-      ]),
+      subline: communityRecipeSubline(candidate.authorName, candidate.rank),
       alsoIncludes: input.community.alsoIncludes,
       basedOn: candidate.originalCreatorName ?? null,
       usedForm: input.community.usedForms?.join(', ') || null,

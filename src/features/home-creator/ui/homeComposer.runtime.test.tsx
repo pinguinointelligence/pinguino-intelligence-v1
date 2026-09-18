@@ -9,14 +9,15 @@
  * `homeComposerFocus.contract.test.ts` (the cascade) and by a served check.
  *
  * What this file is really for: the field must stay ONE field. No second box, no
- * layout jump, no control outside it, and a call to action that does not exist
- * until there is a base idea to act on.
+ * layout jump, no control outside it. DESIGN V3.0 VI (owner 2026-09-17) moved the call
+ * to action out of this section to the bottom of the start screen (`HomeStart`, see
+ * `HomeStart.runtime.test.tsx`); the empty field now says what is missing instead.
  */
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { useHomeDraftStore } from '../homeDraftStore';
-import { HomeIntentSection } from './HomeIntentSection';
+import { HomeIntentSection, type HomeIntentSectionHandle } from './HomeIntentSection';
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
   true;
@@ -26,9 +27,7 @@ let root: Root;
 
 const render = (props: Partial<Parameters<typeof HomeIntentSection>[0]> = {}) => {
   act(() => {
-    root.render(
-      <HomeIntentSection onSubmit={() => undefined} onScan={() => undefined} {...props} />,
-    );
+    root.render(<HomeIntentSection onScan={() => undefined} {...props} />);
   });
 };
 
@@ -185,34 +184,40 @@ describe('§41 — the keyboard never produces a second box or a layout jump', (
   });
 });
 
-describe('§28 — the call to action appears only when there is a recipe to make', () => {
-  it('is absent on the empty screen, together with the hint that explained it', () => {
+describe('DESIGN V3.0 VI (replaces §28) — the empty field says what is missing', () => {
+  it('shows no call to action of its own: it lives at the bottom of the start screen', () => {
     render();
-    expect(q('home-intent-cta')).toBeNull();
-    expect(q('home-intent-empty-hint')).toBeNull();
-    expect(host.textContent).not.toContain('Dodaj przynajmniej jeden składnik');
-  });
-
-  it('is still absent while text sits unparsed in the field', () => {
-    render();
-    type(need<HTMLTextAreaElement>('home-intent-input'), 'banan');
     expect(q('home-intent-cta')).toBeNull();
   });
 
-  it('appears after the first base idea and disappears when it is removed', () => {
+  it('asks for a first ingredient or flavour under the empty field', () => {
+    render();
+    expect(need('home-intent-empty-hint').textContent).toBe(
+      'Dodaj przynajmniej jeden składnik albo smak.',
+    );
+  });
+
+  it('the question is the visible heading above the field', () => {
+    render();
+    const question = need('home-intent-question');
+    expect(question.tagName).toBe('H2');
+    expect(question.textContent).toBe('Jakie lody dziś robimy?');
+  });
+
+  it('the hint goes once a base idea is a chip, and returns when it is removed', () => {
     render();
     const field = need<HTMLTextAreaElement>('home-intent-input');
     type(field, 'banan');
     key(field, { key: 'Enter' });
     render();
-    expect(q('home-intent-cta')).not.toBeNull();
+    expect(q('home-intent-empty-hint')).toBeNull();
 
     act(() => {
       const { chips, removeChip } = useHomeDraftStore.getState();
       chips.forEach((chip) => removeChip(chip.id));
     });
     render();
-    expect(q('home-intent-cta')).toBeNull();
+    expect(q('home-intent-empty-hint')).not.toBeNull();
   });
 
   it('a topping on its own is not enough', () => {
@@ -234,6 +239,49 @@ describe('§28 — the call to action appears only when there is a recipe to mak
       });
     });
     render();
-    expect(q('home-intent-cta')).toBeNull();
+    expect(q('home-intent-empty-hint')).not.toBeNull();
+  });
+
+  it('the start screen commits the words still in the field through the section handle', () => {
+    const handle = { current: null as HomeIntentSectionHandle | null };
+    render({ ref: (value: HomeIntentSectionHandle | null) => void (handle.current = value) });
+    type(need<HTMLTextAreaElement>('home-intent-input'), 'banan');
+    act(() => handle.current?.commitTyped());
+    expect(useHomeDraftStore.getState().chips.map((chip) => chip.label)).toEqual(['banan']);
+    expect(need<HTMLTextAreaElement>('home-intent-input').value).toBe('');
+  });
+});
+
+describe('DESIGN V3.0 IV-A/VI — the chip shows the customer’s own word', () => {
+  it('shows „truskawkowe”, not the catalogue product, which stays in the tooltip', () => {
+    act(() => {
+      useHomeDraftStore.setState({
+        chips: [
+          {
+            id: 'c1',
+            label: 'truskawkowe',
+            concept: 'strawberry',
+            role: null,
+            source: 'text',
+            productId: 'PI-ING-001553',
+            productName: 'STRAWBERRIES · Fresh Fruit',
+            ambiguous: false,
+          },
+        ],
+      });
+    });
+    render();
+    const chip = need('home-intent-chip');
+    const label = need('home-intent-chip-label');
+    // What a sighted customer reads is their own word…
+    const visible = [...label.childNodes]
+      .filter((node) => !(node instanceof HTMLElement && node.classList.contains('sr-only')))
+      .map((node) => node.textContent)
+      .join('');
+    expect(visible).toBe('truskawkowe');
+    // …the product it resolved to is still there for anyone who checks.
+    expect(chip.getAttribute('title')).toBe('STRAWBERRIES · Fresh Fruit');
+    expect(label.textContent).toContain('STRAWBERRIES · Fresh Fruit');
+    expect(need('home-intent-chip-remove').getAttribute('aria-label')).toBe('Usuń truskawkowe');
   });
 });

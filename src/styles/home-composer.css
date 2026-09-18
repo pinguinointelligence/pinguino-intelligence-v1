@@ -46,9 +46,12 @@ html[data-gellatti-input-modality] .theme-pro-light .home-composer-field:focus-v
  * The resting colours live here rather than as an inline `style` on the element:
  * an inline declaration beats every rule below without `!important`, which is
  * exactly how a focus treatment gets written, shipped, and never painted. */
+/* DESIGN V3.0 IV-A: HOME's field is white with a LIGHT 1 px line (#e4e0d9), quieter than
+ * the shared `--g-line`, and a pointer focus in the same grey family (#b9b3a9) — HOME
+ * carries no yellow accent. The keyboard indicator below is unchanged. */
 .home-composer {
   background: #ffffff;
-  border-color: var(--g-line);
+  border-color: #e4e0d9;
   transition:
     border-color 140ms ease,
     box-shadow 140ms ease;
@@ -57,7 +60,7 @@ html[data-gellatti-input-modality] .theme-pro-light .home-composer-field:focus-v
 /* Pointer focus: a warm, quiet acknowledgement. Decorative only — the keyboard
  * indicator below is the one that has to carry contrast. */
 .home-composer:focus-within {
-  border-color: var(--g-orange);
+  border-color: #b9b3a9;
 }
 
 /* Keyboard focus: the shell's own graphite (#4b4d52, 7.6:1 on the composer's
