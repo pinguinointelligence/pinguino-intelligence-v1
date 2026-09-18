@@ -4900,6 +4900,65 @@ function maximizeMainTechnicalObjective(
         },
       };
     }
+    // DIRECTION YIELDS TO THE MAIN FLOOR (owner 2026-09-18). Direction is a
+    // preference; the published Main floor is product authority. When the
+    // Direction overlay alone pushes the frontier below the floor (or is the
+    // only rule a rejected probe failed on), the same frontier is searched once
+    // more with Direction switched off — the candidate check then skips only
+    // the `direction:*` rules, exactly as the Crown bootstrap path does. A
+    // candidate found there is a real, fully gated proposal that misses the
+    // customer's Direction, so it returns BEST_ACHIEVABLE with the customer's
+    // goals restored: the shared presentation raises `directionTargetUnreached`
+    // and the customer is asked for the usual best-achievable consent. When
+    // that search finds nothing either, the original refusal stands. Vegan
+    // keeps its own explicit-Direction contract: an exhausted Vegan Direction
+    // search is published as SEARCH_FAILED (see `mainSafePreview`), never as a
+    // yielded NEAREST.
+    const directionOnlyRejection = [...rejected.values()].some(
+      (outcome) =>
+        outcome.rules.length > 0 && outcome.rules.every((rule) => rule.startsWith('direction:')),
+    );
+    if (
+      contractInput.category !== 'vegan_gelato' &&
+      contractInput.goals?.direction_targets_active === true &&
+      behaviorFloor !== null &&
+      !exactOnly &&
+      (searchStart < searchFloor || directionOnlyRejection)
+    ) {
+      const withoutDirection = (recipe: RecipeInput): RecipeInput => ({
+        ...recipe,
+        goals: { ...recipe.goals, direction_targets_active: false },
+      });
+      const yielded = maximizeMainTechnicalObjective(
+        withoutDirection(contractInput),
+        set,
+        options,
+        seedCandidates.map(withoutDirection),
+        withoutDirection(technicalStart),
+      );
+      if (
+        yielded.proof !== null &&
+        yielded.proof.crownRefusal === undefined &&
+        (yielded.proof.status === 'maximized' || yielded.proof.status === 'best_achievable') &&
+        mainGroupTotal(contractInput, yielded.input) >= searchFloor - MAIN_OBJECTIVE_EPSILON_G
+      ) {
+        return {
+          input: { ...yielded.input, mode: presentationInput.mode, goals: presentationInput.goals },
+          proof: {
+            ...yielded.proof,
+            // Maximal only without the Direction the customer asked for.
+            status: 'best_achievable',
+            provenMaximum: false,
+            limitingTechnicalRules: [
+              ...new Set([
+                ...(yielded.proof.limitingTechnicalRules ?? []),
+                'direction_yields_to_main_floor',
+              ]),
+            ],
+          },
+        };
+      }
+    }
     const failure = rejected.get(searchStart);
     const testedHigherCandidateCount = [...rejected.keys()].filter(
       (mainGrams) => mainGrams > startingMainGrams + MAIN_OBJECTIVE_EPSILON_G,
@@ -6985,7 +7044,20 @@ export function buildOptimizePreview(
     // Exact Direction owns its own hard-safe projection. Its Main proof is
     // rebuilt only to keep Apply trustless; it is not a request to enforce the
     // Main floor as a separate optimization objective.
-    if (hasActiveExactDirectionObjective(input)) return result;
+    //
+    // GEL-P0-027 („an empty sweep is a refusal, never an echo"): that holds
+    // only for a REAL Main proposal. A refused Main sweep (`crownRefusal`) hands
+    // back the unsized draft, and a diagnostic-only vector is not a proposal at
+    // all; letting either through published the served 1340 g banana + kiwi
+    // refusal as „nośnik mleczny ma 22.8%" — the carrier share of a vector
+    // nobody proposed. Those two answer to the Main safety check below.
+    if (
+      hasActiveExactDirectionObjective(input) &&
+      result.preview.mainObjective?.crownRefusal === undefined &&
+      result.preview.diagnosticOnly !== true
+    ) {
+      return result;
+    }
     // Exact Sorbet Direction owns its own already-verified projection and does
     // not carry a Main-objective proof. This backstop is intentionally scoped
     // to the Main search/fallback path that produced the invalid Owner result.
