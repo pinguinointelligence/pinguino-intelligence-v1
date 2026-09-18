@@ -566,6 +566,12 @@ export function StudioEngineSurface({
     if (!geometry) return;
     event.preventDefault();
     const grip = event.currentTarget;
+    /* Served 2026-09-18 (staging a1e1d729, 375 x 812): the grip could never be focused by
+       touching it, so „tap the grip, then use the arrows” did nothing — `preventDefault`
+       above stops the browser's own focus along with the text selection and scroll it is
+       there to stop. §12 gives the grip arrow keys, so the pointer must hand it the focus
+       those keys need. `preventScroll` keeps the page exactly where the finger left it. */
+    grip.focus({ preventScroll: true });
     const startY = event.clientY;
     const startHeight = geometry.current;
     let moved = false;
