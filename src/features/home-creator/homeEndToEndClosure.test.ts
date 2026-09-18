@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { defaultHomeToppingGrams } from './homeToppingDefault';
+import { toppingCreationDefaultGrams } from '@/features/recipe-composition/toppingCreationDefault';
 import { decideUsageRole } from './homeUsageRoleDecision';
 import { homePriorityBootstrapInstructions } from './homePriorityBootstrap';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
@@ -9,6 +9,7 @@ const read = (path: string): string => readFileSync(path, 'utf8');
 const page = read('src/pages/home/HomeCreatorPage.tsx');
 const recipe = read('src/features/home-creator/ui/HomeRecipeSection.tsx');
 const review = read('src/features/home-creator/ui/HomeRecalculate.tsx');
+const orchestration = read('src/features/home-creator/homeRecalculation.ts');
 const preparation = read('src/features/home-creator/ui/HomePreparation.tsx');
 const draft = read('src/features/home-creator/homeDraftStore.ts');
 const amount = read('src/features/home-creator/ui/HomeAmountPrompt.tsx');
@@ -35,7 +36,9 @@ describe('GELLATTI HOME end-to-end closure — Owner matrix', () => {
     expect(resolver).toContain('resolution.exact');
     expect(intent).toContain('snapshotServerResolvedProductBehavior');
     expect(page).toContain('if (initialPrepared === null) return;');
-    expect(page).toContain('homeRecalculationInstructions');
+    // The 0 g priority line reaches the solver through HOME's one orchestration.
+    expect(orchestration).toContain('homeRecalculationInstructions');
+    expect(page).toContain('await recalculateHomeRecipe()');
   });
 
   it('HOME-E2E-02 non-Main BASE asks an empty amount without a prefill', () => {
@@ -45,7 +48,7 @@ describe('GELLATTI HOME end-to-end closure — Owner matrix', () => {
   });
 
   it('HOME-E2E-03 topping starts at exactly 5% and supports all amount actions', () => {
-    expect(defaultHomeToppingGrams([{ planned_grams: 600 }, { planned_grams: 400 }])).toBe(50);
+    expect(toppingCreationDefaultGrams([{ planned_grams: 600 }, { planned_grams: 400 }])).toBe(50);
     expect(amount).toContain('home-amount-prompt-minus');
     expect(amount).toContain('home-amount-prompt-plus');
     expect(amount).toContain('home-amount-prompt-input');
@@ -93,9 +96,14 @@ describe('GELLATTI HOME end-to-end closure — Owner matrix', () => {
     expect(recipe).toContain('setGramLock(item.id, gramsLocked ? null : item.planned_grams)');
   });
 
-  it('HOME-E2E-09 live edits do not start an automatic solve', () => {
+  it('HOME-E2E-09 an edit starts the shared solve automatically — from the page, never the rows', () => {
+    // OWNER 2026-09-18 (§3, §10) supersedes „live edits do not start a solve”: after a
+    // change CORE marks as needing a calculation, HOME runs the shared PRZELICZ itself.
+    // The recipe rows still never call a runner — the page's one orchestration does.
     expect(recipe).not.toContain('runPiRecalculationWithTerminal');
     expect(recipe).not.toContain('runInteractiveRecalculationWithTerminal');
+    expect(page).toContain('state.awaitingRecalculation');
+    expect(page).toMatch(/recalculationWanted[\s\S]*recalculateHomeRecipe\(\)/);
   });
 
   it('HOME-E2E-10 Zróbmy to starts solve automatically', () => {
@@ -111,7 +119,8 @@ describe('GELLATTI HOME end-to-end closure — Owner matrix', () => {
 
   it('HOME-E2E-12 a preview edit requires Przelicz before Apply', () => {
     expect(review).toContain('onRecalculate: recalculateInPreview');
-    expect(review).toContain('runInteractiveRecalculationWithTerminal');
+    expect(review).toContain('void runHomeRecalculation(instructions)');
+    expect(orchestration).toContain('runInteractiveRecalculationWithTerminal(all)');
   });
 
   it('HOME-E2E-13 Wróć leaves the recipe untouched', () => {

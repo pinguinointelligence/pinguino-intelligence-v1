@@ -104,6 +104,7 @@ const renderSection = async () => {
           library={LIBRARY}
           onGramsBlocked={() => {}}
           onRemoveItem={() => {}}
+          onRemoveTopping={() => {}}
           onAddIngredient={() => {}}
           onAddTopping={() => {}}
           onSave={() => {}}

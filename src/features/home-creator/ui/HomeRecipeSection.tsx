@@ -253,6 +253,7 @@ export function HomeRecipeSection({
   sweetnessStored,
   onSweetness,
   onRemoveItem,
+  onRemoveTopping,
   library,
   onAddIngredient,
   onAddTopping,
@@ -275,6 +276,8 @@ export function HomeRecipeSection({
   sweetnessStored: number;
   onSweetness: (choice: HomeSweetness) => void;
   onRemoveItem: (lineId: string) => void;
+  /** A topping lives outside the Base, so it has its own store door (`removeTopping`). */
+  onRemoveTopping: (lineId: string) => void;
   /** §56: the SAME Pro picker, in a simpler HOME presentation. */
   library: IngredientLibrary;
   onAddIngredient: (ingredient: EngineIngredient, behavior?: ProductBehaviorSnapshot) => void;
@@ -537,7 +540,7 @@ export function HomeRecipeSection({
               locked={false}
               onChangeAmount={() => setEditingLineId(topping.id)}
               onReplace={() => requestToppingReplacement(topping)}
-              onRemove={() => onRemoveItem(topping.id)}
+              onRemove={() => onRemoveTopping(topping.id)}
             />
           </li>
         ))}
