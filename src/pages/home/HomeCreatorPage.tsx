@@ -912,6 +912,13 @@ export function HomeCreatorPage() {
       void recalculateHomeRecipe().then((outcome) => {
         // `superseded`: a newer change landed while CORE worked — its own run follows.
         if (outcome === 'decision') setAutomaticReview({ context: 'auto', presentCurrent: true });
+        // The recipe now describes every change again, so the earlier „not recalculated
+        // yet” notice is no longer true (served E2E 2026-09-18: it stayed on screen).
+        if (outcome === 'applied' || outcome === 'unchanged') {
+          setRecipeNotice((current) =>
+            current === homeCreatorCopy.recipe.changesNotRecalculated ? null : current,
+          );
+        }
       });
     }, HOME_AUTO_RECALCULATION_SETTLE_MS);
     return () => window.clearTimeout(timer);

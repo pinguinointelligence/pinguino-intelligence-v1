@@ -106,6 +106,13 @@ describe('GELLATTI HOME end-to-end closure — Owner matrix', () => {
     expect(page).toMatch(/recalculationWanted[\s\S]*recalculateHomeRecipe\(\)/);
   });
 
+  it('HOME-E2E-09b a later successful automatic recalculation clears the „not recalculated” notice', () => {
+    // Served E2E 2026-09-18: the notice outlived the recalculation that made it untrue.
+    expect(page).toMatch(
+      /outcome === 'applied' \|\| outcome === 'unchanged'[\s\S]{0,160}changesNotRecalculated \? null : current/,
+    );
+  });
+
   it('HOME-E2E-10 Zróbmy to starts solve automatically', () => {
     expect(page).toContain("requestFinalAction('make')");
     expect(page).toMatch(/action === 'make'[\s\S]*routePaidAction\(\)/);

@@ -362,7 +362,7 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     firstBuildNotApplied:
       'Receptura nie została jeszcze przygotowana. Naciśnij „Zamień pomysł w recepturę”, aby wrócić do propozycji.',
     changesNotRecalculated:
-      'Ostatnie zmiany nie są jeszcze przeliczone — wynik i ilości opisują recepturę sprzed nich.',
+      'Ostatnie zmiany nie są jeszcze przeliczone — pozostałe ilości nie zostały do nich dopasowane.',
     maskedGrams: '••• g',
     maskedGramsLabel: 'Gramatura ukryta — dostępna w planie HOME lub PRO',
     unresolvedProduct: 'Nie możemy teraz potwierdzić danych jednego ze składników.',
@@ -553,7 +553,7 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     firstBuildNotApplied:
       'The recipe has not been prepared yet. Press “Turn the idea into a recipe” to return to the proposal.',
     changesNotRecalculated:
-      'Your latest changes are not recalculated yet — the result and amounts describe the recipe before them.',
+      'Your latest changes are not recalculated yet — the other amounts have not been adjusted to them.',
     maskedGrams: '••• g',
     maskedGramsLabel: 'Amount hidden — available on the HOME or PRO plan',
     unresolvedProduct: "We can't confirm one of the ingredients right now.",
