@@ -17,11 +17,15 @@
  *    historically coherent;
  *  - NO payment provider is involved. There is no 1 EUR placeholder and no fake
  *    session: 0 EUR means no charge at all.
+ *  - a 0 EUR order is still an ORDER: it needs an active HOME or PRO plan
+ *    (owner, 2026-09-18), asked of the existing Billing authority before the
+ *    address or the order is written (`_shared/shopPlanGate.ts`).
  *
  * Required env: the auto-injected SUPABASE_* values only. This function
  * deliberately has no payment credentials.
  */
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { decideShopOrderPlan } from '../_shared/shopPlanGate.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -67,6 +71,17 @@ Deno.serve(async (req) => {
   if (userError || !userData?.user) return json(401, { error: 'unauthorized' });
   const user = userData.user;
 
+  const admin = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    { auth: { persistSession: false } },
+  );
+
+  /* PUBLIC VIEW, ORDER only with an active HOME or PRO plan (owner, 2026-09-18) — the 0 EUR pack included. Asked
+     first, so a refused account leaves no address, no order and no mail behind. */
+  const plan = await decideShopOrderPlan(admin, user.id);
+  if (!plan.allowed) return json(plan.status, { error: plan.error });
+
   let body: {
     countryIso2?: string;
     address?: {
@@ -104,12 +119,6 @@ Deno.serve(async (req) => {
   if (!address.name || !address.line1 || !address.city || !address.postalCode) {
     return json(400, { error: 'address_incomplete' });
   }
-
-  const admin = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    { auth: { persistSession: false } },
-  );
 
   /* THE gate. `local_starter_pack_live` is computed by the database from the
      canonical bundle: intent, active, and every component carrying a real link.
