@@ -15,6 +15,7 @@ import { ShopStarterContents } from './ShopStarterContents';
 import { useNavigate } from 'react-router';
 import { selectedShopCountry, useShopCountryStore } from './shopCountryStore';
 import { ShopStarterOffer } from './ShopStarterOffer';
+import { ShopInfopakOffer } from './ShopInfopakOffer';
 
 /** The Gellatti shop: a small, factual catalogue and one honest checkout. */
 
@@ -70,6 +71,9 @@ export function ShopCatalog() {
   });
   const startCheckout = () => {
     if (starting.current || checkout.isPending) return;
+    /* The cart disables payment until a shippable country is chosen; this keeps an
+       empty country from ever reaching the checkout function. */
+    if (!checkoutCountry?.physicalAvailable) return;
     starting.current = true;
     setCheckoutError(null);
     checkout.mutate();
@@ -159,6 +163,9 @@ export function ShopCatalog() {
           ))}
         </div>
       </section>
+
+      {/* The free PDF shopping guide: a document, independent of country and pack mode. */}
+      <ShopInfopakOffer />
 
       <div className="mt-16 md:mt-23">
         <ShopCart

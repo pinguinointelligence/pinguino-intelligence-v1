@@ -21,6 +21,8 @@ import type { RankingWindow } from '@/features/community/domain/ranking';
 
 const UNAVAILABLE = 'Gellatti Community is not available in this build.';
 const COMMUNITY_IMAGE_BUCKET = 'community-recipe-images';
+/** PRIVATE: a direct-share photograph is never a public Community object. */
+const SHARE_PHOTO_BUCKET = 'recipe-share-photos';
 const COMMUNITY_IMAGE_LIMIT = 10 * 1024 * 1024;
 const COMMUNITY_IMAGE_EXT: Readonly<Record<string, string>> = {
   'image/jpeg': 'jpg',
@@ -219,10 +221,13 @@ export interface PublishInput {
   tags?: string[];
 }
 
-export async function uploadCommunityPhoto(file: File): Promise<string> {
+/**
+ * THE photo upload: one validation, one naming rule, for both a Community
+ * publication and a direct share. Only the bucket and the folder differ.
+ * Returns the stored object path.
+ */
+async function uploadRecipePhoto(file: File, bucket: string, folder: string): Promise<string> {
   if (!supabase) throw new Error(UNAVAILABLE);
-  const user = await getCurrentUser();
-  if (!user) throw new Error('authentication required');
   const ext = COMMUNITY_IMAGE_EXT[file.type];
   if (!ext) throw new Error('Zdjęcie musi być plikiem JPEG, PNG lub WebP.');
   if (file.size <= 0 || file.size > COMMUNITY_IMAGE_LIMIT) {
@@ -232,11 +237,19 @@ export async function uploadCommunityPhoto(file: File): Promise<string> {
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const path = `${user.id}/${id}.${ext}`;
+  const path = `${folder}/${id}.${ext}`;
   const { error } = await supabase.storage
-    .from(COMMUNITY_IMAGE_BUCKET)
+    .from(bucket)
     .upload(path, file, { contentType: file.type, upsert: false });
   if (error) throw new Error(error.message);
+  return path;
+}
+
+export async function uploadCommunityPhoto(file: File): Promise<string> {
+  if (!supabase) throw new Error(UNAVAILABLE);
+  const user = await getCurrentUser();
+  if (!user) throw new Error('authentication required');
+  const path = await uploadRecipePhoto(file, COMMUNITY_IMAGE_BUCKET, user.id);
   const { data } = supabase.storage.from(COMMUNITY_IMAGE_BUCKET).getPublicUrl(path);
   if (!data.publicUrl) throw new Error('Nie udało się przygotować adresu zdjęcia.');
   return data.publicUrl;
@@ -375,6 +388,102 @@ export async function openReceivedShare(shareLinkId: string) {
   return writeRpc<ShareResolution>('gellatti_open_received_share_v1', {
     p_share_link_id: shareLinkId,
   });
+}
+
+// ── Own photograph on a direct share (owner decisions 2026-09-17) ──────────
+//
+// Backend: migration 20260917103413_direct_share_own_photo + Edge Function
+// `share-photo`. The photograph is private to the link: its bytes are served per
+// request after the database has decided, so a revoked or expired link refuses
+// the very next request. There are no signed URLs.
+
+export type SharePhotoRead =
+  | {
+      ok: true;
+      share_link_id: string;
+      /** The SHARED VERSION's profile, never the reader's. */
+      category?: string;
+      has_own_photo: boolean;
+    }
+  | { ok: false; reason: ShareFailureReason };
+
+/**
+ * The sharer's view of a link they just created (the share dialog). Signed-in
+ * sharer, recipe owner or recipient only — server-side. Never returns
+ * `recipe_input` or a storage path. Any failure throws: it is not „no photo".
+ */
+export async function readSharePhoto(shareLinkId: string): Promise<SharePhotoRead> {
+  return writeRpc<SharePhotoRead>('gellatti_share_photo_v1', { p_share_link_id: shareLinkId });
+}
+
+export type SharePhotoResult =
+  | { kind: 'photo'; blob: Blob }
+  | { kind: 'none' }
+  | { kind: 'refused'; reason: ShareFailureReason };
+
+const SHARE_PHOTO_REFUSALS: readonly ShareFailureReason[] = ['not_found', 'revoked', 'expired'];
+
+/**
+ * The attached photograph as bytes, asked afresh on every call.
+ *
+ * `{ token }` — whoever holds a valid link, a logged-out guest included.
+ * `{ shareLinkId }` — the signed-in sharer, owner or a recipient (`/received`).
+ *
+ * `none` = the link is valid and carries no own photograph (the profile card is
+ * correct). `refused` = the server said no (unknown, revoked, expired). A
+ * transport or server failure THROWS — it must never read as „no photograph".
+ */
+export async function fetchSharePhoto(
+  access: { token: string } | { shareLinkId: string },
+): Promise<SharePhotoResult> {
+  if (!supabase) throw new Error(UNAVAILABLE);
+  const { data, error, response } = await supabase.functions.invoke('share-photo', {
+    body: access,
+  });
+  if (error) {
+    const context = (error as { context?: unknown }).context;
+    if (context instanceof Response && (context.status === 404 || context.status === 410)) {
+      const reason = await context
+        .json()
+        .then((payload: { error?: unknown }) => payload?.error)
+        .catch(() => null);
+      if (SHARE_PHOTO_REFUSALS.includes(reason as ShareFailureReason)) {
+        return { kind: 'refused', reason: reason as ShareFailureReason };
+      }
+    }
+    throw new Error('share_photo_unavailable');
+  }
+  if (response?.status === 204) return { kind: 'none' };
+  if (data instanceof Blob && data.size > 0) {
+    const type = response?.headers.get('x-share-photo-type') ?? '';
+    return { kind: 'photo', blob: type.startsWith('image/') ? new Blob([data], { type }) : data };
+  }
+  throw new Error('share_photo_unavailable');
+}
+
+/**
+ * Upload into the link's private folder, then attach. The link is attached
+ * only after the upload succeeded, so a failed upload never counts as a photo.
+ */
+export async function attachSharePhoto(shareLinkId: string, file: File): Promise<void> {
+  const path = await uploadRecipePhoto(file, SHARE_PHOTO_BUCKET, shareLinkId);
+  await writeRpc<SharePhotoWrite>('gellatti_set_share_photo_v1', {
+    p_share_link_id: shareLinkId,
+    p_storage_path: path,
+  });
+}
+
+/** The recipient sees the profile card again. The link itself is unchanged. */
+export async function detachSharePhoto(shareLinkId: string): Promise<void> {
+  await writeRpc<SharePhotoWrite>('gellatti_set_share_photo_v1', {
+    p_share_link_id: shareLinkId,
+    p_storage_path: null,
+  });
+}
+
+interface SharePhotoWrite {
+  share_link_id: string;
+  own_photo: boolean;
 }
 
 export async function listReceivedShares() {

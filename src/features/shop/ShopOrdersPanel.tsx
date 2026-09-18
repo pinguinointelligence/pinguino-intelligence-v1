@@ -14,6 +14,12 @@ import {
 } from '@/copy/shop';
 import { shopContentTitle } from './shopContentTitle';
 import { getLocalPackSnapshot } from '@/services/localStarterPack';
+import {
+  getDocumentDownload,
+  getMyDocumentOrders,
+  openDocumentDownload,
+  type MyDocumentOrder,
+} from '@/services/shopDigitalDocument';
 import { downloadLocalStarterPackPdf } from './localStarterPackPdf';
 
 /**
@@ -116,6 +122,86 @@ function LocalPackRow({ order, focused }: { order: ShopOrder; focused: boolean }
           ) : null}
         </div>
       ) : null}
+    </article>
+  );
+}
+
+/**
+ * A 0 € document (the "Składniki bazy lodów" PDF). No shipping, no fulfilment journey:
+ * what it is, when it was ordered, and a download that always asks for a fresh link.
+ */
+function DocumentRow({ order, focused }: { order: MyDocumentOrder; focused: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const open = async () => {
+    setBusy(true);
+    setFailed(false);
+    try {
+      openDocumentDownload(await getDocumentDownload(order.id));
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <article
+      className={cn(
+        'rounded-[12px] border bg-white p-5',
+        focused ? 'border-[var(--g-orange)]' : 'border-[var(--g-line)]',
+      )}
+      data-testid={`order-${order.orderNumber}`}
+      data-order-type="DIGITAL_DOCUMENT"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className={label}>{c.orders.number}</p>
+          <p className="mt-1 font-mono text-sm text-ink">{order.orderNumber}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={chip}>{c.infopak.orderRow}</span>
+        </div>
+      </div>
+
+      <dl className="mt-4 grid gap-4 border-t border-[var(--g-line)] pt-4 sm:grid-cols-3">
+        <div>
+          <dt className={label}>{c.orders.placed}</dt>
+          <dd className="mt-1 font-mono text-xs text-[var(--g-text-secondary)]">
+            {order.createdAt.slice(0, 16).replace('T', ' ')}
+          </dd>
+        </div>
+        <div>
+          <dt className={label}>{c.infopak.detailsTitle}</dt>
+          <dd className="mt-1 text-[13px] text-[var(--g-ink)]">{c.infopak.language}</dd>
+        </div>
+        <div>
+          <dt className={label}>{c.orders.total}</dt>
+          <dd className="mt-1 font-mono text-xs text-[var(--g-ink)]">
+            {shopMoney(order.totalCents, order.currency)}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mt-4 border-t border-[var(--g-line)] pt-4">
+        <button
+          type="button"
+          onClick={() => void open()}
+          disabled={busy || order.status !== 'paid'}
+          className={applicationSecondaryClasses(
+            'disabled:border-[var(--g-line-strong)] disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]',
+          )}
+          data-testid={`order-document-${order.orderNumber}`}
+        >
+          {busy ? c.infopak.downloadBusy : c.infopak.download}
+        </button>
+        {failed ? (
+          <p className="mt-2 text-[12px] text-[var(--g-attention-ink)]">
+            {c.infopak.downloadFailed}
+          </p>
+        ) : null}
+      </div>
     </article>
   );
 }
@@ -251,20 +337,36 @@ function OrderRow({
 export function ShopOrdersPanel({ focusOrderId }: { focusOrderId?: string | null } = {}) {
   const queryClient = useQueryClient();
   const orders = useQuery({ queryKey: ['shop-orders', 'mine'], queryFn: getMyShopOrders });
+  /* Documents are read separately: the parcel list never carries them. */
+  const documents = useQuery({
+    queryKey: ['shop-documents', 'mine'],
+    queryFn: getMyDocumentOrders,
+  });
   const sync = useMutation({
     mutationFn: (orderId: string) => syncShopOrder(orderId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['shop-orders', 'mine'] }),
   });
 
-  if (orders.isLoading) return <ApplicationState kind="loading" title="Wczytuję zamówienia…" />;
+  if (orders.isLoading || documents.isLoading) {
+    return <ApplicationState kind="loading" title="Wczytuję zamówienia…" />;
+  }
   if (orders.isError) {
     return <ApplicationState kind="error" title="Nie udało się wczytać zamówień." />;
   }
   const rows = orders.data ?? [];
-  if (rows.length === 0) return <EmptyState title={c.orders.empty} />;
+  const documentRows = documents.data ?? [];
+  if (rows.length === 0 && documentRows.length === 0) return <EmptyState title={c.orders.empty} />;
 
   return (
     <div className="grid gap-3">
+      {documentRows.map((document) => {
+        const focused = focusOrderId != null && document.id === focusOrderId;
+        return (
+          <FocusAnchor key={document.id} focused={focused}>
+            <DocumentRow order={document} focused={focused} />
+          </FocusAnchor>
+        );
+      })}
       {rows.map((order) => {
         const focused = focusOrderId != null && order.id === focusOrderId;
         return order.orderType === 'LOCAL_STARTER_PACK' ? (

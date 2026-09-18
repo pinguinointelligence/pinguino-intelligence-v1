@@ -71,7 +71,20 @@ describe('the account is created through Accounts v2', () => {
     expect(PROVISION).toContain('contact_email: authUser.user?.email,');
     expect(PROVISION).toContain("identity: { country, entity_type: 'individual' },");
     expect(PROVISION).toMatch(/const country = \/\^\[A-Za-z\]\{2\}\$\/\.test\(String\(body\.country/);
-    expect(PROVISION).toContain('metadata: { gellatti_partner_id: partnerId, environment: \'staging\' },');
+    // The environment is decided on the server from the request origin (#397),
+    // never a literal — staging and production share this function.
+    expect(PROVISION).toContain('metadata: { gellatti_partner_id: partnerId, environment: app.environment },');
+    expect(PROVISION).not.toContain("environment: 'staging'");
+  });
+});
+
+describe('after #389 and #397 are both in', () => {
+  it('neither side is lost: Accounts v2 AND the server-decided environment', () => {
+    expect(PROVISION).toContain("stripe.rawRequest('POST', '/v2/core/accounts'");
+    expect(PROVISION).not.toMatch(/stripe\.accounts\.create\(/);
+    expect(ADMIN_CONTROL).toContain("import { resolveAppOrigin } from '../_shared/appOrigins.ts';");
+    expect(ADMIN_CONTROL).toContain("const app = resolveAppOrigin(req.headers.get('origin'));");
+    expect(PROVISION).toContain('environment: app.environment');
   });
 });
 
@@ -87,13 +100,11 @@ describe('everything around the create call is unchanged', () => {
     expect(PROVISION).not.toMatch(/from\('partners'\)[\s\S]{0,80}\.update\(/);
   });
 
-  it('still tells the Partner, in the words the panel uses', () => {
-    /* The old notification said "Dokończ konfigurację wypłat" and named the
-       vendor — the two things #406 removed from the panel. The Partner
-       configures no payout; they confirm identity and data. */
-    expect(PROVISION).toContain("title: 'Potwierdź dane do wypłat',");
+  it('sends the Partner no "finish your payout setup" notice (owner decision 2026-09-17, #397)', () => {
+    /* The Partner configures no payout. The panel shows the one real step
+       (confirm identity and data with the payment operator) when it applies. */
+    expect(PROVISION).not.toContain('PARTNER_CONNECT_ACTION_REQUIRED');
     expect(PROVISION).not.toMatch(/Dokończ konfigurację/);
-    expect(PROVISION.slice(PROVISION.indexOf('user_notifications'))).not.toMatch(/\bstripe\b/i);
   });
 
   it('leaves the v1 calls that still work exactly where they were', () => {

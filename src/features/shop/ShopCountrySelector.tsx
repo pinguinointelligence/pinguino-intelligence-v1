@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/cn';
+import { applicationQuietClasses } from '@/components/ui/applicationControlStyles';
 import { shopCopy as c } from '@/copy/shop';
+import { useAuthStore } from '@/stores/authStore';
 import {
   selectedShopCountry,
   selectedStarterPackMode,
@@ -26,12 +28,24 @@ export function ShopCountrySelector({ className }: { className?: string }) {
   const selected = useShopCountryStore((state) => state.selected);
   const select = useShopCountryStore((state) => state.select);
   const loading = useShopCountryStore((state) => state.loading);
+  const failed = useShopCountryStore((state) => state.error != null);
   const country = useShopCountryStore(selectedShopCountry);
   const mode = useShopCountryStore(selectedStarterPackMode);
+  const authStatus = useAuthStore((state) => state.status);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  /* A read that failed while signed out is tried again once the session changes
+     (signing in happens in a dialog, without a page load). Only a real transition
+     triggers it, and only after a failure — never a polling loop. */
+  const lastAuthStatus = useRef(authStatus);
+  useEffect(() => {
+    if (lastAuthStatus.current === authStatus) return;
+    lastAuthStatus.current = authStatus;
+    if (authStatus !== 'loading' && useShopCountryStore.getState().error != null) void load();
+  }, [authStatus, load]);
 
   const state =
     mode === 'physical'
@@ -80,7 +94,7 @@ export function ShopCountrySelector({ className }: { className?: string }) {
         id="shop-country"
         value={selected ?? ''}
         onChange={(event) => select(event.target.value)}
-        disabled={loading && countries.length === 0}
+        disabled={countries.length === 0}
         className={cn(
           'mt-3 h-[42px] w-full rounded-[10px] border border-[var(--g-line-strong)] bg-white px-3',
           'text-[14px] text-[var(--g-ink)]',
@@ -98,6 +112,24 @@ export function ShopCountrySelector({ className }: { className?: string }) {
           </option>
         ))}
       </select>
+
+      {failed && !loading && countries.length === 0 ? (
+        <div
+          className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5"
+          role="alert"
+          data-testid="shop-country-load-error"
+        >
+          <p className="text-[13px] leading-[1.45] text-status-error">{c.country.loadError}</p>
+          <button
+            type="button"
+            onClick={() => void load()}
+            className={applicationQuietClasses()}
+            data-testid="shop-country-retry"
+          >
+            {c.country.retry}
+          </button>
+        </div>
+      ) : null}
 
       {country && mode === 'local' ? (
         <p
