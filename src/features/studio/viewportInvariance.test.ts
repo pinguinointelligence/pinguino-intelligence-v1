@@ -122,11 +122,13 @@ describe('responsive invariant', () => {
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     const uses = surface.split('\n').filter((line) => line.includes('mobileViewport'));
     for (const line of uses) {
+      // DESIGN V3.0 §12 adds `monitorPanelMode`, which is the same modal decision
+      // narrowed to one module — so the dependency array may carry it alongside.
       // DESIGN V3.0 §3 adds one deliberate use (replacing B3's first-run sheet):
       // the new-recipe setup is hosted only where the phone composition is —
       // passed as `mobileViewport,` — modal behaviour, never a value.
       expect(
-        /useState|setMobileViewport|shouldActivateMobileCockpitModal|mobileCockpitOpen && mobileViewport|!mobileViewport|shouldRevealProductionWeighingOnNarrowViewport|\[activeTab, mobileCockpitOpen, mobileViewport\]/.test(
+        /useState|setMobileViewport|shouldActivateMobileCockpitModal|mobileCockpitOpen && mobileViewport|!mobileViewport|shouldRevealProductionWeighingOnNarrowViewport|\[activeTab, mobileCockpitOpen, mobileViewport(,|\])/.test(
           line,
         ) || line.trim() === 'mobileViewport,',
         line.trim(),

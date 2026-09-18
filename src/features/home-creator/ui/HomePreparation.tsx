@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
-  machineEducationForSelection,
+  productionMachineGuide,
   type MachineEducationGuide,
 } from '@/features/education/machineEducation';
 import type { ProductionSession } from '@/features/production-workspace/productionSession';
@@ -217,9 +217,15 @@ export function HomePreparation({
   }, [addressKey, gateKey, ownerUserId, plannedComposition, plannedInput, source]);
 
   const session = production.session;
+  // The SAME machine hand-off authority PRO's Production uses — one rule, one file.
   const guide = useMemo(
-    () => machineEducationForSelection(recipe.machineId, recipe.machineTechnology),
-    [recipe.machineId, recipe.machineTechnology],
+    () =>
+      productionMachineGuide({
+        machineKind: recipe.machineKind,
+        machineId: recipe.machineId,
+        machineTechnology: recipe.machineTechnology,
+      }),
+    [recipe.machineId, recipe.machineKind, recipe.machineTechnology],
   );
   // A Professional recipe (an official Gellatti recipe opened in HOME keeps its
   // Professional machine, §16) has no home-machine guide. PRO Production runs such a
