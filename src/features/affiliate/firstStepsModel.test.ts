@@ -71,7 +71,7 @@ describe('payouts (G-WEL-05 / G-WEL-07)', () => {
   it('no Connect account yet: the next move is Gellatti’s — no action, and nothing else is blocked', () => {
     const payouts = byId(workspace({})).payouts;
     expect(payouts?.section).toBeUndefined();
-    expect(payouts?.detail).toContain('Kody i linki działają już teraz');
+    expect(payouts?.detail).toBe('Gellatti przygotowuje Twoje konto wypłat. Damy znać, kiedy będzie gotowe.');
   });
 
   it('an account that is not finished: the partner finishes it in Wypłaty', () => {

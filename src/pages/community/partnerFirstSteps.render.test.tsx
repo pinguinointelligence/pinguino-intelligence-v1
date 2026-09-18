@@ -81,7 +81,7 @@ describe('G-WEL — a new partner is guided, not dropped into accounting', () =>
   it('while Gellatti prepares the payout account there is nothing to click, and the rest works', () => {
     const html = overview(workspace({}));
     expect(html).not.toContain('href="/partner?section=payouts"');
-    expect(text(html)).toContain('Kody i linki działają już teraz');
+    expect(text(html)).toContain('Gellatti przygotowuje Twoje konto wypłat. Damy znać, kiedy będzie gotowe.');
   });
 
   it('an unfinished Connect account sends the partner to Wypłaty', () => {
