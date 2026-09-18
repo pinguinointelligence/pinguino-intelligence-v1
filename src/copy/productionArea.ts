@@ -61,8 +61,6 @@ export interface ProductionAreaCopy {
     readonly marketsLink: string;
     readonly requestsLink: string;
     readonly adminImportLink: string;
-    readonly marketsNote: string;
-    readonly requestsNote: string;
     readonly importBack: string;
   };
   readonly account: {
@@ -126,9 +124,6 @@ const pl: ProductionAreaCopy = {
     marketsLink: 'Rynki produktów',
     requestsLink: 'Zgłoszenia produktów',
     adminImportLink: 'Import administracyjny',
-    marketsNote:
-      'Kraje, w których szukamy produktów do Twoich receptur. „Zapisz ustawienia” zmienia je dla całego konta.',
-    requestsNote: 'Produkty, o które prosisz, i to, czego jeszcze potrzebujemy.',
     importBack: '← Produkty',
   },
   account: {

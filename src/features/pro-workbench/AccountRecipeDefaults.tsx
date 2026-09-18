@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import { useAuthStore } from '@/stores/authStore';
-import { PROFESSIONAL_DEFAULT_BATCH_GRAMS, useRecipeStore } from '@/stores/recipeStore';
+import { useRecipeStore } from '@/stores/recipeStore';
 import {
   DEFAULT_DIRECTION_INTENTS,
   useRecipeProfileStore,
@@ -15,13 +16,9 @@ import {
   type FormulationStrategy,
 } from '@/features/formulation-strategy/strategy';
 import { copy } from '@/copy/en';
-import {
-  MACHINE_CATALOG,
-  deriveMachineSetup,
-  listActiveHomeMachines,
-} from '@/features/machine-catalog';
-import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
+import { productionAreaCopy } from '@/copy/productionArea';
 import { commitRecipeDefaultsAfterRemoteSave } from './accountRecipeDefaultsSave';
+import { professionalAccountDefaultSnapshot } from './professionalAccountAuthority';
 
 const servings = [
   ['fresh', 'Świeże'],
@@ -43,6 +40,48 @@ const directionIntentLabel = (value: number): string => {
   return `${value < 0 ? 'Mniej' : 'Więcej'} · ${Math.abs(value)}/2`;
 };
 
+const areaCopy = productionAreaCopy();
+
+/**
+ * Produkcja v3 §3 — the machine and the default batch have ONE place: Produkcja → Maszyna.
+ * This card no longer edits them, and a save here must never change them either:
+ *
+ *   - WITH an account row for the product, its machine fields travel back 1:1 (the draft is
+ *     the row, and nothing here patches them);
+ *   - WITHOUT a row, the draft used to be a snapshot of the OPEN recipe — so saving a
+ *     serving mode silently made that recipe's machine (e.g. a Ninja) the account default.
+ *     A new row now carries the Professional fields of the canonical authority instead,
+ *     which is exactly what `startNewRecipe` already resolves when there is no row (it takes
+ *     a batch from these settings only for a Home machine). The saved machine from
+ *     Produkcja → Maszyna still wins over the row (GEL-P0-022, `mergeMachineAccountDefault`).
+ */
+const MACHINE_FIELDS = [
+  'machineKind',
+  'machineId',
+  'machineLabel',
+  'machineTechnology',
+  'homeFormulationModuleId',
+  'machineCapacityGrams',
+  'targetBatchGrams',
+  'batchSource',
+] as const;
+
+const withoutRowMachineFields = (
+  settings: ProfileSettingsSnapshot,
+  product: VisibleProductType,
+): ProfileSettingsSnapshot => {
+  const professional = professionalAccountDefaultSnapshot(product);
+  const next: ProfileSettingsSnapshot = { ...settings };
+  for (const field of MACHINE_FIELDS) {
+    (next as unknown as Record<string, unknown>)[field] = professional[field];
+  }
+  return next;
+};
+
+/** The stored account row for this product — the RAW row, never merged with the machine. */
+const storedRowFor = (owner: string, product: VisibleProductType) =>
+  useRecipeProfileStore.getState().defaultsByOwner[productKey(owner, product)] ?? null;
+
 export function AccountRecipeDefaults() {
   const recipe = useRecipeStore();
   const authenticatedOwner = useAuthStore((state) => state.user?.id ?? null);
@@ -52,15 +91,15 @@ export function AccountRecipeDefaults() {
   const directions = useRecipeProfileStore((state) => state.directionIntents);
   const [product, setProduct] = useState<VisibleProductType>('gelato');
   const [draft, setDraft] = useState<ProfileSettingsSnapshot>(() => {
-    const stored = owner
-      ? useRecipeProfileStore.getState().defaultsFor(productKey(owner, 'gelato'))
-      : null;
+    const stored = owner ? storedRowFor(owner, 'gelato') : null;
     return stored
       ? cloneSettings(stored)
-      : profileSnapshotFromState(recipe, recipe.direction_targets, directions);
+      : withoutRowMachineFields(
+          profileSnapshotFromState(recipe, recipe.direction_targets, directions),
+          'gelato',
+        );
   });
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const activeHomeMachines = useMemo(() => listActiveHomeMachines(MACHINE_CATALOG), []);
 
   useEffect(() => {
     if (!authenticatedOwner) return;
@@ -75,6 +114,11 @@ export function AccountRecipeDefaults() {
         );
         const selected = rows.find((row) => row.settings.visibleProductType === product);
         if (selected) setDraft(cloneSettings(selected.settings));
+        else {
+          // No row for this product on the account: never keep a machine that came from the
+          // open recipe (or from a row the account no longer has).
+          setDraft((current) => withoutRowMachineFields(current, product));
+        }
       })
       .catch(() => setStatus('error'));
   }, [authenticatedOwner, product, replaceDefaultsForOwner]);
@@ -120,18 +164,21 @@ export function AccountRecipeDefaults() {
           onChange={(event) => {
             const next = event.currentTarget.value as VisibleProductType;
             setProduct(next);
-            const stored = useRecipeProfileStore.getState().defaultsFor(productKey(owner, next));
+            const stored = storedRowFor(owner, next);
             setDraft(
               stored
                 ? cloneSettings(stored)
-                : {
-                    ...profileSnapshotFromState(
-                      useRecipeStore.getState(),
-                      useRecipeStore.getState().direction_targets,
-                      useRecipeProfileStore.getState().directionIntents,
-                    ),
-                    visibleProductType: next,
-                  },
+                : withoutRowMachineFields(
+                    {
+                      ...profileSnapshotFromState(
+                        useRecipeStore.getState(),
+                        useRecipeStore.getState().direction_targets,
+                        useRecipeProfileStore.getState().directionIntents,
+                      ),
+                      visibleProductType: next,
+                    },
+                    next,
+                  ),
             );
             setStatus('idle');
           }}
@@ -143,7 +190,7 @@ export function AccountRecipeDefaults() {
           ))}
         </select>
       </div>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <label className="text-xs font-semibold text-stone-600">
           Tryb serwowania
           <select
@@ -165,70 +212,6 @@ export function AccountRecipeDefaults() {
           </select>
         </label>
         <label className="text-xs font-semibold text-stone-600">
-          Maszyna / styl produkcji
-          <select
-            className="mt-1 h-11 w-full rounded-[14px] border border-ink/12 bg-white px-3 text-sm text-ink"
-            value={
-              draft.machineKind === 'home' ? (draft.machineId ?? 'professional') : 'professional'
-            }
-            onChange={(event) => {
-              const value = event.currentTarget.value;
-              if (value === 'professional') {
-                patch({
-                  machineKind: 'professional',
-                  machineId: null,
-                  machineLabel: copy.proMachine.professionalLabel,
-                  machineTechnology: null,
-                  homeFormulationModuleId: null,
-                  machineCapacityGrams: null,
-                  targetBatchGrams: PROFESSIONAL_DEFAULT_BATCH_GRAMS,
-                  batchSource: 'PROFESSIONAL_DEFAULT',
-                });
-                return;
-              }
-              const machine = activeHomeMachines.find((item) => item.id === value);
-              if (!machine) return;
-              const setup = deriveMachineSetup(machine, draft.visibleProductType);
-              if (!setup.resolvedVisibleMode) return;
-              patch({
-                machineKind: 'home',
-                machineId: machine.id,
-                machineLabel: machineDisplayName(machine),
-                machineTechnology: machine.technology,
-                homeFormulationModuleId: machine.homeFormulationModuleId,
-                machineCapacityGrams: setup.hardMaximumBatchGrams,
-                targetBatchGrams: setup.recommendedBatchGrams ?? draft.targetBatchGrams,
-                batchSource: 'MACHINE_DEFAULT',
-                servingModeId: setup.resolvedVisibleMode,
-                targetTemperatureC: setup.engineTemperatureC,
-              });
-            }}
-          >
-            <option value="professional">{copy.proMachine.professionalLabel}</option>
-            {activeHomeMachines.map((machine) => (
-              <option key={machine.id} value={machine.id}>
-                {machineDisplayName(machine)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs font-semibold text-stone-600">
-          Partia bazy · g
-          <input
-            type="number"
-            min={1}
-            className="mt-1 h-11 w-full rounded-[14px] border border-ink/12 bg-white px-3 font-mono text-sm text-ink"
-            value={draft.targetBatchGrams}
-            onChange={(event) =>
-              patch({
-                targetBatchGrams: Math.max(1, event.currentTarget.valueAsNumber || 1),
-                batchSource:
-                  draft.machineKind === 'home' ? 'USER_OVERRIDE' : 'PROFESSIONAL_USER_BATCH',
-              })
-            }
-          />
-        </label>
-        <label className="text-xs font-semibold text-stone-600">
           Strategia
           <select
             className="mt-1 h-11 w-full rounded-[14px] border border-ink/12 bg-white px-3 text-sm text-ink"
@@ -245,6 +228,23 @@ export function AccountRecipeDefaults() {
           </select>
         </label>
       </div>
+      {/* Produkcja v3 §3 — „Maszyna / styl produkcji” and „Partia bazy · g” moved to the ONE
+          place of the machine and the default batch. */}
+      <Link
+        to="/machine"
+        className="pro-focus-ring mt-4 flex min-h-12 items-center justify-between gap-4 rounded-[14px] border border-ink/12 bg-white px-4 text-sm text-ink hover:border-ink/25"
+        data-testid="account-recipe-defaults-machine-link"
+      >
+        <span className="min-w-0">
+          <span className="block font-semibold">{areaCopy.account.machineLinkLabel}</span>
+          <span className="mt-0.5 block text-xs text-stone-600">
+            {areaCopy.account.machineLinkHint}
+          </span>
+        </span>
+        <span className="shrink-0 text-xs text-stone-600">
+          {areaCopy.account.machineLinkTarget} <span aria-hidden>→</span>
+        </span>
+      </Link>
       <div className="mt-4 grid gap-3 sm:grid-cols-2" aria-label="Domyślny kierunek receptury">
         {(
           [
