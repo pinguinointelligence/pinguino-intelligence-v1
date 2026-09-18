@@ -435,6 +435,20 @@ export const educationCopy = {
         beforeStartSteps: [],
         steps: ['Przygotuj mix', 'Wlej', 'Maszyna sama chłodzi i mrozi'],
       },
+      /* DESIGN V3.0 H4-6 (Owner 18.09.2026): a Professional recipe runs on a machine the
+         home catalog does not describe, so its card used to be missing entirely. These
+         three steps are the technologically neutral truth for a batch freezer — the
+         machine's own PROGRAM NAME is never invented here; it appears only when the
+         machine data confirms one (H4-3). */
+      professional: {
+        title: 'Maszyna profesjonalna',
+        beforeStartSteps: [],
+        steps: [
+          'Wlej przygotowaną, zimną bazę',
+          'Uruchom proces frezowania',
+          'Wyjmij gotowy produkt',
+        ],
+      },
       fresh_gelato: {
         title: 'Fresh Gelato',
         beforeStartSteps: [],
