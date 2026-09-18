@@ -53,8 +53,26 @@ describe('PRO Recipe knowledge owner flow', () => {
       const entry = panel.querySelector<HTMLButtonElement>('[data-testid="profile-learning-entry"]');
       expect(entry?.textContent).toContain(copy.shell.items.howItWorks);
 
-      host.scrollTop = 120;
+      /* DESIGN V3.0 correction I: „Dlaczego to działa?" unfolds lightly inside
+         the Wiedza frame — the existing education entries and „Uruchom
+         samouczek" — and the Guide is one of those entries. */
+      const entries = panel.querySelector<HTMLElement>('[data-testid="profile-knowledge-entries"]');
+      expect(entries?.hidden).toBe(true);
       await act(async () => entry?.click());
+      expect(entry?.getAttribute('aria-expanded')).toBe('true');
+      expect(entries?.hidden).toBe(false);
+      expect(entries?.textContent).toContain('Co robią składniki?');
+      expect(entries?.textContent).toContain('Dlaczego lody zachowują się tak?');
+      expect(entries?.textContent).toContain('Jak je przygotować?');
+      expect(entries?.textContent).toContain('Uruchom samouczek');
+      expect(panel.querySelector('[data-testid="knowledge-tour"]')).toBeNull();
+
+      host.scrollTop = 120;
+      await act(async () =>
+        panel
+          .querySelector<HTMLButtonElement>('[data-testid="profile-learning-topic-behavior"]')
+          ?.click(),
+      );
 
       const guide = panel.querySelector<HTMLElement>('[data-testid="knowledge-tour"]');
       expect(guide).not.toBeNull();

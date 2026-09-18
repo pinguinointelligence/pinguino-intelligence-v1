@@ -1,65 +1,52 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useAuthStore } from '@/stores/authStore';
-import { upsertUserRecipeDefault } from '@/services/userRecipeDefaults';
-import { commitRecipeDefaultsAfterRemoteSave } from './accountRecipeDefaultsSave';
+import { useEffect, useRef, useState } from 'react';
 import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
-import { PROFESSIONAL_DEFAULT_BATCH_GRAMS, useRecipeStore } from '@/stores/recipeStore';
-import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
-import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import type { VisibleProductType } from '@/features/studio/productType';
-import {
-  MACHINE_CATALOG,
-  deriveMachineSetup,
-  listActiveHomeMachines,
-  planContainerSplit,
-  type HomeMachineProfile,
-} from '@/features/machine-catalog';
+import { planContainerSplit } from '@/features/machine-catalog';
 import {
   RecipeCustomMachineDialog,
   containerSplitNotice,
   deriveBatchGuidance,
-  effectiveDefaultBatchGrams,
   machineDisplayName,
   machineOnboardingCopy,
   pluralCykle,
   type AboveRecommendationChoice,
-  type MachineOnboardingCompletion,
 } from '@/features/machine-onboarding';
 import {
-  profileSettingsSignature,
   savedRecipeProfileDraftIdentity,
   showsProfessionalServing,
   useRecipeProfileStore,
 } from './recipeProfileStore';
-import { profileSnapshotFromState } from './recipeProfilePersistence';
 import {
   FORMULATION_STRATEGIES,
   type FormulationStrategy,
 } from '@/features/formulation-strategy/strategy';
 import { DeferredNumberInput } from '@/components/forms/DeferredNumberInput';
-import {
-  isNewRecipeServingModeId,
-  starterServingModeForTemperature,
-} from '@/features/recipes/newRecipeStarter';
+import { NEW_RECIPE_SERVING_MODES } from '@/features/recipes/newRecipeStarter';
 import { PRO_VISIBLE_PRODUCT_TYPES } from './profileCompatibility';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import {
   requestNewRecipeProductTypeChange,
   changeProRecipeProductType,
 } from '@/pages/destinations/startNewProRecipe';
+import {
+  signatureCoveredByAccountDefaults,
+  useProSettingsAuthority,
+  type ProSettingsAuthority,
+} from './proSettingsAuthority';
 
 const g = copy.studio.goal;
 const batchCopy = copy.proWorkbench.batchTarget;
-const stepCopy = copy.proWorkbench.settingsSteps;
-/** PRO MOBILE UX v2 · B4 — the first-run settings sequence on a phone. */
-const PAGER_STEPS = 3;
+const panelCopy = copy.proWorkbench.settingsPanel;
 const servingCopy = copy.proMachine.serving;
 const professionalLabel = copy.proMachine.professionalLabel;
 
-const STRATEGY_COPY: Record<FormulationStrategy, { label: string; description: string }> = {
-  optimal: { label: 'OPTIMAL', description: 'Priorytet smaku.' },
-  eco: { label: 'ECO', description: 'Priorytet kosztu.' },
+const STRATEGY_COPY: Record<
+  FormulationStrategy,
+  { label: string; description: string; tile: string }
+> = {
+  optimal: { label: 'OPTIMAL', description: 'Priorytet smaku.', tile: 'Priorytet smaku' },
+  eco: { label: 'ECO', description: 'Priorytet kosztu.', tile: 'Priorytet kosztu' },
 };
 const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
   { id: 'fresh', label: servingCopy.fresh },
@@ -67,6 +54,14 @@ const SERVING_OPTIONS: readonly { id: string; label: string }[] = [
   { id: 'temp_minus_12', label: servingCopy.minus12 },
   { id: 'temp_minus_13', label: servingCopy.minus13 },
 ];
+/* DESIGN V3.0 correction I / Point 3 — serving is ONE segmented control:
+   Miękkie · −11 °C, Klasyczne · −12 °C, Twardsze · −13 °C. „Świeże" is a
+   serving the product offers today and V3 does not show; it is kept as a
+   fourth segment rather than removed silently (owner decision). */
+const SERVING_SEGMENT_ORDER = [
+  ...NEW_RECIPE_SERVING_MODES.filter((id) => id !== 'fresh'),
+  'fresh',
+] as const;
 
 /* GELLATTI V2.1 — the approved Settings field: a 46 px white cell with one
    hairline, a 9 px quiet label and an 11 px bold value, its disclosure mark on
@@ -75,10 +70,9 @@ const compactSelect =
   'h-11 min-w-0 appearance-none rounded-[9px] border border-[var(--g-line)] bg-white px-[11px] text-[13px] text-[var(--g-ink)] shadow-none transition-colors hover:border-ink/35 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--g-orange-line)] lg:h-[46px] lg:text-[11px] lg:font-bold';
 const compactFinalSettingsLabel =
   'block text-[9px] leading-[10px] font-normal text-[var(--g-text-field-label)]';
-/* The two Settings helper lines are not part of the approved 46 px field, so
-   they travel in the control's accessible description instead of taking a
-   third row (owner §13). No information is removed. */
-const compactSettingsHelper = 'sr-only';
+/* DESIGN V3.0 correction I — the panel's quiet field label above a control. */
+const panelFieldLabel =
+  'block text-[11px] leading-[14px] font-medium text-[var(--g-text-field-label)]';
 /* The three non-blocking actions under the above-recommendation warning. Quiet
    white cells in the Settings palette — an advisory, never a primary control. */
 const aboveActionClass =
@@ -165,6 +159,8 @@ function TargetBatchControl({
   cyclePlan,
   resizeConflict,
   onChange,
+  className,
+  shortcutNote = null,
 }: {
   grams: number;
   /** The recipe's current base total, from the Engine result (PRO MOBILE UX v2 · B5). */
@@ -175,6 +171,9 @@ function TargetBatchControl({
   cyclePlan: ReturnType<typeof planContainerSplit>;
   resizeConflict: boolean;
   onChange: (grams: number) => void;
+  className?: string;
+  /** DESIGN V3.0 §3 Step 2 keeps its own helper line; the panel does not. */
+  shortcutNote?: string | null;
 }) {
   const helper = !homeMachine
     ? 'Ilość bazy lodowej do przygotowania.'
@@ -189,22 +188,25 @@ function TargetBatchControl({
       className={cn(
         'min-w-0',
         compact
-          ? cn('profile-settings-final-card', homeMachine ? 'order-3' : 'order-5')
+          ? cn('profile-settings-final-card', className)
           : 'rounded-[12px] border border-ink/10 bg-white px-3 py-2',
       )}
       data-testid="profile-batch-combined"
       data-settings-cell="batch"
       data-settings-final-card="batch"
-      data-settings-step="3"
     >
       <span
-        className={cn(compactFinalSettingsLabel, !compact && 'text-xs font-medium text-stone-600')}
+        className={cn(
+          compactFinalSettingsLabel,
+          'max-[68.5rem]:text-[11px] max-[68.5rem]:leading-[14px] max-[68.5rem]:font-medium',
+          !compact && 'text-xs font-medium text-stone-600',
+        )}
         data-settings-label="batch"
       >
         {batchCopy.label}
       </span>
       <span
-        className="mt-0.5 block text-[10px] leading-snug text-[var(--g-text-secondary)]"
+        className="mt-0.5 block text-[10px] leading-snug text-[var(--g-text-secondary)] max-[68.5rem]:text-[11px]"
         data-testid="workbench-batch-scope"
       >
         {batchCopy.caption}
@@ -263,6 +265,14 @@ function TargetBatchControl({
           +{TARGET_BATCH_STEP_GRAMS} g
         </button>
       </div>
+      {shortcutNote ? (
+        <p
+          className="mt-2 text-[11px] leading-[1.4] text-[var(--g-text-secondary)]"
+          data-testid="workbench-batch-shortcut"
+        >
+          {shortcutNote}
+        </p>
+      ) : null}
       {currentTotalGrams !== null && Number.isFinite(currentTotalGrams) && currentTotalGrams > 0 ? (
         <p
           className="mt-1.5 text-[10px] leading-relaxed text-[var(--g-text-secondary)]"
@@ -276,12 +286,16 @@ function TargetBatchControl({
           ) : null}
         </p>
       ) : null}
-      <p
-        className="mt-1.5 text-[10px] leading-relaxed text-[var(--g-text-secondary)]"
-        data-testid={homeMachine ? 'home-machine-cycles' : undefined}
-      >
-        {helper}
-      </p>
+      {/* The setup's own shortcut line already says what the professional
+          helper says; a Home machine's cycle reading is always kept. */}
+      {homeMachine || shortcutNote === null ? (
+        <p
+          className="mt-1.5 text-[10px] leading-relaxed text-[var(--g-text-secondary)]"
+          data-testid={homeMachine ? 'home-machine-cycles' : undefined}
+        >
+          {helper}
+        </p>
+      ) : null}
       {homeMachine ? (
         <span className="sr-only" data-testid="home-machine-capacity">
           Zalecany wsad na cykl:{' '}
@@ -302,6 +316,31 @@ function TargetBatchControl({
   );
 }
 
+/** The same batch control, bound to the settings authority, for the V3 setup's
+ *  Step 2 (which keeps its own shortcut line under the pill). */
+export function TargetBatchControlForSetup({
+  settings,
+  note,
+}: {
+  settings: ProSettingsAuthority;
+  note: string;
+}) {
+  const { store } = settings;
+  return (
+    <TargetBatchControl
+      grams={store.target_batch_grams}
+      currentTotalGrams={null}
+      compact
+      homeMachine={!showsProfessionalServing(store.machineKind)}
+      recommendedBatchGrams={settings.recommendedBatchGrams}
+      cyclePlan={settings.cyclePlan}
+      resizeConflict={store.batchResizeConflict !== null}
+      onChange={settings.changeBatch}
+      shortcutNote={note}
+    />
+  );
+}
+
 /** How many Settings copies are mounted — see the publishing effect in the component. */
 let mountedSettingsCopies = 0;
 
@@ -315,8 +354,21 @@ export function WorkbenchSettingsLine({
   /** PRO MOBILE UX v2 · B5 — the recipe's current base total (Engine result), shown beside the target. */
   currentTotalGrams?: number | null;
 }) {
-  const store = useRecipeStore();
-  const resizeBatchGrams = useConstraintStudioStore((state) => state.resizeBatchGrams);
+  const settings = useProSettingsAuthority();
+  const {
+    store,
+    signature,
+    activeServing,
+    machineValue,
+    activeHomeMachines,
+    recommendedBatchGrams,
+    cyclePlan,
+    hardConflict,
+    defaultsOwner,
+    pickServing,
+    changeStrategy,
+    changeBatch,
+  } = settings;
   const directionTargets = store.direction_targets;
   const directionIntents = useRecipeProfileStore((state) => state.directionIntents);
   const openedContextSeq = useRecipeProfileStore((state) => state.openedContextSeq);
@@ -343,42 +395,26 @@ export function WorkbenchSettingsLine({
   const initialSettingsAttentionRequired =
     activeDraftIdentity === null || confirmedDraftIdentity !== activeDraftIdentity;
   const open = manualExpanded || initialSettingsAttentionRequired;
-  /* PRO MOBILE UX v2 · B4 — the FIRST settings a new recipe asks for come as a
-     short sequence on a phone: one step at a time, with back, forward and
-     „Krok n z 3". Only that first run gets it — a manually reopened or already
-     confirmed Settings shows the whole grid — and CSS ignores it on desktop. */
-  const pagerActive = compact && initialSettingsAttentionRequired && !manualExpanded;
-  const [pagerPosition, setPagerPosition] = useState<{ identity: string | null; step: number }>({
-    identity: null,
-    step: 1,
-  });
-  const pagerStep = pagerPosition.identity === activeDraftIdentity ? pagerPosition.step : 1;
-  const pagerTitleRef = useRef<HTMLParagraphElement | null>(null);
-  const pagerMovedRef = useRef(false);
-  const goToPagerStep = (step: number) => {
-    pagerMovedRef.current = true;
-    setPagerPosition({
-      identity: activeDraftIdentity,
-      step: Math.min(PAGER_STEPS, Math.max(1, step)),
-    });
-  };
-  useEffect(() => {
-    if (!pagerMovedRef.current) return;
-    pagerMovedRef.current = false;
-    pagerTitleRef.current?.focus({ preventScroll: true });
-  }, [pagerStep]);
+  /* DESIGN V3.0 §3 — the first settings of a new recipe on a phone and iPad
+     portrait are asked by the full-screen setup (`ProSetupFlow`), which
+     presents THESE fields through `useProSettingsAuthority`. The B4 pager that
+     used to page this box is superseded by it. */
 
   const toggleDisclosure = () => {
     setManualExpanded((wasOpen) => !wasOpen);
   };
-  const saveDefaultsLocal = useRecipeProfileStore((state) => state.saveDefaults);
-  const authenticatedOwner = useAuthStore((state) => state.user?.id ?? null);
-  const defaultsOwner = authenticatedOwner ?? (import.meta.env.DEV ? 'local-device' : null);
+  /* DESIGN V3.0 correction I — „[ ] Ustaw jako domyślne" replaces the
+     „Zapisz jako domyślne" button. It is an INTENT for the existing
+     confirmation: nothing is written when it is ticked, the defaults are saved
+     by „Potwierdź zmiany" through the same mechanism as before. Ticking it on
+     settings that are already confirmed brings that confirmation back, since
+     it is the one action that saves. */
+  const [asDefault, setAsDefault] = useState(false);
+  const [savedDefaultsSignature, setSavedDefaultsSignature] = useState<string | null>(null);
   const [defaultsStatus, setDefaultsStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>(
     'idle',
   );
   const [pendingBaseProfile, setPendingBaseProfile] = useState<VisibleProductType | null>(null);
-  const [customMachineOpen, setCustomMachineOpen] = useState(false);
   /* The user's answer to the above-recommendation warning, pinned to the exact
      amount it was given for (owner 2026-07-17: the choice is sticky per
      amount). Never persisted — it is a dismissal, not recipe data. */
@@ -387,11 +423,6 @@ export function WorkbenchSettingsLine({
     readonly recommendedGrams: number;
     readonly choice: AboveRecommendationChoice;
   } | null>(null);
-  const activeHomeMachines = useMemo(() => listActiveHomeMachines(MACHINE_CATALOG), []);
-  const selectedHome =
-    store.machineKind === 'home'
-      ? (activeHomeMachines.find((profile) => profile.id === store.machineId) ?? null)
-      : null;
 
   const exactSavedRecipeIdentity = savedRecipeProfileDraftIdentity(store);
   useEffect(() => {
@@ -421,24 +452,19 @@ export function WorkbenchSettingsLine({
     store.draftContextSeq,
   ]);
 
-  const snapshot = profileSnapshotFromState(store, directionTargets, directionIntents);
-  const signature = profileSettingsSignature(snapshot);
   /* OWNER AUTHORITY 2026-09-02 (§8): a NEW recipe that merely inherited the
      account defaults starts CONFIRMED. `openDraft` mints a fresh draft identity
      for every draft, so the confirmation never matched and the user was asked
      to re-confirm settings they had not touched — a step with no decision in
      it. Seeding runs only when the live signature is byte-identical to the
-     stored defaults for this product; the moment anything differs, the normal
-     dirty path takes over and „Potwierdź zmiany" comes back. */
+     stored defaults for this product (`signatureCoveredByAccountDefaults`);
+     the moment anything differs, the normal dirty path takes over and
+     „Potwierdź zmiany" comes back. */
   useEffect(() => {
     if (activeDraftIdentity === null) return;
     if (confirmedDraftIdentity === activeDraftIdentity) return;
     if (defaultsOwner === null) return;
-    const stored = useRecipeProfileStore
-      .getState()
-      .defaultsFor(`${defaultsOwner}:${store.visibleProductType}`);
-    if (!stored) return;
-    if (profileSettingsSignature(stored) !== signature) return;
+    if (signatureCoveredByAccountDefaults(defaultsOwner) !== signature) return;
     confirmSettings(signature, activeDraftIdentity, store.draftContextSeq);
   }, [
     activeDraftIdentity,
@@ -480,14 +506,6 @@ export function WorkbenchSettingsLine({
      confirmed draft identity, and successful confirmation explicitly returns
      the disclosure to its collapsed resting state. */
 
-  const hardConflict =
-    !Number.isFinite(store.target_batch_grams) ||
-    store.target_batch_grams <= 0 ||
-    (store.machineKind === 'home' &&
-      selectedHome === null &&
-      !store.machineId?.startsWith('custom-')) ||
-    store.batchResizeConflict !== null;
-
   /* PRO MOBILE UX v2 · B8 — a saved recipe reopened UNCHANGED carries the
      settings it was saved with: saving needs a current calculation, and a
      calculation needs confirmed settings, so asking again is a step with no
@@ -511,17 +529,6 @@ export function WorkbenchSettingsLine({
     store.dirty,
     store.draftContextSeq,
   ]);
-
-  const activeServing = snapshot.servingModeId;
-  const customSelected = store.machineKind === 'home' && store.machineId?.startsWith('custom-');
-  const machineValue = customSelected ? 'custom' : (selectedHome?.id ?? 'professional');
-  const recommendedBatchGrams =
-    selectedHome === null
-      ? null
-      : deriveMachineSetup(selectedHome, store.visibleProductType).recommendedBatchGrams;
-  const cyclePlan = recommendedBatchGrams
-    ? planContainerSplit(store.target_batch_grams, recommendedBatchGrams)
-    : null;
 
   /* OWNER FINAL DECISION (2026-07-17) — the machine recommendation is a SOFT
      proposal. A recipe batch above it is legitimate and is NEVER capped, but it
@@ -549,86 +556,12 @@ export function WorkbenchSettingsLine({
       ? containerSplitNotice(batchGuidance.split.totalGrams, recommendedBatchGrams)
       : null;
 
-  const pickServing = (id: string, resetToProfessionalDefault = false) => {
-    const temp = temperatureForMode(id);
-    if (temp == null) return;
-    const servingModeId = isNewRecipeServingModeId(id)
-      ? id
-      : starterServingModeForTemperature(temp);
-    store.setMachineSelection({
-      kind: 'professional',
-      servingModeId,
-      machineId: null,
-      label: professionalLabel,
-      temperatureC: temp,
-      batchGrams: resetToProfessionalDefault ? PROFESSIONAL_DEFAULT_BATCH_GRAMS : null,
-      hardCapacityGrams: null,
-      ...(resetToProfessionalDefault ? { batchSource: 'PROFESSIONAL_DEFAULT' as const } : {}),
-    });
-  };
-
-  const selectProfessional = () =>
-    pickServing(
-      isNewRecipeServingModeId(activeServing)
-        ? activeServing
-        : starterServingModeForTemperature(store.target_temperature_c),
-      true,
-    );
-
-  const selectHome = (profile: HomeMachineProfile) => {
-    const setup = deriveMachineSetup(profile, store.visibleProductType);
-    if (setup.resolvedVisibleMode === null) return;
-    store.setMachineSelection({
-      kind: 'home',
-      servingModeId: setup.resolvedVisibleMode,
-      machineId: profile.id,
-      label: machineDisplayName(profile),
-      machineTechnology: profile.technology,
-      homeFormulationModuleId: profile.homeFormulationModuleId,
-      temperatureC: setup.engineTemperatureC,
-      batchGrams: setup.recommendedBatchGrams,
-      hardCapacityGrams: setup.hardMaximumBatchGrams,
-      batchSource: 'MACHINE_DEFAULT',
-    });
-  };
-
-  const selectCustom = (completion: MachineOnboardingCompletion) => {
-    const batchGrams = effectiveDefaultBatchGrams(completion.record);
-    const servingModeId = completion.derivation.resolvedVisibleMode;
-    if (batchGrams === null || servingModeId === null) return;
-    store.setMachineSelection({
-      kind: 'home',
-      servingModeId,
-      machineId: completion.profile.id,
-      label: machineDisplayName(completion.profile),
-      machineTechnology: completion.profile.technology,
-      homeFormulationModuleId: completion.profile.homeFormulationModuleId,
-      temperatureC: completion.derivation.engineTemperatureC,
-      batchGrams,
-      hardCapacityGrams: completion.derivation.hardMaximumBatchGrams,
-      batchSource: 'CUSTOM_MACHINE_BATCH',
-    });
-    setCustomMachineOpen(false);
-  };
-
   const changeProductType = (next: VisibleProductType) => {
     const result = requestNewRecipeProductTypeChange(next);
     if (result === 'no_change') return;
     if (result === 'confirmation_required') {
       setPendingBaseProfile(next);
     }
-  };
-
-  const changeStrategy = (strategy: FormulationStrategy) => {
-    store.setFormulationStrategy(strategy);
-  };
-
-  const changeBatch = (grams: number) => {
-    const target = Math.round(grams);
-    if (!(target > 0)) {
-      return;
-    }
-    resizeBatchGrams(target);
   };
 
   const chooseAbove = (choice: AboveRecommendationChoice) => {
@@ -667,53 +600,25 @@ export function WorkbenchSettingsLine({
     .filter(Boolean)
     .join(' · ');
 
-  /**
-   * The FIRST-EVER confirmation also establishes the defaults.
-   *
-   * A brand-new user has no defaults, so every draft they start arrives
-   * unconfirmed and every session asks the same question again. Their first
-   * confirmation is the moment they say „these are my settings" — so that is
-   * when the defaults are born, without a second button they should not have to
-   * know about.
-   *
-   * ONLY when nothing is stored yet. After that, defaults change through
-   * „Zapisz jako domyślne" and nowhere else: confirming a change for the recipe
-   * in front of you must never silently rewrite what every future recipe starts
-   * from.
-   */
+  /* The existing confirmation action. With the box ticked it also writes the
+     defaults (see `useProSettingsAuthority().confirm`). */
   const confirmAndSeedDefaults = () => {
     if (activeDraftIdentity === null) return;
     setManualExpanded(false);
-    confirmSettings(signature, activeDraftIdentity, store.draftContextSeq);
-    if (!defaultsOwner) return;
-    const alreadyEstablished = useRecipeProfileStore
-      .getState()
-      .defaultsFor(`${defaultsOwner}:${store.visibleProductType}`);
-    if (alreadyEstablished) return;
-    // A failed remote write must not cost the customer their confirmation: the
-    // local defaults still stand and „Zapisz jako domyślne" remains available.
-    void commitRecipeDefaultsAfterRemoteSave(
-      () =>
-        authenticatedOwner
-          ? upsertUserRecipeDefault(authenticatedOwner, store.visibleProductType, snapshot)
-          : Promise.resolve(),
-      () => saveDefaultsLocal(`${defaultsOwner}:${store.visibleProductType}`, snapshot),
-    ).catch(() => undefined);
-  };
-
-  const saveAsDefault = () => {
-    if (!defaultsOwner) return;
+    const saving = settings.confirm(asDefault);
+    if (saving === null) return;
+    const savedSignature = signature;
     setDefaultsStatus('saving');
-    void commitRecipeDefaultsAfterRemoteSave(
-      () =>
-        authenticatedOwner
-          ? upsertUserRecipeDefault(authenticatedOwner, store.visibleProductType, snapshot)
-          : Promise.resolve(),
-      () => saveDefaultsLocal(`${defaultsOwner}:${store.visibleProductType}`, snapshot),
-    )
-      .then(() => setDefaultsStatus('saved'))
+    saving
+      .then(() => {
+        setDefaultsStatus('saved');
+        setSavedDefaultsSignature(savedSignature);
+      })
       .catch(() => setDefaultsStatus('error'));
   };
+  const defaultsPending = asDefault && savedDefaultsSignature !== signature;
+  const showConfirm = !confirmed || hardConflict || defaultsPending;
+  const professionalServing = showsProfessionalServing(store.machineKind);
 
   return (
     <section
@@ -753,18 +658,22 @@ export function WorkbenchSettingsLine({
         Ustawienia
       </h3>
 
-      {/* The band's own row: what the settings ARE, and the way in. The summary
-          is the only thing allowed to shorten — the status and the chevron
-          carry the decision and must survive every translation. */}
+      {/* The band's own row: what the settings ARE, and the way in.
+          DESIGN V3.0 correction I (b): on a phone the summary wraps to two
+          lines and the status sits UNDER it at the right edge, so nothing is
+          cut; on an iPad in portrait the status stays beside it. The desktop
+          keeps its frozen single line, where the summary is the only thing
+          allowed to shorten — the status and the chevron carry the decision
+          and must survive every translation. */}
       <button
         type="button"
         onClick={toggleDisclosure}
         aria-expanded={open}
         data-testid="settings-grid-status"
         data-settings-cell="confirmation"
-        className="pro-focus-ring group/settings flex w-full min-w-0 items-center gap-4 bg-transparent text-left"
+        className="pro-focus-ring group/settings grid w-full min-w-0 grid-cols-[38px_minmax(0,1fr)_15px] items-center gap-x-3 gap-y-1 bg-transparent text-left sm:flex sm:gap-4"
       >
-        <span className="grid size-[38px] shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
+        <span className="row-span-2 grid size-[38px] shrink-0 place-items-center rounded-full border border-[var(--g-line)] text-[var(--g-ink)]">
           <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none">
             <g stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round">
               <path d="M10.34 2.79A9.6 9.6 0 0 1 13.66 2.79L13.88 4.86A7.35 7.35 0 0 1 15.73 5.63L17.4 4.27A9.6 9.6 0 0 1 19.73 6.6L18.37 8.27A7.35 7.35 0 0 1 19.14 10.12L21.21 10.34A9.6 9.6 0 0 1 21.21 13.66L19.14 13.88A7.35 7.35 0 0 1 18.37 15.73L19.73 17.4A9.6 9.6 0 0 1 17.4 19.73L15.73 18.37A7.35 7.35 0 0 1 13.88 19.14L13.66 21.21A9.6 9.6 0 0 1 10.34 21.21L10.12 19.14A7.35 7.35 0 0 1 8.27 18.37L6.6 19.73A9.6 9.6 0 0 1 4.27 17.4L5.63 15.73A7.35 7.35 0 0 1 4.86 13.88L2.79 13.66A9.6 9.6 0 0 1 2.79 10.34L4.86 10.12A7.35 7.35 0 0 1 5.63 8.27L4.27 6.6A9.6 9.6 0 0 1 6.6 4.27L8.27 5.63A7.35 7.35 0 0 1 10.12 4.86Z" />
@@ -772,18 +681,22 @@ export function WorkbenchSettingsLine({
             </g>
           </svg>
         </span>
-        <span className="min-w-0 flex-1 truncate text-[15px] leading-[21px] font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
+        <span
+          className="col-start-2 row-start-1 min-w-0 text-[15px] leading-[21px] font-semibold tracking-[-0.02em] text-[var(--g-ink)] sm:flex-1 min-[68.5rem]:truncate"
+          data-testid="settings-summary"
+        >
           {collapsedSummary}
         </span>
         <span
           className={cn(
-            'flex shrink-0 items-center gap-1.5 text-[12.5px] font-semibold whitespace-nowrap',
+            'col-start-2 row-start-2 flex shrink-0 items-center gap-1.5 justify-self-end text-[12.5px] font-semibold whitespace-nowrap',
             hardConflict
               ? 'text-status-error'
               : confirmed
                 ? 'text-[var(--g-score-green)]'
                 : 'text-[var(--g-attention-ink)]',
           )}
+          data-testid="settings-status"
         >
           {hardConflict ? (
             'Konflikt ustawień'
@@ -821,7 +734,7 @@ export function WorkbenchSettingsLine({
           viewBox="0 0 24 24"
           fill="none"
           className={cn(
-            'shrink-0 text-[var(--g-text-muted)] transition-transform',
+            'col-start-3 row-span-2 row-start-1 shrink-0 text-[var(--g-text-muted)] transition-transform',
             open && 'rotate-90',
           )}
         >
@@ -860,107 +773,61 @@ export function WorkbenchSettingsLine({
         hidden={!open}
         /* OWNER 2026-09-12 — the fields used to start 0 px under the ring row,
            so the gear touched „Typ produktu". 16 px of air on the desktop. */
-        className="min-[68.5rem]:mt-4"
+        className="mt-4"
         data-settings-surface={open ? 'expanded' : 'collapsed'}
-        data-settings-pager-scope={pagerActive ? 'on' : undefined}
-        data-settings-active-step={pagerActive ? pagerStep : undefined}
       >
-        {pagerActive ? (
-          <div className="mb-3 min-[68.5rem]:hidden" data-testid="profile-settings-pager">
-            <p className="text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase">
-              {stepCopy.step} {pagerStep} {stepCopy.of} {PAGER_STEPS}
-            </p>
-            <p
-              ref={pagerTitleRef}
-              tabIndex={-1}
-              className="mt-1 text-[16px] leading-[21px] font-semibold tracking-[-0.02em] text-[var(--g-ink)] outline-none"
-              data-testid="profile-settings-pager-title"
-            >
-              {stepCopy.titles[pagerStep - 1]}
-            </p>
-            <span aria-hidden className="mt-2 flex gap-1.5">
-              {Array.from({ length: PAGER_STEPS }, (_, index) => (
-                <i
-                  key={index}
-                  className={cn(
-                    'h-1 flex-1 rounded-full',
-                    index < pagerStep ? 'bg-[var(--g-graphite)]' : 'bg-[var(--g-line)]',
-                  )}
-                />
-              ))}
-            </span>
-          </div>
-        ) : null}
+        {/* DESIGN V3.0 correction I — one column below the workbench
+            breakpoint, in the design's order: Rodzaj lodów · Docelowa masa
+            partii · Maszyna · Temperatura podawania · OPTIMAL / ECO. The
+            desktop keeps its frozen two-column grid of 46 px fields; only the
+            tiles (a full row in place of the „Tryb" list) are new there. The
+            SOURCE order stays the canonical field order. */}
         <div
           className={cn(
-            compact ? 'profile-settings-grid grid grid-cols-2 items-stretch gap-2' : 'space-y-3',
+            'profile-settings-grid flex flex-col gap-4 min-[68.5rem]:grid min-[68.5rem]:grid-cols-2 min-[68.5rem]:items-stretch min-[68.5rem]:gap-2',
           )}
+          data-settings-layout={compact ? 'panel' : 'plain'}
         >
-          <div
-            className={cn(compact && 'order-1')}
-            data-settings-cell="product-type"
-            data-settings-step="1"
-          >
-            <LabeledSelect
-              label={g.productTypeLabel}
-              value={store.visibleProductType}
-              options={PRO_VISIBLE_PRODUCT_TYPES}
-              labelOf={(option) => g.productTypes[option]}
-              onChange={changeProductType}
-              testid="workbench-product-type"
-              stacked={compact}
-            />
-          </div>
-
-          <div
-            className={cn(compact && 'order-4')}
-            data-settings-cell="machine"
-            data-settings-step="2"
-          >
-            <LabeledSelect
-              label="Maszyna"
-              value={machineValue}
-              options={[
-                'professional',
-                ...activeHomeMachines.map((profile) => profile.id),
-                'custom',
-              ]}
-              labelOf={(id) =>
-                id === 'professional'
-                  ? professionalLabel
-                  : id === 'custom'
-                    ? 'Własna maszyna'
-                    : machineDisplayName(activeHomeMachines.find((profile) => profile.id === id)!)
-              }
-              onChange={(id) => {
-                if (id === 'professional') selectProfessional();
-                else if (id === 'custom') setCustomMachineOpen(true);
-                else {
-                  const profile = activeHomeMachines.find((candidate) => candidate.id === id);
-                  if (profile) selectHome(profile);
-                }
-              }}
-              testid="workbench-machine"
-              stacked={compact}
-            />
-          </div>
-
-          {showsProfessionalServing(store.machineKind) ? (
-            <div
-              className={cn(compact ? 'order-3' : 'ml-[7.3rem]')}
-              data-testid="machine-conditional-settings"
-              data-settings-cell="serving"
-              data-settings-step="2"
-            >
+          <div className="order-1 min-w-0" data-settings-cell="product-type">
+            <ProductTypeRow value={store.visibleProductType} onChange={changeProductType} />
+            <div className="hidden min-[68.5rem]:block">
               <LabeledSelect
-                label="Tryb serwowania"
-                value={activeServing}
-                options={SERVING_OPTIONS.map((option) => option.id)}
-                labelOf={(id) => SERVING_OPTIONS.find((option) => option.id === id)?.label ?? id}
-                onChange={(id) => pickServing(id)}
-                testid="workbench-serving"
+                label={g.productTypeLabel}
+                value={store.visibleProductType}
+                options={PRO_VISIBLE_PRODUCT_TYPES}
+                labelOf={(option) => g.productTypes[option]}
+                onChange={changeProductType}
+                testid="workbench-product-type"
                 stacked={compact}
               />
+            </div>
+          </div>
+
+          <div className="order-3 min-w-0 min-[68.5rem]:order-4" data-settings-cell="machine">
+            <MachineSettingsField settings={settings} />
+          </div>
+
+          {professionalServing ? (
+            <div
+              className="order-4 min-w-0 min-[68.5rem]:order-3"
+              data-testid="machine-conditional-settings"
+              data-settings-cell="serving"
+            >
+              <div className="min-[68.5rem]:hidden">
+                <span className={cn(panelFieldLabel, 'mb-1.5')}>{panelCopy.serving}</span>
+                <ServingSegments value={activeServing} onPick={(id) => pickServing(id)} />
+              </div>
+              <div className="hidden min-[68.5rem]:block">
+                <LabeledSelect
+                  label="Tryb serwowania"
+                  value={activeServing}
+                  options={SERVING_OPTIONS.map((option) => option.id)}
+                  labelOf={(id) => SERVING_OPTIONS.find((option) => option.id === id)?.label ?? id}
+                  onChange={(id) => pickServing(id)}
+                  testid="workbench-serving"
+                  stacked={compact}
+                />
+              </div>
             </div>
           ) : null}
 
@@ -968,83 +835,27 @@ export function WorkbenchSettingsLine({
             grams={store.target_batch_grams}
             currentTotalGrams={currentTotalGrams}
             compact={compact}
-            homeMachine={!showsProfessionalServing(store.machineKind)}
+            homeMachine={!professionalServing}
             recommendedBatchGrams={recommendedBatchGrams}
             cyclePlan={cyclePlan}
             resizeConflict={store.batchResizeConflict !== null}
             onChange={changeBatch}
+            className={cn(
+              'order-2 border-b border-[var(--g-line-quiet)] pb-4 min-[68.5rem]:border-b-0 min-[68.5rem]:pb-0',
+              professionalServing ? 'min-[68.5rem]:order-5' : 'min-[68.5rem]:order-3',
+            )}
           />
 
-          {compact ? (
-            <>
-              <div
-                className="profile-settings-final-card relative order-2 min-w-0"
-                data-settings-cell="strategy"
-                data-settings-final-card="strategy"
-                data-settings-step="3"
-                title={STRATEGY_COPY[store.formulation_strategy].description}
-              >
-                <label
-                  className={cn(compactFinalSettingsLabel, 'sr-only')}
-                  htmlFor="workbench-strategy"
-                  data-settings-label="strategy"
-                >
-                  Tryb
-                </label>
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute top-[11px] left-[11px] z-10 text-[9px] leading-[10px] text-[var(--g-text-field-label)]"
-                >
-                  Tryb
-                </span>
-                <select
-                  id="workbench-strategy"
-                  className={cn(compactSelect, 'h-11 w-full pt-[16px] pr-[30px] lg:h-[46px]')}
-                  value={store.formulation_strategy}
-                  aria-label="Tryb"
-                  data-testid="workbench-strategy"
-                  data-settings-control="strategy"
-                  onChange={(event) =>
-                    changeStrategy(event.currentTarget.value as FormulationStrategy)
-                  }
-                >
-                  {FORMULATION_STRATEGIES.map((strategy) => (
-                    <option key={strategy} value={strategy}>
-                      {STRATEGY_COPY[strategy].label}
-                    </option>
-                  ))}
-                </select>
-                <span
-                  aria-hidden
-                  className="pointer-events-none absolute top-1/2 right-[11px] z-10 -translate-y-1/2 text-[14px] leading-none text-[var(--g-ink)]"
-                >
-                  ⌄
-                </span>
-                <p className={compactSettingsHelper} data-settings-helper="strategy">
-                  {STRATEGY_COPY[store.formulation_strategy].description}
-                </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div
-                className="rounded-[12px] border border-ink/8 bg-[var(--g-ivory)]/70 p-1.5"
-                data-settings-cell="strategy"
-              >
-                <LabeledSelect
-                  label="Tryb"
-                  value={store.formulation_strategy}
-                  options={FORMULATION_STRATEGIES}
-                  labelOf={(strategy) => STRATEGY_COPY[strategy].label}
-                  onChange={changeStrategy}
-                  testid="workbench-strategy"
-                />
-                <p className="col-span-full text-xs text-stone-600">
-                  {STRATEGY_COPY[store.formulation_strategy].description}
-                </p>
-              </div>
-            </>
-          )}
+          <div
+            className="order-5 min-w-0 min-[68.5rem]:order-6 min-[68.5rem]:col-span-2"
+            data-settings-cell="strategy"
+          >
+            <StrategyTiles
+              value={store.formulation_strategy}
+              onChange={changeStrategy}
+              variant="panel"
+            />
+          </div>
 
           {/* The duplicate read-only `Baza receptury` stays removed. The target
               control above owns intent; the left recipe column owns actual mass. */}
@@ -1058,7 +869,6 @@ export function WorkbenchSettingsLine({
           <div
             className="mt-2.5 rounded-[10px] border border-status-risky/40 bg-status-risky/10 px-3 py-2.5"
             data-testid="workbench-batch-above-recommendation"
-            data-settings-step="3"
           >
             <p role="status" className="text-xs leading-relaxed font-semibold text-ink">
               {machineOnboardingCopy.batch.aboveWarning}
@@ -1096,7 +906,6 @@ export function WorkbenchSettingsLine({
             role="status"
             className="mt-2.5 rounded-[10px] border border-ink/10 bg-white px-3 py-2.5 text-xs leading-relaxed text-stone-700"
             data-testid="workbench-batch-split-plan"
-            data-settings-step="3"
           >
             <p className="font-semibold text-ink">{batchSplit.message}</p>
             <p className="mt-0.5">{batchSplit.detail}</p>
@@ -1104,11 +913,7 @@ export function WorkbenchSettingsLine({
         ) : null}
         {batchGuidance.kind === 'custom' ||
         (batchGuidance.kind === 'custom_above' && batchGuidance.choice === 'keep_mine') ? (
-          <p
-            className="mt-2 text-xs text-stone-600"
-            data-testid="workbench-batch-custom-in-use"
-            data-settings-step="3"
-          >
+          <p className="mt-2 text-xs text-stone-600" data-testid="workbench-batch-custom-in-use">
             {machineOnboardingCopy.batch.customInUse}
           </p>
         ) : null}
@@ -1134,55 +939,24 @@ export function WorkbenchSettingsLine({
               : `Utwórz wersję ${g.productTypes[pendingBaseProfile]}`
           }
         />
-        {/* Both actions live INSIDE expanded Settings (§8). „Zapisz jako
-          domyślne" is permanent and holds the left edge, so it never moves;
-          „Potwierdź zmiany" arrives to its right only when something is
-          actually unconfirmed. `flex-wrap` is what keeps a long translation
-          („Mentés alapértelmezettként" beside „Változtatások megerősítése")
-          dropping to a second line instead of widening the card. */}
-        {pagerActive ? (
-          <div
-            className="mt-4 flex items-center justify-between gap-3 min-[68.5rem]:hidden"
-            data-testid="profile-settings-pager-nav"
-          >
-            <button
-              type="button"
-              onClick={() => goToPagerStep(pagerStep - 1)}
-              disabled={pagerStep === 1}
-              data-testid="profile-settings-pager-back"
-              className="pro-focus-ring inline-flex h-11 items-center gap-2 rounded-full border border-[var(--g-line)] bg-white px-4 text-[13px] font-semibold text-[var(--g-ink)] disabled:invisible"
-            >
-              <span aria-hidden>←</span>
-              {stepCopy.back}
-            </button>
-            {pagerStep < PAGER_STEPS ? (
-              <button
-                type="button"
-                onClick={() => goToPagerStep(pagerStep + 1)}
-                data-testid="profile-settings-pager-next"
-                className="pro-focus-ring inline-flex h-11 items-center gap-2 rounded-full bg-[var(--g-graphite)] px-5 text-[13px] font-semibold text-white"
-              >
-                {stepCopy.next}
-                <span aria-hidden>→</span>
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+        {/* DESIGN V3.0 correction I — „[ ] Ustaw jako domyślne" at the bottom of
+            the box, under a hairline: a light row, no explanation and no second
+            save button. It replaces „Zapisz jako domyślne" on the desktop too. */}
+        <DefaultsCheckbox
+          checked={asDefault}
+          disabled={defaultsOwner === null}
+          onChange={setAsDefault}
+          className="mt-4"
+        />
+        {/* The confirmation stays where it has always been — INSIDE expanded
+            Settings, arriving only when something is actually unconfirmed (or
+            when ticked defaults still wait for it). `flex-wrap` keeps a long
+            translation dropping to a second line instead of widening the card. */}
         <div
-          className="mt-5 flex flex-wrap items-center gap-3 min-[68.5rem]:mt-4"
+          className="mt-4 flex flex-wrap items-center gap-3 min-[68.5rem]:mt-3"
           data-settings-cell="actions"
-          data-settings-step="3"
         >
-          <button
-            type="button"
-            onClick={saveAsDefault}
-            disabled={defaultsOwner === null || defaultsStatus === 'saving'}
-            data-testid="profile-settings-save-default"
-            className="pro-focus-ring inline-flex h-11 items-center justify-center rounded-full border border-[var(--g-line)] bg-white px-5 text-[13px] font-semibold whitespace-nowrap text-[var(--g-ink)] transition-colors hover:border-ink/35 disabled:cursor-not-allowed disabled:text-[var(--g-lock)]"
-          >
-            {defaultsStatus === 'saving' ? 'Zapisuję…' : 'Zapisz jako domyślne'}
-          </button>
-          {!confirmed || hardConflict ? (
+          {showConfirm ? (
             <button
               type="button"
               disabled={hardConflict}
@@ -1214,12 +988,309 @@ export function WorkbenchSettingsLine({
           </p>
         ) : null}
       </div>
+    </section>
+  );
+}
 
+/* ── DESIGN V3.0 fields ────────────────────────────────────────────────────
+   Presentations of the settings above, shared by the panel and the V3 setup.
+   Each one is a view of a handler from `useProSettingsAuthority`; none keeps a
+   copy of a setting. */
+
+/** Phone and iPad portrait: „Rodzaj lodów · Gelato ›", a row that opens the
+ *  platform's own picker. The change still goes through the panel's
+ *  confirmation (a product type is a new base). */
+function ProductTypeRow({
+  value,
+  onChange,
+}: {
+  value: VisibleProductType;
+  onChange: (next: VisibleProductType) => void;
+}) {
+  return (
+    <label className="relative flex min-h-11 items-center justify-between gap-3 border-b border-[var(--g-line-quiet)] pb-3 min-[68.5rem]:hidden">
+      <span className="text-[15px] leading-[1.2] font-medium text-[var(--g-ink)]">
+        {panelCopy.productType}
+      </span>
+      <span className="relative flex min-w-0 items-center">
+        <select
+          className="pro-focus-ring min-w-0 appearance-none bg-transparent pr-5 text-right text-[15px] leading-[1.2] text-[var(--g-text-secondary)]"
+          value={value}
+          aria-label={panelCopy.productType}
+          data-testid="workbench-product-type-row"
+          onChange={(event) => onChange(event.currentTarget.value as VisibleProductType)}
+        >
+          {PRO_VISIBLE_PRODUCT_TYPES.map((option) => (
+            <option key={option} value={option}>
+              {g.productTypes[option]}
+            </option>
+          ))}
+        </select>
+        <svg
+          aria-hidden
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          className="pointer-events-none absolute right-0 text-[var(--g-text-secondary)]"
+        >
+          <path
+            d="M9 6l6 6-6 6"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+    </label>
+  );
+}
+
+/**
+ * The machine field. Phone and iPad portrait: the V2.1 settings field under a
+ * quiet „Maszyna" label (48 px, one hairline, ▾). Desktop: the frozen stacked
+ * cell. Both are the SAME catalogue the product offers today (the account
+ * stores one machine preference, so the design's list of „your machines" has
+ * no source yet — owner decision) and the same selection door.
+ */
+export function MachineSettingsField({
+  settings,
+  variant = 'panel',
+}: {
+  settings: ProSettingsAuthority;
+  variant?: 'panel' | 'setup';
+}) {
+  const [customMachineOpen, setCustomMachineOpen] = useState(false);
+  const { machineValue, machineOptions, machineLabelOf, selectMachine, selectCustom } = settings;
+  const choose = (id: string) => selectMachine(id, () => setCustomMachineOpen(true));
+  return (
+    <>
+      <label className={cn('block', variant === 'panel' && 'min-[68.5rem]:hidden')}>
+        <span
+          className={cn(
+            variant === 'setup'
+              ? 'mb-[9px] block font-mono text-[11.5px] leading-none tracking-[0.08em] text-[var(--g-text-muted)] uppercase'
+              : cn(panelFieldLabel, 'mb-1.5'),
+          )}
+        >
+          {panelCopy.machine}
+        </span>
+        <span className="relative block">
+          <select
+            className="pro-focus-ring h-12 w-full min-w-0 appearance-none rounded-[9px] border border-[var(--g-line)] bg-white pr-10 pl-[14px] text-[15px] font-semibold text-[var(--g-ink)] transition-colors hover:border-ink/35"
+            value={machineValue}
+            aria-label={panelCopy.machine}
+            data-testid={variant === 'setup' ? 'pro-setup-machine' : 'workbench-machine-field'}
+            onChange={(event) => choose(event.currentTarget.value)}
+          >
+            {machineOptions.map((option) => (
+              <option key={option} value={option}>
+                {machineLabelOf(option)}
+              </option>
+            ))}
+          </select>
+          <svg
+            aria-hidden
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-[#5f5a52]"
+          >
+            <path
+              d="M6 9l6 6 6-6"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </label>
+      {variant === 'panel' ? (
+        <div className="hidden min-[68.5rem]:block">
+          <LabeledSelect
+            label="Maszyna"
+            value={machineValue}
+            options={machineOptions}
+            labelOf={machineLabelOf}
+            onChange={choose}
+            testid="workbench-machine"
+            stacked
+          />
+        </div>
+      ) : null}
       <RecipeCustomMachineDialog
         open={customMachineOpen}
         onClose={() => setCustomMachineOpen(false)}
-        onComplete={selectCustom}
+        onComplete={(completion) => {
+          if (selectCustom(completion)) setCustomMachineOpen(false);
+        }}
       />
-    </section>
+    </>
+  );
+}
+
+/** Temperatura podawania — one segmented control, each segment the name over
+ *  the temperature; the accessible name keeps „Miękkie · −11 °C". */
+export function ServingSegments({
+  value,
+  onPick,
+  testid = 'workbench-serving-segments',
+}: {
+  value: string;
+  onPick: (id: string) => void;
+  testid?: string;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={panelCopy.serving}
+      className="pro-segmented grid auto-cols-fr grid-flow-col gap-[3px] rounded-[13px] bg-[#f4f1ec] p-[3px]"
+      data-testid={testid}
+    >
+      {SERVING_SEGMENT_ORDER.map((id) => {
+        const segment = panelCopy.servingSegments[id];
+        const selected = value === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            aria-label={
+              segment.temperature ? `${segment.name} · ${segment.temperature}` : segment.name
+            }
+            data-testid={`${testid}-${id}`}
+            onClick={() => onPick(id)}
+            className={cn(
+              'pro-focus-ring grid min-h-11 content-center justify-items-center gap-1 rounded-[10px] px-1 py-2 text-center',
+              selected && 'bg-white shadow-[0_1px_2px_rgba(0,0,0,0.08),0_0_0_1px_var(--g-line)]',
+            )}
+          >
+            <b
+              className={cn(
+                'text-[13.5px] leading-[1.1] font-semibold',
+                selected ? 'text-[var(--g-ink)]' : 'text-[#3b3833]',
+              )}
+            >
+              {segment.name}
+            </b>
+            {segment.temperature ? (
+              <small className="font-mono text-[11.5px] leading-none font-medium text-[var(--g-text-muted)]">
+                {segment.temperature}
+              </small>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** OPTIMAL / ECO as two selectable tiles, the description inside each, one
+ *  selection. The panel says „Priorytet smaku / kosztu" with no „Tryb"
+ *  heading; the V3 setup's Step 2 shows its longer Point 2 sentences. */
+export function StrategyTiles({
+  value,
+  onChange,
+  variant,
+}: {
+  value: FormulationStrategy;
+  onChange: (next: FormulationStrategy) => void;
+  variant: 'panel' | 'setup';
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label={
+        variant === 'setup' ? copy.proWorkbench.setupFlow.modeLabel : panelCopy.strategyGroup
+      }
+      className="grid grid-cols-2 gap-2"
+      data-testid={variant === 'setup' ? 'pro-setup-strategy' : 'workbench-strategy'}
+      data-settings-control={variant === 'panel' ? 'strategy' : undefined}
+    >
+      {FORMULATION_STRATEGIES.map((strategy) => {
+        const selected = value === strategy;
+        return (
+          <button
+            key={strategy}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            data-testid={`${variant === 'setup' ? 'pro-setup-strategy' : 'workbench-strategy'}-${strategy}`}
+            onClick={() => onChange(strategy)}
+            className={cn(
+              'pro-focus-ring relative grid min-h-14 content-start gap-[3px] rounded-[9px] bg-white px-[11px] py-[9px] text-left',
+              selected
+                ? 'shadow-[inset_0_0_0_1.5px_var(--g-ink)]'
+                : 'shadow-[inset_0_0_0_1px_var(--g-line)]',
+            )}
+          >
+            <b className="pr-3.5 text-[13px] leading-[1.2] font-bold tracking-[0.01em] text-[var(--g-ink)]">
+              {STRATEGY_COPY[strategy].label}
+            </b>
+            <small className="text-[11px] leading-[1.35] text-[var(--g-text-secondary)]">
+              {variant === 'setup'
+                ? copy.proWorkbench.setupFlow.modeNotes[strategy]
+                : STRATEGY_COPY[strategy].tile}
+            </small>
+            {selected ? (
+              <i
+                aria-hidden
+                className="absolute top-[11px] right-[11px] size-2 rounded-full bg-[var(--g-ink)]"
+              />
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** „[ ] Ustaw jako domyślne" — the label on the left, the box on the right. */
+export function DefaultsCheckbox({
+  checked,
+  disabled = false,
+  onChange,
+  note = null,
+  className,
+  testid = 'profile-settings-default',
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (next: boolean) => void;
+  note?: string | null;
+  className?: string;
+  testid?: string;
+}) {
+  return (
+    <label
+      className={cn(
+        'flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 border-t border-[#efebe4] pt-3',
+        disabled && 'cursor-not-allowed opacity-60',
+        className,
+      )}
+    >
+      <span className="min-w-0">
+        <span className="block text-[14.5px] leading-[1.3] font-medium text-[var(--g-ink)]">
+          {panelCopy.asDefault}
+        </span>
+        {note ? (
+          <span className="mt-px block text-[11.5px] leading-[1.35] text-[var(--g-text-muted)]">
+            {note}
+          </span>
+        ) : null}
+      </span>
+      <input
+        type="checkbox"
+        className="pro-default-check size-5 shrink-0 cursor-pointer accent-[var(--g-ink)] disabled:cursor-not-allowed"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.currentTarget.checked)}
+        data-testid={testid}
+      />
+    </label>
   );
 }

@@ -185,10 +185,22 @@ describe('PREP-10 one preparation plan in the existing views', () => {
     expect(html).toContain('Pokrój truskawki i dodaj przy podaniu. Nie miksuj z bazą.');
 
     const home = readFileSync(resolve('src/features/home-creator/ui/HomePreparation.tsx'), 'utf8');
-    expect(home).toContain('preparationPlanForSession(session, guide)');
-    expect(home).toContain('preparationOrderedBaseLines(');
-    expect(home).toContain('activeStep?.instruction');
-    // HOME adds no process wording of its own.
-    expect(home).not.toMatch(/na ciepło'|na zimno'|schłódź|Pokrój/);
+    const read = (path: string) => readFileSync(resolve(path), 'utf8');
+    const controller = read(
+      'src/features/production-workspace/process/useLocalProductionProcess.ts',
+    );
+    const steps = read('src/features/production-workspace/process/productionProcessSteps.ts');
+    const view = read('src/features/production-workspace/process/ProductionProcess.tsx');
+    // DESIGN V3.0 IV D–I: HOME hosts the ONE batch process, whose numbered steps ARE this
+    // plan — its order and its words.
+    expect(home).toContain('useLocalProductionProcess(');
+    expect(controller).toContain('preparationPlanForSession(session, guide)');
+    expect(controller).toContain('productionProcessSteps(plan');
+    expect(view).toContain('planLine.instruction');
+    expect(steps).toContain('for (const step of plan.steps)');
+    // Neither HOME nor the process adds process wording of its own.
+    for (const source of [home, controller, steps, view]) {
+      expect(source).not.toMatch(/na ciepło'|na zimno'|schłódź|Pokrój/);
+    }
   });
 });
