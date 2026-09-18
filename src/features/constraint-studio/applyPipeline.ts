@@ -97,6 +97,7 @@ import { sorbetStabilizerWholeGramBand } from '@/features/recipe-constraints/sor
 import { constraintStudioCopy as copy } from './constraintStudioCopy';
 import {
   applyPreviewInstructions,
+  isBootstrapOnlyInstructionSet,
   samePreviewInstructions,
   type PreviewLineInstruction,
 } from './previewInstructions';
@@ -6921,6 +6922,73 @@ function enforceTargetBatchInvariant(
 }
 
 /**
+ * GEL-P0-027 („an empty sweep is a refusal, never an echo”) for the ANSWER too.
+ *
+ * `already_clean` tells the customer the recipe on screen needs nothing. The bands
+ * the pipeline checks before saying so do not include the Main envelope, so a Crown
+ * group the Main authority itself rejects was published as clean. Served staging
+ * 2026-09-18: a strawberry gelato (berry floor 25 %) plus KIWI as a second priority
+ * (kiwi hard limit 20 %) — the combined envelope is empty, the Main sweep refused
+ * (`crownRefusal`), and HOME said „Receptura jest gotowa” with KIWI at 0 g.
+ *
+ * Such a recipe answers to the SAME Main safety check a proposal does (below): the
+ * customer's constrained Mains get the typed ratio conflict, anything else the typed
+ * `no_proposal` carrying the Main authority's own violations. A group the authority
+ * accepts keeps `already_clean` unchanged.
+ */
+function alreadyCleanMainGroupRefusal(
+  input: RecipeInput,
+  set: ConstraintSet,
+  options: OptimizePreviewOptions,
+): BuildPreviewResult | null {
+  const snapshots = options.productBehaviorSnapshots ?? {};
+  if (Object.keys(snapshots).length === 0) return null;
+  if (captureMainIngredientIntent(input).length === 0) return null;
+  const verdict = verifyMainEnvelope({
+    recipe: input,
+    snapshots,
+    mode:
+      normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode) === 'eco'
+        ? 'eco'
+        : 'optimal',
+    enforceFloor: true,
+    technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+  });
+  if (verdict.ok) return null;
+  const quantityViolations = verdict.violations.filter(
+    (violation) =>
+      violation.code === 'main_below_floor' ||
+      violation.code === 'main_above_hard_limit' ||
+      violation.code === 'liquid_dairy_carrier_below_floor',
+  );
+  if (quantityViolations.length === 0) return null;
+  const constrainedMains = captureMainIngredientIntent(input).filter((main) => {
+    const constraint = set.byLineId[main.lineId];
+    return constraint !== undefined && constraint.mode !== 'ai';
+  });
+  if (constrainedMains.length > 0) {
+    return {
+      ok: false,
+      code: 'main_ratio_conflict',
+      lineIds: constrainedMains.map((main) => main.lineId),
+      ingredientNames: constrainedMains.map((main) => main.ingredientName),
+      messagePl:
+        `Blokady lub zakresy składników Głównych ` +
+        `(${constrainedMains.map((main) => main.ingredientName).join(', ')}) ` +
+        `nie pozwalają osiągnąć zatwierdzonego minimum Main. Gellatti nie zmieniło receptury.`,
+      blockingViolations: quantityViolations,
+    };
+  }
+  return {
+    ok: false,
+    code: 'no_proposal',
+    violatedMetrics: [...new Set(quantityViolations.map((violation) => violation.code))],
+    solverInvocations: 0,
+    blockingViolations: quantityViolations,
+  };
+}
+
+/**
  * OWNER 2026-09-03 — the Crown-OFF Main SAFETY BACKSTOP.
  *
  * `verifyMainEnvelope` gained a capability-scoped safety band so that an
@@ -6976,7 +7044,11 @@ export function buildOptimizePreview(
           },
         }
       : internalResult;
-  if (!result.ok) return result;
+  if (!result.ok) {
+    return result.code === 'already_clean'
+      ? (alreadyCleanMainGroupRefusal(input, set, options) ?? result)
+      : result;
+  }
   const snapshots = options.productBehaviorSnapshots ?? {};
   if (Object.keys(snapshots).length === 0) return result;
   const proposedMains = captureMainIngredientIntent(result.preview.proposedInput);
@@ -6984,7 +7056,20 @@ export function buildOptimizePreview(
     // Exact Direction owns its own hard-safe projection. Its Main proof is
     // rebuilt only to keep Apply trustless; it is not a request to enforce the
     // Main floor as a separate optimization objective.
-    if (hasActiveExactDirectionObjective(input)) return result;
+    //
+    // GEL-P0-027 („an empty sweep is a refusal, never an echo"): that holds
+    // only for a REAL Main proposal. A refused Main sweep (`crownRefusal`) hands
+    // back the unsized draft, and a diagnostic-only vector is not a proposal at
+    // all; letting either through published the served 1340 g banana + kiwi
+    // case as a REJECTED PROPOSAL („Propozycja Gellatti została odrzucona …
+    // nośnik mleczny ma 22.8%") instead of the conflict it is. Those two answer
+    // to the Main safety check below, which ends in the typed lock conflict and
+    // CORE's relaxation offer; its gap („Przy obecnych ustawieniach…”, owner
+    // 2026-09-11) still measures the customer's own amounts at this batch.
+    const realMainProposal =
+      result.preview.mainObjective?.crownRefusal === undefined &&
+      result.preview.diagnosticOnly !== true;
+    if (hasActiveExactDirectionObjective(input) && realMainProposal) return result;
     // Exact Sorbet Direction owns its own already-verified projection and does
     // not carry a Main-objective proof. This backstop is intentionally scoped
     // to the Main search/fallback path that produced the invalid Owner result.
@@ -9814,15 +9899,22 @@ export class VerifiedApply {
     if (preview.previewInstructions !== undefined || previewInstructionAuthorization) {
       const proof = preview.previewInstructions;
       const authorized = previewInstructionAuthorization;
+      // OWNER §18 (2026-09-18): a session made ONLY of HOME's technical
+      // bootstraps (read from the trusted session, never from the payload) is the
+      // plain recalculation of the recipe on its bootstrapped copy, so it may
+      // carry every route that plain run stages — the Direction fallback ladder
+      // and its Starter Pack rescue, the Suggested Fix / lock recovery. Each one
+      // is still verified below, on the adjusted draft, by this same door.
+      const plainRunOnCopy = authorized != null && isBootstrapOnlyInstructionSet(authorized.lines);
       if (
         proof === undefined ||
         authorized == null ||
-        preview.kind !== 'optimize' ||
+        (preview.kind !== 'optimize' && !(plainRunOnCopy && preview.kind === 'suggested_fix')) ||
         preview.substitution !== undefined ||
-        preview.suggestedFix !== undefined ||
+        (preview.suggestedFix !== undefined && !plainRunOnCopy) ||
         preview.explicitStandardRemoval !== undefined ||
-        preview.directionFallback !== undefined ||
-        preview.starterPackRescue !== undefined ||
+        (preview.directionFallback !== undefined && !plainRunOnCopy) ||
+        (preview.starterPackRescue !== undefined && !plainRunOnCopy) ||
         authorized.baseFingerprint !== proof.baseFingerprint ||
         !samePreviewInstructions(authorized.lines, proof.lines) ||
         workingStateFingerprint(current, currentConstraints) !== authorized.baseFingerprint ||
@@ -9849,7 +9941,9 @@ export class VerifiedApply {
         null,
         null,
         directionConsent,
-        null,
+        // Bound to the adjusted draft's own fingerprint, exactly as a plain
+        // run's Suggested Fix is bound to the recipe's.
+        plainRunOnCopy ? suggestedFixAuthorization : null,
         currentProductBehaviorSnapshots,
         technicalOnlyMainLineIds,
         proposalAuthorization,

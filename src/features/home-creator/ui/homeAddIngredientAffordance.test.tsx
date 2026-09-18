@@ -23,13 +23,19 @@ const section = readFileSync('src/features/home-creator/ui/HomeRecipeSection.tsx
 const picker = readFileSync('src/features/ingredient-builder/ProductPickerPopover.tsx', 'utf8');
 
 describe('the add-ingredient affordance is attached to the ingredient list', () => {
-  it('sits immediately after the list, before sweetness', () => {
+  it('sits immediately after the list; the sweetness icon stands beside it (DESIGN XI)', () => {
+    // SUPERSEDED 2026-09-17 (DESIGN V3.0 XI): sweetness is no longer a block below the add
+    // controls — it is an icon IN the add row, opening its own layer.
+    // Was: expect(addControls).toBeLessThan(section.indexOf('data-testid="home-sweetness"')).
     const listEnd = section.indexOf('</ul>');
     const addControls = section.indexOf('data-testid="home-add-controls"');
-    const sweetness = section.indexOf('data-testid="home-sweetness"');
+    const sweetnessIcon = section.indexOf('data-testid="home-sweetness-open"');
+    const actions = section.indexOf('data-testid="home-recipe-actions"');
     expect(listEnd).toBeGreaterThan(-1);
     expect(addControls).toBeGreaterThan(listEnd);
-    expect(addControls).toBeLessThan(sweetness);
+    expect(sweetnessIcon).toBeGreaterThan(addControls);
+    expect(sweetnessIcon).toBeLessThan(actions);
+    expect(section).not.toContain('data-testid="home-sweetness"');
   });
 
   it('is ONE control for the section, not one per row', () => {

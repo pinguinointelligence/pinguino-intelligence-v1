@@ -25,6 +25,18 @@
  *   The CTA and the „Dodaj przynajmniej jeden składnik albo smak." hint no longer
  *   exist before the first BASE idea — neither greyed out nor as an explanation.
  * ─────────────────────────────────────────────────────────────────────────────────
+ *
+ * ── RE-FROZEN BY OWNER — 2026-09-17 (accepted DESIGN V3.0, corrections VI + IX) ───
+ *   question „Jakie lody robimy dzisiaj?" → „Jakie lody dziś robimy?" (BRIEF §6.2),
+ *     now a visible 21 px heading above the field.
+ *   CTA „Zamień pomysł w recepturę" → „Rozpocznij recepturę" — ONE action for both
+ *     start modes („Twój pomysł" | „Receptury"), pinned to the bottom of the start
+ *     screen (`HomeStart`), no longer inside this section. It is shown VISIBLY
+ *     INACTIVE until there is a minimal input, and the empty field says why:
+ *     „Dodaj przynajmniej jeden składnik albo smak." returns under it. This replaces
+ *     the 2026-09-10 rule above that the CTA and the hint did not exist before the
+ *     first base idea. A topping alone still does not make the action active.
+ * ─────────────────────────────────────────────────────────────────────────────────
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -33,15 +45,17 @@ import { HOME_CREATOR_COPY_BY_LOCALE, homeCreatorCopy } from '../homeCreatorCopy
 const en = HOME_CREATOR_COPY_BY_LOCALE.en;
 
 const intent = readFileSync('src/features/home-creator/ui/HomeIntentSection.tsx', 'utf8');
+const start = readFileSync('src/features/home-creator/ui/HomeStart.tsx', 'utf8');
 
 const CHIPS_BRANCH = '{chips.length > 0 ? (';
 
 describe('frozen copy', () => {
   it('keeps the exact approved strings', () => {
     expect(homeCreatorCopy.intent.headline).toBe('Stwórz własne lody. Jak profesjonalista.');
-    expect(homeCreatorCopy.intent.question).toBe('Jakie lody robimy dzisiaj?');
+    expect(homeCreatorCopy.intent.question).toBe('Jakie lody dziś robimy?');
     expect(homeCreatorCopy.intent.placeholder).toBe('Wpisz składnik lub smak…');
-    expect(homeCreatorCopy.intent.cta).toBe('Zamień pomysł w recepturę');
+    expect(homeCreatorCopy.intent.cta).toBe('Rozpocznij recepturę');
+    expect(homeCreatorCopy.intent.emptyHint).toBe('Dodaj przynajmniej jeden składnik albo smak.');
     expect(homeCreatorCopy.intent.anythingElse).toBe('Coś jeszcze dodajemy?');
   });
 
@@ -145,14 +159,21 @@ describe('frozen hierarchy — the dot is the canonical accent', () => {
     expect(dot).toContain('aria-hidden');
   });
 
-  it('keeps the desktop CTA restrained and centred, full width on mobile', () => {
-    expect(intent).toContain("'sm:mx-auto sm:max-w-[360px]'");
-    expect(intent).toContain('w-full');
+  it('DESIGN V3.0 VI: the question is a visible heading that leads into the field', () => {
+    expect(intent).toContain('data-testid="home-intent-question"');
+    expect(intent.indexOf('data-testid="home-intent-question"')).toBeLessThan(
+      intent.indexOf('data-testid="home-composer"'),
+    );
+    expect(intent).toContain('text-[21px]');
   });
 
-  it('keeps the primary CTA last', () => {
-    expect(intent.indexOf(CHIPS_BRANCH)).toBeLessThan(
-      intent.indexOf('data-testid="home-intent-cta"'),
+  it('DESIGN V3.0 VI: the primary CTA left the section for the start screen, and stays last', () => {
+    expect(intent).not.toContain('data-testid="home-intent-cta"');
+    expect(start).toContain('data-testid="home-intent-cta"');
+    // After everything the start screen shows, in one bar pinned at the bottom.
+    expect(start.indexOf('className="home-start-body"')).toBeLessThan(
+      start.indexOf('data-testid="home-intent-cta"'),
     );
+    expect(start).toContain("data-placement={atStart ? 'pinned' : 'inline'}");
   });
 });

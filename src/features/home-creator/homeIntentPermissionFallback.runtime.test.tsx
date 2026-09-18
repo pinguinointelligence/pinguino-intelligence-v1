@@ -6,18 +6,32 @@ const mocks = vi.hoisted(() => ({
   calls: [] as Array<{ method: string; args: unknown[] }>,
   searchProducts: vi.fn(),
   publicRows: [] as Array<Record<string, unknown>>,
+  viewRows: [] as Array<Record<string, unknown>>,
 }));
 
 vi.mock('@/services/globalCatalog', () => ({
   searchProducts: mocks.searchProducts,
 }));
 
-vi.mock('@/features/mapper-search-runtime', () => ({
-  planMapperCatalogSearch: vi.fn(async () => ({
-    blocked: false,
-    tokenGroups: [['banan', 'banana', 'platan']],
-  })),
-}));
+/* REAL SA-10 runtime + REAL generated SA-03 decisions; only the release fetch is local. */
+vi.mock('@/features/mapper-search-runtime', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/mapper-search-runtime')>();
+  const { createTestMapperSearchRuntime } =
+    await import('@/features/mapper-search-runtime/testRelease');
+  const runtime = createTestMapperSearchRuntime();
+  return {
+    ...actual,
+    loadMapperSearchRuntime: async () => runtime,
+    planMapperCatalogSearch: async (
+      text: string,
+      options: Parameters<typeof actual.planMapperCatalogSearch>[1] = {},
+    ) =>
+      actual.createMapperCatalogSearchPlan(runtime, text, {
+        ...options,
+        telemetry: { record() {} },
+      }),
+  };
+});
 
 vi.mock('@/services/ingredients', () => ({
   getEngineApprovedIngredientById: vi.fn(async () => {
@@ -30,14 +44,23 @@ vi.mock('@/services/products', () => ({ getProduct: vi.fn() }));
 vi.mock('@/lib/supabase/client', () => {
   const makeBuilder = (): Record<string, unknown> => {
     const builder: Record<string, unknown> = {};
-    for (const method of ['select', 'or', 'eq', 'order', 'range', 'abortSignal']) {
+    let ids: readonly string[] | null = null;
+    for (const method of ['select', 'or', 'eq', 'order', 'range', 'abortSignal', 'in']) {
       builder[method] = (...args: unknown[]) => {
         mocks.calls.push({ method, args });
+        if (method === 'in' && args[0] === 'ingredient_id') ids = args[1] as readonly string[];
         return builder;
       };
     }
+    // An exact-id read sees the whole public view; a name search sees only its page.
     builder.then = (onOk: (value: unknown) => unknown) =>
-      Promise.resolve({ data: mocks.publicRows, error: null }).then(onOk);
+      Promise.resolve({
+        data:
+          ids === null
+            ? mocks.publicRows
+            : mocks.viewRows.filter((row) => ids!.includes(row.ingredient_id as string)),
+        error: null,
+      }).then(onOk);
     return builder;
   };
   return {
@@ -55,6 +78,9 @@ import { parseIntent } from './homeIntentParsing';
 import { useHomeDraftStore, type IntentChip } from './homeDraftStore';
 import { useHomeIntentIngredients } from './useHomeIntentIngredients';
 import { useRecipeStore } from '@/stores/recipeStore';
+
+/** The real 27 963-alias SA-10 runtime resolves several inputs per test; CI runners are slow. */
+const REAL_RUNTIME_TIMEOUT_MS = 60_000;
 
 const BANANA_ID = 'PI-ING-000345';
 const safeRow = (overrides: Record<string, unknown>): Record<string, unknown> => ({
@@ -123,11 +149,12 @@ beforeEach(() => {
       dairy_free: 'true',
     }),
   ];
+  mocks.viewRows = [...mocks.publicRows];
   useHomeDraftStore.getState().startNew();
   useRecipeStore.setState({ items: [], toppings: [], baseOrder: [], priority_mode: 'AUTO' });
 });
 
-describe('served G anonymous capability fallback', () => {
+describe('served G anonymous capability fallback', { timeout: REAL_RUNTIME_TIMEOUT_MS }, () => {
   it.each([
     ['HOME-BANANA-P1-01', 'banan'],
     ['HOME-BANANA-P1-02', 'bananowe'],
@@ -154,8 +181,13 @@ describe('served G anonymous capability fallback', () => {
         ambiguous: false,
       });
       expect(resolved.candidates).toBeUndefined();
+      // Owner 2026-09-17: the shared SA-03 decision replaces the HOME banana exception.
+      // One exact-id read of the public view — no search RPC, no name ranking.
       expect(mocks.searchProducts).not.toHaveBeenCalled();
-      expect(mocks.calls.find((call) => call.method === 'from')).toBeUndefined();
+      expect(mocks.calls.filter((call) => call.method === 'from')).toEqual([
+        { method: 'from', args: ['mapper_basement_search_demo'] },
+      ]);
+      expect(mocks.calls.some((call) => call.method === 'or')).toBe(false);
 
       const materialized = await api.addResolvedChip(resolved);
       expect(materialized).toMatchObject({

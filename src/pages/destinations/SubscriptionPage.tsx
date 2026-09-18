@@ -203,7 +203,7 @@ export function SubscriptionPage() {
       aria-pressed={cycle === value}
       onClick={() => setCycle(value)}
       className={cn(
-        'rounded-full px-4 py-1.5 text-[13px] font-medium transition',
+        'min-h-11 rounded-full px-4 py-1.5 text-[13px] font-medium transition',
         focusRing,
         cycle === value ? 'bg-ink text-paper' : color.textSecondary,
       )}

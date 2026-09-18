@@ -17,6 +17,10 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  applicationViewportGeometry,
+  applicationViewportSize,
+} from '@/features/shell/applicationScaleAuthority';
 import { cn } from '@/lib/cn';
 import { availableSteps, HOME_TUTORIAL_STEPS, type TutorialStep } from './tutorialSteps';
 import { readSeen, shouldAutoStart, useTutorialStore } from './tutorialState';
@@ -36,7 +40,9 @@ function anchorRect(anchor: string): Rect | null {
   if (typeof document === 'undefined') return null;
   const el = document.querySelector<HTMLElement>(`[data-testid="${anchor}"]`);
   if (!el) return null;
-  const box = el.getBoundingClientRect();
+  /* The overlay is portalled into BODY, which carries the desktop application zoom, so
+     its CSS pixels are application pixels: painted pixels are converted back to them. */
+  const box = applicationViewportGeometry(el.getBoundingClientRect());
   if (box.width === 0 && box.height === 0) return null;
   return {
     anchor,
@@ -115,7 +121,9 @@ export function TutorialOverlay({
     // Every browser we ship to has it; jsdom and some embedded webviews do
     // not. A tutorial must never be the thing that throws on a page.
     if (typeof el?.scrollIntoView === 'function') {
-      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      /* `nearest` moves the page only as far as the element needs. `center` scrolled the
+         header and the HOME tabs off a phone screen and left them there after the tour. */
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
 
     /* A smooth scroll is not finished when it starts, so the box is followed
@@ -180,7 +188,7 @@ export function TutorialOverlay({
   /* Place the card below the spotlight when there is room, otherwise above.
      `rect` is null for a step with no anchor on screen (the HOME/PRO opener),
      which centres the card instead of pointing at nothing. */
-  const viewportH = typeof window === 'undefined' ? 800 : window.innerHeight;
+  const viewportH = typeof window === 'undefined' ? 800 : applicationViewportSize().height;
   const below = spotlight ? spotlight.top + spotlight.height + 16 : viewportH / 2;
   const placeAbove = spotlight !== null && below > viewportH - 190;
 

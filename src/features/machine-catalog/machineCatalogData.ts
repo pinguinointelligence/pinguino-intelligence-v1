@@ -58,8 +58,10 @@ import type { HomeMachineProfile } from './types';
  * 1.0 L vessel derives 950 g as Gellatti guidance, not manufacturer grams.
  * 2026-08-28.2 — complete current manufacturer evidence, working/cycle
  * capacities and product-aware batch authority for all ten supported records.
+ * 2026-09-17.1 — the three Ninja CREAMi records carry the 24 h mixture freeze
+ * stated on their own model-exact official product pages (owner addendum).
  */
-export const MACHINE_CATALOG_VERSION = '2026-09-05.1';
+export const MACHINE_CATALOG_VERSION = '2026-09-17.1';
 
 /** Provenance meta for the whole seed (report + future persistence track). */
 export const MACHINE_CATALOG_META = {
@@ -128,7 +130,11 @@ export const NINJA_CREAMI_NC302EU: HomeMachineProfile = {
   recommendedBatchBasis: 'confirmed_vessel_capacity',
   requiresPreFreeze: true,
   preFreezeTarget: 'mixture',
-  preFreezeMinimumHours: null, // duration not stated in Annex A — do not guess
+  // Owner addendum 2026-09-17 → verified on the model-exact official page recorded
+  // below (re-read 2026-09-17): "congelar los ingredientes en la tarrina durante
+  // 24 horas". Annex A states no duration. The page gives a duration, not a
+  // minimum, so the customer copy says "24 h" and never a lower bound.
+  preFreezeMinimumHours: 24,
   servingStyle: 'scoop',
   specificationSource: 'manufacturer_official',
   // Live destination of the Annex-B URL (301 from ninjakitchen.es, 2026-07-17).
@@ -141,7 +147,13 @@ export const NINJA_CREAMI_NC302EU: HomeMachineProfile = {
     {
       kind: 'product_page',
       url: 'https://www.sharkninja.es/ninja-creami-6-funciones-pack-ahorro-6-tarrinas/NC302EUBES.html',
-      verifiedFacts: ['nc302eu_family', 'two_473_ml_tubs', 'max_fill', 'mixture_pre_freeze'],
+      verifiedFacts: [
+        'nc302eu_family',
+        'two_473_ml_tubs',
+        'max_fill',
+        'mixture_pre_freeze',
+        'twenty_four_hour_mixture_pre_freeze',
+      ],
     },
   ],
   specificationVerifiedAt: '2026-09-05',
@@ -189,7 +201,11 @@ export const NINJA_CREAMI_DELUXE_NC502EU: HomeMachineProfile = {
   recommendedBatchBasis: 'confirmed_vessel_capacity',
   requiresPreFreeze: true,
   preFreezeTarget: 'mixture',
-  preFreezeMinimumHours: null,
+  // Owner addendum 2026-09-17 → verified on the model-exact official page recorded
+  // below (re-read 2026-09-17): "congelar los ingredientes en la tarrina durante
+  // 24 horas". Annex A states no duration. The page gives a duration, not a
+  // minimum, so the customer copy says "24 h" and never a lower bound.
+  preFreezeMinimumHours: 24,
   servingStyle: 'scoop',
   specificationSource: 'manufacturer_official',
   // Model-exact live product page (stronger source than the old catalog URL,
@@ -203,7 +219,12 @@ export const NINJA_CREAMI_DELUXE_NC502EU: HomeMachineProfile = {
     {
       kind: 'product_page',
       url: 'https://www.sharkninja.es/ninja-creami-deluxe-10-funciones-pack-ahorro-4-tarrinas/NC502EUBES.html',
-      verifiedFacts: ['nc502eu_family', 'two_706_ml_tubs', 'mixture_pre_freeze'],
+      verifiedFacts: [
+        'nc502eu_family',
+        'two_706_ml_tubs',
+        'mixture_pre_freeze',
+        'twenty_four_hour_mixture_pre_freeze',
+      ],
     },
   ],
   specificationVerifiedAt: '2026-09-05',
@@ -250,7 +271,11 @@ export const NINJA_CREAMI_SCOOP_SWIRL_NC7: HomeMachineProfile = {
   recommendedBatchBasis: 'confirmed_vessel_capacity',
   requiresPreFreeze: true,
   preFreezeTarget: 'mixture',
-  preFreezeMinimumHours: null,
+  // Owner addendum 2026-09-17 → verified on the model-exact official page recorded
+  // below (re-read 2026-09-17): "congelar los ingredientes en la tarrina durante
+  // 24 horas". Annex A states no duration. The page gives a duration, not a
+  // minimum, so the customer copy says "24 h" and never a lower bound.
+  preFreezeMinimumHours: 24,
   servingStyle: 'both', // "Scoop & Swirl" — scooped and soft dispense (name-level fact)
   specificationSource: 'manufacturer_official',
   specificationSourceUrl:
@@ -259,7 +284,13 @@ export const NINJA_CREAMI_SCOOP_SWIRL_NC7: HomeMachineProfile = {
     {
       kind: 'product_page',
       url: 'https://www.sharkninja.es/ninja-creami-scoop-swirl-12-funciones-2-tarrinas-grisnegro/NC701EU.html',
-      verifiedFacts: ['nc7_family', '480_ml_tub', 'scoop_and_soft_dispense', 'mixture_pre_freeze'],
+      verifiedFacts: [
+        'nc7_family',
+        '480_ml_tub',
+        'scoop_and_soft_dispense',
+        'mixture_pre_freeze',
+        'twenty_four_hour_mixture_pre_freeze',
+      ],
     },
   ],
   specificationVerifiedAt: '2026-09-05',

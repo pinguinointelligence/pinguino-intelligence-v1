@@ -665,13 +665,62 @@ export const copy = {
       monitor: { cue: 'Receptura zapisana', action: 'Przejdź do Monitora' },
       production: { cue: 'Monitor gotowy', action: 'Przejdź do Produkcji' },
     },
-    /** PRO MOBILE UX v2 · B4 — the first-run settings sequence on a phone. */
-    settingsSteps: {
-      step: 'Krok',
-      of: 'z',
+    /** DESIGN V3.0 §3 (owner-LOCKED Points 1–4) — the full-screen setup of a
+     * new recipe on a phone and iPad portrait. It supersedes the B4 pager. */
+    setupFlow: {
+      eyebrow: 'Nowa receptura',
+      step: (step: number, total: number) => `Krok ${step} z ${total}`,
       back: 'Wstecz',
       next: 'Dalej',
-      titles: ['Jakie lody robisz?', 'Na czym i jak podajesz?', 'Ile przygotowujesz?'],
+      finish: 'Receptura',
+      titles: [
+        'Jakie lody dziś robimy?',
+        'Ile lodów dziś przygotowujemy?',
+        'Maszyna, podawanie i smak',
+      ],
+      typeNotes: {
+        gelato: 'Mleczne, kremowe',
+        sorbet: 'Owocowe, bez mleka',
+        vegan: 'Na bazie roślinnej',
+        protein: 'Więcej białka',
+      },
+      modeLabel: 'Tryb',
+      modeNotes: {
+        optimal: 'Najlepsza równowaga jakości, tekstury i parametrów receptury.',
+        eco: 'Tańszy skład, nadal w bezpiecznych granicach technicznych.',
+      },
+      batchShortcut: '−10 g / +10 g to szybki skrót — stuknij liczbę, aby wpisać dokładną wartość.',
+      sections: {
+        machine: 'Maszyna',
+        serving: 'Temperatura podawania',
+        taste: 'Dostosuj recepturę',
+      },
+      asDefaultScope: 'Ilość, tryb, maszyna, podawanie, słodycz i twardość',
+      conflict: 'Tych ustawień nie da się jeszcze zatwierdzić — sprawdź maszynę i masę partii.',
+      defaultsNotice: 'Używamy Twoich domyślnych ustawień',
+      change: 'Zmień',
+      applied: 'Zastosowane',
+    },
+    /** DESIGN V3.0 correction I — the one settings panel (phone sheet and desktop column). */
+    settingsPanel: {
+      productType: 'Rodzaj lodów',
+      machine: 'Maszyna',
+      serving: 'Temperatura podawania',
+      strategyGroup: 'OPTIMAL albo ECO',
+      asDefault: 'Ustaw jako domyślne',
+      servingSegments: {
+        temp_minus_11: { name: 'Miękkie', temperature: '−11 °C' },
+        temp_minus_12: { name: 'Klasyczne', temperature: '−12 °C' },
+        temp_minus_13: { name: 'Twardsze', temperature: '−13 °C' },
+        fresh: { name: 'Świeże', temperature: null },
+      },
+      steps: {
+        five: ['−2', '−1', 'Optymalne', '+1', '+2'],
+        three: ['−1', 'Optymalne', '+1'],
+      },
+      knowledge: {
+        tutorial: 'Uruchom samouczek',
+      },
     },
     /** PRO MOBILE UX v2 · B5 — the target mass is a parameter of the WHOLE batch. */
     batchTarget: {

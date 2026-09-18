@@ -10,6 +10,7 @@
  * locales and had never been rendered. No second source of words.
  */
 import { buttonClasses } from '@/components/ui/buttonStyles';
+import '@/components/ui/homeLayer.css';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import type { HomeUsageRole } from '../homeUsageRoleDecision';
 
@@ -24,7 +25,9 @@ export function HomeUsagePrompt({
 }) {
   return (
     <div
-      className="fixed inset-0 z-[95] grid place-items-center bg-black/20 p-4"
+      // DESIGN V3.0 XIII: the HOME layer frame — a compact bottom layer on a phone and a
+      // portrait tablet, a light centred modal from 1024 px (`homeLayer.css`).
+      className="home-layer-scrim home-layer-overlay fixed inset-0 z-[95]"
       data-testid="home-usage-prompt"
       role="dialog"
       aria-modal="true"
@@ -33,10 +36,7 @@ export function HomeUsagePrompt({
         if (event.key === 'Escape') onCancel();
       }}
     >
-      <div
-        className="w-full max-w-[380px] rounded-[16px] border bg-white p-5"
-        style={{ borderColor: 'var(--g-line)' }}
-      >
+      <div className="home-layer-panel">
         {/* The product first, so the question is about something rather than in the
             abstract — the customer is mid-flow and may have picked several things. */}
         <p className="text-[15px]" style={{ color: 'var(--g-text-secondary)' }}>

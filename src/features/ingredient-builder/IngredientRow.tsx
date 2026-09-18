@@ -464,13 +464,10 @@ function RecipeRow({
   mainUserHeld = false,
   compact,
   changed,
-  processReminder,
 }: {
   item: EffectiveRecipeItem;
   totalBatchG: number;
   actions: IngredientRowActions;
-  /** V2.1 §17: the heat acknowledgement lives INSIDE the line it belongs to. */
-  processReminder?: { onConfirm: () => void; disabled?: boolean };
   lock?: IngredientRowLockView;
   meta: IngredientRowMeta;
   substituteCandidates: readonly SubstituteCandidate[];
@@ -869,31 +866,6 @@ function RecipeRow({
                   className="grid size-4 place-items-center rounded-full border border-ink/30 text-[10px] font-bold text-ink"
                 >
                   !
-                </span>
-              ) : null}
-              {processReminder ? (
-                <span
-                  className="pro-workbench-desktop-only min-w-0 flex-1 items-center gap-2"
-                  data-testid="production-inline-process-reminder"
-                >
-                  <span className="min-w-0">
-                    <strong className="block text-[10px] leading-[12px] font-black text-[var(--g-attention-ink)]">
-                      Pamiętaj o obróbce
-                    </strong>
-                    <span className="mt-0.5 block text-[8px] leading-[10px] font-bold text-[var(--g-text-muted)]">
-                      Dla poniższych składników wskazana jest obróbka na ciepło:
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={processReminder.onConfirm}
-                    disabled={processReminder.disabled}
-                    aria-label="Potwierdź informację o obróbce"
-                    className="gellatti-next-action-attention pro-focus-ring grid h-8 w-9 shrink-0 place-items-center rounded-[9px] bg-[var(--g-graphite)] text-[10px] font-extrabold text-white disabled:cursor-wait disabled:opacity-60"
-                    data-testid="acknowledge-production-heat-information-inline"
-                  >
-                    OK
-                  </button>
                 </span>
               ) : null}
               <span
@@ -1426,7 +1398,6 @@ export function IngredientRow({
   productionLine,
   productionActions,
   productionActive = false,
-  productionProcessReminder,
   canMoveUp = false,
   canMoveDown = false,
   onDragStart,
@@ -1449,11 +1420,6 @@ export function IngredientRow({
   productionActions?: ProductionRowActions;
   /** Presentation-only marker for the one next physical weighing action. */
   productionActive?: boolean;
-  /** Desktop-only visual placement of the existing pre-start heat acknowledgement. */
-  productionProcessReminder?: {
-    disabled?: boolean;
-    onConfirm: () => void;
-  };
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   onDragStart?: (lineId: string) => void;
@@ -1490,8 +1456,6 @@ export function IngredientRow({
           'bg-pro-sage/35 hover:bg-pro-sage/55',
         mode === 'recipe' && changed && 'ingredient-line-changed',
         mode === 'production' && productionActive && 'production-line-active',
-        productionProcessReminder &&
-          'xl:min-h-[64px] xl:border-l-[3px] xl:border-l-[var(--g-orange)] xl:bg-[var(--g-attention-surface)]',
       )}
       data-ingredient-mode={mode}
       data-production-row-family={mode === 'production' ? 'recipe-table' : undefined}
@@ -1511,7 +1475,6 @@ export function IngredientRow({
           item={item}
           totalBatchG={totalBatchG}
           actions={actions}
-          processReminder={productionProcessReminder}
           lock={lock}
           meta={meta}
           substituteCandidates={substituteCandidates}

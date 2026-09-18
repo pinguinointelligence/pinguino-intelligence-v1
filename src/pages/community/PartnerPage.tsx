@@ -151,13 +151,15 @@ function Overview({ data }: { data: PartnerWorkspace }) {
           </p>
         </div>
         <div className="border border-ink/10 p-5">
-          <h3 className="text-sm font-semibold text-ink">Konto wypłat Connect</h3>
+          <h3 className="text-sm font-semibold text-ink">Dane do wypłat</h3>
           <p className="mt-3 text-sm text-stone-600">
             {data.partner?.payoutsEnabled
               ? 'Wypłaty aktywne'
-              : data.partner?.connectAccountPresent
-                ? 'Dokończ onboarding wypłat'
-                : 'Konto Connect oczekuje na przygotowanie przez Admina'}
+              : data.partner?.connectAccountPresent && data.partner?.onboardingComplete
+                ? 'Dane wysłane — sprawdź, czy operator płatności czegoś nie potrzebuje'
+                : data.partner?.connectAccountPresent
+                  ? 'Potwierdź dane do wypłat'
+                  : 'Gellatti przygotowuje Twoje konto wypłat. Damy znać, kiedy będzie gotowe.'}
           </p>
         </div>
       </div>
@@ -585,21 +587,23 @@ function Payouts({ data }: { data: PartnerWorkspace }) {
     <>
       <Heading
         title="Wypłaty"
-        detail="Wypłaty korzystają wyłącznie z konta Connect i zapisanych partii rozliczeń."
+        detail="Stawki, terminy i rozliczenia ustala Gellatti. Twoja część to potwierdzenie tożsamości i danych do wypłat u naszego operatora płatności."
       />
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border border-ink/10 bg-[#f3ede3] p-5">
         <div>
-          <strong className="text-sm text-ink">Konto Connect</strong>
+          <strong className="text-sm text-ink">Dane do wypłat</strong>
           <p className="mt-1 text-xs text-stone-600">
             {data.partner?.payoutsEnabled
-              ? 'Wypłaty włączone'
-              : data.partner?.connectAccountPresent
-                ? 'Onboarding wymaga ukończenia'
-                : 'Admin musi najpierw przygotować konto Connect'}
+              ? 'Dane potwierdzone — wypłaty są aktywne.'
+              : data.partner?.connectAccountPresent && data.partner?.onboardingComplete
+                ? 'Twoje dane są u operatora płatności. Jeśli będzie potrzebował czegoś jeszcze, zobaczysz to po otwarciu.'
+                : data.partner?.connectAccountPresent
+                  ? 'Potwierdź tożsamość i dane do wypłat u operatora płatności. Zajmuje to kilka minut.'
+                  : 'Gellatti przygotowuje Twoje konto wypłat. Damy znać, kiedy będzie gotowe.'}
           </p>
         </div>
         {data.partner?.connectAccountPresent && !data.partner.payoutsEnabled ? (
-          <Button onClick={() => connect.mutate()}>Dokończ konfigurację</Button>
+          <Button onClick={() => connect.mutate()}>Potwierdź dane do wypłat</Button>
         ) : null}
       </div>
       <div className="mt-6 divide-y divide-ink/10 border-y border-ink/10">
@@ -756,7 +760,7 @@ function Settings({ data }: { data: PartnerWorkspace }) {
     <>
       <Heading
         title="Ustawienia"
-        detail="Tożsamość Partnera, status i zasady finansowe są kontrolowane przez Admina. Zmiany konta nie przepisują historii atrybucji."
+        detail="Tożsamość Partnera i status prowadzi Gellatti, tak samo jak stawki, terminy i rozliczenia. Zmiany konta nie przepisują historii atrybucji."
       />
       <dl className="mt-6 divide-y divide-ink/10 border-y border-ink/10">
         {[

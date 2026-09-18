@@ -52,13 +52,33 @@ export function HomeMachineSection({
   onCancelChange?: () => void;
   onAmountChange: (amount: HomeAmount) => void;
   onChangeMachine: () => void;
-  onDone: () => void;
+  /**
+   * `typed`: an exact amount the customer typed but never applied with „Ustaw”. Served
+   * 2026-09-18: the main „Gotowe” dropped it silently and built the recipe for the
+   * container amount instead.
+   */
+  onDone: (typed?: HomeAmount) => void;
   onBack?: (() => void) | null;
 }) {
   const [manual, setManual] = useState('');
   const machines = homeSelectableMachines(MACHINE_CATALOG);
   const guidance = amount ? capacityGuidance(amount, recommendedBatchGrams) : null;
   const containers = guidance?.containers ?? 1;
+  // A step that lands on the amount already shown does nothing, so it must look it:
+  // served 2026-09-18, „−” at one container stayed live and silently did nothing.
+  const changes = (next: HomeAmount | null): next is HomeAmount =>
+    next !== null && (next.totalGrams !== amount?.totalGrams || next.source !== amount.source);
+  const fewer = stepContainers(containers, -1, recommendedBatchGrams);
+  const more = stepContainers(containers, 1, recommendedBatchGrams);
+  /** The typed exact amount, applied — or `null` when nothing valid was typed. */
+  const applyManual = (): HomeAmount | null => {
+    const next = manual.trim() === '' ? null : manualAmount(Number(manual));
+    if (next) {
+      onAmountChange(next);
+      setManual('');
+    }
+    return next;
+  };
 
   return (
     <HomeSection id="machine" onBack={onBack} data-testid="home-section-machine">
@@ -172,11 +192,11 @@ export function HomeMachineSection({
                     type="button"
                     aria-label="−"
                     data-testid="home-containers-minus"
+                    disabled={!changes(fewer)}
                     onClick={() => {
-                      const next = stepContainers(containers, -1, recommendedBatchGrams);
-                      if (next) onAmountChange(next);
+                      if (changes(fewer)) onAmountChange(fewer);
                     }}
-                    className="flex h-11 w-11 items-center justify-center text-[18px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                    className="flex h-11 w-11 items-center justify-center text-[18px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 disabled:opacity-40"
                     style={{ color: 'var(--g-ink)' }}
                   >
                     −
@@ -195,11 +215,11 @@ export function HomeMachineSection({
                     type="button"
                     aria-label="+"
                     data-testid="home-containers-plus"
+                    disabled={!changes(more)}
                     onClick={() => {
-                      const next = stepContainers(containers, 1, recommendedBatchGrams);
-                      if (next) onAmountChange(next);
+                      if (changes(more)) onAmountChange(more);
                     }}
-                    className="flex h-11 w-11 items-center justify-center text-[18px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                    className="flex h-11 w-11 items-center justify-center text-[18px] focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40 disabled:opacity-40"
                     style={{ color: 'var(--g-ink)' }}
                   >
                     +
@@ -229,6 +249,9 @@ export function HomeMachineSection({
                 inputMode="numeric"
                 value={manual}
                 onChange={(event) => setManual(event.target.value.replace(/[^\d]/g, ''))}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') applyManual();
+                }}
                 placeholder={homeCreatorCopy.machine.amountManual}
                 aria-label={homeCreatorCopy.machine.amountManual}
                 data-testid="home-amount-manual"
@@ -238,11 +261,7 @@ export function HomeMachineSection({
               <button
                 type="button"
                 onClick={() => {
-                  const next = manualAmount(Number(manual));
-                  if (next) {
-                    onAmountChange(next);
-                    setManual('');
-                  }
+                  applyManual();
                 }}
                 disabled={manual.trim() === ''}
                 data-testid="home-amount-manual-apply"
@@ -252,7 +271,7 @@ export function HomeMachineSection({
                 )}
                 style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
               >
-                {homeCreatorCopy.machine.done}
+                {homeCreatorCopy.machine.amountManualApply}
               </button>
             </div>
 
@@ -270,7 +289,7 @@ export function HomeMachineSection({
 
           <button
             type="button"
-            onClick={onDone}
+            onClick={() => onDone(applyManual() ?? undefined)}
             data-testid="home-machine-done"
             className="mt-8 inline-flex min-h-[52px] w-full items-center justify-center rounded-full px-6 text-[15px] font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
             style={{ background: 'var(--g-ink)', color: '#ffffff' }}

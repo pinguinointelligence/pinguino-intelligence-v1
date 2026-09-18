@@ -94,6 +94,18 @@ describe('responsive Knowledge Tour interactions', () => {
     );
   });
 
+  it('gives the arrows and the dots a 44 px touch target without moving them', () => {
+    expect(css).toMatch(/\.knowledge-tour__nav-button \{[^}]*min-width: 2\.75rem;[^}]*\}/);
+    expect(css).toContain(
+      '.knowledge-tour__nav-button:last-child {\n  justify-self: end;\n  justify-content: flex-end;',
+    );
+    // The dot keeps its small visual size; the hit area is its ::after, 2.75rem tall.
+    expect(css).toContain('.knowledge-tour__dot {\n  position: relative;\n  width: 0.54rem;');
+    expect(css).toMatch(
+      /\.knowledge-tour__dot::after \{[^}]*top: calc\(50% - 1\.375rem\);[^}]*bottom: calc\(50% - 1\.375rem\);/,
+    );
+  });
+
   it('renders the corrected Step 7 visual, normalized labels and nine real dots', () => {
     const surface = mount('/how-it-works?step=7');
     expect(surface.dataset.activeStep).toBe('7');

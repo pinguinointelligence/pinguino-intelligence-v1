@@ -25,8 +25,9 @@ import { constraintStudioCopy } from '@/features/constraint-studio/constraintStu
 import {
   applyPreviewWithServerAuthority,
   cancelPiRecalculation,
-  runInteractiveRecalculationWithTerminal,
-  runPiRecalculationWithTerminal,
+  openDirectionFallbackPreviewWithServerAuthority,
+  openStarterPackRescuePreviewWithServerAuthority,
+  requestStarterPackRescueWithServerAuthority,
   useConstraintStudioStore,
 } from '@/features/constraint-studio/constraintStudioStore';
 import {
@@ -38,9 +39,11 @@ import {
   type GramsMask,
 } from '@/features/constraint-studio/ui/ConstraintPreviewCard';
 import { LockConflictPanel } from '@/features/constraint-studio/ui/LockConflictPanel';
+import { DirectionFallbackDecision } from '@/features/pro-core/ProRecalcPanel';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { homeCreatorCopy } from '../homeCreatorCopy';
-import { customerInstructions, homeRecalculationInstructions } from '../homePriorityBootstrap';
+import { customerInstructions } from '../homePriorityBootstrap';
+import { runHomeRecalculation } from '../homeRecalculation';
 import { homeCustomerNotice } from '../homeCustomerNotice';
 import { homeRecalcRefusal } from '../homeRecalcRefusal';
 
@@ -51,16 +54,38 @@ const secondaryButton =
 const primaryButton =
   'inline-flex min-h-[44px] flex-1 items-center justify-center rounded-full px-4 text-[14px] font-semibold disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
 
+/** What „continue” means in each context when CORE found nothing to change. */
+const NO_CHANGE_CONTINUE: Readonly<
+  Record<'make' | 'save' | 'share' | 'community' | 'initial' | 'auto', string>
+> = {
+  make: homeCreatorCopy.recipe.letsMakeIt,
+  save: homeCreatorCopy.recipe.save,
+  share: 'Udostępnij',
+  community: 'Community',
+  initial: homeCreatorCopy.recipe.doneAmount,
+  auto: homeCreatorCopy.recipe.doneAmount,
+};
+
 export function HomeRecalculate({
   open,
   context,
+  presentCurrent = false,
   onClose,
   onApplied,
   canSeeGrams = true,
   onGramsBlocked,
 }: {
   open: boolean;
-  context: 'make' | 'save' | 'share' | 'community';
+  /** Why the dialog is open. `initial` = the first build, `auto` = the automatic
+   * recalculation after a change — both only ever open it for a CORE state the
+   * customer has to decide; the rest are the final actions. */
+  context: 'make' | 'save' | 'share' | 'community' | 'initial' | 'auto';
+  /**
+   * The shared PRZELICZ has ALREADY run for this recipe (the first build or the
+   * automatic recalculation) and left a state for the customer. Present that state
+   * instead of solving the same recipe a second time.
+   */
+  presentCurrent?: boolean;
   onClose: () => void;
   onApplied: () => void | Promise<void>;
   /** Demo entitlement: HOME never reveals grams the customer may not see. */
@@ -74,6 +99,15 @@ export function HomeRecalculate({
     (state) => state.pendingInstructionCommit,
   );
   const directionBestCandidate = useConstraintStudioStore((state) => state.directionBestCandidate);
+  const directionFallbackReport = useConstraintStudioStore(
+    (state) => state.directionFallbackReport,
+  );
+  const starterPackRescueReport = useConstraintStudioStore(
+    (state) => state.starterPackRescueReport,
+  );
+  const starterPackRescuePending = useConstraintStudioStore(
+    (state) => state.starterPackRescuePending,
+  );
   const terminal = useConstraintStudioStore((state) => state.recalculationTerminal);
   const blocked = useConstraintStudioStore((state) => state.blocked);
   const applyPending = useConstraintStudioStore((state) => state.applyPending);
@@ -102,7 +136,11 @@ export function HomeRecalculate({
   // 2026-09-02: the pipeline's own sentence can name ProductBehavior, the Mapper or a
   // snapshot) and always adds the next step. The verdict is untouched — a refusal is still a
   // refusal.
-  const refusal = homeRecalcRefusal({ previewIssue, blocked, terminal });
+  const lineNames = useMemo(
+    () => new Map(items.map((item) => [item.id, item.ingredient.name])),
+    [items],
+  );
+  const refusal = homeRecalcRefusal({ previewIssue, blocked, terminal, lineNames });
 
   const close = () => {
     if (useConstraintStudioStore.getState().recalculationTerminal?.state === 'WORKING') {
@@ -115,12 +153,10 @@ export function HomeRecalculate({
   };
 
   // OWNER OD-1 (Package 2A): a 0 g HOME priority line is the solver's to size, so
-  // every run hands it over as the Crown bootstrap on the provisional copy.
+  // every run hands it over as the Crown bootstrap on the provisional copy — through
+  // HOME's ONE orchestration of the shared PRZELICZ (`homeRecalculation`).
   const runWith = (instructions: readonly PreviewLineInstruction[]) => {
-    const all = homeRecalculationInstructions(useRecipeStore.getState().items, instructions);
-    void (all.length > 0
-      ? runInteractiveRecalculationWithTerminal(all)
-      : runPiRecalculationWithTerminal());
+    void runHomeRecalculation(instructions);
   };
 
   useEffect(() => {
@@ -131,8 +167,13 @@ export function HomeRecalculate({
     const key = `${context}:${useRecipeStore.getState().draftRevision}`;
     if (openedFor.current === key) return;
     openedFor.current = key;
+    // The run that left this state already happened; solving again would only
+    // replace the customer's question with an identical one.
+    const staged = useConstraintStudioStore.getState().recalculationTerminal;
+    // (A run still WORKING is presented too: its answer lands here.)
+    if (presentCurrent && staged !== null && staged.state !== 'CANCELLED') return;
     runWith([]);
-  }, [context, open]);
+  }, [context, open, presentCurrent]);
 
   const recalculateInPreview = (instructions: PreviewLineInstruction[]) => {
     runWith(instructions);
@@ -151,9 +192,15 @@ export function HomeRecalculate({
   const working = terminal?.state === 'WORKING';
   const previewOpen = !working && preview !== null && terminal?.state === 'PREVIEW_READY';
   const conflictOpen = !working && preview === null && lockConflict !== null;
+  // CORE's Direction fallback ladder answered with an owner-approved adjacent/neutral
+  // Direction („Ustaw 0”). The SAME decision surface and the SAME CORE actions as PRO
+  // (`ProRecalcPanel`), so HOME and PRO customers are offered the identical choice —
+  // and, exactly as in PRO, it takes precedence over the plain best-candidate consent.
+  const fallbackOpen = !working && preview === null && directionFallbackReport !== null;
   const directionChoiceOpen =
     !working &&
     preview === null &&
+    directionFallbackReport === null &&
     directionBestCandidate !== null &&
     terminal?.state === 'PREVIEW_READY';
   const noChange =
@@ -173,6 +220,7 @@ export function HomeRecalculate({
     !working &&
     !previewOpen &&
     !conflictOpen &&
+    !fallbackOpen &&
     !directionChoiceOpen &&
     !noChange &&
     pendingInstructionCommit === null &&
@@ -185,15 +233,24 @@ export function HomeRecalculate({
           testId="home-recalc-dialog"
           panelTestId="home-recalc-panel"
           panelState={terminal?.state ?? 'IDLE'}
-          placement="center"
+          // DESIGN V3.0 XIII: a compact bottom layer on a phone and a portrait tablet (the
+          // actions last, under the thumb), a light centred modal from 1024 px.
+          placement="home-layer"
           size={previewOpen || conflictOpen ? 'wide' : 'default'}
           onClose={close}
           showCloseControl
           closeLabel={working ? homeCreatorCopy.draft.cancel : interactiveCopy.back}
           closeTestId="home-recalc-close"
-          panelClassName="max-h-[92dvh] px-3 py-3 text-black [--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light] sm:max-h-[88vh] sm:px-4 sm:py-4"
+          panelClassName="text-black [--color-charcoal:#191a1d] [--color-ivory:#202124] [--color-shell:#f5f3ee] [color-scheme:light]"
         >
-          <div className="space-y-3 pt-8 sm:pt-6">
+          <h2
+            className="shrink-0 pr-12 text-[18px] leading-[1.25] font-semibold text-[var(--g-ink)]"
+            data-testid="home-recalc-title"
+          >
+            {homeCreatorCopy.recipe.recalculate}
+          </h2>
+          {/* Longer content scrolls inside; the layer stays at the bottom (XIII). */}
+          <div className="-mx-1 mt-3 min-h-0 space-y-3 overflow-y-auto px-1 pb-1">
             {working ? (
               <p className="text-[14px] leading-relaxed" data-testid="home-recalc-working">
                 {interactiveCopy.working}
@@ -227,6 +284,26 @@ export function HomeRecalculate({
               />
             ) : null}
 
+            {fallbackOpen && directionFallbackReport ? (
+              <div data-testid="home-recalc-direction-fallback">
+                <DirectionFallbackDecision
+                  fallbackReport={directionFallbackReport}
+                  alternativeReport={starterPackRescueReport}
+                  alternativePending={starterPackRescuePending}
+                  onUseFallback={() => {
+                    void openDirectionFallbackPreviewWithServerAuthority();
+                  }}
+                  onTryAlternative={() => {
+                    void requestStarterPackRescueWithServerAuthority();
+                  }}
+                  onOpenAlternative={() => {
+                    void openStarterPackRescuePreviewWithServerAuthority();
+                  }}
+                  onBack={close}
+                />
+              </div>
+            ) : null}
+
             {directionChoiceOpen ? (
               <div className="space-y-3" data-testid="home-recalc-direction-best">
                 <p className="text-[14px] leading-relaxed">
@@ -237,11 +314,12 @@ export function HomeRecalculate({
                     type="button"
                     className={primaryButton}
                     style={{ background: 'var(--g-ink)', color: '#ffffff' }}
+                    data-testid="home-recalc-direction-best-open"
                     onClick={() =>
                       useConstraintStudioStore.getState().acceptBestDirectionCandidate()
                     }
                   >
-                    {constraintStudioCopy.preview.title}
+                    {homeCreatorCopy.recipe.seeProposal}
                   </button>
                   <button
                     type="button"
@@ -297,14 +375,10 @@ export function HomeRecalculate({
                   >
                     {interactiveCopy.back}
                   </button>
-                  <button
-                    type="button"
-                    className={secondaryButton}
-                    style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
-                    onClick={() => runWith([])}
-                  >
-                    Przelicz
-                  </button>
+                  {/* Served 2026-09-18 („Zapisz recepturę”): nothing changes here, so the
+                      button continues the action the customer asked for, in its own
+                      words — never „Zastosuj zmiany”, and never a manual „Przelicz”:
+                      HOME recalculates by itself. */}
                   <button
                     type="button"
                     data-testid="home-recalc-apply-no-change"
@@ -312,7 +386,7 @@ export function HomeRecalculate({
                     style={{ background: 'var(--g-ink)', color: '#ffffff' }}
                     onClick={() => void onApplied()}
                   >
-                    Zastosuj zmiany
+                    {NO_CHANGE_CONTINUE[context]}
                   </button>
                 </div>
               </div>
