@@ -266,6 +266,22 @@ describe('§12 — Monitor is a resizable panel over the recipe, not a modal she
     expect(panelHeight()).toBe(`${HOST_HEIGHT}px`);
   });
 
+  it('MONITOR-V3-09b touching the grip focuses it, so the arrows work right after (served defect)', async () => {
+    /* Found on served staging a1e1d729 (375 x 812): the grip's own `preventDefault` — which
+       is there to stop selection and page scroll — also stopped the browser from focusing
+       it, so tapping the grip and pressing an arrow did nothing at all. */
+    await render('monitor');
+    const grip = q('monitor-resize-handle')!;
+    expect(document.activeElement).not.toBe(grip);
+    await act(async () => {
+      grip.dispatchEvent(pointer('pointerdown', 500));
+      grip.dispatchEvent(pointer('pointerup', 500));
+    });
+    expect(document.activeElement).toBe(grip);
+    await pressOnGrip('ArrowUp');
+    expect(panelHeight()).toBe(`${HOST_HEIGHT - 40}px`);
+  });
+
   it('MONITOR-V3-10 scrolling or pressing inside the content is never a resize', async () => {
     await render('monitor');
     await drag(600, 300);
