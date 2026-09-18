@@ -12,6 +12,7 @@ import {
   type ProductionSession,
 } from '@/features/production-workspace/productionSession';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
+import { ProductionProcessHost } from '@/features/production-workspace/ProductionProcessHost';
 import { lotCodeForDisplay } from '@/features/master-label/labelPresentation';
 import {
   labelSettingsReturn,
@@ -109,6 +110,13 @@ export function ProductionBatches() {
   const projected = useProductionSessionStore((state) => state.session);
   const completedNow =
     projected?.status === 'completed' && projected.ownerUserId === ownerUserId ? projected : null;
+  /**
+   * The batch this device already has active — Produkcja v3 Etap 2: „Partie" hosts the
+   * process itself for it, through the ONE durable host. Mounting is conditional on the
+   * session ALREADY existing, so arriving at „Partie" never starts a batch.
+   */
+  const runningNow =
+    projected?.status === 'in_progress' && projected.ownerUserId === ownerUserId ? projected : null;
 
   const historyRef = useRef<HTMLElement>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
@@ -202,7 +210,8 @@ export function ProductionBatches() {
     void resume(batch);
   };
 
-  const batches = inProgress.batches;
+  // The active batch is shown as the process above, never also as a row to resume.
+  const batches = inProgress.batches.filter((batch) => batch.runId !== runningNow?.sessionId);
   const historyCount =
     history.state === 'loading' ? '…' : history.total > 0 ? c.historyJumpCount(history.total) : '';
 
@@ -231,6 +240,16 @@ export function ProductionBatches() {
           aria-label={c.regionLabel}
           data-testid="production-current"
         >
+          {runningNow ? (
+            <div className="mb-8" data-testid="production-running-now">
+              <ProductionProcessHost
+                name={runningNow.source.recipeName ?? c.inProgressUnnamed}
+                back={null}
+                testId="production-batches"
+              />
+            </div>
+          ) : null}
+
           {completedNow ? (
             <div className="mb-6" data-testid="production-completed-now">
               <p className={EYEBROW}>{c.completedNow}</p>
