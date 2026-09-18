@@ -1,0 +1,16 @@
+import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path';
+const dir = path.dirname(new URL(import.meta.url).pathname);
+const outDir = path.join(dir, 'results'); fs.mkdirSync(outDir, { recursive: true });
+const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png', '.json': 'application/json', '.map': 'application/json' };
+http.createServer((req, res) => {
+  if (req.method === 'POST' && req.url === '/report') {
+    let b = ''; req.on('data', (c) => b += c); req.on('end', () => {
+      const j = JSON.parse(b); const name = (j.tag || 'probe') + '_' + (j.ua || 'ua').replace(/[^a-z0-9]+/gi, '_').slice(0, 60) + '_' + Date.now() + '.json';
+      fs.writeFileSync(path.join(outDir, name), JSON.stringify(j, null, 2)); res.writeHead(204); res.end(); console.log('saved', name); });
+    return;
+  }
+  if (req.url === '/frames.json') { res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify(fs.readdirSync(path.join(dir, 'frames')).filter((f) => f.endsWith('.png')))); return; }
+  const f = path.join(dir, req.url === '/' ? 'probe.html' : decodeURIComponent(req.url.split('?')[0]));
+  if (f.startsWith(dir) && fs.existsSync(f) && fs.statSync(f).isFile()) { res.writeHead(200, { 'content-type': types[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(res); }
+  else { res.writeHead(404); res.end('nf'); }
+}).listen(48731, '127.0.0.1', () => console.log('probe server v2 on http://127.0.0.1:48731/'));

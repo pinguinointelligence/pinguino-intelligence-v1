@@ -1,0 +1,24 @@
+import { renderFrame, toPng } from './ean13.mjs';
+import { zxingDecode, zbarDecode, repoDecode } from './decoders.mjs';
+import fs from 'node:fs';
+const ean = '8411092731130';
+const camera = { focalPx: 1100 }; // ~ 1280px-wide phone frame, ~60° HFOV
+const base = { ean, width: 1280, height: 720, camera, humanReadable: true };
+const frames = [
+  ['clean_2px', { pose: { distanceMm: 180, cx: 640, cy: 360 } }],
+  ['far_1px', { pose: { distanceMm: 360, cx: 640, cy: 360 } }],
+  ['tilt_yaw40_blur1', { pose: { distanceMm: 180, cx: 640, cy: 360, yawDeg: 40 }, blurSigma: 1.0 }],
+  ['rot30', { pose: { distanceMm: 180, cx: 640, cy: 360, rollDeg: 30 } }],
+  ['cut_left_half', { pose: { distanceMm: 180, cx: 1180, cy: 360 } }],
+  ['can_r33_glare', { pose: { distanceMm: 180, cx: 640, cy: 360 }, curvatureRadiusMm: 33, glare: { x: 700, y: 330, r: 90, strength: 0.9 } }],
+  ['motion6_noise8', { pose: { distanceMm: 180, cx: 640, cy: 360 }, motionBlurPx: 6, noiseSigma: 8 }],
+];
+for (const [name, o] of frames) {
+  const f = renderFrame({ ...base, ...o });
+  fs.writeFileSync(`out/smoke_${name}.png`, toPng(f.gray, f.width, f.height));
+  const [zx, zb, rp] = [await zxingDecode(f.gray, f.width, f.height), await zbarDecode(f.gray, f.width, f.height), await repoDecode(f.gray, f.width, f.height)];
+  console.log(name.padEnd(20), 'modulePx', f.modulePx.toFixed(2),
+    '| zxing', zx.results.map(r => `${r.text || '-'}${r.isValid ? '' : '(err:' + r.error + ')'}`).join(',') || 'none', zx.ms.toFixed(1) + 'ms',
+    '| zbar', zb.results.map(r => `${r.text}(q${r.quality})`).join(',') || 'none', zb.ms.toFixed(1) + 'ms',
+    '| repo', rp.results.map(r => r.text).join(',') || 'none', rp.ms.toFixed(1) + 'ms');
+}
