@@ -52,13 +52,18 @@ describe('KIWI-02 — the recognised idea reaches the open recipe', () => {
 });
 
 describe('KIWI-11 — a refusal is shown, not retried in a loop', () => {
-  it('remembers the answers that failed and never rebuilds them silently', () => {
-    // Every failure path records the key instead of inviting the effect to start again.
-    expect(page).not.toMatch(/setInitialBuilding\(false\);\s+lastGeneratedFor\.current = null;/);
-    expect(page.match(/failedGenerationFor\.current = lastGeneratedFor\.current;/g)?.length).toBe(3);
-    // The generate effect refuses to repeat a build that already failed for these answers.
-    expect(page).toContain('failedGenerationFor.current !== key');
+  it('routes every failure and every start through the one tested gate', () => {
+    // The page holds NO private copy of the rule: no ad-hoc key comparison, and no
+    // failure path that quietly clears the memory the effect reads.
+    expect(page).not.toMatch(/lastGeneratedFor|failedGenerationFor/);
+    // Every failure path records the failure the same way (three of them today).
+    expect(page.match(/generation\.current = generationFailed\(generation\.current\);/g)?.length).toBe(
+      3,
+    );
+    // The effect asks the gate instead of comparing keys itself.
+    expect(page).toContain('mayGenerate(key, generation.current)');
+    expect(page).toContain('generation.current = generationStarted(key, generation.current);');
     // Pressing the CTA is a real retry.
-    expect(page).toMatch(/submitIntent\(\);\s+\/\/[^\n]*\n\s+failedGenerationFor\.current = null;/);
+    expect(page).toMatch(/submitIntent\(\);\s+\/\/[^\n]*\n\s+generation\.current = generationRetried\(\);/);
   });
 });
