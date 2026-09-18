@@ -175,7 +175,7 @@ describe('§21 — „Chcesz powtórzyć?" / POWTÓRZ', () => {
     expect(html).not.toContain('Rozpoczynamy partię…');
   });
 
-  it('the two gates are unchanged and still outrank ROBIMY', () => {
+  it('degassing still outranks ROBIMY; heat information no longer gates Start (owner addendum 2026-09-17)', () => {
     expect(
       startButton(
         firstRun({
@@ -190,10 +190,8 @@ describe('§21 — „Chcesz powtórzyć?" / POWTÓRZ', () => {
       startButton(
         firstRun({
           heatInformation: [{ code: 'HEAT_TREATMENT_INDICATED', productName: 'TARA GUM' }],
-          heatInformationAcknowledged: false,
-          acknowledgeHeatInformation: vi.fn(),
         }),
       ),
-    ).toBe('Najpierw potwierdź informację');
+    ).toBe('ROBIMY');
   });
 });

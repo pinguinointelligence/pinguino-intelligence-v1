@@ -33,6 +33,15 @@ export interface IntentTerm {
   readonly role: IntentRole | null;
   /** True when the concept was reached through fuzzy (typo) matching, not exactly. */
   readonly fuzzy: boolean;
+  /**
+   * The listed element this term was said in, verbatim (e.g. „puree truskawkowe”).
+   * Product selection reads it so explicit words around a concept — a form, a brand
+   * — keep their meaning after the utterance is split into separate chips.
+   */
+  readonly segment: string;
+  /** The whole utterance, and the position of `segment` among its listed elements. */
+  readonly utterance: string;
+  readonly segmentIndex: number;
 }
 
 export interface ParsedIntent {
@@ -308,6 +317,8 @@ export function detectStatedRole(text: string): IntentRole | null {
 
 const STOP_WORDS = new Set([
   'i',
+  // „truskawki jako posypka”: „jako” introduces the role, it is not an ingredient.
+  'jako',
   'a',
   'an',
   'the',
@@ -373,10 +384,30 @@ const STOP_WORDS = new Set([
 const SEGMENT_SPLIT = /\s*(?:,|;|\band\b|\boraz\b|\bplus\b|\bwith\b|\bi\b|\bz\b)\s*/;
 
 export function intentSegments(text: string): readonly string[] {
-  return text
-    .split(SEGMENT_SPLIT)
-    .map((part) => part.trim())
-    .filter(Boolean);
+  return intentSegmentParts(text).map((part) => part.text);
+}
+
+export interface IntentSegmentPart {
+  readonly text: string;
+  /** The separator said between the previous element and this one („ z ”, „, ”), if any. */
+  readonly separatorBefore: string | null;
+}
+
+/** The listed elements with the separators between them, so a caller can see what joined them. */
+export function intentSegmentParts(text: string): readonly IntentSegmentPart[] {
+  const pieces = text.split(new RegExp(`(${SEGMENT_SPLIT.source})`));
+  const parts: IntentSegmentPart[] = [];
+  let separator: string | null = null;
+  for (let index = 0; index < pieces.length; index += 2) {
+    const piece = (pieces[index] ?? '').trim();
+    if (piece) {
+      parts.push({ text: piece, separatorBefore: parts.length === 0 ? null : separator });
+      separator = null;
+    }
+    const next = pieces[index + 1];
+    if (next !== undefined) separator = (separator ?? '') + next;
+  }
+  return parts;
 }
 
 export function parseIntent(text: string): ParsedIntent {
@@ -388,7 +419,7 @@ export function parseIntent(text: string): ParsedIntent {
 
   /* Each segment carries its OWN role. A term never inherits a word that was said
      about a different product. */
-  for (const segment of intentSegments(text)) {
+  for (const [segmentIndex, segment] of intentSegments(text).entries()) {
     const normalized = normalizeIntentText(segment);
     if (!normalized) continue;
     const statedRole = detectStatedRole(segment);
@@ -396,9 +427,18 @@ export function parseIntent(text: string): ParsedIntent {
 
     // Phrases first — longest wins, so compound concepts survive tokenisation.
     for (const [phrase, concept] of PHRASE_ENTRIES) {
-      if (remaining.includes(phrase) && !seen.has(concept)) {
-        seen.add(concept);
-        terms.push({ raw: phrase, normalized: phrase, concept, role: statedRole, fuzzy: false });
+      if (remaining.includes(phrase) && !seen.has(`${concept}|${statedRole ?? ''}`)) {
+        seen.add(`${concept}|${statedRole ?? ''}`);
+        terms.push({
+          raw: phrase,
+          normalized: phrase,
+          concept,
+          role: statedRole,
+          fuzzy: false,
+          segment,
+          utterance: text,
+          segmentIndex,
+        });
         remaining = remaining.replace(phrase, ' ');
       }
     }
@@ -411,7 +451,9 @@ export function parseIntent(text: string): ParsedIntent {
 
       const exact = TOKEN_INDEX.get(token) ?? null;
       const concept = exact ?? fuzzyConcept(token);
-      const key = concept ?? `raw:${token}`;
+      // The same thing said twice is one request — UNLESS the customer gave it a different
+      // role („truskawki i truskawki jako posypka”): that is two deliberate uses (§33).
+      const key = `${concept ?? `raw:${token}`}|${statedRole ?? ''}`;
       if (seen.has(key)) continue;
       seen.add(key);
       terms.push({
@@ -420,6 +462,9 @@ export function parseIntent(text: string): ParsedIntent {
         concept,
         role: statedRole,
         fuzzy: exact === null && concept !== null,
+        segment,
+        utterance: text,
+        segmentIndex,
       });
     }
   }

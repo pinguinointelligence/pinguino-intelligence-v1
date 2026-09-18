@@ -159,3 +159,44 @@ export const officialProductTypeLabelPl = (type: OfficialProductType): string =>
   PRODUCT_TYPE_LABELS[type];
 export const officialSourceStatusLabelPl = (status: OfficialRecipeSourceStatus): string =>
   SOURCE_STATUS_LABELS[status];
+
+/**
+ * DESIGN V3.0 IX — one quiet card line „typ · pochodzenie”. The imported origin mixes
+ * English and Polish source text („Mexico”, „Włochy / global”); the data stays verbatim
+ * and only its FIRST segment is presented, in Polish. A universal origin („Global”) says
+ * nothing about the recipe and is not shown.
+ */
+const ORIGIN_SEGMENT_LABELS_PL: Readonly<Record<string, string | null>> = {
+  global: null,
+  usa: 'USA',
+  uk: 'Wielka Brytania',
+  'great britain': 'Wielka Brytania',
+  italy: 'Włochy',
+  tuscany: 'Toskania',
+  'florence, italy': 'Florencja',
+  mexico: 'Meksyk',
+  'middle east': 'Bliski Wschód',
+  germany: 'Niemcy',
+  japan: 'Japonia',
+  thailand: 'Tajlandia',
+  philippines: 'Filipiny',
+  mediterranean: 'Śródziemnomorze',
+  'latin america': 'Ameryka Łacińska',
+  ireland: 'Irlandia',
+  france: 'Francja',
+  europe: 'Europa',
+  'eastern europe': 'Europa Wschodnia',
+  canada: 'Kanada',
+  'cafayate, salta': 'Argentyna',
+  brazil: 'Brazylia',
+  tropics: 'Tropiki',
+  'puerto rico': 'Portoryko',
+  peru: 'Peru',
+};
+
+export function officialRecipeOriginLabelPl(origin: string | null | undefined): string | null {
+  const first = origin?.split('/')[0]?.trim() ?? '';
+  if (!first) return null;
+  const key = first.toLocaleLowerCase('en');
+  return key in ORIGIN_SEGMENT_LABELS_PL ? (ORIGIN_SEGMENT_LABELS_PL[key] ?? null) : first;
+}

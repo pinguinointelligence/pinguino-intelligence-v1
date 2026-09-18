@@ -182,9 +182,15 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
     await act(async () => root.render(<WorkbenchSettingsLine compact />));
 
     expect(useRecipeStore.getState().formulation_strategy).toBe('eco');
+    // DESIGN V3.0 correction I: OPTIMAL / ECO are two selectable tiles.
     expect(
-      (host.querySelector('[data-testid="workbench-strategy"]') as HTMLSelectElement).value,
-    ).toBe('eco');
+      host.querySelector('[data-testid="workbench-strategy-eco"]')?.getAttribute('aria-checked'),
+    ).toBe('true');
+    expect(
+      host
+        .querySelector('[data-testid="workbench-strategy-optimal"]')
+        ?.getAttribute('aria-checked'),
+    ).toBe('false');
   });
 
   it('changes strategy without replacing ingredients, toppings or locks', async () => {
@@ -197,7 +203,10 @@ describe('WorkbenchSettingsLine deferred batch editing', () => {
       );
     const before = materialVector();
 
-    await selectValue('workbench-strategy', 'eco');
+    // DESIGN V3.0 correction I: the ECO tile, through the same changeStrategy.
+    await act(async () =>
+      (host.querySelector('[data-testid="workbench-strategy-eco"]') as HTMLButtonElement).click(),
+    );
 
     expect(useRecipeStore.getState().formulation_strategy).toBe('eco');
     expect(materialVector()).toEqual(before);
@@ -721,14 +730,11 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
     const panel = host.querySelector('[data-testid="workbench-settings-line"]')!;
     expect(panel.querySelectorAll('[aria-label="Docelowa partia"]')).toHaveLength(1);
 
-    const strategy = panel.querySelector('[data-testid="workbench-strategy"]') as HTMLSelectElement;
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')?.set?.call(
-        strategy,
-        'eco',
-      );
-      strategy.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    // DESIGN V3.0 correction I: the ECO tile replaces the „Tryb" select.
+    await act(async () =>
+      (panel.querySelector('[data-testid="workbench-strategy-eco"]') as HTMLButtonElement).click(),
+    );
+    expect(useRecipeStore.getState().formulation_strategy).toBe('eco');
     expect(panel.querySelectorAll('[aria-label="Docelowa partia"]')).toHaveLength(1);
 
     const home = listActiveHomeMachines(MACHINE_CATALOG)[0]!;
@@ -774,18 +780,19 @@ describe('WorkbenchSettingsLine — one editable batch field', () => {
     expect(host.textContent).toContain('Zatwierdzone');
   });
 
-  it('keeps both accepted Settings actions at the pill geometry', async () => {
-    const save = host.querySelector(
-      '[data-testid="profile-settings-save-default"]',
-    ) as HTMLButtonElement;
+  it('keeps the confirmation at the pill geometry beside the defaults box', async () => {
+    // DESIGN V3.0 correction I: „Zapisz jako domyślne" became the
+    // „[ ] Ustaw jako domyślne" box; the confirmation keeps its pill.
+    expect(host.querySelector('[data-testid="profile-settings-save-default"]')).toBeNull();
+    const box = host.querySelector('[data-testid="profile-settings-default"]') as HTMLInputElement;
+    expect(box.type).toBe('checkbox');
+    expect(box.closest('label')?.textContent).toContain('Ustaw jako domyślne');
     const confirm = host.querySelector(
       '[data-testid="profile-settings-confirm"]',
     ) as HTMLButtonElement;
-    for (const button of [save, confirm]) {
-      expect(button.className).toContain('rounded-full');
-      expect(button.className).toContain('h-11');
-      expect(button.className).toContain('px-5');
-    }
+    expect(confirm.className).toContain('rounded-full');
+    expect(confirm.className).toContain('h-11');
+    expect(confirm.className).toContain('px-5');
   });
 });
 

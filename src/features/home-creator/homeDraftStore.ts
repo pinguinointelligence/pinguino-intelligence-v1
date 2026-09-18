@@ -27,6 +27,14 @@ export interface IntentChip {
   readonly label: string;
   readonly concept: string | null;
   readonly role: IntentRole | null;
+  /**
+   * The listed element of the utterance the chip came from (see `IntentTerm.segment`).
+   * Optional: chips persisted before it existed resolve from their label alone.
+   */
+  readonly segment?: string;
+  /** The whole utterance and the element index (see `IntentTerm`); optional like `segment`. */
+  readonly utterance?: string;
+  readonly segmentIndex?: number;
   /** How this chip entered the intent (§19 — now four doors, one flow: §30 adds AI fruit recognition). */
   readonly source: 'text' | 'voice' | 'scan' | 'vision';
   /** Resolved Mapper/catalogue identity, once resolution has run. */
@@ -41,6 +49,16 @@ export interface IntentChip {
    * leave the recipe quietly missing the ingredient the user asked for.
    */
   readonly candidates?: readonly { readonly id: string; readonly name: string }[];
+  /**
+   * How `productId` was chosen. A frozen SA-03 concept default records the recipe scope
+   * it was chosen for, so a profile stated later (Sorbet, Wegańskie) re-applies the
+   * SA-04 scope before the product reaches the recipe.
+   */
+  readonly resolvedBy?: {
+    readonly authority: 'SA03_CONCEPT_DEFAULT' | 'LITERAL_CATALOGUE';
+    readonly conceptKey?: string;
+    readonly scope?: string | null;
+  };
 }
 
 export interface HomeDraftState {
@@ -60,6 +78,14 @@ export interface HomeDraftState {
   recipeNameOverride: string | null;
   /** `Let's make it` was pressed (§66). */
   preparationStarted: boolean;
+  /**
+   * DESIGN V3.0 IV „Przerwanie w HOME”: the preparation-plan steps with no production
+   * record of their own (the machine preparation before start, the heat step) that the
+   * customer finished with „Gotowe”, for ONE production run. Weighing, the machine
+   * hand-off and the batch itself stay in the canonical Production session; this only
+   * lets „Wróć”, „Zapisz” and a refresh return to the same step.
+   */
+  preparationSteps: { readonly sessionId: string; readonly doneStepIds: readonly string[] } | null;
   /** Answers collected before the first visible recipe; keyed by stable chip id. */
   amountAnswersByChipId: Readonly<Record<string, number>>;
   usageAnswersByChipId: Readonly<Record<string, IntentRole>>;
@@ -82,6 +108,7 @@ export interface HomeDraftState {
   markRecipeReady: (ready: boolean) => void;
   setRecipeNameOverride: (name: string | null) => void;
   startPreparation: () => void;
+  markPreparationStepDone: (sessionId: string, stepId: string) => void;
   answerAmount: (chipId: string, grams: number) => void;
   answerUsage: (chipId: string, role: IntentRole) => void;
   setDerivation: (input: {
@@ -112,6 +139,7 @@ const EMPTY = {
   recipeReady: false,
   recipeNameOverride: null as string | null,
   preparationStarted: false,
+  preparationSteps: null as HomeDraftState['preparationSteps'],
   amountAnswersByChipId: {} as Readonly<Record<string, number>>,
   usageAnswersByChipId: {} as Readonly<Record<string, IntentRole>>,
   derivedFromPublicationId: null as string | null,
@@ -127,12 +155,15 @@ export const useHomeDraftStore = create<HomeDraftState>()(
 
       addChip: (chip) =>
         set((state) =>
-          // Same resolved product twice is one chip — the user meant it once.
+          // Same resolved product twice is one chip — the user meant it once. A DIFFERENT
+          // stated role is not a repetition: „truskawki i truskawki jako posypka” is two
+          // deliberate uses of one product (§33), and each gets its own line.
           state.chips.some(
             (existing) =>
               existing.id === chip.id ||
-              (chip.productId !== null && existing.productId === chip.productId) ||
-              (chip.concept !== null && existing.concept === chip.concept),
+              (((chip.productId !== null && existing.productId === chip.productId) ||
+                (chip.concept !== null && existing.concept === chip.concept)) &&
+                (existing.role ?? null) === (chip.role ?? null)),
           )
             ? state
             : { chips: [...state.chips, chip] },
@@ -159,6 +190,16 @@ export const useHomeDraftStore = create<HomeDraftState>()(
       markRecipeReady: (recipeReady) => set({ recipeReady }),
       setRecipeNameOverride: (recipeNameOverride) => set({ recipeNameOverride }),
       startPreparation: () => set({ preparationStarted: true }),
+      markPreparationStepDone: (sessionId, stepId) =>
+        set((state) => {
+          const current =
+            state.preparationSteps?.sessionId === sessionId
+              ? state.preparationSteps.doneStepIds
+              : [];
+          return current.includes(stepId)
+            ? state
+            : { preparationSteps: { sessionId, doneStepIds: [...current, stepId] } };
+        }),
       answerAmount: (chipId, grams) =>
         set((state) => ({
           amountAnswersByChipId: { ...state.amountAnswersByChipId, [chipId]: grams },

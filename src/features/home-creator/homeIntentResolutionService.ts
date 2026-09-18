@@ -8,9 +8,11 @@
  * the user typed. If the catalogue cannot produce one, the chip stays unresolved and
  * HOME says so — it never falls back to "something similar".
  *
- * Candidate ordering is owned by the central Mapper/Search boundary. HOME preserves
- * a literal exact label when one exists and otherwise asks on ambiguity; it never
- * substitutes the first broad hit for the product the customer named.
+ * Candidate ordering is owned by the central Mapper/Search boundary. A generic idea
+ * („truskawka”) consumes the owner-frozen concept default (SA-03/SA-04) through
+ * `selectApprovedConceptDefault`; an explicit form/brand/exact name keeps the literal
+ * path, and HOME asks only when no decision applies or the stated words conflict with
+ * it. HOME never substitutes the first broad hit for the product the customer named.
  */
 import { getEngineApprovedIngredientById } from '@/services/ingredients';
 import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
@@ -18,7 +20,10 @@ import { materializeCanonicalToolboxIngredient } from '@/data/ingredients/canoni
 import { prepareProductEngineIngredient } from '@/data/products/productEngineHandoff';
 import { getProduct } from '@/services/products';
 import { searchProducts } from '@/services/globalCatalog';
-import { searchCanonicalMapperIngredients } from '@/services/productPicker/mapperSearch';
+import {
+  searchCanonicalMapperIngredients,
+  selectApprovedConceptDefault,
+} from '@/services/productPicker/mapperSearch';
 import {
   engineIngredientForCatalogSelection,
   resolveCurrentMapperCatalogSelection,
@@ -26,26 +31,9 @@ import {
 } from '@/features/ingredient-builder/mapperOnlyCatalog';
 import type { EngineIngredient } from '@/engine';
 import type { SafeMapperSearchRow } from '@/services/productPicker/mapperSearch';
+import type { MapperConceptScope } from '@/features/mapper-search-runtime';
 import { catalogueSearchTerms, resolveIdentity } from './homeIdentityResolution';
-import { normalizeIntentText } from './homeIntentParsing';
-
-const CANONICAL_FRESH_BANANA = Object.freeze({
-  ingredient_id: 'PI-ING-000345',
-  ingredient_name_display: 'BANANA · Fresh Fruit',
-});
-const SIMPLE_FRESH_BANANA_INTENTS: ReadonlySet<string> = new Set([
-  'banana',
-  'banan',
-  'bananowe',
-  'bananowy',
-  'bananowa',
-]);
-
-const isSimpleFreshBananaIntent = (chip: {
-  readonly label: string;
-  readonly concept: string | null;
-}): boolean =>
-  chip.concept === 'banana' && SIMPLE_FRESH_BANANA_INTENTS.has(normalizeIntentText(chip.label));
+import { intentSegmentParts, parseIntent, type IntentProfile } from './homeIntentParsing';
 
 /** What one chip resolved to, ready for the UI to act on. */
 export interface ResolvedChipIdentity {
@@ -53,34 +41,147 @@ export interface ResolvedChipIdentity {
   readonly ingredient_name_display: string;
 }
 
+/** Where a resolved identity came from, for tests, QA evidence and timing marks. */
+export interface ChipResolutionProvenance {
+  readonly authority: 'SA03_CONCEPT_DEFAULT' | 'LITERAL_CATALOGUE';
+  readonly conceptKey?: string;
+  readonly decisionId?: string;
+  readonly rank?: number;
+  /** The frozen SA-04 scope the default was chosen for (`null` = ANY). */
+  readonly scope?: string | null;
+}
+
 export type ChipResolution =
-  | { readonly kind: 'resolved'; readonly row: ResolvedChipIdentity }
+  | {
+      readonly kind: 'resolved';
+      readonly row: ResolvedChipIdentity;
+      readonly provenance?: ChipResolutionProvenance;
+      /** The customer's words for the whole product when one phrase covered several chips. */
+      readonly label?: string;
+    }
+  /** This chip is one word of a phrase another chip of the same idea already names. */
+  | { readonly kind: 'covered' }
   | { readonly kind: 'ambiguous'; readonly candidates: readonly SafeMapperSearchRow[] }
   | { readonly kind: 'unresolved' }
   /** The catalogue could not answer at all — honestly distinct from "no such product". */
   | { readonly kind: 'unavailable'; readonly reason: string };
 
+const LITERAL: ChipResolutionProvenance = { authority: 'LITERAL_CATALOGUE' };
+
+/** GELATO inherits the ANY order by the SA-04 freeze, so the two are the same choice. */
+export const sameConceptScope = (
+  left: string | null | undefined,
+  right: string | null | undefined,
+): boolean =>
+  (left === 'GELATO' ? null : (left ?? null)) === (right === 'GELATO' ? null : (right ?? null));
+
+/** HOME profiles that carry a frozen SA-04 recipe scope; Protein reads the ANY order. */
+export const SCOPE_BY_PROFILE: Readonly<Record<IntentProfile, MapperConceptScope | null>> = {
+  gelato: 'GELATO',
+  sorbet: 'SORBET',
+  vegan: 'VEGAN',
+  protein: null,
+};
+
 /**
  * Resolve one intent chip against the canonical Mapper catalogue.
  *
- * The search is the SAME RPC the recipe picker and the Products page use, so HOME can
- * never see a product Pro cannot.
- *
- * The literal label is tried first so an exact chosen product survives. Existing
- * multilingual concept terms are fallbacks into the same shared search boundary;
- * HOME adds no competing catalogue or fuzzy ranker.
+ * 1. HOME_ADD selection: the chip's own utterance element goes to the central
+ *    resolver; a generic concept consumes the frozen default (first legal id in the
+ *    owner order — never search page 1, never `results[0]`).
+ * 2. A stated qualifier/prepared form with a decision → a real choice over the frozen
+ *    order (the customer's words may contradict the default).
+ * 3. Anything else (brand words, exact names, unknown concepts) → the literal
+ *    catalogue path: an exact label survives, several products are a real choice.
  */
+export interface ChipTerm {
+  readonly label: string;
+  readonly concept: string | null;
+  readonly segment?: string;
+  readonly utterance?: string;
+  readonly segmentIndex?: number;
+}
+
+/** The words a chip was said in, as the resolution stage reads them. */
+export const chipTermOf = (chip: ChipTerm): ChipTerm => ({
+  label: chip.label,
+  concept: chip.concept,
+  segment: chip.segment,
+  utterance: chip.utterance,
+  segmentIndex: chip.segmentIndex,
+});
+
+/** The listed elements said right before and after the chip's own element, if known. */
+function neighboursOf(chip: ChipTerm, segment: string) {
+  if (chip.utterance === undefined || chip.segmentIndex === undefined) return undefined;
+  const parts = intentSegmentParts(chip.utterance);
+  const own = parts[chip.segmentIndex];
+  if (!own || own.text !== segment) return undefined;
+  const previous = parts[chip.segmentIndex - 1];
+  const next = parts[chip.segmentIndex + 1];
+  return {
+    before:
+      previous && own.separatorBefore !== null
+        ? { text: previous.text, separator: own.separatorBefore }
+        : null,
+    after:
+      next && next.separatorBefore !== null
+        ? { text: next.text, separator: next.separatorBefore }
+        : null,
+  };
+}
+
 export async function resolveChipTerm(
-  chip: { readonly label: string; readonly concept: string | null },
+  chip: ChipTerm,
   signal?: AbortSignal,
+  context: { readonly profile?: IntentProfile | null } = {},
 ): Promise<ChipResolution> {
-  // Owner-locked natural banana intent is already an exact product decision, not a
-  // broad catalogue query. Resolve it before search pagination so commercial banana
-  // candidates cannot reintroduce ambiguity when the Fresh Fruit row is off-page.
-  // The caller still records this through the same `resolveChip` mutation used by a
-  // manual candidate click, and hydration still re-reads/materialises this stable id.
-  if (isSimpleFreshBananaIntent(chip)) {
-    return { kind: 'resolved', row: CANONICAL_FRESH_BANANA };
+  const segment = chip.segment?.trim() || chip.label;
+  const siblings = parseIntent(chip.utterance ?? segment).terms;
+  const selection = await selectApprovedConceptDefault({
+    text: segment,
+    neighbours: neighboursOf(chip, segment),
+    focus: {
+      text: chip.label,
+      hintedConceptKey: chip.concept,
+      siblingTexts: siblings.map((term) => term.raw),
+    },
+    scope: context.profile ? SCOPE_BY_PROFILE[context.profile] : null,
+    signal,
+  });
+  switch (selection.kind) {
+    case 'selected':
+      return {
+        kind: 'resolved',
+        row: {
+          ingredient_id: selection.row.ingredient_id,
+          ingredient_name_display: selection.row.ingredient_name_display,
+        },
+        provenance: {
+          authority: 'SA03_CONCEPT_DEFAULT',
+          conceptKey: selection.conceptKey,
+          decisionId: selection.decisionId,
+          rank: selection.rank,
+          scope: selection.scope,
+        },
+        ...(selection.phraseText ? { label: selection.phraseText } : {}),
+      };
+    case 'covered':
+      return { kind: 'covered' };
+    case 'clarify':
+      return { kind: 'ambiguous', candidates: selection.rows };
+    case 'no_legal_candidate':
+      // The concept is recognised and decided, but nothing is legal for it now (or for
+      // the recipe scope). Honest: no substitute from a broad name search.
+      return { kind: 'unresolved' };
+    case 'aborted':
+      return { kind: 'unavailable', reason: 'aborted' };
+    case 'unavailable':
+      return { kind: 'unavailable', reason: selection.reason };
+    case 'error':
+      return { kind: 'unavailable', reason: selection.message };
+    case 'not_applicable':
+      break;
   }
 
   const terms = catalogueSearchTerms(chip);
@@ -102,13 +203,13 @@ export async function resolveChipTerm(
 
     const resolution = resolveIdentity(outcome.rows, term);
     if (resolution.kind === 'resolved' && resolution.exact) {
-      return { kind: 'resolved', row: resolution.row };
+      return { kind: 'resolved', row: resolution.row, provenance: LITERAL };
     }
     if (resolution.kind === 'ambiguous' && firstAmbiguity === null) {
       firstAmbiguity = resolution.candidates;
     }
     if (resolution.kind === 'resolved' && outcome.rows.length === 1) {
-      return { kind: 'resolved', row: resolution.row };
+      return { kind: 'resolved', row: resolution.row, provenance: LITERAL };
     }
   }
 

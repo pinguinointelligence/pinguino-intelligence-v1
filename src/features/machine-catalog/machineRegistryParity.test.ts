@@ -42,14 +42,21 @@ describe('canonical machine registry cross-surface parity', () => {
       const production = machineEducationById(profile.id);
       expect(production?.sourceMachineId, `production: ${profile.id}`).toBe(profile.id);
       expect(production?.steps.length).toBeGreaterThan(0);
-      const instructions = production!.steps.join(' ').toLocaleLowerCase('pl');
+      const instructions = [...production!.beforeStartSteps, ...production!.steps]
+        .join(' ')
+        .toLocaleLowerCase('pl');
       if (profile.technology === 'compressor') {
         expect(instructions, `compressor must not freeze bowl: ${profile.id}`).not.toMatch(
           /zamro(?:ź|ż).*mis/,
         );
       }
       if (profile.technology === 'frozen_bowl') {
-        expect(instructions, `frozen bowl must be pre-frozen: ${profile.id}`).toMatch(
+        // The bowl is frozen BEFORE the mix is prepared, never after weighing.
+        expect(
+          production!.beforeStartSteps.join(' ').toLocaleLowerCase('pl'),
+          `frozen bowl must be pre-frozen before start: ${profile.id}`,
+        ).toMatch(/zamro(?:ź|ż).*mis/);
+        expect(production!.steps.join(' ').toLocaleLowerCase('pl')).not.toMatch(
           /zamro(?:ź|ż).*mis/,
         );
       }

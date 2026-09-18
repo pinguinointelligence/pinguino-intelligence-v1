@@ -53,7 +53,10 @@ export interface CommunityCopy {
   readonly metrics: {
     readonly made: string;
     readonly makers: string;
+    /** Column / metric HEADING („Wersji”). */
     readonly remixes: string;
+    /** A COUNTED noun on a card: „1 wersja”, „3 wersje”, „5 wersji”. */
+    readonly remixCount: (count: number) => string;
     readonly verifiedRating: string;
     readonly noRatingYet: string;
     readonly uniqueUsers: string;
@@ -89,6 +92,9 @@ export interface CommunityCopy {
     readonly photoFailed: string;
     readonly photoRetry: string;
     readonly photoSkip: string;
+    readonly photoReplaceFailed: string;
+    readonly photoKeepCurrent: string;
+    readonly photoRemoveFailed: string;
     readonly photoOptionsFailed: string;
     /** Recipient page: the photograph could not be loaded (a failure, not „no photo"). */
     readonly ownPhotoUnavailable: string;
@@ -156,6 +162,16 @@ export interface CommunityCopy {
   };
 }
 
+/** Polish plural of „wersja” (1 / 2–4 / 5+): „1 wersja”, „3 wersje”, „12 wersji”, „22 wersje”. */
+export function pluralWersja(n: number): string {
+  const abs = Math.abs(n);
+  const mod10 = abs % 10;
+  const mod100 = abs % 100;
+  if (abs === 1) return 'wersja';
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return 'wersje';
+  return 'wersji';
+}
+
 /** Polish — the shipping default. */
 export const communityCopyPl: CommunityCopy = {
   nav: {
@@ -200,6 +216,7 @@ export const communityCopyPl: CommunityCopy = {
     made: 'Wykonań',
     makers: 'Osób zrobiło',
     remixes: 'Wersji',
+    remixCount: (count) => `${count} ${pluralWersja(count)}`,
     verifiedRating: 'Ocena zweryfikowana',
     noRatingYet: 'Brak ocen',
     uniqueUsers: 'Użytkowników',
@@ -240,6 +257,9 @@ export const communityCopyPl: CommunityCopy = {
       'Nie udało się dodać zdjęcia. Do czasu dodania własnego odbiorca zobaczy zdjęcie Gellatti.',
     photoRetry: 'Spróbuj ponownie',
     photoSkip: 'Udostępnij bez zdjęcia',
+    photoReplaceFailed: 'Nie udało się dodać nowego zdjęcia. Odbiorca nadal widzi poprzednie.',
+    photoKeepCurrent: 'Zostaw obecne zdjęcie',
+    photoRemoveFailed: 'Nie udało się usunąć zdjęcia. Odbiorca nadal je widzi.',
     photoOptionsFailed: 'Nie udało się sprawdzić zdjęcia dla tego linku.',
     ownPhotoUnavailable: 'Nie udało się wczytać zdjęcia autora.',
     ownPhotoRefused: 'To zdjęcie nie jest już dostępne.',
@@ -351,6 +371,7 @@ export const communityCopyEn: CommunityCopy = {
     made: 'Makes',
     makers: 'People made it',
     remixes: 'Remixes',
+    remixCount: (count) => `${count} ${count === 1 ? 'remix' : 'remixes'}`,
     verifiedRating: 'Verified rating',
     noRatingYet: 'Brak ocen.',
     uniqueUsers: 'Users',
@@ -390,6 +411,10 @@ export const communityCopyEn: CommunityCopy = {
       'The photo could not be added. Until you add your own, the recipient sees the Gellatti photo.',
     photoRetry: 'Try again',
     photoSkip: 'Share without a photo',
+    photoReplaceFailed:
+      'The new photo could not be added. The recipient still sees the previous one.',
+    photoKeepCurrent: 'Keep the current photo',
+    photoRemoveFailed: 'The photo could not be removed. The recipient still sees it.',
     photoOptionsFailed: 'The photo options for this link could not be loaded.',
     ownPhotoUnavailable: "The author's photo could not be loaded.",
     ownPhotoRefused: 'This photo is no longer available.',

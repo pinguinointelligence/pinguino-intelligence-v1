@@ -5,14 +5,19 @@ import { ApplicationState } from '@/components/shared/ApplicationState';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
-import { getShopCatalog, startShopCheckout, syncShopOrder } from '@/services/shop';
+import {
+  getShopCatalog,
+  ShopCheckoutError,
+  startShopCheckout,
+  syncShopOrder,
+} from '@/services/shop';
+import { PLAN_REQUIRED } from '@/features/shop/ShopPlanRequired';
 import { shopCopy as c } from '@/copy/shop';
 import { useShopCartStore } from './shopCartStore';
 import { ShopCart, type ShopCartEntry } from './ShopCart';
 import { ShopConfirmation } from './ShopConfirmation';
 import { ShopProductCard } from './ShopProductCard';
 import { ShopStarterContents } from './ShopStarterContents';
-import { useNavigate } from 'react-router';
 import { selectedShopCountry, useShopCountryStore } from './shopCountryStore';
 import { ShopStarterOffer } from './ShopStarterOffer';
 import { ShopInfopakOffer } from './ShopInfopakOffer';
@@ -23,7 +28,6 @@ const label =
   'text-[10px] leading-[1.25] font-bold tracking-[0.1em] text-[var(--g-text-secondary)] uppercase';
 
 export function ShopCatalog() {
-  const navigate = useNavigate();
   const checkoutCountry = useShopCountryStore(selectedShopCountry);
   const [params, setParams] = useSearchParams();
   const catalog = useQuery({ queryKey: ['shop-catalog'], queryFn: getShopCatalog });
@@ -31,6 +35,8 @@ export function ShopCatalog() {
   const authStatus = useAuthStore((state) => state.status);
   const openAuthModal = useAuthModalStore((state) => state.open);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  /* The server refused the order for the account's plan (owner, 2026-09-18): said as such, with the way to a plan. */
+  const [checkoutNeedsPlan, setCheckoutNeedsPlan] = useState(false);
 
   const products = useMemo(() => catalog.data ?? [], [catalog.data]);
   const bySku = useMemo(() => new Map(products.map((p) => [p.sku, p])), [products]);
@@ -64,9 +70,11 @@ export function ShopCatalog() {
       cart.clear();
       window.location.assign(result.url);
     },
-    onError: () => {
+    onError: (error) => {
       starting.current = false;
-      setCheckoutError(c.cart.error);
+      const needsPlan = error instanceof ShopCheckoutError && error.code === PLAN_REQUIRED;
+      setCheckoutNeedsPlan(needsPlan);
+      setCheckoutError(needsPlan ? null : c.cart.error);
     },
   });
   const startCheckout = () => {
@@ -76,6 +84,7 @@ export function ShopCatalog() {
     if (!checkoutCountry?.physicalAvailable) return;
     starting.current = true;
     setCheckoutError(null);
+    setCheckoutNeedsPlan(false);
     checkout.mutate();
   };
 
@@ -134,7 +143,12 @@ export function ShopCatalog() {
             onAdd={() => cart.add(bundle.sku)}
             /* Intent goes into the ROUTE, so signing in or reloading resumes
                the same flow with the same country. */
-            onLocalPack={() => navigate('/shop/local-starter-pack')}
+            onLocalPack={() =>
+              /* One 0 € offer (owner 2026-09-17): the local variant is the per-country PDF below. */
+              document
+                .getElementById('shop-infopak')
+                ?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+            }
           />
           <ShopStarterContents product={bundle} />
         </>
@@ -173,6 +187,7 @@ export function ShopCatalog() {
           authed={authStatus === 'authed'}
           checkoutPending={checkout.isPending}
           checkoutError={checkoutError}
+          checkoutNeedsPlan={checkoutNeedsPlan}
           onQuantity={(sku, quantity) => cart.setQuantity(sku, quantity)}
           onRemove={(sku) => cart.remove(sku)}
           onCheckout={startCheckout}

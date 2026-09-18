@@ -21,6 +21,7 @@ import {
   type MyDocumentOrder,
 } from '@/services/shopDigitalDocument';
 import { downloadLocalStarterPackPdf } from './localStarterPackPdf';
+import { languageDisplayName, regionDisplayName } from './shopDisplayNames';
 
 /**
  * The customer's own orders — the same facts Admin works from, minus the
@@ -174,7 +175,11 @@ function DocumentRow({ order, focused }: { order: MyDocumentOrder; focused: bool
         </div>
         <div>
           <dt className={label}>{c.infopak.detailsTitle}</dt>
-          <dd className="mt-1 text-[13px] text-[var(--g-ink)]">{c.infopak.language}</dd>
+          <dd className="mt-1 text-[13px] text-[var(--g-ink)]">
+            {order.countryIso2
+              ? `PDF · ${regionDisplayName(order.countryIso2)} · ${languageDisplayName(order.language)}`
+              : c.infopak.language}
+          </dd>
         </div>
         <div>
           <dt className={label}>{c.orders.total}</dt>

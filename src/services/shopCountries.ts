@@ -1,4 +1,9 @@
 import { supabase } from '@/lib/supabase/client';
+import {
+  STARTER_LOCAL_DOCUMENT_KEY,
+  getDocumentMarkets,
+  type DocumentMarket,
+} from '@/services/shopDigitalDocument';
 
 /**
  * WHERE ARE YOU STARTING? — the one question that decides how a Starter Pack is
@@ -37,6 +42,8 @@ export interface ShopCountry {
   missingComponents: string[];
   componentsRequired: number;
   componentsReady: number;
+  /** The free per-country PDF (seven Starter Pack items, local equivalents) exists here. */
+  documentAvailable?: boolean;
 }
 
 export interface ShopShippingRate {
@@ -84,7 +91,46 @@ const rowToCountry = (row: Record<string, unknown>): ShopCountry => ({
     : [],
   componentsRequired: Number(row.components_required ?? 0),
   componentsReady: Number(row.components_ready ?? 0),
+  documentAvailable: false,
 });
+
+const regionName = (iso2: string, language: string): string => {
+  try {
+    return new Intl.DisplayNames([language, 'en'], { type: 'region' }).of(iso2) ?? iso2;
+  } catch {
+    return iso2;
+  }
+};
+
+/**
+ * The free PDF is made for more markets than the Starter Pack ships to. Those markets join the
+ * one country list as countries we do not ship to (named in their own first document
+ * language, like the Shop's other country names), so a customer can still pick theirs.
+ */
+export const withDocumentMarkets = (
+  countries: readonly ShopCountry[],
+  markets: readonly DocumentMarket[],
+): ShopCountry[] => {
+  const offered = new Set(markets.map((market) => market.countryIso2));
+  const known = new Set(countries.map((country) => country.iso2));
+  const added: ShopCountry[] = markets
+    .filter((market) => !known.has(market.countryIso2))
+    .map((market) => ({
+      iso2: market.countryIso2,
+      name: regionName(market.countryIso2, market.variants[0]?.language ?? 'en'),
+      physicalAvailable: false,
+      localIntended: false,
+      localLive: false,
+      missingComponents: [],
+      componentsRequired: 0,
+      componentsReady: 0,
+      documentAvailable: true,
+    }));
+  return [
+    ...countries.map((country) => ({ ...country, documentAvailable: offered.has(country.iso2) })),
+    ...added,
+  ].sort((a, b) => a.name.localeCompare(b.name));
+};
 
 /**
  * Every country the Shop may offer, with its computed readiness.
@@ -105,10 +151,13 @@ export async function getShopCountries(): Promise<ShopCountry[]> {
      cross the boundary as `unknown` and are narrowed here — once, in the reader
      that owns the shape, rather than at every call site. */
   const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
-  return rows
-    .filter((row) => row.active !== false)
-    .map(rowToCountry)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const countries = rows.filter((row) => row.active !== false).map(rowToCountry);
+  /* The document markets are an addition, never a condition: if they cannot be read, the
+     Shop's own countries still load. */
+  const markets = await getDocumentMarkets(STARTER_LOCAL_DOCUMENT_KEY).catch(
+    (): DocumentMarket[] => [],
+  );
+  return withDocumentMarkets(countries, markets);
 }
 
 /**

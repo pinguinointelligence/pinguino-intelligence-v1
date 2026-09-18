@@ -104,21 +104,25 @@ describe('Recipe profile visual density contract', () => {
     const theme = read('../../styles/theme-pro-light.css');
     const visualSystem = read('../../styles/gellatti-v2-1.css');
 
-    // Six cells in the approved reading order: confirmation/type, then
-    // machine/serving, then batch/mode. Batch and Tryb are ordinary cells of
-    // the same grid — never a separate three-row sub-grid pinned to row 1.
-    expect(settings).toContain('profile-settings-grid grid grid-cols-2 items-stretch gap-2');
-    // Batch and mode are both accepted cells again (owner regression restore
-    // 2026-09-04), with one target control and no duplicate Base readout.
-    expect(settings.match(/data-settings-final-card=/g)).toHaveLength(2);
-    expect(settings.match(/data-settings-label=/g)).toHaveLength(2);
+    // The desktop keeps ONE two-column grid of the approved 46 px fields
+    // (type/serving, machine/batch) — never a separate three-row sub-grid
+    // pinned to row 1. DESIGN V3.0 correction I: below the workbench
+    // breakpoint the same cells stack as one column in the design's order.
+    expect(settings).toContain(
+      'profile-settings-grid flex flex-col gap-4 min-[68.5rem]:grid min-[68.5rem]:grid-cols-2 min-[68.5rem]:items-stretch min-[68.5rem]:gap-2',
+    );
+    // One target control and no duplicate Base readout. The „Tryb" select
+    // cell is replaced by the OPTIMAL / ECO tiles (correction I, desktop too),
+    // which carry the second settings control.
+    expect(settings.match(/data-settings-final-card=/g)).toHaveLength(1);
+    expect(settings.match(/data-settings-label=/g)).toHaveLength(1);
     expect(settings.match(/data-settings-control=/g)).toHaveLength(2);
-    expect(settings).toContain('order-5');
+    expect(settings).toContain('min-[68.5rem]:order-5');
     // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §5): the
-    // sixth cell was the duplicated `Baza receptury` readout and is REMOVED.
-    // The grid is now the four approved fields plus the batch row; nothing may
-    // reintroduce a read-only sixth tile.
-    expect(settings).not.toContain('order-6');
+    // sixth cell was the duplicated `Baza receptury` readout and is REMOVED;
+    // nothing may reintroduce a read-only tile. The sixth desktop position now
+    // belongs to the full-width OPTIMAL / ECO row.
+    expect(settings).toContain('min-[68.5rem]:order-6 min-[68.5rem]:col-span-2');
     expect(settings).not.toContain('profile-settings-base-readout');
     expect(settings).toContain('lg:h-[46px]');
     expect(settings.includes('profile-settings-final-row')).toBe(false);
@@ -126,13 +130,14 @@ describe('Recipe profile visual density contract', () => {
 
     // The confirmation control is still GRAPHITE and still never orange.
     // SUPERSEDED, owner authority 2026-09-02 (approved desktop PDF §8): it now
-    // lives INSIDE expanded Settings as „Potwierdź zmiany", to the right of the
-    // permanent „Zapisz jako domyślne", and it is a filled graphite pill again
-    // because in that footer it is the one primary — it no longer sits in the
-    // band header competing with Przelicz. What is still protected: graphite,
-    // never the accent.
+    // lives INSIDE expanded Settings as „Potwierdź zmiany", and it is a filled
+    // graphite pill again because in that footer it is the one primary — it
+    // no longer sits in the band header competing with Przelicz. What is still
+    // protected: graphite, never the accent. DESIGN V3.0 correction I: the
+    // „Zapisz jako domyślne" button beside it became „[ ] Ustaw jako domyślne".
     expect(settings).toContain('bg-[var(--g-graphite)] px-5');
-    expect(settings).toContain('data-testid="profile-settings-save-default"');
+    expect(settings).not.toContain('data-testid="profile-settings-save-default"');
+    expect(settings).toContain('<DefaultsCheckbox');
     expect(settings).not.toMatch(
       /bg-\[(?:#f58a07|var\(--g-orange\))\] px-3 text-xs font-semibold text-white/,
     );

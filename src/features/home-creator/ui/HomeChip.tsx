@@ -4,6 +4,10 @@
  * A chip that has not resolved to a real Gellatti identity yet says so through a quiet
  * pending mark rather than looking finished: §22 forbids matching recipes against
  * guessed product text, so "not resolved yet" must be visible, not hidden.
+ *
+ * DESIGN V3.0 IV-A/VI: the chip is white and shows the CUSTOMER'S OWN WORD
+ * („truskawkowe”), never the catalogue product it resolved to — that name is still
+ * there, in the tooltip and the accessible name, for anyone who wants to check it.
  */
 import { cn } from '@/lib/cn';
 import { homeCreatorCopy } from '../homeCreatorCopy';
@@ -18,7 +22,11 @@ export function HomeChip({
   onRemove: () => void;
   onClick?: () => void;
 }) {
-  const label = chip.productName ?? chip.label;
+  /** What the customer said. The resolved product only describes it. */
+  const label = chip.label;
+  const product = chip.productName && chip.productName !== chip.label ? chip.productName : null;
+  /* The product is announced with the word, not instead of it. */
+  const productText = product ? <span className="sr-only">{` · ${product}`}</span> : null;
   const needsChoice = chip.ambiguous;
 
   return (
@@ -26,12 +34,13 @@ export function HomeChip({
       data-testid="home-intent-chip"
       data-resolved={chip.productId !== null}
       data-ambiguous={needsChoice}
+      title={product ?? undefined}
       className={cn(
-        'inline-flex min-h-[40px] items-center gap-1 rounded-full border py-1 pl-4 pr-1 text-[14px]',
+        'inline-flex min-h-[40px] items-center gap-1 rounded-full border py-1 pr-1 pl-3.5 text-[15px] font-medium',
       )}
       style={{
-        borderColor: needsChoice ? 'var(--g-orange)' : 'var(--g-line)',
-        background: 'var(--g-ivory)',
+        borderColor: needsChoice ? 'var(--g-orange)' : '#e4e0d9',
+        background: '#ffffff',
         color: 'var(--g-ink)',
       }}
     >
@@ -42,9 +51,13 @@ export function HomeChip({
           className="rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
         >
           {label}
+          {productText}
         </button>
       ) : (
-        <span>{label}</span>
+        <span data-testid="home-intent-chip-label">
+          {label}
+          {productText}
+        </span>
       )}
       {chip.role === 'topping' ? (
         <span
@@ -59,7 +72,8 @@ export function HomeChip({
         onClick={onRemove}
         aria-label={`${homeCreatorCopy.intent.removeChip} ${label}`}
         data-testid="home-intent-chip-remove"
-        className="ml-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+        /* The 32 px circle is the look; the ::after around it is the 44 px thumb target. */
+        className="relative ml-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors after:absolute after:-inset-1.5 after:content-[''] hover:bg-black/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
         style={{ color: 'var(--g-text-muted)' }}
       >
         <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" fill="none">

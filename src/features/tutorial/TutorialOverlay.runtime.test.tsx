@@ -227,6 +227,36 @@ describe('§29 — the spotlight', () => {
     expect(q('tutorial-overlay')?.getAttribute('data-tutorial-measured')).toBe('anchor-one');
   });
 
+  it('scrolls only as far as the element needs, so the header is not left off-screen', async () => {
+    // `block: 'center'` pushed the header and HOME tabs off a phone screen for good.
+    const el = anchor('anchor-one', { top: 100, left: 40, width: 300, height: 60 });
+    render();
+    await settle();
+    expect(el.scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ block: 'nearest' }));
+  });
+
+  it('places the spotlight and the card in application pixels under the desktop zoom', async () => {
+    // BODY carries the application scale, and the overlay is portalled into it: a painted
+    // rectangle must be converted back, exactly as the PRO popovers do.
+    document.body.style.setProperty('--gellatti-ui-scale', '0.8');
+    try {
+      anchor('anchor-one', { top: 500, left: 40, width: 300, height: 60 });
+      render();
+      await settle();
+      const light = q('tutorial-spotlight') as HTMLElement | null;
+      // 500 / 0.8 = 625 → 617 with the 8 px pad; 40 / 0.8 = 50 → 42; 300 / 0.8 + 16; 60 / 0.8 + 16.
+      expect(light!.style.top).toBe('617px');
+      expect(light!.style.left).toBe('42px');
+      expect(light!.style.width).toBe('391px');
+      expect(light!.style.height).toBe('91px');
+      // The application viewport is 768 / 0.8 = 960 px tall, so the card fits BELOW the
+      // spotlight (617 + 91 + 16 = 724). Read in painted pixels it would have flipped above.
+      expect((q('tutorial-card') as HTMLElement).style.top).toBe('724px');
+    } finally {
+      document.body.style.removeProperty('--gellatti-ui-scale');
+    }
+  });
+
   it('measures on a timer as well as a frame, so a hidden tab still gets a spotlight', async () => {
     // A background tab throttles or stops requestAnimationFrame entirely; a
     // tutorial that never measured shows a dimmed screen with no lit element.

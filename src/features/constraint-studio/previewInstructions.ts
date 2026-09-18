@@ -62,6 +62,25 @@ export type PreviewInstructionsResult =
   | { ok: true; input: RecipeInput; constraints: ConstraintSet }
   | { ok: false; reason: PreviewInstructionsRejection; lineId: string };
 
+/**
+ * OWNER §18 (2026-09-18) — ONE recipe logic behind HOME and PRO.
+ *
+ * TRUE when every instruction is HOME's technical bootstrap (owner OD-1) and
+ * there is at least one. Such a run carries NO customer edit: it is the plain
+ * recalculation of the recipe, solved on a copy whose 0 g priority line holds
+ * the same 1 g Crown seed PRO writes into its own store. CORE therefore gives it
+ * PRO's plain-run semantics, and the Apply door re-derives that same copy from
+ * the session authorization. Any customer instruction — and an empty list, which
+ * only the preview's own „Przelicz" produces — keeps the interactive session.
+ */
+export function isBootstrapOnlyInstructionSet(
+  instructions: readonly PreviewLineInstruction[],
+): boolean {
+  return (
+    instructions.length > 0 && instructions.every((instruction) => instruction.bootstrap === true)
+  );
+}
+
 /** A line the preview may offer an amount control and a padlock for. */
 export function isPreviewEditableLine(item: RecipeItem): boolean {
   return item.actual_grams === null && !NON_EDITABLE_LOCKS.has(item.lock_type);

@@ -73,7 +73,9 @@ export function CommunityPage() {
             ))}
           </nav>
 
-          <div className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-2">
+          {/* On a phone the search takes its own full row, starting at the left edge, so
+              its placeholder stays readable; from `sm` it sits at the right as before. */}
+          <div className="flex w-full min-w-0 max-w-full flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end">
             <nav aria-label="Widok Community" className="flex max-w-full flex-wrap gap-1">
               <Link
                 to="/community"
@@ -95,7 +97,7 @@ export function CommunityPage() {
               </Link>
             </nav>
 
-            <label className="flex max-w-full items-center gap-2">
+            <label className="flex w-full max-w-full items-center gap-2 sm:w-auto">
               <span className="sr-only">Szukaj w Community</span>
               <input
                 type="search"
@@ -105,7 +107,7 @@ export function CommunityPage() {
                   const value = event.target.value;
                   setParams(value.trim() ? { q: value } : { window: window_ });
                 }}
-                className={applicationFieldClasses('w-56 max-w-full bg-paper')}
+                className={applicationFieldClasses('max-w-full bg-paper sm:w-56')}
               />
             </label>
           </div>

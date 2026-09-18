@@ -25,11 +25,16 @@ const productDiscoveryCopy = fs.readFileSync(
   'utf8',
 );
 const ingredientService = fs.readFileSync(path.join(ROOT, 'src/services/ingredients.ts'), 'utf8');
-const productionFiles = fs
-  .readdirSync(path.join(ROOT, 'src/features/production-workspace'))
-  .map((file) =>
-    fs.readFileSync(path.join(ROOT, 'src/features/production-workspace', file), 'utf8'),
-  )
+// Recursive: the shared batch process lives in production-workspace/process/ and must be
+// scanned too (a flat read crashed on the sub-directory with EISDIR).
+const productionFiles = (
+  fs.readdirSync(path.join(ROOT, 'src/features/production-workspace'), {
+    recursive: true,
+  }) as string[]
+)
+  .map((file) => path.join(ROOT, 'src/features/production-workspace', file))
+  .filter((file) => fs.statSync(file).isFile())
+  .map((file) => fs.readFileSync(file, 'utf8'))
   .join('\n');
 
 describe('global catalog RLS and trust boundaries', () => {

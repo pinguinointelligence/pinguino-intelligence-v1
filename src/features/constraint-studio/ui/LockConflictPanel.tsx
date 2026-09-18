@@ -197,7 +197,7 @@ export function LockConflictPanel({
                 >
                   {lock.ingredientName}
                 </span>
-                <span className="flex shrink-0 flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                <span className="flex min-w-0 max-w-full flex-wrap items-center justify-end gap-x-2 gap-y-1">
                   <span
                     className="font-mono text-sm tabular-nums text-black/65"
                     data-testid="lock-conflict-from-grams"

@@ -8,11 +8,7 @@ const unavailable = (): never => {
 export type ShopAvailability = 'in_stock' | 'preorder' | 'out_of_stock';
 export type ShopOrderStatus = 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
 export type ShopFulfillmentStatus =
-  | 'awaiting'
-  | 'preparing'
-  | 'shipped'
-  | 'delivered'
-  | 'cancelled';
+  'awaiting' | 'preparing' | 'shipped' | 'delivered' | 'cancelled';
 
 export interface ShopProduct {
   id: string;
@@ -117,6 +113,29 @@ export interface ShopCheckoutLine {
   quantity: number;
 }
 
+/** Raised with the checkout function's own machine code (e.g. `plan_required`) so callers can map it to copy. */
+export class ShopCheckoutError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'ShopCheckoutError';
+  }
+}
+
+/** The function answers `{ "error": "<code>" }`; anything else keeps a generic code. */
+export const checkoutErrorCode = (detail: string | null | undefined): string => {
+  try {
+    const parsed = JSON.parse(detail ?? '') as { error?: unknown } | null;
+    return typeof parsed?.error === 'string' && parsed.error !== ''
+      ? parsed.error
+      : 'checkout_failed';
+  } catch {
+    return 'checkout_failed';
+  }
+};
+
 /** The client submits SKUs only — every amount is resolved server-side. */
 export async function startShopCheckout(input: {
   items: readonly ShopCheckoutLine[];
@@ -137,7 +156,7 @@ export async function startShopCheckout(input: {
   });
   if (error) {
     const detail = await error.context?.text?.().catch(() => null);
-    throw new Error(detail ?? error.message);
+    throw new ShopCheckoutError(checkoutErrorCode(detail), detail ?? error.message);
   }
   return data as { url: string; orderId: string; orderNumber: string };
 }

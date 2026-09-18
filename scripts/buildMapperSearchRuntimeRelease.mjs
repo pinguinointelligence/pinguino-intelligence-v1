@@ -682,6 +682,279 @@ runtimeLexicon.autoAddBlocks = [
   };
 });
 
+// ---------------------------------------------------------------------------
+// FINAL concept defaults (SA-03 ANY-scope default map + SA-04 recipe-scope map).
+//
+// `concepts[].defaultPolicy` above is the PRELIMINARY policy column of
+// 01_SEARCH_CONCEPTS (e.g. strawberry = NEEDS_DEFAULT_MAPPING) and
+// `conceptPiLinks[].defaultEligible` is a PRECHECK. The owner froze the final
+// decisions later in the SAME certified workbook: 26_HOME_CONCEPT_PI_MAP
+// (default PI + alternative order for all 245 auto-add concepts, ranked in
+// 27/29) and 32_SA04_SCOPE_QUEUE (GELATO/SORBET/VEGAN policies). They are
+// exported verbatim — never re-ranked here — into a separate generated module,
+// so the SA-10 release bytes (pinned by the Edge semantic-search bundle and by
+// persisted PR_ING semantic bindings) stay unchanged.
+// ---------------------------------------------------------------------------
+const CONCEPT_DEFAULTS_OUT = path.join(
+  ROOT,
+  'src/features/mapper-search-runtime/generated/conceptDefaults.ts',
+);
+const CONCEPT_DEFAULTS_MANIFEST_OUT = path.join(
+  ROOT,
+  'src/features/mapper-search-runtime/generated/conceptDefaultsManifest.ts',
+);
+const piList = (value) =>
+  String(value ?? '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+const freezeRows = (sheetName) =>
+  XLSX.utils.sheet_to_json(conceptWb.Sheets[sheetName], { header: 1, defval: '', raw: false });
+for (const sheetName of ['30_SA03_FINAL_QA', '34_SA04_FINAL_QA']) {
+  const qa = rows(conceptWb, sheetName);
+  if (qa.length === 0 || qa.some((row) => row.status !== 'PASS')) {
+    throw new Error(`${sheetName}: every frozen QA control must be PASS`);
+  }
+}
+for (const [sheetName, title] of [
+  ['31_SA03_ANY_FREEZE', 'GELLATTI — SA-03 ANY-SCOPE DEFAULT MAP FINAL FREEZE'],
+  ['35_SA04_SCOPE_FREEZE', 'GELLATTI — SA-04 RECIPE-SCOPE MAP FINAL FREEZE'],
+]) {
+  const sheet = freezeRows(sheetName);
+  const header = sheet.findIndex((row) => row[0] === 'Area' && row[3] === 'Status');
+  const areas = header < 0 ? [] : sheet.slice(header + 1).filter((row) => row[0]);
+  if (sheet[0]?.[0] !== title || areas.length === 0 || areas.some((row) => row[3] !== 'PASS')) {
+    throw new Error(`${sheetName}: final freeze is not complete`);
+  }
+}
+const mapperIds = new Set(mapperRows.map((row) => row.id));
+const conceptById = new Map(concepts.map((row) => [row.id, row]));
+const rankedDecisionByConcept = new Map(
+  [
+    ...rows(conceptWb, '27_SA03_FRUIT_DECISIONS'),
+    ...rows(conceptWb, '29_SA03_REMAINING_DECISIONS'),
+  ].map((row) => [row.concept_id, row]),
+);
+assertCount('SA-03 ranked decisions', rankedDecisionByConcept.size, 109);
+const scopeByConcept = new Map(
+  rows(conceptWb, '32_SA04_SCOPE_QUEUE').map((row) => [row.concept_id, row]),
+);
+assertCount('SA-04 scope rows', scopeByConcept.size, 245);
+const SCOPE_POLICIES = new Set([
+  'INHERIT_ANY_FINAL',
+  'USE_ALTERNATIVE_FINAL',
+  'NO_CURRENT_CANDIDATE_FINAL',
+]);
+const conceptDefaults = rows(conceptWb, '26_HOME_CONCEPT_PI_MAP').map((row) => {
+  const label = `26_HOME_CONCEPT_PI_MAP ${row.queue_id} ${row.concept_key}`;
+  const concept = conceptById.get(row.concept_id);
+  if (!concept || concept.key !== row.concept_key) throw new Error(`${label}: unknown concept`);
+  if (!['RANKED', 'AUTO_CONFIRMED_SINGLE'].includes(row.default_status)) {
+    throw new Error(`${label}: default_status ${row.default_status} is not final`);
+  }
+  if (row.scope_status !== 'ANY_SCOPE_FROZEN') throw new Error(`${label}: scope not frozen`);
+  const alternativePiIds = piList(row.alternative_order);
+  const ordered = [row.default_pi_id, ...alternativePiIds];
+  const eligible = new Set(piList(row.eligible_pi_ids));
+  if (
+    !row.default_pi_id ||
+    new Set(ordered).size !== ordered.length ||
+    ordered.length !== eligible.size ||
+    ordered.some((id) => !eligible.has(id) || !mapperIds.has(id))
+  ) {
+    throw new Error(`${label}: default + alternatives must cover each eligible Mapper PI once`);
+  }
+  // 03_CONCEPT_PI_LINKS is a precheck (abstract concepts such as `chocolate` hold
+  // no direct links; their eligible set was frozen in the map itself), so the map's
+  // own eligible_pi_ids + the PASS QA sheets are the coverage authority here.
+  if (row.default_status === 'AUTO_CONFIRMED_SINGLE' && ordered.length !== 1) {
+    throw new Error(`${label}: single-candidate default carries alternatives`);
+  }
+  const ranked = rankedDecisionByConcept.get(row.concept_id);
+  if (row.default_status === 'RANKED') {
+    if (
+      !ranked ||
+      ranked.status !== 'RANKED' ||
+      ranked.default_pi_id !== row.default_pi_id ||
+      piList(ranked.alternative_pi_order).join(',') !== alternativePiIds.join(',')
+    ) {
+      throw new Error(`${label}: map row differs from its SA-03 ranking decision`);
+    }
+  }
+  const scope = scopeByConcept.get(row.concept_id);
+  if (
+    !scope ||
+    scope.review_status !== 'SA04_FINALIZED' ||
+    scope.any_default_pi_id !== row.default_pi_id ||
+    piList(scope.any_alternative_order).join(',') !== alternativePiIds.join(',')
+  ) {
+    throw new Error(`${label}: SA-04 scope row does not inherit the frozen ANY default`);
+  }
+  const scopeRule = (policy, suggested, eligibleIds) => {
+    if (!SCOPE_POLICIES.has(policy)) throw new Error(`${label}: unknown scope policy ${policy}`);
+    const piIds = policy === 'NO_CURRENT_CANDIDATE_FINAL' ? [] : piList(eligibleIds);
+    const suggestedPiId = policy === 'NO_CURRENT_CANDIDATE_FINAL' ? null : suggested || null;
+    if (policy !== 'NO_CURRENT_CANDIDATE_FINAL') {
+      if (!suggestedPiId || !ordered.includes(suggestedPiId)) {
+        throw new Error(`${label}: scope suggestion outside the frozen order`);
+      }
+      if (piIds.some((id) => !ordered.includes(id))) {
+        throw new Error(`${label}: scope eligibility outside the frozen order`);
+      }
+    }
+    if (policy === 'INHERIT_ANY_FINAL' && suggestedPiId !== row.default_pi_id) {
+      throw new Error(`${label}: inherited scope changed the default`);
+    }
+    return { policy, suggestedPiId, eligiblePiIds: piIds };
+  };
+  if (scope.gelato_policy !== 'INHERIT_ANY_FINAL' || scope.gelato_default_pi_id !== row.default_pi_id) {
+    throw new Error(`${label}: GELATO must inherit the ANY default`);
+  }
+  return {
+    queueId: row.queue_id,
+    conceptId: row.concept_id,
+    conceptKey: row.concept_key,
+    selectionMode: row.selection_mode,
+    defaultStatus: row.default_status,
+    defaultPiId: row.default_pi_id,
+    alternativePiIds,
+    scopes: {
+      GELATO: { policy: 'INHERIT_ANY_FINAL', suggestedPiId: row.default_pi_id, eligiblePiIds: ordered },
+      SORBET: scopeRule(scope.sorbet_policy, scope.sorbet_suggested_pi_id, scope.sorbet_eligible_pi_ids),
+      VEGAN: scopeRule(scope.vegan_policy, scope.vegan_suggested_pi_id, scope.vegan_eligible_pi_ids),
+    },
+  };
+});
+assertCount('SA-03 concept defaults', conceptDefaults.length, 245);
+assertCount(
+  'SA-03 concept default IDs',
+  new Set(conceptDefaults.map((row) => row.conceptId)).size,
+  245,
+);
+assertCount(
+  'SA-03 RANKED defaults',
+  conceptDefaults.filter((row) => row.defaultStatus === 'RANKED').length,
+  109,
+);
+assertCount(
+  'SA-03 AUTO_CONFIRMED_SINGLE defaults',
+  conceptDefaults.filter((row) => row.defaultStatus === 'AUTO_CONFIRMED_SINGLE').length,
+  136,
+);
+const conceptDefaultsData = {
+  authority: 'SA03_ANY_SCOPE_DEFAULT_MAP_FINAL_FREEZE+SA04_RECIPE_SCOPE_MAP_FINAL_FREEZE',
+  searchReleaseId: 'GELLATTI-SA10-2026-09-10-FINAL',
+  source: {
+    fileName: sources.concepts[0],
+    sha256: sources.concepts[1],
+    sheets: [
+      '26_HOME_CONCEPT_PI_MAP',
+      '27_SA03_FRUIT_DECISIONS',
+      '29_SA03_REMAINING_DECISIONS',
+      '30_SA03_FINAL_QA',
+      '31_SA03_ANY_FREEZE',
+      '32_SA04_SCOPE_QUEUE',
+      '34_SA04_FINAL_QA',
+      '35_SA04_SCOPE_FREEZE',
+    ],
+  },
+  counts: { defaults: 245, ranked: 109, autoConfirmedSingle: 136 },
+  defaults: conceptDefaults,
+};
+const conceptDefaultsSource =
+  `/** GENERATED by scripts/buildMapperSearchRuntimeRelease.mjs — do not edit. */\n` +
+  `import type { MapperConceptDefaultsData } from '../conceptDefaultTypes';\n\n` +
+  `export const MAPPER_CONCEPT_DEFAULTS: MapperConceptDefaultsData = ${JSON.stringify(conceptDefaultsData)};\n`;
+const conceptDefaultsManifestSource =
+  `/** GENERATED by scripts/buildMapperSearchRuntimeRelease.mjs — do not edit. */\n` +
+  `export const MAPPER_CONCEPT_DEFAULTS_SOURCE_SHA256 = '${sources.concepts[1]}';\n` +
+  `export const MAPPER_CONCEPT_DEFAULTS_SHA256 = '${sha256(conceptDefaultsSource)}';\n`;
+
+// ---------------------------------------------------------------------------
+// Owner-approved DISCOVERY links (2026-09-17): a product that the frozen Search source
+// deliberately keeps as an exact-only product may still be used to FIND existing recipes
+// made with it. This is a THIRD projection with its own source hash and manifest — the
+// frozen workbook is not edited, the release bytes are untouched (the supplement is NOT
+// part of `sources`, so `authorityHashes` does not change), and the shape cannot express
+// a default: the build refuses any link whose product is in that concept's frozen order.
+// ---------------------------------------------------------------------------
+const CONCEPT_DISCOVERY_SOURCE = path.join(
+  ROOT,
+  'src/features/mapper-search-runtime/conceptDiscoveryLinks.source.json',
+);
+const CONCEPT_DISCOVERY_OUT = path.join(
+  ROOT,
+  'src/features/mapper-search-runtime/generated/conceptDiscoveryLinks.ts',
+);
+const CONCEPT_DISCOVERY_MANIFEST_OUT = path.join(
+  ROOT,
+  'src/features/mapper-search-runtime/generated/conceptDiscoveryManifest.ts',
+);
+const discoverySourceText = fs.readFileSync(CONCEPT_DISCOVERY_SOURCE, 'utf8');
+const discoveryInput = JSON.parse(discoverySourceText);
+if (
+  discoveryInput.authority !== 'HOME_CONCEPT_DISCOVERY_LINKS_OWNER_APPROVED_V1' ||
+  discoveryInput.usage !== 'RECIPE_DISCOVERY_ONLY'
+) {
+  throw new Error('conceptDiscoveryLinks.source.json: unknown authority or usage');
+}
+const conceptDefaultByKey = new Map(conceptDefaults.map((row) => [row.conceptKey, row]));
+const discoveryLinks = discoveryInput.links.map((link) => {
+  const label = `discovery link ${link.linkId} ${link.conceptKey} ${link.piId}`;
+  const concept = conceptByKey.get(link.conceptKey);
+  if (!concept || concept.id !== link.conceptId) throw new Error(`${label}: unknown concept`);
+  if (!mapperIds.has(link.piId)) throw new Error(`${label}: unknown Mapper ingredient`);
+  if (conceptPiLinks.some((row) => row.conceptKey === link.conceptKey && row.piId === link.piId)) {
+    throw new Error(`${label}: already linked in the frozen source`);
+  }
+  const decision = conceptDefaultByKey.get(link.conceptKey);
+  const frozenOrder = decision
+    ? [
+        decision.defaultPiId,
+        ...decision.alternativePiIds,
+        ...Object.values(decision.scopes).flatMap((scope) => [
+          scope.suggestedPiId,
+          ...scope.eligiblePiIds,
+        ]),
+      ]
+    : [];
+  if (frozenOrder.includes(link.piId)) {
+    throw new Error(`${label}: already a selectable candidate — discovery links never select`);
+  }
+  return {
+    linkId: String(link.linkId),
+    conceptId: String(link.conceptId),
+    conceptKey: String(link.conceptKey),
+    piId: String(link.piId),
+    form: String(link.form),
+    note: String(link.note),
+  };
+});
+const discoveryData = {
+  authority: discoveryInput.authority,
+  usage: discoveryInput.usage,
+  approvedOn: String(discoveryInput.approvedOn),
+  approvedBy: String(discoveryInput.approvedBy),
+  searchReleaseId: 'GELLATTI-SA10-2026-09-10-FINAL',
+  source: {
+    fileName: path.basename(CONCEPT_DISCOVERY_SOURCE),
+    sha256: sha256(discoverySourceText),
+  },
+  counts: {
+    links: discoveryLinks.length,
+    concepts: new Set(discoveryLinks.map((link) => link.conceptKey)).size,
+  },
+  links: discoveryLinks,
+};
+const conceptDiscoverySource =
+  `/** GENERATED by scripts/buildMapperSearchRuntimeRelease.mjs — do not edit. */\n` +
+  `import type { MapperConceptDiscoveryData } from '../conceptDiscoveryTypes';\n\n` +
+  `export const MAPPER_CONCEPT_DISCOVERY_LINKS: MapperConceptDiscoveryData = ${JSON.stringify(discoveryData)};\n`;
+const conceptDiscoveryManifestSource =
+  `/** GENERATED by scripts/buildMapperSearchRuntimeRelease.mjs — do not edit. */\n` +
+  `export const MAPPER_CONCEPT_DISCOVERY_SOURCE_SHA256 = '${discoveryData.source.sha256}';\n` +
+  `export const MAPPER_CONCEPT_DISCOVERY_SHA256 = '${sha256(conceptDiscoverySource)}';\n`;
+
 const release = {
   schemaVersion: 1,
   releaseId: 'GELLATTI-SA10-2026-09-10-FINAL',
@@ -752,6 +1025,10 @@ const outputs = [
   [RELEASE_OUT, releaseSource],
   [VECTORS_OUT, vectorsSource],
   [MANIFEST_OUT, manifestSource],
+  [CONCEPT_DEFAULTS_OUT, conceptDefaultsSource],
+  [CONCEPT_DEFAULTS_MANIFEST_OUT, conceptDefaultsManifestSource],
+  [CONCEPT_DISCOVERY_OUT, conceptDiscoverySource],
+  [CONCEPT_DISCOVERY_MANIFEST_OUT, conceptDiscoveryManifestSource],
 ];
 const check = process.argv.includes('--check');
 for (const [destination, content] of outputs) {

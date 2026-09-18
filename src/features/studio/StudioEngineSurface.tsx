@@ -51,6 +51,8 @@ import {
 import { RecipeContextBar } from '@/features/studio/RecipeContextBar';
 import { mobileNextStep, type MobileNextStep } from '@/features/pro-workbench/mobileNextStep';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { useProSetupFlowGate } from '@/features/pro-workbench/proSetupFlowGate';
+import { ProSetupDefaultsNotice, ProSetupFlow } from '@/features/pro-workbench/ProSetupFlow';
 
 const { studio } = copy;
 
@@ -529,48 +531,25 @@ export function StudioEngineSurface({
     }
   };
 
-  /* B3 — a NEW recipe whose settings were never confirmed opens on its
-     settings, once per draft; confirming them lifts the dashboard away so the
-     ingredient workspace enters from above. A stored default profile confirms
-     the draft by itself (WorkbenchSettingsLine), so a returning customer is
-     never walked through this again. */
-  const activeDraftIdentity = useRecipeProfileStore((state) => state.activeDraftIdentity);
-  const confirmedDraftIdentity = useRecipeProfileStore((state) => state.confirmedDraftIdentity);
-  const profileFirstIdentityRef = useRef<string | null>(null);
-  const profileFirstOpenRef = useRef(false);
-  const firstRunSettings =
-    activeTab === 'profile' &&
-    settingsConfirmed === false &&
-    activeDraftIdentity !== null &&
-    activeDraftIdentity.startsWith('["unsaved-draft"') &&
-    confirmedDraftIdentity !== activeDraftIdentity;
-  useEffect(() => {
-    if (!mobileViewport || !firstRunSettings || activeDraftIdentity === null) return;
-    if (profileFirstIdentityRef.current === activeDraftIdentity) return;
-    const identity = activeDraftIdentity;
-    // Settle first: a stored default confirms a fresh draft a commit later.
-    const timer = window.setTimeout(() => {
-      const profile = useRecipeProfileStore.getState();
-      if (profile.activeDraftIdentity !== identity || profile.settingsConfirmed !== false) return;
-      profileFirstIdentityRef.current = identity;
-      profileFirstOpenRef.current = true;
-      window.dispatchEvent(new Event('pinguino:profile-settings-required'));
-    }, 160);
-    return () => window.clearTimeout(timer);
-  }, [activeDraftIdentity, firstRunSettings, mobileViewport]);
-  const revealWorkspaceRef = useRef<() => void>(() => undefined);
-  useEffect(() => {
-    revealWorkspaceRef.current = () => {
-      if (mobileCockpitState.open && mobileCockpitState.activeTab === 'profile') {
-        collapseWithMove('reveal');
-      }
-    };
+  /* DESIGN V3.0 §3 (owner-LOCKED Points 1–4) — a NEW unsaved recipe on a
+     phone or iPad portrait starts with the full-screen setup instead of the
+     settings sheet (it supersedes B3). Step 1 is always asked; saved defaults
+     skip Steps 2–3 and leave „Używamy Twoich domyślnych ustawień · Zmień ✓"
+     under the recipe. The setup is hosted only where the phone composition is
+     — modal behaviour, never a value — and until it is done nothing later in
+     the flow (the dock with Przelicz, the module tabs, the sheets) is
+     reachable: the workbench under it is inert. The desktop keeps its
+     permanent settings column. */
+  const setup = useProSetupFlowGate({
+    mobileViewport,
+    available: fullFormula,
+    activeTab,
   });
-  useEffect(() => {
-    if (!profileFirstOpenRef.current || settingsConfirmed !== true) return;
-    profileFirstOpenRef.current = false;
-    revealWorkspaceRef.current();
-  }, [settingsConfirmed]);
+  const setupOpen = setup.step !== null;
+  /* The setup leaves and the recipe drops in from above (the V3 reveal), with
+     the same spatial authority every other phone move uses. */
+  const revealAfterSetup = (apply: () => void) =>
+    runSpatialTransition(!mobileViewport ? null : 'reveal', apply);
 
   // ONE recipe action dock (score / „Przelicz" + the action bar). It is placed
   // in the editor toolbar on the workbench breakpoint and in the mobile bottom
@@ -625,12 +604,19 @@ export function StudioEngineSurface({
            the frame before the first measurement. */
         className="pro-workbench-surface flex min-h-0 flex-col pb-[var(--pro-mobile-bottom-stack-height,calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom)))]"
         data-testid="pro-workbench"
+        /* V3 §3 — while the setup is open the workbench under it is inert:
+           no tab stop, no pointer and no screen-reader path reaches Przelicz,
+           the module tabs or any sheet before the recipe exists. */
+        inert={setupOpen || undefined}
       >
         <RecipeContextBar
           stage={MOBILE_PREVIEW_TITLES[activeTab]}
           settingsPending={settingsConfirmed === false}
           onOpen={() => openRecipeDashboard()}
         />
+        {setup.defaultsNotice && setup.draftIdentity !== null ? (
+          <ProSetupDefaultsNotice draftIdentity={setup.draftIdentity} />
+        ) : null}
         {activeTab === 'production' && production.session ? (
           <ProductionWorkspaceHeader production={production} />
         ) : null}
@@ -664,7 +650,6 @@ export function StudioEngineSurface({
                   layout="workbench"
                   mode={productionActive ? 'production' : 'recipe'}
                   production={production}
-                  productionReadyPresentation={activeTab === 'production' && !productionActive}
                   recipeActionDock={recipeActionDock ?? undefined}
                 />
               </div>
@@ -732,7 +717,7 @@ export function StudioEngineSurface({
             attentionTab={mobileAttentionTab}
           />
         </div>
-        {mobileCockpitOpen && mobileViewport ? (
+        {mobileCockpitOpen && mobileViewport && !setupOpen ? (
           <div
             /* OWNER 2026-09-03: the sheet starts BELOW the global header, not at
                `top-0`. On a phone Monitor and Produkcja open this cockpit as soon
@@ -809,6 +794,10 @@ export function StudioEngineSurface({
           </div>
         ) : null}
       </section>
+
+      {/* DESIGN V3.0 §3 — the full-screen setup of a new recipe (phone and
+          iPad portrait only; see `useProSetupFlowGate`). */}
+      {setup.step !== null ? <ProSetupFlow step={setup.step} onReveal={revealAfterSetup} /> : null}
 
       {/* Przelicz z PI — the compact OVERLAY (never a page section). */}
       {recalcSlot}

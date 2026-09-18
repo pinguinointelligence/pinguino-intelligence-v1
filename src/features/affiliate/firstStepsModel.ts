@@ -59,13 +59,14 @@ export function partnerFirstSteps(data: PartnerWorkspace): readonly FirstStep[] 
 
   // G-WEL-07: an unfinished payout setup never blocks the rest of Partner mode.
   const payouts: FirstStep = payoutsOn
-    ? { id: 'payouts', done: true, title: 'Wypłaty', detail: 'Wypłaty są włączone.' }
+    ? { id: 'payouts', done: true, title: 'Wypłaty', detail: 'Dane potwierdzone — wypłaty są aktywne.' }
     : connectExists
       ? {
           id: 'payouts',
           done: false,
           title: 'Wypłaty',
-          detail: 'Dokończ konfigurację konta Connect, aby otrzymywać wypłaty.',
+          detail:
+            'Potwierdź tożsamość i dane do wypłat u operatora płatności. Stawki i terminy ustala Gellatti.',
           section: 'payouts',
         }
       : {
@@ -73,7 +74,7 @@ export function partnerFirstSteps(data: PartnerWorkspace): readonly FirstStep[] 
           done: false,
           title: 'Wypłaty',
           detail:
-            'Gellatti przygotowuje Twoje konto wypłat — nic nie musisz robić. Kody i linki działają już teraz.',
+            'Gellatti przygotowuje Twoje konto wypłat. Damy znać, kiedy będzie gotowe.',
         };
 
   return [code, link, payouts];

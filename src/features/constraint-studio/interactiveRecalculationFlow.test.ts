@@ -396,10 +396,12 @@ describe('interactive recalculation preview — PRO', () => {
       (blocker) => blocker.code === 'liquid_dairy_carrier_below_floor',
     );
     // The remaining gap is recomputed for the customer's own value: less
-    // Cranberry leaves more room for the liquid base, never less.
-    if (firstGap?.actualPercent != null && secondGap?.actualPercent != null) {
-      expect(secondGap.actualPercent).toBeGreaterThanOrEqual(firstGap.actualPercent);
-    }
+    // Cranberry leaves more room for the liquid base, never less. Both gaps MUST be
+    // measured — review 2026-09-18: a change that emptied this evidence after an
+    // in-session edit passed silently through the old `if`.
+    expect(firstGap?.actualPercent ?? null).not.toBeNull();
+    expect(secondGap?.actualPercent ?? null).not.toBeNull();
+    expect(secondGap!.actualPercent!).toBeGreaterThanOrEqual(firstGap!.actualPercent!);
     expect(recipeSnapshot()).toEqual(before);
 
     // The customer's own, feasible amounts.
