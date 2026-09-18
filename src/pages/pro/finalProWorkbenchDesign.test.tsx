@@ -508,8 +508,16 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(shouldActivateMobileCockpitModal(true, true)).toBe(true);
     expect(shouldActivateMobileCockpitModal(true, false)).toBe(false);
     expect(shouldActivateMobileCockpitModal(false, true)).toBe(false);
-    expect(surface).toContain('role="dialog"');
-    expect(surface).toContain('aria-modal="true"');
+    /* DESIGN V3.0 §12 + owner 2026-09-18 (OD-20): the cockpit is still a real modal for
+       Receptura, Produkcja and Etykieta — and explicitly NOT for Monitor, which is a
+       panel the recipe stays visible and usable under. Both halves are asserted, so
+       neither can be lost: the modal attributes are still written, and they are written
+       for everything except `monitorPanelMode`. */
+    expect(surface).toContain("role={monitorPanelMode ? undefined : 'dialog'}");
+    expect(surface).toContain('aria-modal={monitorPanelMode ? undefined : true}');
+    expect(surface).toContain(
+      "const monitorPanelMode = mobileCockpitOpen && mobileViewport && activeTab === 'monitor'",
+    );
     // The trigger is now the bottom preview bar itself (owner mobile UX §11):
     // each module button is the disclosure control for the cockpit sheet.
     expect(read('features', 'pro-workbench', 'WorkbenchModuleTabs.tsx')).toContain(
