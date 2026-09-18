@@ -154,6 +154,10 @@ export interface HomeCreatorCopy {
     readonly shareWithCommunity: string;
     readonly letsMakeIt: string;
     readonly recalculate: string;
+    /** The first build left a question in the review dialog and the customer closed it. */
+    readonly firstBuildNotApplied: string;
+    /** The automatic recalculation left a question and the customer closed it. */
+    readonly changesNotRecalculated: string;
     readonly maskedGrams: string;
     readonly maskedGramsLabel: string;
     /** What HOME says when product authority cannot be confirmed (OWNER FROZEN). */
@@ -355,6 +359,10 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     shareWithCommunity: 'Pokaż w Community',
     letsMakeIt: 'Zróbmy to',
     recalculate: 'Przelicz i popraw',
+    firstBuildNotApplied:
+      'Receptura nie została jeszcze przygotowana. Naciśnij „Zamień pomysł w recepturę”, aby wrócić do propozycji.',
+    changesNotRecalculated:
+      'Ostatnie zmiany nie są jeszcze przeliczone — pozostałe ilości nie zostały do nich dopasowane.',
     maskedGrams: '••• g',
     maskedGramsLabel: 'Gramatura ukryta — dostępna w planie HOME lub PRO',
     unresolvedProduct: 'Nie możemy teraz potwierdzić danych jednego ze składników.',
@@ -542,6 +550,10 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     shareWithCommunity: 'Share with Community',
     letsMakeIt: "Let's make it",
     recalculate: 'Recalculate and fix',
+    firstBuildNotApplied:
+      'The recipe has not been prepared yet. Press “Turn the idea into a recipe” to return to the proposal.',
+    changesNotRecalculated:
+      'Your latest changes are not recalculated yet — the other amounts have not been adjusted to them.',
     maskedGrams: '••• g',
     maskedGramsLabel: 'Amount hidden — available on the HOME or PRO plan',
     unresolvedProduct: "We can't confirm one of the ingredients right now.",
