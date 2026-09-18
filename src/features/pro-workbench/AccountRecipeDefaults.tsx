@@ -232,7 +232,7 @@ export function AccountRecipeDefaults() {
           place of the machine and the default batch. */}
       <Link
         to="/machine"
-        className="pro-focus-ring mt-4 flex min-h-12 items-center justify-between gap-4 rounded-[14px] border border-ink/12 bg-white px-4 text-sm text-ink hover:border-ink/25"
+        className="pro-focus-ring mt-4 flex min-h-12 flex-col gap-1 rounded-[14px] border border-ink/12 bg-white px-4 py-3 text-sm text-ink hover:border-ink/25 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
         data-testid="account-recipe-defaults-machine-link"
       >
         <span className="min-w-0">
@@ -241,7 +241,7 @@ export function AccountRecipeDefaults() {
             {areaCopy.account.machineLinkHint}
           </span>
         </span>
-        <span className="shrink-0 text-xs text-stone-600">
+        <span className="shrink-0 text-xs font-semibold text-ink">
           {areaCopy.account.machineLinkTarget} <span aria-hidden>→</span>
         </span>
       </Link>

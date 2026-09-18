@@ -129,8 +129,7 @@ const pl: ProductionAreaCopy = {
   account: {
     machineLinkLabel: 'Maszyna i domyślny wsad',
     machineLinkTarget: 'Produkcja · Maszyna',
-    machineLinkHint:
-      'Maszynę i domyślny wsad nowych receptur ustawiasz w jednym miejscu: Produkcja → Maszyna.',
+    machineLinkHint: 'Jedno miejsce dla maszyny i wsadu nowych receptur.',
     inviteHeading: 'Kod zaproszenia Home',
   },
 };
