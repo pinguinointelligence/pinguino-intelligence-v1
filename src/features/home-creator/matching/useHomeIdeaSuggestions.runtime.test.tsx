@@ -9,12 +9,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   community: vi.fn(),
+  /** The v2 oracle — `unavailable` by default, so the cases before the v2 block run v1. */
+  communityV2: vi.fn(),
   /** Set to hold the frozen release back, the way a cold page load does. */
   runtimeHold: null as null | Promise<unknown>,
   runtimeValue: null as unknown,
 }));
 
-vi.mock('./communityMatchService', () => ({ matchCommunityTop100: mocks.community }));
+vi.mock('./communityMatchService', () => ({
+  matchCommunityTop100: mocks.community,
+  matchCommunityTop100Groups: mocks.communityV2,
+}));
 // The REAL frozen Search release, read from disk instead of fetched.
 vi.mock('@/features/mapper-search-runtime', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/mapper-search-runtime')>();
@@ -31,7 +36,8 @@ vi.mock('@/features/mapper-search-runtime', async (importOriginal) => {
 
 import { useHomeDraftStore, type IntentChip } from '../homeDraftStore';
 import type { IntentIngredientOutcome } from '../useHomeIntentIngredients';
-import { searchOfficialMatches } from './homeMatchSearch';
+import { loadConceptMatchContext, searchOfficialMatches } from './homeMatchSearch';
+import { officialCandidates } from './officialLibraryCandidates';
 import {
   COMMUNITY_ANSWER_TIMEOUT_MS,
   IDEA_SUGGESTION_DEBOUNCE_MS,
@@ -81,6 +87,7 @@ beforeEach(() => {
   useHomeDraftStore.getState().startNew();
   resolveOne.mockReset();
   mocks.community.mockReset().mockResolvedValue([]);
+  mocks.communityV2.mockReset().mockResolvedValue({ kind: 'unavailable' });
   host = document.createElement('div');
   document.body.appendChild(host);
   root = createRoot(host);
@@ -496,4 +503,135 @@ describe('B — review 2026-09-17: the Community answer tells the truth', () => 
       title: 'Truskawkowe z bazylią',
     });
   });
+});
+
+describe('Owner 2026-09-18 — one v2 request per idea, through the live layer', () => {
+  const v2Card = (id: string, title: string, matchedIds: readonly string[]) => ({
+    publicationId: id,
+    slug: `s-${id}`,
+    handle: 'ola',
+    title,
+    creatorDisplayName: 'Ola',
+    alsoIncludes: [],
+    matchedIds,
+    candidate: {
+      id,
+      title,
+      source: 'community',
+      profile: 'gelato',
+      ingredients: [],
+      imageUrl: null,
+      authorName: 'Ola',
+      rank: 2,
+    },
+  });
+  const genericStrawberry = (id: string): IntentChip => ({
+    ...chip(id, 'truskawkowe'),
+    productId: STRAWBERRY,
+    productName: 'STRAWBERRIES · Fresh Fruit',
+    resolvedBy: { authority: 'SA03_CONCEPT_DEFAULT', conceptKey: 'strawberry', scope: null },
+  });
+
+  it('V2-HOOK-01: an exact idea asks v2 ONCE — for the live cards and the CTA together', async () => {
+    mocks.communityV2.mockResolvedValue({
+      kind: 'ok',
+      rejected: 0,
+      matches: [v2Card('p1', 'Truskawkowe', [STRAWBERRY])],
+    });
+    act(() =>
+      useHomeDraftStore.getState().addChip({
+        ...chip('c1', 'truskawka'),
+        productId: STRAWBERRY,
+        productName: 'STRAWBERRIES · Fresh Fruit',
+      }),
+    );
+    await flush(IDEA_SUGGESTION_DEBOUNCE_MS + 10);
+    await act(async () => {
+      await probe.latest!.settle();
+    });
+    // The central authority loaded at the CTA: the same question is not asked again.
+    await flush(IDEA_SUGGESTION_DEBOUNCE_MS + 10);
+    expect(mocks.communityV2).toHaveBeenCalledTimes(1);
+    expect(mocks.communityV2.mock.calls[0]?.[0]).toEqual({ groups: [[STRAWBERRY]], profile: null });
+    expect(mocks.community).not.toHaveBeenCalled();
+    expect(probe.latest!.cards.at(-1)).toMatchObject({
+      source: 'community',
+      title: 'Truskawkowe',
+      usedForm: null,
+      searchIncomplete: false,
+    });
+  });
+
+  it('V2-HOOK-02: a generic idea sends every approved form in ONE group; the card names the form from matched_ids', async () => {
+    const context = await loadConceptMatchContext();
+    const answeredBy = (groups: readonly (readonly string[])[]) =>
+      groups[0]!.slice(1).find((id) => context.nameOf(id) !== null) ?? groups[0]![0]!;
+    mocks.communityV2.mockImplementation(async ({ groups }: { groups: string[][] }) => ({
+      kind: 'ok',
+      rejected: 0,
+      matches: [v2Card('p2', 'Truskawkowe z bazylią', [answeredBy(groups)])],
+    }));
+    act(() => useHomeDraftStore.getState().addChip(genericStrawberry('c1')));
+    await act(async () => {
+      await probe.latest!.settle();
+    });
+    const groups = mocks.communityV2.mock.calls.at(-1)![0].groups as string[][];
+    expect(groups).toHaveLength(1);
+    expect(groups[0]![0]).toBe(STRAWBERRY);
+    expect(groups[0]!.length).toBeGreaterThan(1);
+    const form = answeredBy(groups);
+    expect(form).not.toBe(STRAWBERRY);
+    expect(probe.latest!.cards.at(-1)).toMatchObject({
+      source: 'community',
+      usedForm: context.nameOf(form),
+      searchIncomplete: false,
+    });
+    expect(mocks.community).not.toHaveBeenCalled();
+  });
+
+  const singleOfficialCarrier = () => {
+    const carriers = new Map<string, string[]>();
+    for (const candidate of officialCandidates()) {
+      for (const ingredient of candidate.ingredients) {
+        carriers.set(ingredient.productId, [
+          ...(carriers.get(ingredient.productId) ?? []),
+          candidate.id,
+        ]);
+      }
+    }
+    const [productId, [ownerId]] = [...carriers].find(([, ids]) => ids.length === 1)!;
+    return {
+      productId,
+      profile: officialCandidates().find((candidate) => candidate.id === ownerId)!.profile,
+    };
+  };
+
+  it.each([
+    ['answered completely', { kind: 'ok', matches: [], rejected: 0 }, 'auto_adopt_official', false],
+    ['failed', { kind: 'error', reason: 'failed' }, 'show_popup', true],
+    ['timed out', { kind: 'error', reason: 'timeout' }, 'show_popup', true],
+  ] as const)(
+    'V2-HOOK-03: v2 %s → the §35 verdict at the CTA is %s',
+    async (_label, outcome, verdict, partial) => {
+      mocks.communityV2.mockResolvedValue(outcome);
+      const carrier = singleOfficialCarrier();
+      act(() => {
+        useHomeDraftStore.getState().setProfile(carrier.profile);
+        useHomeDraftStore.getState().addChip({
+          ...chip('c1', 'x'),
+          productId: carrier.productId,
+          productName: carrier.productId,
+        });
+      });
+      let settled: Awaited<ReturnType<HomeIdeaSuggestions['settle']>> | null = null;
+      await act(async () => {
+        settled = await probe.latest!.settle();
+      });
+      expect(settled!.result.decision.kind).toBe(verdict);
+      expect(settled!.result.coverage.partial).toBe(partial);
+      // A failed v2 never becomes a v1 answer, nor a Community card.
+      expect(mocks.community).not.toHaveBeenCalled();
+      expect(probe.latest!.cards.some((card) => card.source === 'community')).toBe(false);
+    },
+  );
 });

@@ -6,8 +6,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RequestedIngredient } from '../homeRecipeMatching';
 
 const matchCommunityTop100 = vi.fn();
+const matchCommunityTop100Groups = vi.fn();
 vi.mock('./communityMatchService', () => ({
   matchCommunityTop100: (...args: unknown[]) => matchCommunityTop100(...args),
+  matchCommunityTop100Groups: (...args: unknown[]) => matchCommunityTop100Groups(...args),
 }));
 
 const { communityIdSets, searchCommunityMatches, searchExistingRecipes } =
@@ -45,6 +47,9 @@ const communityMatch = (id: string, rank: number, alsoIncludes: string[] = []) =
 beforeEach(() => {
   matchCommunityTop100.mockReset();
   matchCommunityTop100.mockResolvedValue([]);
+  // v2 not deployed: every case before the v2 block pins the v1 fallback, unchanged.
+  matchCommunityTop100Groups.mockReset();
+  matchCommunityTop100Groups.mockResolvedValue({ kind: 'unavailable' });
 });
 
 describe('no trustworthy match → no popup, creation continues (§35)', () => {
@@ -360,6 +365,234 @@ describe('Owner 2026-09-17: a generic idea also finds recipes made with another 
     });
     expect(result.coverage.partial).toBe(true);
     // Exactly one official match + nothing from Community would normally auto-adopt.
+    expect(result.decision.kind).not.toBe('auto_adopt_official');
+  });
+});
+
+describe('Owner 2026-09-18: ONE v2 request per idea — AND between ingredients, OR inside one', () => {
+  const STRAWBERRY = 'PI-ING-001553';
+  const STRAWBERRY_PUREE = 'PI-ING-002331';
+  const STRAWBERRY_FROZEN = 'PI-ING-001554';
+  const BANANA = 'PI-ING-000345';
+  const BANANA_PUREE = 'PI-ING-002332';
+  const generic = (productId: string, conceptKey: string): RequestedIngredient => ({
+    ...want(productId),
+    conceptKey,
+  });
+  const forms: Record<string, readonly string[]> = {
+    strawberry: [STRAWBERRY, STRAWBERRY_PUREE, STRAWBERRY_FROZEN],
+    banana: [BANANA, BANANA_PUREE],
+  };
+  const formsFor = (item: RequestedIngredient) =>
+    item.conceptKey ? (forms[item.conceptKey] ?? []) : [];
+  const names: Record<string, string> = {
+    [STRAWBERRY]: 'Truskawki',
+    [STRAWBERRY_PUREE]: 'Puree truskawkowe',
+    [STRAWBERRY_FROZEN]: 'Truskawki mrożone',
+    [BANANA]: 'Banany',
+    [BANANA_PUREE]: 'Puree bananowe',
+  };
+  const nameOf = (id: string) => names[id] ?? null;
+  const idea = {
+    requested: [generic(STRAWBERRY, 'strawberry'), generic(BANANA, 'banana')],
+    profile: null,
+    formsFor,
+    nameOf,
+  };
+  const v2Match = (id: string, rank: number, matchedIds: readonly string[]) => ({
+    ...communityMatch(id, rank),
+    handle: 'someone',
+    title: `Community ${id}`,
+    creatorDisplayName: 'Someone',
+    matchedIds,
+  });
+  /** An identity exactly one offered Gellatti recipe carries: §35 adopts it when nothing else matches. */
+  const singleOfficialCarrier = () => {
+    const carriers = new Map<string, string[]>();
+    for (const candidate of officialCandidates()) {
+      for (const ingredient of candidate.ingredients) {
+        carriers.set(ingredient.productId, [
+          ...(carriers.get(ingredient.productId) ?? []),
+          candidate.id,
+        ]);
+      }
+    }
+    const [productId, [ownerId]] = [...carriers].find(([, ids]) => ids.length === 1)!;
+    return {
+      productId,
+      profile: officialCandidates().find((candidate) => candidate.id === ownerId)!.profile,
+    };
+  };
+
+  it('V2-01: the whole idea is ONE request — each ingredient a group of its approved forms', async () => {
+    matchCommunityTop100Groups.mockResolvedValue({ kind: 'ok', matches: [], rejected: 0 });
+    const answer = await searchCommunityMatches({ ...idea, profile: 'sorbet' });
+    expect(matchCommunityTop100Groups).toHaveBeenCalledTimes(1);
+    expect(matchCommunityTop100Groups).toHaveBeenCalledWith({
+      groups: [
+        [STRAWBERRY, STRAWBERRY_PUREE, STRAWBERRY_FROZEN],
+        [BANANA, BANANA_PUREE],
+      ],
+      profile: 'sorbet',
+    });
+    // No combination is enumerated any more.
+    expect(matchCommunityTop100).not.toHaveBeenCalled();
+    // The oracle answered the whole question: its „nothing” is a proven „nothing”.
+    expect(answer.coverage).toEqual({ asked: 1, combinations: 6, partial: false });
+  });
+
+  it('V2-02: a complete v2 answer leaves §35 free to adopt the single official match', async () => {
+    matchCommunityTop100Groups.mockResolvedValue({ kind: 'ok', matches: [], rejected: 0 });
+    const carrier = singleOfficialCarrier();
+    const result = await searchExistingRecipes({
+      requested: [want(carrier.productId)],
+      profile: carrier.profile,
+    });
+    expect(result.coverage.partial).toBe(false);
+    expect(result.decision.kind).toBe('auto_adopt_official');
+  });
+
+  it('V2-03: „Używa postaci” comes from matched_ids — per ingredient, in the approved order', async () => {
+    matchCommunityTop100Groups.mockResolvedValue({
+      kind: 'ok',
+      rejected: 0,
+      matches: [
+        // Strawberry answered by two other forms, banana exactly as asked.
+        v2Match('pub-1', 4, [STRAWBERRY_PUREE, STRAWBERRY_FROZEN, BANANA]),
+        // Strawberry exactly as asked (the puree beside it says nothing), banana as puree.
+        v2Match('pub-2', 6, [STRAWBERRY, STRAWBERRY_PUREE, BANANA_PUREE]),
+        // The exact request: no form line at all.
+        v2Match('pub-3', 8, [STRAWBERRY, BANANA]),
+      ],
+    });
+    const answer = await searchCommunityMatches(idea);
+    const usedForms = new Map(
+      answer.community.map((match) => [match.candidate.id, match.usedForms]),
+    );
+    expect(usedForms.get('pub-1')).toEqual(['Puree truskawkowe', 'Truskawki mrożone']);
+    expect(usedForms.get('pub-2')).toEqual(['Puree bananowe']);
+    expect(usedForms.get('pub-3')).toBeUndefined();
+    expect(answer.communityMatches.map((match) => match.publicationId)).toEqual([
+      'pub-1',
+      'pub-2',
+      'pub-3',
+    ]);
+  });
+
+  it('V2-04: v2 not deployed → the bounded v1 enumeration runs exactly as before', async () => {
+    matchCommunityTop100Groups.mockResolvedValue({ kind: 'unavailable' });
+    matchCommunityTop100.mockImplementation(
+      async ({ ingredientIds }: { ingredientIds: string[] }) =>
+        ingredientIds[0] === STRAWBERRY_PUREE && ingredientIds[1] === BANANA
+          ? [communityMatch('pub-4', 3)]
+          : [],
+    );
+    const answer = await searchCommunityMatches(idea);
+    expect(matchCommunityTop100Groups).toHaveBeenCalledTimes(1);
+    // Every set the v1 path always asked, in its order, and nothing else.
+    expect(matchCommunityTop100.mock.calls.map(([input]) => input.ingredientIds)).toEqual(
+      communityIdSets(idea.requested, formsFor).sets,
+    );
+    expect(answer.coverage).toEqual({ asked: 6, combinations: 6, partial: false });
+    // The form line still comes from the set that answered.
+    expect(answer.community[0]?.usedForms).toEqual(['Puree truskawkowe']);
+  });
+
+  it('V2-05: v2 not deployed and the budget exceeded → v1 stays partial, as before', async () => {
+    matchCommunityTop100Groups.mockResolvedValue({ kind: 'unavailable' });
+    const many = (item: RequestedIngredient) =>
+      item.conceptKey === 'strawberry'
+        ? [STRAWBERRY, ...Array.from({ length: 30 }, (_, index) => `PI-ING-7000${index}`)]
+        : [];
+    const answer = await searchCommunityMatches({
+      requested: [generic(STRAWBERRY, 'strawberry')],
+      profile: null,
+      formsFor: many,
+    });
+    expect(matchCommunityTop100).toHaveBeenCalledTimes(24);
+    expect(answer.coverage).toEqual({ asked: 24, combinations: 31, partial: true });
+  });
+
+  it('V2-06: a v2 error or timeout is never „no Community match” — partial, and §35 cannot adopt', async () => {
+    const carrier = singleOfficialCarrier();
+    for (const [reason, gap] of [
+      ['failed', 'oracle_error'],
+      ['timeout', 'oracle_timeout'],
+    ] as const) {
+      matchCommunityTop100Groups.mockReset().mockResolvedValue({ kind: 'error', reason });
+      const result = await searchExistingRecipes({
+        requested: [want(carrier.productId)],
+        profile: carrier.profile,
+      });
+      expect(result.coverage).toEqual({ asked: 1, combinations: 1, partial: true, reason: gap });
+      // The same single official match that V2-02 adopts is now only offered.
+      expect(result.decision.kind).toBe('show_popup');
+      if (result.decision.kind === 'show_popup') {
+        expect(result.decision.official).toHaveLength(1);
+        expect(result.decision.community).toBeNull();
+      }
+      // A failed v2 does not quietly degrade into a v1 answer either.
+      expect(matchCommunityTop100).not.toHaveBeenCalled();
+    }
+  });
+
+  it('V2-07: more than 8 ingredients → nothing is sent, partial with the reason', async () => {
+    const nine = Array.from({ length: 9 }, (_, index) => want(`PI-ING-60000${index}`));
+    const answer = await searchCommunityMatches({ requested: nine, profile: null });
+    expect(matchCommunityTop100Groups).not.toHaveBeenCalled();
+    expect(matchCommunityTop100).not.toHaveBeenCalled();
+    expect(answer.community).toEqual([]);
+    expect(answer.coverage).toEqual({
+      asked: 0,
+      combinations: 1,
+      partial: true,
+      reason: 'too_many_ingredients',
+    });
+  });
+
+  it('V2-08: more than 64 forms → nothing is sent — never a truncated request', async () => {
+    const wide = (item: RequestedIngredient) =>
+      Array.from({ length: 33 }, (_, index) => `${item.productId}-F${index}`);
+    const answer = await searchCommunityMatches({
+      requested: [generic('PI-A', 'a'), generic('PI-B', 'b')],
+      profile: null,
+      formsFor: wide,
+    });
+    expect(matchCommunityTop100Groups).not.toHaveBeenCalled();
+    expect(matchCommunityTop100).not.toHaveBeenCalled();
+    expect(answer.coverage).toMatchObject({ asked: 0, partial: true, reason: 'too_many_forms' });
+  });
+
+  it('V2-09: exactly at the limits (8 ingredients, 64 forms) the whole idea is sent as asked', async () => {
+    matchCommunityTop100Groups.mockResolvedValue({ kind: 'ok', matches: [], rejected: 0 });
+    const eight = Array.from({ length: 8 }, (_, index) => generic(`PI-G${index}`, `c${index}`));
+    const seven = (item: RequestedIngredient) =>
+      Array.from({ length: 7 }, (_, index) => `${item.productId}-F${index}`);
+    const answer = await searchCommunityMatches({
+      requested: eight,
+      profile: null,
+      formsFor: seven,
+    });
+    expect(matchCommunityTop100Groups).toHaveBeenCalledTimes(1);
+    const [{ groups }] = matchCommunityTop100Groups.mock.calls[0] as [{ groups: string[][] }];
+    expect(groups).toHaveLength(8);
+    expect(groups.flat()).toHaveLength(64);
+    expect(answer.coverage.partial).toBe(false);
+  });
+
+  it('V2-10: a dropped card leaves the answer partial — it may have been the best one', async () => {
+    const carrier = singleOfficialCarrier();
+    matchCommunityTop100Groups.mockResolvedValue({ kind: 'ok', matches: [], rejected: 1 });
+    const result = await searchExistingRecipes({
+      requested: [want(carrier.productId)],
+      profile: carrier.profile,
+    });
+    expect(result.coverage).toEqual({
+      asked: 1,
+      combinations: 1,
+      partial: true,
+      reason: 'card_rejected',
+    });
     expect(result.decision.kind).not.toBe('auto_adopt_official');
   });
 });

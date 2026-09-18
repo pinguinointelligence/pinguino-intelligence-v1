@@ -22,6 +22,8 @@ import type { RequestedIngredient } from '../homeRecipeMatching';
 const matchCommunityTop100 = vi.fn();
 vi.mock('./communityMatchService', () => ({
   matchCommunityTop100: (...args: unknown[]) => matchCommunityTop100(...args),
+  // v2 not deployed: this regression pins the v1 path it was found on.
+  matchCommunityTop100Groups: async () => ({ kind: 'unavailable' }),
 }));
 
 const { searchExistingRecipes } = await import('./homeMatchSearch');

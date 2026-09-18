@@ -152,9 +152,16 @@ export function useHomeIdeaSuggestions({
   /**
    * One Community answer per idea version AND per authority state: a search that ran
    * before the frozen release was loaded asked only the requested identities, so it must
-   * never be served to a caller that now asks for the approved forms as well.
+   * never be served to a caller that now asks for the approved forms as well. An idea with
+   * no generic ingredient asks the same question either way, so it keeps ONE answer — and
+   * the oracle is asked once for it (owner 2026-09-18).
    */
-  const communityKey = (idea: string, withForms: boolean) => `${withForms ? 'F' : 'I'}|${idea}`;
+  const communityKey = (
+    idea: string,
+    requested: readonly RequestedIngredient[],
+    context: ConceptMatchContext | null,
+  ) =>
+    `${context !== null && requested.some((item) => item.conceptKey != null) ? 'F' : 'I'}|${idea}`;
 
   const communityFor = useCallback((key: string, query: HomeMatchQuery) => {
     let pending = communityByIdea.current.get(key);
@@ -324,7 +331,7 @@ export function useHomeIdeaSuggestions({
       formsFor,
       nameOf: conceptContext?.nameOf,
     };
-    const key = communityKey(signature, conceptContext !== null);
+    const key = communityKey(signature, query.requested, conceptContext);
     let current = true;
     const show = (answer: CommunityAnswer) => {
       if (!current) return;
@@ -359,6 +366,9 @@ export function useHomeIdeaSuggestions({
       requested: requestedFromChips(draft.chips),
       profile: draft.profile,
       conceptMatcher: context?.matcher,
+      // The answer is cached for the live layer too: without names a Community card first
+      // found here could never say „Używa postaci: …”.
+      nameOf: context?.nameOf,
       formsFor: (item) =>
         item.conceptKey == null || !context
           ? []
@@ -370,7 +380,7 @@ export function useHomeIdeaSuggestions({
     // §35 decides on exact identity only: a concept suggestion is offered, never adopted.
     const officialNow = searchOfficialMatches({ ...query, conceptMatcher: undefined });
     const { community, communityMatches, coverage } = await communityWithin(
-      communityKey(idea, context !== null),
+      communityKey(idea, query.requested, context),
       query,
       COMMUNITY_ANSWER_TIMEOUT_MS,
     );
