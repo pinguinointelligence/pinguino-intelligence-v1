@@ -47,7 +47,7 @@ import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace'
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { WorkbenchRecipeActionDock } from '@/features/pro-workbench/WorkbenchRecipeActionDock';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
-import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
+import { useProductionHost } from '@/features/production-workspace/ProductionProcessHost';
 import { ProductionWorkspaceHeader } from '@/features/production-workspace/ProductionWorkspaceHeader';
 import {
   collapsedMobileCockpitRoute,
@@ -191,7 +191,7 @@ export function StudioEngineSurface({
   const temperatureC = useRecipeStore((state) => state.target_temperature_c);
   const batchGrams = useRecipeStore((state) => state.target_batch_grams);
   const planning = useStudioResult('planning');
-  const production = useProductionWorkspace(activeTab === 'production');
+  const production = useProductionHost(activeTab === 'production');
   const productionActive =
     activeTab === 'production' &&
     production.practicalReady !== false &&
