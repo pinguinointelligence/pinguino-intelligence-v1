@@ -5,6 +5,7 @@ import { MyProductsPanel } from '@/features/products/MyProductsPanel';
 import { ProductsFilterTabs } from '@/features/products/ProductsFilterTabs';
 import { productFilterFromParam } from '@/features/products/productsFilter';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { ProductionAreaSurface } from '@/features/production-area/ProductionAreaSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { cn } from '@/lib/cn';
@@ -356,11 +357,8 @@ export function ProductsHubPage() {
   const capabilities = proCoreCapabilitiesFor(persona);
   const canAdmin = useProCoreAccessStore((state) => state.effectiveAccess?.canAdmin === true);
   return (
-    <DestinationSurface
-      eyebrow="Katalog Gellatti"
-      title="Produkty"
-      blurb="Produkty, ich zastosowanie, dostępność i Twoja cena — wszystko w jednym miejscu."
-      contextLabel="Produkty"
+    <ProductionAreaSurface
+      section="products"
       actions={
         capabilities.canSaveRecipe ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -420,7 +418,7 @@ export function ProductsHubPage() {
           </p>
         </>
       )}
-    </DestinationSurface>
+    </ProductionAreaSurface>
   );
 }
 
@@ -495,11 +493,9 @@ export function ProductionHubPage() {
   const labelSnapshot = activeSnapshot ?? history[0]?.snapshot ?? null;
 
   return (
-    <DestinationSurface
-      eyebrow="Gellatti Pro"
-      title="Produkcja"
+    <ProductionAreaSurface
+      section="batches"
       blurb="Bieżąca partia, zapis zakończonych produkcji i etykiety — zawsze oparte na tych samych danych."
-      contextLabel="Produkcja"
     >
       {!capabilities.canUseProductionMode ? (
         <WorkflowNotice
@@ -709,7 +705,7 @@ export function ProductionHubPage() {
           ) : null}
         </>
       )}
-    </DestinationSurface>
+    </ProductionAreaSurface>
   );
 }
 
@@ -833,7 +829,8 @@ export function LabelsHubPage() {
     });
 
   return (
-    <DestinationSurface
+    <ProductionAreaSurface
+      section="labels"
       eyebrow="Gellatti Pro"
       title="Etykiety"
       blurb="Profil konta i etykiety zakończonych partii — w jednym, spójnym miejscu."
@@ -941,7 +938,7 @@ export function LabelsHubPage() {
           />
         </div>
       </section>
-    </DestinationSurface>
+    </ProductionAreaSurface>
   );
 }
 

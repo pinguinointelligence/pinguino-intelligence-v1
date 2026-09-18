@@ -8,6 +8,7 @@ import { createRecipeLabelDraft } from '@/features/master-label/labelDraftPersis
 import { createCompleteLabel } from '@/features/master-label/masterLabelTestFixture';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useAuthStore } from '@/stores/authStore';
+import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { LabelsHubPage } from './GlobalDestinationPages';
 
 function ReturnProbe() {
@@ -37,6 +38,9 @@ describe('/labels current draft settings round trip', () => {
       user: { id: 'label-settings-owner', email: null, displayName: null },
       available: true,
     });
+    // Etykiety is the Pro-only section of the Produkcja area (owner decision 2026-09-17):
+    // a HOME or signed-out visitor is told where the tools live instead of seeing them.
+    useProCoreAccessStore.setState({ devPersona: 'pro' });
     useProductionSessionStore.setState({ session: null });
     const draft = createRecipeLabelDraft({
       draftId: 'settings-return-owner',
@@ -60,6 +64,7 @@ describe('/labels current draft settings round trip', () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     host.remove();
+    useProCoreAccessStore.setState({ devPersona: null });
   });
 
   const renderPage = async () => {
