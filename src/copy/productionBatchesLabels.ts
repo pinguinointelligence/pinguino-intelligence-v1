@@ -81,9 +81,9 @@ export interface ProductionBatchesLabelsCopy {
     readonly homeResume: string;
   };
   readonly labels: {
-    readonly homeGateTitle: string;
-    readonly homeGateBody: string;
-    readonly seePlans: string;
+    /** Names of the two label forms in the one unsaved-changes question. */
+    readonly unsavedProfile: string;
+    readonly unsavedRunSettings: string;
     readonly defaultsTitle: string;
     readonly defaultsBody: string;
     readonly recipeTitle: string;
@@ -190,10 +190,8 @@ export const productionBatchesLabelsCopyPl: ProductionBatchesLabelsCopy = {
     homeResume: 'Wróć do przygotowania',
   },
   labels: {
-    homeGateTitle: 'Etykiety są dostępne w planie Pro',
-    homeGateBody:
-      'Etykieta ze składem, numerem LOT i drukiem służy produkcji na sprzedaż. W HOME zapisujesz recepturę i udostępniasz lody.',
-    seePlans: 'Zobacz plany',
+    unsavedProfile: 'Etykiety · profil domyślny',
+    unsavedRunSettings: 'Etykiety · ustawienia etykiety partii',
     defaultsTitle: 'Ustawienia domyślne etykiet',
     defaultsBody: 'Dla nowych etykiet. Zapisane etykiety partii się nie zmieniają.',
     recipeTitle: 'Etykieta receptury',

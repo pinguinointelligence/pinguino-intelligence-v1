@@ -44,7 +44,10 @@ import {
 import { copy as appCopy } from '@/copy/en';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { buttonClasses } from '@/components/ui/buttonStyles';
-import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { ProductionAreaSurface } from '@/features/production-area/ProductionAreaSurface';
+import { productionAreaCopy } from '@/copy/productionArea';
+
+const areaCopy = productionAreaCopy();
 
 type PageMode = 'view' | 'onboarding' | 'edit_custom';
 
@@ -163,17 +166,16 @@ export function MachineProfilePage() {
   );
 
   const shell = (children: ReactNode, headingAction?: ReactNode) => (
-    <DestinationSurface
-      eyebrow="Konto"
-      title="Ustawienia maszyny"
-      blurb="Domyślna maszyna i partia są punktem startu dla nowych receptur i nowych Produkcji."
-      contextLabel="Ustawienia maszyny"
+    <ProductionAreaSurface
+      section="machine"
+      title={areaCopy.machine.heading}
+      blurb={areaCopy.machine.blurb}
       actions={headingAction}
     >
       <CustomerSurface measure="workspace">
         <div className="max-w-4xl">{children}</div>
       </CustomerSurface>
-    </DestinationSurface>
+    </ProductionAreaSurface>
   );
 
   if (preference.status === 'loading') {

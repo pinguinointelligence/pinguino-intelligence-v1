@@ -27,6 +27,24 @@ missing-data editor appears in Label Settings and in the centered pre-print dial
 authorized by the Owner request recorded with the implementation commit trailer
 `Owner-Locked-Change-Approved: GEL-P0-032` and does not constitute `OWNER ACCEPTED` for the new UI.
 
+## Owner supersession — GEL-P0-033 (2026-09-18, navigation clause only)
+
+The Owner's Produkcja v3 decision (preview accepted 2026-09-17; deployment on `staging` approved
+2026-09-18) supersedes only the navigation clause of GEL-P0-033: the separate hamburger entry
+„Ustawienia etykiety” (`id: 'labels'`, `to: '/labels'` in `appNav.ts`) becomes the Etykiety
+section of the ONE „Produkcja” entry — ☰ Produkcja → Etykiety → `/labels`. The contract test
+„keeps label settings reachable from ☰ Produkcja → Etykiety with the exact return route” now proves
+reachability from the new place (`visibleNavItems('pro')` has `production` → `/production`,
+`PRODUCTION_AREA_SECTIONS` has `labels` → `/labels`, `ProductionAreaNav.tsx` renders that list,
+`activeNavId` marks `production` on `/labels` and `/labels?run=…&labelView=settings`), and the
+clicked-transition test `src/features/production-area/productionAreaLabelsEntry.runtime.test.tsx`
+fails if the rendered entry is removed while the constants stay. Every other GEL-P0-033 rule is
+unchanged: the `/labels` address and its parameters (`run`, `snapshot`, `labelView`), label
+versions, `labelSettingsReturn`, „← Wróć”, print, missing data, allergens, snapshots, LOT and
+`path="/labels"` (GEL-P0-032). This change is authorized by the Owner decision recorded with the
+implementation commit trailer `Owner-Locked-Change-Approved: GEL-P0-033` and does not constitute
+`OWNER ACCEPTED` for the new UI.
+
 > ### ⚠ CI ACTIVATION IS STILL PENDING (2026-08-29)
 >
 > The contracts, both guards and the ledger are live on `staging`, and

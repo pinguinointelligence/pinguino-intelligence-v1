@@ -5,6 +5,7 @@ import { MyProductsPanel } from '@/features/products/MyProductsPanel';
 import { ProductsFilterTabs } from '@/features/products/ProductsFilterTabs';
 import { productFilterFromParam } from '@/features/products/productsFilter';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { ProductionAreaSurface } from '@/features/production-area/ProductionAreaSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { applicationPrimaryClasses } from '@/components/ui/applicationControlStyles';
 import { cn } from '@/lib/cn';
@@ -352,11 +353,8 @@ export function ProductsHubPage() {
   const capabilities = proCoreCapabilitiesFor(persona);
   const canAdmin = useProCoreAccessStore((state) => state.effectiveAccess?.canAdmin === true);
   return (
-    <DestinationSurface
-      eyebrow="Katalog Gellatti"
-      title="Produkty"
-      blurb="Produkty, ich zastosowanie, dostępność i Twoja cena — wszystko w jednym miejscu."
-      contextLabel="Produkty"
+    <ProductionAreaSurface
+      section="products"
       actions={
         capabilities.canSaveRecipe ? (
           <div className="flex flex-wrap items-center gap-2">
@@ -416,7 +414,7 @@ export function ProductsHubPage() {
           </p>
         </>
       )}
-    </DestinationSurface>
+    </ProductionAreaSurface>
   );
 }
 
@@ -433,12 +431,9 @@ export function ProductionHubPage() {
   if (params.get('tab') === 'labels') return <Navigate to="/labels" replace />;
 
   return (
-    <DestinationSurface
-      eyebrow="Gellatti Pro"
-      title="Produkcja"
-      blurb="Bieżąca partia, zapis zakończonych produkcji i etykiety — zawsze oparte na tych samych danych."
-      contextLabel="Produkcja"
-    >
+    /* Partie opens directly on its content under the section bar (the accepted v3
+       renders): the history shortcut, the work in progress, the history. */
+    <ProductionAreaSurface section="batches">
       {capabilities.canUseProductionMode ? (
         <ProductionBatches />
       ) : persona === 'home' ? (
@@ -459,7 +454,7 @@ export function ProductionHubPage() {
           testId="production-plan-gate"
         />
       )}
-    </DestinationSurface>
+    </ProductionAreaSurface>
   );
 }
 
@@ -483,7 +478,6 @@ export function LabelsHubPage() {
   const repository = useMemo(() => resolveLabelRepository(), []);
   const location = useLocation();
   const navigate = useNavigate();
-  const persona = useProCorePersona();
   const context = labelsHubContext(params);
   const returnTarget = readLabelSettingsReturn(location.state);
   const labelSettingsReturn = returnTarget ?? {
@@ -505,15 +499,12 @@ export function LabelsHubPage() {
         : returnTarget?.origin === 'current-run'
           ? labelsCopy.backToRun
           : '← Wróć';
-  const showBack = persona !== 'home' && (context !== 'defaults' || returnTarget !== null);
+  const showBack = context !== 'defaults' || returnTarget !== null;
 
+  /* Etykiety is the Pro-only section of Produkcja: for HOME and signed-out visitors
+     the area surface says where the tools live instead of rendering them. */
   return (
-    <DestinationSurface
-      eyebrow="Gellatti Pro"
-      title="Etykiety"
-      blurb="Profil konta i etykiety zakończonych partii — w jednym, spójnym miejscu."
-      contextLabel="Ustawienia etykiety"
-    >
+    <ProductionAreaSurface section="labels">
       {showBack ? (
         <button
           type="button"
@@ -524,22 +515,7 @@ export function LabelsHubPage() {
           {backLabel}
         </button>
       ) : null}
-      {persona === 'home' ? (
-        <WorkflowNotice
-          eyebrow="Etykiety"
-          title={labelsCopy.homeGateTitle}
-          description={labelsCopy.homeGateBody}
-          variant="attention"
-          emphasis="lead"
-          stackAction
-          action={
-            <Link to="/subscription" className={buttonClasses('primary', 'sm')}>
-              {labelsCopy.seePlans}
-            </Link>
-          }
-          testId="labels-plan-gate"
-        />
-      ) : context === 'recipe' ? (
+      {context === 'recipe' ? (
         <RecipeLabelSettings onReturn={returnToOrigin} />
       ) : context === 'run' ? (
         <RunLabelView
@@ -558,7 +534,7 @@ export function LabelsHubPage() {
           <LabelHistorySection repository={repository} />
         </>
       )}
-    </DestinationSurface>
+    </ProductionAreaSurface>
   );
 }
 

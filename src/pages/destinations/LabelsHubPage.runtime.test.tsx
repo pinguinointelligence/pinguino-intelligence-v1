@@ -51,6 +51,9 @@ describe('/labels current draft settings round trip', () => {
       user: { id: 'label-settings-owner', email: null, displayName: null },
       available: true,
     });
+    // Etykiety is the Pro-only section of the Produkcja area (owner decision 2026-09-17):
+    // a HOME or signed-out visitor is told where the tools live instead of seeing them.
+    useProCoreAccessStore.setState({ devPersona: 'pro' });
     useProductionSessionStore.setState({ session: null });
     const draft = createRecipeLabelDraft({
       draftId: 'settings-return-owner',
@@ -74,6 +77,7 @@ describe('/labels current draft settings round trip', () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     host.remove();
+    useProCoreAccessStore.setState({ devPersona: null });
   });
 
   /* Production v3 §5: the current recipe's label draft is context B

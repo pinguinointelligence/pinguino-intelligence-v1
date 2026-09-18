@@ -106,15 +106,12 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
       // OWNER 2026-09-05: the educational Tour is one canonical destination
       // for Guest, Home and Pro — never a workbench-local duplicate.
       'howItWorks',
+      // OWNER DECISION 2026-09-17 (Produkcja area; GEL-P0-033 navigation clause): ONE
+      // „Produkcja” entry. Partie · Produkty · Maszyna · Etykiety are its sections — `/labels`
+      // stays the one canonical label-settings destination, reached as ☰ Produkcja → Etykiety,
+      // and „Skanuj produkt" / „Niezweryfikowane" stay an action and a filter of Produkty.
       'production',
-      'labels',
-      // OWNER CORRECTION 2026-09-07: the product area is ONE entry. „Skanuj produkt" is an action
-      // on this page and „Niezweryfikowane" is a filter of its list — neither is a destination, and
-      // promoting them duplicated the same area twice in the drawer.
-      'products',
-      'machine',
-      // OWNER DECISION (2026-09-06): `/labels` above is the one canonical
-      // settings destination; Community remains the one public creator door.
+      // Community remains the one public creator door.
       'community',
       'memberShop',
       'affiliate',
@@ -141,7 +138,12 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
     // style unification", 2026-08-24): it is reached from the same drawer as
     // every other destination, so it must wear the same header — it previously
     // rendered the customer menu and put its hamburger somewhere else entirely.
-    expect(read('pages', 'profile', 'MachineProfilePage.tsx')).toContain('DestinationSurface');
+    // Since the Produkcja area (2026-09-17) it wears the area frame, which IS the same
+    // DestinationSurface plus the section bar — still one AppShell, one header.
+    expect(read('pages', 'profile', 'MachineProfilePage.tsx')).toContain('ProductionAreaSurface');
+    expect(read('features', 'production-area', 'ProductionAreaSurface.tsx')).toContain(
+      '<DestinationSurface',
+    );
     expect(read('pages', 'destinations', 'SubscriptionPage.tsx')).toContain('AppShell');
     expect(read('pages', 'recipes', 'MyRecipesPage.tsx')).toContain('AppShell');
     expect(read('pages', 'pro', 'ProWorkspacePage.tsx')).toContain('AppShell');

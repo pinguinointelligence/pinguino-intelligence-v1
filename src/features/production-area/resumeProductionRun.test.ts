@@ -127,7 +127,7 @@ describe('resumeProductionRun', () => {
       createdAt: '2026-09-02T10:00:00.000Z',
       restoredFromVersion: null,
       note: null,
-    } as RecipeVersion;
+    } as unknown as RecipeVersion;
     useRecipeStore.getState().resetToDemo();
     useProductionSessionStore.setState({
       session: null,
