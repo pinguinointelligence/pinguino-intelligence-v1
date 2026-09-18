@@ -38,7 +38,8 @@ const data = vi.hoisted(() => ({
       payoutsEnabled: false,
       clicks: 0,
       attributions: 0,
-      pendingCommission: 0,
+      // The value measured for QA Partner A (45 held entries, 25 765 cents).
+      pendingCommission: 25765,
     },
   ],
 }));
@@ -216,5 +217,16 @@ describe('I-ADM-05 — sensitive admin actions ask first and ask why', () => {
       slug: 'nowy-partner',
       reason: 'Umowa podpisana 11.09',
     });
+  });
+});
+
+describe('the pending-commission figure reads as money', () => {
+  it('shows euros with the unit, not raw cents', () => {
+    /* Measured on the QA branch: the row printed "Oczekująca prowizja 25765"
+       while the Partner panel showed the same money as 257,65 €. The value
+       (held + eligible, gross) was right; only the rendering was not. */
+    const text = document.body.textContent?.replace(/\u00a0/g, ' ') ?? '';
+    expect(text).toContain('Oczekująca prowizja 257,65 €');
+    expect(text).not.toContain('Oczekująca prowizja 25765');
   });
 });
