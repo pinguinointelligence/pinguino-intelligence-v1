@@ -55,9 +55,7 @@ export function toDisplayOffer(offer: PriceOffer): DisplayOffer {
 }
 
 const cheapest = (offers: readonly PriceOffer[]): PriceOffer | null =>
-  offers.length === 0
-    ? null
-    : offers.reduce((lo, o) => (o.amountCents < lo.amountCents ? o : lo));
+  offers.length === 0 ? null : offers.reduce((lo, o) => (o.amountCents < lo.amountCents ? o : lo));
 
 export interface ProductOffers {
   /** The eligible monthly offer (promotional when its flag is on, else standard). */
@@ -114,4 +112,101 @@ function lowestOffer(product: BillingProduct, flags: OfferFlags): DisplayOffer |
   const candidates = [monthly, yearly].filter((o): o is DisplayOffer => o !== null);
   if (candidates.length === 0) return null;
   return candidates.reduce((lo, o) => (o.amountCents < lo.amountCents ? o : lo));
+}
+
+/* ------------------------------------------------- annual economics (§) -- */
+
+/**
+ * The REAL economics of paying yearly instead of monthly, derived from the
+ * catalogue — never a hand-written marketing number.
+ *
+ * Owner rule (2026-09-18): the annual variant must sell its benefit on sight,
+ * with true figures — the yearly price, the effective monthly price, the euro
+ * saving and the percentage. „2 miesiące gratis" is BANNED because it
+ * understates the real benefit (Home's annual price is ~7 monthly payments
+ * short of twelve, not two).
+ *
+ * Rounding is deliberately asymmetric and always in the customer's favour to
+ * state, never ours:
+ *  - `savingsPercent` and `freeMonthsEquivalent` are FLOORED, so the headline
+ *    discount is never overstated (Home 59.12 % → 59 %, Pro 33.64 % → 33 %);
+ *  - `effectiveMonthlyCents` is rounded to the nearest cent — it is a division
+ *    result shown as „≈", not a chargeable amount.
+ *
+ * Integer cents throughout: no floats ever reach a displayed price.
+ */
+export interface AnnualEconomics {
+  /** The yearly offer's own price, e.g. 4900. */
+  annualCents: number;
+  /** The monthly offer's price, e.g. 999. */
+  monthlyCents: number;
+  /** What twelve monthly payments actually cost, e.g. 11988. */
+  twelveMonthlyCents: number;
+  /** twelveMonthlyCents − annualCents, e.g. 7088. Always ≥ 0 when meaningful. */
+  savingsCents: number;
+  /** Floored whole-percent saving vs twelve monthly payments, e.g. 59. */
+  savingsPercent: number;
+  /** annualCents / 12, rounded to the cent, e.g. 408. */
+  effectiveMonthlyCents: number;
+  /**
+   * Whole months of the monthly price covered by the saving, FLOORED — the
+   * honest equivalent of „X miesięcy gratis" (Home 7, Pro 4). Null when the
+   * annual price buys less than a full free month.
+   */
+  freeMonthsEquivalent: number | null;
+  /** "49 €" */
+  annualLabel: string;
+  /** "9,99 €" */
+  monthlyLabel: string;
+  /** "119,88 €" */
+  twelveMonthlyLabel: string;
+  /** "70,88 €" */
+  savingsLabel: string;
+  /** "4,08 €" */
+  effectiveMonthlyLabel: string;
+}
+
+/**
+ * Annual economics for a product, or null when the product has no eligible
+ * monthly AND yearly pair under the active flags (nothing to compare → show no
+ * saving rather than an invented one), or when yearly is not actually cheaper.
+ */
+export function annualEconomics(
+  product: BillingProduct,
+  flags: OfferFlags = DEFAULT_OFFER_FLAGS,
+): AnnualEconomics | null {
+  const { monthly, yearly } = publicOffersForProduct(product, flags);
+  if (!monthly || !yearly) return null;
+
+  const monthlyCents = monthly.amountCents;
+  const annualCents = yearly.amountCents;
+  const twelveMonthlyCents = monthlyCents * 12;
+  const savingsCents = twelveMonthlyCents - annualCents;
+  if (savingsCents <= 0) return null;
+
+  const freeMonths = Math.floor(savingsCents / monthlyCents);
+
+  return {
+    annualCents,
+    monthlyCents,
+    twelveMonthlyCents,
+    savingsCents,
+    savingsPercent: Math.floor((savingsCents * 100) / twelveMonthlyCents),
+    effectiveMonthlyCents: Math.round(annualCents / 12),
+    freeMonthsEquivalent: freeMonths >= 1 ? freeMonths : null,
+    annualLabel: formatEur(annualCents),
+    monthlyLabel: formatEur(monthlyCents),
+    twelveMonthlyLabel: formatEur(twelveMonthlyCents),
+    savingsLabel: formatEur(savingsCents),
+    effectiveMonthlyLabel: formatEur(Math.round(annualCents / 12)),
+  };
+}
+
+/** Polish plural for „miesiąc" — 1 miesiąc, 2–4 miesiące, 5+ miesięcy. */
+export function monthsPl(n: number): string {
+  if (n === 1) return 'miesiąc';
+  const lastTwo = n % 100;
+  const last = n % 10;
+  if (lastTwo >= 12 && lastTwo <= 14) return 'miesięcy';
+  return last >= 2 && last <= 4 ? 'miesiące' : 'miesięcy';
 }

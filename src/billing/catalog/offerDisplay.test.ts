@@ -9,9 +9,11 @@
 import { describe, expect, it } from 'vitest';
 import { byLookupKey } from './priceCatalog';
 import {
+  annualEconomics,
   formatEur,
   fromPriceCompact,
   fromPriceLabel,
+  monthsPl,
   publicOffersForProduct,
   toDisplayOffer,
 } from './offerDisplay';
@@ -34,8 +36,18 @@ describe('formatEur — Polish EUR formatting', () => {
 describe('public offers — the exact owner prices, standard by default', () => {
   it('Home (no promotion): 9,99 €/miesiąc + 49 €/rok, standard lookup keys', () => {
     const { monthly, yearly } = publicOffersForProduct('home', DEFAULT_OFFER_FLAGS);
-    expect(monthly).toMatchObject({ amountCents: 999, interval: 'month', lookupKey: 'pi_home_monthly_standard_eur', label: '9,99 € / miesiąc' });
-    expect(yearly).toMatchObject({ amountCents: 4900, interval: 'year', lookupKey: 'pi_home_yearly_standard_eur', label: '49 € / rok' });
+    expect(monthly).toMatchObject({
+      amountCents: 999,
+      interval: 'month',
+      lookupKey: 'pi_home_monthly_standard_eur',
+      label: '9,99 € / miesiąc',
+    });
+    expect(yearly).toMatchObject({
+      amountCents: 4900,
+      interval: 'year',
+      lookupKey: 'pi_home_yearly_standard_eur',
+      label: '49 € / rok',
+    });
   });
 
   it('Pro (no promotion): 24,99 €/miesiąc + 199 €/rok — NOT the founding price', () => {
@@ -45,14 +57,20 @@ describe('public offers — the exact owner prices, standard by default', () => 
   });
 
   it('Pro founding shows 19,99 €/miesiąc + 149 €/rok ONLY when founding flag is on', () => {
-    const { monthly, yearly } = publicOffersForProduct('pro', { launchEnabled: false, foundingEnabled: true });
+    const { monthly, yearly } = publicOffersForProduct('pro', {
+      launchEnabled: false,
+      foundingEnabled: true,
+    });
     expect(monthly).toMatchObject({ amountCents: 1999, lookupKey: 'pi_pro_monthly_founding_eur' });
     expect(yearly).toMatchObject({ amountCents: 14900, lookupKey: 'pi_pro_yearly_founding_eur' });
   });
 
   it('Home launch shows 39 €/rok ONLY when launch flag is on', () => {
     const off = publicOffersForProduct('home', DEFAULT_OFFER_FLAGS).yearly;
-    const on = publicOffersForProduct('home', { launchEnabled: true, foundingEnabled: false }).yearly;
+    const on = publicOffersForProduct('home', {
+      launchEnabled: true,
+      foundingEnabled: false,
+    }).yearly;
     expect(off).toMatchObject({ amountCents: 4900 });
     expect(on).toMatchObject({ amountCents: 3900, lookupKey: 'pi_home_yearly_launch_eur' });
   });
@@ -89,7 +107,9 @@ describe('offer flags default OFF — no promotion shows without an explicit ser
     expect(resolveActiveOfferFlags({})).toEqual({ launchEnabled: false, foundingEnabled: false });
   });
   it('a truthy env flag turns a promotion on', () => {
-    expect(resolveActiveOfferFlags({ VITE_OFFER_FOUNDING_ENABLED: 'true' }).foundingEnabled).toBe(true);
+    expect(resolveActiveOfferFlags({ VITE_OFFER_FOUNDING_ENABLED: 'true' }).foundingEnabled).toBe(
+      true,
+    );
     expect(resolveActiveOfferFlags({ VITE_OFFER_LAUNCH_ENABLED: '1' }).launchEnabled).toBe(true);
   });
 });
@@ -111,5 +131,77 @@ describe('Home is never presented as free', () => {
     expect(customerShellCopy.upgrade.chooseHome).toBe('Wybierz Home');
     expect(customerShellCopy.upgrade.seePro).toBe('Zobacz Pro');
     expect(customerShellCopy.upgrade.chooseHome).not.toMatch(FORBIDDEN);
+  });
+});
+
+describe('annual economics — the real benefit, computed from the catalogue', () => {
+  const home = annualEconomics('home', DEFAULT_OFFER_FLAGS);
+  const pro = annualEconomics('pro', DEFAULT_OFFER_FLAGS);
+
+  it('derives HOME from the locked 9,99 € / 49 € pair', () => {
+    expect(home).not.toBeNull();
+    expect(home).toMatchObject({
+      monthlyCents: 999,
+      annualCents: 4900,
+      twelveMonthlyCents: 11988,
+      savingsCents: 7088,
+      savingsPercent: 59,
+      effectiveMonthlyCents: 408,
+      freeMonthsEquivalent: 7,
+      twelveMonthlyLabel: '119,88 €',
+      savingsLabel: '70,88 €',
+      effectiveMonthlyLabel: '4,08 €',
+    });
+  });
+
+  it('derives PRO from the locked 24,99 € / 199 € pair', () => {
+    expect(pro).not.toBeNull();
+    expect(pro).toMatchObject({
+      monthlyCents: 2499,
+      annualCents: 19900,
+      twelveMonthlyCents: 29988,
+      savingsCents: 10088,
+      savingsPercent: 33,
+      effectiveMonthlyCents: 1658,
+      freeMonthsEquivalent: 4,
+      twelveMonthlyLabel: '299,88 €',
+      savingsLabel: '100,88 €',
+      effectiveMonthlyLabel: '16,58 €',
+    });
+  });
+
+  it('never OVERSTATES the discount — percent and free months are floored', () => {
+    // 7088/11988 = 59.12 % and 10088/29988 = 33.64 %: floored, not rounded up.
+    expect(home!.savingsPercent).toBe(59);
+    expect(pro!.savingsPercent).toBe(33);
+    // 7088/999 = 7.09 months, 10088/2499 = 4.04 months.
+    expect(home!.freeMonthsEquivalent).toBe(7);
+    expect(pro!.freeMonthsEquivalent).toBe(4);
+  });
+
+  it('is the honest replacement for „2 miesiące gratis" — the real figure is far higher', () => {
+    // The banned claim would understate Home's benefit by five whole months.
+    expect(home!.freeMonthsEquivalent!).toBeGreaterThan(2);
+    expect(pro!.freeMonthsEquivalent!).toBeGreaterThan(2);
+  });
+
+  it('effective monthly × 12 stays within a cent of the real annual price', () => {
+    for (const e of [home!, pro!]) {
+      expect(Math.abs(e.effectiveMonthlyCents * 12 - e.annualCents)).toBeLessThanOrEqual(12);
+      expect(e.effectiveMonthlyCents).toBeLessThan(e.monthlyCents);
+    }
+  });
+
+  it('tracks a promotional annual price instead of hardcoding the standard one', () => {
+    const launch = annualEconomics('home', { launchEnabled: true, foundingEnabled: false });
+    expect(launch!.annualCents).toBe(3900); // home_yearly_launch, not 4900
+    expect(launch!.savingsCents).toBe(11988 - 3900);
+  });
+
+  it('pluralises months the Polish way', () => {
+    expect(monthsPl(1)).toBe('miesiąc');
+    expect(monthsPl(4)).toBe('miesiące');
+    expect(monthsPl(7)).toBe('miesięcy');
+    expect(monthsPl(12)).toBe('miesięcy');
   });
 });

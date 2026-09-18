@@ -149,6 +149,33 @@ export const landingCopy = {
       cycleLabel: 'Rozliczenie',
       monthly: 'Miesięcznie',
       yearly: 'Rocznie',
+      /**
+       * The per-plan „book" selector (owner 2026-09-18): each plan carries its
+       * OWN monthly/annual pair, so there is no global toggle. Every figure in
+       * these strings is injected from `annualEconomics()` — the catalogue is
+       * the only price authority, and „2 miesiące gratis" is banned because it
+       * understates the real benefit.
+       */
+      cycle: {
+        monthlyTitle: 'Miesięcznie',
+        annualTitle: 'Rocznie',
+        perMonth: '/ mies.',
+        perYear: '/ rok',
+        /** Shown on the annual side even while it is collapsed. */
+        effectivePrefix: 'to',
+        effectiveSuffix: '/ mies.',
+        savingsLabel: 'Oszczędzasz',
+        savingsPerYear: 'rocznie',
+        twelveMonthlyLabel: '12 × miesięcznie',
+        equivalentPrefix: 'Oszczędność równa',
+        equivalentSuffix: 'abonamentu',
+        /** The monthly side's no-risk promise (the exact top-up is quoted only
+            in the conversion preview, never guessed on a plan card). */
+        noRiskTitle: 'Bez ryzyka',
+        noRiskBody:
+          'Zacznij miesięcznie. Jeśli przejdziesz na plan roczny, opłacony bieżący miesiąc zaliczymy na jego cenę — nic nie tracisz.',
+        annualAnchorNote: 'Rok liczy się od początku Twojego opłaconego miesiąca.',
+      },
       pending: 'Przekierowuję do płatności…',
       errorGeneric: 'Nie udało się rozpocząć płatności. Spróbuj ponownie za chwilę.',
       errorAlready: 'Masz już aktywny plan.',
