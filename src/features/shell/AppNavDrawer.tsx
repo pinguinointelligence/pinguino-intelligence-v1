@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { Link, useLocation, useNavigate, type LinkProps } from 'react-router';
 import { cn } from '@/lib/cn';
 import { lockBodyScroll } from '@/components/ui/bodyScrollLock';
 import { copy } from '@/copy/en';
@@ -17,8 +17,8 @@ import {
   type NavGroupId,
 } from './appNav';
 import { AccountModeSwitcher } from './AccountModeSwitcher';
-import { labelSettingsReturn } from '@/features/master-label/labelSettingsNavigation';
 import { useTutorialStore } from '@/features/tutorial/tutorialState';
+import { hasUnsavedChanges, requestLeave } from '@/features/production-area/unsavedGuard';
 
 const s = copy.shell;
 const FOCUSABLE =
@@ -65,6 +65,25 @@ export function AppNavDrawer() {
   // authenticated. The account block must follow auth, not consumer-plan UX.
   const memberAccount = authStatus === 'authed' || devMemberPreview;
   const close = () => setOpen(false);
+  const navigate = useNavigate();
+  /* Produkcja v3 §1.5 — leaving through ☰ asks first when an area form (machine settings,
+     product markets, label settings) holds unsaved changes. Everywhere else nothing is
+     registered, so the link behaves exactly as before. */
+  const leaveTo = (to: LinkProps['to']) => (event: MouseEvent<HTMLAnchorElement>) => {
+    close();
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      !hasUnsavedChanges()
+    ) {
+      return;
+    }
+    event.preventDefault();
+    requestLeave(() => navigate(to));
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -185,7 +204,7 @@ export function AppNavDrawer() {
               {workspaceItem ? (
                 <Link
                   to={workspaceItem.to}
-                  onClick={close}
+                  onClick={leaveTo(workspaceItem.to)}
                   aria-current={workspaceItem.isActive(loc) ? 'page' : undefined}
                   data-testid={`app-nav-item-${workspaceItem.id}`}
                   className="text-sm font-medium tracking-[0.08em] text-ink"
@@ -237,19 +256,7 @@ export function AppNavDrawer() {
                           <Link
                             key={item.id}
                             to={item.to}
-                            state={
-                              item.id === 'labels'
-                                ? {
-                                    labelSettingsReturn: labelSettingsReturn(
-                                      location.pathname,
-                                      location.search,
-                                      document.querySelector<HTMLElement>('[role="tabpanel"]')
-                                        ?.scrollTop ?? window.scrollY,
-                                    ),
-                                  }
-                                : undefined
-                            }
-                            onClick={close}
+                            onClick={leaveTo(item.to)}
                             aria-current={active ? 'page' : undefined}
                             data-testid={`app-nav-item-${item.id}`}
                             className={cn(
@@ -294,7 +301,7 @@ export function AppNavDrawer() {
                 <div className="flex items-center gap-2">
                   <Link
                     to="/account"
-                    onClick={close}
+                    onClick={leaveTo('/account')}
                     className="min-w-0 flex-1 rounded-sm px-4 py-2 hover:bg-ink/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
                     data-testid="app-nav-account-link"
                   >
@@ -316,7 +323,9 @@ export function AppNavDrawer() {
                     type="button"
                     onClick={() => {
                       close();
-                      if (authStatus === 'authed') void signOut();
+                      requestLeave(() => {
+                        if (authStatus === 'authed') void signOut();
+                      });
                     }}
                     className="min-h-11 shrink-0 rounded-sm px-3 text-xs font-medium text-ink hover:bg-ink/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
                     data-testid="app-nav-signout"

@@ -1,3 +1,5 @@
+import { CUSTOMER_HOME_PATH } from '@/app/redirectState';
+
 export type ExecutableRecipeLibrary = 'lost_legendary' | 'fantasy';
 export type ExecutableRecipeTemplateStatus =
   | 'OWNER_REVIEW_EDITABLE'
@@ -546,7 +548,7 @@ export function executableRecipeStartHref(
     libraryTemplate: templateId,
     returnTo,
   });
-  return `${persona === 'pro' ? '/pro/recipe' : '/start'}?${params.toString()}`;
+  return `${persona === 'pro' ? '/pro/recipe' : CUSTOMER_HOME_PATH}?${params.toString()}`;
 }
 
 export function recipeTemplateBaseTotal(template: ExecutableRecipeTemplate): number | null {

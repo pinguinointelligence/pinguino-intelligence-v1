@@ -62,6 +62,15 @@ describe('responsive invariant', () => {
      *  - ProductPickerPopover / productPickerViewport: popover placement
      *  - ProWorkbar: recipe overflow-popover placement inside the viewport
      *  - applicationScaleAuthority: presentation-only whole-application scale
+     *  - GlobalCatalogSearchPanel: scroll restoration. Below 1024 px the product
+     *    detail REPLACES the list, so opening one must start at its top; on the
+     *    two-column desktop the list stays put and keeps its scroll. Nothing but
+     *    window.scrollTo is reached — no product, market or Engine value is read.
+     *  - ProductionBatches: the same question for „Partie”. Below 1024 px the
+     *    history is stacked UNDER the batches, so arriving at `?tab=history`
+     *    must scroll it into view; from `lg` it is already the right column and
+     *    scrolling would be wrong. The answer only chooses whether to scroll —
+     *    the same runs, pages and rows are read either way.
      * Anything else must justify itself by being added here deliberately.
      */
     const ALLOWED = [
@@ -73,6 +82,8 @@ describe('responsive invariant', () => {
       'pro-core/ProWorkbar.tsx',
       'components/ui/HoverPreview.tsx',
       'shell/applicationScaleAuthority.ts',
+      'global-catalog/GlobalCatalogSearchPanel.tsx',
+      'production-area/ProductionBatches.tsx',
     ];
     const offenders = sourceFiles(join(SRC, 'features'))
       .concat(sourceFiles(join(SRC, 'stores')))
@@ -111,11 +122,13 @@ describe('responsive invariant', () => {
     const surface = read('features', 'studio', 'StudioEngineSurface.tsx');
     const uses = surface.split('\n').filter((line) => line.includes('mobileViewport'));
     for (const line of uses) {
+      // DESIGN V3.0 §12 adds `monitorPanelMode`, which is the same modal decision
+      // narrowed to one module — so the dependency array may carry it alongside.
       // DESIGN V3.0 §3 adds one deliberate use (replacing B3's first-run sheet):
       // the new-recipe setup is hosted only where the phone composition is —
       // passed as `mobileViewport,` — modal behaviour, never a value.
       expect(
-        /useState|setMobileViewport|shouldActivateMobileCockpitModal|mobileCockpitOpen && mobileViewport|!mobileViewport|shouldRevealProductionWeighingOnNarrowViewport|\[activeTab, mobileCockpitOpen, mobileViewport\]/.test(
+        /useState|setMobileViewport|shouldActivateMobileCockpitModal|mobileCockpitOpen && mobileViewport|!mobileViewport|shouldRevealProductionWeighingOnNarrowViewport|\[activeTab, mobileCockpitOpen, mobileViewport(,|\])/.test(
           line,
         ) || line.trim() === 'mobileViewport,',
         line.trim(),

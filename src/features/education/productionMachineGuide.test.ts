@@ -1,0 +1,76 @@
+import { describe, expect, it } from 'vitest';
+import {
+  machineEducationForSelection,
+  productionMachineGuide,
+  type MachineEducationGuide,
+} from './machineEducation';
+
+/*
+ * The machine hand-off a batch runs with is ONE answer for HOME and PRO.
+ *
+ * HOME (`HomePreparation`) and PRO (`useProductionWorkspace`) both feed their guide
+ * into the same `preparationPlanForSession`, so a recipe that answered two different
+ * guides would produce two different preparation plans for one recipe — the exact
+ * boundary these tests hold shut.
+ */
+const HOME_MACHINE = 'ninja-creami-deluxe-nc502eu-eu-es';
+
+describe('MACHINE-GUIDE — one production hand-off authority for HOME and PRO', () => {
+  it('MACHINE-GUIDE-01 a home machine answers exactly the canonical catalog guide', () => {
+    const guide = productionMachineGuide({
+      machineKind: 'home',
+      machineId: HOME_MACHINE,
+      machineTechnology: 'respin',
+    });
+    expect(guide).not.toBeNull();
+    expect(guide).toEqual(machineEducationForSelection(HOME_MACHINE, 'respin'));
+    expect((guide as MachineEducationGuide).sourceMachineId).toBe(HOME_MACHINE);
+  });
+
+  it('MACHINE-GUIDE-02 a Professional recipe runs with no machine hand-off, even when its machine would resolve one', () => {
+    // §16: an official recipe opened in HOME keeps its Professional machine. PRO has
+    // always answered `null` here; HOME asked the catalog directly, so a Professional
+    // recipe that still carried a home machine id would have been given home machine
+    // steps on one side only.
+    expect(machineEducationForSelection(HOME_MACHINE, 'respin')).not.toBeNull();
+    expect(
+      productionMachineGuide({
+        machineKind: 'professional',
+        machineId: HOME_MACHINE,
+        machineTechnology: 'respin',
+      }),
+    ).toBeNull();
+  });
+
+  it('MACHINE-GUIDE-03 a recipe with no machine kind yet gets no guessed guide', () => {
+    expect(
+      productionMachineGuide({
+        machineKind: null,
+        machineId: HOME_MACHINE,
+        machineTechnology: 'respin',
+      }),
+    ).toBeNull();
+  });
+
+  it('MACHINE-GUIDE-04 a saved custom home machine keeps the technology fallback', () => {
+    const guide = productionMachineGuide({
+      machineKind: 'home',
+      machineId: 'custom-machine-not-in-catalog',
+      machineTechnology: 'compressor',
+    });
+    expect(guide?.category).toBe('compressor');
+    expect(guide).toEqual(
+      machineEducationForSelection('custom-machine-not-in-catalog', 'compressor'),
+    );
+  });
+
+  it('MACHINE-GUIDE-05 a home machine with no technology and no catalog entry stays without a guide', () => {
+    expect(
+      productionMachineGuide({
+        machineKind: 'home',
+        machineId: null,
+        machineTechnology: null,
+      }),
+    ).toBeNull();
+  });
+});

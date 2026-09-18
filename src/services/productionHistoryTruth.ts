@@ -11,7 +11,17 @@ export interface CanonicalProductionHistoryEntry {
 export interface CanonicalProductionHistory {
   entries: CanonicalProductionHistoryEntry[];
   unresolvedRunIds: string[];
+  /** Every completed run of this owner, not only this page (the repository's `total`). */
+  total: number;
+  /** The offset this page was read from. */
+  offset: number;
+  /** How many completed runs this page read — resolved and unresolved alike. The next page
+   * starts at `offset + readCount`, so an unresolved snapshot never shifts the paging. */
+  readCount: number;
 }
+
+/** One page of production history. The limit is a page size, never a cap on the history. */
+export const PRODUCTION_HISTORY_PAGE_SIZE = 50;
 
 export function completedSnapshotMatchesRun(
   run: ProductionRun,
@@ -40,17 +50,20 @@ export async function loadCanonicalProductionHistory({
   productionRepository,
   labelRepository,
   ownerUserId,
-  limit = 50,
+  limit = PRODUCTION_HISTORY_PAGE_SIZE,
+  offset = 0,
 }: {
   productionRepository: ProductionRepository;
   labelRepository: LabelRepository;
   ownerUserId: string;
   limit?: number;
+  offset?: number;
 }): Promise<CanonicalProductionHistory> {
   const page = await productionRepository.listRuns(ownerUserId, {
     status: 'completed',
     sort: 'newest',
     limit,
+    offset,
   });
   const resolved = await Promise.all(
     page.items.map(async (run) => {
@@ -76,5 +89,11 @@ export async function loadCanonicalProductionHistory({
       unresolvedRunIds.push(candidate.run.runId);
     }
   }
-  return { entries, unresolvedRunIds };
+  return {
+    entries,
+    unresolvedRunIds,
+    total: page.total,
+    offset,
+    readCount: page.items.length,
+  };
 }

@@ -1053,4 +1053,50 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(dot('settings')).toBeNull();
     expect(host.querySelector('[data-active-label-view="settings"]')).toBeNull();
   });
+
+  /* Production v3 §5 — applying THIS run's label settings does not rewrite the account
+     default unless the reader ticks „Zapisz jako moje ustawienie domyślne”. */
+  it('starts „Zapisz jako moje ustawienie domyślne” unticked and applies without saving the profile', async () => {
+    const repository = await renderWorkspace('settings');
+    const saveProfile = vi.spyOn(repository, 'saveAccountProfile');
+    const checkbox = [...host.querySelectorAll<HTMLLabelElement>('label')]
+      .find((label) => label.textContent?.includes('Zapisz jako moje ustawienie domyślne'))!
+      .querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    expect(checkbox.checked).toBe(false);
+    const market = host.querySelector<HTMLSelectElement>('[data-testid="label-market-select"]')!;
+    await act(async () => setSelectValue(market, 'UK'));
+    await act(async () => (button('Zastosuj ustawienia') as HTMLButtonElement).click());
+    expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
+    expect(saveProfile).not.toHaveBeenCalled();
+    expect((await repository.getAccountProfile())?.market).toBe('EU');
+  });
+
+  /* Production v3 §5 — a named saved version that does not exist (or belongs to another
+     run) is „not found”: never a new label built from the current profile, no print. */
+  it('shows „Nie znaleźliśmy tej wersji etykiety” for a missing saved version', async () => {
+    const repository = inMemoryLabelRepository('owner-label-workspace');
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <LabelWorkspace
+            snapshot={completedSnapshot()}
+            savedSnapshotId="snapshot-that-does-not-exist"
+            repository={repository}
+            initialView="label"
+          />
+        </MemoryRouter>,
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await vi.waitFor(() =>
+      expect(
+        host.querySelector('[data-testid="label-workspace-version-not-found"]'),
+      ).not.toBeNull(),
+    );
+    expect(host.textContent).toContain('Nie znaleźliśmy tej wersji etykiety.');
+    expect(host.querySelector('[data-testid="label-print"]')).toBeNull();
+    expect(host.querySelector('[data-testid="label-consumer-preview"]')).toBeNull();
+    expect(host.querySelector('[data-testid="label-change"]')).toBeNull();
+  });
 });

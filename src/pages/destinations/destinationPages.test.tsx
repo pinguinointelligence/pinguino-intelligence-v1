@@ -88,12 +88,14 @@ describe('Slice 3 destination pages', () => {
     expect(/stripe/i.test(html)).toBe(false); // no payment provider wired
   });
 
-  it('Subscription billing-cycle toggle is a 44 px touch target', () => {
+  it('Subscription cadence pages are generous touch targets (the book replaced the toggle)', () => {
     const html = render(<SubscriptionPage />);
-    const cycleButtons =
-      html.match(/<button type="button" aria-pressed="(true|false)"[^>]*>/g) ?? [];
-    expect(cycleButtons).toHaveLength(2);
-    for (const button of cycleButtons) expect(button).toMatch(/class="[^"]*\bmin-h-11\b/);
+    // Two plans × two pages of the book. The global toggle pills are gone.
+    const cadencePages = html.match(/<button type="button" role="radio"[^>]*>/g) ?? [];
+    expect(cadencePages).toHaveLength(4);
+    expect(html).not.toContain('aria-pressed');
+    // The whole page is the control, padded well past 44 px on every breakpoint.
+    for (const page of cadencePages) expect(page).toMatch(/class="[^"]*\bp-5\b/);
   });
 
   it('API page lists the informational links', () => {

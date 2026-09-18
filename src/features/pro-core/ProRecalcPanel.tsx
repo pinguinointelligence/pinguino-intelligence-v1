@@ -9,7 +9,8 @@
  * stays intact. Preview rows render through the same pure ConstraintPreviewCard; failures render
  * the same honest Polish messages; a verify-failed apply renders the same BlockedApplyNotice.
  */
-import { useMemo, useState } from 'react';
+import { useContext, useMemo, useState } from 'react';
+import { UNSAFE_NavigationContext } from 'react-router';
 import { copy } from '@/copy/en';
 import { calculateRecipe } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
@@ -895,6 +896,10 @@ export function ProRecalcPanel({
    * request-generation + timeout wrapper. */
   retryRunner?: () => Promise<void>;
 }) {
+  // The router's navigator when mounted inside one (always, in the app); null in isolated renders.
+  const routerNavigator =
+    (useContext(UNSAFE_NavigationContext) as { navigator?: { push: (to: string) => void } } | null)
+      ?.navigator ?? null;
   const [refreshingProductBehavior, setRefreshingProductBehavior] = useState(false);
   const [productBehaviorRefreshError, setProductBehaviorRefreshError] = useState<string | null>(
     null,
@@ -1010,8 +1015,12 @@ export function ProRecalcPanel({
     });
   };
 
+  /* Produkcja v3 §4: an in-app move, not a page reload — the recipe draft, the Pro workspace
+     state and the session stay in memory. Outside a router (isolated renders) it falls back to
+     the full-page assignment it always was. */
   const goToProductData = () => {
-    window.location.assign('/products/scan');
+    if (routerNavigator) routerNavigator.push('/products/scan');
+    else window.location.assign('/products/scan');
   };
 
   const goToSettings = () => {
