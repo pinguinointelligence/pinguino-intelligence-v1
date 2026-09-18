@@ -74,6 +74,15 @@ const afterDialogCommit = (run: () => void): void => {
   setTimeout(run, 0);
 };
 
+/**
+ * Returning focus must never move the page. Served 2026-09-18 on a phone: after
+ * „Zapisz recepturę” the dialog closed and focus fell back to the first action on the
+ * page (the menu button), so the browser scrolled to the very top and the customer
+ * lost the „Zapisano” line under the button they had just pressed. On touch Safari a
+ * tapped button never takes focus, so that fallback is the ordinary case there.
+ */
+const RESTORE_FOCUS: FocusOptions = { preventScroll: true };
+
 export function DialogShell({
   label,
   testId,
@@ -227,7 +236,7 @@ export function DialogShell({
         isUsableFocusTarget(previousFocus) &&
         (!activeSurvivor || activeSurvivor.contains(previousFocus))
       ) {
-        previousFocus.focus();
+        previousFocus.focus(RESTORE_FOCUS);
         return;
       }
 
@@ -244,23 +253,23 @@ export function DialogShell({
           );
           if (!activePanel) return;
           if (isUsableFocusTarget(previousFocus) && activePanel.contains(previousFocus)) {
-            previousFocus.focus();
+            previousFocus.focus(RESTORE_FOCUS);
             return;
           }
-          focusableWithin(activePanel)[0]?.focus();
+          focusableWithin(activePanel)[0]?.focus(RESTORE_FOCUS);
           return;
         }
 
         // Contract A: the original trigger survived.
         if (isUsableFocusTarget(previousFocus)) {
-          previousFocus.focus();
+          previousFocus.focus(RESTORE_FOCUS);
           return;
         }
 
         // Contracts B/C: the caller knows the semantic post-action successor.
         const semanticSuccessor = returnFocusRef.current?.() ?? null;
         if (isUsableFocusTarget(semanticSuccessor)) {
-          semanticSuccessor.focus();
+          semanticSuccessor.focus(RESTORE_FOCUS);
           return;
         }
 
@@ -280,10 +289,10 @@ export function DialogShell({
                   const bestDistance = Math.abs(focusBeforeOpen.indexOf(best) - previousIndex);
                   return distance < bestDistance ? node : best;
                 });
-          nearest?.focus();
+          nearest?.focus(RESTORE_FOCUS);
           return;
         }
-        actionableWithin(document.querySelector('main'))[0]?.focus();
+        actionableWithin(document.querySelector('main'))[0]?.focus(RESTORE_FOCUS);
       });
     };
   }, [initialFocusTestId]);

@@ -128,13 +128,46 @@ function issueDetail(issue: PreviewIssue): string | null {
  * verdict), then the recalculation result, then a sentence the terminal carries itself, and
  * only then the calm fallback.
  */
+/**
+ * The priority lines CORE's Main authority refused TOGETHER (their combined approved
+ * envelope is empty), named as the recipe names them — or `null` when the result does
+ * not say that, or a line has no name HOME can show (never half a list).
+ */
+function excludedPriorityGroup(
+  issue: PreviewIssue,
+  lineNames: ReadonlyMap<string, string>,
+): string[] | null {
+  if (issue.code !== 'no_proposal' || issue.directionTargetUnreached === true) return null;
+  const group = issue.blockingViolations?.find(
+    (violation) => violation.code === 'main_above_hard_limit' && violation.lineIds.length > 1,
+  );
+  if (group === undefined) return null;
+  const names = group.lineIds.map((lineId) => lineNames.get(lineId));
+  return names.every((name): name is string => name !== undefined && !exposesInternals(name))
+    ? names
+    : null;
+}
+
 export function homeRecalcRefusal(input: {
   readonly previewIssue: PreviewIssue | null;
   readonly blocked: { readonly messagePl: string } | null;
   readonly terminal: RecalculationTerminalState | null;
+  /** The recipe's line names, for a refusal that names its lines. */
+  readonly lineNames?: ReadonlyMap<string, string>;
 }): HomeRecalcRefusal {
   const { previewIssue, blocked, terminal } = input;
   const copy = homeCreatorCopy.recalcRefusal;
+  const excluded =
+    blocked === null && previewIssue !== null
+      ? excludedPriorityGroup(previewIssue, input.lineNames ?? new Map())
+      : null;
+  if (excluded !== null) {
+    return {
+      reason: copy.priorityGroupExcludes(excluded),
+      detail: null,
+      next: copy.priorityGroupNext,
+    };
+  }
   const terminalMessage = terminal !== null && 'messagePl' in terminal ? terminal.messagePl : null;
   const reason =
     (blocked ? homeCustomerNotice(blocked.messagePl) : null) ??

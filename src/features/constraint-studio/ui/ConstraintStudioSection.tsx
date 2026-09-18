@@ -18,6 +18,7 @@ import {
   BATCH_SUM_TOLERANCE_G,
   constrainedMinimumGrams,
 } from '@/features/recipe-constraints';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { constraintStudioCopy as copy, formatGramsPl } from '../constraintStudioCopy';
@@ -84,6 +85,10 @@ export function ConstraintStudioSection() {
   const machineCapacityGrams = useRecipeStore((state) => state.machine_capacity_grams);
   const flavorIntensity = useRecipeStore((state) => state.flavor_intensity);
   const costPriority = useRecipeStore((state) => state.cost_priority);
+  // The order every PRO door keeps: settings (profile, machine, batch) are confirmed
+  // before any proposal — and so before any „Zastosuj zmiany” — exists. Przelicz refuses
+  // with SETTINGS_CONFIRMATION_REQUIRED; this tool's batch rescale answers the same.
+  const settingsPending = useRecipeProfileStore((state) => state.settingsConfirmed === false);
 
   const constraints = useConstraintStudioStore((state) => state.constraints);
   const preview = useConstraintStudioStore((state) => state.preview);
@@ -162,7 +167,12 @@ export function ConstraintStudioSection() {
               className={secondaryButton}
               // Owner P0 (scale safety): an empty/zero/invalid target never
               // reaches the pipeline — the visible input is the ONLY source.
-              disabled={!Number.isFinite(Number(batchText)) || Number(batchText) <= 0 || batchText.trim() === ''}
+              disabled={
+                settingsPending ||
+                !Number.isFinite(Number(batchText)) ||
+                Number(batchText) <= 0 ||
+                batchText.trim() === ''
+              }
               onClick={() => {
                 const grams = Number(batchText);
                 if (Number.isFinite(grams) && grams > 0) {

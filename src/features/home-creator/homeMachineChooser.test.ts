@@ -75,7 +75,7 @@ describe('E · leaving the chooser without choosing (HOME-M2)', () => {
 
   it('ends an open change request even when nothing was picked', () => {
     // `onBack={` also appears for earlier sections, so bound the slice AFTER onDone.
-    const start = page.indexOf('onDone={() => {');
+    const start = page.indexOf('onDone={(typed) => {');
     const done = page.slice(start, page.indexOf('onBack={', start));
     expect(start).toBeGreaterThan(-1);
     expect(done).toContain('setForceMachineStage(false)');

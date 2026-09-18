@@ -6922,6 +6922,73 @@ function enforceTargetBatchInvariant(
 }
 
 /**
+ * GEL-P0-027 („an empty sweep is a refusal, never an echo”) for the ANSWER too.
+ *
+ * `already_clean` tells the customer the recipe on screen needs nothing. The bands
+ * the pipeline checks before saying so do not include the Main envelope, so a Crown
+ * group the Main authority itself rejects was published as clean. Served staging
+ * 2026-09-18: a strawberry gelato (berry floor 25 %) plus KIWI as a second priority
+ * (kiwi hard limit 20 %) — the combined envelope is empty, the Main sweep refused
+ * (`crownRefusal`), and HOME said „Receptura jest gotowa” with KIWI at 0 g.
+ *
+ * Such a recipe answers to the SAME Main safety check a proposal does (below): the
+ * customer's constrained Mains get the typed ratio conflict, anything else the typed
+ * `no_proposal` carrying the Main authority's own violations. A group the authority
+ * accepts keeps `already_clean` unchanged.
+ */
+function alreadyCleanMainGroupRefusal(
+  input: RecipeInput,
+  set: ConstraintSet,
+  options: OptimizePreviewOptions,
+): BuildPreviewResult | null {
+  const snapshots = options.productBehaviorSnapshots ?? {};
+  if (Object.keys(snapshots).length === 0) return null;
+  if (captureMainIngredientIntent(input).length === 0) return null;
+  const verdict = verifyMainEnvelope({
+    recipe: input,
+    snapshots,
+    mode:
+      normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode) === 'eco'
+        ? 'eco'
+        : 'optimal',
+    enforceFloor: true,
+    technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+  });
+  if (verdict.ok) return null;
+  const quantityViolations = verdict.violations.filter(
+    (violation) =>
+      violation.code === 'main_below_floor' ||
+      violation.code === 'main_above_hard_limit' ||
+      violation.code === 'liquid_dairy_carrier_below_floor',
+  );
+  if (quantityViolations.length === 0) return null;
+  const constrainedMains = captureMainIngredientIntent(input).filter((main) => {
+    const constraint = set.byLineId[main.lineId];
+    return constraint !== undefined && constraint.mode !== 'ai';
+  });
+  if (constrainedMains.length > 0) {
+    return {
+      ok: false,
+      code: 'main_ratio_conflict',
+      lineIds: constrainedMains.map((main) => main.lineId),
+      ingredientNames: constrainedMains.map((main) => main.ingredientName),
+      messagePl:
+        `Blokady lub zakresy składników Głównych ` +
+        `(${constrainedMains.map((main) => main.ingredientName).join(', ')}) ` +
+        `nie pozwalają osiągnąć zatwierdzonego minimum Main. Gellatti nie zmieniło receptury.`,
+      blockingViolations: quantityViolations,
+    };
+  }
+  return {
+    ok: false,
+    code: 'no_proposal',
+    violatedMetrics: [...new Set(quantityViolations.map((violation) => violation.code))],
+    solverInvocations: 0,
+    blockingViolations: quantityViolations,
+  };
+}
+
+/**
  * OWNER 2026-09-03 — the Crown-OFF Main SAFETY BACKSTOP.
  *
  * `verifyMainEnvelope` gained a capability-scoped safety band so that an
@@ -6977,7 +7044,11 @@ export function buildOptimizePreview(
           },
         }
       : internalResult;
-  if (!result.ok) return result;
+  if (!result.ok) {
+    return result.code === 'already_clean'
+      ? (alreadyCleanMainGroupRefusal(input, set, options) ?? result)
+      : result;
+  }
   const snapshots = options.productBehaviorSnapshots ?? {};
   if (Object.keys(snapshots).length === 0) return result;
   const proposedMains = captureMainIngredientIntent(result.preview.proposedInput);

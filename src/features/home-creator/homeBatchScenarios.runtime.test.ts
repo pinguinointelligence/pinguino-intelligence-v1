@@ -66,6 +66,7 @@ import {
 import { assessRecipeDirection } from '@/features/recipe-direction/recipeDirectionAssessment';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { homeRecalcRefusal } from './homeRecalcRefusal';
 import {
   recalculateHomeRecipe,
   runHomeRecalculation,
@@ -152,6 +153,12 @@ const SERVED_POLICY_SQL = readFileSync(
   ),
   'utf8',
 );
+/**
+ * Served policies a single test opts into on top of the table's own (never used by the
+ * §15 scenarios, whose evidence stays as recorded). Cleared after every test.
+ */
+const EXTRA_SERVED_POLICY = new Map<string, PublishedDairyMainPolicy>();
+
 /** The published milk_gelato Main policy each Main-capable fruit is served with. */
 const SERVED_DAIRY_POLICY: Readonly<Record<string, PublishedDairyMainPolicy>> = {
   [SORBET_MAIN_IDS.strawberry]: publishedDairyMainPolicy(
@@ -184,6 +191,11 @@ function authorityFor(input: RecipeInput): Record<string, ProductBehaviorSnapsho
   const servedFruit = servedSorbetSnapshots(servedSorbetRecipe())[SERVED_FRUIT.strawberry]!;
   for (const item of input.items) {
     const base = table[item.id]!;
+    const extraPolicy = EXTRA_SERVED_POLICY.get(canonicalOf(item));
+    if (extraPolicy !== undefined && input.category !== 'sorbet') {
+      table[item.id] = withPublishedDairyMainPolicy(base, extraPolicy);
+      continue;
+    }
     if (MAIN_CAPABLE_FRUIT.has(canonicalOf(item))) {
       table[item.id] =
         input.category === 'sorbet'
@@ -226,6 +238,7 @@ function syncAuthority() {
 }
 
 const resetStores = () => {
+  EXTRA_SERVED_POLICY.clear();
   store().resetToDemo();
   useRecipeProfileStore.getState().resetForTests();
   studio().resetForTests();
@@ -877,4 +890,83 @@ describe('HOME batch scenarios — the §15 evidence table', () => {
       expect(observed.relaxation).toBe(pro.relaxation);
     });
   }
+});
+
+/**
+ * Served 2026-09-18: a ready strawberry gelato (Ninja CREAMi Deluxe, 670 g) + KIWI from
+ * „Dodaj składnik”. HOME's AUTO door makes KIWI a second priority; the published
+ * policies give that group an EMPTY envelope (berry floor 25 % > kiwi hard limit 20 %),
+ * so no amount of either fruit is valid. CORE used to publish `already_clean` — HOME
+ * then said „Receptura jest gotowa. Nie trzeba zmieniać ilości.” with KIWI at 0 g.
+ */
+describe('a priority group the Main authority refuses is never „ready” (served 2026-09-18)', () => {
+  const KIWI_POLICY = () => publishedDairyMainPolicy(SERVED_POLICY_SQL, 'main-kiwi-fresh-dairy');
+
+  async function strawberryThenKiwi(side: Side) {
+    resetStores();
+    await readyGelatoAt(DELUXE_BATCH);
+    EXTRA_SERVED_POLICY.set(KIWI, KIWI_POLICY());
+    const seat = structuredClone(buildRecipeInput(store()));
+    if (side === 'pro') {
+      resetStores();
+      EXTRA_SERVED_POLICY.set(KIWI, KIWI_POLICY());
+      store().loadRecipeInput(structuredClone(seat));
+      syncAuthority();
+    }
+    const kiwi = store().addIngredient(sorbetMapperIngredient(KIWI), 0);
+    if (kiwi.status !== 'added') throw new Error('KIWI was not added');
+    syncAuthority();
+    crown(side, kiwi.lineId, 'auto');
+    return kiwi.lineId;
+  }
+
+  it('HOME: a typed refusal naming both fruits — never NO_CHANGE_NEEDED, the recipe untouched', async () => {
+    const kiwi = await strawberryThenKiwi('home');
+    const strawberry = lineOf(SORBET_MAIN_IDS.strawberry).id;
+    const before = structuredClone(store().items);
+
+    expect(await recalculateHomeRecipe()).toBe('decision');
+    const issue = studio().previewIssue;
+    expect(issue?.ok).toBe(false);
+    expect(studio().recalculationTerminal?.state).not.toBe('NO_CHANGE_NEEDED');
+    expect(issue?.ok === false && issue.code).toBe('no_proposal');
+    const blocking =
+      issue?.ok === false && issue.code === 'no_proposal' ? issue.blockingViolations : [];
+    expect(blocking).toContainEqual(
+      expect.objectContaining({
+        code: 'main_above_hard_limit',
+        lineIds: expect.arrayContaining([strawberry, kiwi]),
+      }),
+    );
+    // CORE wrote nothing: the customer still sees their recipe and the 0 g KIWI.
+    expect(store().items).toEqual(before);
+
+    // HOME names the two products and the only change that helps.
+    const refusal = homeRecalcRefusal({
+      previewIssue: studio().previewIssue,
+      blocked: studio().blocked,
+      terminal: studio().recalculationTerminal,
+      lineNames: new Map(store().items.map((item) => [item.id, item.ingredient.name])),
+    });
+    expect(refusal.reason).toContain(lineOf(SORBET_MAIN_IDS.strawberry).ingredient.name);
+    expect(refusal.reason).toContain(lineOf(KIWI).ingredient.name);
+    expect(refusal.next).toContain('Usuń jeden z tych składników');
+  });
+
+  it('PRO: the same group through PRO’s own crown and PRZELICZ gets the same refusal', async () => {
+    await strawberryThenKiwi('pro');
+    await runPiRecalculationWithTerminal(undefined, beginPiRecalculation());
+    const issue = studio().previewIssue;
+    expect(studio().recalculationTerminal?.state).not.toBe('NO_CHANGE_NEEDED');
+    expect(issue?.ok === false && issue.code).toBe('no_proposal');
+    expect(studio().preview).toBeNull();
+  });
+
+  it('a group the authority accepts still reads as clean: the ready strawberry gelato alone', async () => {
+    resetStores();
+    await readyGelatoAt(DELUXE_BATCH);
+    await runPiRecalculationWithTerminal(undefined, beginPiRecalculation());
+    expect(studio().recalculationTerminal?.state).toBe('NO_CHANGE_NEEDED');
+    expect(studio().previewIssue).toEqual({ ok: false, code: 'already_clean' });
+  });
 });
