@@ -10,6 +10,8 @@
  * document itself; a CTA scrolls to the next section and a subtle Back goes up.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DialogShell } from '@/components/ui/DialogShell';
+import { buttonClasses } from '@/components/ui/buttonStyles';
 import type { EngineIngredient } from '@/engine';
 import type { RecipeToppingIngredient } from '@/features/recipe-composition/recipeCompositionPersistence';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
@@ -187,6 +189,8 @@ export function HomeCreatorPage() {
   const activeStartMode: HomeStartMode = atStart ? startMode : 'idea';
   /** The Gellatti recipe „Receptury” asked the official door to open, for its refusal. */
   const [libraryOpening, setLibraryOpening] = useState<string | null>(null);
+  /** An official recipe chosen in „Receptury” while a real recipe is on screen: ask first. */
+  const [replaceAsk, setReplaceAsk] = useState<string | null>(null);
   /** DESIGN V3.0 VIII — the card chosen on the suggestions layer, for ONE idea version. */
   const [suggestionChoice, setSuggestionChoice] = useState<{
     readonly signature: string;
@@ -282,7 +286,12 @@ export function HomeCreatorPage() {
   const adoptOfficialRecipe = useCallback(
     async (
       recipeId: string,
-      options: { readonly keepIdea: boolean; readonly automatic: boolean },
+      options: {
+        readonly keepIdea: boolean;
+        readonly automatic: boolean;
+        /** HOME itself already asked (or had nothing to lose): skip the library-page check. */
+        readonly replaceConfirmed?: boolean;
+      },
     ) => {
       if (!userId) {
         openAuthModal();
@@ -295,7 +304,9 @@ export function HomeCreatorPage() {
           userId,
           // Chosen from the customer's own idea: that choice IS their new recipe, exactly as a
           // generated one would be. A library handoff was confirmed on the library page.
-          options.keepIdea ? { hasUnsavedChanges: () => false } : undefined,
+          options.keepIdea || options.replaceConfirmed
+            ? { hasUnsavedChanges: () => false }
+            : undefined,
         );
         presentLoadedRecipeInHome({
           label: materialized.recipe.name,
@@ -1272,8 +1283,20 @@ export function HomeCreatorPage() {
             onOpenOfficial={(recipeId) => {
               // The library's own door (`/home?source=official_recipe` uses it too): a guest
               // is asked to sign in, the original never changes, a refusal says why.
+              // Served 2026-09-18: that door's unsaved-changes check expects the library
+              // page's confirmation, which HOME never shows — a fresh HOME (only the untouched
+              // starter) could not open any recipe. HOME asks itself, and only when a real
+              // recipe of the customer's is on screen.
+              if (useHomeDraftStore.getState().recipeReady && useRecipeStore.getState().dirty) {
+                setReplaceAsk(recipeId);
+                return;
+              }
               setLibraryOpening(recipeId);
-              void adoptOfficialRecipe(recipeId, { keepIdea: false, automatic: false });
+              void adoptOfficialRecipe(recipeId, {
+                keepIdea: false,
+                automatic: false,
+                replaceConfirmed: true,
+              });
             }}
             onCommunityOpened={() => {
               // The Community door already loaded the derived recipe into the shared
@@ -1517,6 +1540,49 @@ export function HomeCreatorPage() {
           />
         ) : null}
       </div>
+
+      {replaceAsk !== null ? (
+        <DialogShell
+          label={homeCreatorCopy.draft.replaceTitle}
+          testId="home-library-replace"
+          placement="responsive"
+          onClose={() => setReplaceAsk(null)}
+        >
+          <p className="text-[17px] font-semibold" style={{ color: 'var(--g-ink)' }}>
+            {homeCreatorCopy.draft.replaceTitle}
+          </p>
+          <p className="mt-2 text-[14px]" style={{ color: 'var(--g-text-secondary)' }}>
+            {homeCreatorCopy.draft.replaceBody}
+          </p>
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              className={buttonClasses('ghost', 'md')}
+              data-testid="home-library-replace-cancel"
+              onClick={() => setReplaceAsk(null)}
+            >
+              {homeCreatorCopy.draft.cancel}
+            </button>
+            <button
+              type="button"
+              className={buttonClasses('primary', 'md')}
+              data-testid="home-library-replace-confirm"
+              onClick={() => {
+                const recipeId = replaceAsk;
+                setReplaceAsk(null);
+                setLibraryOpening(recipeId);
+                void adoptOfficialRecipe(recipeId, {
+                  keepIdea: false,
+                  automatic: false,
+                  replaceConfirmed: true,
+                });
+              }}
+            >
+              {homeCreatorCopy.draft.startNew}
+            </button>
+          </div>
+        </DialogShell>
+      ) : null}
 
       <RecipeCustomMachineDialog
         open={customMachineOpen}
