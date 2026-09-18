@@ -318,6 +318,7 @@ export interface AdminPartnerPendingCommission {
   readonly heldNetCents: number;
   readonly payableNetCents: number;
   readonly inFlightCents: number;
+  readonly readyNetCents: number;
   readonly pendingNetCents: number;
   readonly livemode: boolean;
 }

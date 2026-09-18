@@ -77,6 +77,8 @@ export interface PendingCommission {
   readonly payableNetCents: number;
   /** Already in a batch line that has not been settled yet. */
   readonly inFlightCents: number;
+  /** payable + in flight: past the refund window, not yet paid ("Do wypłaty"). */
+  readonly readyNetCents: number;
   /** held + payable + in flight: everything not yet paid out. */
   readonly pendingNetCents: number;
   readonly livemode: boolean;
