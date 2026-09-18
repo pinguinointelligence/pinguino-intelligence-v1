@@ -11,6 +11,10 @@ const recipe = read('src/features/home-creator/ui/HomeRecipeSection.tsx');
 const review = read('src/features/home-creator/ui/HomeRecalculate.tsx');
 const orchestration = read('src/features/home-creator/homeRecalculation.ts');
 const preparation = read('src/features/home-creator/ui/HomePreparation.tsx');
+const processController = read(
+  'src/features/production-workspace/process/useLocalProductionProcess.ts',
+);
+const processView = read('src/features/production-workspace/process/ProductionProcess.tsx');
 const draft = read('src/features/home-creator/homeDraftStore.ts');
 const amount = read('src/features/home-creator/ui/HomeAmountPrompt.tsx');
 const intent = read('src/features/home-creator/useHomeIntentIngredients.ts');
@@ -160,20 +164,29 @@ describe('GELLATTI HOME end-to-end closure — Owner matrix', () => {
     expect(preparation).toContain('evaluateRecipeConstraintAuthority');
   });
 
-  it('HOME-E2E-18 Dodałem za dużo uses Production Rescue', () => {
-    expect(preparation).toContain('home-production-overage');
-    expect(preparation).toContain('assessProductionRescue');
-    expect(preparation).toContain('applyVerifiedRescueInput');
+  it('HOME-E2E-18 a confirmed deviation uses Production Rescue („Korekta partii”)', () => {
+    // DESIGN V3.0 IV: „Dodałem za dużo” and TARA are gone — the ✓ with a different amount
+    // opens the same decision PRO Production offers, through the same gate and authority,
+    // in the ONE shared batch process HOME hosts (DESIGN H4).
+    expect(preparation).toContain('useLocalProductionProcess(');
+    for (const source of [preparation, processView]) {
+      expect(source).not.toContain('home-production-overage');
+      expect(source).not.toContain('home-production-tare');
+    }
+    expect(processController).toContain('browserProductionRescueDecision(session)');
+    expect(processController).toContain('assessProductionRescue');
+    expect(processController).toContain('applyVerifiedRescueInput');
+    expect(processController).toContain('productionDecisionOptions(');
   });
 
   it('HOME-E2E-19 topping appears only after the machine stage', () => {
-    expect(preparation).toContain('baseDone && machineStepCompleted ? activeAddon : activeBase');
-    expect(preparation).toContain("replaceSession({ ...session, stage: 'addons' })");
-    expect(preparation).toContain('home-topping-step');
+    expect(processController).toContain("machineDone: session.stage === 'addons'");
+    expect(processController).toContain("store().replaceSession({ ...session, stage: 'addons' })");
+    expect(processView).toContain('process-topping-step');
   });
 
   it('HOME-E2E-20 Production reaches canonical Gotowe', () => {
-    expect(preparation).toContain('completeProductionSession');
+    expect(processController).toContain('completeProductionSession');
     expect(preparation).toContain('home-production-complete');
   });
 

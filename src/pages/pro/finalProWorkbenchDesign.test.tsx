@@ -323,7 +323,8 @@ describe('profile semantics and readiness', () => {
     expect(settings).not.toContain('ProteinTargetControl');
     expect(settings).not.toContain('Mapper 2088');
     expect(settings).not.toContain('testid="workbench-quality"');
-    expect(settings).toContain('testid="workbench-strategy"');
+    // DESIGN V3.0 correction I: OPTIMAL / ECO are two tiles (one radiogroup).
+    expect(settings).toContain("'workbench-strategy'");
     expect(settings).toContain("label: 'OPTIMAL'");
     expect(settings).toContain("label: 'ECO'");
     expect(settings).toContain('Priorytet smaku.');
@@ -334,7 +335,12 @@ describe('profile semantics and readiness', () => {
 
   it('hides serving mode for home machines and keeps it for professional machines', () => {
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
-    expect(settings).toContain("store.machineKind === 'home'");
+    // The machine authority moved with the settings handlers (DESIGN V3.0 §3
+    // shares them with the setup); the panel still gates serving on it.
+    expect(read('features', 'pro-workbench', 'proSettingsAuthority.ts')).toContain(
+      "store.machineKind === 'home'",
+    );
+    expect(settings).toContain('showsProfessionalServing(store.machineKind)');
     expect(settings).toContain('home-machine-capacity');
     expect(settings).toContain('Zalecany wsad na cykl');
     expect(settings).toContain('testid="workbench-serving"');

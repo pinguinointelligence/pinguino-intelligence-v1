@@ -141,6 +141,16 @@
   [data-testid='pro-recipe-context-bar'] {
     view-transition-name: pro-recipe-bar;
   }
+
+  /* DESIGN V3.0 §3 — the new-recipe setup is named so it can leave as the
+     recipe drops in from above (the Point 4 reveal). */
+  [data-testid='pro-setup-flow'] {
+    view-transition-name: pro-setup-flow;
+  }
+}
+
+html[data-pro-spatial='reveal']::view-transition-old(pro-setup-flow) {
+  animation: pro-fade-out 200ms ease both;
 }
 
 ::view-transition-old(root),
@@ -285,18 +295,26 @@ html[data-pro-spatial='close']::view-transition-old(pro-cockpit-sheet) {
   }
 }
 
-/* PRO MOBILE UX v2 · B4 — the first-run settings sequence shows ONE step at a
-   time on a phone (back / forward / „Krok n z 3"). The desktop grid ignores the
-   pager, and a recipe whose settings are already confirmed never gets it. */
-@media not all and (min-width: 68.5rem) {
-  [data-settings-pager-scope='on'][data-settings-active-step='1']
-    [data-settings-step]:not([data-settings-step='1']),
-  [data-settings-pager-scope='on'][data-settings-active-step='2']
-    [data-settings-step]:not([data-settings-step='2']),
-  [data-settings-pager-scope='on'][data-settings-active-step='3']
-    [data-settings-step]:not([data-settings-step='3']) {
-    display: none;
-  }
+/* DESIGN V3.0 §3 and correction I — the setup's radio cards (16 px), the
+   serving segments (13 px housing, 10 px segments) and the defaults notice
+   (12 px) keep the design's own corners. The blanket corner normaliser squares
+   every `rounded-*` to the 9 px control radius with !important, so these name
+   their elements and win on specificity. (The B4 settings pager they replace
+   is gone.) */
+.pro-setup-card {
+  border-radius: 16px;
+}
+
+.pro-setup-notice {
+  border-radius: 12px;
+}
+
+.pro-studio-radius-system .pro-segmented {
+  border-radius: 13px !important;
+}
+
+.pro-studio-radius-system .pro-segmented > button {
+  border-radius: 10px !important;
 }
 
 /* PRO MOBILE UX v2 · B2 — the Receptura dashboard is a TOP sheet: it hangs from

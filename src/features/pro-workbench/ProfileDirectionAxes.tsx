@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { RecipeResult } from '@/engine';
+import { copy } from '@/copy/en';
 import { cn } from '@/lib/cn';
 import { buildRecipeDirectionPlan } from '@/features/recipe-direction/recipeDirectionTargets';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
@@ -17,6 +18,18 @@ const DETENTS = [-2, -1, 0, 1, 2] as const;
  *  targets (Protein hardness). Rendering five where −2 ≡ −1 would be fake
  *  precision, so the control shows what the authority can actually deliver. */
 const DETENTS_THREE = [-1, 0, 1] as const;
+
+/* DESIGN V3.0 correction I (owner 2026-09-17) — every PRO position is NAMED
+   under its mark, left to right and the same on both axes: −2 · −1 · Optymalne
+   · +1 · +2. The names follow the DRAWN order, never the stored value, so
+   Twardość keeps its mirror (the leftmost mark still writes +2 = firmer) and
+   its „+2" sits on the softer side, exactly as the design states. Presentation
+   only: range, values and direction are untouched. A three-position axis names
+   its three real marks (−1 · Optymalne · +1); the design does not specify
+   them, so that wording is an owner decision recorded with the change. */
+const STEP_NAMES = copy.proWorkbench.settingsPanel.steps;
+const stepNamesFor = (count: number): readonly string[] =>
+  count === STEP_NAMES.three.length ? STEP_NAMES.three : STEP_NAMES.five;
 
 /** `left:` for a detent. The frozen 0 / 25 / 50 / 75 / 100 spacing for the
  *  five-position rail; the same end-to-end geometry at 0 / 50 / 100 for three. */
@@ -77,7 +90,6 @@ function RegulatorRow({
   position,
   axisKey,
   reversed,
-  endLabels,
   onSet,
   disabled,
   reason,
@@ -89,7 +101,6 @@ function RegulatorRow({
   axisKey: 'sweetness' | 'softness';
   /** true = the leftmost mark writes the axis's POSITIVE end (Twardość). */
   reversed: boolean;
-  endLabels: readonly [string, string];
   onSet: (value: DirectionIntent) => void;
   disabled?: boolean;
   /** A7 — shown under the track, and announced with it, whenever the regulator is unavailable. */
@@ -272,16 +283,25 @@ function RegulatorRow({
             />
           ))}
         </div>
-        {/* Size says WHICH WAY; these two words say which way is which. Kept
-            because a bigger ball is only self-evident on Słodycz — on Twardość
-            a large ball reads as "softer" or "harder" equally easily, and that
-            misreading is not hypothetical. */}
+        {/* DESIGN V3.0 correction I: the positions carry their names under the
+            marks instead of the two end words (no words at the ends, no value
+            bubble, no second row). Each name is centred on its own mark, so a
+            mirrored axis keeps the same left-to-right names. The accessible
+            name of every mark still states its meaning (PHRASES above). */}
         <div
-          className="mt-[7px] flex justify-between gap-3 text-[10.5px] leading-[14px] text-[var(--g-text-muted)] min-[68.5rem]:mt-1"
-          data-testid={`profile-regulator-${id}-ends`}
+          aria-hidden
+          className="relative mt-[7px] h-[14px] text-[10.5px] leading-[14px] text-[var(--g-text-muted)] tabular-nums min-[68.5rem]:mt-1"
+          data-testid={`profile-regulator-${id}-steps`}
         >
-          <span className="min-w-0 truncate">{endLabels[0]}</span>
-          <span className="min-w-0 truncate text-right">{endLabels[1]}</span>
+          {stepNamesFor(count).map((name, index) => (
+            <span
+              key={name}
+              style={{ left: visualLeft(index, count) }}
+              className="absolute top-0 -translate-x-1/2 whitespace-nowrap"
+            >
+              {name}
+            </span>
+          ))}
         </div>
         {reason ? (
           <p
@@ -297,13 +317,14 @@ function RegulatorRow({
   );
 }
 
-export function ProfileDirectionAxes({
-  result,
-  className,
-}: {
-  result: RecipeResult;
-  className?: string;
-}) {
+/**
+ * The two regulators — Słodycz and Twardość — as ONE grid, bound to the recipe
+ * store's own Direction authority (`setDirectionTarget`, the Direction plan and
+ * the Protein hardness projection). DESIGN V3.0 §3 shows the very same control
+ * in the setup's third step, so it is exported for that presentation; there is
+ * no second regulator, no second store and no second write path.
+ */
+export function DirectionAxesGrid({ className }: { className?: string }) {
   const recipe = useRecipeStore();
   const intents = recipe.direction_targets;
   const directionPlan = buildRecipeDirectionPlan(buildRecipeInput(recipe));
@@ -311,7 +332,6 @@ export function ProfileDirectionAxes({
     () => new Map(directionPlan.axes.map((axis) => [axis.axis, axis])),
     [directionPlan.axes],
   );
-  void result;
 
   const set = (axis: AdjustableAxisId, next: DirectionIntent) => {
     if (next === intents[axis]) return;
@@ -319,12 +339,88 @@ export function ProfileDirectionAxes({
   };
 
   return (
+    /* The label column is `max-content` with a 76 px floor, not a fixed
+       width: German and Hungarian run 45-80% longer than Polish, and a
+       fixed column would clip them. The track keeps `min-w-0` so it yields
+       instead of overflowing the column. */
+    <div
+      className={cn(
+        'grid grid-cols-[minmax(104px,max-content)_1fr] items-center gap-x-5 gap-y-3 min-[68.5rem]:gap-y-1.5',
+        className,
+      )}
+    >
+      {(
+        [
+          ['sweetness', 'Słodycz'],
+          ['softness', 'Twardość'],
+        ] as const
+      ).map(([axis, label]) => {
+        const status = statusByAxis.get(axis);
+        // A profile whose proven hardness authority publishes THREE targets
+        // (Protein, through its approved ice band) gets three real positions.
+        // Five where −2 ≡ −1 would be fake precision. The plan's own metric is
+        // the discriminator, so no product-category branch appears here.
+        const threePosition = axis === 'softness' && status?.metric === 'ice_fraction';
+        const stored = intents[axis];
+        return (
+          <RegulatorRow
+            key={axis}
+            id={axis}
+            label={label}
+            // DISPLAY projection: a draft already carrying ±2 renders on the
+            // nearest real position rather than being silently rewritten.
+            position={
+              threePosition
+                ? (PROTEIN_HARDNESS_TARGET_VALUE[
+                    projectProteinHardnessForDisplay(stored)
+                  ] as DirectionIntent)
+                : stored
+            }
+            axisKey={axis}
+            /* Mirrored PRESENTATION: firm on the left, soft on the right. The
+               canonical sign is untouched — the leftmost mark still writes the
+               positive value, which the engine reads as firmer. */
+            reversed={axis === 'softness'}
+            detents={threePosition ? DETENTS_THREE : DETENTS}
+            onSet={(next) => {
+              if (!threePosition) {
+                set(axis, next);
+                return;
+              }
+              const step = projectProteinHardnessForDisplay(next);
+              // Selecting the already-shown position must not rewrite a ±2.
+              if (!proteinHardnessSelectionChangesStored(stored, step)) return;
+              set(axis, PROTEIN_HARDNESS_TARGET_VALUE[step]);
+            }}
+            disabled={status?.status !== 'working'}
+            reason={
+              status?.status === 'working'
+                ? undefined
+                : directionAxisUnavailableReason(status?.status)
+            }
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+export function ProfileDirectionAxes({
+  result,
+  className,
+}: {
+  result: RecipeResult;
+  className?: string;
+}) {
+  void result;
+
+  return (
     <section
       /* OWNER 2026-09-12 — desktop density. These paddings and the row gap
          below were measured on 2026-09-03 while the workbench was zoomed to
          0.8889; that zoom is gone, so on the desktop they painted 12.5 % taller
          than the reference they were matched to. The box now keeps the same
-         instrument — rail, marks, end labels — in 140 px instead of 164.
+         instrument — rail, marks, step names — in 140 px instead of 164.
          Touch widths keep their current spacing (`min-[68.5rem]` only). */
       className={cn(
         'pro-legend-box bg-transparent px-5 pt-8 pb-6 min-[68.5rem]:pt-7 min-[68.5rem]:pb-4',
@@ -338,70 +434,7 @@ export function ProfileDirectionAxes({
       >
         Dostosuj recepturę
       </h3>
-      {/* The label column is `max-content` with a 76 px floor, not a fixed
-          width: German and Hungarian run 45-80% longer than Polish, and a
-          fixed column would clip them. The track keeps `min-w-0` so it yields
-          instead of overflowing the column. */}
-      <div className="grid grid-cols-[minmax(104px,max-content)_1fr] items-center gap-x-5 gap-y-3 min-[68.5rem]:gap-y-1.5">
-        {(
-          [
-            ['sweetness', 'Słodycz'],
-            ['softness', 'Twardość'],
-          ] as const
-        ).map(([axis, label]) => {
-          const status = statusByAxis.get(axis);
-          // A profile whose proven hardness authority publishes THREE targets
-          // (Protein, through its approved ice band) gets three real positions.
-          // Five where −2 ≡ −1 would be fake precision. The plan's own metric is
-          // the discriminator, so no product-category branch appears here.
-          const threePosition = axis === 'softness' && status?.metric === 'ice_fraction';
-          const stored = intents[axis];
-          return (
-            <RegulatorRow
-              key={axis}
-              id={axis}
-              label={label}
-              // DISPLAY projection: a draft already carrying ±2 renders on the
-              // nearest real position rather than being silently rewritten.
-              position={
-                threePosition
-                  ? (PROTEIN_HARDNESS_TARGET_VALUE[
-                      projectProteinHardnessForDisplay(stored)
-                    ] as DirectionIntent)
-                  : stored
-              }
-              axisKey={axis}
-              reversed={axis === 'softness'}
-              endLabels={
-                axis === 'sweetness'
-                  ? ['mniej słodkie', 'bardziej słodkie']
-                  : /* Mirrored PRESENTATION: firm on the left, soft on the
-                       right. The canonical sign is untouched — the leftmost
-                       mark still writes the positive value, which the engine
-                       reads as firmer. */
-                    ['bardziej twarde', 'bardziej miękkie']
-              }
-              detents={threePosition ? DETENTS_THREE : DETENTS}
-              onSet={(next) => {
-                if (!threePosition) {
-                  set(axis, next);
-                  return;
-                }
-                const step = projectProteinHardnessForDisplay(next);
-                // Selecting the already-shown position must not rewrite a ±2.
-                if (!proteinHardnessSelectionChangesStored(stored, step)) return;
-                set(axis, PROTEIN_HARDNESS_TARGET_VALUE[step]);
-              }}
-              disabled={status?.status !== 'working'}
-              reason={
-                status?.status === 'working'
-                  ? undefined
-                  : directionAxisUnavailableReason(status?.status)
-              }
-            />
-          );
-        })}
-      </div>
+      <DirectionAxesGrid />
     </section>
   );
 }

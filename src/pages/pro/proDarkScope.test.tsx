@@ -139,7 +139,9 @@ describe('Pro workspace — white precision scope', () => {
     const html = renderAt('/pro/recipe', 'pro');
     expect(html).toContain('data-testid="profile-regulator-sweetness"');
     expect(html).toContain('data-testid="profile-regulator-softness"');
-    expect(html.match(/role="radiogroup"/g)).toHaveLength(2);
+    // Two regulators; the Settings tiles and serving segments (DESIGN V3.0
+    // correction I) are radiogroups of their own and are not counted here.
+    expect(html.match(/role="radiogroup" aria-label="(?:Słodycz|Twardość)"/g)).toHaveLength(2);
     /* SUPERSEDED, owner 2026-09-03: the accessible name states the MEANING,
        not the coordinate. "Słodycz: -2" named a number a screen-reader user
        then had to interpret; the sentence is the same thing the ball's size

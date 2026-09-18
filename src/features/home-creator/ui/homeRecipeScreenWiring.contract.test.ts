@@ -97,7 +97,9 @@ describe('the recipe screen actions use the existing doors', () => {
 
   it('production: „Wróć do produkcji” returns to the running batch', () => {
     expect(page).toContain("productionStatus !== 'completed'");
-    expect(page).toContain("onResumeProduction={() => scrollToStage('preparation')}");
+    // DESIGN H4 (IV D–I): production is its own HOME screen; the recipe's black action opens it.
+    expect(page).toContain('onResumeProduction={openProduction}');
+    expect(page).toContain("window.setTimeout(() => scrollToStage('preparation'), 60);");
   });
 
   it('sweetness keeps its one setter (§61/§62)', () => {

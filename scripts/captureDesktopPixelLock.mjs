@@ -163,7 +163,8 @@ function fixtureExpression() {
     if (!main) throw new Error('Controlled six-row milk fixture is unavailable');
     if (main.getAttribute('aria-pressed') !== 'true') main.click();
     select('workbench-serving', 'temp_minus_11');
-    select('workbench-strategy', 'eco');
+    // DESIGN V3.0 correction I: OPTIMAL / ECO are two tiles, not a select.
+    document.querySelector('[data-testid="workbench-strategy-eco"]')?.click();
     await wait(180);
     const confirm = [...document.querySelectorAll('button')].find((button) =>
       button.textContent?.includes('Potwierdź ustawienia')
@@ -186,7 +187,8 @@ function fixtureExpression() {
     return {
       rows: document.querySelectorAll('[data-scope="BASE_FORMULATION"]').length,
       main: main.getAttribute('aria-pressed'),
-      strategy: document.querySelector('[data-testid="workbench-strategy"]')?.value,
+      strategy: document.querySelector('[data-testid="workbench-strategy"] [aria-checked="true"]')
+        ?.dataset.testid?.replace('workbench-strategy-', ''),
     };
   })()`;
 }

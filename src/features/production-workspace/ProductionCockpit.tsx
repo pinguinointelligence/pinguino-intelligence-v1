@@ -3,6 +3,11 @@ import { createPortal } from 'react-dom';
 import { ReadinessFrame } from '@/features/design-review/ReadinessMarker';
 import type { ProductionWorkspaceView } from './useProductionWorkspace';
 import { ProductionActualControl } from './ProductionActualControl';
+import {
+  productionDecisionExplanation,
+  productionDecisionOptions,
+  productionDecisionTitle,
+} from './productionDecisionOptions';
 import { productionLotCodeForRun, productionStepForGrams } from './productionSession';
 import {
   preparationPlanForRecipe,
@@ -792,30 +797,11 @@ export function ProductionCockpit({
     production.plannedScore?.score != null &&
     score.score != null &&
     score.score < production.plannedScore.score;
-  const decisionOptions = [
-    {
-      id: 'keep_original_batch',
-      title: `Zachowaj ${formatPhysicalMassG(progress.currentPlanMassG)} g`,
-      explanation:
-        'Dostosujemy ilości, których jeszcze nie dodano. Potwierdzonych ilości nie odejmiemy.',
-    },
-    {
-      id: 'enlarge_batch',
-      title: 'Zwiększ partię',
-      explanation: 'Znajdziemy najmniejszą większą partię i przeliczymy pozostałe ilości.',
-    },
-    {
-      id: 'restore_original_recipe',
-      title: 'Przywróć oryginalną recepturę',
-      explanation:
-        'Dodamy odpowiednie ilości wszystkich potrzebnych produktów, aby wrócić do wyjściowych proporcji.',
-    },
-    {
-      id: 'leave_as_is',
-      title: 'Kontynuuj bez korekty',
-      explanation: `Nie zmienimy dalszego planu${production.plannedScore?.score && score.score ? `. Przewidywany wynik: ${production.plannedScore.score} → ${score.score}.` : '.'}`,
-    },
-  ] as const;
+  const decisionOptions = productionDecisionOptions({
+    currentPlanMassG: progress.currentPlanMassG,
+    plannedScore: production.plannedScore?.score,
+    forecastScore: score.score,
+  });
   const everyDecisionUnavailable =
     rescue?.state === 'options' &&
     decisionOptions.every(
@@ -1043,11 +1029,7 @@ export function ProductionCockpit({
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-2">
                         <strong className="text-xs text-ink">
-                          {preview && option.id === 'enlarge_batch'
-                            ? `Zwiększ partię do ${formatPhysicalMassG(preview.finalMassG)} g`
-                            : preview && option.id === 'restore_original_recipe'
-                              ? `Przywróć oryginalną recepturę · ${formatPhysicalMassG(preview.finalMassG)} g`
-                              : option.title}
+                          {productionDecisionTitle(option, preview ? preview.finalMassG : null)}
                         </strong>
                         {recommended ? (
                           <span className="rounded-md border border-[#d9c49a] bg-[#efe8dc] px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.04em] text-[#765224] uppercase">
@@ -1061,11 +1043,11 @@ export function ProductionCockpit({
                         ) : null}
                       </span>
                       <span className="mt-1 block text-[11px] leading-relaxed text-stone-600">
-                        {option.id === 'leave_as_is' &&
-                        production.plannedScore?.score &&
-                        previewScore
-                          ? `Nie zmienimy dalszego planu. Przewidywany wynik: ${production.plannedScore.score} → ${previewScore}.`
-                          : option.explanation}
+                        {productionDecisionExplanation(
+                          option,
+                          production.plannedScore?.score,
+                          previewScore,
+                        )}
                       </span>
                     </span>
                     {preview ? (
