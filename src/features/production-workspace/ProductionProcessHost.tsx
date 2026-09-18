@@ -7,6 +7,7 @@
  * way back, its own action, and the layer the sheets open in.
  */
 import { useState, type ReactNode } from 'react';
+import { DialogShell } from '@/components/ui/DialogShell';
 import { ProductionProcess } from './process/ProductionProcess';
 import type { ProcessSheetFrame } from './process/ProductionProcessSheets';
 import { useProductionWorkspace } from './useProductionWorkspace';
@@ -16,7 +17,7 @@ export function ProductionProcessHost({
   name,
   back,
   hostAction,
-  sheetFrame,
+  sheetFrame = ProcessLayer,
   empty = null,
   testId,
 }: {
@@ -26,7 +27,8 @@ export function ProductionProcessHost({
   back: ReactNode;
   /** The host's action beside „Coś poszło nie tak?". */
   hostAction?: ReactNode;
-  sheetFrame: ProcessSheetFrame;
+  /** The layer the process sheets open in; the shared `home-layer` placement by default. */
+  sheetFrame?: ProcessSheetFrame;
   /** What to render when there is no batch. Mounting the host never starts one. */
   empty?: ReactNode;
   testId: string;
@@ -56,3 +58,27 @@ export function ProductionProcessHost({
     />
   );
 }
+
+/**
+ * The default layer for the process sheets: the SAME `home-layer` placement of
+ * `DialogShell` that HOME's own frame is built on — one sheet system, not a second.
+ */
+const ProcessLayer: ProcessSheetFrame = ({
+  label,
+  testId,
+  onClose,
+  onBackdrop,
+  returnFocus,
+  children,
+}) => (
+  <DialogShell
+    label={label}
+    testId={testId}
+    placement="home-layer"
+    onClose={onClose}
+    onBackdrop={onBackdrop ?? onClose}
+    returnFocus={returnFocus}
+  >
+    {children}
+  </DialogShell>
+);
