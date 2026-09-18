@@ -46,7 +46,11 @@ describe('B1/B2 — the Receptura dashboard is a sheet that lifts into the recip
   });
 
   it('anchors the dashboard at the top and the modules at the bottom', () => {
-    expect(surface).toContain("data-sheet-anchor={activeTab === 'profile' ? 'top' : 'bottom'}");
+    /* DESIGN V3.0 §12 — Monitor „zjeżdża z góry”, so it joins the dashboard at the top
+       anchor; the other modules keep the bottom one. */
+    expect(surface).toContain(
+      "data-sheet-anchor={monitorPanelMode || activeTab === 'profile' ? 'top' : 'bottom'}",
+    );
     expect(css).toMatch(/#mobile-cockpit-dialog\[data-sheet-anchor='top'\]/);
   });
 });
