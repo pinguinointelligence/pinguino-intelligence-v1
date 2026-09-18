@@ -9,23 +9,29 @@
  * PRO's own CORE entry). Where the target cannot be met without breaking an explicit
  * amount, CORE must SAY so (a refusal / lock conflict) — never exceed the target.
  *
- * The table is written by the run itself (node:fs) to the owner's evidence folder
- * when it exists (override with GELLATTI_BATCH_EVIDENCE); CI simply skips the write.
+ * The table is written by the run itself (node:fs) ONLY when HOME_BATCH_TABLE_OUT names
+ * the file to write; an ordinary test run never writes outside the repository.
+ *
+ * The Main-capable fruit carries the SERVED dairy Main policy, read from the migration
+ * that publishes it (STRAWBERRIES: `main-berry-fresh-dairy` v2, floor 25 %). The harness
+ * once gave strawberry the WATERMELON fixture fields (floor 20 %), and that 5 % gap is
+ * exactly where the served 1340 g banana + kiwi refusal hid.
  *
  * Only the server authority is answered (SERVER-AUTHORITY-TABLE fake: every requested
  * line gets `structuredClone(table[lineId])` from ONE fixture map); the solver runs
  * in-process through a PASS-THROUGH tap.
  */
-import { appendFileSync, existsSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { EngineIngredient, RecipeInput } from '@/engine';
+import { calculateRecipe, type EngineIngredient, type RecipeInput } from '@/engine';
+import { OWNER_IDS } from '@/features/constraint-studio/__fixtures__/ownerFruitMainFixture';
 import {
-  OWNER_IDS,
-  ownerFruitRecipe,
-  ownerFruitSnapshots,
-} from '@/features/constraint-studio/__fixtures__/ownerFruitMainFixture';
+  publishedDairyMainPolicy,
+  withPublishedDairyMainPolicy,
+  type PublishedDairyMainPolicy,
+} from '@/features/constraint-studio/__fixtures__/servedDairyMainPolicy';
 import {
   SERVED_FRUIT,
   SERVED_FRUIT_IDS,
@@ -38,9 +44,15 @@ import {
   runPiRecalculationWithTerminal,
   useConstraintStudioStore,
 } from '@/features/constraint-studio/constraintStudioStore';
+import { lockRelaxationInstructions } from '@/features/constraint-studio/lockRelaxation';
 import type { OptimizePreviewComputationRequest } from '@/features/constraint-studio/optimizePreviewComputation';
 import { previewCustomerDecisionReason } from '@/features/constraint-studio/previewCustomerDecision';
-import { NINJA_CREAMI_NC302EU, deriveMachineSetup } from '@/features/machine-catalog';
+import { mergePreviewInstructions } from '@/features/constraint-studio/previewInstructions';
+import {
+  NINJA_CREAMI_DELUXE_NC502EU,
+  NINJA_CREAMI_NC302EU,
+  deriveMachineSetup,
+} from '@/features/machine-catalog';
 import { machineDisplayName } from '@/features/machine-onboarding/machineViews';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
@@ -51,9 +63,14 @@ import {
   sorbetMapperIngredient,
   sorbetTopping,
 } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
+import { assessRecipeDirection } from '@/features/recipe-direction/recipeDirectionAssessment';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { useRecipeStore } from '@/stores/recipeStore';
-import { recalculateHomeRecipe } from './homeRecalculation';
+import {
+  recalculateHomeRecipe,
+  runHomeRecalculation,
+  stagedResultIsClean,
+} from './homeRecalculation';
 
 vi.setConfig({ testTimeout: 180_000 });
 
@@ -127,20 +144,22 @@ const SORBET_MAIN_FIELDS = [
   'formId',
   'blockReasons',
 ] as const;
-const DAIRY_MAIN_FIELDS = [
-  'familyId',
-  'formId',
-  'mainClassification',
-  'mainPolicyId',
-  'mainPolicyVersion',
-  'ecoFloorPercent',
-  'optimalCeilingPercent',
-  'hardLimitPercent',
-  'mainEquivalentFactor',
-  'mainBasis',
-  'requiresLiquidDairyCarrier',
-  'liquidDairyCarrierFloorPercent',
-] as const;
+/** The migration that publishes staging's Main policies (the served rows, read as data). */
+const SERVED_POLICY_SQL = readFileSync(
+  resolve(
+    process.cwd(),
+    'supabase/migrations/20260813110400_product_behavior_classification_queue.sql',
+  ),
+  'utf8',
+);
+/** The published milk_gelato Main policy each Main-capable fruit is served with. */
+const SERVED_DAIRY_POLICY: Readonly<Record<string, PublishedDairyMainPolicy>> = {
+  [SORBET_MAIN_IDS.strawberry]: publishedDairyMainPolicy(
+    SERVED_POLICY_SQL,
+    'main-berry-fresh-dairy',
+  ),
+  [SORBET_MAIN_IDS.lime]: publishedDairyMainPolicy(SERVED_POLICY_SQL, 'main-fruit-fresh-dairy'),
+};
 
 const pick = (from: object, fields: readonly string[]) =>
   Object.fromEntries(
@@ -151,8 +170,8 @@ const canonicalOf = (item: { ingredient: { id: string; canonical_ingredient_id?:
   item.ingredient.canonical_ingredient_id ?? item.ingredient.id;
 
 /** Shared test snapshots + a published Main policy on the Main-capable fruit (Sorbet:
- * the served exact strawberry policy; gelato: the fresh-fruit dairy policy, milk as
- * its approved carrier). The served three-fruit seat uses its own served snapshots. */
+ * the served exact strawberry policy; gelato: the SERVED dairy policy row, milk as its
+ * approved carrier). The served three-fruit seat uses its own served snapshots. */
 function authorityFor(input: RecipeInput): Record<string, ProductBehaviorSnapshot> {
   const toppings = useRecipeStore.getState().toppings;
   if (input.items.some((item) => SERVED_FRUIT_IDS.includes(item.id))) {
@@ -163,7 +182,6 @@ function authorityFor(input: RecipeInput): Record<string, ProductBehaviorSnapsho
   }
   const table = productBehaviorTestSnapshots(input, toppings);
   const servedFruit = servedSorbetSnapshots(servedSorbetRecipe())[SERVED_FRUIT.strawberry]!;
-  const owner = ownerFruitSnapshots(ownerFruitRecipe());
   for (const item of input.items) {
     const base = table[item.id]!;
     if (MAIN_CAPABLE_FRUIT.has(canonicalOf(item))) {
@@ -178,7 +196,7 @@ function authorityFor(input: RecipeInput): Record<string, ProductBehaviorSnapsho
                 profileEligibility: [...servedFruit.sharedFacts!.profileEligibility],
               },
             } as ProductBehaviorSnapshot)
-          : ({ ...base, ...pick(owner.watermelon!, DAIRY_MAIN_FIELDS) } as ProductBehaviorSnapshot);
+          : withPublishedDairyMainPolicy(base, SERVED_DAIRY_POLICY[canonicalOf(item)]!);
     }
     if (input.category !== 'sorbet' && canonicalOf(item) === OWNER_IDS.milk) {
       table[item.id] = { ...base, approvedLiquidDairyCarrier: true };
@@ -331,6 +349,12 @@ interface Scenario {
   apply: (side: Side) => number;
   /** A conflict is expected: CORE must refuse rather than exceed the target. */
   conflict?: boolean;
+  /** Scenario-specific CORE invariants, checked on HOME's final recipe. */
+  verify?: (observed: Observation) => void;
+  /** The conflict is the customer's own amounts against the recipe rules: CORE must
+   * answer with its typed lock conflict, and the relaxation it offers must be a clean
+   * recipe that still reaches the customer's Direction (no consent needed). */
+  lockConflictKeepsDirection?: boolean;
 }
 
 interface Observation {
@@ -350,10 +374,50 @@ interface Observation {
   /** A Topping line reached a solver request (it never may). */
   toppingInSolve: boolean;
   refusal: string | null;
+  /** The typed refusal CORE published (never the carrier share of an unproposed vector). */
+  issueCode: string | null;
+  /** The relaxation of the customer's own locks CORE's lock-conflict diagnosis offers. */
+  relaxation: string | null;
+  /** HOME's dialog door, run with that relaxation: a clean Preview whose recipe reaches
+   * the customer's Direction, the recipe itself still untouched (null: not asked). */
+  relaxationKeepsDirection: boolean | null;
 }
 
 const gramsByIngredient = () =>
   Object.fromEntries(store().items.map((item) => [canonicalOf(item), item.planned_grams]));
+
+/** CORE's offered relaxation, in the customer's words (the same on both sides). */
+function offeredRelaxation(): string | null {
+  const diagnosis = studio().lockConflict?.diagnosis;
+  if (diagnosis?.status !== 'relaxation_found') return null;
+  return diagnosis.changes
+    .map(
+      (change) => `${change.ingredientName} ${grams(change.fromGrams)} → ${grams(change.toGrams)}`,
+    )
+    .join('; ');
+}
+
+/** HOME's dialog door („Użyj propozycji”) with CORE's relaxation: the Preview it stages is
+ * clean — no Direction consent, no other decision — its recipe reaches the customer's
+ * Direction, and nothing is written. */
+async function relaxationKeepsDirection(itemsBefore: unknown): Promise<boolean> {
+  const conflict = studio().lockConflict;
+  if (conflict === null || conflict.diagnosis.status !== 'relaxation_found') return false;
+  await runHomeRecalculation(
+    mergePreviewInstructions(
+      conflict.sessionInstructions,
+      lockRelaxationInstructions(conflict.diagnosis),
+    ),
+  );
+  const preview = studio().preview;
+  return (
+    stagedResultIsClean() &&
+    preview !== null &&
+    preview.proposedInput.goals?.direction_targets_active === true &&
+    assessRecipeDirection(preview.proposedInput, calculateRecipe(preview.proposedInput)).reached &&
+    isDeepStrictEqual(store().items, itemsBefore)
+  );
+}
 
 async function runHome(scenario: Scenario): Promise<{ observed: Observation; seat: RecipeInput }> {
   resetStores();
@@ -408,6 +472,11 @@ async function runHome(scenario: Scenario): Promise<{ observed: Observation; sea
         ),
       ),
       refusal: outcome === 'decision' ? pendingDecision() : null,
+      issueCode: studio().previewIssue?.ok === false ? studio().previewIssue!.code : null,
+      relaxation: outcome === 'decision' ? offeredRelaxation() : null,
+      relaxationKeepsDirection: scenario.lockConflictKeepsDirection
+        ? await relaxationKeepsDirection(itemsBefore)
+        : null,
     },
   };
 }
@@ -419,15 +488,18 @@ async function runPro(scenario: Scenario, seat: RecipeInput) {
   syncAuthority();
   scenario.apply('pro');
   const outcome = await recalculate('pro');
-  return { outcome, finalByIngredient: gramsByIngredient() };
+  return {
+    outcome,
+    finalByIngredient: gramsByIngredient(),
+    relaxation: outcome === 'decision' ? offeredRelaxation() : null,
+  };
 }
 
 /* ── the owner's table, written by the run ──────────────────────────────────── */
 
-const EVIDENCE =
-  process.env.GELLATTI_BATCH_EVIDENCE ??
-  '/Users/tomaszboro22/Developer/pinguino-affiliate-work/design-rollout-evidence/C-served-cdb7242b/batch-scenarios-table.md';
-const WRITE_EVIDENCE = existsSync(dirname(EVIDENCE));
+/** Opt-in only: the evidence table is written when HOME_BATCH_TABLE_OUT names a file. */
+const EVIDENCE = process.env.HOME_BATCH_TABLE_OUT ?? '';
+const WRITE_EVIDENCE = EVIDENCE !== '';
 const proRows: string[] = [];
 
 const grams = (value: number) =>
@@ -439,8 +511,9 @@ function recordRow(scenario: Scenario, observed: Observation) {
     observed.sumChanged === observed.sumBefore
       ? scenario.change
       : `${scenario.change} → przed przeliczeniem Σ ${grams(observed.sumChanged)}`;
+  const offered = observed.relaxation === null ? '' : `, propozycja: ${observed.relaxation}`;
   const targetCell = scenario.conflict
-    ? `${yesNo(observed.targetKept)} — CORE: ${observed.refusal ?? observed.outcome}, receptura nie została zmieniona`
+    ? `${yesNo(observed.targetKept)} — CORE: ${observed.refusal ?? observed.outcome}${offered}, receptura nie została zmieniona`
     : yesNo(observed.targetKept);
   const locksCell =
     observed.locks.total === 0
@@ -508,6 +581,34 @@ function homeStarterWithFruit(visible: 'gelato' | 'sorbet', fruitIds: readonly s
   });
 }
 
+/** A READY gelato built straight at `batch` through HOME's own batch door — the served
+ * Ninja CREAMi Deluxe journey (the customer sets the batch, then the fruit is built). */
+async function readyGelatoAt(batch: number) {
+  const [strawberry] = homeStarterWithFruit('gelato', [SORBET_MAIN_IDS.strawberry]);
+  store().grantAutomaticPriority(strawberry!);
+  store().setBatchGrams(batch, undefined, 'USER_OVERRIDE');
+  expect(await recalculateHomeRecipe()).toBe('applied');
+  expect(baseSum()).toBe(batch);
+}
+
+/** The Ninja CREAMi Deluxe batch the machine door proposes (one tub). */
+const DELUXE_BATCH = deriveMachineSetup(
+  NINJA_CREAMI_DELUXE_NC502EU,
+  'gelato',
+).recommendedBatchGrams!;
+
+/** CORE's promise for the served berry Main: the published floor and dairy-carrier floor. */
+function servedBerryFloorsKept(observed: Observation) {
+  const policy = SERVED_DAIRY_POLICY[SORBET_MAIN_IDS.strawberry]!;
+  const at = (percent: number) => Math.ceil((percent * observed.target) / 100);
+  expect(observed.finalByIngredient[SORBET_MAIN_IDS.strawberry]).toBeGreaterThanOrEqual(
+    at(policy.ecoFloorPercent),
+  );
+  expect(observed.finalByIngredient[OWNER_IDS.milk]).toBeGreaterThanOrEqual(
+    at(policy.liquidDairyCarrierFloorPercent!),
+  );
+}
+
 /** A READY gelato (HOME's first build, strawberry the invisible AUTO Main), optionally
  * re-targeted through HOME's own batch door and recalculated. */
 async function readyGelato(batch?: number) {
@@ -534,16 +635,46 @@ const SCENARIOS: readonly Scenario[] = [
       add(side, sorbetMapperIngredient(BANANA), 100);
       return target();
     },
+    verify: servedBerryFloorsKept,
   },
   {
-    name: '2. 1000 g + banan 100 g + kiwi 100 g',
+    name: '2. konflikt: 1000 g + banan 100 g + kiwi 100 g',
     seat: () => readyGelato(),
-    change: '+ BANANA 100 g + KIWI 100 g (user_exact)',
+    change:
+      '+ BANANA 100 g + KIWI 100 g (user_exact) — minimum Main, nośnik mleczny i wybrany kierunek nie mieszczą się w 1000 g z oboma owocami',
     apply: (side) => {
       add(side, sorbetMapperIngredient(BANANA), 100);
       add(side, sorbetMapperIngredient(KIWI), 100);
       return target();
     },
+    conflict: true,
+    lockConflictKeepsDirection: true,
+  },
+  {
+    name: '2b. konflikt: 1340 g (Ninja CREAMi Deluxe ×2) + banan 100 g + kiwi 100 g',
+    seat: () => readyGelatoAt(DELUXE_BATCH * 2),
+    change:
+      '+ BANANA 100 g + KIWI 100 g (user_exact) — przy wybranym kierunku minimum Main nie mieści się z oboma owocami',
+    apply: (side) => {
+      add(side, sorbetMapperIngredient(BANANA), 100);
+      add(side, sorbetMapperIngredient(KIWI), 100);
+      return target();
+    },
+    conflict: true,
+    lockConflictKeepsDirection: true,
+  },
+  {
+    name: '2c. konflikt: 670 g (Ninja CREAMi Deluxe) + banan 100 g + kiwi 100 g',
+    seat: () => readyGelatoAt(DELUXE_BATCH),
+    change:
+      '+ BANANA 100 g + KIWI 100 g (user_exact) — minimum Main, nośnik mleczny i wybrany kierunek nie mieszczą się w 670 g z oboma owocami',
+    apply: (side) => {
+      add(side, sorbetMapperIngredient(BANANA), 100);
+      add(side, sorbetMapperIngredient(KIWI), 100);
+      return target();
+    },
+    conflict: true,
+    lockConflictKeepsDirection: true,
   },
   {
     name: '3. 1000 → 1500 g',
@@ -553,6 +684,7 @@ const SCENARIOS: readonly Scenario[] = [
       setBatch(side, 1500);
       return 1500;
     },
+    verify: servedBerryFloorsKept,
   },
   {
     name: '4. 1500 → 1000 g',
@@ -562,6 +694,7 @@ const SCENARIOS: readonly Scenario[] = [
       setBatch(side, 1000);
       return 1000;
     },
+    verify: servedBerryFloorsKept,
   },
   {
     name: '5. ręcznie 1850 g',
@@ -571,12 +704,14 @@ const SCENARIOS: readonly Scenario[] = [
       setBatch(side, 1850);
       return 1850;
     },
+    verify: servedBerryFloorsKept,
   },
   {
     name: '6. maszyna Ninja CREAMi 450 g',
     seat: () => readyGelato(),
     change: 'wybór maszyny Ninja CREAMi (NC302EU) → jej wsad 450 g (MACHINE_DEFAULT)',
     apply: () => selectCreami(),
+    verify: servedBerryFloorsKept,
   },
   {
     name: '7. zaokrąglenie do pełnych gramów (served sorbet)',
@@ -604,6 +739,7 @@ const SCENARIOS: readonly Scenario[] = [
       add(side, sorbetMapperIngredient(BANANA), 100);
       return target();
     },
+    verify: servedBerryFloorsKept,
   },
   {
     name: '8b. konflikt: blokada śmietanki + 1000 → 1500 g',
@@ -626,6 +762,7 @@ const SCENARIOS: readonly Scenario[] = [
       crown(side, lineOf(SORBET_MAIN_IDS.strawberry).id, 'auto');
       return target();
     },
+    verify: servedBerryFloorsKept,
   },
   {
     name: '10. ręczna korona (gelato, pierwsze zbudowanie)',
@@ -638,6 +775,7 @@ const SCENARIOS: readonly Scenario[] = [
       crown(side, lineOf(SORBET_MAIN_IDS.strawberry).id, 'manual');
       return target();
     },
+    verify: servedBerryFloorsKept,
   },
   {
     name: '11. dwa Main (sorbet, pierwsze zbudowanie)',
@@ -665,6 +803,7 @@ const SCENARIOS: readonly Scenario[] = [
       add(side, sorbetMapperIngredient(BANANA), 100);
       return target();
     },
+    verify: servedBerryFloorsKept,
   },
   {
     name: '13. konflikt: banan 400 g + kiwi 400 g',
@@ -710,6 +849,16 @@ describe('HOME batch scenarios — the §15 evidence table', () => {
         expect(observed.sumAfter).toBe(observed.sumChanged);
         expect(observed.targetKept).toBe(false);
         expect(observed.locks.kept).toBe(true);
+        // A typed conflict — never a refusal about a vector nobody proposed.
+        expect(observed.issueCode).not.toBe('product_behavior_invalid');
+        if (scenario.lockConflictKeepsDirection) {
+          // CORE's typed conflict on the customer's own amounts…
+          expect(observed.issueCode).toBe('impossible_under_constraints');
+          expect(observed.refusal).toBe('lockConflict:relaxation_found');
+          // …and the relaxation it offers keeps their Direction; nothing was written.
+          expect(observed.relaxation).not.toBeNull();
+          expect(observed.relaxationKeepsDirection).toBe(true);
+        }
       } else {
         expect(observed.outcome).toBe('applied');
         expect(observed.targetKept).toBe(true);
@@ -718,12 +867,14 @@ describe('HOME batch scenarios — the §15 evidence table', () => {
         expect(observed.priorities.kept).toBe(true);
         expect(observed.wholeGrams).toBe(true);
         expect(observed.audit).toBe(true);
+        scenario.verify?.(observed);
       }
       // A Topping is never part of the Base solve.
       expect(observed.toppingInSolve).toBe(false);
       // HOME and PRO: one CORE, one answer.
       expect(observed.finalByIngredient).toEqual(pro.finalByIngredient);
       expect(observed.outcome).toBe(pro.outcome);
+      expect(observed.relaxation).toBe(pro.relaxation);
     });
   }
 });

@@ -16,6 +16,8 @@
  * fixture map). The solver and practicalization are PASS-THROUGH spies: they record
  * and then call the real function.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { act, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -34,11 +36,12 @@ import {
 } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { useRecipeStore } from '@/stores/recipeStore';
+import { OWNER_IDS } from './__fixtures__/ownerFruitMainFixture';
 import {
-  OWNER_IDS,
-  ownerFruitRecipe,
-  ownerFruitSnapshots,
-} from './__fixtures__/ownerFruitMainFixture';
+  publishedDairyMainPolicy,
+  withPublishedDairyMainPolicy,
+  type PublishedDairyMainPolicy,
+} from './__fixtures__/servedDairyMainPolicy';
 import {
   SERVED_FRUIT,
   SERVED_FRUIT_IDS,
@@ -214,21 +217,23 @@ const SORBET_MAIN_FIELDS = [
   'formId',
   'blockReasons',
 ] as const;
-/** The published fresh-fruit dairy Main policy fields (ownerFruitMainFixture). */
-const DAIRY_MAIN_FIELDS = [
-  'familyId',
-  'formId',
-  'mainClassification',
-  'mainPolicyId',
-  'mainPolicyVersion',
-  'ecoFloorPercent',
-  'optimalCeilingPercent',
-  'hardLimitPercent',
-  'mainEquivalentFactor',
-  'mainBasis',
-  'requiresLiquidDairyCarrier',
-  'liquidDairyCarrierFloorPercent',
-] as const;
+/** The migration that publishes staging's Main policies (the served rows, read as data). */
+const SERVED_POLICY_SQL = readFileSync(
+  resolve(
+    process.cwd(),
+    'supabase/migrations/20260813110400_product_behavior_classification_queue.sql',
+  ),
+  'utf8',
+);
+/** The SERVED milk_gelato Main policy of each Main-capable fruit (STRAWBERRIES:
+ * `main-berry-fresh-dairy` v2, Main floor 25 %, liquid dairy carrier ≥ 30 %). */
+const SERVED_DAIRY_POLICY: Readonly<Record<string, PublishedDairyMainPolicy>> = {
+  [SORBET_MAIN_IDS.strawberry]: publishedDairyMainPolicy(
+    SERVED_POLICY_SQL,
+    'main-berry-fresh-dairy',
+  ),
+  [SORBET_MAIN_IDS.lime]: publishedDairyMainPolicy(SERVED_POLICY_SQL, 'main-fruit-fresh-dairy'),
+};
 const MAIN_CAPABLE_FRUIT = new Set<string>([SORBET_MAIN_IDS.strawberry, SORBET_MAIN_IDS.lime]);
 
 const canonicalOf = (item: RecipeItem) =>
@@ -236,12 +241,12 @@ const canonicalOf = (item: RecipeItem) =>
 
 /** The ONE authority map for a starter seat: the shared test snapshots, with the
  * Main-capable fruit carrying a published Main policy (Sorbet: the served exact
- * fruit policy; gelato: the fresh-fruit dairy policy + milk as its carrier). */
+ * fruit policy; gelato: the SERVED dairy policy row, read from the migration that
+ * publishes it, + milk as its carrier). */
 function starterAuthority(input: RecipeInput): Record<string, ProductBehaviorSnapshot> {
   const table = productBehaviorTestSnapshots(input);
   const servedInput = servedSorbetRecipe();
   const servedFruit = servedSorbetSnapshots(servedInput)[SERVED_FRUIT.strawberry]!;
-  const owner = ownerFruitSnapshots(ownerFruitRecipe());
   for (const item of input.items) {
     const base = table[item.id]!;
     if (MAIN_CAPABLE_FRUIT.has(canonicalOf(item))) {
@@ -256,7 +261,7 @@ function starterAuthority(input: RecipeInput): Record<string, ProductBehaviorSna
                 profileEligibility: [...servedFruit.sharedFacts!.profileEligibility],
               },
             } as ProductBehaviorSnapshot)
-          : ({ ...base, ...pick(owner.watermelon!, DAIRY_MAIN_FIELDS) } as ProductBehaviorSnapshot);
+          : withPublishedDairyMainPolicy(base, SERVED_DAIRY_POLICY[canonicalOf(item)]!);
     }
     if (input.category !== 'sorbet' && canonicalOf(item) === OWNER_IDS.milk) {
       table[item.id] = { ...base, approvedLiquidDairyCarrier: true };

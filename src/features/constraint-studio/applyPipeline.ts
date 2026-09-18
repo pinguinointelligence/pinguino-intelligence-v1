@@ -6985,7 +6985,20 @@ export function buildOptimizePreview(
     // Exact Direction owns its own hard-safe projection. Its Main proof is
     // rebuilt only to keep Apply trustless; it is not a request to enforce the
     // Main floor as a separate optimization objective.
-    if (hasActiveExactDirectionObjective(input)) return result;
+    //
+    // GEL-P0-027 („an empty sweep is a refusal, never an echo"): that holds
+    // only for a REAL Main proposal. A refused Main sweep (`crownRefusal`) hands
+    // back the unsized draft, and a diagnostic-only vector is not a proposal at
+    // all; letting either through published the served 1340 g banana + kiwi
+    // case as a REJECTED PROPOSAL („Propozycja Gellatti została odrzucona …
+    // nośnik mleczny ma 22.8%") instead of the conflict it is. Those two answer
+    // to the Main safety check below, which ends in the typed lock conflict and
+    // CORE's relaxation offer; its gap („Przy obecnych ustawieniach…”, owner
+    // 2026-09-11) still measures the customer's own amounts at this batch.
+    const realMainProposal =
+      result.preview.mainObjective?.crownRefusal === undefined &&
+      result.preview.diagnosticOnly !== true;
+    if (hasActiveExactDirectionObjective(input) && realMainProposal) return result;
     // Exact Sorbet Direction owns its own already-verified projection and does
     // not carry a Main-objective proof. This backstop is intentionally scoped
     // to the Main search/fallback path that produced the invalid Owner result.
