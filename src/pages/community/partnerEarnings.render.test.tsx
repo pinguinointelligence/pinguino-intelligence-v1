@@ -89,6 +89,10 @@ const PENDING = {
   inFlightCents: 0,
   readyNetCents: 900,
   pendingNetCents: 1299,
+  readyState: 'positive_pending',
+  readyCorrectionCents: 0,
+  pendingState: 'positive_pending',
+  pendingCorrectionCents: 0,
   livemode: false,
 };
 
@@ -134,6 +138,22 @@ describe('H-DASH-02 — the Overview leads with money', () => {
     expect(overview).toContain(`W trakcie ${eur(399)}`);
     expect(overview).not.toContain(`W trakcie ${eur(499)}`);
     expect(overview).toContain(`Do wypłaty ${eur(900)}`);
+  });
+
+  it('a correction carried forward replaces "Do wypłaty" with its own label — never a negative sum', () => {
+    const overview = text(render('overview', {
+      ...PENDING,
+      payableNetCents: -500,
+      readyNetCents: -500,
+      pendingNetCents: -101,
+      readyState: 'correction_carryforward',
+      readyCorrectionCents: 500,
+      pendingState: 'correction_carryforward',
+      pendingCorrectionCents: 101,
+    }));
+    expect(overview).toContain(`Saldo korekt do rozliczenia ${eur(500)}`);
+    expect(overview).not.toContain('Do wypłaty');
+    expect(overview).not.toMatch(/[−-]\s?5,00/);
   });
 
   it('without the server figure the tiles say "—" rather than falling back to a browser sum', () => {

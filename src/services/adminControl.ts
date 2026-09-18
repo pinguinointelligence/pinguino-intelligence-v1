@@ -320,6 +320,10 @@ export interface AdminPartnerPendingCommission {
   readonly inFlightCents: number;
   readonly readyNetCents: number;
   readonly pendingNetCents: number;
+  readonly readyState: 'positive_pending' | 'zero' | 'correction_carryforward';
+  readonly readyCorrectionCents: number;
+  readonly pendingState: 'positive_pending' | 'zero' | 'correction_carryforward';
+  readonly pendingCorrectionCents: number;
   readonly livemode: boolean;
 }
 

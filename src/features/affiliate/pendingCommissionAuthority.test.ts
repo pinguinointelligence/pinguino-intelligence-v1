@@ -138,3 +138,43 @@ describe('the panels display; they do not calculate', () => {
     }
   });
 });
+
+describe('a negative net is a correction carried forward, never a pending sum', () => {
+  /* Owner decision 2026-09-18: when refunds or disputes after a payout exceed
+     what is waiting, the net is negative. That is not a debt; the builder carries
+     it into the next settlements. The SERVER states it, the panels only pick the
+     words — "Saldo korekt do rozliczenia", never "Oczekująca prowizja −30 €". */
+  it('the projection states what each figure means', () => {
+    for (const field of ['readyState', 'pendingState']) {
+      expect(NETTING).toContain(`'${field}', case`);
+    }
+    expect(NETTING).toContain("else 'correction_carryforward' end");
+    expect(NETTING).toContain("then 'positive_pending'");
+    expect(NETTING).toContain("then 'zero'");
+    expect(NETTING).toContain("'readyCorrectionCents', greatest(-(t.payable_cents + t.in_flight_cents), 0)");
+    expect(NETTING).toContain(
+      "'pendingCorrectionCents', greatest(-(t.held_cents + t.payable_cents + t.in_flight_cents), 0)",
+    );
+  });
+
+  it('both panels choose the words from that state and show the server\'s size', () => {
+    expect(PARTNER_PAGE).toContain("pending.data?.readyState === 'correction_carryforward'");
+    expect(PARTNER_PAGE).toContain('net(pending.data.readyCorrectionCents)');
+    expect(ADMIN_PARTNERS).toContain("row.pendingState === 'correction_carryforward'");
+    expect(ADMIN_PARTNERS).toContain('money(row.pendingCorrectionCents)');
+    // no sign test and no absolute value in the browser
+    for (const source of [PARTNER_PAGE, ADMIN_PARTNERS]) {
+      expect(source).not.toMatch(/Math\.abs/);
+      expect(source).not.toMatch(/(Net|Correction)Cents\s*[<>]=?\s*0/);
+    }
+  });
+
+  it('one copy for that state, and none of the words the owner ruled out', () => {
+    const COPY = read('src', 'features', 'affiliate', 'commissionDisplay.ts');
+    expect(COPY).toContain("label: 'Saldo korekt do rozliczenia'");
+    expect(COPY).toContain("help: 'Kwota zostanie uwzględniona w kolejnych naliczeniach.'");
+    for (const source of [COPY, PARTNER_PAGE, ADMIN_PARTNERS]) {
+      expect(source).not.toMatch(/\bdług\b|należnoś|musisz zapłacić/i);
+    }
+  });
+});

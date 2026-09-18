@@ -28,6 +28,10 @@
 --   ready     = payable + in flight (the Partner's "Do wypłaty");
 --   pending   = held + payable + in flight (the admin's "Oczekująca prowizja";
 --               equal to the Partner's "W trakcie" + "Do wypłaty").
+-- A NEGATIVE ready/pending is a correction carried into the next settlements,
+-- not a debt: readyState / pendingState say `correction_carryforward` and
+-- ready/pendingCorrectionCents carry its size, so the panels label it
+-- "Saldo korekt do rozliczenia" without deciding anything from a sign.
 -- The builder is NOT changed (the 72 h DB soak exercises it); a QA test proves
 -- that `payable` equals what the builder writes for the same state.
 --
@@ -131,7 +135,21 @@ as $$
     -- already written. The Partner's "Do wypłaty".
     'readyNetCents', t.payable_cents + t.in_flight_cents,
     -- Everything not yet paid out. The admin's "Oczekująca prowizja".
-    'pendingNetCents', t.held_cents + t.payable_cents + t.in_flight_cents
+    'pendingNetCents', t.held_cents + t.payable_cents + t.in_flight_cents,
+    -- What a figure MEANS, so no panel has to decide it from a sign. A negative
+    -- net is not money owed to anyone: it is a correction (a refund or dispute
+    -- after payout) that the builder carries into the next settlements. The
+    -- panels show its size under its own label and never as "−X €" pending.
+    'readyState', case
+      when t.payable_cents + t.in_flight_cents > 0 then 'positive_pending'
+      when t.payable_cents + t.in_flight_cents = 0 then 'zero'
+      else 'correction_carryforward' end,
+    'readyCorrectionCents', greatest(-(t.payable_cents + t.in_flight_cents), 0),
+    'pendingState', case
+      when t.held_cents + t.payable_cents + t.in_flight_cents > 0 then 'positive_pending'
+      when t.held_cents + t.payable_cents + t.in_flight_cents = 0 then 'zero'
+      else 'correction_carryforward' end,
+    'pendingCorrectionCents', greatest(-(t.held_cents + t.payable_cents + t.in_flight_cents), 0)
   )
   from totals t;
 $$;

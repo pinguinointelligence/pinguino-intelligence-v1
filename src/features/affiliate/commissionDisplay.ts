@@ -159,3 +159,16 @@ export const payoutStatusCopy = (value: unknown): CommissionStatusCopy =>
   typeof value === 'string' && value in PAYOUT_STATUS_COPY
     ? PAYOUT_STATUS_COPY[value as PayoutStatus]
     : { label: '—', help: '', negative: false };
+
+/* ── A correction carried forward ─────────────────────────────────────────
+ *
+ * When refunds or disputes after a payout exceed what is waiting, the payout
+ * authority's net is negative. That is not money the Partner owes: the builder
+ * carries it into the next settlements. The server says so
+ * (`*State === 'correction_carryforward'`, owner decision 2026-09-18); the
+ * panels show its size under this label and never as a negative pending sum.
+ */
+export const CORRECTION_CARRYFORWARD_COPY = Object.freeze({
+  label: 'Saldo korekt do rozliczenia',
+  help: 'Kwota zostanie uwzględniona w kolejnych naliczeniach.',
+});

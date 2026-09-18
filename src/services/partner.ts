@@ -81,8 +81,17 @@ export interface PendingCommission {
   readonly readyNetCents: number;
   /** held + payable + in flight: everything not yet paid out. */
   readonly pendingNetCents: number;
+  /** What `readyNetCents` means — decided on the server, never from a sign. */
+  readonly readyState: PendingState;
+  /** The size of a correction carried forward, when readyState says so. */
+  readonly readyCorrectionCents: number;
+  readonly pendingState: PendingState;
+  readonly pendingCorrectionCents: number;
   readonly livemode: boolean;
 }
+
+/** `correction_carryforward`: refunds or disputes after a payout, netted into the next settlements. */
+export type PendingState = 'positive_pending' | 'zero' | 'correction_carryforward';
 
 export async function getPendingCommission(): Promise<PendingCommission | null> {
   if (!supabase) return unavailable();

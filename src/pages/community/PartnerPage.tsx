@@ -40,6 +40,7 @@ import {
   type PartnerWorkspace,
 } from '@/services/partner';
 import { earningsSummary } from '@/features/affiliate/earningsSummary';
+import { CORRECTION_CARRYFORWARD_COPY } from '@/features/affiliate/commissionDisplay';
 import { PartnerFirstSteps } from '@/features/affiliate/PartnerFirstSteps';
 
 const sections = [
@@ -118,11 +119,17 @@ function Overview({ data }: { data: PartnerWorkspace }) {
             net(pending.data?.heldNetCents),
             commissionStatusCopy('held').help,
           ],
-          [
-            commissionStatusCopy('eligible').label,
-            net(pending.data?.readyNetCents),
-            commissionStatusCopy('eligible').help,
-          ],
+          pending.data?.readyState === 'correction_carryforward'
+            ? [
+                CORRECTION_CARRYFORWARD_COPY.label,
+                net(pending.data.readyCorrectionCents),
+                CORRECTION_CARRYFORWARD_COPY.help,
+              ]
+            : [
+                commissionStatusCopy('eligible').label,
+                net(pending.data?.readyNetCents),
+                commissionStatusCopy('eligible').help,
+              ],
         ].map(([label, value, help]) => (
           <div key={label} className="bg-white p-5" title={help}>
             <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">

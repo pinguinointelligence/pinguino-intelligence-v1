@@ -156,6 +156,15 @@ for tag, n in (('A', a), ('B', b), ('C', c), ('D1', d1), ('D2', d2), ('E', e['ne
     check(f'{tag}: Partner "W trakcie" + "Do wypłaty" equals the admin "Oczekująca prowizja" (server figures)',
           n['pendingNetCents'], n['heldNetCents'] + n['readyNetCents'])
 
+check('A: a positive figure is positive_pending', 'positive_pending', a['pendingState'])
+check('C: nothing waiting is zero', {'ready': 'zero', 'pending': 'zero'},
+      {'ready': c['readyState'], 'pending': c['pendingState']})
+check('D2: a refund after payout larger than what waits is a correction carried forward, sized by the server',
+      {'readyState': 'correction_carryforward', 'readyCorrectionCents': 500,
+       'pendingState': 'correction_carryforward', 'pendingCorrectionCents': 500},
+      {'readyState': d2['readyState'], 'readyCorrectionCents': d2['readyCorrectionCents'],
+       'pendingState': d2['pendingState'], 'pendingCorrectionCents': d2['pendingCorrectionCents']})
+
 after = query('after', f"select public.gellatti_partner_commission_netting_v1('{P3}'::uuid, false) as n;")[0]['n']
 check('every case rolled back: the test partner is at its baseline again', base, after)
 leftover = query('leftover', f"""select count(*) as n from public.commission_entries

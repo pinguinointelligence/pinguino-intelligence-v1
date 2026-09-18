@@ -12,6 +12,7 @@ import {
   getAdminCommissionRules,
   getAdminInvites,
   getAdminPartnerPendingCommission,
+  type AdminPartnerPendingCommission,
   invitePartnerByEmail,
   provisionPartnerConnect,
   resendPartnerInvitation,
@@ -22,6 +23,7 @@ import {
   setAdminCommissionRule,
 } from '@/services/adminControl';
 import { filterAdminPartners, type AdminPartnerStatusFilter } from './adminPartnerFilter';
+import { CORRECTION_CARRYFORWARD_COPY } from '@/features/affiliate/commissionDisplay';
 import {
   adminPartnerActionCopy,
   reasonProblem,
@@ -34,6 +36,21 @@ const field = 'pro-focus-ring min-h-11 w-full border border-[var(--g-line)] bg-w
    read the same number the same way ("25765" printed raw was the old defect). */
 const money = (cents: unknown) =>
   new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'EUR' }).format(Number(cents ?? 0) / 100);
+
+/* The payout authority's net for one partner. A negative net is a correction
+   carried into the next settlements, not a pending sum: the server says which
+   (`pendingState`), and this only picks the words. */
+function PendingCommissionFigure({ row }: { row: AdminPartnerPendingCommission | undefined }) {
+  if (!row) return <>Oczekująca prowizja —</>;
+  if (row.pendingState === 'correction_carryforward') {
+    return (
+      <span title={CORRECTION_CARRYFORWARD_COPY.help}>
+        {CORRECTION_CARRYFORWARD_COPY.label} {money(row.pendingCorrectionCents)}
+      </span>
+    );
+  }
+  return <>Oczekująca prowizja {money(row.pendingNetCents)}</>;
+}
 
 export function AdminPartnersSection() {
   const queryClient = useQueryClient();
@@ -51,7 +68,7 @@ export function AdminPartnersSection() {
     queryFn: getAdminPartnerPendingCommission,
   });
   const pendingByPartner = new Map(
-    (pendingCommission.data ?? []).map((row) => [row.partnerId, row.pendingNetCents]),
+    (pendingCommission.data ?? []).map((row) => [row.partnerId, row]),
   );
   const commissionRules = useQuery({
     queryKey: ['admin-commission-rules'],
@@ -416,10 +433,8 @@ export function AdminPartnersSection() {
                   </p>
                   <p className="mt-2 text-xs text-[var(--g-text-secondary)]">
                     Kliknięcia {String(partner.clicks)} · Przypisania {String(partner.attributions)}{' '}
-                    · Oczekująca prowizja{' '}
-                    {pendingByPartner.has(String(partner.id))
-                      ? money(pendingByPartner.get(String(partner.id)))
-                      : '—'}
+                    ·{' '}
+                    <PendingCommissionFigure row={pendingByPartner.get(String(partner.id))} />
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {codes.map((code) => (
