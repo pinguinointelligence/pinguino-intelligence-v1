@@ -133,7 +133,12 @@ export function AppRoutes() {
           table entirely. The file stays in the tree — a dead-code sweep is its own
           change, once no imports remain. */}
       <Route path="/" element={<RoleAwareEntryRoute entry="root" />} />
-      <Route path={CUSTOMER_HOME_PATH} element={<RoleAwareEntryRoute entry="home" />} />
+      {/* The literal is deliberate: `homeEndToEndClosure.test.ts` (HOME-E2E-37)
+          reads THIS FILE as text and requires `path="/home` to be visible, so a
+          `{CUSTOMER_HOME_PATH}` expression here would silently drop the HOME
+          route from that contract. The constant still names every redirect
+          TARGET below, where its job is to keep the aliases in one place. */}
+      <Route path="/home" element={<RoleAwareEntryRoute entry="home" />} />
       <Route path="/start" element={<LegacyDestinationRedirect pathname={CUSTOMER_HOME_PATH} />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/shop" element={<ShopPage />} />
