@@ -94,10 +94,10 @@ export const REVIEW_ITEMS: readonly ReviewItem[] = [
   },
   {
     id: 'RV-08',
-    route: '/start',
+    route: '/home',
     label: 'Drugie menu (CustomerMenu) obok kanonicznej szuflady',
     functionNote:
-      'Osobna implementacja hamburgera na stronach klienta (/, /start, /subscription, /profile/machine).',
+      'Osobna implementacja hamburgera na stronach klienta (/, /home, /subscription, /profile/machine).',
     reason:
       'Zdublowana nawigacja: dwie szuflady, dwa źródła pozycji — ryzyko rozjazdu. Propozycja: jedna implementacja na bazie appNav (po merge P0; seam Agenta D).',
     suggestion: 'merge',

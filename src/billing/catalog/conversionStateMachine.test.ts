@@ -7,7 +7,10 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
+  addTwelveMonthsUtc,
   benefitConsumedIn,
+  buildConversionQuote,
+  MONTHLY_CREDIT_POLICY,
   CONVERSION_TERMINAL_STATES,
   decideActiveIntent,
   entitlementDuring,
@@ -305,5 +308,108 @@ describe('concurrent intents — single active winner', () => {
         { id: 'b', state: 'expired', createdAt: 2 },
       ]),
     ).toEqual({ winnerId: null, loserIds: [] });
+  });
+});
+
+describe('credit authority — the whole paid month counts, not Stripe unused time', () => {
+  const HOME = { monthlyAmountCents: 999, annualAmountCents: 4900 };
+  const PRO = { monthlyAmountCents: 2499, annualAmountCents: 19900 };
+  const TS = 1_780_000_000;
+
+  it('charges HOME 39,01 € and PRO 174,01 € on top of the paid month', () => {
+    const home = buildConversionQuote({
+      ...HOME,
+      currentPeriodStart: '2026-09-10',
+      prorationTimestamp: TS,
+    });
+    expect(home.creditCents).toBe(999);
+    expect(home.amountDueCents).toBe(3901); // 49,00 − 9,99
+
+    const pro = buildConversionQuote({
+      ...PRO,
+      currentPeriodStart: '2026-09-10',
+      prorationTimestamp: TS,
+    });
+    expect(pro.creditCents).toBe(2499);
+    expect(pro.amountDueCents).toBe(17401); // 199,00 − 24,99
+  });
+
+  it('costs the SAME on day 2, day 15 and day 28 of the monthly period', () => {
+    const due = (start: string) =>
+      buildConversionQuote({ ...HOME, currentPeriodStart: start, prorationTimestamp: TS })
+        .amountDueCents;
+    // A Stripe unused-time proration would differ at each of these.
+    expect(new Set([due('2026-09-02'), due('2026-09-15'), due('2026-09-28')])).toEqual(
+      new Set([3901]),
+    );
+    expect(MONTHLY_CREDIT_POLICY).toBe('full_current_period');
+  });
+
+  it('anchors the annual term at the CURRENT period start — the paid month is month 1 of 12', () => {
+    const q = buildConversionQuote({
+      ...HOME,
+      currentPeriodStart: '2026-09-10',
+      prorationTimestamp: TS,
+    });
+    expect(q.annualPeriodStart).toBe('2026-09-10');
+    // Twelve months from the paid month's start — NOT thirteen months of access.
+    expect(q.newRenewalDate).toBe('2027-09-10');
+  });
+
+  it('credits only the CURRENT period — never accumulated historical months', () => {
+    // Same quote whether this is the customer's 1st or 30th monthly period:
+    // the input carries no history, so no history can be credited.
+    const q = buildConversionQuote({
+      ...PRO,
+      currentPeriodStart: '2024-01-31',
+      prorationTimestamp: TS,
+    });
+    expect(q.creditCents).toBe(2499);
+    expect(q.creditCents).toBeLessThanOrEqual(PRO.monthlyAmountCents);
+  });
+
+  it('clamps an overflowing day-of-month instead of rolling into March', () => {
+    expect(addTwelveMonthsUtc('2028-02-29')).toBe('2029-02-28');
+    expect(addTwelveMonthsUtc('2026-01-31')).toBe('2027-01-31');
+    expect(addTwelveMonthsUtc('2026-03-31T09:30:00.000Z')).toBe('2027-03-31');
+  });
+
+  it('never produces a negative amount due, and adds tax on top of the net', () => {
+    const inverted = buildConversionQuote({
+      monthlyAmountCents: 9900,
+      annualAmountCents: 4900,
+      currentPeriodStart: '2026-09-10',
+      prorationTimestamp: TS,
+    });
+    expect(inverted.amountDueCents).toBe(0);
+    expect(inverted.creditCents).toBe(4900);
+
+    const taxed = buildConversionQuote({
+      ...HOME,
+      currentPeriodStart: '2026-09-10',
+      prorationTimestamp: TS,
+      taxCents: 897,
+    });
+    expect(taxed.amountDueCents).toBe(3901 + 897);
+  });
+
+  it('is accepted by the state machine as a real PreviewQuote', () => {
+    const quote = buildConversionQuote({
+      ...HOME,
+      currentPeriodStart: '2026-09-10',
+      prorationTimestamp: TS,
+    });
+    const previewed = transition(newConversionIntent('c-1', 0), { type: 'preview', quote });
+    expect(previewed.allowed).toBe(true);
+    const confirmed = transition(
+      previewed.allowed ? previewed.intent : newConversionIntent('x', 0),
+      {
+        type: 'confirm',
+        prorationTimestamp: quote.prorationTimestamp,
+        idempotencyKey: 'k-1',
+      },
+    );
+    expect(confirmed.allowed).toBe(true);
+    expect(quote.effectiveMonthlyCents).toBe(408); // 49 € / 12 ≈ 4,08 €
   });
 });
