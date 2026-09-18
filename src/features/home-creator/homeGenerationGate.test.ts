@@ -56,6 +56,8 @@ describe('HOME-GEN-LOOP — one set of answers, one build', () => {
   it('HOME-GEN-LOOP-03: the CTA is a real retry — exactly one new build', () => {
     const first = renderLoop('sorbet|ninja|1000', EMPTY_GENERATION_MEMORY, 5);
     const refused = generationFailed(first.memory);
+    // Before the customer asks again, the refusal holds.
+    expect(renderLoop('sorbet|ninja|1000', refused, 30).builds).toBe(0);
 
     const asked = generationRetried();
     const retry = renderLoop('sorbet|ninja|1000', asked, 30);
