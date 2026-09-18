@@ -47,7 +47,7 @@ export function RecipeLibraryNav(props: TabsModeProps | LinksModeProps) {
         <div
           role="tablist"
           aria-label="Biblioteka receptur"
-          className="flex w-full min-w-0 max-w-full overflow-x-auto lg:w-auto"
+          className="flex w-full min-w-0 max-w-full overflow-x-auto md:w-auto"
         >
           {RECIPE_LIBRARY_TABS.map(([id, label]) => (
             <button
@@ -70,7 +70,7 @@ export function RecipeLibraryNav(props: TabsModeProps | LinksModeProps) {
       ) : (
         <nav
           aria-label="Biblioteka receptur"
-          className="flex w-full min-w-0 max-w-full overflow-x-auto lg:w-auto"
+          className="flex w-full min-w-0 max-w-full overflow-x-auto md:w-auto"
         >
           {RECIPE_LIBRARY_TABS.map(([id, label]) => (
             <Link
@@ -86,7 +86,7 @@ export function RecipeLibraryNav(props: TabsModeProps | LinksModeProps) {
       )}
       <nav
         aria-label="Gellatti Community"
-        className="flex w-full min-w-0 max-w-full overflow-x-auto lg:w-auto"
+        className="flex w-full min-w-0 max-w-full overflow-x-auto md:w-auto"
       >
         {RECIPE_LIBRARY_LINKS.map(([href, label]) => {
           const active = props.mode === 'links' && props.activeHref === href;

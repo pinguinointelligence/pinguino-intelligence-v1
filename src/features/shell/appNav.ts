@@ -68,13 +68,26 @@ const proWorkspaceDestination = (loc: NavLocation) =>
 
 export const APP_NAV_ITEMS: readonly AppNavItem[] = [
   {
+    // The guest's way in is the canonical HOME creator (`/home`, which the root also
+    // renders) — never the legacy `/start` shell, a second and different idea screen.
     id: 'tryPinguino',
     label: s.items.tryPinguino,
-    to: '/start',
+    to: '/home',
     group: 'product',
     order: 1,
     audiences: ['guest'],
-    isActive: exact('/start'),
+    isActive: anyOf('/', '/home'),
+  },
+  {
+    // `/recipes` serves guests (the Gellatti collection), so the guest drawer names it
+    // too. A guest-only twin: the signed-in entry and its `?tab=mine` stay unchanged.
+    id: 'guestRecipes',
+    label: s.items.recipes,
+    to: '/recipes',
+    group: 'product',
+    order: 1.25,
+    audiences: ['guest'],
+    isActive: recipeDestination,
   },
   {
     id: 'howItWorks',

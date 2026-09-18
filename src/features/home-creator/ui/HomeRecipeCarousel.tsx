@@ -27,6 +27,26 @@ export interface HomeRecipeCarouselHandle {
   scrollByCard: (direction: -1 | 1) => void;
 }
 
+/** Where the track stands, so ‹ › can say which way there is still something to see. */
+export interface HomeRecipeCarouselEdges {
+  readonly atStart: boolean;
+  readonly atEnd: boolean;
+  /** Every card is visible at once — there is nothing to scroll. */
+  readonly fits: boolean;
+}
+
+/** Sub-pixel scroll positions (zoom, snap rounding) still count as the edge. */
+const EDGE_TOLERANCE_PX = 2;
+
+const trackEdges = (track: HTMLElement): HomeRecipeCarouselEdges => {
+  const maxScroll = track.scrollWidth - track.clientWidth;
+  return {
+    atStart: track.scrollLeft <= EDGE_TOLERANCE_PX,
+    atEnd: track.scrollLeft >= maxScroll - EDGE_TOLERANCE_PX,
+    fits: track.scrollWidth <= track.clientWidth,
+  };
+};
+
 const CheckGlyph = () => (
   <svg viewBox="0 0 16 16" aria-hidden="true">
     <path
@@ -48,8 +68,10 @@ export const HomeRecipeCarousel = forwardRef<
     onSelect: (id: string) => void;
     label: string;
     testId?: string;
+    /** Reported on mount, on scroll and on resize — only when it changes. */
+    onEdgesChange?: (edges: HomeRecipeCarouselEdges) => void;
   }
->(function HomeRecipeCarousel({ cards, selectedId, onSelect, label, testId }, ref) {
+>(function HomeRecipeCarousel({ cards, selectedId, onSelect, label, testId, onEdgesChange }, ref) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -75,13 +97,35 @@ export const HomeRecipeCarousel = forwardRef<
   useEffect(() => {
     const track = trackRef.current;
     if (!track) return;
+    let reported: HomeRecipeCarouselEdges | null = null;
+    const reportEdges = () => {
+      if (!onEdgesChange) return;
+      const next = trackEdges(track);
+      if (
+        reported?.atStart === next.atStart &&
+        reported.atEnd === next.atEnd &&
+        reported.fits === next.fits
+      ) {
+        return;
+      }
+      reported = next;
+      onEdgesChange(next);
+    };
     const onScroll = () => {
       const step = cardStep();
       if (step > 0) setActiveIndex(Math.max(0, Math.round(track.scrollLeft / step)));
+      reportEdges();
     };
+    reportEdges();
     track.addEventListener('scroll', onScroll, { passive: true });
-    return () => track.removeEventListener('scroll', onScroll);
-  }, [cardStep, cards.length]);
+    // The layer's width follows the window; a wider track can come to hold every card.
+    const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(reportEdges);
+    resize?.observe(track);
+    return () => {
+      track.removeEventListener('scroll', onScroll);
+      resize?.disconnect();
+    };
+  }, [cardStep, cards.length, onEdgesChange]);
 
   return (
     <>
@@ -180,22 +224,39 @@ const ChevronGlyph = ({ direction }: { direction: -1 | 1 }) => (
   </svg>
 );
 
-/** ‹ › for pointer layouts: they only scroll, they choose nothing. */
+/**
+ * ‹ › for pointer layouts: they only scroll, they choose nothing. An arrow with nowhere to
+ * go is disabled, and when every card already fits there is no nav at all.
+ */
 export function HomeRecipeCarouselNav({
   onScroll,
   previousLabel,
   nextLabel,
+  edges = null,
 }: {
   onScroll: (direction: -1 | 1) => void;
   previousLabel: string;
   nextLabel: string;
+  /** The track's position; `null` (not measured) leaves both arrows available. */
+  edges?: HomeRecipeCarouselEdges | null;
 }) {
+  if (edges?.fits) return null;
   return (
     <span className="home-rnav">
-      <button type="button" aria-label={previousLabel} onClick={() => onScroll(-1)}>
+      <button
+        type="button"
+        aria-label={previousLabel}
+        disabled={edges?.atStart ?? false}
+        onClick={() => onScroll(-1)}
+      >
         <ChevronGlyph direction={-1} />
       </button>
-      <button type="button" aria-label={nextLabel} onClick={() => onScroll(1)}>
+      <button
+        type="button"
+        aria-label={nextLabel}
+        disabled={edges?.atEnd ?? false}
+        onClick={() => onScroll(1)}
+      >
         <ChevronGlyph direction={1} />
       </button>
     </span>

@@ -10,7 +10,9 @@
  * §37/§38: derivation, lineage and root attribution are entirely
  * `useRecipeDerivation` + the canonical save's `recordDerivation`. There is no HOME lineage code.
  */
+import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useRecipeDerivation } from '@/features/community/useRecipeDerivation';
+import { useAuthStore } from '@/stores/authStore';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { presentLoadedRecipeInHome } from '../homeLoadedRecipe';
 import type { RecipeMatch } from '../homeRecipeMatching';
@@ -56,6 +58,8 @@ export function HomeMatchGate({
   busy?: boolean;
   message?: string | null;
 }) {
+  const userId = useAuthStore((state) => state.user?.id ?? null);
+  const openAuthModal = useAuthModalStore((state) => state.open);
   // The target is addressed by publication, exactly as the Community page does.
   const derivation = useRecipeDerivation(
     {
@@ -94,6 +98,12 @@ export function HomeMatchGate({
           return;
         }
         if (communityMatch === null) return;
+        // A derivation is saved to an account. A guest is asked to sign in first and the
+        // layer stays with the choice — exactly as the official-recipe path does.
+        if (!userId) {
+          openAuthModal();
+          return;
+        }
         // §37: the ORIGINAL is never modified — this creates an editable derivation
         // through the canonical authority, which records lineage and preserves the
         // root creator. HOME contributes nothing to that decision.

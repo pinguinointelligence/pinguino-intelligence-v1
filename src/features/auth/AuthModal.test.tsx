@@ -87,6 +87,21 @@ describe('AuthModal — post-OAuth-redirect notices', () => {
   });
 });
 
+describe('AuthModal — touch targets', () => {
+  it('gives the mode switch and „close” text links a 44 px target', () => {
+    h.auth.available = true;
+    const html = render();
+    for (const label of [a.toSignUp, a.close]) {
+      const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const button = new RegExp(`<button type="button" class="([^"]*)">${escaped}</button>`).exec(
+        html,
+      );
+      expect(button?.[1], label).toContain('min-h-11');
+      expect(button?.[1], label).toContain('inline-flex');
+    }
+  });
+});
+
 describe('AuthModal — Google button UX (icon, accessibility, idle state)', () => {
   it('uses the shared modal contract with real dialog semantics', () => {
     const html = render();
