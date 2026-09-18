@@ -289,6 +289,15 @@ export interface HomeCreatorCopy {
     readonly toppingStage: string;
     readonly done: string;
   };
+  /**
+   * DESIGN V3.0 IV D–I — HOME's own words around the shared batch process
+   * (`production-workspace/process`): the process itself speaks `productionProcessCopy`.
+   */
+  readonly production: {
+    readonly saveBatch: string;
+    readonly savedForLater: string;
+    readonly doneKept: string;
+  };
   readonly draft: {
     readonly continueTitle: string;
     readonly continueCta: string;
@@ -557,6 +566,11 @@ const homeCreatorCopyPl: HomeCreatorCopy = {
     toppingStage: 'Na koniec dodaj topping.',
     done: 'Gotowe!',
   },
+  production: {
+    saveBatch: 'Zapisz',
+    savedForLater: 'Partia zapisana · wrócisz przez „Wróć do produkcji”.',
+    doneKept: 'Partia została zakończona i zachowana na tym urządzeniu.',
+  },
   draft: {
     continueTitle: 'Dokończ swoją recepturę',
     continueCta: 'Kontynuuj',
@@ -823,6 +837,11 @@ const homeCreatorCopyEn: HomeCreatorCopy = {
     scaleQuestion: 'How much does the scale show now?',
     toppingStage: 'Add your topping at the end.',
     done: 'Done!',
+  },
+  production: {
+    saveBatch: 'Save',
+    savedForLater: 'Batch saved · come back with „Back to production”.',
+    doneKept: 'The batch is finished and kept on this device.',
   },
   draft: {
     continueTitle: 'Continue your recipe',

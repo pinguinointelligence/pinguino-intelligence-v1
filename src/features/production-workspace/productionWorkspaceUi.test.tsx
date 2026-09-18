@@ -719,6 +719,7 @@ describe('Production workspace touch-first UI', () => {
       '../ingredient-builder/IngredientBuilder.tsx',
       'ProductionCockpit.tsx',
       '../home-creator/ui/HomePreparation.tsx',
+      'process/ProductionProcess.tsx',
     ]) {
       const source = readFileSync(resolve(import.meta.dirname, file), 'utf8');
       expect(source, file).not.toContain('production-inline-process-reminder');
