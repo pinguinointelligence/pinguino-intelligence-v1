@@ -4,21 +4,25 @@
  * Pins the public route table after the landing/flow split:
  *   `/`            → HomeCreatorPage (HOME Creator V1 §9 — the root IS the creator;
  *                    supersedes the Slice A light landing page)
- *   `/start`       → CustomerShellV1 (the customer flow)
- *   `/customer-v1` → redirect to /start (legacy preview path kept alive)
- *   `/demo`        → redirect to /start (legacy flow entry keeps landing in the flow)
+ *   `/home`        → HomeCreatorPage (the canonical customer HOME)
+ *   `/start`       → redirect to /home (owner 2026-09-18 — no longer its own flow)
+ *   `/classic`     → redirect to /home
+ *   `/demo`        → redirect to /home
+ *   `/customer-v1` → redirect to /home (legacy preview path kept alive)
+ * …and that CustomerShellV1 is not reachable from ANY route.
  * …and that every pre-existing route is still registered (zero 404 regressions).
  *
  * The element tree of `AppRoutes()` is walked directly (node env, no DOM) so the
  * redirect TARGETS are asserted too — `<Navigate>` only fires in an effect, which
  * a static render cannot observe.
  */
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { isValidElement, type ReactElement, type ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it } from 'vitest';
-import { customerShellCopy } from '@/features/customer-shell/customerShellCopy';
 import { RoleAwareEntryRoute } from '@/features/auth/RoleAwareEntryRoute';
 import { HomeSubscriberProRedirect } from '@/features/home-creator/HomeSubscriberProRedirect';
 import { homeCreatorCopy } from '@/features/home-creator/homeCreatorCopy';
@@ -33,7 +37,7 @@ import {
   PRO_RECIPE_PATH,
   studioRedirectTo,
 } from './router';
-import { legacyDestinationRedirectTo } from './redirectState';
+import { CUSTOMER_HOME_PATH, legacyDestinationRedirectTo } from './redirectState';
 
 /* ------------------------------------------------------------- helpers -- */
 
@@ -101,21 +105,57 @@ describe('Slice A routing contract', () => {
     expect(html).not.toContain(landingCopy.hero.headline);
   });
 
-  it('serves the customer flow at /start', () => {
-    expect(elementType('/start')).toBe(RoleAwareEntryRoute);
-    const html = renderAt('/start');
-    expect(html).toContain(customerShellCopy.home.headline); // „Jakie lody dziś robimy?”
+  it('serves the HOME Creator at the canonical /home', () => {
+    expect(CUSTOMER_HOME_PATH).toBe('/home');
+    expect(elementType(CUSTOMER_HOME_PATH)).toBe(RoleAwareEntryRoute);
+    const html = renderAt(CUSTOMER_HOME_PATH);
+    expect(html).toContain(homeCreatorCopy.intent.question);
+    expect(html).toContain('data-testid="home-creator"');
   });
 
-  it('redirects legacy flow entries to /start while preserving deep-link state', () => {
-    expect(elementType('/customer-v1')).toBe(LegacyDestinationRedirect);
-    expect(elementType('/demo')).toBe(LegacyDestinationRedirect);
-    expect(elementType('/classic')).toBe(LegacyDestinationRedirect);
-    expect(legacyDestinationRedirectTo('/start', '?recipe=r-legacy', {}, '#step-2')).toEqual({
-      pathname: '/start',
+  it('sends /start and every legacy alias to /home, preserving deep-link state', () => {
+    for (const path of ['/start', '/classic', '/demo', '/customer-v1']) {
+      expect(elementType(path), path).toBe(LegacyDestinationRedirect);
+      // The redirect ELEMENT carries the target; <Navigate> only fires in an
+      // effect, so a static render cannot observe it — read the prop instead.
+      const element = byPath.get(path) as ReactElement<{ pathname?: string }>;
+      expect(element.props.pathname, path).toBe(CUSTOMER_HOME_PATH);
+    }
+    expect(
+      legacyDestinationRedirectTo(CUSTOMER_HOME_PATH, '?recipe=r-legacy', {}, '#step-2'),
+    ).toEqual({
+      pathname: '/home',
       search: '?recipe=r-legacy',
       hash: '#step-2',
     });
+  });
+
+  it('retires CustomerShellV1: no route renders it, and none can (owner 2026-09-18)', () => {
+    // 1. Nothing in the route table IS the shell…
+    for (const [path, element] of byPath) {
+      const type = isValidElement(element) ? (element as ReactElement).type : undefined;
+      const name = typeof type === 'function' ? type.name : String(type);
+      expect(name, `route ${path}`).not.toBe('CustomerShellV1');
+    }
+    // 2. …and the entry component that used to mount it no longer can: the
+    //    `start` entry is gone from the union, so `/` and `/home` are the only
+    //    entries and both render the creator. (The headline is NOT a usable
+    //    discriminator — the creator asks the same „Jakie lody dziś robimy?” —
+    //    so assert on the creator's own test id.)
+    for (const path of ['/', CUSTOMER_HOME_PATH]) {
+      expect(renderAt(path), path).toContain('data-testid="home-creator"');
+    }
+    // 3. The route layer no longer imports the shell, and the entry union no
+    //    longer has a `start` member for a future edit to point back at it.
+    const read = (file: string) => readFileSync(resolve(process.cwd(), file), 'utf8');
+    // Match the IMPORT, not the prose: both files still explain the retirement
+    // in a comment, and a doc mention must not fail this check.
+    const IMPORTS_SHELL = /^\s*import\s[^;]*\bCustomerShellV1\b/m;
+    expect(read('src/features/auth/RoleAwareEntryRoute.tsx')).not.toMatch(IMPORTS_SHELL);
+    expect(read('src/app/router.tsx')).not.toMatch(IMPORTS_SHELL);
+    expect(read('src/features/auth/roleAwareEntry.ts')).toContain(
+      "export type RoleAwareEntry = 'root' | 'home';",
+    );
   });
 
   it('sends /studio and /calculator into the canonical PINGÜINO Pro recipe editor (owner P0)', () => {

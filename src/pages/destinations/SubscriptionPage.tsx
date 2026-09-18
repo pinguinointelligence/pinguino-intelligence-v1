@@ -14,6 +14,7 @@ import { AppShell } from '@/features/shell/AppShell';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { landingCopy } from '@/pages/landing/landingCopy';
+import { CUSTOMER_HOME_PATH } from '@/app/redirectState';
 import {
   annualEconomics,
   monthsGenitivePl,
@@ -548,7 +549,10 @@ export function SubscriptionPage() {
           )}
         >
           <p className={cn('max-w-prose', type.secondary, color.textSecondary)}>{s.demoNote}</p>
-          <Link to="/start" className={cn(touchButtonClasses('secondary', 'md'), 'shrink-0')}>
+          <Link
+            to={CUSTOMER_HOME_PATH}
+            className={cn(touchButtonClasses('secondary', 'md'), 'shrink-0')}
+          >
             {s.demoCta}
           </Link>
         </div>
@@ -581,7 +585,7 @@ export function SubscriptionPage() {
 
         <div className="mt-14 border-t border-[var(--g-line)] pt-8">
           <Link
-            to="/start"
+            to={CUSTOMER_HOME_PATH}
             className={cn(
               'inline-flex items-center gap-2 rounded underline-offset-4 hover:underline',
               type.secondary,

@@ -177,7 +177,7 @@ describe('executable Recipe Library Batch 1 registry', () => {
       expect(href).toMatch(/^\/pro\/recipe\?/);
       expect(href).toContain(`libraryTemplate=${template.id}`);
       expect(href).not.toMatch(/^\/(?:home|start)(?:\?|$)/);
-      expect(executableRecipeStartHref(template.id, 'home')).toMatch(/^\/start\?/);
+      expect(executableRecipeStartHref(template.id, 'home')).toMatch(/^\/home\?/);
     }
   });
 
