@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
+import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { UnverifiedProductsPanel } from '@/features/products/UnverifiedProductsPanel';
 import { MyProductsPanel } from '@/features/products/MyProductsPanel';
 import { ProductsFilterTabs } from '@/features/products/ProductsFilterTabs';
@@ -14,13 +14,10 @@ import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { proCoreCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
-import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { CompactRunLabelSettings, LabelWorkspace } from '@/features/master-label/LabelWorkspace';
-import { filterLabelHistory } from '@/features/master-label/labelHistorySearch';
 import {
   defaultAccountLabelProfile,
   resolveLabelRepository,
-  type RunLabelSnapshot,
 } from '@/services/labels/labelRepository';
 import { AccountRecipeDefaults } from '@/features/pro-workbench/AccountRecipeDefaults';
 import { AccountProductMarkets } from '@/features/global-catalog/AccountProductMarkets';
@@ -28,11 +25,8 @@ import { GlobalCatalogSearchPanel } from '@/features/global-catalog/GlobalCatalo
 import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { ProductRequestAccountSections } from '@/features/product-requests/ProductRequestAccountSections';
 import { HomeInviteRedemption } from '@/features/account/HomeInviteRedemption';
-import { resolveProductionRepository } from '@/features/pro-core/proCoreProductionRepo';
-import { loadCanonicalProductionHistory } from '@/services/productionHistoryTruth';
-import type { CanonicalProductionHistoryEntry } from '@/services/productionHistoryTruth';
+import { HomeBatches, ProductionBatches } from '@/features/production-area/ProductionBatches';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
-import { EmptyState } from '@/components/shared/EmptyState';
 import {
   DestinationHero,
   DestinationSection,
@@ -57,9 +51,12 @@ import { AppShell } from '@/features/shell/AppShell';
 import { KnowledgeTour } from '@/features/knowledge-tour/KnowledgeTour';
 import { useRecipeStore } from '@/stores/recipeStore';
 import {
-  labelSettingsReturn,
+  readLabelSettingsRestore,
   readLabelSettingsReturn,
 } from '@/features/master-label/labelSettingsNavigation';
+import { RunLabelView } from '@/features/production-area/RunLabelView';
+import { LabelHistorySection } from '@/features/production-area/LabelHistorySection';
+import { productionBatchesLabelsCopy } from '@/copy/productionBatchesLabels';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { buildDraftLabelPreview } from '@/features/master-label/draftLabelPreview';
@@ -72,6 +69,8 @@ import {
 /** One panel for each account concern — same card as the rest of the product. */
 const ACCOUNT_PANEL =
   'rounded-[12px] border border-[var(--g-line)] bg-white px-5 [&>section]:py-0 [&>section]:first:pt-5 [&>section]:last:pb-5';
+
+const labelsCopy = productionBatchesLabelsCopy.labels;
 
 const quietLink =
   'flex min-h-14 items-center justify-between border-b border-[var(--g-line)] py-3 text-sm text-ink transition-opacity hover:opacity-55';
@@ -494,82 +493,27 @@ export function ProductsHubPage() {
   );
 }
 
-type ProductionTab = 'current' | 'history' | 'labels';
-const productionTabs: readonly { id: ProductionTab; label: string }[] = [
-  { id: 'current', label: 'Bieżąca' },
-  { id: 'history', label: 'Historia' },
-  { id: 'labels', label: 'Etykiety' },
-];
-
+/**
+ * Produkcja → Partie (Production v3, Etap 1 §6). The in-progress list, the
+ * production history (paged) and the way back to a batch live in
+ * `ProductionBatches`; the hub's former „Etykiety” tab is the Etykiety section
+ * (`/labels`), so `?tab=labels` lands there.
+ */
 export function ProductionHubPage() {
-  const [params, setParams] = useSearchParams();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const requested = params.get('tab');
-  const active: ProductionTab = productionTabs.some((tab) => tab.id === requested)
-    ? (requested as ProductionTab)
-    : 'current';
+  const [params] = useSearchParams();
   const persona = useProCorePersona();
   const capabilities = proCoreCapabilitiesFor(persona);
-  const user = useAuthStore((state) => state.user);
-  const session = useProductionSessionStore((state) => state.session);
-  const activeSnapshot = session?.status === 'completed' ? session.completionSnapshot : null;
-  const productionRepositoryState = useMemo(() => resolveProductionRepository(), []);
-  const labelRepository = useMemo(() => resolveLabelRepository(), []);
-  const [historyLoad, setHistoryLoad] = useState<{
-    ownerUserId: string | null;
-    entries: CanonicalProductionHistoryEntry[];
-    state: 'loading' | 'ready' | 'error';
-  }>({ ownerUserId: null, entries: [], state: 'loading' });
-  const [historyRevision, setHistoryRevision] = useState(0);
-
-  useEffect(() => {
-    if (!capabilities.canUseProductionMode) return;
-    if (!user?.id || !productionRepositoryState.repository) return;
-    let cancelled = false;
-    void loadCanonicalProductionHistory({
-      productionRepository: productionRepositoryState.repository,
-      labelRepository,
-      ownerUserId: user.id,
-    })
-      .then((result) => {
-        if (cancelled) return;
-        setHistoryLoad({
-          ownerUserId: user.id,
-          entries: result.entries,
-          state: result.unresolvedRunIds.length > 0 ? 'error' : 'ready',
-        });
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setHistoryLoad({ ownerUserId: user.id, entries: [], state: 'error' });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    capabilities.canUseProductionMode,
-    historyRevision,
-    labelRepository,
-    productionRepositoryState.repository,
-    user?.id,
-  ]);
-
-  const history = historyLoad.ownerUserId === user?.id ? historyLoad.entries : [];
-  const historyState =
-    !user?.id || !productionRepositoryState.repository
-      ? 'error'
-      : historyLoad.ownerUserId === user.id
-        ? historyLoad.state
-        : 'loading';
-  const labelSnapshot = activeSnapshot ?? history[0]?.snapshot ?? null;
+  if (params.get('tab') === 'labels') return <Navigate to="/labels" replace />;
 
   return (
-    <ProductionAreaSurface
-      section="batches"
-      blurb="Bieżąca partia, zapis zakończonych produkcji i etykiety — zawsze oparte na tych samych danych."
-    >
-      {!capabilities.canUseProductionMode ? (
+    /* Partie opens directly on its content under the section bar (the accepted v3
+       renders): the history shortcut, the work in progress, the history. */
+    <ProductionAreaSurface section="batches">
+      {capabilities.canUseProductionMode ? (
+        <ProductionBatches />
+      ) : persona === 'home' ? (
+        <HomeBatches />
+      ) : (
         <WorkflowNotice
           eyebrow="Produkcja"
           title="Produkcja jest dostępna w planie Pro"
@@ -584,210 +528,116 @@ export function ProductionHubPage() {
           }
           testId="production-plan-gate"
         />
+      )}
+    </ProductionAreaSurface>
+  );
+}
+
+type LabelsHubContext = 'defaults' | 'recipe' | 'run';
+
+/**
+ * Produkcja → Etykiety reads its context from the address (Production v3 §5):
+ *  A `/labels` — the account defaults and „Historia etykiet” (no recipe draft is created);
+ *  B `/labels?labelView=recipe` — the current recipe's label draft;
+ *  C `/labels?run=…[&snapshot=…]` — the label of one completed run.
+ */
+const labelsHubContext = (params: URLSearchParams): LabelsHubContext =>
+  params.get('run') || params.get('snapshot')
+    ? 'run'
+    : params.get('labelView') === 'recipe'
+      ? 'recipe'
+      : 'defaults';
+
+export function LabelsHubPage() {
+  const [params] = useSearchParams();
+  const repository = useMemo(() => resolveLabelRepository(), []);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const context = labelsHubContext(params);
+  const returnTarget = readLabelSettingsReturn(location.state);
+  const labelSettingsReturn = returnTarget ?? {
+    to: '/pro/recipe?panel=summary',
+    scrollTop: 0,
+  };
+  const returnToOrigin = () =>
+    navigate(labelSettingsReturn.to, {
+      state: { labelSettingsRestore: labelSettingsReturn },
+    });
+  /* The return names where it goes. Without a named source it stays the plain
+     „← Wróć” with today's fallback route. GEL-P0-033 keeps „← Wróć” on `/labels`
+     in every context — also when Etykiety is reached from ☰ with no origin (the v3
+     preview shows none there; that difference waits for an Owner decision). */
+  const backLabel =
+    returnTarget?.origin === 'production-history'
+      ? labelsCopy.backToProductionHistory
+      : returnTarget?.origin === 'label-history'
+        ? labelsCopy.backToLabelHistory
+        : returnTarget?.origin === 'current-run'
+          ? labelsCopy.backToRun
+          : '← Wróć';
+
+  /* A new context (or another run) opens at its top, where its back action is — the
+     page it came from may have been scrolled far down. Choosing another version of the
+     same run keeps the place; a return to the label history restores its own place. */
+  const arrival = `${context}:${params.get('run') ?? ''}`;
+  const arrivedAt = useRef<string | null>(null);
+  useEffect(() => {
+    if (arrivedAt.current === arrival) return;
+    arrivedAt.current = arrival;
+    if (readLabelSettingsRestore(location.state)) return;
+    if (typeof window.scrollTo === 'function') window.scrollTo({ top: 0 });
+  }, [arrival, location.state]);
+
+  /* Etykiety is the Pro-only section of Produkcja: for HOME and signed-out visitors
+     the area surface says where the tools live instead of rendering them. */
+  return (
+    <ProductionAreaSurface section="labels">
+      <button
+        type="button"
+        onClick={returnToOrigin}
+        className="pro-focus-ring -ml-1 mb-4 inline-flex min-h-11 items-center rounded-full px-1 text-sm font-semibold text-ink transition-opacity hover:opacity-60"
+        data-testid="labels-return"
+      >
+        {backLabel}
+      </button>
+      {context === 'recipe' ? (
+        <RecipeLabelSettings onReturn={returnToOrigin} />
+      ) : context === 'run' ? (
+        <RunLabelView
+          requestedRunId={params.get('run')}
+          requestedSnapshotId={params.get('snapshot')}
+          settingsView={params.get('labelView') === 'settings'}
+          origin={returnTarget?.origin ?? null}
+          repository={repository}
+        />
       ) : (
         <>
-          <div
-            role="tablist"
-            aria-label="Sekcje produkcji"
-            className="flex border-b border-[var(--g-line)]"
-          >
-            {productionTabs.map((tab, index) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                id={`production-hub-${tab.id}-tab`}
-                aria-controls={`production-hub-${tab.id}-panel`}
-                aria-selected={active === tab.id}
-                tabIndex={active === tab.id ? 0 : -1}
-                onClick={() => setParams(tab.id === 'current' ? {} : { tab: tab.id })}
-                onKeyDown={(event) => {
-                  let nextIndex: number | null = null;
-                  if (event.key === 'ArrowRight') nextIndex = (index + 1) % productionTabs.length;
-                  else if (event.key === 'ArrowLeft')
-                    nextIndex = (index - 1 + productionTabs.length) % productionTabs.length;
-                  else if (event.key === 'Home') nextIndex = 0;
-                  else if (event.key === 'End') nextIndex = productionTabs.length - 1;
-                  if (nextIndex === null) return;
-                  event.preventDefault();
-                  const next = productionTabs[nextIndex]!;
-                  setParams(next.id === 'current' ? {} : { tab: next.id });
-                  queueMicrotask(() =>
-                    document.getElementById(`production-hub-${next.id}-tab`)?.focus(),
-                  );
-                }}
-                className={cn(
-                  'min-h-11 border-b-2 px-4 text-xs font-semibold sm:min-h-10',
-                  active === tab.id
-                    ? 'border-ink text-ink'
-                    : 'border-transparent text-[var(--g-text-secondary)]',
-                )}
-                data-testid={`production-tab-${tab.id}`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          <LabelContextCard title={labelsCopy.defaultsTitle} body={labelsCopy.defaultsBody} />
+          <div className="mt-4">
+            <LabelWorkspace profileOnly repository={repository} />
           </div>
-
-          {active === 'current' ? (
-            <section
-              id="production-hub-current-panel"
-              role="tabpanel"
-              aria-labelledby="production-hub-current-tab"
-              className="py-8"
-              data-testid="production-current"
-            >
-              <h2 className="text-xl font-semibold text-ink">Bieżąca produkcja</h2>
-              {session?.status === 'in_progress' ? (
-                <>
-                  <p className="mt-2 text-sm text-[var(--g-text-secondary)]">
-                    {session.source.recipeName} · rozpoczęto{' '}
-                    {new Date(session.startedAt).toLocaleString('pl-PL')}
-                  </p>
-                  <Link to="/pro/production" className={cn(buttonClasses('primary', 'md'), 'mt-6')}>
-                    Wróć do bieżącej partii
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <p className="mt-2 max-w-xl text-sm text-[var(--g-text-secondary)]">
-                    Otwórz recepturę i przejdź do jej zakładki Produkcja, aby rozpocząć nową partię
-                  </p>
-                  <Link to="/pro/recipe" className={cn(buttonClasses('primary', 'md'), 'mt-6')}>
-                    Otwórz Gellatti Pro
-                  </Link>
-                </>
-              )}
-            </section>
-          ) : null}
-
-          {active === 'history' ? (
-            <section
-              id="production-hub-history-panel"
-              role="tabpanel"
-              aria-labelledby="production-hub-history-tab"
-              className="py-8"
-              data-testid="production-history"
-            >
-              <h2 className="text-xl font-semibold text-ink">Historia produkcji</h2>
-              {historyState === 'loading' ? (
-                <p className="mt-5 text-sm text-[var(--g-text-secondary)]" role="status">
-                  Sprawdzamy zakończone partie…
-                </p>
-              ) : null}
-              {historyState === 'error' ? (
-                <WorkflowNotice
-                  className="mt-5"
-                  variant="blocking"
-                  role="alert"
-                  title="Nie mamy teraz pełnej historii produkcji"
-                  description="Dane partii są bezpieczne. Spróbuj ponownie."
-                  action={
-                    <button
-                      type="button"
-                      className={buttonClasses('ghost', 'sm')}
-                      onClick={() => {
-                        setHistoryLoad((current) => ({ ...current, state: 'loading' }));
-                        setHistoryRevision((current) => current + 1);
-                      }}
-                    >
-                      Spróbuj ponownie
-                    </button>
-                  }
-                />
-              ) : null}
-              {history.map(({ run, snapshot }) => (
-                <div
-                  key={run.runId}
-                  className="mt-6 border-y border-[var(--g-line)] py-5"
-                  data-production-run-id={run.runId}
-                >
-                  <div className="flex flex-wrap items-end justify-between gap-4">
-                    <div>
-                      <strong className="text-base text-ink">{snapshot.source.recipeName}</strong>
-                      <p className="mt-1 text-xs text-[var(--g-text-secondary)]">
-                        {new Date(snapshot.productionCompletedAt).toLocaleString('pl-PL')} · wersja{' '}
-                        {snapshot.source.recipeVersionNumber ?? '—'}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <span className="block font-mono text-lg font-semibold tabular-nums">
-                        {snapshot.actualFinalMassG.toFixed(1)} g
-                      </span>
-                      <span className="text-xs text-[var(--g-text-secondary)]">
-                        planowano {snapshot.originalBatchTargetG.toFixed(1)} g
-                      </span>
-                    </div>
-                  </div>
-                  <Link
-                    to={`/labels?run=${encodeURIComponent(run.runId)}`}
-                    className={cn(buttonClasses('ghost', 'sm'), 'mt-5')}
-                  >
-                    Otwórz etykietę
-                  </Link>
-                </div>
-              ))}
-              {historyState === 'ready' && history.length === 0 ? (
-                <EmptyState
-                  className="mt-5"
-                  title="Nie masz jeszcze zakończonych partii"
-                  body="Po zakończeniu produkcji partia pojawi się tutaj."
-                />
-              ) : null}
-            </section>
-          ) : null}
-
-          {active === 'labels' ? (
-            <section
-              id="production-hub-labels-panel"
-              role="tabpanel"
-              aria-labelledby="production-hub-labels-tab"
-              className="py-8"
-              data-testid="production-labels"
-            >
-              <h2 className="text-xl font-semibold text-ink">Etykiety z zakończonych partii</h2>
-              {labelSnapshot ? (
-                <div className="mt-6 border border-[var(--g-line)]">
-                  {/* Completed-batch VIEWER. Settings live on Etykiety
-                      (`/labels`), so this instance points there rather than
-                      opening a second copy of them. */}
-                  <LabelWorkspace
-                    snapshot={labelSnapshot}
-                    settingsHome="production"
-                    onOpenSettings={(runId) =>
-                      navigate(`/labels?run=${encodeURIComponent(runId)}&labelView=settings`, {
-                        state: {
-                          labelSettingsReturn: labelSettingsReturn(
-                            location.pathname,
-                            location.search,
-                            window.scrollY,
-                          ),
-                        },
-                      })
-                    }
-                  />
-                </div>
-              ) : (
-                <p className="mt-5 text-sm text-[var(--g-text-secondary)]">
-                  Etykieta pojawi się dopiero po zakończeniu produkcji i zatwierdzeniu danych
-                  partii.
-                </p>
-              )}
-            </section>
-          ) : null}
+          <LabelHistorySection repository={repository} />
         </>
       )}
     </ProductionAreaSurface>
   );
 }
 
-export function LabelsHubPage() {
-  const [params, setParams] = useSearchParams();
-  const requestedRunId = params.get('run');
-  const requestedSnapshotId = params.get('snapshot');
+function LabelContextCard({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-[12px] border border-l-2 border-[var(--g-line)] border-l-[var(--g-orange)] bg-white px-4 py-3.5">
+      <h2 className="text-[15px] font-semibold text-ink">{title}</h2>
+      <p className="mt-1 text-xs leading-relaxed text-[var(--g-text-secondary)]">{body}</p>
+    </div>
+  );
+}
+
+/**
+ * Context B — the current recipe's label draft. „Zastosuj ustawienia” changes this
+ * draft only; it never saves the account's default label profile.
+ */
+function RecipeLabelSettings({ onReturn }: { onReturn: () => void }) {
   const repository = useMemo(() => resolveLabelRepository(), []);
-  const location = useLocation();
-  const navigate = useNavigate();
   const labelDraft = useRecipeStore((state) => state.labelDraft);
   const setLabelDraft = useRecipeStore((state) => state.setLabelDraft);
   const labelDraftContext = useRecipeStore((state) => state.draftContextSeq);
@@ -801,30 +651,6 @@ export function LabelsHubPage() {
     value: RecipeLabelDraft;
   } | null>(null);
   const [saveDraftAsDefault, setSaveDraftAsDefault] = useState(false);
-  const session = useProductionSessionStore((state) => state.session);
-  const activeSnapshot = session?.status === 'completed' ? session.completionSnapshot : null;
-  const [history, setHistory] = useState<RunLabelSnapshot[]>([]);
-  /* §40 — one plain field over the records this user already has. No AI, no
-     Mapper, no network: those answer a different question and would make a
-     local lookup slow, chargeable and occasionally wrong. */
-  const [historyQuery, setHistoryQuery] = useState('');
-  const visibleHistory = useMemo(
-    () => filterLabelHistory(history, historyQuery),
-    [history, historyQuery],
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-    void repository
-      .listRunLabelSnapshots()
-      .then((items) => {
-        if (!cancelled) setHistory(items);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [repository]);
 
   useEffect(() => {
     let cancelled = false;
@@ -875,55 +701,18 @@ export function LabelsHubPage() {
     setLabelDraft,
   ]);
 
-  const selectedActive =
-    activeSnapshot && (!requestedRunId || requestedRunId === activeSnapshot.sessionId)
-      ? activeSnapshot
-      : null;
-  const requestedHistoryItem = requestedSnapshotId
-    ? (history.find((item) => item.snapshotId === requestedSnapshotId) ?? null)
-    : null;
-  const selectedRunId =
-    requestedHistoryItem?.runId ??
-    requestedRunId ??
-    selectedActive?.sessionId ??
-    history[0]?.runId ??
-    null;
-  const selectedSnapshotId =
-    requestedHistoryItem?.snapshotId ??
-    (!requestedRunId && !selectedActive ? (history[0]?.snapshotId ?? null) : null);
-  const labelSettingsReturn = readLabelSettingsReturn(location.state) ?? {
-    to: '/pro/recipe?panel=summary',
-    scrollTop: 0,
-  };
-  const returnToOrigin = () =>
-    navigate(labelSettingsReturn.to, {
-      state: { labelSettingsRestore: labelSettingsReturn },
-    });
-
   return (
-    <ProductionAreaSurface
-      section="labels"
-      eyebrow="Gellatti Pro"
-      title="Etykiety"
-      blurb="Profil konta i etykiety zakończonych partii — w jednym, spójnym miejscu."
-      contextLabel="Ustawienia etykiety"
-      actions={
-        <button type="button" onClick={returnToOrigin} className={buttonClasses('ghost', 'sm')}>
-          ← Wróć
-        </button>
-      }
-    >
-      <LabelWorkspace profileOnly repository={repository} />
-
+    <>
+      <LabelContextCard title={labelsCopy.recipeTitle} body={labelsCopy.recipeBody} />
       {labelDraft?.label ? (
-        <section className="mt-10 border-t border-[var(--g-line)] pt-8">
+        <section className="mt-6">
           <CompactRunLabelSettings
             label={labelDraft.label}
             saveAsDefault={saveDraftAsDefault}
             onSaveAsDefaultChange={setSaveDraftAsDefault}
             showSaveAsDefault={false}
             showDraftData
-            onClose={returnToOrigin}
+            onClose={onReturn}
             onSave={async (label) => {
               setLabelDraft(
                 {
@@ -933,84 +722,12 @@ export function LabelsHubPage() {
                 },
                 true,
               );
-              returnToOrigin();
+              onReturn();
             }}
           />
         </section>
       ) : null}
-
-      <section className="mt-10 border-t border-[var(--g-line)] pt-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            {/* §40 — the section is called what it is. „Zakończone partie" was
-                the mechanism that produced these labels, not the thing the
-                reader came here to find. */}
-            <h2 className="text-xl font-semibold text-ink">Historia etykiet</h2>
-            <p className="mt-1 text-sm text-[var(--g-text-secondary)]">
-              Dane etykiety pochodzą wyłącznie z zatwierdzonego wyniku tej partii
-            </p>
-          </div>
-          {history.length > 0 ? (
-            <label className="min-w-[15rem] flex-1 sm:max-w-xs">
-              <span className="sr-only">Szukaj po nazwie lub numerze LOT</span>
-              <input
-                type="search"
-                value={historyQuery}
-                onChange={(event) => setHistoryQuery(event.currentTarget.value)}
-                placeholder="Szukaj po nazwie lub numerze LOT"
-                data-testid="label-history-search"
-                className="pro-focus-ring min-h-11 w-full rounded-[10px] border border-[var(--g-line)] bg-white px-3 text-sm text-ink"
-              />
-            </label>
-          ) : null}
-        </div>
-        {history.length > 0 ? (
-          <nav
-            aria-label="Historia etykiet"
-            className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-1"
-            data-testid="label-history-list"
-          >
-            {visibleHistory.map((item) => (
-              <Link
-                key={item.snapshotId}
-                to={`/labels?run=${encodeURIComponent(item.runId)}&snapshot=${encodeURIComponent(item.snapshotId)}`}
-                className={cn(
-                  buttonClasses(item.snapshotId === selectedSnapshotId ? 'primary' : 'ghost', 'sm'),
-                  'min-h-11 shrink-0',
-                )}
-              >
-                {new Date(item.createdAt).toLocaleDateString('pl-PL')} · v{item.version}
-              </Link>
-            ))}
-          </nav>
-        ) : null}
-        {history.length > 0 && visibleHistory.length === 0 ? (
-          <p
-            className="mt-4 text-sm text-[var(--g-text-secondary)]"
-            role="status"
-            data-testid="label-history-empty"
-          >
-            Nie znaleźliśmy etykiety o tej nazwie ani z tym numerem LOT.
-          </p>
-        ) : null}
-        <div className="mt-6">
-          <LabelWorkspace
-            snapshot={selectedActive}
-            runId={selectedRunId}
-            savedSnapshotId={selectedSnapshotId}
-            repository={repository}
-            initialView={params.get('labelView') === 'settings' ? 'settings' : 'label'}
-            onSaved={(item) => {
-              setHistory((current) => [
-                item,
-                ...current.filter((entry) => entry.snapshotId !== item.snapshotId),
-              ]);
-              setParams({ run: item.runId, snapshot: item.snapshotId });
-            }}
-          />
-        </div>
-      </section>
-    </ProductionAreaSurface>
+    </>
   );
 }
 

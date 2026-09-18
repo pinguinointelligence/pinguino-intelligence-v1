@@ -1,0 +1,547 @@
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
+import { buttonClasses } from '@/components/ui/buttonStyles';
+import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { cn } from '@/lib/cn';
+import { productionBatchesLabelsCopy } from '@/copy/productionBatchesLabels';
+import { useAuthStore } from '@/stores/authStore';
+import { resolveProductionRepository } from '@/features/pro-core/proCoreProductionRepo';
+import {
+  productionLotCodeForRun,
+  type ProductionSession,
+} from '@/features/production-workspace/productionSession';
+import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
+import { lotCodeForDisplay } from '@/features/master-label/labelPresentation';
+import {
+  labelSettingsReturn,
+  readLabelSettingsRestore,
+} from '@/features/master-label/labelSettingsNavigation';
+import { resolveLabelRepository } from '@/services/labels/labelRepository';
+import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
+import { hasUnsavedProRecipeChanges } from '@/pages/destinations/startNewProRecipe';
+import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
+import { useProductionHistoryPages } from './useProductionHistoryPages';
+import { useInProgressRuns, type InProgressBatch } from './useInProgressRuns';
+import { resumeProductionRun, type ResumeProductionRunFailure } from './resumeProductionRun';
+
+const c = productionBatchesLabelsCopy.batches;
+const EMPTY_SESSIONS: Record<string, ProductionSession> = {};
+
+const massFormat = new Intl.NumberFormat('pl-PL', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+const wholeGrams = new Intl.NumberFormat('pl-PL', { maximumFractionDigits: 0 });
+const dateTimeFormat = new Intl.DateTimeFormat('pl-PL', {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+const formatDateTime = (iso: string): string => {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? '—' : dateTimeFormat.format(date);
+};
+
+/** Below `lg` the history is under the batches; from `lg` it is the right column. */
+const HISTORY_IS_COLUMN_QUERY = '(min-width: 1024px)';
+const historyIsColumn = (): boolean =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia(HISTORY_IS_COLUMN_QUERY).matches;
+
+const RESUME_FAILURE_COPY: Record<ResumeProductionRunFailure, string> = {
+  'recipe-missing': c.resumeFailed.recipeMissing,
+  'version-mismatch': c.resumeFailed.versionMismatch,
+  'run-missing': c.resumeFailed.runMissing,
+  'plan-differs': c.resumeFailed.planDiffers,
+  failed: c.resumeFailed.generic,
+};
+
+const EYEBROW =
+  'font-mono text-[11px] font-semibold tracking-[0.14em] text-[var(--g-text-secondary)] uppercase';
+
+function ChevronDown() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4" fill="none">
+      <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/**
+ * Produkcja → Partie (PRO). An IA layer over existing mechanisms only:
+ * „W toku” from `listRuns` + `sessionsById`, „Wróć do partii” through the saved
+ * recipe version and `restoreDurableSession`, and the production history from
+ * `loadCanonicalProductionHistory`, paged. Browsing never calls a production
+ * store action, never starts a run and never writes a label version.
+ */
+export function ProductionBatches() {
+  const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const ownerUserId = useAuthStore((state) => state.user?.id ?? null);
+  const productionRepository = useMemo(() => resolveProductionRepository().repository, []);
+  const labelRepository = useMemo(() => resolveLabelRepository(), []);
+
+  const restore = useMemo(() => {
+    const candidate = readLabelSettingsRestore(location.state);
+    return candidate?.origin === 'production-history' ? candidate : null;
+    // `location.key` identifies one arrival; the state object itself is stable per entry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
+
+  const history = useProductionHistoryPages({
+    enabled: true,
+    ownerUserId,
+    productionRepository,
+    labelRepository,
+    initialShown: restore?.historyShown ?? null,
+  });
+  const inProgress = useInProgressRuns({
+    enabled: true,
+    ownerUserId,
+    repository: productionRepository,
+  });
+  const projected = useProductionSessionStore((state) => state.session);
+  const completedNow =
+    projected?.status === 'completed' && projected.ownerUserId === ownerUserId ? projected : null;
+
+  const historyRef = useRef<HTMLElement>(null);
+  const rowRefs = useRef(new Map<string, HTMLDivElement>());
+  const [focusedRunId, setFocusedRunId] = useState<string | null>(null);
+
+  const focusHistory = useCallback((scroll: boolean) => {
+    const section = historyRef.current;
+    if (!section) return;
+    if (scroll && typeof section.scrollIntoView === 'function') {
+      section.scrollIntoView({ block: 'start' });
+    }
+    section.focus({ preventScroll: true });
+  }, []);
+
+  const jumpToHistory = () => {
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.set('tab', 'history');
+        return next;
+      },
+      { replace: true },
+    );
+    focusHistory(true);
+  };
+
+  // `?tab=history` (and `/pro/history`) lands on the history, once per arrival; any other
+  // arrival opens Partie at its top (the page it came from may have been scrolled).
+  const landedKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (restore || landedKey.current === location.key) return;
+    landedKey.current = location.key;
+    if (params.get('tab') === 'history') focusHistory(!historyIsColumn());
+    else if (typeof window.scrollTo === 'function') window.scrollTo({ top: 0 });
+  }, [focusHistory, location.key, params, restore]);
+
+  // Back from a label: the same pages, the same place and the same row in focus.
+  const restoredKey = useRef<string | null>(null);
+  useEffect(() => {
+    if (!restore || restoredKey.current === location.key || history.state === 'loading') return;
+    restoredKey.current = location.key;
+    if (typeof window.scrollTo === 'function') window.scrollTo({ top: restore.scrollTop });
+    if (restore.focusRunId) {
+      rowRefs.current.get(restore.focusRunId)?.focus({ preventScroll: true });
+    }
+  }, [history.state, location.key, restore]);
+  // The row the reader left from stays marked until another row is chosen.
+  const markedRunId = focusedRunId ?? restore?.focusRunId ?? null;
+
+  const openLabel = (event: MouseEvent<HTMLAnchorElement>, runId: string) => {
+    event.preventDefault();
+    setFocusedRunId(runId);
+    navigate(`/labels?run=${encodeURIComponent(runId)}`, {
+      state: {
+        labelSettingsReturn: labelSettingsReturn('/production', '?tab=history', window.scrollY, {
+          origin: 'production-history',
+          focusRunId: runId,
+          historyShown: history.readCount,
+        }),
+      },
+    });
+  };
+
+  const [pendingResume, setPendingResume] = useState<InProgressBatch | null>(null);
+  const [resuming, setResuming] = useState<string | null>(null);
+  const [resumeError, setResumeError] = useState<{ runId: string; message: string } | null>(null);
+  const resume = async (batch: InProgressBatch) => {
+    if (!ownerUserId || !productionRepository) {
+      setResumeError({ runId: batch.runId, message: c.resumeFailed.generic });
+      return;
+    }
+    setResuming(batch.runId);
+    setResumeError(null);
+    const result = await resumeProductionRun({
+      run: batch,
+      ownerUserId,
+      repository: productionRepository,
+    });
+    setResuming(null);
+    if (!result.ok) {
+      setResumeError({ runId: batch.runId, message: RESUME_FAILURE_COPY[result.reason] });
+      return;
+    }
+    navigate(result.to);
+  };
+  const requestResume = (batch: InProgressBatch) => {
+    if (hasUnsavedProRecipeChanges()) {
+      setPendingResume(batch);
+      return;
+    }
+    void resume(batch);
+  };
+
+  const batches = inProgress.batches;
+  const historyCount =
+    history.state === 'loading' ? '…' : history.total > 0 ? c.historyJumpCount(history.total) : '';
+
+  return (
+    <div
+      className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,26rem)] lg:items-start lg:gap-10"
+      data-testid="production-batches"
+    >
+      <div className="min-w-0">
+        <button
+          type="button"
+          onClick={jumpToHistory}
+          aria-controls="production-history"
+          className="pro-focus-ring flex min-h-12 w-full items-center justify-between gap-3 border-b border-[var(--g-line)] py-3 text-left lg:hidden"
+          data-testid="production-history-jump"
+        >
+          <span className="text-[15px] text-ink">{c.historyJump}</span>
+          <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-[var(--g-text-secondary)]">
+            <span className="truncate">{historyCount}</span>
+            <ChevronDown />
+          </span>
+        </button>
+
+        <section
+          className="pt-6 lg:pt-0"
+          aria-label={c.regionLabel}
+          data-testid="production-current"
+        >
+          {completedNow ? (
+            <div className="mb-6" data-testid="production-completed-now">
+              <p className={EYEBROW}>{c.completedNow}</p>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-[var(--g-line)] bg-white px-4 py-3.5">
+                <div className="min-w-0">
+                  <strong className="block truncate text-[15px] font-semibold text-ink">
+                    {completedNow.source.recipeName}
+                  </strong>
+                  <span className="text-xs text-[var(--g-text-secondary)]">
+                    {c.completedNowMeta(
+                      completedNow.source.recipeVersionNumber,
+                      formatDateTime(completedNow.completionSnapshot?.productionCompletedAt ?? ''),
+                    )}
+                  </span>
+                </div>
+                <Link
+                  to={`/labels?run=${encodeURIComponent(completedNow.sessionId)}`}
+                  state={{
+                    labelSettingsReturn: labelSettingsReturn('/production', '', 0, {
+                      origin: 'current-run',
+                    }),
+                  }}
+                  className={buttonClasses('ghost', 'sm')}
+                >
+                  {c.completedNowLabel}
+                </Link>
+              </div>
+            </div>
+          ) : null}
+
+          {batches.length > 0 ? (
+            <div data-testid="production-in-progress">
+              <p className={EYEBROW}>{c.inProgress}</p>
+              {inProgress.state === 'local-only' ? (
+                <p className="mt-2 text-xs text-[var(--g-text-secondary)]" role="status">
+                  {c.inProgressLocalOnly}
+                </p>
+              ) : null}
+              <ul className="mt-2 space-y-2">
+                {batches.map((batch, index) => (
+                  <li
+                    key={batch.runId}
+                    className="rounded-[12px] border border-[var(--g-line)] bg-white px-4 py-3.5"
+                    data-in-progress-run-id={batch.runId}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <strong className="block truncate text-[15px] font-semibold text-ink">
+                          {batch.recipeName ?? c.inProgressUnnamed}
+                        </strong>
+                        <span className="text-xs text-[var(--g-text-secondary)]">
+                          {c.inProgressMeta(
+                            batch.recipeVersionNumber,
+                            batch.plannedBatchG === null
+                              ? '—'
+                              : wholeGrams.format(batch.plannedBatchG),
+                            formatDateTime(batch.startedAt),
+                          )}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className={buttonClasses(index === 0 ? 'primary' : 'ghost', 'sm')}
+                        disabled={resuming !== null}
+                        onClick={() => requestResume(batch)}
+                        data-testid="production-resume-run"
+                      >
+                        {resuming === batch.runId ? c.resuming : c.resume}
+                      </button>
+                    </div>
+                    {resumeError?.runId === batch.runId ? (
+                      <p className="mt-3 text-sm text-status-error" role="alert">
+                        {resumeError.message}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : inProgress.state === 'loading' ? (
+            <p className="text-sm text-[var(--g-text-secondary)]" role="status">
+              {c.inProgressChecking}
+            </p>
+          ) : (
+            <div data-testid="production-empty">
+              <h2 className="text-[17px] font-semibold text-ink">{c.emptyTitle}</h2>
+              <p className="mt-1.5 max-w-xl text-sm text-[var(--g-text-secondary)]">
+                {c.emptyBodyPro}
+              </p>
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--g-line)] pt-4">
+                <span className="text-xs text-[var(--g-text-secondary)]">
+                  <strong className="block text-sm font-semibold text-ink">
+                    {c.emptyDockTitle}
+                  </strong>
+                  {c.emptyDockPro}
+                </span>
+                <Link to="/recipes" className={buttonClasses('primary', 'md')}>
+                  {c.pickRecipe}
+                </Link>
+              </div>
+            </div>
+          )}
+        </section>
+      </div>
+
+      <section
+        id="production-history"
+        ref={historyRef}
+        tabIndex={-1}
+        aria-labelledby="production-history-heading"
+        className="mt-10 scroll-mt-24 border-t border-[var(--g-line)] pt-8 focus:outline-none lg:mt-0 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8"
+        data-testid="production-history"
+      >
+        <h2 id="production-history-heading" className="text-[17px] font-semibold text-ink">
+          {c.historyTitle}
+        </h2>
+        <p className="mt-1 text-xs text-[var(--g-text-secondary)]">{c.historyHelper}</p>
+        {history.state === 'loading' ? (
+          <p className="mt-5 text-sm text-[var(--g-text-secondary)]" role="status">
+            {c.historyLoading}
+          </p>
+        ) : null}
+        {history.state === 'error' ? (
+          <WorkflowNotice
+            className="mt-5"
+            variant="blocking"
+            role="alert"
+            title={c.historyErrorTitle}
+            description={c.historyErrorBody}
+            action={
+              <button
+                type="button"
+                className={buttonClasses('ghost', 'sm')}
+                onClick={history.retry}
+              >
+                {c.retry}
+              </button>
+            }
+          />
+        ) : null}
+        <div className="mt-3">
+          {history.entries.map(({ run, snapshot }) => {
+            // The label list is ONE read for all rows; a run absent from it has no saved label.
+            const versions = history.labelVersionsByRun
+              ? (history.labelVersionsByRun.get(run.runId) ?? 0)
+              : null;
+            const lot = lotCodeForDisplay(
+              snapshot.lotCode ??
+                productionLotCodeForRun(snapshot.sessionId, snapshot.productionCompletedAt),
+            );
+            return (
+              <div
+                key={run.runId}
+                ref={(element) => {
+                  if (element) rowRefs.current.set(run.runId, element);
+                  else rowRefs.current.delete(run.runId);
+                }}
+                tabIndex={-1}
+                className={cn(
+                  'border-b border-[var(--g-line)] py-4 focus:outline-none',
+                  markedRunId === run.runId &&
+                    '-mx-3 rounded-[12px] border-transparent bg-[var(--g-ivory)] px-3',
+                )}
+                data-production-run-id={run.runId}
+                data-focused={markedRunId === run.runId ? 'true' : undefined}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <strong className="block text-[15px] font-semibold text-ink">
+                      {snapshot.source.recipeName}
+                    </strong>
+                    <p className="mt-1 text-xs text-[var(--g-text-secondary)]">
+                      {c.rowWhen(
+                        formatDateTime(snapshot.productionCompletedAt),
+                        snapshot.source.recipeVersionNumber,
+                      )}
+                    </p>
+                    <p
+                      className="mt-0.5 text-xs text-[var(--g-text-secondary)]"
+                      data-testid="production-history-label-status"
+                    >
+                      {versions === null ? c.rowLot(lot) : c.rowLabel(lot, versions)}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className="block font-mono text-base font-semibold text-ink tabular-nums">
+                      {c.rowActual(massFormat.format(snapshot.actualFinalMassG))}
+                    </span>
+                    <span className="text-xs text-[var(--g-text-secondary)]">
+                      {c.rowPlanned(massFormat.format(snapshot.originalBatchTargetG))}
+                    </span>
+                  </div>
+                </div>
+                <Link
+                  to={`/labels?run=${encodeURIComponent(run.runId)}`}
+                  onClick={(event) => openLabel(event, run.runId)}
+                  className={cn(buttonClasses('ghost', 'sm'), 'mt-3')}
+                  data-testid="production-history-open-label"
+                >
+                  {c.openLabel}
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+        {history.state === 'ready' && history.total === 0 && history.entries.length === 0 ? (
+          <EmptyState className="mt-5" title={c.historyEmptyTitle} body={c.historyEmptyBody} />
+        ) : null}
+        {history.state !== 'loading' && history.total > 0 ? (
+          history.readCount < history.total ? (
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                className={buttonClasses('ghost', 'sm')}
+                onClick={history.loadOlder}
+                disabled={history.olderState === 'loading'}
+                data-testid="production-history-more"
+              >
+                {history.olderState === 'loading' ? c.loadingOlder : c.showOlder}
+              </button>
+              <span
+                className="text-xs text-[var(--g-text-secondary)]"
+                data-testid="production-history-shown"
+              >
+                {c.shownOf(history.readCount, history.total)}
+              </span>
+            </div>
+          ) : (
+            <p
+              className="mt-5 text-xs text-[var(--g-text-secondary)]"
+              data-testid="production-history-shown"
+            >
+              {c.allShown(history.total)}
+            </p>
+          )
+        ) : null}
+        {history.olderState === 'error' ? (
+          <p className="mt-3 text-sm text-status-error" role="alert">
+            {c.historyOlderError}
+          </p>
+        ) : null}
+      </section>
+
+      <NewRecipeConfirmationDialog
+        open={pendingResume !== null}
+        title={c.resumeConfirmTitle}
+        description={c.resumeConfirmBody}
+        confirmLabel={c.resume}
+        onCancel={() => setPendingResume(null)}
+        onConfirm={() => {
+          const batch = pendingResume;
+          setPendingResume(null);
+          if (batch) void resume(batch);
+        }}
+      />
+    </div>
+  );
+}
+
+/**
+ * Produkcja → Partie (HOME), Etap 1. HOME has no production history. A HOME
+ * preparation that is already running (the local session of the current HOME
+ * draft) is offered back where it lives; entering this page never creates one.
+ */
+export function HomeBatches() {
+  const ownerUserId = useAuthStore((state) => state.user?.id ?? null);
+  const draftId = useHomeDraftStore((state) => state.draftId);
+  const preparationStarted = useHomeDraftStore((state) => state.preparationStarted);
+  const sessionsById = useProductionSessionStore((state) => state.sessionsById) ?? EMPTY_SESSIONS;
+  const running = preparationStarted
+    ? (Object.values(sessionsById).find(
+        (session) =>
+          session.status === 'in_progress' &&
+          session.ownerUserId === ownerUserId &&
+          session.source.recipeId === draftId,
+      ) ?? null)
+    : null;
+
+  if (running) {
+    return (
+      <section aria-label={c.regionLabel} data-testid="production-current">
+        <p className={EYEBROW}>{c.inProgress}</p>
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-[var(--g-line)] bg-white px-4 py-3.5">
+          <div className="min-w-0">
+            <strong className="block truncate text-[15px] font-semibold text-ink">
+              {running.source.recipeName}
+            </strong>
+            <span className="text-xs text-[var(--g-text-secondary)]">{c.homeRunMeta}</span>
+          </div>
+          <Link to="/home" className={buttonClasses('primary', 'sm')}>
+            {c.homeResume}
+          </Link>
+        </div>
+      </section>
+    );
+  }
+  return (
+    <section aria-label={c.regionLabel} data-testid="production-current">
+      <div data-testid="production-empty">
+        <h2 className="text-[17px] font-semibold text-ink">{c.emptyTitle}</h2>
+        <p className="mt-1.5 max-w-xl text-sm text-[var(--g-text-secondary)]">{c.emptyBodyHome}</p>
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--g-line)] pt-4">
+          <span className="text-xs text-[var(--g-text-secondary)]">
+            <strong className="block text-sm font-semibold text-ink">{c.emptyDockTitle}</strong>
+            {c.emptyDockHome}
+          </span>
+          <Link to="/recipes" className={buttonClasses('primary', 'md')}>
+            {c.pickRecipe}
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
