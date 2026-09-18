@@ -7,11 +7,15 @@ import {
 
 export const ADMIN_OVERVIEW_PATH = '/admin/overview';
 
-export type RoleAwareEntry = 'root' | 'start' | 'home';
+export type RoleAwareEntry = 'root' | 'home';
 type AuthStatus = 'loading' | 'authed' | 'anon';
 
 /**
  * Pure role priority for the three ordinary app entrypoints.
+ *
+ * Owner decision (2026-09-18): `start` is GONE from this union. `/start` is a
+ * redirect into `/home` and no longer an entry of its own, so the type can no
+ * longer express the retired third entrypoint.
  *
  * OWNER SUPERSESSION (HOME Creator V1 §9, 2026-08-30): the public root is now the
  * HOME Creator itself — "opening Gellatti should feel as direct as opening ChatGPT".

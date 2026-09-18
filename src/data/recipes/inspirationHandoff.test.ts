@@ -18,10 +18,10 @@ describe('inspiration → current workbench handoff', () => {
     expect(serialized).not.toMatch(/gram|dose|planned_grams|actual_grams/i);
   });
 
-  it('opens the existing /start recipe flow and round-trips the intent', () => {
+  it('opens the canonical /home recipe flow and round-trips the intent', () => {
     const intent = flavorInspirationStartIntent(entry);
     const href = inspirationStartHref(intent);
-    expect(href.startsWith('/start?')).toBe(true);
+    expect(href.startsWith('/home?')).toBe(true);
     const parsed = parseInspirationStartIntent(new URLSearchParams(href.split('?')[1]));
     expect(parsed).toMatchObject({
       source: 'flavor_inspiration',

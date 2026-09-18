@@ -89,7 +89,7 @@ Base commit: `0a01827` (main). Business timezone: `Europe/Madrid`.
 | A | Audit, architecture, docs, Nicolas handoff | **DONE** |
 | B | Schema migrations (file-first) + entitlement resolver + catalog & env validator + webhook durability design | **DONE (file-first)** — 0014–0021 committed + guard-tested; owner application pending |
 | C | Checkout/portal Edge Function sources + pricing eligibility logic | **DONE (source-level)** — deploy + wiring pending Sandbox |
-| D | 15-month benefit + conversion state machine (pure) | **DONE (pure logic)** — schedule orchestration invariants + conversion machine tested; Stripe execution pending Sandbox |
+| D | 15-month benefit + conversion state machine (pure) | **DONE (pure logic)** — schedule orchestration invariants + conversion machine tested; monthly→annual CREDIT AUTHORITY decided 2026-09-18 (`MONTHLY_CREDIT_POLICY = 'full_current_period'`, see `MONTHLY_TO_ANNUAL_CONVERSION_CONTRACT.md`); Stripe execution pending Sandbox |
 | E | Partner platform UI/admin | NOT STARTED (next slice; foundations ready) |
 | F | Commission engine + tiers + hold | **DONE (pure logic)** — v1 rates/tiers/hold/netting fully tested; wiring to webhook dispatch pending |
 | G | Connect onboarding + payout batch | Logic DONE; onboarding-link source DONE; batch worker + transfers pending Sandbox |
