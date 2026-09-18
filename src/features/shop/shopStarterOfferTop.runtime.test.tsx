@@ -33,11 +33,15 @@ const BUNDLE: ShopProduct = {
   imageUrl: null,
   availability: 'in_stock',
   leadTimeWeeks: null,
+  /* The packed contents as the catalogue delivers them: `packSizeG` is the
+     PACKED amount, not the retail SKU size. Seven of them, 1 125 g in total —
+     the real Starter Pack's own numbers. */
   contents: Array.from({ length: 7 }, (_, index) => ({
     sku: `GEL-${index}`,
     title: `Składnik ${index}`,
-    grams: 100,
-  })) as ShopProduct['contents'],
+    packSizeG: 500,
+    quantity: 1,
+  })),
   contentsTotalG: 1125,
   allergens: [],
 };
