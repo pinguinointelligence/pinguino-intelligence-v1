@@ -199,6 +199,22 @@ describe('a picked product waits in the panel, then as „0 g · Wpisz ilość�
     expect(props.onConfirmPending).toHaveBeenCalledWith(BANANA.key, 40);
   });
 
+  it('several products picked at once open one at a time, each once', () => {
+    const KIWI: HomePendingAmount = { ...BANANA, key: 'PI-ING-KIWI', name: 'KIWI · Fresh Fruit' };
+    renderSection({
+      pendingAmounts: [BANANA, KIWI],
+      onConfirmPending: vi.fn(),
+      onRemovePending: vi.fn(),
+    });
+    expect(q('home-panel-name')?.textContent).toBe('BANANA');
+    click('home-panel-done');
+    expect(q('home-panel-name')?.textContent).toBe('KIWI');
+    click('home-panel-done');
+    // Both wait as 5B rows now; nothing reopens by itself.
+    expect(q('home-ingredient-panel')).toBeNull();
+    expect(q(`home-enter-amount-${KIWI.key}`)).not.toBeNull();
+  });
+
   it('„Usuń” removes the waiting product through the page', () => {
     const props = renderSection({
       pendingAmounts: [BANANA],

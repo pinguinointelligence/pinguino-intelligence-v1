@@ -338,15 +338,24 @@ export function HomeRecipeSection({
   /* IV-C: a product just picked opens the panel at once, instead of „Ile chcesz dodać?”.
      Each waiting product opens once; closing it without an amount leaves its 5B row and
      the black „Ilość” to come back to it. */
-  const firstPendingKey = pendingAmounts[0]?.key ?? null;
   const openedPending = useRef<Set<string>>(new Set());
-  useEffect(() => {
-    if (firstPendingKey === null || openedPending.current.has(firstPendingKey)) return;
-    openedPending.current.add(firstPendingKey);
-    setEditor({ kind: 'pending', key: firstPendingKey });
-  }, [firstPendingKey]);
-
+  const pendingKeys = pendingAmounts.map((entry) => entry.key).join('|');
   const editorOpen = editor !== null;
+  useEffect(() => {
+    const waiting = pendingKeys.split('|').filter(Boolean);
+    // A product that left the queue (added or removed) opens again if it is picked again.
+    for (const key of openedPending.current) {
+      if (!waiting.includes(key)) openedPending.current.delete(key);
+    }
+    // One panel at a time: the next product that has not been shown yet opens as soon as
+    // nothing else is open.
+    if (editorOpen) return;
+    const next = waiting.find((key) => !openedPending.current.has(key));
+    if (next === undefined) return;
+    openedPending.current.add(next);
+    setEditor({ kind: 'pending', key: next });
+  }, [pendingKeys, editorOpen]);
+
   useEffect(() => {
     onEditorOpenChange?.(editorOpen);
   }, [editorOpen, onEditorOpenChange]);
