@@ -300,6 +300,8 @@ describe('shop C3 · the Shop declares no header of its own', () => {
     expect(page).not.toContain('<HomeProSwitch');
     // The basket is a Shop utility BELOW that row, never a header control.
     expect(page).toContain('shop-cart-link');
+    // …and a 44 px touch target.
+    expect(page).toMatch(/className="[^"]*\bmin-h-11\b[^"]*"\s*data-testid="shop-cart-link"/);
     const surface = read('components', 'shared', 'DestinationSurface.tsx');
     expect(surface).toContain('<AppShell');
     const shell = read('features', 'shell', 'AppShell.tsx');

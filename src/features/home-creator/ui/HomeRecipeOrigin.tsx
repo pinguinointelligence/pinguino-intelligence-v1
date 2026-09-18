@@ -17,7 +17,7 @@ import { homeCreatorCopy } from '../homeCreatorCopy';
 /** The same horizontal frame as every HOME section. */
 const FRAME = 'mx-auto w-full max-w-[560px] px-5 sm:px-6 lg:max-w-[720px]';
 const PILL =
-  'inline-flex min-h-[40px] items-center rounded-full border px-4 text-[13px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
+  'inline-flex min-h-[44px] items-center rounded-full border px-4 text-[13px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40';
 
 export function HomeRecipeSources() {
   const c = homeCreatorCopy.sources;

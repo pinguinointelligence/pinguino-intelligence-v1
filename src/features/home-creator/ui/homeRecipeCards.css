@@ -144,6 +144,11 @@
   width: 15px;
   height: 15px;
 }
+/* Nowhere to go that way: the arrow says so instead of doing nothing. */
+.home-rnav button:disabled {
+  color: #c9c4bb;
+  cursor: default;
+}
 
 /* ── the suggestions layer (VIII) ───────────────────────────────────────────── */
 .home-sugg-hd {
@@ -266,6 +271,11 @@
   }
   .home-sugg-body .home-rcard {
     flex-basis: 236px;
+  }
+  /* The body bleeds to the dialog edge for the carousel; its text lines keep the gutter. */
+  .home-sugg-also,
+  .home-sugg-note {
+    padding: 0 24px;
   }
   .home-rcard-img {
     border-radius: 16px;
