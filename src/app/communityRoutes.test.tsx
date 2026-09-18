@@ -21,7 +21,7 @@ import {
 /** The Community subset of the route table, in declaration order. */
 const ROUTES: RouteObject[] = [
   { path: '/', id: 'landing' },
-  { path: '/start', id: 'start' },
+  { path: '/home', id: 'home' },
   { path: '/community', id: 'community' },
   { path: '/top100', id: 'top100' },
   { path: '/:handle', id: 'creator' },
@@ -74,7 +74,7 @@ describe('a handle can never capture an application route', () => {
   it('leaves every existing route matching its own page', () => {
     for (const [pathname, expected] of [
       ['/', 'landing'],
-      ['/start', 'start'],
+      ['/home', 'home'],
       ['/recipes', 'recipes'],
       ['/pro', 'pro'],
       ['/pro/recipe', 'pro-section'],

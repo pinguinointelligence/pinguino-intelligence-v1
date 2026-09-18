@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { Navigate } from 'react-router';
-import { CustomerShellV1 } from '@/features/customer-shell/CustomerShellV1';
 import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { useHomeViewStore } from '@/features/home-creator/homeViewStore';
 import { readDefaultExperience } from '@/services/accountExperience';
@@ -14,8 +13,12 @@ import { roleAwareEntryDestination, type RoleAwareEntry } from './roleAwareEntry
  * inspected. Admin wins because an Admin must not pass through Home onboarding.
  *
  * OWNER SUPERSESSION (HOME Creator V1 §9): the public root renders the HOME CREATOR,
- * not a marketing landing page. `/start` keeps serving the existing customer shell so
- * older links and bookmarks retain their meaning.
+ * not a marketing landing page.
+ *
+ * Owner decision (2026-09-18): `/start` no longer serves the older customer shell —
+ * it redirects into `/home`, so BOTH entries here render the HOME Creator and
+ * `CustomerShellV1` is detached from routing entirely. Older links keep their
+ * meaning through the redirect, not through a second product.
  */
 export function RoleAwareEntryRoute({ entry }: { entry: RoleAwareEntry }) {
   const authStatus = useAuthStore((state) => state.status);
@@ -49,6 +52,6 @@ export function RoleAwareEntryRoute({ entry }: { entry: RoleAwareEntry }) {
     defaultExperience,
   });
   if (destination) return <Navigate to={destination} replace />;
-  // §9: the root and `/home` are the creator; `/start` remains the legacy shell.
-  return entry === 'start' ? <CustomerShellV1 /> : <HomeCreatorPage />;
+  // §9: the root and `/home` are the creator. There is no third rendering.
+  return <HomeCreatorPage />;
 }
