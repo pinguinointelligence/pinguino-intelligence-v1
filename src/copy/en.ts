@@ -353,8 +353,8 @@ export const copy = {
       howItWorks: 'Dlaczego to działa?',
       shop: 'Sklep',
       plans: 'Plany',
-      homeWorkspace: 'Gellatti Home',
-      proWorkspace: 'Gellatti Pro',
+      homeWorkspace: 'Home',
+      proWorkspace: 'Pro',
       recipes: 'Receptury',
       production: 'Produkcja',
       labels: 'Ustawienia etykiety',
@@ -366,6 +366,7 @@ export const copy = {
       workWithUs: 'Współpraca',
       affiliate: 'Affiliate',
       franchise: 'Franchise',
+      help: 'Pomoc',
     },
     account: {
       settings: 'Konto i ustawienia',
@@ -557,6 +558,10 @@ export const copy = {
   },
   /** Gellatti Pro sticky top workbar — primary actions always visible. */
   proWorkbar: {
+    /* DESIGN V3.0 Version 10 §H1b — the ONE name for the action PRO called „+ Nowa receptura".
+       A RENAME: test users inside recipe creation could not tell what „Nowa receptura" meant,
+       and „Reset" they read correctly at once. The behaviour behind it is unchanged. */
+    reset: 'Reset',
     nameLabel: 'Nazwa receptury',
     namePlaceholder: 'Np. Pistachio Dream',
     saveNew: 'Zapisz recepturę',

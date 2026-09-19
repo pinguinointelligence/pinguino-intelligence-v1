@@ -30,6 +30,8 @@ import { productionSourceForRecipe } from '@/features/production-workspace/usePr
 import { useProductionHistoryPages } from './useProductionHistoryPages';
 import { useInProgressRuns, type InProgressBatch } from './useInProgressRuns';
 import { resumeProductionRun, type ResumeProductionRunFailure } from './resumeProductionRun';
+import { openDurableRun } from './openDurableRun';
+import type { DurableRunContext } from '@/features/production-workspace/useProductionWorkspace';
 
 const c = productionBatchesLabelsCopy.batches;
 const EMPTY_SESSIONS: Record<string, ProductionSession> = {};
@@ -121,12 +123,20 @@ export function ProductionBatches({ canViewHistory = true }: { canViewHistory?: 
   const completedNow =
     projected?.status === 'completed' && projected.ownerUserId === ownerUserId ? projected : null;
   /**
-   * The batch this device already has active — Produkcja v3 Etap 2: „Partie" hosts the
-   * process itself for it, through the ONE durable host. Mounting is conditional on the
-   * session ALREADY existing, so arriving at „Partie" never starts a batch.
+   * Produkcja v3 Etap 2 — „Partie" hosts the process itself, RUN-CENTRIC.
+   *
+   * The opened batch lives in the ADDRESS (`?run=`), and its context is built from the
+   * durable run and its immutable recipe version. It is deliberately NOT read from
+   * `productionSessionStore.session`: that projection belongs to the workbench and is not
+   * persisted, so a refresh would lose the batch — which is exactly how the first
+   * attempt at this died. Opening a batch here never writes the recipe editor.
    */
-  const runningNow =
-    projected?.status === 'in_progress' && projected.ownerUserId === ownerUserId ? projected : null;
+  const openedRunId = params.get('run');
+  const [openedRun, setOpenedRun] = useState<{
+    runId: string;
+    context: DurableRunContext | null;
+    error: 'failed' | null;
+  } | null>(null);
 
   const historyRef = useRef<HTMLElement>(null);
   const rowRefs = useRef(new Map<string, HTMLDivElement>());
@@ -212,6 +222,61 @@ export function ProductionBatches({ canViewHistory = true }: { canViewHistory?: 
     }
     navigate(result.to);
   };
+  const openBatch = (runId: string) =>
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set('run', runId);
+      return next;
+    });
+  const closeBatch = useCallback(
+    () =>
+      setParams((current) => {
+        const next = new URLSearchParams(current);
+        next.delete('run');
+        return next;
+      }),
+    [setParams],
+  );
+
+  /* „Kontynuuj partię": the address names the run, the run names its own recipe version.
+     Nothing of the open recipe is read or written on this path. */
+  const loadingRunRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (openedRunId === null) {
+      loadingRunRef.current = null;
+      return;
+    }
+    if (loadingRunRef.current === openedRunId) return;
+    // The list is refetched while the run loads, so this effect re-runs mid-flight. It
+    // must NOT cancel the request it already started: the ref is what prevents a second
+    // one, and a result that arrives for a run the address no longer names is discarded
+    // below by `shownRun` rather than by aborting the one in progress.
+    const batch = inProgress.batches.find((candidate) => candidate.runId === openedRunId) ?? null;
+    if (!batch) {
+      /* The batch this address names is not in progress any more — the usual way there is
+         finishing it, which is a success, not an error. Waiting for a run that will never
+         come back would strand „Wczytujemy partię…" on screen, so Partie returns to its
+         list, where the finished batch is now the top row of the history. */
+      if (inProgress.state !== 'loading') closeBatch();
+      return;
+    }
+    if (!ownerUserId || !productionRepository) return;
+    loadingRunRef.current = openedRunId;
+    void openDurableRun({ run: batch, ownerUserId, repository: productionRepository }).then(
+      (result) => {
+        setOpenedRun({
+          runId: openedRunId,
+          context: result.ok ? result.context : null,
+          error: result.ok ? null : 'failed',
+        });
+      },
+    );
+  }, [closeBatch, inProgress.batches, inProgress.state, openedRunId, ownerUserId, productionRepository]);
+
+  // The state is only trusted for the run the address currently names.
+  const shownRun = openedRun?.runId === openedRunId ? openedRun : null;
+
+
   const requestResume = (batch: InProgressBatch) => {
     if (hasUnsavedProRecipeChanges()) {
       setPendingResume(batch);
@@ -220,8 +285,7 @@ export function ProductionBatches({ canViewHistory = true }: { canViewHistory?: 
     void resume(batch);
   };
 
-  // The active batch is shown as the process above, never also as a row to resume.
-  const batches = inProgress.batches.filter((batch) => batch.runId !== runningNow?.sessionId);
+  const batches = inProgress.batches;
   const historyCount =
     history.state === 'loading' ? '…' : history.total > 0 ? c.historyJumpCount(history.total) : '';
 
@@ -256,16 +320,35 @@ export function ProductionBatches({ canViewHistory = true }: { canViewHistory?: 
           aria-label={c.regionLabel}
           data-testid="production-current"
         >
-          {runningNow ? (
-            <div className="mb-8" data-testid="production-running-now">
-              <ProductionProcessHost
-                name={runningNow.source.recipeName ?? c.inProgressUnnamed}
-                back={null}
-                testId="production-batches"
-              />
+          {openedRunId !== null ? (
+            <div data-testid="production-opened-run">
+              <button
+                type="button"
+                onClick={closeBatch}
+                className="pro-focus-ring mb-4 inline-flex min-h-11 items-center text-[15px] font-semibold text-ink"
+                data-testid="production-opened-run-back"
+              >
+                {c.continueBack}
+              </button>
+              {shownRun?.error != null ? (
+                <p className="text-sm text-status-error" role="alert">
+                  {c.continueFailed}
+                </p>
+              ) : shownRun?.context == null ? (
+                <p className="text-sm text-[var(--g-text-secondary)]" role="status">
+                  {c.continuing}
+                </p>
+              ) : (
+                <ProductionProcessHost
+                  name={shownRun.context.source.recipeName}
+                  runContext={shownRun.context}
+                  back={null}
+                  testId="production-batches"
+                />
+              )}
             </div>
-          ) : null}
-
+          ) : (
+            <>
           {completedNow ? (
             <div className="mb-6" data-testid="production-completed-now">
               <p className={EYEBROW}>{c.completedNow}</p>
@@ -326,15 +409,27 @@ export function ProductionBatches({ canViewHistory = true }: { canViewHistory?: 
                           )}
                         </span>
                       </div>
-                      <button
-                        type="button"
-                        className={buttonClasses(index === 0 ? 'primary' : 'ghost', 'sm')}
-                        disabled={resuming !== null}
-                        onClick={() => requestResume(batch)}
-                        data-testid="production-resume-run"
-                      >
-                        {resuming === batch.runId ? c.resuming : c.resume}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* The batch itself: no editor context is replaced, so no gate. */}
+                        <button
+                          type="button"
+                          className={buttonClasses(index === 0 ? 'primary' : 'ghost', 'sm')}
+                          onClick={() => openBatch(batch.runId)}
+                          data-testid="production-continue-run"
+                        >
+                          {c.continueBatch}
+                        </button>
+                        {/* The recipe: this one DOES replace it, so it keeps its gate. */}
+                        <button
+                          type="button"
+                          className={buttonClasses('ghost', 'sm')}
+                          disabled={resuming !== null}
+                          onClick={() => requestResume(batch)}
+                          data-testid="production-resume-run"
+                        >
+                          {resuming === batch.runId ? c.resuming : c.resume}
+                        </button>
+                      </div>
                     </div>
                     {resumeError?.runId === batch.runId ? (
                       <p className="mt-3 text-sm text-status-error" role="alert">
@@ -367,6 +462,8 @@ export function ProductionBatches({ canViewHistory = true }: { canViewHistory?: 
                 </Link>
               </div>
             </div>
+          )}
+            </>
           )}
         </section>
       </div>

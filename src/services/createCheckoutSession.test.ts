@@ -205,6 +205,17 @@ describe('Deno entrypoint — source pins', () => {
     );
   });
 
+  it('the conflict check reads BOTH caches — the legacy v1 mirror and the live webhook\'s customer_subscriptions', () => {
+    // Account → Plan i rozliczenia: a live plan is changed on the EXISTING
+    // subscription; Checkout must never sell a second one. An expired plan
+    // (canceled) is not a conflict — renewing after expiry IS a new Checkout.
+    expect(/\.from\('subscriptions'\)/.test(indexSource)).toBe(true);
+    expect(/\.from\('customer_subscriptions'\)/.test(indexSource)).toBe(true);
+    expect(indexSource.indexOf(".from('customer_subscriptions')")).toBeLessThan(
+      indexSource.indexOf('stripe.checkout.sessions.create'),
+    );
+  });
+
   it('passes the deterministic idempotency key to the Stripe call', () => {
     expect(/idempotencyKey: buildCheckoutIdempotencyKey/.test(indexSource)).toBe(true);
   });

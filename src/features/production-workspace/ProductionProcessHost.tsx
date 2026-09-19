@@ -11,7 +11,11 @@ import { DialogShell } from '@/components/ui/DialogShell';
 import { ProductionProcess } from './process/ProductionProcess';
 import type { ProcessSheetFrame } from './process/ProductionProcessSheets';
 import type { ProductionProcessController } from './process/productionProcessSteps';
-import { useProductionWorkspace, type ProductionWorkspaceView } from './useProductionWorkspace';
+import {
+  useProductionWorkspace,
+  type DurableRunContext,
+  type ProductionWorkspaceView,
+} from './useProductionWorkspace';
 import { useDurableProductionProcess } from './useDurableProductionProcess';
 
 /**
@@ -23,12 +27,17 @@ import { useDurableProductionProcess } from './useDurableProductionProcess';
  * exactly one place at a time; `productionWorkspaceSingleHost.test.ts` proves no feature
  * calls `useProductionWorkspace` around this module and grows a second one.
  */
-export function useProductionHost(enabled: boolean): ProductionWorkspaceView {
-  return useProductionWorkspace(enabled);
+export function useProductionHost(
+  enabled: boolean,
+  /** The durable run to open, when the host is not the recipe editor's own tab. */
+  runContext?: DurableRunContext | null,
+): ProductionWorkspaceView {
+  return useProductionWorkspace(enabled, runContext);
 }
 
 export function ProductionProcessHost({
   name,
+  runContext = null,
   back,
   hostAction,
   sheetFrame = ProcessLayer,
@@ -39,6 +48,12 @@ export function ProductionProcessHost({
 }: {
   /** The run's recipe name — the host's frame already knows it (the „W toku" row). */
   name: string;
+  /**
+   * The durable run this host opens. Given, the batch is read from the run and its
+   * immutable recipe version: the open recipe and its unsaved draft are never touched.
+   * Omitted, the host follows the recipe the editor has open (the Produkcja tab).
+   */
+  runContext?: DurableRunContext | null;
   /** The host's way back, above the eyebrow. */
   back: ReactNode;
   /** The host's action beside „Coś poszło nie tak?". */
@@ -74,7 +89,7 @@ export function ProductionProcessHost({
   };
   testId: string;
 }) {
-  const production = useProductionHost(true);
+  const production = useProductionHost(true, runContext);
   const [doneStepIds, setDoneStepIds] = useState<{ sessionId: string; ids: string[] } | null>(null);
   const sessionId = production.session?.sessionId ?? null;
   const controller = useDurableProductionProcess(production, {

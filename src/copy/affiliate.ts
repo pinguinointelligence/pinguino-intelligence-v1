@@ -208,7 +208,10 @@ export const affiliateCopyPl: AffiliateCopy = {
     moreInformation: 'Uzupełnij zgłoszenie',
     approved: 'Otwórz Panel Affiliate',
     rejected: 'Zobacz szczegóły',
-    secondary: 'Jak to działa',
+    /* DESIGN V11 (owner 2026-09-19): the hero's second action promised „Jak to
+       działa" and landed on a section headed „Jak działa wynagrodzenie". The
+       label now names the destination it actually reaches. */
+    secondary: 'Jak działa wynagrodzenie',
   },
   state: {
     checking: 'Sprawdzamy status Twojego konta…',
@@ -228,8 +231,14 @@ export const affiliateCopyPl: AffiliateCopy = {
     title: 'Polecasz Gellatti. Twoi odbiorcy korzystają. Ty zarabiasz.',
     body: 'Wynagrodzenie nie kończy się na pierwszej płatności. Dopóki polecona osoba korzysta z Gellatti, każde opłacone odnowienie liczy się dla Ciebie.',
     steps: [
-      { title: 'Ktoś korzysta z polecenia', body: 'Przychodzi przez Twój link albo podaje Twój kod.' },
-      { title: 'Zostaje z Gellatti', body: 'Od pierwszej opłaconej płatności jest przypisany do Twojego polecenia.' },
+      {
+        title: 'Ktoś korzysta z polecenia',
+        body: 'Przychodzi przez Twój link albo podaje Twój kod.',
+      },
+      {
+        title: 'Zostaje z Gellatti',
+        body: 'Od pierwszej opłaconej płatności jest przypisany do Twojego polecenia.',
+      },
       { title: 'Odnawia plan', body: 'Przedłuża subskrypcję na kolejny okres.' },
       { title: 'Ty znów otrzymujesz wynagrodzenie', body: 'Za to odnowienie i za każde następne.' },
     ],
@@ -298,12 +307,12 @@ export const affiliateCopyPl: AffiliateCopy = {
         body: 'Pokazujesz rozwiązania, które inspirują, ułatwiają pracę albo pomagają tworzyć lepsze lody.',
       },
       {
-        title: 'Profesjonaliści i edukatorzy',
-        body: 'Pracujesz w branży lub uczysz innych? Polecaj narzędzie, które rozwiązuje realne problemy w codziennej pracy.',
-      },
-      {
         title: 'Media i społeczności',
         body: 'Prowadzisz grupę, newsletter, podcast lub portal? Dziel się Gellatti tam, gdzie Twoi odbiorcy szukają praktycznych odpowiedzi.',
+      },
+      {
+        title: 'Profesjonaliści i edukatorzy',
+        body: 'Pracujesz w branży lub uczysz innych? Polecaj narzędzie, które rozwiązuje realne problemy w codziennej pracy.',
       },
     ],
   },
@@ -383,7 +392,7 @@ export const affiliateCopyEn: AffiliateCopy = {
     moreInformation: 'Complete your application',
     approved: 'Open Affiliate Panel',
     rejected: 'See details',
-    secondary: 'How it works',
+    secondary: 'How commission works',
   },
   state: {
     checking: 'Checking your account status…',
@@ -411,15 +420,23 @@ export const affiliateCopyEn: AffiliateCopy = {
     ],
     honest: 'A failed, refunded or unpaid payment creates no commission.',
   },
+  /* DESIGN V11 (owner 2026-09-19): ONE offer, stated the same way in every
+     language. English used to advertise „15 months for the price of 12" beside
+     a „15" figure while Polish advertised 3 extra months beside a „3" — the
+     same deal described as two different numbers, which reads as two different
+     products to anyone who sees both. The figure is the EXTRA, because that is
+     what the partner is giving away and what V11 puts in the band. */
   customerBenefit: {
-    figure: '15',
+    figure: '3',
     figureUnit: 'months',
-    badge: 'BONUS!',
-    title: 'The customer gains too.',
-    bodyTemplate: 'Anyone who buys an annual plan through your link or code gets {emphasis}. The price does not change.',
-    emphasis: '15 months for the price of 12',
-    shortBody: 'That is what anyone choosing an annual Gellatti plan through your link or code receives.',
-    monthlyNote: 'Monthly plans do not carry the bonus.',
+    badge: 'FREE!',
+    title: 'Give your audience something extra.',
+    bodyTemplate:
+      'Anyone who buys an annual Gellatti plan through your link or code gets {emphasis}. The price does not change.',
+    emphasis: '3 extra months at no charge',
+    shortBody:
+      'That is what anyone choosing an annual Gellatti plan through your link or code receives.',
+    monthlyNote: 'Applies to annual plans.',
   },
   rates: {
     eyebrow: 'Rates',
@@ -473,12 +490,12 @@ export const affiliateCopyEn: AffiliateCopy = {
         body: 'You run a channel, a profile or a newsletter about food, ice cream or cooking.',
       },
       {
-        title: 'Professionals',
-        body: 'You teach, advise, or work with gelaterias and patisseries.',
-      },
-      {
         title: 'Communities and media',
         body: 'You have a group, a forum or a publication that trusts your recommendations.',
+      },
+      {
+        title: 'Professionals',
+        body: 'You teach, advise, or work with gelaterias and patisseries.',
       },
     ],
   },

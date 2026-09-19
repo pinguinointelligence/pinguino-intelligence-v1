@@ -1,0 +1,268 @@
+{
+ "note": "saveGate = practicalRecipeAuditMatchesInput(buildRecipeInput(state), state.practicalRecipeAudit) — the exact predicate useCanonicalRecipeSave.ts:137/:292 uses to decide whether a draft may be saved as verified.",
+ "A": {
+  "outcome": "decision",
+  "dialog": "DirectionFallbackDecision: „Nie da się osiągnąć poziomu -1” / „Najbliższy możliwy poziom to 0.”",
+  "accepted": true,
+  "gate": {
+   "step": "after-ustaw-0",
+   "practicalRecipeAuditPresent": true,
+   "auditMatchesInput": true,
+   "sum": 1340,
+   "target": 1340,
+   "wholeGrams": true,
+   "items": [
+    [
+     "MILK · 3.5% FAT · Chille",
+     381,
+     "unlocked"
+    ],
+    [
+     "CREAM 30% · Mlekovita Cr",
+     175,
+     "unlocked"
+    ],
+    [
+     "SKIMMED MILK POWDER · 0.",
+     102,
+     "unlocked"
+    ],
+    [
+     "SUCROSE SUGAR · Sweetene",
+     107,
+     "unlocked"
+    ],
+    [
+     "DEXTROSE MONOHYDRATE · S",
+     64,
+     "unlocked"
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4,
+     "unlocked"
+    ],
+    [
+     "STRAWBERRIES · Fresh Fru",
+     507,
+     "grams"
+    ]
+   ],
+   "direction": {
+    "sweetness": 0,
+    "softness": 0,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "pod": 14.980394029850746,
+   "npac": 39.044036159143815,
+   "ice": 48.120184054237086,
+   "violations": [],
+   "directionReached": true,
+   "scores": {
+    "technical": 92.5,
+    "flavor": 70,
+    "cost": null,
+    "overall": 82
+   },
+   "dirty": true
+  }
+ },
+ "B": {
+  "outcome": "applied",
+  "dialog": "refusal/other",
+  "gate": {
+   "step": "after-second-tap-minus1",
+   "practicalRecipeAuditPresent": true,
+   "auditMatchesInput": true,
+   "sum": 1340,
+   "target": 1340,
+   "wholeGrams": true,
+   "items": [
+    [
+     "MILK · 3.5% FAT · Chille",
+     365,
+     "unlocked"
+    ],
+    [
+     "CREAM 30% · Mlekovita Cr",
+     200,
+     "unlocked"
+    ],
+    [
+     "SKIMMED MILK POWDER · 0.",
+     102,
+     "unlocked"
+    ],
+    [
+     "SUCROSE SUGAR · Sweetene",
+     82,
+     "unlocked"
+    ],
+    [
+     "DEXTROSE MONOHYDRATE · S",
+     80,
+     "unlocked"
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4,
+     "unlocked"
+    ],
+    [
+     "STRAWBERRIES · Fresh Fru",
+     507,
+     "grams"
+    ]
+   ],
+   "direction": {
+    "sweetness": -1,
+    "softness": 0,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "pod": 13.983355223880597,
+   "npac": 39.19758917443431,
+   "ice": 47.958100315874894,
+   "violations": [],
+   "directionReached": true,
+   "scores": {
+    "technical": 92.5,
+    "flavor": 70,
+    "cost": null,
+    "overall": 82
+   },
+   "dirty": true
+  }
+ },
+ "C": {
+  "witnessBeforeRecalc": {
+   "step": "witness-raw-before-recalc",
+   "practicalRecipeAuditPresent": false,
+   "auditMatchesInput": false,
+   "sum": 1340,
+   "target": 1340,
+   "wholeGrams": true,
+   "items": [
+    [
+     "MILK · 3.5% FAT · Chille",
+     348,
+     "unlocked"
+    ],
+    [
+     "CREAM 30% · Mlekovita Cr",
+     229,
+     "unlocked"
+    ],
+    [
+     "SKIMMED MILK POWDER · 0.",
+     98,
+     "unlocked"
+    ],
+    [
+     "SUCROSE SUGAR · Sweetene",
+     90,
+     "unlocked"
+    ],
+    [
+     "DEXTROSE MONOHYDRATE · S",
+     64,
+     "unlocked"
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4,
+     "unlocked"
+    ],
+    [
+     "STRAWBERRIES · Fresh Fru",
+     507,
+     "grams"
+    ]
+   ],
+   "direction": {
+    "sweetness": -1,
+    "softness": 0,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "pod": 13.68949253731343,
+   "npac": 36.727510022585065,
+   "ice": 50.56540608727132,
+   "violations": [],
+   "directionReached": false,
+   "scores": {
+    "technical": 94.16666666666667,
+    "flavor": 70,
+    "cost": null,
+    "overall": 82.8888888888889
+   },
+   "dirty": true
+  },
+  "outcome": "applied",
+  "dialog": "refusal/other",
+  "gate": {
+   "step": "after-witness-recalc",
+   "practicalRecipeAuditPresent": true,
+   "auditMatchesInput": true,
+   "sum": 1340,
+   "target": 1340,
+   "wholeGrams": true,
+   "items": [
+    [
+     "MILK · 3.5% FAT · Chille",
+     340,
+     "unlocked"
+    ],
+    [
+     "CREAM 30% · Mlekovita Cr",
+     229,
+     "unlocked"
+    ],
+    [
+     "SKIMMED MILK POWDER · 0.",
+     98,
+     "unlocked"
+    ],
+    [
+     "SUCROSE SUGAR · Sweetene",
+     82,
+     "unlocked"
+    ],
+    [
+     "DEXTROSE MONOHYDRATE · S",
+     80,
+     "unlocked"
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4,
+     "unlocked"
+    ],
+    [
+     "STRAWBERRIES · Fresh Fru",
+     507,
+     "grams"
+    ]
+   ],
+   "direction": {
+    "sweetness": -1,
+    "softness": 0,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "pod": 13.956047761194029,
+   "npac": 39.06961608742041,
+   "ice": 48.09318301883401,
+   "violations": [],
+   "directionReached": true,
+   "scores": {
+    "technical": 94.16666666666667,
+    "flavor": 70,
+    "cost": null,
+    "overall": 82.8888888888889
+   },
+   "dirty": true
+  }
+ }
+}

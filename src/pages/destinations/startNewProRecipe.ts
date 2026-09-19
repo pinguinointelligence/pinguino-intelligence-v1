@@ -59,6 +59,23 @@ export function startNewProRecipe(requestedVisible?: VisibleProductType): void {
 }
 
 /**
+ * DESIGN V3.0 Version 10 §H1b — „Reset".
+ *
+ * OWNER CORRECTION 19.09.2026: this is a RENAME, not a new function. PRO's „+ Nowa receptura"
+ * confused test users who were already inside recipe creation and could not tell what it meant;
+ * „Reset" they understood at once — discard what I am doing and start again. The BEHAVIOUR is
+ * the old behaviour, unchanged: the same door `startNewProRecipe` has always opened.
+ *
+ * It exists as its own name so HOME and PRO can be seen to call ONE implementation. It must
+ * never grow past what „Nowa receptura" did — in particular it does not touch HOME's idea,
+ * chips or profile answers. A surface that has its own state (HOME's draft, HOME's open
+ * questions) clears that itself, after this, exactly as it did before the rename.
+ */
+export function resetWorkspaceToFreshStart(requestedVisible?: VisibleProductType): void {
+  startNewProRecipe(requestedVisible);
+}
+
+/**
  * Confirmed product-family change from the recipe settings surface. The native
  * starter still performs the accepted full family reset, while this wrapper
  * restores the recipe's machine/batch authority afterward:

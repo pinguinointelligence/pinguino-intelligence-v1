@@ -4,6 +4,11 @@
  */
 import type { ConfirmedScan } from '@/scan-contract/confirmedScan';
 import { identifyCode } from './codeIdentity';
+import {
+  canAttemptScannerRequest,
+  isScannerTransportError,
+  ScannerResponseError,
+} from './contracts';
 import type {
   CodeIdentity,
   ExactCandidate,
@@ -66,7 +71,8 @@ async function research(
 ): Promise<
   Pick<Extract<ScanImportV2Result, { kind: 'unknown' }>, 'externalEvidence' | 'evidenceError'>
 > {
-  if (!ports.external || !ctx.online) return { externalEvidence: null, evidenceError: null };
+  if (!ports.external || !canAttemptScannerRequest(ctx))
+    return { externalEvidence: null, evidenceError: null };
   try {
     const raw = await withTimeout(ports.external.research(identity, ctx), ports.externalTimeoutMs);
     assertScanRunCurrent(ctx);
@@ -171,21 +177,27 @@ async function revalidateExactProduct(
   product: ExactCandidate,
   ctx: RequestContext,
   ports: ScanImportV2Ports,
-): Promise<{ product: ExactCandidate; revalidated: boolean }> {
+): Promise<
+  | { product: ExactCandidate; revalidated: boolean }
+  | Extract<ScanImportV2Result, { kind: 'ambiguous' | 'failed' }>
+> {
   if (ctx.accountId === null || !ports.discovery) return { product, revalidated: false };
   try {
     /*
      * Known and unknown products share this one server path. `research` performs the free exact-EAN
      * rescan: it reuses stored evidence, lets product-scan-finalize re-derive the current semantic
-     * binding, and reads the exact product back. A refusal never erases the identity already proven
-     * by the catalogue; it merely leaves its old fail-closed readiness in place.
+     * binding, and reads the exact product back. An ordinary readiness refusal retains the
+     * catalogue identity, but a conflict or invalid response cannot authorize that earlier hit.
      */
     const refreshed = await ports.discovery.research(identity, ctx);
+    if (refreshed.kind === 'ambiguous') return refreshed;
     return refreshed.kind === 'existing_product'
       ? { product: refreshed.product, revalidated: true }
       : { product, revalidated: false };
   } catch (error) {
     if (isStaleScanRunError(error)) throw error;
+    if (error instanceof ScannerResponseError)
+      return { kind: 'failed', code: 'lookup_failed', identity, detail: error.message };
     return { product, revalidated: false };
   }
 }
@@ -200,7 +212,7 @@ export async function runScanImportV2(
   if (!id.ok) return { kind: 'invalid_code', reason: id.reason, input: scan };
   const identity = id.identity;
 
-  if (!ctx.online) {
+  if (!canAttemptScannerRequest(ctx)) {
     const cached = await ports.offlineCache.get(ctx.accountId, identity.canonicalGtin13);
     assertScanRunCurrent(ctx);
     if (!cached) return { kind: 'offline', identity, knownLocally: false };
@@ -223,7 +235,7 @@ export async function runScanImportV2(
     if (isStaleScanRunError(error)) throw error;
     return {
       kind: 'failed',
-      code: 'lookup_failed',
+      code: isScannerTransportError(error) ? 'connection' : 'lookup_failed',
       identity,
       detail: error instanceof Error ? error.message : null,
     };
@@ -256,7 +268,7 @@ export async function runScanImportV2(
         return d;
       } catch (error) {
         if (isStaleScanRunError(error)) throw error;
-        if (error instanceof Error && (error as { kind?: string }).kind === 'network')
+        if (isScannerTransportError(error))
           return { kind: 'failed', code: 'connection', identity, detail: null };
         return {
           kind: 'failed',
@@ -278,6 +290,7 @@ export async function runScanImportV2(
   );
   assertScanRunCurrent(ctx);
   const refreshed = await revalidateExactProduct(identity, resolution.product, ctx, ports);
+  if ('kind' in refreshed) return refreshed;
   return finish(
     identity,
     refreshed.product,

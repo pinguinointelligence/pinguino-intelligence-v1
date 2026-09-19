@@ -40,11 +40,10 @@ describe('plan-aware global navigation', () => {
   it('returns the exact shallow Guest menu', () => {
     expect(ids('guest')).toEqual([
       'tryPinguino',
-      'guestRecipes',
       'howItWorks',
+      'guestRecipes',
       'guestShop',
       'plans',
-      'community',
       'affiliate',
       'franchise',
     ]);
@@ -80,10 +79,10 @@ describe('plan-aware global navigation', () => {
       'recipes',
       'howItWorks',
       'production',
-      'community',
       'memberShop',
       'affiliate',
       'franchise',
+      'help',
     ]);
   });
 
@@ -93,10 +92,10 @@ describe('plan-aware global navigation', () => {
       'recipes',
       'howItWorks',
       'production',
-      'community',
       'memberShop',
       'affiliate',
       'franchise',
+      'help',
     ]);
     expect(ids('pro').filter((id) => !ids('home').includes(id))).toEqual(['proWorkspace']);
   });
@@ -110,8 +109,10 @@ describe('plan-aware global navigation', () => {
     // The recipe's own Produkcja tab belongs to the Pro workspace, not to the area.
     expect(activeNavId(loc('/pro/production'), 'pro')).toBe('proWorkspace');
     expect(activeNavId(loc('/pro/history'), 'pro')).toBe('production');
-    expect(activeNavId(loc('/community'), 'pro')).toBe('community');
-    expect(activeNavId(loc('/top100'), 'pro')).toBe('community');
+    // DESIGN V3.0 GLOBAL MENU: Community is not a top-level destination any
+    // more, so no menu entry claims /community or /top100. The routes stay.
+    expect(activeNavId(loc('/community'), 'pro')).toBeNull();
+    expect(activeNavId(loc('/top100'), 'pro')).toBeNull();
     expect(activeNavId(loc('/pro/monitor'), 'pro')).toBe('proWorkspace');
     expect(isGroupActive('product', loc('/pro/versions'), 'pro')).toBe(true);
   });
@@ -162,10 +163,15 @@ describe('plan-aware global navigation', () => {
     expect(activeNavId(loc('/recipes'), 'pro')).toBe('recipes');
   });
 
-  it('reaches Community and Top 100 from one Community destination', () => {
-    const community = APP_NAV_ITEMS.find((item) => item.id === 'community');
-    expect(community?.to).toBe('/community');
-    expect(community?.audiences).toEqual(['guest', 'home', 'pro']);
+  /* DESIGN V3.0 GLOBAL MENU: Community stops being a top-level menu item — it
+     belongs inside Receptury (Gellatti · Moje · Community). The /community and
+     /top100 ROUTES are untouched; only the duplicate door in the drawer is gone,
+     and the in-app buttons (Udostepnij, Community after a batch) still reach it. */
+  it('carries no top-level Community entry in any audience', () => {
+    expect(APP_NAV_ITEMS.some((item) => item.id === 'community')).toBe(false);
+    for (const audience of ['guest', 'home', 'pro'] as const) {
+      expect(ids(audience)).not.toContain('community');
+    }
   });
 
   it('offers one canonical Dlaczego to działa? entry to every audience', () => {

@@ -127,7 +127,8 @@ export function DestinationHero({
         graphite
           ? 'border-transparent bg-[var(--g-graphite)] text-white lg:min-h-[372px] lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]'
           : 'border-[var(--g-line)] bg-[#e7e3dd]',
-        variant === 'shop' && 'lg:min-h-[470px] lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]',
+        variant === 'shop' &&
+          'lg:min-h-[470px] lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]',
         variant === 'franchise' &&
           'lg:min-h-[380px] lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]',
       )}
@@ -175,6 +176,120 @@ export function DestinationHero({
       </div>
       {visual}
     </div>
+  );
+}
+
+/**
+ * THE shared top for Sklep, Affiliate and Franchise (DESIGN, owner correction
+ * 2026-09-18). One component, because the three are meant to read as one
+ * family — the same body, the same radius, the same accent and the same way a
+ * photograph meets the ground. There is no second copy of this anywhere.
+ *
+ * The rules it exists to keep:
+ *  * ONE rounded graphite body, copy on the left and the photograph on the
+ *    right — not a card with a picture card inside it.
+ *  * a 6 px Gellatti bar down the very left edge, full height.
+ *  * the photograph is PART of the body: no frame, no light band above or
+ *    below it, no hard edge. It fades into the ground through a gradient —
+ *    downward on a phone, where it sits across the top, and sideways from the
+ *    tablet up, where it takes the right-hand side.
+ *  * the photograph stays plainly visible. The gradient is there to hand the
+ *    copy a readable ground, not to sink the picture into the black.
+ *
+ * PRESENTATION ONLY. It renders copy and the children it is handed; the page
+ * owns its own photograph, its actions and everything behind them.
+ */
+export function DestinationTop({
+  eyebrow,
+  title,
+  lede,
+  visual,
+  actions,
+  note,
+  children,
+}: {
+  eyebrow?: string;
+  title: string;
+  lede?: string;
+  /** The page's own photograph. It fills the slot; the frame belongs here. */
+  visual?: ReactNode;
+  actions?: ReactNode;
+  note?: string;
+  /**
+   * Content the page puts INSIDE the top, under the lede.
+   *
+   * Sklep is why this exists: there the offer itself is the entry block — the
+   * country question, the availability line, the price and the action all stand
+   * on the same dark ground as the title, rather than in a second card below
+   * it. Franchise and Affiliate pass nothing and are unaffected.
+   */
+  children?: ReactNode;
+}) {
+  return (
+    <section
+      data-destination-top="gellatti"
+      className="relative isolate overflow-hidden rounded-[16px] bg-[#0e0f11] before:absolute before:inset-y-0 before:left-0 before:z-[3] before:w-[6px] before:bg-[var(--g-orange)] before:content-['']"
+    >
+      {visual ? (
+        <span className="absolute inset-x-0 top-0 z-0 block h-[58%] md:inset-0 md:left-[44%] md:h-auto">
+          {visual}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,15,17,0.28)_0%,rgba(14,15,17,0.62)_46%,rgba(14,15,17,0.94)_82%,#0e0f11_100%)] md:bg-[linear-gradient(90deg,#0e0f11_0%,rgba(14,15,17,0.9)_26%,rgba(14,15,17,0.34)_66%,rgba(14,15,17,0.12)_100%)]"
+          />
+          {/* THE PHOTOGRAPH RETURNS TO THE GROUND AT EVERY EDGE IT REACHES.
+              Owner decision 2026-09-19.
+
+              The fade above carries the copy side only, so the picture used to
+              run to the block's outer edges at full opacity. On an editorial
+              photograph shot edge to edge that is invisible. On a PACKSHOT it is
+              not: the Starter Pack is photographed on a white studio ground, so
+              the block ended in a pale band with a hard vertical edge instead of
+              the photograph meeting the graphite.
+
+              This is a property of the SYSTEM, not a Shop patch — any
+              destination may be given a product photograph — so it lives on the
+              shared component and is deliberately gentle: a vignette over the
+              last fifth, reaching the ground only in the final pixels. On the
+              dark editorial frames Franchise and Affiliate use it is barely
+              perceptible; on the packshot it is what removes the band.
+
+              All three edges the picture can reach are returned, not just the
+              right one: the studio ground sits ABOVE the bag as well, so a
+              right-only vignette still left a pale wedge in the top corner. */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-[linear-gradient(0deg,#0e0f11_0%,rgba(14,15,17,0.5)_4%,rgba(14,15,17,0)_14%)] md:bg-[linear-gradient(270deg,#0e0f11_0%,rgba(14,15,17,0.62)_4%,rgba(14,15,17,0.22)_11%,rgba(14,15,17,0)_20%),linear-gradient(180deg,#0e0f11_0%,rgba(14,15,17,0.30)_4%,rgba(14,15,17,0)_13%),linear-gradient(0deg,#0e0f11_0%,rgba(14,15,17,0.30)_4%,rgba(14,15,17,0)_13%)]"
+          />
+        </span>
+      ) : null}
+      {/* The copy clears the accent bar rather than sitting under it. */}
+      <div
+        className={cn(
+          'relative z-[2] pr-5 pb-[22px] pl-[26px] md:pt-[34px] md:pr-[30px] md:pb-8 md:pl-9',
+          visual ? 'pt-[150px] md:w-[56%]' : 'pt-8',
+        )}
+      >
+        {eyebrow ? <DestinationEyebrow tone="inverse">{eyebrow}</DestinationEyebrow> : null}
+        <h1 className="mt-[9px] text-[26px] leading-[1.12] font-semibold tracking-[-0.03em] text-white md:text-[32px] lg:text-[36px]">
+          {title}
+        </h1>
+        <i
+          aria-hidden="true"
+          className="mt-3 block h-[3px] w-11 rounded-[2px] bg-[var(--g-orange)]"
+        />
+        {lede ? (
+          <p className="mt-[10px] max-w-[42ch] text-[13.5px] leading-[1.5] text-white/[0.74]">
+            {lede}
+          </p>
+        ) : null}
+        {children ? <div className="mt-4 min-w-0">{children}</div> : null}
+        {actions ? <div className="mt-4 flex flex-wrap items-center gap-3">{actions}</div> : null}
+        {note ? (
+          <small className="mt-3 block text-[11.5px] leading-[1.4] text-white/50">{note}</small>
+        ) : null}
+      </div>
+    </section>
   );
 }
 

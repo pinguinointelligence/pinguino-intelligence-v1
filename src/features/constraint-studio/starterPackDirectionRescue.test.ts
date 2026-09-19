@@ -172,7 +172,23 @@ describe('Starter Pack Direction Rescue V1 gates', () => {
     );
   });
 
-  it('filters dairy/egg from Sorbet, non-vegan products from Vegan, and all rescue from blocked Protein Direction', () => {
+  /**
+   * AMENDED 2026-09-19 (NAPRAWA 5, Owner decision). The last clause of this test
+   * used to read „and all rescue from blocked Protein Direction", pinned by
+   * `starterPackRescueEligibility('PI-ING-000496', 'protein_gelato')` being
+   * `eligible: false`. That was a switch on the category NAME, and the Owner's
+   * decision replaces it: „Do not globally disable Rescue merely because the
+   * profile is Protein. Use the real Protein authority."
+   *
+   * Nothing that protected a product is removed. Dairy and egg are still refused
+   * on Sorbet and on Vegan, by the same identity rule and now stated once in the
+   * canonical authority. What changes is that a Protein draft is now ASKED: each
+   * candidate must pass `rescueProteinGate`, which preserves the exact
+   * dairy/plant route, qualification, the minimum required protein, the
+   * structural score and every Protein hard gate — a real gate per candidate
+   * instead of a blanket refusal that no Protein recipe could ever pass.
+   */
+  it('filters dairy/egg from Sorbet and non-vegan products from Vegan, and judges Protein by the real authority', () => {
     expect(starterPackRescueEligibility('PI-ING-001645', 'sorbet')).toMatchObject({
       eligible: false,
     });
@@ -194,8 +210,17 @@ describe('Starter Pack Direction Rescue V1 gates', () => {
     expect(starterPackRescueEligibility('PI-ING-002114', 'vegan_gelato')).toMatchObject({
       eligible: true,
     });
+    // PROTEIN IS ASKED, NOT REFUSED. Fructose is profile-compatible with a
+    // Protein draft; whether it survives is decided per candidate by the
+    // Protein gate, on the simulated result, not here by its category.
     expect(starterPackRescueEligibility('PI-ING-000496', 'protein_gelato')).toMatchObject({
+      eligible: true,
+    });
+    // Dried egg yolk is still NOT an automatic Protein candidate: no existing
+    // Protein authority permits it, so it stays out on both routes.
+    expect(starterPackRescueEligibility('PI-ING-001645', 'protein_gelato')).toMatchObject({
       eligible: false,
+      reason: 'profile_incompatible',
     });
   });
 

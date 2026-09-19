@@ -95,19 +95,44 @@ describe('shop C3 · the product carries the emphasis, never the money', () => {
     expect(offer.match(/shopProductName\(product\)/g) ?? []).toHaveLength(1);
   });
 
-  it('puts graphite on the product name and nothing else in the offer', () => {
+  /**
+   * SUPERSEDED BY DESIGN S1 (owner correction 2026-09-18), the way C3 itself
+   * superseded Designbook §7.
+   *
+   * C3 gave the graphite to the product NAME alone and kept the price on white
+   * below it, because the page around the offer was ivory. The owner has since
+   * decided that Sklep, Affiliate and Franchise share ONE dark entry block and
+   * that the Shop offer IS that block: the pack, the question, the conditions,
+   * the price and the action all stand on the same ground. A rule that splits
+   * graphite from white inside the offer has nothing left to split.
+   *
+   * What the owner's decision does NOT relax, and what this pins instead:
+   *  * the offer stands on the SHARED top — no hero of its own, ever again;
+   *  * the offer declares no graphite ground of its own, so there is exactly
+   *    one dark body on the page and one component that owns it;
+   *  * the money still gets no fill, no field and no frame of its own.
+   * The reading order and every other C3 rule below are untouched.
+   */
+  it('stands on the shared destination top, and never builds a second one', () => {
     const offer = read('features', 'shop', 'ShopStarterOffer.tsx');
-    // The identity field: graphite ground, orange edge, holding the <h2>.
-    expect(offer).toContain('bg-[var(--g-graphite)]');
-    expect(offer).toContain('border-l-[3px] border-[var(--g-orange)]');
-    // Exactly one graphite ground in the offer — the price must never get one.
-    expect(offer.match(/bg-\[var\(--g-graphite\)\]/g) ?? []).toHaveLength(1);
-    // Orange fills ONE thing: the 6 px made-to-order dot. It is never the
-    // ground of anything that carries text, and never touches the price.
+    expect(offer).toContain("from '@/components/shared/destinationEditorial'");
+    expect(offer).toContain('<DestinationTop');
+    // The dark body belongs to the shared component. The offer owns none.
+    expect(offer).not.toContain('bg-[var(--g-graphite)]');
+    expect(offer).not.toContain('rounded-[14px] border-l-[3px]');
+    // Orange still fills ONE thing here: the 6 px made-to-order dot. The accent
+    // action is the shared control family's accent member, declared once in
+    // `applicationControlStyles`, never a fill typed into this page.
     const orangeFills = offer.match(/[^"']*bg-\[var\(--g-orange\)\]/g) ?? [];
     expect(orangeFills).toHaveLength(1);
     expect(orangeFills[0]).toContain('rounded-full');
     expect(orangeFills[0]).toContain('size-1.5');
+    // The price is text on the ground — no fill, no field, no frame.
+    const price = offer.slice(
+      offer.indexOf('shop-starter-price') - 400,
+      offer.indexOf('shop-starter-price'),
+    );
+    expect(price).not.toMatch(/bg-\[/);
   });
 
   it('keeps the price on the page ground, below the conditions', () => {
@@ -275,7 +300,9 @@ describe('shop C3 · structure below the offer', () => {
       'ShopConfirmation.tsx',
     ] as const) {
       const source = read('features', 'shop', file);
-      expect(source).toMatch(/application(Primary|Secondary|Quiet)Classes\(/);
+      // `Accent` joined the family on 2026-09-18: the same recipe and the same
+      // 12 px radius, in the fill a graphite ground can actually show.
+      expect(source).toMatch(/application(Primary|Accent|Secondary|Quiet)Classes\(/);
       expect(source).not.toMatch(/\bbuttonClasses\(/);
     }
   });

@@ -122,9 +122,22 @@ describe('Home is never presented as free', () => {
     for (const key of ['homeBadge', 'homeCta', 'proBadge', 'proCta']) {
       expect(String(sub[key])).not.toMatch(FORBIDDEN);
     }
-    // The free wording refers only to the preview; Home/Pro are described as unlocks.
-    expect(String(sub.whatUnlocks)).toMatch(/Home odblokowuje/);
-    expect(String(sub.whatUnlocks)).not.toMatch(/home\s+(jest\s+)?(darmow|bezpłatn)/i);
+    /* The free wording refers only to the preview; Home and Pro are paid.
+       DESIGN V3.0 §P1 turned the single `whatUnlocks` paragraph into the three
+       hero lines („co daje podgląd, co Home, co Pro"), so the guarantee is
+       asserted over the joined lines and, more strictly than before, per line:
+       the ONLY line allowed to say „bez" / free-ish things is the preview one. */
+    const unlocks = sub.whatUnlocks as string[];
+    expect(Array.isArray(unlocks)).toBe(true);
+    expect(unlocks).toHaveLength(3);
+    const [previewLine, homeLine, proLine] = unlocks;
+    expect(previewLine).toMatch(/Podgląd/);
+    expect(homeLine).toMatch(/^Home/);
+    expect(proLine).toMatch(/^Pro/);
+    for (const line of [homeLine, proLine]) {
+      expect(String(line)).not.toMatch(FORBIDDEN);
+    }
+    expect(unlocks.join(' ')).not.toMatch(/home\s+(jest\s+)?(darmow|bezpłatn)/i);
     expect(String(sub.demoCta)).toMatch(/bezpłatn/i);
   });
   it('the recipe paywall CTAs are Home/Pro (paid), not a free plan', () => {

@@ -61,6 +61,10 @@ export const productionProcessCopy = {
   correctionRestoreApply: 'Przywróć proporcje',
   correctionLeaveApply: 'Akceptuję wynik i kontynuuję',
   correctionImpossible: 'Tej partii nie możemy teraz bezpiecznie dostosować',
+  correctionCalculating: 'Obliczamy korektę…',
+  correctionRetry: 'Spróbuj ponownie',
+  correctionUnavailable:
+    'Nie udało się teraz przygotować sposobów korekty. Partia i zważone gramy pozostają bez zmian.',
   doneTitle: 'Partia gotowa',
   errors: {
     confirm: 'Nie udało się potwierdzić ilości.',

@@ -54,7 +54,12 @@ export interface RequestContext {
   accountId: string | null;
   /** Product Country from the canonical account/market authority — never from UI language */
   productCountry: string | null;
+  /** Browser hint / legacy offline-only context; not proof of service reachability. */
   online: boolean;
+  /** Explicit Scanner action may attempt its normal authorized request despite a false hint. */
+  allowNetworkRequest?: boolean;
+  /** Incremented only by a user retry; rejected research may resume in the SAME session. */
+  requestAttempt?: number;
   surface: 'HOME' | 'PRO' | 'TEST';
   now: number;
   /** The unique user scan invocation; barcode identity alone is not a run authority. */
@@ -65,6 +70,36 @@ export interface RequestContext {
 
 export class NetworkError extends Error {
   readonly kind = 'network' as const;
+}
+
+/** A response-contract failure must not fall back to an earlier exact product. */
+export class ScannerResponseError extends Error {
+  readonly kind = 'service' as const;
+}
+
+export function canAttemptScannerRequest(ctx: RequestContext): boolean {
+  return ctx.allowNetworkRequest ?? ctx.online;
+}
+
+/** An HTTP response is a service outcome, even if its message contains "network" or "timeout". */
+export function isScannerTransportError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as {
+    kind?: string;
+    name?: string;
+    message?: string;
+    context?: { status?: number };
+  };
+  if (e.kind === 'service' || e.context?.status || /HTTP \d{3}\b/.test(e.message ?? ''))
+    return false;
+  return (
+    e.kind === 'network' ||
+    e.name === 'AbortError' ||
+    e.name === 'TimeoutError' ||
+    /fetch failed|failed to fetch|fetch resource|network|econn|enotfound|timeout|timed out|FunctionsFetchError/i.test(
+      e.message ?? '',
+    )
+  );
 }
 
 export interface CatalogPort {
@@ -246,7 +281,12 @@ export type ScanImportV2Result =
       canonical: false;
       engineReady: false;
     }
-  | { kind: 'ambiguous'; identity: CodeIdentity; candidates: readonly ExactCandidate[] }
+  | {
+      kind: 'ambiguous';
+      identity: CodeIdentity;
+      /** Server conflicts may disclose only IDs; never invent missing product metadata. */
+      candidates: readonly (Pick<ExactCandidate, 'productId'> & Partial<ExactCandidate>)[];
+    }
   | {
       kind: 'unknown';
       identity: CodeIdentity;

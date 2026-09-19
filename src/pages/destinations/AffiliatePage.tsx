@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { DestinationTop } from '@/components/shared/destinationEditorial';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { cn } from '@/lib/cn';
 import { affiliateCopy, fillTemplate } from '@/copy/affiliate';
@@ -59,68 +60,54 @@ function SectionHead({ eyebrow, title, body }: { eyebrow: string; title: string;
   );
 }
 
-/* ── 1. HERO — the only full black anchor on the page ─────────────────────── */
+/* ── 1. HERO — THE shared destination top ─────────────────────────────────── */
 
+/**
+ * Sklep, Affiliate and Franchise share ONE top (owner, 2026-09-18), so this page
+ * no longer carries a hero of its own: same body, same radius, same 6 px
+ * Gellatti bar down the left edge, same way the photograph meets the ground.
+ *
+ * What it brings to that component is its own: the owner's photograph, the two
+ * calls to action and the honest note under them. Both CTAs, both targets and
+ * the copy behind them are unchanged.
+ */
 function Hero() {
   return (
-    <section className="overflow-hidden rounded-[20px] bg-[var(--g-ink)] text-white sm:rounded-[24px]">
-      <div className="grid lg:grid-cols-2">
-        <div className="px-7 py-9 sm:px-10 sm:py-12 lg:px-12 lg:py-14">
-          <span className="text-[10px] leading-[1.25] font-bold tracking-[0.08em] text-[#a9a49b] uppercase">
-            {c.hero.eyebrow}
-          </span>
-          <h1 className="mt-3.5 text-[34px] leading-[1.06] font-bold tracking-[-0.035em] text-balance sm:text-[46px] lg:text-[52px]">
-            {c.hero.titleLine1}
-            <br />
-            {c.hero.titleLine2}
-          </h1>
-          <p className="mt-4 max-w-[46ch] text-[14.5px] leading-relaxed text-[#c9c5bd]">
-            {c.hero.lede}
-          </p>
-          <div className="mt-7 flex flex-wrap items-center gap-2.5">
-            {/* GELLATTI V2.1 §5: on a graphite/ink surface `primary` is bg-ink —
-                near-black on near-black. The authority's CTA here is the orange
-                fill, which is also the page's one action colour. */}
-            <a href="#affiliate-application" className={buttonClasses('orange', 'md')}>
-              {c.cta.signedOut}
-            </a>
-            <a
-              href="#affiliate-how"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-white/35 px-6 text-[14px] font-semibold text-white transition-colors hover:border-white/60"
-            >
-              {c.cta.secondary}
-            </a>
-          </div>
-          <p className="mt-7 border-t border-white/12 pt-5 text-[12px] leading-[1.5] text-[#9d988f]">
-            {c.hero.note}
-          </p>
-        </div>
-
-        {/* The photograph IS the right half — clipped by the hero's own radius,
-            no card, no border, no overlay across the image itself.
-            THE SEAM: the panel is --g-ink and the photograph's own black is
-            #0b0c0d, so where they met there was a visible line. The image is
-            not darkened; only its leading edge is faded into the panel colour,
-            and the edge that needs fading changes with the layout — the photo
-            sits BELOW the copy when stacked and BESIDE it from lg up. */}
-        <div className="relative min-h-[280px] bg-[var(--g-ink)] sm:min-h-[360px] lg:min-h-[520px]">
-          <img
-            src="/images/affiliate/hero.jpg"
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover object-center"
-          />
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-[76px] bg-gradient-to-b from-[var(--g-ink)] to-transparent lg:hidden"
-          />
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-0 hidden w-[96px] bg-gradient-to-r from-[var(--g-ink)] to-transparent lg:block"
-          />
-        </div>
-      </div>
-    </section>
+    <DestinationTop
+      eyebrow={c.hero.eyebrow}
+      title={`${c.hero.titleLine1} ${c.hero.titleLine2}`}
+      lede={c.hero.lede}
+      note={c.hero.note}
+      visual={
+        <img
+          src="/images/affiliate/hero.jpg"
+          alt=""
+          aria-hidden="true"
+          className="h-full w-full object-cover object-center"
+        />
+      }
+      actions={
+        <>
+          {/* GELLATTI V2.1 §5: on a graphite surface `primary` is bg-ink —
+              near-black on near-black. The authority's CTA here is the orange
+              fill, which is also the page's one action colour. */}
+          {/* DESIGN V11 (owner 2026-09-19): ONE application intent, ONE real
+              destination. This used to scroll to a band further down this page,
+              which then sent the visitor to /partner — two hops to reach a form
+              that lives in exactly one place. The landing sells; the
+              application is at /partner#partner-application. */}
+          <a href="/partner#partner-application" className={buttonClasses('orange', 'md')}>
+            {c.cta.signedOut}
+          </a>
+          <a
+            href="#affiliate-how"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/35 px-6 text-[14px] font-semibold text-white transition-colors hover:border-white/60"
+          >
+            {c.cta.secondary}
+          </a>
+        </>
+      }
+    />
   );
 }
 
@@ -129,7 +116,11 @@ function Hero() {
 function RecurringFlow() {
   return (
     <section id="affiliate-how" className="mt-[58px] scroll-mt-[110px]">
-      <SectionHead eyebrow={c.recurring.eyebrow} title={c.recurring.title} body={c.recurring.body} />
+      <SectionHead
+        eyebrow={c.recurring.eyebrow}
+        title={c.recurring.title}
+        body={c.recurring.body}
+      />
 
       <ol className="mt-7 flex flex-col gap-6 sm:flex-row sm:gap-0">
         {c.recurring.steps.map((step, index) => {
@@ -164,44 +155,50 @@ function RecurringFlow() {
         {c.recurring.honest}
       </p>
 
-      {/* The flow above says only "the partner earns". The customer gains too,
-          and saying so out loud is what makes the link worth sharing. One line
-          and one figure — not a second section. */}
-      {/* The bonus is VALUE, so the figure leads and the prose follows. It used
-          to read as a disclaimer: a small number buried in two sentences. */}
-      <aside className="mt-9 overflow-hidden rounded-[20px] bg-[var(--g-ink)] text-white">
-        <div className="flex flex-col items-center gap-6 px-7 py-9 sm:px-10 lg:flex-row lg:gap-11">
-          {/* The figure carries the size, the unit carries the colour. The
-              offer is named ONCE, by the badge below — so the unit stays
-              neutral and the two never repeat each other.
-              fontFamily is pinned: the number must be the same face at 390 as
-              at 1440, and inheritance alone let it drift to a fallback. */}
-          <div
-            className="flex flex-none flex-col items-center"
-            style={{ fontFamily: 'var(--font-sans)' }}
-          >
-            <span className="text-[104px] leading-[0.78] font-extrabold tracking-[-0.055em] tabular-nums sm:text-[120px]">
-              {c.customerBenefit.figure}
-            </span>
-            <span className="mt-2 text-[20px] leading-none font-bold text-[var(--g-orange)] sm:text-[21px]">
-              {c.customerBenefit.figureUnit}
-            </span>
-          </div>
+      {/* DESIGN V11 `.a-bonus` (owner 2026-09-19): a LOW HORIZONTAL BAND, not
+          the tall slab this used to be. The old block was a 20 px-radius panel
+          with a 104–120 px figure that outranked the page it was supporting —
+          the customer's bonus is a reason to share the link, not the headline.
 
-          {/* Horizontal while stacked, vertical once side by side — the same
-              separation read at both widths. */}
-          <div className="h-px w-full bg-white/12 lg:h-auto lg:w-px lg:self-stretch" />
+          V11's measures, used verbatim: 14 px radius, 16/20 padding, a 46 px
+          figure, 16 px title, 13 px body, 11.5 px note, the unit in the accent
+          and a hairline separating figure from copy. The separator is
+          horizontal while stacked and vertical once side by side, so the phone
+          gets a compact stack rather than a shrunken band.
 
-          <div className="w-full lg:flex-1">
-            <h3 className="text-[21px] font-bold tracking-[-0.028em] sm:text-[25px]">
-              <span className="text-[var(--g-orange)]">{c.customerBenefit.badge}</span>{' '}
-              {c.customerBenefit.title}
-            </h3>
-            <p className="mt-2.5 max-w-[46ch] text-[14.5px] leading-relaxed text-[#c9c5bd]">
-              {c.customerBenefit.shortBody}
-            </p>
-            <p className="mt-3 text-[12px] text-[#8b867e]">{c.customerBenefit.monthlyNote}</p>
-          </div>
+          The RULE is unchanged and is NOT a „Poleć Gellatti" reward: an ANNUAL
+          plan bought through this partner's link or code carries 3 extra
+          months; monthly plans are excluded. Commission authority is untouched.
+
+          The corner renders at the canvas's 12 px, not the 14 px declared here:
+          `.gellatti-destination` normalises every `rounded-[Npx]` to its own
+          token. That is the system working — the owner ruled on 2026-09-19 that
+          the canvas keeps 12 px and that per-element radius exceptions are not
+          how this is fixed. The declared value stays as V11 wrote it. */}
+      <aside className="mt-[22px] flex flex-col items-start gap-4 rounded-[14px] bg-[#15171b] px-5 py-4 text-white sm:flex-row sm:items-center sm:gap-[18px]">
+        <div
+          className="flex w-full flex-none items-baseline gap-[7px] border-b border-white/14 pb-3 sm:w-auto sm:border-0 sm:border-r sm:border-white/14 sm:pr-[18px] sm:pb-0"
+          style={{ fontFamily: 'var(--font-sans)' }}
+        >
+          <b className="text-[46px] leading-[0.86] font-extrabold tracking-[-0.05em] tabular-nums">
+            {c.customerBenefit.figure}
+          </b>
+          <small className="text-[14px] leading-none font-bold text-[var(--g-orange)]">
+            {c.customerBenefit.figureUnit}
+          </small>
+        </div>
+
+        <div className="min-w-0">
+          <h3 className="text-[16px] leading-[1.25] font-bold tracking-[-0.02em]">
+            <em className="not-italic text-[var(--g-orange)]">{c.customerBenefit.badge}</em>{' '}
+            {c.customerBenefit.title}
+          </h3>
+          <p className="mt-[5px] max-w-[46ch] text-[13px] leading-[1.45] text-[#c9c5bd]">
+            {c.customerBenefit.shortBody}
+          </p>
+          <small className="mt-[5px] block text-[11.5px] leading-[1.3] text-[#8b867e]">
+            {c.customerBenefit.monthlyNote}
+          </small>
         </div>
       </aside>
     </section>
@@ -278,7 +275,7 @@ function TierCard({ tier }: { tier: PublicAffiliateTier }) {
 
 function Rates() {
   return (
-    <section id="affiliate-rates" className="mt-[58px] scroll-mt-[110px]">
+    <section className="mt-[58px]">
       <SectionHead eyebrow={c.rates.eyebrow} title={c.rates.title} body={c.rates.body} />
       <div className="mt-7 grid gap-4 lg:grid-cols-3">
         {PUBLIC_AFFILIATE_TIERS.map((tier) => (
@@ -303,7 +300,7 @@ function Rates() {
           <p className="mt-2 text-[13px] leading-[1.55] text-[#bcb7ae]">{c.rates.eliteTalk}</p>
           <div className="mt-auto pt-7">
             <a
-              href="#affiliate-application"
+              href="/partner#partner-application"
               className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-white/35 px-6 text-[14px] font-semibold text-white transition-colors hover:border-white/60"
             >
               {c.rates.eliteCta}
@@ -427,7 +424,7 @@ function Calculator() {
   );
 
   return (
-    <section id="affiliate-calculator" className="mt-[58px] scroll-mt-[110px]">
+    <section className="mt-[58px]">
       <SectionHead
         eyebrow={c.calculator.eyebrow}
         title={c.calculator.title}
@@ -553,7 +550,7 @@ function Calculator() {
                 {c.calculator.eliteState}
               </p>
               <a
-                href="#affiliate-application"
+                href="/partner#partner-application"
                 className={cn(buttonClasses('primary', 'sm'), 'mt-5 self-start')}
               >
                 {c.calculator.eliteCta}
@@ -569,11 +566,12 @@ function Calculator() {
 /* ── 5. AUDIENCE · 6. THREE STEPS · 7. CTA ───────────────────────────────── */
 
 /* Card order matches the copy order, so the image belongs to the group rather
-   than to an index that could silently drift. */
+   than to an index that could silently drift. The order itself is the owner's
+   (2026-09-18): creators, then communities and media, then professionals. */
 const AUDIENCE_IMAGES: readonly string[] = [
   '/images/affiliate/creators.jpg',
-  '/images/affiliate/professionals.jpg',
   '/images/affiliate/communities.jpg',
+  '/images/affiliate/professionals.jpg',
 ];
 
 function Audience() {
@@ -637,9 +635,12 @@ function HowToStart() {
   );
 }
 
+/* No id on the section: every „Zgłoś się" now goes straight to the real form
+   at /partner#partner-application, so an anchor here would be a destination
+   with no caller — and a dead id is exactly what V11 asked to be cleaned up. */
 function ApplyBand() {
   return (
-    <section id="affiliate-application" className="mt-[58px] scroll-mt-[110px]">
+    <section className="mt-[58px]">
       <div className="flex flex-col gap-6 rounded-[20px] bg-[#f0ede7] px-7 py-9 sm:px-10 lg:flex-row lg:items-center lg:gap-10">
         <div>
           <span className={EYEBROW}>{c.apply.eyebrow}</span>
@@ -652,7 +653,7 @@ function ApplyBand() {
             the promise on the button — the visitor never loses what they came
             to do. */}
         <div className="flex flex-none flex-col items-start gap-2.5 lg:ml-auto lg:items-end">
-          <a href="/partner" className={buttonClasses('primary', 'md')}>
+          <a href="/partner#partner-application" className={buttonClasses('primary', 'md')}>
             {c.apply.signInCta}
           </a>
         </div>

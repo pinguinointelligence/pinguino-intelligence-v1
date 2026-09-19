@@ -21,6 +21,7 @@ const OWNER = 'owner-batches';
 const mocks = vi.hoisted(() => ({
   listRuns: vi.fn(),
   resume: vi.fn(),
+  openDurableRun: vi.fn(),
 }));
 
 vi.mock('@/features/pro-core/useProCorePersona', () => ({ useProCorePersona: () => 'pro' }));
@@ -40,6 +41,7 @@ vi.mock('@/services/labels/labelRepository', async (importOriginal) => ({
   }),
 }));
 vi.mock('./resumeProductionRun', () => ({ resumeProductionRun: mocks.resume }));
+vi.mock('./openDurableRun', () => ({ openDurableRun: mocks.openDurableRun }));
 
 const { ProductionHubPage } = await import('@/pages/destinations/GlobalDestinationPages');
 
@@ -93,7 +95,13 @@ const serverRun = (runId: string, createdAt: string) =>
 
 function LocationProbe() {
   const location = useLocation();
-  return <output data-testid="location" data-path={location.pathname} />;
+  return (
+    <output
+      data-testid="location"
+      data-path={location.pathname}
+      data-search={location.search}
+    />
+  );
 }
 
 describe('Partie → W toku', () => {
@@ -106,6 +114,8 @@ describe('Partie → W toku', () => {
     ).IS_REACT_ACT_ENVIRONMENT = true;
     mocks.listRuns.mockReset();
     mocks.resume.mockReset();
+    mocks.openDurableRun.mockReset();
+    mocks.openDurableRun.mockResolvedValue({ ok: false, reason: 'run-missing' });
     mocks.listRuns.mockImplementation(async (_owner: string, query: { status?: string }) =>
       query.status === 'in_progress'
         ? {
@@ -147,10 +157,10 @@ describe('Partie → W toku', () => {
     host.remove();
   });
 
-  const render = async () => {
+  const render = async (entry = '/production') => {
     await act(async () => {
       root.render(
-        <MemoryRouter initialEntries={['/production']}>
+        <MemoryRouter initialEntries={[entry]}>
           <LocationProbe />
           <Routes>
             <Route path="/production" element={<ProductionHubPage />} />
@@ -168,6 +178,10 @@ describe('Partie → W toku', () => {
     host.querySelector<HTMLButtonElement>(
       `[data-in-progress-run-id="${runId}"] [data-testid="production-resume-run"]`,
     )!;
+  const continueButton = (runId: string) =>
+    host.querySelector<HTMLButtonElement>(
+      `[data-in-progress-run-id="${runId}"] [data-testid="production-continue-run"]`,
+    )!;
 
   it('shows the runs in progress after a refresh — newest first — instead of „Otwórz recepturę…”', async () => {
     await render();
@@ -179,9 +193,85 @@ describe('Partie → W toku', () => {
       sort: 'newest',
       limit: 5,
     });
-    // One black action: the newest run's „Wróć do partii”.
-    expect(resumeButton('run-r2').className).toContain('bg-ink');
-    expect(resumeButton('run-r1').className).not.toContain('bg-ink');
+    /* One black action, and Etap 2 moved WHICH one it is: continuing the batch is the
+       thing the operator came for. „Otwórz recepturę partii" replaces the workbench
+       context, so it stays quiet — and never black. */
+    expect(continueButton('run-r2').className).toContain('bg-ink');
+    expect(continueButton('run-r1').className).not.toContain('bg-ink');
+    expect(resumeButton('run-r2').className).not.toContain('bg-ink');
+  });
+
+  it('„Kontynuuj partię" opens the batch in place, taking nothing from the editor', async () => {
+    // A draft the operator has not saved — the thing the old path silently destroyed.
+    useRecipeStore.setState({ dirty: true });
+    const draftBefore = JSON.stringify(useRecipeStore.getState());
+    await render();
+    await vi.waitFor(() => expect(rows()).toHaveLength(2));
+
+    await act(async () => continueButton('run-r1').click());
+
+    // The batch lives in the ADDRESS, so a refresh finds it again…
+    await vi.waitFor(() =>
+      expect(
+        host.querySelector<HTMLElement>('[data-testid="location"]')?.dataset.search,
+      ).toContain('run=run-r1'),
+    );
+    // …the workbench was never asked for, and no gate appeared…
+    expect(mocks.resume).not.toHaveBeenCalled();
+    expect(document.body.querySelector('[data-testid="confirm-new-recipe"]')).toBeNull();
+    expect(host.querySelector<HTMLElement>('[data-testid="location"]')?.dataset.path).toBe(
+      '/production',
+    );
+    // …and the draft is exactly where the operator left it.
+    expect(JSON.stringify(useRecipeStore.getState())).toBe(draftBefore);
+  });
+
+  it('does not strand the batch when the list refetches while it loads', async () => {
+    /* The served defect this pins: the loader re-ran when „W toku" refreshed, cancelled
+       the request it had already started, and then refused to start another — so
+       „Wczytujemy partię…" stayed on screen for ever. The run must still arrive. */
+    let settle: ((value: unknown) => void) | undefined;
+    mocks.openDurableRun.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          settle = resolve;
+        }),
+    );
+    await render();
+    await vi.waitFor(() => expect(rows()).toHaveLength(2));
+    await act(async () => continueButton('run-r1').click());
+    expect(mocks.openDurableRun).toHaveBeenCalledTimes(1);
+
+    // The list changes identity underneath the in-flight load, exactly as it does live.
+    await act(async () => {
+      useProductionSessionStore.setState((current) => ({ ...current }));
+    });
+    expect(mocks.openDurableRun).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      settle!({ ok: false, reason: 'run-missing' });
+    });
+    // Resolved, not stranded: the honest refusal replaced „Wczytujemy partię…".
+    await vi.waitFor(() =>
+      expect(host.querySelector('[data-testid="production-opened-run"]')?.textContent).toContain(
+        'Nie udało się otworzyć tej partii',
+      ),
+    );
+  });
+
+  it('returns to the list when the opened batch is no longer in progress', async () => {
+    /* Finishing a batch from „Partie" is the usual way its run leaves „W toku". Waiting
+       for it to come back stranded „Wczytujemy partię…" on screen after a completion. */
+    mocks.openDurableRun.mockResolvedValue({ ok: false, reason: 'run-missing' });
+    await render('/production?run=run-gone');
+    await vi.waitFor(() =>
+      expect(
+        host.querySelector<HTMLElement>('[data-testid="location"]')?.dataset.search ?? '',
+      ).not.toContain('run='),
+    );
+    expect(mocks.openDurableRun).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-testid="production-opened-run"]')).toBeNull();
+    expect(rows()).toEqual(['run-r2', 'run-r1']);
   });
 
   it('keeps the list from the server after a local clear („+ Nowa receptura”)', async () => {

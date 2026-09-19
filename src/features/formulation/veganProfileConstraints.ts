@@ -52,17 +52,50 @@ export function veganInulinLineIds(input: RecipeInput): string[] {
  * an unreachable exact target degrades to the nearest legal candidate.
  *
  * Only lines the user left to the solver (`ai`) are held — an explicit owner
- * lock, percent or range always wins, and the hold is never persisted as a
+ * lock or percent always wins, and the hold is never persisted as a
  * user-visible §17 constraint.
+ *
+ * A line that already carries a solver-side RANGE is a different case, and
+ * getting it wrong breached this very ceiling. Another authority's dosage
+ * PREFERENCE can be written onto the same inulin line, and this hold used to
+ * step aside for it entirely — so on a vegan draft the preference band replaced
+ * the structural ceiling, and widening that preference under a ±2 request took
+ * inulin to 95 g against a calibrated maximum of 83.1 g
+ * (`recipeVectorProximity.test.ts`). A structural ceiling is not a preference:
+ * it NARROWS whatever interval the line already carries and never widens it, so
+ * whichever authority writes first, the tighter limit is what the search sees.
  */
 export function withVeganInulinEnvelopeHold(input: RecipeInput, set: ConstraintSet): ConstraintSet {
   if (input.category !== 'vegan_gelato') return set;
+  // THE CEILING IS TAKEN AGAINST THE TARGET BATCH, AND IT MUST STAY THERE.
+  //
+  // A measured wrong turn, kept here so it is not taken twice. The 95 g breach
+  // this hold exists to stop was first blamed on the ceiling being measured
+  // against the TARGET batch while the vector the search moves is routinely off
+  // batch: a line at the ceiling of an 840 g working vector is 9.5 % of it, and
+  // the rescale to 1000 g carries that share through the 8.31 % envelope. So
+  // the window was made relative to the vector's own mass.
+  //
+  // That is rescale-invariant and it is also WRONG, because it makes the
+  // feasible region MOVE every time the search moves mass. A constraint the
+  // search cannot hold still is a constraint the search cannot converge
+  // against: measured on the vegan Strawberry refusal cell
+  // (`veganDirectionHistoryRegression.test.ts`, S−2/H−2), the relative window
+  // took one Preview from 1.35 s to 7.1–10.8 s — a 5.3x regression, and past
+  // the 5 s default timeout — for an answer that is a refusal either way.
+  //
+  // The breach was never this line's to fix. It came from the hold STEPPING
+  // ASIDE for another authority's preference band, and it is fixed below by
+  // INTERSECTING instead; `ownerInulinPolicy.permittedInulinBand` closes the
+  // same hole on the formulation side. With both in place the isolated solver
+  // lane is green (23/23) against the target-batch ceiling, so the relative
+  // window bought nothing and cost 5.3x.
   const total = input.target_batch_grams;
   if (!Number.isFinite(total) || total <= 0) return set;
   const ceilingGrams = (VEGAN_INULIN_CALIBRATION_MAX_PERCENT / 100) * total;
   const lineIds = veganInulinLineIds(input).filter((lineId) => {
     const existing = set.byLineId[lineId];
-    return existing === undefined || existing.mode === 'ai';
+    return existing === undefined || existing.mode === 'ai' || existing.mode === 'range';
   });
   if (lineIds.length === 0) return set;
   // Several inulin lines share ONE envelope; hold each at the shared ceiling so
@@ -71,10 +104,27 @@ export function withVeganInulinEnvelopeHold(input: RecipeInput, set: ConstraintS
     byLineId: {
       ...set.byLineId,
       ...Object.fromEntries(
-        lineIds.map((lineId) => [
-          lineId,
-          { mode: 'range', minGrams: 0, maxGrams: ceilingGrams } as const,
-        ]),
+        lineIds.map((lineId) => {
+          const existing = set.byLineId[lineId];
+          // INTERSECT, never replace: the floor is the higher of the two and
+          // the ceiling the lower, so no authority can be widened by another.
+          const minGrams = existing?.mode === 'range' ? Math.max(0, existing.minGrams) : 0;
+          const maxGrams =
+            existing?.mode === 'range'
+              ? Math.min(ceilingGrams, existing.maxGrams)
+              : ceilingGrams;
+          return [
+            lineId,
+            {
+              mode: 'range',
+              minGrams: Math.min(minGrams, maxGrams),
+              maxGrams,
+              // A VERIFIED CALIBRATION ENVELOPE, not a dosage preference: the
+              // profile places this line, the generic search does not.
+              structural: true,
+            } as const,
+          ];
+        }),
       ),
     },
   };

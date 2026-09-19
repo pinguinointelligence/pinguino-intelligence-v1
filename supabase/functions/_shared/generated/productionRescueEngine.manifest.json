@@ -22,8 +22,8 @@
     "productionSessionSchema": 2
   },
   "bundle": {
-    "bytes": 441563,
-    "sha256": "014f070e18033b3987f1d21ec9cbf25eab29dbe3ecbbff2fc7035437c8745966",
+    "bytes": 449620,
+    "sha256": "f79187779efa4524e192334fc6016e261403388dbdc4abdfdcaff4f0e660494c",
     "externalImports": 0,
     "dynamicImports": 0
   },
@@ -170,7 +170,7 @@
     },
     {
       "path": "src/features/formulation/veganProfileConstraints.ts",
-      "sha256": "536f5a21a15b387f155f9789023d40e10a243067eb26c8eb99ce440f729b6ac6"
+      "sha256": "b651db80cf46ce588750a1528313cb3fb6808bd1666976a2965fc71ad2998b18"
     },
     {
       "path": "src/features/formulation/violationBands.ts",
@@ -194,7 +194,7 @@
     },
     {
       "path": "src/features/product-intelligence/ownerInulinPolicy.ts",
-      "sha256": "9797471aaac4b247b8e2dbfb1df253ca1c78f50a6fff6382c54da3c85c97cc54"
+      "sha256": "9d4f1c1365954ddd7a4f7bfe2a2d58f9f11fd0a74506cef5930ea8d164964fe9"
     },
     {
       "path": "src/features/product-intelligence/productBehaviorAccess.ts",
@@ -222,7 +222,7 @@
     },
     {
       "path": "src/features/protein-gelato/proteinAuthority.ts",
-      "sha256": "5a92311b7b3062bb12fbb6ed4f91f543c9892c48b28ecc82cdac1c3f4e627445"
+      "sha256": "c9fb22aad1a440a8b89396bedf4a8b6d0de4dac4e72a29bf65940bb05093cdbb"
     },
     {
       "path": "src/features/protein-gelato/proteinBehavior.ts",
@@ -273,6 +273,10 @@
       "sha256": "ae8aac4759390a4d1e68b1a45a15f9e926927ba56a1b7bf2ab8d7760af810e9e"
     },
     {
+      "path": "src/features/recipe-direction/directionRelaxation.ts",
+      "sha256": "7c9ad4d35c3b2a0cff2b4682f38fcfe4cd2f584b51243d51faa8f16f693887f0"
+    },
+    {
       "path": "src/features/recipe-direction/recipeDirectionAssessment.ts",
       "sha256": "3de47ff1bc860387c37810ca2345eecb025593546150d4967fc30dbdb3e2eb08"
     },
@@ -281,17 +285,21 @@
       "sha256": "de812e8b3691f65cd79fc43fb499a29d50a82b77947b99c9f7fa8689f50278c6"
     },
     {
+      "path": "src/features/recipe-direction/relaxableRangePolicy.ts",
+      "sha256": "4331a983fae10accf54d83d010daf39718f352b3514d568271d07f46a2019264"
+    },
+    {
       "path": "src/features/recipe-score/recipeMatchScore.ts",
       "sha256": "4f3ed00a8f7aaaafa812c0c7cb5e74e70f517196965df7e69c44ffe2b13973f9"
     },
     {
       "path": "src/features/recipe-score/technicalFit.ts",
-      "sha256": "bc520a820acfdd218255148c465be760589e95ed27a60a889342b505ce2ec715"
+      "sha256": "0510aed86c11d1b8dcdeb99a53fc400183d5ffc6262437607daea2abcc22f280"
     },
     {
       "path": "src/spine/temperatureRegulator.ts",
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "902c2c29290e61e9648d4e00bd9cfaf2744fc61899c3db946e10fb4a736ddfec"
+  "sourceClosureSha256": "640640c6529861b65c1886ec4b9384731e2af0311a01ecbb017c9470f7932d20"
 }

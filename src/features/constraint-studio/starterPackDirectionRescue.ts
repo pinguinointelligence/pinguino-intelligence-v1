@@ -11,7 +11,14 @@ import {
 } from '@/features/recipe-direction/directionBandDistance';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { verifyMainIngredientIdentity } from '@/features/formulation/mainIngredientContract';
+import { rescueProteinGate } from '@/features/rescue-toolbox/rescueProteinGate';
+import {
+  rescueDosageWindow,
+  rescueToolboxEntry,
+} from '@/features/rescue-toolbox/rescueToolboxAuthority';
+import { screenRescueDoses } from '@/features/rescue-toolbox/rescueDoseSearch';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
+import { relaxedOwnerRanges } from '@/features/recipe-direction/relaxableRangePolicy';
 import {
   buildStarterPackRescueCandidatePreview,
   starterPackRescueConstraintsPreserved,
@@ -104,11 +111,39 @@ export function shouldRunStarterPackDirectionRescue(
   normalResult: NormalDirectionResult,
 ): boolean {
   if (!hasActiveExactDirectionObjective(input)) return false;
-  if (input.category === 'protein_gelato') return false;
+  // PROTEIN IS NOT GLOBALLY DISABLED (Owner, NAPRAWA 5). This used to be
+  // `if (input.category === 'protein_gelato') return false;`, which refused the
+  // whole stage before any Protein authority was consulted — a Protein customer
+  // got no Rescue at all, not because a candidate failed a Protein gate but
+  // because nobody asked. Candidates are now admitted per candidate by
+  // `rescueAdmissibility` and each simulated result must pass `rescueProteinGate`,
+  // which preserves the exact dairy/plant route, qualification, the minimum
+  // required protein, the structural score and every Protein hard gate.
+
   const plan = buildRecipeDirectionPlan(input);
   if (!plan.axes.some((axis) => axis.status === 'working')) return false;
   const currentDirection = assessRecipeDirection(input, calculateRecipe(input));
-  if (currentDirection.active && currentDirection.reached) return false;
+  if (currentDirection.active && currentDirection.reached) {
+    // A REACHED TARGET IS NOT ALWAYS A FINISHED RECIPE (Owner, NAPRAWA 5).
+    //
+    // This used to return false the moment the target was reached, so a valid
+    // 9/10 recipe never saw a candidate that would make it 10/10 — and a recipe
+    // that reached its target only by spending the approved controlled envelope
+    // never saw a candidate that reaches the same target inside normal ranges.
+    // Both are cases the Owner named explicitly:
+    //   „Aktualny wynik: 9/10. Dodaj 4 g fruktozy, aby osiągnąć 10/10."
+    //   „Cel został osiągnięty przy użyciu rozszerzonego zakresu. Dodanie 6 g
+    //    fruktozy pozwala osiągnąć ten sam cel w standardowym zakresie."
+    //
+    // Nothing is recommended for a recipe that needs nothing: a 10/10 that
+    // reached its target inside normal ranges still stops here, which is the
+    // Owner's own „do not recommend anything when" rule. Everything past this
+    // point is still gated by the one-gram SCREEN, so a draft with no improving
+    // dose costs `calculateRecipe` calls and not a single Preview.
+    const score = recipeFitForInput(input).score;
+    const usesControlledRelaxation = relaxedOwnerRanges(input).length > 0;
+    if (score === 10 && !usesControlledRelaxation) return false;
+  }
   if (normalResult.ok) {
     const direction = normalResult.preview?.directionAssessment;
     return (
@@ -176,7 +211,33 @@ export function buildStarterPackDirectionRescue(
     };
   }
   const bands = requestedDirectionBands(request.input);
-  const currentDistance = directionDistance(request.input, bands);
+  /**
+   * THE IMPROVEMENT BASELINE OF THIS RESCUE (P1 — AUD-SWEET-13).
+   *
+   * It used to be the UNTOUCHED DRAFT alone. The caller, however, only reaches
+   * this builder after the run has already PROVEN a candidate, and it hands
+   * that candidate in as `normalResult` — so „materially helps" was measured
+   * against a recipe nobody was being offered. Measured on the served tree
+   * (blood-orange sorbet, PRO, 1000 g): in 7 of the 7 cells the rescue answers,
+   * the candidate it offered was FARTHER from the requested level than the one
+   * the run already held (sweetness +2: 0.027 → 1.859, a factor of 68), while
+   * adding an unrequested seventh line, under a headline that promises the
+   * customer it gets CLOSER to the level.
+   *
+   * The baseline is therefore the BEST thing the run can already show: the
+   * proven candidate when there is one, the draft otherwise. A rescue candidate
+   * now has to beat what the customer could already have — which is the only
+   * reading under which „Można zbliżyć się bardziej do poziomu X" is true.
+   *
+   * Nothing else changes: the same engine judges, the same hard gates, the same
+   * ranking. When no candidate was proven, `normalResult` carries no preview and
+   * the baseline is the draft, exactly as before.
+   */
+  const provenCandidate = request.normalResult.ok ? request.normalResult.preview : null;
+  const currentDistance = directionDistance(
+    provenCandidate?.proposedInput ?? request.input,
+    bands,
+  );
   const records: StarterPackRescueRecord[] = [];
 
   for (const mapperId of STARTER_PACK_RESCUE_MAPPER_IDS) {
@@ -215,7 +276,65 @@ export function buildStarterPackDirectionRescue(
       continue;
     }
     const probeRecords: StarterPackRescueRecord[] = [];
-    for (const probeGrams of starterPackRescueProbeGrams(mapperId, request.input)) {
+    /**
+     * THE SMALLEST WINNING WHOLE-GRAM DOSE (Owner, NAPRAWA 5).
+     *
+     * This used to iterate `starterPackRescueProbeGrams` — a fixed
+     * 1 / 2 / 4 / 8 % grid. The Owner demoted those to starting probes only:
+     * the engine must find the smallest winning practical whole-gram dose,
+     * including values such as 4 g, 7 g and 13 g, which a four-point grid can
+     * never express.
+     *
+     * A Preview costs on the order of ten seconds, so the window is SCREENED at
+     * one-gram resolution with `calculateRecipe` and only the finalists are
+     * PROVEN here. Nothing is ever accepted on the screen. When no canonical
+     * dosage window exists the old grid remains the fallback, so a candidate
+     * never silently stops being evaluated.
+     */
+    const toolboxEntry = rescueToolboxEntry(mapperId);
+    const dosageWindow = toolboxEntry === null ? null : rescueDosageWindow(toolboxEntry, request.input);
+    const screen =
+      dosageWindow === null
+        ? null
+        : screenRescueDoses({
+            input: request.input,
+            ingredient,
+            lineId: starterPackRescueLineId(mapperId),
+            window: dosageWindow,
+            bands,
+          });
+    // THE SCREEN IS THE GATE. When a canonical dosage window exists and the
+    // one-gram scan found nothing worth proving, the candidate is finished here
+    // — no Preview is priced at all. That is what makes running this stage on a
+    // valid-but-improvable recipe affordable: the common case (nothing helps)
+    // costs a few hundred `calculateRecipe` calls, not four Previews per
+    // candidate. The old fixed grid remains the fallback ONLY where no window
+    // exists, so a candidate never silently stops being evaluated.
+    const probeGramsList =
+      screen === null
+        ? starterPackRescueProbeGrams(mapperId, request.input)
+        : screen.finalists;
+    if (probeGramsList.length === 0) {
+      records.push({
+        mapperId,
+        namePl: ingredient.name,
+        eligible: true,
+        reason: 'no_material_improvement',
+        bestGramsTested: null,
+        targetReached: false,
+        npac: null,
+        pod: null,
+        score: null,
+        bandDistance: null,
+        totalRecipeMovement: null,
+        hardGates: 'SKIPPED',
+        mainPreserved: null,
+        runtimeMs: nowMs() - candidateStarted,
+        preview: null,
+      });
+      continue;
+    }
+    for (const probeGrams of probeGramsList) {
       const probePreparationStarted = nowMs();
       const simulatedInput = withStarterPackRescueCandidate(request.input, mapperId, probeGrams)!;
       timing.candidatePreparationMs += nowMs() - probePreparationStarted;
@@ -276,11 +395,16 @@ export function buildStarterPackDirectionRescue(
         output,
         request.set.byLineId,
       ).ok;
+      // THE REAL PROTEIN AUTHORITY, per candidate. Outside a Protein draft this
+      // is `not_applicable` and changes nothing; inside one it refuses a
+      // candidate that improves Direction by spending the product's identity.
+      const proteinGate = rescueProteinGate(request.input, output, recipeResult);
       const hardValid =
         preview.diagnosticOnly !== true &&
         detectViolations(recipeResult).length === 0 &&
         constraintsPreserved &&
-        mainPreserved;
+        mainPreserved &&
+        proteinGate.preserved;
       timing.finalVerificationMs += nowMs() - verificationStarted;
       const candidateLine = output.items.find(
         (item) => item.id === starterPackRescueLineId(mapperId),

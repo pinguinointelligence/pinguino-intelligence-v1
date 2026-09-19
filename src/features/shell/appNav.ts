@@ -12,7 +12,7 @@ import { isProductionAreaLocation } from '@/features/production-area/productionA
 const s = copy.shell;
 
 export type NavigationAudience = 'guest' | 'home' | 'pro';
-export type NavGroupId = 'product' | 'ecosystem';
+export type NavGroupId = 'product' | 'ecosystem' | 'support';
 
 export interface NavigationCapabilities {
   authenticated: boolean;
@@ -63,8 +63,15 @@ const recipeDestination = (loc: NavLocation) =>
   address: it marks „Pro”, like every other `/pro/*` workbench tab.
 */
 const productionAreaDestination = (loc: NavLocation) => isProductionAreaLocation(loc);
-const communityDestination = (loc: NavLocation) =>
-  ['/community', '/top100', '/creator'].includes(loc.pathname);
+/**
+ * WHICH WORKSPACE IS THIS, not what is this customer entitled to.
+ *
+ * The drawer's first row names the workspace the customer is IN — „Home" on the
+ * HOME routes, „Pro" inside the Pro workspace. That is a different question from
+ * `navigationAudience`, which answers what they may SEE and still gates every
+ * other row. Deriving the row from `canUseProductionMode` made a Pro subscriber
+ * read „Pro" while they were working in HOME, and left no row current there.
+ */
 const proWorkspaceDestination = (loc: NavLocation) =>
   loc.pathname === '/pro' ||
   [
@@ -96,7 +103,7 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     label: s.items.recipes,
     to: '/recipes',
     group: 'product',
-    order: 1.25,
+    order: 1.75,
     audiences: ['guest'],
     isActive: recipeDestination,
   },
@@ -113,8 +120,8 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     id: 'guestShop',
     label: s.items.shop,
     to: '/shop',
-    group: 'product',
-    order: 3,
+    group: 'ecosystem',
+    order: 0,
     audiences: ['guest'],
     isActive: exact('/shop'),
   },
@@ -122,8 +129,8 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     id: 'plans',
     label: s.items.plans,
     to: '/subscription',
-    group: 'product',
-    order: 4,
+    group: 'ecosystem',
+    order: 0.5,
     audiences: ['guest'],
     isActive: exact('/subscription'),
   },
@@ -133,9 +140,12 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     to: '/home',
     group: 'product',
     order: 0,
-    audiences: ['home'],
+    // A Pro subscriber works in HOME too, so this row is visible to both. WHICH of
+    // the two workspace rows renders is decided by the LOCATION in visibleNavItems,
+    // never by the plan.
+    audiences: ['home', 'pro'],
     workspaceHome: true,
-    isActive: anyOf('/home'),
+    isActive: anyOf('/home', '/'),
   },
   {
     id: 'proWorkspace',
@@ -177,15 +187,6 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     audiences: ['home', 'pro'],
     isActive: exact('/shop'),
   },
-  {
-    id: 'community',
-    label: s.items.community,
-    to: '/community',
-    group: 'ecosystem',
-    order: 0,
-    audiences: ['guest', 'home', 'pro'],
-    isActive: communityDestination,
-  },
   // COLLABORATION IA (owner decision 2026-09-03): exactly TWO user-facing
   // entries. "Współpraca" / Work With Us is retired as a category — it was a
   // third door onto the same business conversation, and every operating format
@@ -213,9 +214,22 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     audiences: ['guest', 'home', 'pro'],
     isActive: anyOf('/franchise', '/work-with-us', '/machines', '/mobile', '/trailer'),
   },
+  // DESIGN V3.0 §☰ — „Pomoc" is support (contact, report a problem) and is
+  // deliberately NOT „Dlaczego to działa?", which is knowledge. They answer
+  // different questions, so they are two entries, separated.
+  {
+    id: 'help',
+    label: s.items.help,
+    to: '/help',
+    group: 'support',
+    order: 1,
+    audiences: ['home', 'pro'],
+    isActive: exact('/help'),
+  },
 ];
 
-export const NAV_GROUP_ORDER: readonly NavGroupId[] = ['product', 'ecosystem'];
+
+export const NAV_GROUP_ORDER: readonly NavGroupId[] = ['product', 'ecosystem', 'support'];
 
 export function navigationAudience(capabilities: NavigationCapabilities): NavigationAudience {
   if (!capabilities.authenticated) return 'guest';
@@ -224,16 +238,33 @@ export function navigationAudience(capabilities: NavigationCapabilities): Naviga
   return 'guest';
 }
 
-export function visibleNavItems(audience: NavigationAudience): AppNavItem[] {
-  return APP_NAV_ITEMS.filter((item) => item.audiences.includes(audience)).sort(
-    (left, right) =>
-      NAV_GROUP_ORDER.indexOf(left.group) - NAV_GROUP_ORDER.indexOf(right.group) ||
-      left.order - right.order,
-  );
+export function isProWorkspaceLocation(loc: NavLocation): boolean {
+  return proWorkspaceDestination(loc);
+}
+
+/**
+ * `loc` decides ONLY which of the two workspace rows is shown; every other row is
+ * still chosen by `audience` alone. Called without a location — as the entitlement
+ * contracts do — a Pro customer keeps the Pro row, so that story is unchanged.
+ */
+export function visibleNavItems(audience: NavigationAudience, loc?: NavLocation): AppNavItem[] {
+  const entitled = APP_NAV_ITEMS.filter((item) => item.audiences.includes(audience));
+  const workspaces = entitled.filter((item) => item.workspaceHome);
+  const keep =
+    workspaces.length > 1
+      ? (loc === undefined || isProWorkspaceLocation(loc) ? 'proWorkspace' : 'homeWorkspace')
+      : null;
+  return entitled
+    .filter((item) => !item.workspaceHome || keep === null || item.id === keep)
+    .sort(
+      (left, right) =>
+        NAV_GROUP_ORDER.indexOf(left.group) - NAV_GROUP_ORDER.indexOf(right.group) ||
+        left.order - right.order,
+    );
 }
 
 export function activeNavId(loc: NavLocation, audience: NavigationAudience): string | null {
-  const active = visibleNavItems(audience).filter((item) => item.isActive(loc));
+  const active = visibleNavItems(audience, loc).filter((item) => item.isActive(loc));
   if (active.length === 0) return null;
   return active.reduce((best, item) => (item.to.length > best.to.length ? item : best)).id;
 }
@@ -243,5 +274,5 @@ export function isGroupActive(
   loc: NavLocation,
   audience: NavigationAudience,
 ): boolean {
-  return visibleNavItems(audience).some((item) => item.group === group && item.isActive(loc));
+  return visibleNavItems(audience, loc).some((item) => item.group === group && item.isActive(loc));
 }

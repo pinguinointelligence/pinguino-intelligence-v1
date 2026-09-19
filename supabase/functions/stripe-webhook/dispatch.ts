@@ -42,12 +42,15 @@ import {
   decideCommissionEligibility,
   decideEntitlementMirror,
   decideReversal,
+  decideScheduledChange,
+  epochToIso,
   extractCheckoutMapping,
   extractChargeSnapshot,
   extractConnectAccountSnapshot,
   extractDisputeSnapshot,
   extractInvoiceSnapshot,
   extractRefundSnapshot,
+  extractScheduleSnapshot,
   extractSubscriptionSnapshot,
   noContractNote,
   pickAttributionToLock,
@@ -57,6 +60,7 @@ import {
   type ChargeSnapshot,
   type CommissionRuleRow,
   type RefundSnapshot,
+  type ScheduledOfferChange,
   extractShopOrderSettlement,
 } from './effects.ts';
 
@@ -108,7 +112,14 @@ export interface DbClient {
 }
 
 /** Re-fetch the CURRENT Stripe object (requiresRefetch intents). */
-export type StripeResource = 'subscription' | 'invoice' | 'charge' | 'refund' | 'dispute' | 'account';
+export type StripeResource =
+  | 'subscription'
+  | 'subscription_schedule'
+  | 'invoice'
+  | 'charge'
+  | 'refund'
+  | 'dispute'
+  | 'account';
 export type StripeRefetcher = (resource: StripeResource, id: string) => Promise<Row>;
 
 export interface DispatchDeps {
@@ -385,12 +396,39 @@ async function applySubscriptionSync(
   if (!snapshot.customerId) return 'skipped_no_customer_reference';
   const userId = await resolveSubscriptionUserId(deps, snapshot);
 
+  // Pending period-end plan change: the Stripe schedule is the authority for
+  // "what changes when"; the catalog is the authority for what that price IS.
+  // A schedule whose next price is unknown to the catalog mirrors as no
+  // change (never a guessed offer) — the note records it for review.
+  let scheduledChange: ScheduledOfferChange | null = null;
+  let scheduleNote: string | null = null;
+  if (snapshot.scheduleId) {
+    const schedule = extractScheduleSnapshot(
+      await deps.refetch('subscription_schedule', snapshot.scheduleId),
+    );
+    const pending = decideScheduledChange(schedule, snapshot.priceId);
+    if (pending) {
+      const { data: nextOfferRow, error: nextOfferError } = await deps.db
+        .from('billing_price_catalog')
+        .select('offer_key')
+        .eq('stripe_price_id', pending.priceId)
+        .maybeSingle();
+      throwOnDbError(nextOfferError, 'billing_price_catalog lookup (scheduled change)');
+      const nextOfferKey =
+        nextOfferRow && typeof nextOfferRow.offer_key === 'string' ? nextOfferRow.offer_key : null;
+      const atIso = epochToIso(pending.startEpoch);
+      if (nextOfferKey && atIso) scheduledChange = { offerKey: nextOfferKey, atIso };
+      else scheduleNote = `scheduled_change_unknown_price:${pending.priceId}`;
+    }
+  }
+
   const row = buildCustomerSubscriptionRow({
     eventType: event.type,
     userId,
     snapshot,
     offer,
     livemode: event.livemode,
+    scheduledChange,
   });
   const { data: cacheRow, error: upsertError } = await deps.db
     .from('customer_subscriptions')
@@ -403,7 +441,14 @@ async function applySubscriptionSync(
 
   // Entitlement mirror (0015: paid_subscription rows mirror Stripe) —
   // converge the single active grant for (user, product, this cache row).
-  const decision = decideEntitlementMirror(row.status, row.current_period_end);
+  // cancel_at_period_end bounds the grant by current_period_end (access is
+  // unchanged until then; the clock turns it off afterwards even if the
+  // deletion event is late); resume re-opens it.
+  const decision = decideEntitlementMirror(
+    row.status,
+    row.current_period_end,
+    row.cancel_at_period_end,
+  );
   const { data: activeRows, error: activeError } = await deps.db
     .from('entitlements')
     .select('id, ends_at')
@@ -415,6 +460,29 @@ async function applySubscriptionSync(
   throwOnDbError(activeError, 'entitlements lookup');
   const active = (activeRows ?? [])[0] ?? null;
 
+  // A plan change moves this cache row to another product (HOME → PRO now,
+  // or PRO → HOME when the scheduled phase starts). The grant for the OLD
+  // scope must end with it — otherwise a downgraded customer keeps PRO for
+  // ever. Same source row, different scope → expire (idempotent: only
+  // active rows are touched).
+  const { data: siblingRows, error: siblingError } = await deps.db
+    .from('entitlements')
+    .select('id, scope')
+    .eq('user_id', userId)
+    .eq('source_type', 'paid_subscription')
+    .eq('source_id', cacheId)
+    .eq('status', 'active');
+  throwOnDbError(siblingError, 'entitlements sibling lookup');
+  for (const sibling of siblingRows ?? []) {
+    if (sibling.scope === offer.product || typeof sibling.id !== 'string') continue;
+    const { error } = await deps.db
+      .from('entitlements')
+      .update({ status: 'expired' })
+      .eq('id', sibling.id)
+      .eq('status', 'active');
+    throwOnDbError(error, 'entitlements expire (scope changed)');
+  }
+
   if (decision.grant) {
     if (active) {
       const currentEndsAt = typeof active.ends_at === 'string' ? active.ends_at : null;
@@ -425,7 +493,7 @@ async function applySubscriptionSync(
           .eq('id', active.id as string);
         throwOnDbError(error, 'entitlements window update');
       }
-      return null;
+      return scheduleNote;
     }
     const insertRow = buildEntitlementInsertRow({
       userId,
@@ -435,7 +503,7 @@ async function applySubscriptionSync(
     });
     // 0015 partial-unique active grant: a concurrent duplicate is benign.
     await insertIgnoringDuplicate(deps.db, 'entitlements', insertRow as unknown as Row, 'entitlements insert');
-    return null;
+    return scheduleNote;
   }
   if (active) {
     const { error } = await deps.db
@@ -444,9 +512,54 @@ async function applySubscriptionSync(
       .eq('id', active.id as string)
       .eq('status', 'active');
     throwOnDbError(error, 'entitlements expire');
-    return null;
+    return scheduleNote;
   }
-  return null;
+  return scheduleNote;
+}
+
+/**
+ * Run the subscription sync OUTSIDE a webhook delivery — used by
+ * manage-subscription right after it mutated the subscription in Stripe, so
+ * Account → Plan i rozliczenia reads the new state on the very next refresh
+ * instead of waiting for the webhook round trip. SAME writer, same catalog
+ * lookup, same entitlement mirror: the row it produces is byte-identical to
+ * what the later `customer.subscription.updated` delivery produces, so the
+ * two never disagree and the redelivery is a no-op.
+ */
+export async function syncSubscriptionNow(
+  deps: DispatchDeps,
+  input: { subscriptionId: string; livemode: boolean; nowEpoch: number },
+): Promise<{ note: string | null }> {
+  const note = await applySubscriptionSync(
+    deps,
+    {
+      id: `manage:${input.subscriptionId}:${input.nowEpoch}`,
+      type: 'customer.subscription.updated',
+      created: input.nowEpoch,
+      livemode: input.livemode,
+      object: { id: input.subscriptionId },
+    },
+    input.subscriptionId,
+  );
+  return { note };
+}
+
+// ── subscription_schedule.* → the SAME subscription sync ────────────────────
+
+/**
+ * A schedule event is only interesting for the subscription it drives: the
+ * pending-change mirror lives on the customer_subscriptions row, and the
+ * subscription sync already refetches the schedule from the subscription's
+ * `schedule` field. So: refetch the schedule (current truth), find its
+ * subscription, run the one writer. A schedule without a subscription yet
+ * (created ahead of attach) is an honest no-op.
+ */
+async function applyScheduleSync(deps: DispatchDeps, event: WebhookEventFacts): Promise<string | null> {
+  const scheduleId = typeof event.object.id === 'string' ? event.object.id : null;
+  if (!scheduleId) return 'skipped_no_schedule_id';
+  const schedule = extractScheduleSnapshot(await deps.refetch('subscription_schedule', scheduleId));
+  if (!schedule.subscriptionId) return 'skipped_schedule_without_subscription';
+  return applySubscriptionSync(deps, event, schedule.subscriptionId);
 }
 
 // ── invoice.paid / invoice.payment_succeeded → commission entry ─────────────
@@ -1006,6 +1119,8 @@ export async function applyEventEffects(deps: DispatchDeps, event: WebhookEventF
       return { note: await applyShopOrderSettlement(deps, event) };
     case 'subscription_state_sync':
       return { note: await applySubscriptionSync(deps, event) };
+    case 'schedule_state_sync':
+      return { note: await applyScheduleSync(deps, event) };
     case 'commissionable_payment': {
       // Two INDEPENDENT lanes on one payment: at most one of them ever
       // produces value, and the database — not this switch — decides which.

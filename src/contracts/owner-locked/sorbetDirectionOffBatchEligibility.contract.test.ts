@@ -21,6 +21,24 @@
  * This contract locks the SHAPE of the repair: eligibility is widened, nothing
  * downstream is. The projection must still be refused where it always was, and
  * `enforceTargetBatchInvariant` remains the final batch authority.
+ *
+ * ── OWNER DECISION, NAPRAWA 1B (Variant B) — GEL-P0-025 AMENDED ─────────────
+ *
+ * The owner resolved the conflict between this contract and the P1-K invariant
+ * „a candidate presented as the nearest may not be beaten by another legal
+ * candidate the same run produced".
+ *
+ * The exact projection is a FAST, PREFERRED FIRST PATH. It is no longer an
+ * UNCONDITIONAL WINNER. A different candidate may be published when — and only
+ * when — it is legal, holds every hard constraint the projection holds, is
+ * strictly NEARER to the requested target, does not weaken safety, and costs no
+ * unbounded search.
+ *
+ * Everything else in this contract is unchanged and still locked: eligibility,
+ * the batch invariant, the crowned Main, the multi-Main frontier, the no-Main
+ * refusal and every other condition below. Nothing here relaxes a lock, a Main
+ * authority, a profile, machine or process constraint, practicalization, the
+ * save gate or production eligibility.
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
@@ -30,6 +48,7 @@ import { findDemoIngredient } from '@/data/demoIngredients';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
 import { projectSorbetExactDirectionCandidate } from '@/features/recipe-direction/sorbetDirectionProjection';
+import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDirectionTargets';
 import { buildOptimizePreview } from '@/features/constraint-studio/applyPipeline';
 
 const AT = '2026-08-31T09:00:00.000Z';
@@ -80,6 +99,13 @@ const draft = (delta: number): RecipeInput => ({
 const plannedSum = (input: RecipeInput) =>
   input.items.reduce((total, item) => total + item.planned_grams, 0);
 
+/** The engine's own distance from a candidate to the REQUESTED Direction target. */
+const directionDistance = (candidate: RecipeInput): number =>
+  recipeDirectionViolations(candidate).reduce(
+    (total, violation) => total + violation.severity_points,
+    0,
+  );
+
 const preview = (input: RecipeInput) =>
   buildOptimizePreview(input, { byLineId: {} }, AT, {
     productBehaviorSnapshots: productBehaviorTestSnapshots(input, []),
@@ -88,11 +114,51 @@ const preview = (input: RecipeInput) =>
   } as never);
 
 describe('OWNER-LOCKED — an off-batch Sorbet still reaches the exact projection', () => {
-  it('1. an off-batch draft is solved by the exact projection, not the general search', () => {
-    const result = preview(draft(1));
+  it('1. the exact projection is TRIED on an off-batch draft and yields a legal candidate', () => {
+    /* AMENDED by the owner (NAPRAWA 1B): the projection must still be the path
+       that answers an off-batch draft — it is what makes this case fast and
+       violation-free — but it is the PREFERRED FIRST PATH, not the winner by
+       construction. What is locked here is that it is reached and that what it
+       produces is legal; test 1b locks what may legitimately displace it. */
+    const offBatch = draft(1);
+    const projected = projectSorbetExactDirectionCandidate(offBatch);
+    expect(projected).not.toBeNull();
+    expect(detectViolations(calculateRecipe(projected!))).toEqual([]);
+    expect(Math.abs(plannedSum(projected!) - TARGET)).toBeLessThanOrEqual(0.1);
+
+    const result = preview(offBatch);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.preview.directionCandidateSource).toBe('sorbet_exact_projection');
+    expect(result.preview.diagnosticOnly).not.toBe(true);
+  }, SOLVER_TIMEOUT_MS);
+
+  it('1b. only a legal, strictly NEARER candidate may displace the projection', () => {
+    /* The owner's amendment in one assertion. Whatever the pipeline publishes
+       for an off-batch Sorbet is either the projection's own candidate, or one
+       that beats it on the engine's own distance to the REQUESTED target while
+       carrying no Engine violation and weighing the same target batch. A
+       candidate that is merely different, merely later, or merely produced by a
+       wider search may never win. */
+    const offBatch = draft(1);
+    const projected = projectSorbetExactDirectionCandidate(offBatch);
+    expect(projected).not.toBeNull();
+    const result = preview(offBatch);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const published = result.preview.proposedInput;
+
+    // The published candidate is legal and on batch, whatever produced it.
+    expect(detectViolations(calculateRecipe(published))).toEqual([]);
+    expect(Math.abs(plannedSum(published) - TARGET)).toBeLessThanOrEqual(0.1);
+
+    if (
+      result.preview.directionNearestSelected === true ||
+      result.preview.directionCandidateSource !== 'sorbet_exact_projection'
+    ) {
+      // It displaced the projection, so it must be STRICTLY nearer — measured
+      // on the engine's own Direction-substituted bands, not on a claim.
+      expect(directionDistance(published)).toBeLessThan(directionDistance(projected!));
+    }
   }, SOLVER_TIMEOUT_MS);
 
   it('2. what it publishes is on batch and violation-free', () => {

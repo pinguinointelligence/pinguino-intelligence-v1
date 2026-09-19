@@ -16,8 +16,6 @@ import {
   visibleNavItems,
   type NavGroupId,
 } from './appNav';
-import { AccountModeSwitcher } from './AccountModeSwitcher';
-import { useTutorialStore } from '@/features/tutorial/tutorialState';
 import { hasUnsavedChanges, requestLeave } from '@/features/production-area/unsavedGuard';
 
 const s = copy.shell;
@@ -54,9 +52,9 @@ export function AppNavDrawer() {
     canSaveRecipes: capabilities.canSaveRecipe,
     canUseProfessionalFlow: capabilities.canUseProfessionalFlow,
   });
-  const items = visibleNavItems(audience);
-  const workspaceItem = items.find((item) => item.workspaceHome);
   const loc = { pathname: location.pathname, search: location.search };
+  // the first row follows the workspace the customer is in, not their plan
+  const items = visibleNavItems(audience, loc);
   const currentNavId = activeNavId(loc, audience);
   const planLabel =
     audience === 'pro' ? s.account.planPro : audience === 'home' ? s.account.planHome : null;
@@ -201,19 +199,12 @@ export function AppNavDrawer() {
               className="flex items-center justify-between px-6 pb-3 pt-5"
               style={{ paddingTop: 'max(env(safe-area-inset-top), 1.25rem)' }}
             >
-              {workspaceItem ? (
-                <Link
-                  to={workspaceItem.to}
-                  onClick={leaveTo(workspaceItem.to)}
-                  aria-current={workspaceItem.isActive(loc) ? 'page' : undefined}
-                  data-testid={`app-nav-item-${workspaceItem.id}`}
-                  className="text-sm font-medium tracking-[0.08em] text-ink"
-                >
-                  {workspaceItem.label}
-                </Link>
-              ) : (
-                <span className="text-sm font-light tracking-wordmark">{s.brand}</span>
-              )}
+              {/* DESIGN V3.0 GLOBAL MENU: a light head — the wordmark and the
+                  close control, nothing else. No workspace title and no account-mode
+                  card: the HOME | PRO switch is the header’s, and repeating it here
+                  made the panel top heavy. The current mode is simply the first row
+                  of the list below. */}
+              <span className="text-sm font-light tracking-wordmark">{s.brand}</span>
               <button type="button" aria-label={s.closeMenu} onClick={close} className={iconButton}>
                 <svg
                   width="18"
@@ -229,12 +220,11 @@ export function AppNavDrawer() {
               </button>
             </div>
 
-            <AccountModeSwitcher onNavigate={close} />
             <nav className="min-h-0 flex-1 overflow-y-auto px-4 pb-4" aria-label={s.menuTitle}>
               {NAV_GROUP_ORDER.map((group: NavGroupId) => {
-                const groupItems = items.filter(
-                  (item) => item.group === group && !item.workspaceHome,
-                );
+                // DESIGN V3.0 GLOBAL MENU: the workspace entry is the FIRST ROW,
+                // not a panel title, so nothing is filtered out of the list.
+                const groupItems = items.filter((item) => item.group === group);
                 if (groupItems.length === 0) return null;
                 const groupActive = isGroupActive(group, loc, audience);
                 return (
@@ -242,7 +232,9 @@ export function AppNavDrawer() {
                     key={group}
                     className={cn(
                       'py-3',
-                      group === 'ecosystem' && 'mt-2 border-t border-ink/10 pt-5',
+                      // a rule before every group after the first: one after
+                      // Produkcja, one after Franchise (DESIGN V3.0 global menu)
+                      group !== NAV_GROUP_ORDER[0] && 'mt-2 border-t border-ink/10 pt-5',
                     )}
                     data-active={groupActive || undefined}
                   >
@@ -273,23 +265,9 @@ export function AppNavDrawer() {
                 );
               })}
               <MobileDesignReviewEntry />
-              {/* §29 — „Uruchom samouczek ponownie" lives beside „Jak to
-                  działa?", because they answer the same need from two
-                  directions: one explains, the other shows. It is a plain menu
-                  row, not a settings toggle: it starts the tutorial and closes
-                  the drawer so the first spotlight lands on the real screen
-                  underneath. */}
-              <button
-                type="button"
-                onClick={() => {
-                  close();
-                  useTutorialStore.getState().start();
-                }}
-                className="block min-h-12 w-full rounded-sm px-4 text-left text-[15px] text-ink hover:bg-ink/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
-                data-testid="app-nav-restart-tutorial"
-              >
-                Uruchom samouczek ponownie
-              </button>
+              {/* DESIGN V3.0 GLOBAL MENU: the tutorial is NOT a menu row. It lives
+                  inside the knowledge destination, with the explanations it belongs
+                  to, so the drawer carries no duplicate of a page-level action. */}
             </nav>
 
             <div

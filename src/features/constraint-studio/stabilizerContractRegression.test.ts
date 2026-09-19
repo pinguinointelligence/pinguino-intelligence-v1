@@ -186,7 +186,12 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
       gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.inulin.id),
     ).toBeLessThanOrEqual(80);
     expect(gramsOf(exactCandidateOf(built.preview), OWNER_MAPPER_INGREDIENTS.tara_gum.id)).toBe(2);
-    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.inulin.id)).toBe(54);
+    // AMENDED 2026-09-19 (§ 3 „range != lock", supersession GEL-P0-039): 54 → 79.
+    // This draft CONTINUES the Sweetness −1 seed below, so its vector is
+    // inherited from it — see that test for the full before → after and for the
+    // cost consequence. Both doses sit inside the published 2–8 % band, which is
+    // what this contract protects; neither is a relaxation (relaxationCost 0).
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.inulin.id)).toBe(79);
     expectExecutableStabilizerSystem(built.preview.proposedInput, 'continued G17 draft');
     expect(commitPreview(input, NO_CONSTRAINTS, built.preview, AT, 'practical-only').ok).toBe(true);
   });
@@ -209,10 +214,37 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
     // Sweetness −1 band [13, 14] that the old single-line search could not, so
     // this fixture lands INSIDE its target instead of 0.36 above it. On the
     // local route (2026-08-24 unit contract) the same exchange runs on the
-    // user's own draft rather than a template rebuild: POD 13.930168, side
-    // "inside", distance 0; NPAC 45.1637 also inside; zero violations; batch
-    // exactly 1000 g; preview applicable.
-    expect(after.pod_points).toBeCloseTo(13.930168, 10);
+    // user's own draft rather than a template rebuild: side "inside",
+    // distance 0; NPAC also inside; zero violations; batch exactly 1000 g;
+    // preview applicable. Every one of those protections is re-asserted below.
+    //
+    // AMENDED 2026-09-19 — global ±2 controlled relaxation § 3, Owner decision
+    // „range != lock" (supersession GEL-P0-039). Re-measured on this very
+    // fixture, both vectors legal, both INSIDE both bands, distance 0 on both:
+    //
+    //   milk/cream/SMP/sucrose/dextrose/INULIN/tara   POD        NPAC       Σd  cost/kg  overall
+    //   523/226/42/62/91/ 54/2   (band == freeze)     13.930168  45.862889  0   €2.4250  87.833
+    //   499/229/44/69/78/ 79/2   (band == window)     13.909056  45.066390  0   €2.5908  87.531
+    //
+    // WHY IT MOVED, and it is not a re-snapshot: with the dosage band searchable
+    // the descent reaches a rung it could not reach before. Instrumented on this
+    // fixture, the accepted move INULIN 54.1 g → 80 g cut engine severity
+    // 2.158788 → 1.769487 — the largest single severity cut in the whole sweep.
+    // The search then converges to a different legal fixed point.
+    //
+    // WHAT IT COSTS, recorded rather than buried: the new vector is 6.8 % more
+    // expensive (€2.4250 → €2.5908 per kg), so the engine cost score falls
+    // 100 → 98.789 and overall 87.833 → 87.531. Technical (95.8333), flavour
+    // (70) and the customer-visible score (10/10) are unchanged, and the
+    // relaxation envelope is untouched (relaxationCost 0 — 79 g is inside the
+    // owner's own 20–80 g band, not an excursion). That is the price of § 3 on
+    // this fixture and it is the Owner's to weigh, not this test's to hide.
+    expect(after.pod_points).toBeCloseTo(13.909056, 10);
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.inulin.id)).toBe(79);
+    // THE PROTECTION, unchanged and now explicit: whatever the search does, the
+    // published 2–8 % dosage authority still bounds the delivered dose.
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.inulin.id)).toBeGreaterThanOrEqual(20);
+    expect(gramsOf(built.preview.proposedInput, OWNER_MAPPER_INGREDIENTS.inulin.id)).toBeLessThanOrEqual(80);
     expect(after.pod_points!).toBeLessThan(before.pod_points!);
     expect(detectViolations(after)).toEqual([]);
     expect(built.preview.directionAssessment).toMatchObject({
@@ -232,16 +264,26 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
         ]),
       ),
     ).toEqual({
-      // Exact candidate for the same fixture: the exchange trades sucrose down
-      // / dextrose up and rebalances milk↔cream while preserving the valid
-      // owner Inulin dose. Tara stays byte-exact at the user's own 1.9 g — the
-      // solver-side stabilizer hold — until executable whole-gram projection.
-      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 523.0221049192838,
-      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 226.07221360846063,
-      [OWNER_MAPPER_INGREDIENTS.smp.id]: 41.71326837817846,
-      [OWNER_MAPPER_INGREDIENTS.sucrose.id]: 62.5086984255483,
-      [OWNER_MAPPER_INGREDIENTS.dextrose.id]: 90.68371466852868,
-      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 54.1,
+      // Exact candidate for the same fixture: the exchange rebalances
+      // milk↔cream↔SMP and trades sucrose against dextrose while preserving a
+      // valid owner Inulin dose. Tara stays byte-exact at the user's own 1.9 g
+      // — the solver-side stabilizer hold — until executable whole-gram
+      // projection.
+      //
+      // AMENDED 2026-09-19 (§ 3, GEL-P0-039). Before → after, same fixture:
+      //   milk    523.0221049192838 → 499.21500660342156
+      //   cream   226.07221360846063 → 228.7373002966485
+      //   SMP      41.71326837817846 → 44.1799522418014
+      //   sucrose  62.5086984255483  → 68.80077474055803
+      //   dextrose 90.68371466852868 → 78.1669661175705
+      //   INULIN   54.1              → 79            (both inside 20–80)
+      //   tara      1.9              → 1.9           (byte-exact, unchanged)
+      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 499.21500660342156,
+      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 228.7373002966485,
+      [OWNER_MAPPER_INGREDIENTS.smp.id]: 44.1799522418014,
+      [OWNER_MAPPER_INGREDIENTS.sucrose.id]: 68.80077474055803,
+      [OWNER_MAPPER_INGREDIENTS.dextrose.id]: 78.1669661175705,
+      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 79,
       [OWNER_MAPPER_INGREDIENTS.tara_gum.id]: 1.9,
     });
     expect(
@@ -254,12 +296,13 @@ describe('owner-approved Gelato aggregate stabilizer contract', () => {
     ).toEqual({
       // Executable whole-gram projection of the exact candidate; still exactly
       // 1000 g, and Tara now a whole 2 g inside the owner band [2, 5].
-      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 523,
-      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 226,
-      [OWNER_MAPPER_INGREDIENTS.smp.id]: 42,
-      [OWNER_MAPPER_INGREDIENTS.sucrose.id]: 62,
-      [OWNER_MAPPER_INGREDIENTS.dextrose.id]: 91,
-      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 54,
+      // AMENDED 2026-09-19 (§ 3, GEL-P0-039): 523/226/42/62/91/54/2 → below.
+      [OWNER_MAPPER_INGREDIENTS.milk_3_5.id]: 499,
+      [OWNER_MAPPER_INGREDIENTS.cream_30.id]: 229,
+      [OWNER_MAPPER_INGREDIENTS.smp.id]: 44,
+      [OWNER_MAPPER_INGREDIENTS.sucrose.id]: 69,
+      [OWNER_MAPPER_INGREDIENTS.dextrose.id]: 78,
+      [OWNER_MAPPER_INGREDIENTS.inulin.id]: 79,
       [OWNER_MAPPER_INGREDIENTS.tara_gum.id]: 2,
     });
 

@@ -339,6 +339,13 @@ export interface SubscriptionSnapshot {
    * create-checkout-session. CORRELATION ONLY — it never decides a plan.
    */
   metadataUserId: string | null;
+  /**
+   * The Subscription Schedule currently driving this subscription (a
+   * period-end downgrade attaches one; the 15-month benefit does too). Null
+   * for a plain subscription. The sync refetches it to mirror the pending
+   * phase — the schedule object is the authority for "what changes when".
+   */
+  scheduleId: string | null;
 }
 
 /**
@@ -370,7 +377,79 @@ export function extractSubscriptionSnapshot(subscription: Payload): Subscription
     endedAtEpoch: asNumber(subscription.ended_at),
     canceledAtEpoch: asNumber(subscription.canceled_at),
     latestInvoiceId: asId(subscription.latest_invoice),
+    scheduleId: asId(subscription.schedule),
   };
+}
+
+// ── subscription schedule → pending plan change ─────────────────────────────
+
+export interface SchedulePhaseSnapshot {
+  startEpoch: number | null;
+  endEpoch: number | null;
+  /** First item's price id (one-item subscriptions; the catalog is 1 price = 1 offer). */
+  priceId: string | null;
+}
+
+export interface ScheduleSnapshot {
+  id: string;
+  subscriptionId: string | null;
+  status: string;
+  currentPhase: { startEpoch: number | null; endEpoch: number | null } | null;
+  phases: SchedulePhaseSnapshot[];
+}
+
+/** Version-robust Subscription Schedule extraction (pure, closed field list). */
+export function extractScheduleSnapshot(schedule: Payload): ScheduleSnapshot {
+  const current = asObject(schedule.current_phase);
+  const rawPhases = Array.isArray(schedule.phases) ? (schedule.phases as unknown[]) : [];
+  const phases: SchedulePhaseSnapshot[] = rawPhases.map((raw) => {
+    const phase = asObject(raw);
+    const items = phase && Array.isArray(phase.items) ? (phase.items as unknown[]) : [];
+    const firstItem = asObject(items[0]);
+    return {
+      startEpoch: phase ? asNumber(phase.start_date) : null,
+      endEpoch: phase ? asNumber(phase.end_date) : null,
+      priceId: firstItem ? asId(firstItem.price) : null,
+    };
+  });
+  return {
+    id: asString(schedule.id) ?? '',
+    subscriptionId: asId(schedule.subscription),
+    status: asString(schedule.status) ?? 'unknown',
+    currentPhase: current
+      ? { startEpoch: asNumber(current.start_date), endEpoch: asNumber(current.end_date) }
+      : null,
+    phases,
+  };
+}
+
+export interface ScheduledChangeDecision {
+  /** Stripe price id the subscription switches to (catalog lookup happens in the caller). */
+  priceId: string;
+  /** When that phase starts (epoch seconds). */
+  startEpoch: number;
+}
+
+/**
+ * PURE: does this schedule carry a PENDING price change for the subscription?
+ * Only an active schedule counts; the pending phase is the first phase that
+ * starts at/after the current phase's end; a "next" phase on the SAME price
+ * is not a plan change (e.g. a released-then-recreated schedule). Anything
+ * malformed → null (never a guessed change).
+ */
+export function decideScheduledChange(
+  schedule: ScheduleSnapshot,
+  currentPriceId: string | null,
+): ScheduledChangeDecision | null {
+  if (schedule.status !== 'active') return null;
+  const currentEnd = schedule.currentPhase?.endEpoch ?? null;
+  if (currentEnd === null) return null;
+  const next = schedule.phases.find(
+    (phase) => phase.startEpoch !== null && phase.startEpoch >= currentEnd,
+  );
+  if (!next || next.priceId === null || next.startEpoch === null) return null;
+  if (currentPriceId !== null && next.priceId === currentPriceId) return null;
+  return { priceId: next.priceId, startEpoch: next.startEpoch };
 }
 
 /**
@@ -409,6 +488,9 @@ export interface CustomerSubscriptionRow {
   cancelled_at: string | null;
   latest_invoice_id: string | null;
   livemode: boolean;
+  /** Pending period-end plan change mirrored from the Stripe schedule (both or neither). */
+  scheduled_offer_key: string | null;
+  scheduled_change_at: string | null;
 }
 
 /**
@@ -433,7 +515,15 @@ export const CUSTOMER_SUBSCRIPTION_ROW_KEYS: readonly (keyof CustomerSubscriptio
   'cancelled_at',
   'latest_invoice_id',
   'livemode',
+  'scheduled_offer_key',
+  'scheduled_change_at',
 ];
+
+/** The catalog-resolved pending change (offer key, not a price id). */
+export interface ScheduledOfferChange {
+  offerKey: string;
+  atIso: string;
+}
 
 /** Build the closed upsert row — field-by-field, deterministic (idempotent). */
 export function buildCustomerSubscriptionRow(input: {
@@ -442,7 +532,10 @@ export function buildCustomerSubscriptionRow(input: {
   snapshot: SubscriptionSnapshot;
   offer: CatalogOffer;
   livemode: boolean;
+  /** Absent/null → no pending change (both mirror columns null). */
+  scheduledChange?: ScheduledOfferChange | null;
 }): CustomerSubscriptionRow {
+  const scheduled = input.scheduledChange ?? null;
   return {
     user_id: input.userId,
     stripe_customer_id: input.snapshot.customerId ?? '',
@@ -459,6 +552,8 @@ export function buildCustomerSubscriptionRow(input: {
     cancelled_at: epochToIso(input.snapshot.canceledAtEpoch),
     latest_invoice_id: input.snapshot.latestInvoiceId,
     livemode: input.livemode,
+    scheduled_offer_key: scheduled ? scheduled.offerKey : null,
+    scheduled_change_at: scheduled ? scheduled.atIso : null,
   };
 }
 
@@ -474,12 +569,22 @@ export type EntitlementMirrorDecision =
  * identically: active | trialing → active open-ended grant; past_due →
  * active grant bounded by current_period_end (the resolver's clock check IS
  * the grace check); anything else → no grant (existing active row expires).
+ *
+ * cancel_at_period_end: the plan stays ACTIVE until current_period_end and
+ * then ends without a renewal, so the grant is bounded by that date. The
+ * access outcome before the date is identical (still paid); after it, the
+ * resolver's clock check turns access off even if `customer.subscription.
+ * deleted` is delayed. Resuming (cancel_at_period_end=false) re-opens it.
  */
 export function decideEntitlementMirror(
   storedStatus: string,
   currentPeriodEndIso: string | null,
+  cancelAtPeriodEnd = false,
 ): EntitlementMirrorDecision {
   if (storedStatus === 'active' || storedStatus === 'trialing') {
+    if (cancelAtPeriodEnd && currentPeriodEndIso !== null) {
+      return { grant: true, endsAt: currentPeriodEndIso };
+    }
     return { grant: true, endsAt: null };
   }
   if (storedStatus === 'past_due') {
@@ -858,11 +963,8 @@ export function extractConnectAccountSnapshot(account: Payload): ConnectAccountS
  *    'dispute_reinstatement' kind cannot be stored (flagged for review).
  */
 export const NO_CONTRACT_REASONS: Readonly<Record<string, string>> = {
-  'subscription_schedule.created': 'no_schedule_linkage_column_on_partner_benefit_uses',
-  'subscription_schedule.updated': 'no_schedule_linkage_column_on_partner_benefit_uses',
-  'subscription_schedule.released': 'no_schedule_linkage_column_on_partner_benefit_uses',
-  'subscription_schedule.canceled': 'no_schedule_linkage_column_on_partner_benefit_uses',
-  'subscription_schedule.completed': 'no_schedule_linkage_column_on_partner_benefit_uses',
+  // subscription_schedule.* now re-run the subscription sync for the
+  // schedule's subscription (scheduled_offer_key / scheduled_change_at mirror).
   'invoice.finalized': 'no_invoice_mirror_table',
   'invoice.payment_failed': 'no_invoice_dunning_mirror_table',
   'invoice.payment_action_required': 'no_invoice_dunning_mirror_table',
