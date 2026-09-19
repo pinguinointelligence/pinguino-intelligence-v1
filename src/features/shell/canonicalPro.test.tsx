@@ -91,7 +91,13 @@ describe('canonical PINGÜINO Pro — routes (proofs 1–3)', () => {
 
 describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
   it('4. customer-visible navigation says Gellatti Pro — never a separate Studio item', () => {
-    expect(APP_NAV_ITEMS.some((i) => i.label === 'Gellatti Pro')).toBe(true);
+    // DESIGN V3.0 GLOBAL MENU: the workspace entry is the menu's FIRST ROW and
+    // names the current mode — „Pro" — instead of repeating the brand as a panel
+    // title. The point of this proof is unchanged: there is a Pro destination and
+    // it is never a separate „Studio" item.
+    const proEntry = APP_NAV_ITEMS.find((i) => i.id === 'proWorkspace');
+    expect(proEntry?.label).toBe('Pro');
+    expect(proEntry?.to).toBe('/pro/recipe');
     for (const item of APP_NAV_ITEMS) {
       expect(item.label.toLowerCase().includes('studio'), item.id).toBe(false);
       expect(item.to.includes('/studio'), item.id).toBe(false);
@@ -111,11 +117,14 @@ describe('canonical Gellatti Pro — menu (proofs 4–6, 17–18)', () => {
       // stays the one canonical label-settings destination, reached as ☰ Produkcja → Etykiety,
       // and „Skanuj produkt" / „Niezweryfikowane" stay an action and a filter of Produkty.
       'production',
-      // Community remains the one public creator door.
-      'community',
+      // DESIGN V3.0 GLOBAL MENU: Community left the top level — it is inside
+      // Receptury now. Its routes and its in-app buttons are untouched.
       'memberShop',
       'affiliate',
       'franchise',
+      // „Pomoc" is support (contact, reporting a problem), separated from the
+      // knowledge destination above it.
+      'help',
     ]);
     expect(items.some((item) => item.to === '/pro/monitor')).toBe(false);
     expect(items.some((item) => item.to === '/products/import')).toBe(false);
