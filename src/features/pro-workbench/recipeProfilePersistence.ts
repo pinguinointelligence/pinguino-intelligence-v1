@@ -1,5 +1,9 @@
 import type { RecipeInput } from '@/engine';
 import { copy } from '@/copy/en';
+import {
+  normalizeDirectionTargetOrigins,
+  type DirectionTargetOrigins,
+} from '@/features/recipe-direction/directionTargetOrigin';
 import { temperatureForMode } from '@/features/customer-flow/servingMode';
 import type { RecipeState } from '@/stores/recipeStore';
 import type {
@@ -52,6 +56,8 @@ export function profileSnapshotFromState(
   state: RecipeState,
   directionTargets: DirectionTargets,
   directionIntents?: DirectionIntents,
+  /** OD-29: whose each level is — saved so a reload restores the choice, not just its value. */
+  directionTargetOrigins?: DirectionTargetOrigins,
 ): ProfileSettingsSnapshot {
   const servingModeId =
     state.servingModeId ??
@@ -75,6 +81,7 @@ export function profileSnapshotFromState(
     machineCapacityGrams: state.machine_capacity_grams,
     directionTargets,
     ...(directionIntents ? { directionIntents: { ...directionIntents } } : {}),
+    ...(directionTargetOrigins ? { directionTargetOrigins: { ...directionTargetOrigins } } : {}),
   };
 }
 
@@ -104,6 +111,8 @@ export function attachRecipeProfileMetadata(
       directionIntents: settings.directionIntents
         ? { ...settings.directionIntents }
         : { ...settings.directionTargets },
+      // OD-29: provenance travels with the recipe, or tomorrow's reload loses the choice.
+      directionTargetOrigins: normalizeDirectionTargetOrigins(settings.directionTargetOrigins),
       ingredientUxByLineId: structuredClone(ingredientUxByLineId),
     },
   } as PersistedRecipeInput;
@@ -181,6 +190,9 @@ export function readRecipeProfileMetadata(input: RecipeInput): ProfileSettingsSn
     batchSource,
     directionTargets: canonicalTargets,
     directionIntents: canonicalTargets,
+    /* A record written before provenance existed says nothing here, and silence is not
+       permission: it reads back as `legacy_unknown`, which asks before changing. */
+    directionTargetOrigins: normalizeDirectionTargetOrigins(record.directionTargetOrigins),
     ingredientUxByLineId: normalizedIngredientUx(record.ingredientUxByLineId),
     formulationStrategy: normalizeFormulationStrategy(
       (record.formulationStrategy as string | undefined) ?? (record.mode as string),
