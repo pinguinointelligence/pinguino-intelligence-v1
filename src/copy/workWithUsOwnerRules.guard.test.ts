@@ -24,11 +24,12 @@ import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import {
   FRANCHISE_PAGE,
-  FRANCHISE_SPLIT,
+  FRANCHISE_SPLIT_LINE,
   LANES,
   MACHINES_PAGE,
   TRAILER_PAGE,
 } from './workWithUsLanes';
+import { FRANCHISE_FORMATS } from '@/features/franchise/franchiseFormats';
 
 interface Literal {
   file: string;
@@ -125,6 +126,7 @@ describe('the scan itself', () => {
     for (const expected of [
       'src/copy/workWithUsLanes.ts',
       'src/features/franchise/FranchiseInquiryForm.tsx',
+      'src/features/franchise/franchiseFormats.ts',
       'src/features/work-with-us/LeadEnquirySection.tsx',
       'src/pages/destinations/WorkWithUsPage.tsx',
     ]) {
@@ -141,8 +143,14 @@ describe('N-TRAIL-05 — "FOB" is never published', () => {
 
   it("the trailer line is the owner's exact sentence, and the lane page renders it", () => {
     expect(TRAILER_PAGE.next).toBe(TRAILER_SENTENCE);
-    const lanePage = fs.readFileSync(path.join(SOURCE_ROOT, 'pages/destinations/LanePage.tsx'), 'utf8');
-    const trailerPage = fs.readFileSync(path.join(SOURCE_ROOT, 'pages/destinations/TrailerPage.tsx'), 'utf8');
+    const lanePage = fs.readFileSync(
+      path.join(SOURCE_ROOT, 'pages/destinations/LanePage.tsx'),
+      'utf8',
+    );
+    const trailerPage = fs.readFileSync(
+      path.join(SOURCE_ROOT, 'pages/destinations/TrailerPage.tsx'),
+      'utf8',
+    );
     expect(lanePage).toContain('{copy.next}');
     expect(trailerPage).toContain('copy={TRAILER_PAGE}');
   });
@@ -180,7 +188,9 @@ describe('L-PRICE-02 — no delivered pricing', () => {
   });
 
   it('transport and taxes are left to the quote wherever a price is discussed', () => {
-    const machinesQuote = MACHINES_PAGE.points.find((point) => /wycen/i.test(point.title + point.body));
+    const machinesQuote = MACHINES_PAGE.points.find((point) =>
+      /wycen/i.test(point.title + point.body),
+    );
     expect(machinesQuote?.body).toMatch(/Transport, podatki/);
     expect(machinesQuote?.body).toMatch(/w wycenie/);
     expect(TRAILER_PAGE.next).toContain('transport i podatki dobieramy do projektu');
@@ -198,16 +208,33 @@ describe('O-FRAN-02 — no invented franchise promise', () => {
     const franchiseCopy = [
       ...stringsOf(LANES.franchise),
       ...stringsOf(FRANCHISE_PAGE),
-      ...stringsOf(FRANCHISE_SPLIT),
+      ...stringsOf(FRANCHISE_FORMATS),
+      FRANCHISE_SPLIT_LINE,
     ];
     expect(franchiseCopy.filter((text) => MONEY.test(text) || PERCENT.test(text))).toEqual([]);
-    expect(offending(FRANCHISE.filter((l) => FRANCHISE_FILE.test(l.file)), MONEY)).toEqual([]);
+    expect(
+      offending(
+        FRANCHISE.filter((l) => FRANCHISE_FILE.test(l.file)),
+        MONEY,
+      ),
+    ).toEqual([]);
     expect(offending(FRANCHISE, PERCENT)).toEqual([]);
   });
 
   it('leaves terms and investment to a conversation, in so many words', () => {
-    expect(FRANCHISE_SPLIT.note).toMatch(/ustalamy indywidualnie/);
-    expect(FRANCHISE_PAGE.points.some((point) => /ustalamy w rozmowie/i.test(point.title))).toBe(true);
+    // The page asks ONE question at the end, and the line above the button is
+    // where it says that the specifics are not published. Rebuilt 2026-09-18:
+    // the sentence moved from the retired „Podział ról" note to the contact
+    // block, and the Franchise page must still render it.
+    expect(FRANCHISE_PAGE.next).toMatch(/ustalamy indywidualnie/);
+    expect(FRANCHISE_SPLIT_LINE).toMatch(/Gellatti dostarcza system/);
+    const franchisePage = fs.readFileSync(
+      path.join(SOURCE_ROOT, 'pages/destinations/GlobalDestinationPages.tsx'),
+      'utf8',
+    );
+    expect(franchisePage).toContain('note={FRANCHISE_PAGE.next}');
+    expect(franchisePage).toContain('<FranchiseInquiryForm');
+    expect(franchisePage).toContain('{FRANCHISE_SPLIT_LINE}');
   });
 });
 
@@ -227,16 +254,21 @@ describe('C-APP-13 — the signed-in area is "Partner"', () => {
 
   it('nothing rendered inside /partner says Affiliate', () => {
     // PartnerPage, its own feature imports, and the application status copy.
-    const imported = [...partnerPage.matchAll(/from '@\/(features\/(?:affiliate|partner-application)\/[^']+)'/g)].map(
-      (match) => `src/${match[1]}`,
-    );
+    const imported = [
+      ...partnerPage.matchAll(/from '@\/(features\/(?:affiliate|partner-application)\/[^']+)'/g),
+    ].map((match) => `src/${match[1]}`);
     const inside = (file: string) =>
       /^src\/pages\/community\/Partner[^/]*\.tsx$/.test(file) ||
       /^src\/features\/partner-application\//.test(file) ||
       file === 'src/copy/cooperation.ts' ||
       imported.some((module) => file === `${module}.ts` || file === `${module}.tsx`);
     expect(imported.length).toBeGreaterThan(0);
-    expect(offending(PUBLIC.filter((literal) => inside(literal.file)), /affiliate/i)).toEqual([]);
+    expect(
+      offending(
+        PUBLIC.filter((literal) => inside(literal.file)),
+        /affiliate/i,
+      ),
+    ).toEqual([]);
   });
 
   it('the affiliate copy that names the dashboard "Panel Affiliate" stays unrendered', () => {
