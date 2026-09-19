@@ -55,7 +55,7 @@ describe('one production workspace host', () => {
     const host = codeOf(join(SRC, 'features/production-workspace/ProductionProcessHost.tsx'));
     expect(host).toContain('export function useProductionHost(');
     // The host's own process mount uses the same door, never the hook directly.
-    expect(host).toContain('useProductionHost(true)');
+    expect(host).toContain('useProductionHost(true, runContext)');
   });
 
   it('keeps the recipe Produkcja tab on that door', () => {
