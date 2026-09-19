@@ -221,13 +221,15 @@ export function ProductionBatches() {
       return;
     }
     if (loadingRunRef.current === openedRunId) return;
+    // The list is refetched while the run loads, so this effect re-runs mid-flight. It
+    // must NOT cancel the request it already started: the ref is what prevents a second
+    // one, and a result that arrives for a run the address no longer names is discarded
+    // below by `shownRun` rather than by aborting the one in progress.
     const batch = inProgress.batches.find((candidate) => candidate.runId === openedRunId) ?? null;
     if (!batch || !ownerUserId || !productionRepository) return;
     loadingRunRef.current = openedRunId;
-    let cancelled = false;
     void openDurableRun({ run: batch, ownerUserId, repository: productionRepository }).then(
       (result) => {
-        if (cancelled) return;
         setOpenedRun({
           runId: openedRunId,
           context: result.ok ? result.context : null,
@@ -235,9 +237,6 @@ export function ProductionBatches() {
         });
       },
     );
-    return () => {
-      cancelled = true;
-    };
   }, [inProgress.batches, openedRunId, ownerUserId, productionRepository]);
 
   // The state is only trusted for the run the address currently names.
