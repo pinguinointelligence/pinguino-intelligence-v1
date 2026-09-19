@@ -49,15 +49,26 @@ functional blocker for this handoff fix.
    conflict screen is reused without UI/ScanFlow production edits.
 3. Production files: scan-import-v2 `contracts.ts`, `discovery/contracts.ts`,
    `discovery/discovery.ts`, `adapters/supabaseDiscoveryAdapter.ts`, `pipeline.ts`.
-   Additional files: this ledger and `src/features/scan-flow/ScanFlow.exactConflict.test.tsx`.
+   Additional files: this ledger, `src/features/scan-flow/ScanFlow.exactConflict.test.tsx`, and a
+   two-line conflict stop in `src/scan-import-v2/__tests__/staging.label.finalize.test.ts`.
 4. New tests: the focused file above, 32 mocked cases covering the ten IDs individually.
-   Existing regression test files were not modified.
+   The gated live-staging test was adapted to the new union type but **NOT EXECUTED**.
 5. Exact commands executed:
 
    ```sh
    npx vitest run src/features/scan-flow/ScanFlow.exactConflict.test.tsx --reporter=dot
    npx vitest run src/features/scan-flow/ScanFlow.exactConflict.test.tsx src/features/scan-flow/ScanFlow.networkHint.test.tsx src/features/scan-flow/ScanFlow.currentScan.test.tsx src/features/scan-flow/ScanFlow.test.tsx src/scan-import-v2/__tests__/discoveryAdapter.test.ts src/scan-import-v2/__tests__/discovery.test.ts src/scan-import-v2/__tests__/pipeline.test.ts --reporter=dot
    npx eslint src/scan-import-v2/contracts.ts src/scan-import-v2/discovery/contracts.ts src/scan-import-v2/discovery/discovery.ts src/scan-import-v2/pipeline.ts src/scan-import-v2/adapters/supabaseDiscoveryAdapter.ts src/features/scan-flow/ScanFlow.exactConflict.test.tsx
+   git diff --check
+   ```
+
+   CI typecheck identified two overly broad mock types plus a missing ambiguous branch in the
+   gated staging test (run `35441269236`). After those type corrections, the focused conflict
+   file and targeted lint were rerun (including lint, not execution, of the gated staging file):
+
+   ```sh
+   npx vitest run src/features/scan-flow/ScanFlow.exactConflict.test.tsx --reporter=dot
+   npx eslint src/features/scan-flow/ScanFlow.exactConflict.test.tsx src/scan-import-v2/__tests__/staging.label.finalize.test.ts
    git diff --check
    ```
 
@@ -73,5 +84,5 @@ functional blocker for this handoff fix.
 9. Remaining: delivery gates at commit time; no live collision or additional Owner scan required.
 10. External/operational item: DB-OPS-01 remains parked under separate authority, not a functional
     blocker here. No production action authorized or taken.
-11. Git: isolated `codex/scanner-exact-conflict`, minimal seven-file change; unrelated worktrees and
+11. Git: isolated `codex/scanner-exact-conflict`, bounded eight-file change; unrelated worktrees and
     Owner changes preserved. PR/merge/final clean status recorded in the delivery response.

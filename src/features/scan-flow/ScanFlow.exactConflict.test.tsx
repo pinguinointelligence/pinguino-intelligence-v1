@@ -88,8 +88,10 @@ describe('Scanner 1.4 server conflict handoff (no live services)', () => {
       }>
     >
   >;
-  let rpc: ReturnType<typeof vi.fn>;
-  let externalResearch: ReturnType<typeof vi.fn>;
+  let rpc: ReturnType<
+    typeof vi.fn<(name: string, args?: Record<string, unknown>) => Promise<ReturnType<typeof ok>>>
+  >;
+  let externalResearch: ReturnType<typeof vi.fn<() => Promise<unknown>>>;
   const capture = async (ean = EAN) => {
     await act(async () => {
       app.capture!(manualConfirmedScan(ean)!);
