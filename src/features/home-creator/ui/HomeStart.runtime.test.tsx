@@ -64,16 +64,19 @@ const spies = {
   startIdea: vi.fn(),
   openOfficial: vi.fn(),
   communityOpened: vi.fn(),
+  reset: vi.fn(),
 };
 
 function Harness({
   ideaReady = false,
   atStart = true,
   libraryRefusal = null,
+  resetEnabled = false,
 }: {
   ideaReady?: boolean;
   atStart?: boolean;
   libraryRefusal?: { recipeId: string; message: string } | null;
+  resetEnabled?: boolean;
 }) {
   const [mode, setMode] = useState<HomeStartMode>('idea');
   return (
@@ -91,6 +94,8 @@ function Harness({
       onOpenOfficial={spies.openOfficial}
       onCommunityOpened={spies.communityOpened}
       libraryRefusal={libraryRefusal}
+      onReset={spies.reset}
+      resetEnabled={resetEnabled}
     />
   );
 }
@@ -400,5 +405,69 @@ describe('the page hands the press to its existing doors', () => {
     expect(door).toContain('adoptOfficialRecipe(recipeId, {');
     expect(door).toContain('keepIdea: false');
     expect(door).toContain('replaceConfirmed: true');
+  });
+});
+
+/**
+ * DESIGN V3.0 Version 10 §H1b — the top workspace row and the breathing space under it.
+ *
+ * Two things the served screen got wrong and these cases hold: the row that says where you
+ * start from also carries „Reset", on its right; and the working area is CENTRED in what is
+ * left between that row and „Rozpocznij recepturę" instead of sitting against the tabs.
+ */
+describe('H1b — the top workspace row', () => {
+  it('H1B-ROW-A holds where-you-start-from on the left and Reset on the right', async () => {
+    await render();
+    const row = need('home-workspace-top-row');
+    const modes = need('home-recipe-sources');
+    const reset = need('home-workspace-reset');
+    expect(row.contains(modes)).toBe(true);
+    expect(row.contains(reset)).toBe(true);
+    // Left, then right: source order is the reading order, and CSS puts the gap between.
+    expect(modes.compareDocumentPosition(reset) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(reset.textContent).toBe('Reset');
+  });
+
+  it('H1B-ROW-B an empty workspace offers Reset quietly and does nothing if pressed', async () => {
+    await render({ resetEnabled: false });
+    expect(need('home-workspace-reset').getAttribute('aria-disabled')).toBe('true');
+    await click('home-workspace-reset');
+    expect(spies.reset).not.toHaveBeenCalled();
+  });
+
+  it('H1B-ROW-C with something to clear it asks first, through the page', async () => {
+    await render({ resetEnabled: true });
+    expect(need('home-workspace-reset').getAttribute('aria-disabled')).toBe('false');
+    await click('home-workspace-reset');
+    // The press opens the question; nothing is discarded by the row itself.
+    expect(spies.reset).toHaveBeenCalledTimes(1);
+  });
+
+  it('H1B-ROW-D the row belongs to the START screen only', async () => {
+    await render({ atStart: false });
+    expect(q('home-workspace-top-row')).toBeNull();
+  });
+
+  it('H1B-CENTER-A the working area is centred between the row and the action', async () => {
+    await render();
+    const start = need('home-start');
+    expect(start.dataset.mode).toBe('idea');
+    expect(start.dataset.atStart).toBe('true');
+    const css = readFileSync('src/features/home-creator/ui/homeStart.css', 'utf8');
+    /* The box is the screen minus the pinned chrome above and below — both measured
+       elsewhere for their own reasons, so nothing here is a guessed height. */
+    expect(css).toContain("[data-mode='idea'][data-at-start='true'] .home-start-main");
+    expect(css).toContain('var(--home-layer-top');
+    expect(css).toContain('var(--home-start-cta-height');
+    expect(css).toContain('justify-content: safe center');
+    // The top row keeps its place at the top; only the working area is centred.
+    expect(css).not.toMatch(/\.home-start-top \{[^}]*justify-content: safe center/);
+  });
+
+  it('H1B-CENTER-B „Receptury” is a grid that fills and scrolls — it is not centred', async () => {
+    await render();
+    await click('home-start-mode-library');
+    expect(need('home-start').dataset.mode).toBe('library');
+    expect(host.querySelector('.home-start-main')).toBeNull();
   });
 });
