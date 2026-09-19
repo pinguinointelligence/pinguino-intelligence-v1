@@ -127,13 +127,20 @@ export interface DraftAdjustmentMove {
  */
 const isHeldByConstraint = (set: ConstraintSet, lineId: string): boolean => {
   const constraint = set.byLineId[lineId];
-  return constraint !== undefined && constraint.mode !== 'ai' && constraint.mode !== 'range';
+  if (constraint === undefined || constraint.mode === 'ai') return false;
+  // A STRUCTURAL range is a hard profile limit, not a preference (owner
+  // decision 2026-09-19 § 7): the profile places that line and the generic gram
+  // search has no authority over it, so it stays held exactly as it was before
+  // `range` became searchable.
+  if (constraint.mode === 'range') return constraint.structural === true;
+  return true;
 };
 
 /** The interval a `range` constraint opens for the search, if it carries one. */
 const searchWindow = (set: ConstraintSet, lineId: string): GramBand | null => {
   const constraint = set.byLineId[lineId];
   if (constraint === undefined || constraint.mode !== 'range') return null;
+  if (constraint.structural === true) return null;
   return { minGrams: constraint.minGrams, maxGrams: constraint.maxGrams };
 };
 

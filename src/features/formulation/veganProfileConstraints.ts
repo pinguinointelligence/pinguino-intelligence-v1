@@ -106,7 +106,14 @@ export function withVeganInulinEnvelopeHold(input: RecipeInput, set: ConstraintS
               : ceilingGrams;
           return [
             lineId,
-            { mode: 'range', minGrams: Math.min(minGrams, maxGrams), maxGrams } as const,
+            {
+              mode: 'range',
+              minGrams: Math.min(minGrams, maxGrams),
+              maxGrams,
+              // A VERIFIED CALIBRATION ENVELOPE, not a dosage preference: the
+              // profile places this line, the generic search does not.
+              structural: true,
+            } as const,
           ];
         }),
       ),

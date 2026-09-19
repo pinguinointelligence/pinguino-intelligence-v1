@@ -167,6 +167,8 @@ export function relaxationScorePenalty(input: RecipeInput): number {
 
 const sameBand = (constraint: IngredientConstraint, band: GramBand): boolean =>
   constraint.mode === 'range' &&
+  // A structural limit is never widened, whatever interval it happens to carry.
+  constraint.structural !== true &&
   Math.abs(constraint.minGrams - band.minGrams) <= BAND_IDENTITY_EPS &&
   Math.abs(constraint.maxGrams - band.maxGrams) <= BAND_IDENTITY_EPS;
 
