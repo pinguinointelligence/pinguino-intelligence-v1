@@ -23,6 +23,32 @@ is marked SERVED VERIFIED** — the served build is unreachable from this enviro
 | **LOCK-02** | P1 | CONFIRMED — presented "nearest" 38–274× farther | **NOT FIXED**; the multiplier is **corrected to 26×–156×** (the audit measured one axis on a randomised witness search; this is the engine's two-axis severity) | It WAS closed — ranking both Sorbet generators by distance reached candidates **1.1×–30.8× nearer** and unfroze `line-1`, which sat at exactly 598 g in all 16 audited cells. That failed the OWNER-LOCKED contract GEL-P0-025, so it was reverted. See the grouped approval request in `P1-S-closure.md`. | `evidence/p1cde-locks-after-fix.json` |
 | **LOCK-03** | P1 | CONFIRMED — −1 and −2 byte-identical | **NOT FIXED** | Reverted with LOCK-02: the improvement came from the same Sorbet ranking change that failed GEL-P0-025. An earlier build did separate the two levels — and the move shape that separated them was the same one whose absence broke the accepted cross-level contract in `recipe-direction/sharedDirectionNearestMatrix.test.ts`. The two requirements pull against each other under a greedy search; closing this needs the beam described in `P1-S-closure.md`, not more tuning. | `evidence/p1cde-locks-after-fix.json` |
 
+## VARIANT B UPDATE — supersedes the three `NOT FIXED` rows above
+
+The owner's decision `NAPRAWA 1B — WARIANT B` amended GEL-P0-025 (exact projection is the
+**preferred first path**, not the final authority) and authorised a bounded search for the
+nearest legal candidate. The table above is **not** rewritten — it records what was true
+before that decision. This section records what is true after it. Full write-up, including
+every measurement and the two bounds' sizing:
+`NAPRAWA-1B.md`. Regression tests: 20 in
+`directionFalseInfeasible.regression.test.ts`.
+
+| finding | status before Variant B | status now | measured |
+|---|---|---|---|
+| **LOCK-01** | NOT FIXED | **FIXED** (served verification pending) | incumbent 2.52079 → delivered **0.01000**, POD 14.9971 against band [15, 16] — **252.1×** nearer, with the 80 g sugar lock held byte-exact |
+| **LOCK-02** | NOT FIXED | **PARTLY FIXED, residue ROOT-CAUSED** | softness cells 31.5× / 22.9× nearer, sweetness cells 1.2×–2.5×. The residue is **not** a search failure: the nearest legal candidate needs INULIN at 79 g, **inside** the owner's own 20–80 g band, and `isHeldByConstraint` drops any line carrying a non-`ai` constraint from the adjustable vector — so the band is enforced as a lock. Admitting that one vector takes LOCK-02a to **0.02000** (32.7×) and LOCK-02b to **0.15935** (16.6×). Owner decision requested in `NAPRAWA-1B.md` § 9; **nothing was loosened here.** |
+| **LOCK-03** | NOT FIXED | **EXPLAINED — the identical vector is correct** | „Najpierw matematyka": +1 and +2 converge on one vector because it is a **verified local optimum for both** — no whole-gram mass-neutral transfer between two adjustable lines is nearer to either. The verdict still separates the levels by distance (1.570 against 3.570). No difference was manufactured. Bounded-space statement, not a global-optimum proof. |
+
+A defect the first Variant B build introduced and this one removes: it broke the accepted
+cross-level contract `recipe-direction/sharedDirectionNearestMatrix.test.ts` §8 — on
+Sorbet −13 the request for Sweetness **+2** published POD 21.2966 while **+1**, from a
+byte-identical incumbent, published 21.7877, so a sibling level's candidate sat nearer to
++2's own band than +2's did. Root cause: a solved step was offered at only two lengths, and
+a far target's long step leaves the engine's legal region long before it leaves the ladder
+box, so **every** rung was illegal. Fixed by a fixed-depth bisection for the farthest legal
+point on the ray. Both levels now deliver POD 21.7877. Guarded by `INV-2: a farther request
+never converges worse than a nearer one on the same draft`.
+
 ## Findings the fix touches but does NOT close (recorded, not acted on)
 
 * **AUD-SWEET-05 / RC-INF-2 (P2)** — the Sorbet exact-preference point (`min = max`, `reached`
@@ -42,3 +68,13 @@ Promote **INV-1** and **INV-2** to `src/contracts/owner-locked/` once LOCK-01/02
 closed. Adding a contract is always allowed, but locking now would lock a partial state —
 and the defect this whole block is about is precisely a locked contract being made to
 agree with the implementation.
+
+Still the recommendation after Variant B: LOCK-02 carries a live owner decision, so the
+state is still partial.
+
+## What this block did NOT do
+
+**Priority 2 was not started.** No HOME-only or PRO-only behaviour was introduced — the
+selector lives in the shared preview pipeline and is gated only by re-entrancy depth and
+by internal probe markers, never by module. Any parity drift observed stays recorded for
+Priority 2 rather than fixed here.

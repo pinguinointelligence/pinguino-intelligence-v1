@@ -109,7 +109,10 @@ The search space is **bounded**, so what this returns is *the best in the legal 
 was searched* — not a proof of the global optimum. That distinction is stated wherever it
 matters rather than implied.
 
-## 6 · Measured result
+## 6 · Measured result — FIRST build (two-rung ladder)
+
+> Superseded by § 6b. Kept because the numbers below are the evidence that the first
+> build was already an improvement, and because § 6b is only readable against them.
 
 Distances are Σ Direction severity points on the engine's own bands. "halt" is what CORE
 published on the audited SHA.
@@ -141,13 +144,182 @@ fail here:
 Each asserts **two** things: the level is not claimed as reached, **and** whatever is
 published is still engine-legal. Refusing is allowed; publishing something illegal is not.
 
-## 8 · Still open
+## 6b · The defect the FIRST build still had — and the fix
 
-* **B6 — LOCK-03.** Sweetness +1 and +2 on the locked sorbet still return the same vector.
-  Per the owner's instruction the verdict waits on the mathematics: if both levels
-  genuinely share one physical optimum, an identical answer is correct and no difference
-  will be manufactured. That has not been established yet.
-* **LOCK-02a / LOCK-02b** improve only 1.1×–1.3×. The selector starts from the incumbent,
-  and on those cells the incumbent sits in a basin the bounded shapes do not leave.
+`sharedDirectionNearestMatrix.test.ts` §8 is an accepted cross-level contract: for any
+requested level **L**, the candidate delivered for L must be at least as near to L's own
+band as every sibling level's candidate is. The first build **failed** it:
+
+```
+sorbet @ −13 · level +1 → POD 21.7877  (0.2123 from its band [22, 22])
+sorbet @ −13 · level +2 → POD 21.2966  (2.7034 from its band [24, 24])
+                                  ↑ the +1 candidate is 2.2123 from band 24 — NEARER
+```
+
+Both levels start from a **byte-identical incumbent** (WATER 135 / SUCROSE 86 /
+DEXTROSE 125, POD 21.2693), so this is not an input difference. Raising the budget from
+240/4 to 600/10 did **not** fix it, which is how the real cause was found rather than
+guessed — a trace of the selector's own candidates showed:
+
+* the +2 request **did** generate much nearer candidates (distance 1.07 against the
+  incumbent's 2.88) — and every one of them was refused by `detectViolations` as
+  `ice_fraction/low`, `water/low`, `total_solids/high`;
+* the +1 request generated a legal one because its step was short enough.
+
+**Root cause.** A solved step was offered at exactly two lengths, `scale` and `scale / 2`,
+where `scale` is the clamp to the ladder box. A FAR target solves a LONG step, and a long
+step leaves the **engine's legal region** far earlier than it leaves the ladder box — so
+both rungs were illegal and the far request was left with nothing. The box was bounding
+the search; the bands were not.
+
+**Fix.** Along one solved ray every axis metric moves affinely, so distance to the
+requested target is monotone up to the exact landing point and the best point on the ray
+is the **farthest legal one**. A fixed-depth bisection (6 probes, its own accounted
+budget) finds it. This is a bounded line search on **one** ray: the move shapes, the
+ladder box and the candidate budget are untouched, and where the whole step is already
+legal the behaviour is byte-identical to the first build.
+
+`reachable === 0` — a ray refused from its very first gram — leaves the incumbent standing.
+Nothing is relaxed to avoid that.
+
+## 6c · Measured result — SHIPPED build
+
+Baseline restated, because it is **not** the one in § 6: the incumbent is what this branch
+publishes with the selector switched off (`directionNearestPass`), on the same fixtures, so
+the factor isolates the selector alone. Σ Direction severity points.
+
+| case | incumbent | delivered | factor | first build |
+|---|---|---|---|---|
+| **LOCK-01** butter-pecan, 80 g sugar lock, sweetness +1 | 2.52079 | **0.01000** (POD 14.9971) | **252.1×** | 13.7× |
+| **LOCK-02d** sorbet B, softness −1 | 0.64737 | **0.02055** | **31.5×** | 30.8× |
+| **LOCK-02e** sorbet B, softness −2 | 1.01452 | **0.04429** | **22.9×** | 23.1× |
+| **LOCK-02c** sorbet B, sweetness −1 | 2.48116 | 0.97823 | 2.5× | 2.4× |
+| **LOCK-02a** sorbet A, sweetness −1 | 1.11099 | 0.65306 | 1.7× | 1.3× |
+| **LOCK-02b** sorbet A, sweetness −2 | 3.11099 | 2.65306 | 1.2× | 1.1× |
+| **LOCK-03** sorbet B, sweetness +1 / +2 | 2.774 / 4.774 | 1.570 / 3.570 | 1.8× / 1.3× | 1.1× / 1.0× |
+| **OD-28** | reaches −1 | reaches −1, 0 violations | — | — |
+| **CONTROL-C2** the proven dead end | 0.02000 | 0.02000 — **still refuses** | 1.0× | — |
+
+And the contract that exposed the defect now holds, with the two levels agreeing:
+
+```
+sorbet @ −13 · level +1 → POD 21.7877   WATER 132 / SUCROSE 97 / DEXTROSE 117
+sorbet @ −13 · level +2 → POD 21.7877   WATER 132 / SUCROSE 97 / DEXTROSE 117
+```
+
+Both requests converge on the same point because the **legal frontier binds before either
+band is reached** — which is the answer to B6, below.
+
+## 6d · Sizing the two bounds (B3)
+
+Neither number is padding, and both were measured rather than chosen. Holding everything
+else fixed:
+
+| | 240 / 4 | 240 / 10 | 600 / 10 |
+|---|---|---|---|
+| LOCK-01 | 87.9× | 87.9× | **254.8×** ← the candidate budget binds |
+| LOCK-02c | 4.2× | **4.4×** | 4.4× ← the pass count binds |
+| every other lock cell, and the whole Sorbet nearest matrix | identical | identical | identical |
+
+Cost at 600/10: `mainTechnicalMaximum.test.ts` **53.08 s** against its ~52–54 s baseline,
+because the depth gate keeps the selector out of inner previews. The full owner-locked
+suite runs 24 files / 235 tests in 115.11 s.
+
+## 7 · Negative controls (B8)
+
+Four shapes, each making the requested level unreachable through a **different**
+authority, so a selector that cheated by relaxing something would pass every LOCK test and
+fail here:
+
+| control | construction | verdict |
+|---|---|---|
+| B8.1 hard lock | every line pinned at its grams | refuses |
+| B8.2 Main / Crown | the Main crowned and pinned, every sugar line pinned | refuses |
+| B8.3 profile-bound | the Sorbet softness −2 dead end the audit proved real | refuses |
+| B8.4 machine / process | machine capacity far below the requested batch | refuses |
+
+Each asserts **two** things: the level is not claimed as reached, **and** whatever is
+published is still engine-legal. Refusing is allowed; publishing something illegal is not.
+All four still refuse on the shipped build.
+
+## 8 · B6 — LOCK-03: the mathematics, then the verdict
+
+The owner's instruction was *najpierw matematyka, potem verdict* — do not manufacture a
+difference because the labels differ. The mathematics:
+
+* On the locked sorbet, sweetness **+1** and **+2** deliver the byte-identical vector
+  `[629, 157, 104, 51, 55, 4]`, POD 20.473509.
+* That vector is a **verified local optimum for both requests**: no whole-gram
+  mass-neutral transfer between two adjustable lines is strictly nearer to either. The
+  same holds for the −1 / −2 pair on config A, `[484, 299, 79, 79, 55, 4]`.
+* On Sorbet −13 the +1 / +2 pair likewise converges on one point, `[132, 97, 117]`.
+
+So an identical vector for two levels is the **correct** answer here: both requests are
+bounded by the same frontier, and no legal candidate between them exists in the space this
+pipeline searches. What must still separate the levels is the distance the verdict
+reports, and it does — 0.65306 for −1 against 2.65306 for −2, 1.570 against 3.570 on
+config B. Neither is reported as reached.
+
+Pinned by `LOCK-03: the shared vector is a local optimum, and the verdict still separates
+the levels` in `directionFalseInfeasible.regression.test.ts`.
+
+This is a statement about **the legal space this pipeline searches**, not a proof of a
+global optimum — see § 9.
+
+## 9 · The LOCK-02 residue — root-caused, and NOT fixed here
+
+LOCK-02a / LOCK-02b still move only 1.7× / 1.2×. That is not where the search gave up; it
+is where an **authority** stops it, and the cause is exact.
+
+An independent bounded sweep of the same draft finds
+`[484, 283, 71, 79, 79, 4]`. Forced into the selector it passes **every** publish gate and
+the selector then climbs further still:
+
+| case | delivered today | with that vector admitted | factor |
+|---|---|---|---|
+| LOCK-02a | 0.65306 | **0.02000** (POD 18.0041) | **32.7×** |
+| LOCK-02b | 2.65306 | **0.15935** | **16.6×** |
+| LOCK-02c | 0.97823 | 0.84085 | 1.2× |
+
+It is unreachable because it moves **INULIN from 55 g to 79 g**, and nothing in this
+pipeline may move inulin on this draft:
+
+1. `withOwnerInulinPolicyHold` writes the owner's dosage **band** onto the line as
+   `{ mode: 'range', minGrams: 20, maxGrams: 80 }` (2 %–8 % of a 1000 g batch);
+2. `isHeldByConstraint` in `draftCandidateVector.ts` treats **any** mode other than `ai`
+   as a full **hold**, so the line is dropped from the adjustable vector entirely;
+3. … although 79 g is **inside** the owner's own band, and although that same file
+   documents inulin as *"available as the approved solids/body lever"*.
+
+So a **band is being enforced as a lock**, and every search in the pipeline loses the
+lever — not only a Direction request.
+
+**Not changed here, deliberately.** Making the band behave as a band changes which lines
+the solver may move on **every** recipe: it is a semantic change on a protected path
+(`scripts/protectedPaths.json`), far outside a Direction fix, and the owner's Variant B
+decision is explicit that constraints are not to be loosened to improve a result. The
+mechanism is pinned instead, by `LOCK-02 residue: the owner inulin BAND removes the line
+from the adjustable vector entirely`, so the day it changes the test says so.
+
+### Owner decision requested
+
+| | |
+|---|---|
+| **Authority** | `withOwnerInulinPolicyHold` (`ownerInulinPolicy.ts`) × `isHeldByConstraint` (`draftCandidateVector.ts`) |
+| **Accepted behaviour today** | inulin governed by the owner band leaves the adjustable vector; no search may move it, in any direction, on any recipe |
+| **Requested behaviour** | the owner band bounds the line's ladder (`min` ≤ g ≤ `max`) instead of removing it |
+| **Reason** | the nearest legal candidate for a Direction request needs inulin **inside** the owner's own band |
+| **Consequence** | LOCK-02a 32.7× nearer, LOCK-02b 16.6×; inulin becomes a solver lever on every recipe |
+| **Risk** | every accepted gram trajectory that currently cannot touch inulin may change; the owner minimum (20 g) becomes reachable from above, so the *lower* edge of the band needs the same scrutiny as the upper |
+| **Alternatives** | (a) leave as is — LOCK-02a/b stay at 1.7× / 1.2×; (b) admit the band only for lines the Direction selector moves, which splits one authority into two and is worse |
+| **Files** | `src/features/constraint-studio/draftCandidateVector.ts` (`isHeldByConstraint`), `src/features/product-intelligence/ownerInulinPolicy.ts` (`withOwnerInulinPolicyHold`) |
+
+## 10 · Still open
+
 * **B13 — served verification.** Egress to `staging.pinguinoai.com` and the Supabase
-  project is blocked from this environment, so **nothing here is served-verified**.
+  project is blocked from this environment, so **nothing here is served-verified**. Every
+  figure above is labelled `offline-staging-head`.
+* **The LOCK-02 residue** above, pending the owner decision in § 9.
+* **HOME/PRO parity** is Priority 2 and was not touched. No HOME-only or PRO-only
+  behaviour was introduced: the selector sits in the shared preview pipeline and is gated
+  only by depth and by probe markers, never by module.

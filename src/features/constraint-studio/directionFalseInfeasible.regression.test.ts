@@ -36,6 +36,12 @@ import { recipeDirectionViolations } from '@/features/recipe-direction/recipeDir
 import { assessRecipeDirection } from '@/features/recipe-direction/recipeDirectionAssessment';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { buildOptimizePreview } from './applyPipeline';
+import { buildDraftCandidateVector } from './draftCandidateVector';
+import {
+  OWNER_INULIN_POLICY,
+  ownerInulinGramBand,
+} from '@/features/product-intelligence/ownerInulinPolicy';
+import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import drafts from './__fixtures__/directionFalseInfeasibleDrafts.json';
 
 type CaseKey = keyof typeof drafts;
@@ -66,6 +72,14 @@ const solve = (key: CaseKey) => {
     plannedSum: proposed.items.reduce((sum, item) => sum + item.planned_grams, 0),
   };
 };
+
+/**
+ * The distance from an ARBITRARY candidate to an ARBITRARY request — the only
+ * way to state a CROSS-LEVEL claim, because `distance` above always scores a
+ * candidate against the targets it happens to carry.
+ */
+const distanceAgainst = (request: RecipeInput, candidate: RecipeInput): number =>
+  distance({ ...request, items: candidate.items });
 
 /** Lines the draft holds exactly — a fix may never quietly release one. */
 const heldGrams = (input: RecipeInput, constraints: ConstraintSet) =>
@@ -113,28 +127,32 @@ describe('P1 — OD-28: a reachable Direction level is never reported as unreach
   });
 });
 
-describe('P1 — LOCK-01: OPEN, and the mechanism that closed it cost a Preview elsewhere', () => {
+describe('P1 — LOCK-01: CLOSED under Variant B, and the history is kept', () => {
   /**
-   * RECORDED, NOT ASSERTED AWAY.
+   * STATUS CHANGED, EVIDENCE PRESERVED.
    *
    * LOCK-01 („false infeasibility on an ordinary gelato with one ordinary gram
    * lock": butter-pecan, SUCROSE held at 80 g, Sweetness +1, a candidate 0.3159
    * from the [15, 16] band while an engine-verified whole-gram witness exists at
-   * POD 15.019) is still OPEN.
+   * POD 15.019) is now CLOSED, pending served verification.
    *
-   * It was closed, measurably — a preview-level aim that re-solved for the
-   * requested target from the chosen candidate reached 0.0140, 22.6× nearer. That
-   * aim also turned a clean Preview into `no_proposal` on the milk starter at
-   * Sweetness +2 / Softness +2 carrying an exact, a percent and a range
-   * constraint (`recipeDirectionTargets.test.ts`). An improvement that costs the
-   * customer an answer somewhere else is not an improvement, so it was removed;
-   * removing it in turn exposed that the in-solver half shifts accepted solver
-   * trajectories across `sharedDirectionNearestMatrix` and a second case of the
-   * owner-locked Sorbet projection contract, so that was reverted too.
+   * It had been closed once before by a preview-level aim that re-solved for the
+   * requested target from the chosen candidate. That aim also turned a clean
+   * Preview into `no_proposal` on the milk starter at Sweetness +2 / Softness +2
+   * carrying an exact, a percent and a range constraint
+   * (`recipeDirectionTargets.test.ts`). An improvement that costs the customer an
+   * answer somewhere else is not an improvement, so it was removed; removing it
+   * in turn exposed that the in-solver half shifts accepted solver trajectories
+   * across `sharedDirectionNearestMatrix` and a second case of the owner-locked
+   * Sorbet projection contract, so that was reverted too.
    *
-   * What this pins is the half that must hold either way: the candidate is
-   * engine-legal, weighs the target batch, and the 80 g lock is byte-exact. The
-   * distance gap stays visible in `docs/audit/priority-1/P1-S-closure.md`.
+   * What closes it instead is the Variant B final selector, which changes no
+   * solver trajectory at all: it ranks fully-validated Previews after the
+   * pipeline has already answered. Incumbent 2.52079 → delivered 0.01000,
+   * POD 14.9971 against [15, 16] — 252.1x nearer — with the 80 g lock byte-exact.
+   *
+   * This test pins the half that must hold whatever the distance: the candidate
+   * is engine-legal, weighs the target batch, and the lock is untouched.
    */
   it('LOCK-01: the candidate is legal, on batch, and holds the 80 g sugar lock', () => {
     const solved = solve('LOCK-01');
@@ -148,30 +166,42 @@ describe('P1 — LOCK-01: OPEN, and the mechanism that closed it cost a Preview 
   });
 });
 
-describe('P1 — LOCK-02 / LOCK-03 on the Sorbet route: OPEN, blocked by an owner-locked contract', () => {
+describe('P1 — LOCK-02 / LOCK-03 on the Sorbet route: IMPROVED, and the residue is explained', () => {
   /**
-   * RECORDED, NOT ASSERTED AWAY.
+   * STATUS CHANGED, EVIDENCE PRESERVED.
    *
-   * LOCK-02 („the presented «najbliższy» is 26×–156× farther from the requested
-   * level than a candidate reachable in the same admissible space") and LOCK-03
-   * („two different requested levels return the byte-identical proposal") are
-   * still OPEN on the Sorbet route.
+   * LOCK-02 („the presented nearest is far from the requested level while a
+   * candidate reachable in the same admissible space is much nearer") and
+   * LOCK-03 („two different requested levels return the byte-identical
+   * proposal") were OPEN because the earlier fix collided with the owner-locked
+   * contract GEL-P0-025. Under the owner's Variant B decision that contract was
+   * amended (`sorbetDirectionOffBatchEligibility.contract.test.ts`), the nearest
+   * legal candidate now wins, and the numbers moved — incumbent distance →
+   * delivered distance, measured on these same fixtures:
    *
-   * They were fixed, measurably: running BOTH Sorbet generators and ranking them
-   * by distance instead of taking the first that merely improves reached
-   * candidates 1.1×–30.8× nearer and unfroze `line-1`, which sat at exactly 598 g
-   * in all 16 audited cells. That change failed the OWNER-LOCKED contract
-   * `src/contracts/owner-locked/sorbetDirectionOffBatchEligibility.contract.test.ts`
-   * (GEL-P0-025): an off-batch Sorbet draft must be solved BY THE EXACT
-   * PROJECTION, not by the general search, and ranking by distance lets another
-   * generator out-rank the projection. A locked contract is not rewritten to fit
-   * an implementation, so the change was reverted, and the conflict is written up
-   * as a grouped approval request in `docs/audit/priority-1/P1-S-closure.md`.
+   *   LOCK-01  2.52079 → 0.01000 (252.1x)   LOCK-02d 0.64737 → 0.02055 (31.5x)
+   *   LOCK-02a 1.11099 → 0.65306 (1.7x)     LOCK-02e 1.01452 → 0.04429 (22.9x)
+   *   LOCK-02b 3.11099 → 2.65306 (1.2x)     LOCK-02c 2.48116 → 0.97823 (2.5x)
    *
-   * What this pins is the half that must hold either way: whatever the Sorbet
-   * route returns is engine-legal, weighs the target batch and never quietly
-   * releases a lock. The distance gap stays visible in the closure document
-   * instead of being asserted into agreement here.
+   * WHY LOCK-02a/b STILL MOVE SO LITTLE — root-caused, not shrugged off. A
+   * candidate 32.7x nearer exists and passes EVERY publish gate: forcing
+   * [484, 283, 71, 79, 79, 4] into the selector takes LOCK-02a from 0.65306 to
+   * 0.02000 and LOCK-02b from 2.65306 to 0.15935. It is unreachable because it
+   * moves INULIN from 55 g to 79 g, and no search in this pipeline may move
+   * inulin here: `withOwnerInulinPolicyHold` writes the owner's dosage BAND onto
+   * the line as `{ mode: 'range', 20–80 g }`, and `isHeldByConstraint` in
+   * `draftCandidateVector.ts` reads ANY non-`ai` mode as a full HOLD, so the line
+   * leaves the adjustable vector altogether — although 79 g is INSIDE the owner's
+   * own band, and although that same file documents inulin as „available as the
+   * approved solids/body lever". The test below pins that mechanism.
+   *
+   * Making a band behave like a band instead of a lock would change which lines
+   * the solver may move on EVERY recipe, not only on a Direction request. That is
+   * a semantic change on a protected path and it is not taken here: it is written
+   * up for the owner in `docs/audit/priority-1/NAPRAWA-1B.md`.
+   *
+   * What these tests pin either way: whatever the Sorbet route returns is
+   * engine-legal, weighs the target batch and never quietly releases a lock.
    */
   for (const key of ['LOCK-02a', 'LOCK-02b', 'LOCK-02c', 'LOCK-02d', 'LOCK-02e'] as CaseKey[]) {
     it(`${key}: the candidate is legal, on batch, and holds every lock`, () => {
@@ -195,6 +225,131 @@ describe('P1 — LOCK-02 / LOCK-03 on the Sorbet route: OPEN, blocked by an owne
     expect(minusTwo.input.goals?.direction_targets?.sweetness).toBe(-2);
     expect(minusOne.nativeViolations).toEqual([]);
     expect(minusTwo.nativeViolations).toEqual([]);
+  });
+
+  /**
+   * LOCK-03 — THE MATHEMATICS, BEFORE THE VERDICT.
+   *
+   * „Two levels returned the same proposal" is only a defect if a DIFFERENT
+   * proposal was available for the farther one. Here it was not: the two
+   * requests converge on the same vector and that vector is a verified LOCAL
+   * OPTIMUM — no whole-gram mass-neutral transfer between two adjustable lines
+   * is strictly nearer to EITHER request. So the identical vector is the honest
+   * answer, and what must distinguish the levels is the DISTANCE the verdict
+   * reports, which it does: 0.65306 for −1 against 2.65306 for −2.
+   *
+   * This is a statement about the LEGAL SPACE THIS PIPELINE SEARCHES, not a
+   * proof of a global optimum: see the root cause above for a nearer candidate
+   * that only an authority change could reach.
+   */
+  it('LOCK-03: the shared vector is a local optimum, and the verdict still separates the levels', () => {
+    const minusOne = solve('LOCK-03-A-minus1');
+    const minusTwo = solve('LOCK-03-A-minus2');
+    expect(minusOne.ok && minusTwo.ok).toBe(true);
+    if (!minusOne.ok || !minusTwo.ok) return;
+
+    // The two levels do land on the same vector …
+    expect(minusTwo.proposed.items.map((item) => item.planned_grams)).toEqual(
+      minusOne.proposed.items.map((item) => item.planned_grams),
+    );
+    // … and the verdict still tells them apart, because the DISTANCE differs.
+    expect(minusTwo.distance).toBeGreaterThan(minusOne.distance + 1);
+
+    // LOCAL OPTIMUM: no 1 g transfer between two adjustable lines is nearer.
+    for (const solved of [minusOne, minusTwo]) {
+      const lines = solved.proposed.items;
+      const held = new Set(heldGrams(solved.proposed, draftFor('LOCK-03-A-minus1').constraints).map(([id]) => id));
+      const base = distanceAgainst(solved.input, solved.proposed);
+      for (const up of lines) {
+        for (const down of lines) {
+          if (up.id === down.id || held.has(up.id) || held.has(down.id)) continue;
+          if (down.planned_grams < 1) continue;
+          const moved: RecipeInput = {
+            ...solved.proposed,
+            items: lines.map((item) =>
+              item.id === up.id
+                ? { ...item, planned_grams: item.planned_grams + 1 }
+                : item.id === down.id
+                  ? { ...item, planned_grams: item.planned_grams - 1 }
+                  : item,
+            ),
+          };
+          expect(distanceAgainst(solved.input, moved)).toBeGreaterThanOrEqual(base - 1e-9);
+        }
+      }
+    }
+  });
+
+  /**
+   * INV-2, STATED ACROSS LEVELS — the guard for the defect this fix closed.
+   *
+   * Every level's delivered candidate is a candidate the engine demonstrably
+   * reaches from this same draft, so for any request L the candidate returned
+   * for L must be at least as near to L's OWN target as any sibling level's
+   * candidate is. It failed before the bounded line search: on Sorbet −13 the
+   * request for Sweetness +2 published POD 21.2966 while +1, from a
+   * byte-identical incumbent, published 21.7877 — the sibling's candidate was
+   * nearer to +2's own band than +2's own was, because every rung of the
+   * two-rung ladder [f, f/2] on a LONG solved step landed outside the engine's
+   * bands and nothing legal was ever offered.
+   */
+  it('INV-2: a farther request never converges worse than a nearer one on the same draft', () => {
+    for (const [near, far] of [
+      ['LOCK-02a', 'LOCK-02b'],
+      ['LOCK-03-A-minus1', 'LOCK-03-A-minus2'],
+    ] as [CaseKey, CaseKey][]) {
+      const nearSolved = solve(near);
+      const farSolved = solve(far);
+      expect(nearSolved.ok && farSolved.ok).toBe(true);
+      if (!nearSolved.ok || !farSolved.ok) continue;
+      expect(distanceAgainst(farSolved.input, farSolved.proposed)).toBeLessThanOrEqual(
+        distanceAgainst(farSolved.input, nearSolved.proposed) + 1e-9,
+      );
+      expect(distanceAgainst(nearSolved.input, nearSolved.proposed)).toBeLessThanOrEqual(
+        distanceAgainst(nearSolved.input, farSolved.proposed) + 1e-9,
+      );
+    }
+  });
+
+  /**
+   * THE LOCK-02 RESIDUE, PINNED AS A MECHANISM rather than left as an opinion.
+   *
+   * The owner's inulin policy is a DOSAGE BAND. Written onto the line as a
+   * `range` constraint it is read by `isHeldByConstraint` as a HOLD, and the
+   * line disappears from the vector every search in this pipeline moves. If
+   * this test ever fails because inulin is back in the vector, the residue
+   * described above is gone with it and LOCK-02 should be re-measured.
+   */
+  it('LOCK-02 residue: the owner inulin BAND removes the line from the adjustable vector entirely', () => {
+    const { input, constraints } = draftFor('LOCK-02a');
+    const inVector = (set: ConstraintSet) =>
+      new Set(buildDraftCandidateVector(input, set, new Set()).map((candidate) => candidate.lineId));
+
+    // The line the OWNER POLICY governs — identified by the policy's own
+    // ingredient, never by gram value or by name.
+    const governed = input.items.find(
+      (item) =>
+        canonicalIngredientId(item.ingredient) === OWNER_INULIN_POLICY.mapperIngredientId,
+    );
+    expect(governed).toBeDefined();
+    if (governed === undefined) return;
+
+    // It sits INSIDE the owner's own band, and the draft treats it as a lever …
+    const band = ownerInulinGramBand(input.target_batch_grams);
+    expect(governed.planned_grams).toBeGreaterThanOrEqual(band.minGrams);
+    expect(governed.planned_grams).toBeLessThanOrEqual(band.maxGrams);
+    expect(inVector(constraints).has(governed.id)).toBe(true);
+
+    // … until the band itself is written onto the line, which is exactly what
+    // `withOwnerInulinPolicyHold` does. Then it is gone from the vector, and no
+    // search in this pipeline can move it — not even within the band.
+    const banded: ConstraintSet = {
+      byLineId: {
+        ...constraints.byLineId,
+        [governed.id]: { mode: 'range', minGrams: band.minGrams, maxGrams: band.maxGrams },
+      },
+    };
+    expect(inVector(banded).has(governed.id)).toBe(false);
   });
 });
 

@@ -7103,11 +7103,45 @@ function alreadyCleanMainGroupRefusal(
  * „accept something worse to avoid a refusal".
  */
 
-/** Engine-priced challengers one user-facing Preview may evaluate. */
-const DIRECTION_SELECTOR_EVALUATION_BUDGET = 240;
+/**
+ * Engine-priced challengers one user-facing Preview may evaluate, and how many
+ * times the selector may re-aim from its own best candidate.
+ *
+ * BOTH are sized from a measurement on the P1 lock cells, not a guess. Holding
+ * everything else fixed, the improvement over the incumbent's own distance is:
+ *
+ *            240 / 4     240 / 10    600 / 10
+ *   LOCK-01   87.9x        87.9x      254.8x   <- the candidate budget binds
+ *   LOCK-02c   4.2x         4.4x        4.4x   <- the pass count binds
+ *   every other lock cell and the whole Sorbet nearest matrix: IDENTICAL.
+ *
+ * So neither number is padding, and neither is free: at 600/10 the guard suite
+ * `mainTechnicalMaximum.test.ts` measures 53.08 s against its ~52–54 s
+ * baseline, because the depth gate keeps this stage out of inner previews.
+ */
+const DIRECTION_SELECTOR_EVALUATION_BUDGET = 600;
 
-/** How many times the selector may re-aim from its own best candidate. */
-const DIRECTION_SELECTOR_MAX_PASSES = 4;
+/** See above: measured, and LOCK-02c is the cell that needs the extra passes. */
+const DIRECTION_SELECTOR_MAX_PASSES = 10;
+
+/** Bisection depth on ONE solved ray: resolution `scale / 2^n`, cost n engine prices. */
+const DIRECTION_SELECTOR_LINE_SEARCH_PROBES = 6;
+
+/**
+ * Every BISECTION probe one user-facing Preview may price, across all rays.
+ * Besides these the line search prices each solved ray's full step once, which
+ * needs no budget of its own: a ray is only ever priced from inside `emit`, and
+ * `emit` stops as soon as the candidate budget above is spent.
+ *
+ * MEASURED, and it must not bind: with the bound lifted the heaviest P1 cell
+ * (LOCK-01) asks for 1146 probes, LOCK-02a for 708, LOCK-02b for 600 and
+ * everything else for 120 or fewer. At 600 the three heaviest cells ran DRY,
+ * which does not lie about feasibility — the incumbent still publishes — but it
+ * does make the answer depend on where the budget happened to run out. 1500
+ * clears the worst observed case with headroom; a probe is one `calculateRecipe`
+ * and `mainTechnicalMaximum.test.ts` still measures inside its ~52–54 s baseline.
+ */
+const DIRECTION_SELECTOR_LINE_SEARCH_BUDGET = 1500;
 
 /** Below this the engine refuses the move anyway. */
 const DIRECTION_SELECTOR_MIN_MOVE_GRAMS = 0.5;
@@ -7171,7 +7205,7 @@ function directionChallengerVectors(
   set: ConstraintSet,
   excludedIngredientIds: ReadonlySet<string>,
   axes: ReadonlyArray<{ metric: 'pod' | 'npac'; target: number }>,
-  budget: { remaining: number },
+  budget: { remaining: number; probes: number },
 ): RecipeInput[] {
   if (axes.length === 0 || axes.length > 2) return [];
   const vector = buildDraftCandidateVector(incumbent, set, excludedIngredientIds);
@@ -7205,6 +7239,49 @@ function directionChallengerVectors(
   const out: RecipeInput[] = [];
   const seen = new Set<string>();
 
+  /**
+   * The whole-gram, mass-neutral MOVE a given fraction of a solved step lands
+   * on, or null when it leaves the ladder box. Whole grams: the movers round
+   * first and the reference absorbs exactly their rounded sum, so the batch
+   * stays exact.
+   */
+  const movesAt = (
+    deltas: Map<string, number>,
+    referenceId: string,
+    fraction: number,
+  ): Map<string, number> | null => {
+    const moves = new Map<string, number>();
+    let moverDrift = 0;
+    for (const [lineId, delta] of deltas) {
+      if (lineId === referenceId) continue;
+      const entry = byId.get(lineId)!;
+      const rounded = Math.round(entry.current + delta * fraction) - entry.current;
+      moves.set(lineId, rounded);
+      moverDrift += rounded;
+    }
+    moves.set(referenceId, -moverDrift);
+    for (const [lineId, move] of moves) {
+      const entry = byId.get(lineId)!;
+      const landing = entry.current + move;
+      if (landing < 0 || landing < entry.lo - 1e-9 || landing > entry.hi + 1e-9) return null;
+    }
+    return moves;
+  };
+
+  /** Below two whole-gram movers the engine has nothing to transfer. */
+  const worthEvaluating = (moves: Map<string, number>): boolean =>
+    [...moves.values()].filter((move) => Math.abs(move) >= DIRECTION_SELECTOR_MIN_MOVE_GRAMS)
+      .length >= 2;
+
+  const vectorFor = (moves: Map<string, number>): RecipeInput => ({
+    ...incumbent,
+    items: incumbent.items.map((item) =>
+      moves.has(item.id)
+        ? { ...item, planned_grams: item.planned_grams + moves.get(item.id)! }
+        : item,
+    ),
+  });
+
   const emit = (deltas: Map<string, number>, referenceId: string): void => {
     if (budget.remaining <= 0) return;
     // Clamp to the ladder's own reach: the largest fraction of the solved step
@@ -7219,39 +7296,65 @@ function directionChallengerVectors(
       scale = Math.min(scale, headroom / Math.abs(delta));
     }
     if (scale <= 0) return;
-    for (const fraction of scale === 1 ? [1, 0.5] : [scale, scale / 2]) {
+
+    // ── THE LADDER BOX IS NOT THE ONLY BOUND: THE ENGINE'S BANDS ARE ────────
+    //
+    // A FAR request solves a LONG step, and a long step leaves the legal region
+    // (`ice_fraction`, `water`, `total_solids`) well before it leaves the
+    // ladder box. Offering only `scale` and `scale / 2` then offers nothing
+    // legal at all, so a far request converged WORSE than a near one on the
+    // very same draft: Sorbet -13 Sweetness +2 published POD 21.2966 while +1,
+    // from a byte-identical incumbent, published 21.7877 — the +1 candidate was
+    // nearer to +2's own band than +2's was, which is exactly the „nearest is
+    // not nearest" defect this selector exists to remove
+    // (`sharedDirectionNearestMatrix.test.ts` §8).
+    //
+    // Along one solved ray each axis moves AFFINELY, so distance to the
+    // requested target is monotone up to the exact landing point: the best
+    // point on the ray is the FARTHEST legal one. A fixed-depth bisection finds
+    // it — a bounded line search on ONE ray, not a wider search: the shapes,
+    // the box and the candidate budget are unchanged, and the probe budget is
+    // its own accounted bound.
+    const fractions = [scale, scale / 2];
+    // A probe is only spent where it can pay: the WHOLE step has to be inside
+    // the box and large enough to be a transfer at all — shortening cannot make
+    // a too-small step meaningful — and it has to be the engine that refuses it.
+    // Without this guard the probe budget drained on steps no fraction could
+    // rescue, and the line search switched itself off half way through the very
+    // cells it exists for (LOCK-01, LOCK-02a/b: 0 probes left).
+    const fullMoves = movesAt(deltas, referenceId, scale);
+    if (
+      fullMoves !== null &&
+      worthEvaluating(fullMoves) &&
+      detectViolations(calculateRecipe(vectorFor(fullMoves))).length > 0
+    ) {
+      let reachable = 0;
+      let refused = scale;
+      for (let probe = 0; probe < DIRECTION_SELECTOR_LINE_SEARCH_PROBES; probe += 1) {
+        if (budget.probes <= 0) break;
+        budget.probes -= 1;
+        const middle = (reachable + refused) / 2;
+        const moves = movesAt(deltas, referenceId, middle);
+        if (
+          moves !== null &&
+          worthEvaluating(moves) &&
+          detectViolations(calculateRecipe(vectorFor(moves))).length === 0
+        ) {
+          reachable = middle;
+        } else {
+          refused = middle;
+        }
+      }
+      // `reachable === 0` means the ray is refused from its first gram: the
+      // incumbent stands, exactly as before. Nothing is relaxed to avoid that.
+      if (reachable > 0) fractions.push(reachable, reachable / 2);
+    }
+
+    for (const fraction of fractions) {
       if (budget.remaining <= 0) return;
-      // Whole grams: the movers round first and the reference absorbs exactly
-      // their rounded sum, so the batch stays exact.
-      const moves = new Map<string, number>();
-      let moverDrift = 0;
-      for (const [lineId, delta] of deltas) {
-        if (lineId === referenceId) continue;
-        const entry = byId.get(lineId)!;
-        const rounded = Math.round(entry.current + delta * fraction) - entry.current;
-        moves.set(lineId, rounded);
-        moverDrift += rounded;
-      }
-      moves.set(referenceId, -moverDrift);
-      let admissible = true;
-      for (const [lineId, move] of moves) {
-        const entry = byId.get(lineId)!;
-        const target = entry.current + move;
-        if (target < 0 || target < entry.lo - 1e-9 || target > entry.hi + 1e-9) admissible = false;
-      }
-      if (!admissible) continue;
-      const moved = [...moves.values()].filter(
-        (move) => Math.abs(move) >= DIRECTION_SELECTOR_MIN_MOVE_GRAMS,
-      );
-      if (moved.length < 2) continue;
-      const candidate: RecipeInput = {
-        ...incumbent,
-        items: incumbent.items.map((item) =>
-          moves.has(item.id)
-            ? { ...item, planned_grams: item.planned_grams + moves.get(item.id)! }
-            : item,
-        ),
-      };
+      const moves = movesAt(deltas, referenceId, fraction);
+      if (moves === null || !worthEvaluating(moves)) continue;
+      const candidate = vectorFor(moves);
       const key = candidate.items.map((item) => item.planned_grams.toFixed(3)).join('|');
       if (seen.has(key)) continue;
       seen.add(key);
@@ -7458,7 +7561,10 @@ function selectNearestLegalDirectionCandidate(
     return preview;
   };
 
-  const budget = { remaining: DIRECTION_SELECTOR_EVALUATION_BUDGET };
+  const budget = {
+    remaining: DIRECTION_SELECTOR_EVALUATION_BUDGET,
+    probes: DIRECTION_SELECTOR_LINE_SEARCH_BUDGET,
+  };
   let bestInput = incumbentInput;
   let bestDistance = incumbentDistance;
   let bestPreview: ConstraintPreview | null = null;
