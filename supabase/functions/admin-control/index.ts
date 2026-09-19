@@ -1,5 +1,6 @@
 import Stripe from 'npm:stripe@18';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { resolveAppOrigin } from '../_shared/appOrigins.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -78,6 +79,10 @@ Deno.serve(async (req) => {
     return json(400, { error: 'invalid_json' });
   }
   const action = text(body.action, 80).toUpperCase();
+  // Which app the admin is working in, from the closed origin map. Staging and
+  // production share this function, so a single PUBLIC_APP_URL would send one
+  // environment's invitees to the other environment's app.
+  const app = resolveAppOrigin(req.headers.get('origin'));
   const permission: 'CATALOG' | 'SUPPORT' | 'PARTNER' = action === 'SIGNED_REQUEST_EVIDENCE'
     ? 'CATALOG'
     : action.includes('PARTNER') || action === 'PROVISION_CONNECT'
@@ -128,9 +133,8 @@ Deno.serve(async (req) => {
       p_expires_at: expiresAt,
     });
     if (error) return json(400, { error: error.message });
-    const redirectBase = Deno.env.get('PUBLIC_APP_URL') ?? 'https://staging.pinguinoai.com';
     const invite = await service.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${redirectBase.replace(/\/$/, '')}/login`,
+      redirectTo: `${app.base}/login`,
       data: { gellatti_partner_invitation_id: invitationId },
     });
     const delivery = invite.error ? 'existing_user_in_app_or_delivery_failed' : 'email_sent';
@@ -160,16 +164,15 @@ Deno.serve(async (req) => {
       return json(404, { error: 'pending_partner_invitation_not_found' });
     }
     if (Date.parse(invitation.expires_at) <= Date.now()) return json(409, { error: 'partner_invitation_expired' });
-    const redirectBase = Deno.env.get('PUBLIC_APP_URL') ?? 'https://staging.pinguinoai.com';
     const result = await service.auth.admin.inviteUserByEmail(invitation.email, {
-      redirectTo: `${redirectBase.replace(/\/$/, '')}/login`,
+      redirectTo: `${app.base}/login`,
       data: { gellatti_partner_invitation_id: invitation.id },
     });
     if (result.error) return json(409, { error: 'invitation_email_not_resent', inAppInvitationStillActive: true });
     await service.from('audit_log').insert({
       actor_type: 'admin', actor_id: actorId, action: 'partner.invitation_resend',
       entity_type: 'partner_invitations', entity_id: invitation.id,
-      diff: { email: invitation.email, environment: 'staging' },
+      diff: { email: invitation.email, environment: app.environment, originMatched: app.matched },
       reason: 'Admin requested invitation resend', correlation_id: invitation.id,
     });
     return json(200, { invitationId: invitation.id, delivery: 'email_resent' });
@@ -214,7 +217,7 @@ Deno.serve(async (req) => {
       account = await stripe.accounts.create({
         type: 'express',
         email: authUser.user?.email,
-        metadata: { gellatti_partner_id: partnerId, environment: 'staging' },
+        metadata: { gellatti_partner_id: partnerId, environment: app.environment },
       }, { idempotencyKey: `gellatti-partner-connect-${partnerId}` });
     } catch {
       return json(502, { error: 'stripe_connect_provision_failed' });
@@ -224,16 +227,8 @@ Deno.serve(async (req) => {
       p_connect_account_id: account.id,
     });
     if (registerError) return json(500, { error: registerError.message, accountCreated: true });
-    await service.from('user_notifications').insert({
-      recipient_user_id: partner.user_id,
-      notification_type: 'PARTNER_CONNECT_ACTION_REQUIRED',
-      entity_type: 'partners',
-      entity_id: partnerId,
-      title: 'Dokończ konfigurację wypłat',
-      body: 'Konto Stripe Connect jest gotowe. Otwórz Partner → Payouts i dokończ bezpieczny onboarding.',
-      deep_link: '/partner?section=payouts',
-      dedupe_key: `partner-connect-ready:${partnerId}`,
-    });
+    // No "finish your payout setup" notice: the Partner does not configure payouts
+    // (owner decision, 2026-09-17).
     return json(200, { accountId: account.id, idempotent: false });
   }
 
