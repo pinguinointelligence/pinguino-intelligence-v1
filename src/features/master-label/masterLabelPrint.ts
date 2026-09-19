@@ -60,6 +60,35 @@ export function buildMasterLabelPrintHtml(
   return `<!doctype html><html data-label-document="${options.preview ? 'preview' : options.calibration ? 'calibration' : options.draft ? 'draft' : 'print'}"><head><meta charset="utf-8"><title>${escapeHtml(options.calibration ? 'Druk testowy' : productName)}</title>${printCss(printable, preflight.geometry.baseFontPt, pageSize)}${exactPageCss}${marketPrintCss(printable)}</head><body><main class="sheet">${body}</main></body></html>`;
 }
 
+/**
+ * What the operator's saved PDF is called: the LOT first, then the recipe, then the day
+ * it was printed — the three things a label is looked up by afterwards. Without it the
+ * browser names the file after the application, so a shelf of printouts is a shelf of
+ * „Claude.pdf".
+ *
+ * A LOT code already carries its own `LOT-` prefix, so it is not repeated, and a colon
+ * is left out: it is the one character in „LOT:" that filesystems mangle.
+ */
+export function masterLabelPrintDocumentName(
+  data: MasterLabelData,
+  printedOn: Date = new Date(),
+): string {
+  const lot = data.lotCode.trim().replace(/^LOT[\s:-]*/i, '');
+  const recipe = primaryText(data.productName, data.labelLanguages).trim();
+  const day = [
+    printedOn.getFullYear(),
+    String(printedOn.getMonth() + 1).padStart(2, '0'),
+    String(printedOn.getDate()).padStart(2, '0'),
+  ].join('-');
+  return [lot ? `LOT ${lot}` : null, recipe || null, day]
+    .filter((part): part is string => part !== null)
+    .join(' — ')
+    // Whatever the recipe is called, the name still has to be a filename.
+    .replace(/[/\\:*?"<>|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function printMasterLabel(
   data: MasterLabelData,
   logoUrl?: string | null,
@@ -69,5 +98,8 @@ export function printMasterLabel(
   if (!geometry.fits) {
     throw new Error(`${geometry.reason}. Zmień szerokość, wysokość albo średnicę w ustawieniach.`);
   }
-  return printLabelHtml(buildMasterLabelPrintHtml(data, logoUrl, options));
+  return printLabelHtml(
+    buildMasterLabelPrintHtml(data, logoUrl, options),
+    options?.calibration ? undefined : masterLabelPrintDocumentName(data),
+  );
 }
