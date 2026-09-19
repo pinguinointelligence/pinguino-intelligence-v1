@@ -218,7 +218,7 @@
     },
     {
       "path": "src/features/production-workspace/productionSession.ts",
-      "sha256": "a17859911857bc95c478bdeb48f0492a2427a93941a83f7f5fff16a933a8f621"
+      "sha256": "b66d5b11d2f485d9ae80bd1740ff531788f030c6df85e45ff0c0d414c6ed34ab"
     },
     {
       "path": "src/features/protein-gelato/proteinAuthority.ts",
@@ -293,5 +293,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "902c2c29290e61e9648d4e00bd9cfaf2744fc61899c3db946e10fb4a736ddfec"
+  "sourceClosureSha256": "bce339b2dd7b7f90c8bf24598cfb792a197cc98cbffe82ba9bdd5f6a52381a96"
 }

@@ -13,7 +13,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { educationCopy } from '@/copy/education.pl';
 import { PreparationIllustrationImage } from '@/features/education/PreparationIllustrationImage';
-import { productionProgress, productionStepForGrams } from '../productionSession';
+import {
+  productionFinishShortfall,
+  productionProgress,
+  productionStepForGrams,
+} from '../productionSession';
 import { carbonatedProductsForRecipe } from '../productionDegassing';
 import { productionProcessCopy as copy } from './productionProcessCopy';
 import {
@@ -38,6 +42,7 @@ import {
 } from './ProductionProcessParts';
 import {
   ProcessCorrectionSheet,
+  ProcessLowerYieldSheet,
   ProcessTroubleSheet,
   type ProcessSheetFrame,
 } from './ProductionProcessSheets';
@@ -74,6 +79,19 @@ export function ProductionProcess({
   const [openLineId, setOpenLineId] = useState<string | null>(null);
   const [typing, setTyping] = useState(false);
   const [troubleOpen, setTroubleOpen] = useState(false);
+  /* H4-10C — the confirmation shown when the batch ends with less in the vessel than the
+     plan asks for. It is a question, not a gate: nothing about the batch changes while it
+     is open, and „Wróć” leaves the operator exactly where they were. */
+  const [lowerYieldOpen, setLowerYieldOpen] = useState(false);
+  const finishShortfall = productionFinishShortfall(session);
+  /** The ONE door out of the batch: it asks first only when there is less than planned. */
+  const requestComplete = () => {
+    if (finishShortfall) {
+      setLowerYieldOpen(true);
+      return;
+    }
+    controller.complete();
+  };
   const troubleSuccessor = useRef<(() => HTMLElement | null) | null>(null);
 
   // A new step starts at the top of the frame (the design's „floor” reset).
@@ -334,7 +352,7 @@ export function ProductionProcess({
         lead: `${copy.dockStep(stepNumber, total)} · ${copy.dockWeighed}`,
         detail: currentStep.title,
         action: allDone ? copy.finish : copy.next,
-        onAction: allDone ? controller.complete : () => undefined,
+        onAction: allDone ? requestComplete : () => undefined,
       };
     }
   } else if (currentStep) {
@@ -413,7 +431,7 @@ export function ProductionProcess({
       action: isLastStep ? copy.finish : step.kind === 'degas' ? copy.degasDone : copy.next,
       onAction: () => {
         controller.finishStep(step);
-        if (isLastStep) controller.complete();
+        if (isLastStep) requestComplete();
       },
     };
   }
@@ -519,6 +537,19 @@ export function ProductionProcess({
             const reopened = controller.backFromCorrection();
             if (reopened) setOpenLineId(reopened);
           }}
+        />
+      ) : null}
+
+      {lowerYieldOpen && finishShortfall ? (
+        <ProcessLowerYieldSheet
+          frame={sheetFrame}
+          plannedGrams={formatProductionGrams(finishShortfall.plannedG)}
+          actualGrams={formatProductionGrams(finishShortfall.actualG)}
+          onConfirm={() => {
+            setLowerYieldOpen(false);
+            controller.complete();
+          }}
+          onBack={() => setLowerYieldOpen(false)}
         />
       ) : null}
 

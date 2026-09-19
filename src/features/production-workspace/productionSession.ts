@@ -1367,6 +1367,40 @@ export function mergePendingProductionDrafts(
   };
 }
 
+/**
+ * H4-10C (Owner 18.09.2026) — the batch is ending with LESS in the vessel than the plan
+ * asks for.
+ *
+ * „NIE każ mu dokładać brakujących gramów.” The operator is told plainly and decides:
+ * confirm and the real mass is what gets saved, or go back. So this function only
+ * REPORTS the shortfall; it never blocks the finish and never asks for more grams.
+ *
+ * It reads the numbers `productionProgress` already owns — the confirmed physical mass
+ * against the plan the batch is running — so there is no second definition of „how much
+ * is in the vessel”. The toppings' own mass is deliberately out of scope here: what the
+ * finished product weighs is H4-10A's question, and answering it in two places is exactly
+ * what we are avoiding.
+ *
+ * `null` when the batch is at or above its plan — the ordinary finish, unchanged.
+ */
+export interface ProductionFinishShortfall {
+  plannedG: number;
+  actualG: number;
+  shortfallG: number;
+}
+
+export function productionFinishShortfall(
+  session: ProductionSession,
+): ProductionFinishShortfall | null {
+  const progress = productionProgress(session);
+  if (progress.massBalanceState !== 'below') return null;
+  return {
+    plannedG: progress.currentPlanMassG,
+    actualG: progress.confirmedMassG,
+    shortfallG: progress.currentPlanMassG - progress.confirmedMassG,
+  };
+}
+
 export function productionStepForGrams(grams: number): number {
   if (grams < 10) return 0.1;
   if (grams < 100) return 0.5;

@@ -7,6 +7,7 @@ import {
   buildProductionForecastInput,
   completeProductionSession,
   confirmProductionLine,
+  productionFinishShortfall,
   confirmProductionTopUpTask,
   correctRecordedPhysicalGrams,
   createProductionSession,
@@ -76,6 +77,69 @@ function session() {
     startedAt: '2026-08-09T10:00:00.000Z',
   });
 }
+
+describe('H4-10C — finishing with less in the vessel than the plan asks for', () => {
+  /* Owner 18.09.2026: „NIE każ mu dokładać brakujących gramów.” The operator is told
+     plainly, decides, and the REAL mass is what gets saved. This authority only reports
+     the shortfall — it never blocks the finish and never asks for more grams. */
+  const confirmAll = (offsetPerLine: number) => {
+    let run = session();
+    for (const line of run.lines) {
+      run = confirmProductionLine(
+        setDraftActualGrams(run, line.lineId, line.targetGrams + offsetPerLine),
+        line.lineId,
+        '2026-08-24T10:00:00.000Z',
+      );
+    }
+    return run;
+  };
+
+  it('LOWER-YIELD-01 reports the plan, what is in the vessel, and the difference', () => {
+    const run = confirmAll(-2);
+    const shortfall = productionFinishShortfall(run);
+    expect(shortfall).not.toBeNull();
+    const planned = run.lines.reduce((sum, line) => sum + line.targetGrams, 0);
+    expect(shortfall!.plannedG).toBeCloseTo(planned, 6);
+    expect(shortfall!.actualG).toBeCloseTo(planned - 2 * run.lines.length, 6);
+    expect(shortfall!.shortfallG).toBeCloseTo(2 * run.lines.length, 6);
+  });
+
+  it('LOWER-YIELD-02 an exact batch asks nothing', () => {
+    expect(productionFinishShortfall(confirmAll(0))).toBeNull();
+  });
+
+  it('LOWER-YIELD-03 more in the vessel than planned is not this question', () => {
+    // Above plan is the deviation/Rescue conversation, not „you got less than planned”.
+    expect(productionFinishShortfall(confirmAll(3))).toBeNull();
+  });
+
+  it('LOWER-YIELD-04 reads the SAME numbers as the progress authority — no second definition', () => {
+    const run = confirmAll(-2);
+    const progress = productionProgress(run);
+    const shortfall = productionFinishShortfall(run)!;
+    expect(progress.massBalanceState).toBe('below');
+    expect(shortfall.plannedG).toBe(progress.currentPlanMassG);
+    expect(shortfall.actualG).toBe(progress.confirmedMassG);
+  });
+
+  it('LOWER-YIELD-05 the finish itself is never blocked — the real mass is what is saved', () => {
+    const run = confirmAll(-2);
+    const completed = completeProductionSession(
+      run,
+      calculateRecipe(buildFinalActualInput(run)),
+      '2026-08-24T11:00:00.000Z',
+      'owner-1',
+    );
+    expect(completed.status).toBe('completed');
+    const planned = run.lines.reduce((sum, line) => sum + line.targetGrams, 0);
+    expect(completed.completionSnapshot?.actualFinalMassG).toBeCloseTo(
+      planned - 2 * run.lines.length,
+      6,
+    );
+    // The plan it was measured against stays on the record, unchanged.
+    expect(completed.completionSnapshot?.plannedInput.target_batch_grams).toBe(1000);
+  });
+});
 
 describe('topping up a line the operator under-added (§12/§19/§20)', () => {
   const shortSession = () => {
