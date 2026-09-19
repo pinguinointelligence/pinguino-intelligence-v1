@@ -96,7 +96,7 @@ export const planBillingCopy = {
     contact: 'Napisz do nas',
   },
 
-  /** State 7 — the upgrade preview. Amounts come from the Stripe preview. */
+  /** State 7 — the upgrade preview. Amounts come from the server's billing preview. */
   upgrade: {
     title: 'Przejście na Pro',
     immediate: 'Pro zacznie działać od razu.',

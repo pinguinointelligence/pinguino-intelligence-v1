@@ -8,10 +8,13 @@
  *
  * THE AUTHORITY IS THE SERVER. Everything displayed comes from
  * `useBillingPlan()` → `deriveBillingPlanState()` over the user's own
- * `customer_subscriptions` rows, written only by the Stripe webhook. This file
- * computes NO date, NO amount and NO entitlement: it formats what the
- * authority already decided. The amount on the upgrade screen is Stripe's own
- * invoice preview, never `pricePro - priceHome`.
+ * `customer_subscriptions` rows, which only the billing webhook writes. This
+ * file computes NO date, NO amount and NO entitlement: it formats what the
+ * authority already decided. The amount on the upgrade screen is the payment
+ * processor's own invoice preview, never `pricePro - priceHome`.
+ *
+ * (The processor is deliberately not named here: `studioBoundary.test.ts` keeps
+ * every payment vendor out of `src/features/**`, comments included.)
  *
  * IT FAILS HONESTLY. The billing Edge Functions are not deployed yet, so every
  * action here can come back refused. A refusal renders as a refusal: the panel
