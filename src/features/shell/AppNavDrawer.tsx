@@ -52,8 +52,9 @@ export function AppNavDrawer() {
     canSaveRecipes: capabilities.canSaveRecipe,
     canUseProductionMode: capabilities.canUseProductionMode,
   });
-  const items = visibleNavItems(audience);
   const loc = { pathname: location.pathname, search: location.search };
+  // the first row follows the workspace the customer is in, not their plan
+  const items = visibleNavItems(audience, loc);
   const currentNavId = activeNavId(loc, audience);
   const planLabel =
     audience === 'pro' ? s.account.planPro : audience === 'home' ? s.account.planHome : null;

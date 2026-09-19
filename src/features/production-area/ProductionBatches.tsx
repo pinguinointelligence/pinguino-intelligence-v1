@@ -212,6 +212,22 @@ export function ProductionBatches() {
     }
     navigate(result.to);
   };
+  const openBatch = (runId: string) =>
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      next.set('run', runId);
+      return next;
+    });
+  const closeBatch = useCallback(
+    () =>
+      setParams((current) => {
+        const next = new URLSearchParams(current);
+        next.delete('run');
+        return next;
+      }),
+    [setParams],
+  );
+
   /* „Kontynuuj partię": the address names the run, the run names its own recipe version.
      Nothing of the open recipe is read or written on this path. */
   const loadingRunRef = useRef<string | null>(null);
@@ -226,7 +242,15 @@ export function ProductionBatches() {
     // one, and a result that arrives for a run the address no longer names is discarded
     // below by `shownRun` rather than by aborting the one in progress.
     const batch = inProgress.batches.find((candidate) => candidate.runId === openedRunId) ?? null;
-    if (!batch || !ownerUserId || !productionRepository) return;
+    if (!batch) {
+      /* The batch this address names is not in progress any more — the usual way there is
+         finishing it, which is a success, not an error. Waiting for a run that will never
+         come back would strand „Wczytujemy partię…" on screen, so Partie returns to its
+         list, where the finished batch is now the top row of the history. */
+      if (inProgress.state !== 'loading') closeBatch();
+      return;
+    }
+    if (!ownerUserId || !productionRepository) return;
     loadingRunRef.current = openedRunId;
     void openDurableRun({ run: batch, ownerUserId, repository: productionRepository }).then(
       (result) => {
@@ -237,23 +261,11 @@ export function ProductionBatches() {
         });
       },
     );
-  }, [inProgress.batches, openedRunId, ownerUserId, productionRepository]);
+  }, [closeBatch, inProgress.batches, inProgress.state, openedRunId, ownerUserId, productionRepository]);
 
   // The state is only trusted for the run the address currently names.
   const shownRun = openedRun?.runId === openedRunId ? openedRun : null;
 
-  const openBatch = (runId: string) =>
-    setParams((current) => {
-      const next = new URLSearchParams(current);
-      next.set('run', runId);
-      return next;
-    });
-  const closeBatch = () =>
-    setParams((current) => {
-      const next = new URLSearchParams(current);
-      next.delete('run');
-      return next;
-    });
 
   const requestResume = (batch: InProgressBatch) => {
     if (hasUnsavedProRecipeChanges()) {

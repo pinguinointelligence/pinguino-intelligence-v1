@@ -29,6 +29,15 @@ export const SCANNER_STORY: Readonly<Record<ScannerStoryStage, ScannerStoryStep>
 export const humanVerificationMessage =
   'Tym zajmie się człowiek z naszej ekipy. Damy znać, gdy produkt będzie gotowy.';
 
+export const scannerConnectionMessage =
+  'Nie udało się połączyć z usługą skanera. Spróbuj ponownie.';
+
+export function scannerServiceErrorMessage(detail = ''): string {
+  if (/HTTP (401|403)\b/.test(detail))
+    return 'Usługa skanera nie potwierdziła dostępu. Sprawdź logowanie i spróbuj ponownie.';
+  return 'Usługa skanera nie mogła sprawdzić produktu. Spróbuj ponownie.';
+}
+
 export function missingDataPromptForGaps(gaps: readonly string[]): string {
   const normalized = gaps.join(' ').toLocaleLowerCase('pl');
 

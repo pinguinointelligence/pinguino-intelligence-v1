@@ -348,6 +348,251 @@ describe('subscription_state_sync writer — customer_subscriptions + entitlemen
   });
 });
 
+// ── Account → Plan i rozliczenia: cancel-at-period-end, resume, scheduled plan change ──
+
+const CATALOG_PRO_MONTHLY: Row = {
+  offer_key: 'pro_monthly_standard',
+  product: 'pro',
+  cadence: 'monthly',
+  variant: 'standard',
+  commission_cadence: 'monthly',
+  stripe_price_id: 'price_fake_pro_m',
+};
+
+const PERIOD_END_EPOCH = 1_790_000_000;
+const PERIOD_END_ISO = new Date(PERIOD_END_EPOCH * 1000).toISOString();
+
+const subscriptionWith = (
+  overrides: Partial<{
+    status: string;
+    priceId: string;
+    cancelAtPeriodEnd: boolean;
+    schedule: string | null;
+  }> = {},
+): Row => ({
+  id: 'sub_fake_1',
+  customer: 'cus_fake_1',
+  status: overrides.status ?? 'active',
+  cancel_at_period_end: overrides.cancelAtPeriodEnd ?? false,
+  schedule: overrides.schedule ?? null,
+  items: {
+    data: [
+      {
+        price: { id: overrides.priceId ?? 'price_fake_pro_m' },
+        current_period_start: PERIOD_END_EPOCH - 30 * 86_400,
+        current_period_end: PERIOD_END_EPOCH,
+      },
+    ],
+  },
+  latest_invoice: 'in_fake_1',
+});
+
+/** A Stripe schedule: current phase on `fromPrice`, next phase on `toPrice` at period end. */
+const scheduleWith = (fromPrice: string, toPrice: string, status = 'active'): Row => ({
+  id: 'sched_fake_1',
+  subscription: 'sub_fake_1',
+  status,
+  current_phase: { start_date: PERIOD_END_EPOCH - 30 * 86_400, end_date: PERIOD_END_EPOCH },
+  phases: [
+    {
+      start_date: PERIOD_END_EPOCH - 30 * 86_400,
+      end_date: PERIOD_END_EPOCH,
+      items: [{ price: fromPrice, quantity: 1 }],
+    },
+    { start_date: PERIOD_END_EPOCH, items: [{ price: toPrice, quantity: 1 }] },
+  ],
+});
+
+describe('subscription sync — cancel at period end, resume, scheduled plan change', () => {
+  const seedBoth = (db: FakeDb) => {
+    db.seed('billing_price_catalog', CATALOG_HOME_MONTHLY);
+    db.seed('billing_price_catalog', CATALOG_PRO_MONTHLY);
+    db.seed('billing_customers', { user_id: 'user-1', stripe_customer_id: 'cus_fake_1' });
+  };
+
+  it('cancel_at_period_end keeps the plan ACTIVE and bounds the grant by current_period_end; resume re-opens it', async () => {
+    const db = new FakeDb();
+    seedBoth(db);
+    const sync = (sub: Row, evtId: string) =>
+      applyEventEffects(
+        { db, refetch: makeRefetcher({ subscription: { sub_fake_1: sub } }) },
+        event('customer.subscription.updated', evtId, { id: 'sub_fake_1' }),
+      );
+
+    await sync(subscriptionWith(), 'evt_fake_70');
+    expect(db.rows('entitlements')[0]).toMatchObject({ scope: 'pro', status: 'active', ends_at: null });
+
+    // „Anuluj subskrypcję” → Stripe: cancel_at_period_end=true, status still active
+    expect((await sync(subscriptionWith({ cancelAtPeriodEnd: true }), 'evt_fake_71')).note).toBeNull();
+    expect(db.rows('customer_subscriptions')[0]).toMatchObject({
+      status: 'active',
+      cancel_at_period_end: true,
+      current_period_end: PERIOD_END_ISO,
+      scheduled_offer_key: null,
+      scheduled_change_at: null,
+    });
+    const grants = db.rows('entitlements');
+    expect(grants).toHaveLength(1); // no second grant, no revocation
+    expect(grants[0]).toMatchObject({ scope: 'pro', status: 'active', ends_at: PERIOD_END_ISO });
+
+    // Redelivery of the same state is byte-identical.
+    const after = db.snapshot();
+    await sync(subscriptionWith({ cancelAtPeriodEnd: true }), 'evt_fake_72');
+    expect(db.snapshot()).toBe(after);
+
+    // „Wznów subskrypcję” → cancel_at_period_end=false: same period, grant open again.
+    await sync(subscriptionWith({ cancelAtPeriodEnd: false }), 'evt_fake_73');
+    expect(db.rows('customer_subscriptions')).toHaveLength(1);
+    expect(db.rows('customer_subscriptions')[0]).toMatchObject({
+      cancel_at_period_end: false,
+      current_period_end: PERIOD_END_ISO,
+    });
+    expect(db.rows('entitlements')).toHaveLength(1);
+    expect(db.rows('entitlements')[0]).toMatchObject({ status: 'active', ends_at: null });
+  });
+
+  it('a period-end downgrade schedule mirrors scheduled_offer_key/at; release clears it; PRO stays granted meanwhile', async () => {
+    const db = new FakeDb();
+    seedBoth(db);
+    const withSchedule = {
+      db,
+      refetch: makeRefetcher({
+        subscription: { sub_fake_1: subscriptionWith({ schedule: 'sched_fake_1' }) },
+        subscription_schedule: { sched_fake_1: scheduleWith('price_fake_pro_m', 'price_fake_home_m') },
+      }),
+    };
+    expect(
+      (await applyEventEffects(withSchedule, event('customer.subscription.updated', 'evt_fake_80', { id: 'sub_fake_1' })))
+        .note,
+    ).toBeNull();
+    expect(db.rows('customer_subscriptions')[0]).toMatchObject({
+      offer_key: 'pro_monthly_standard',
+      product: 'pro',
+      status: 'active',
+      scheduled_offer_key: 'home_monthly_standard',
+      scheduled_change_at: PERIOD_END_ISO,
+    });
+    // PRO is paid until period end — the grant is untouched.
+    expect(db.rows('entitlements')).toHaveLength(1);
+    expect(db.rows('entitlements')[0]).toMatchObject({ scope: 'pro', status: 'active', ends_at: null });
+
+    // The schedule's own events re-run the same writer (no second source of truth).
+    const after = db.snapshot();
+    expect(
+      (await applyEventEffects(withSchedule, event('subscription_schedule.updated', 'evt_fake_81', { id: 'sched_fake_1' })))
+        .note,
+    ).toBeNull();
+    expect(db.snapshot()).toBe(after);
+
+    // „Anuluj zmianę planu” → schedule released → subscription.schedule = null.
+    const released = {
+      db,
+      refetch: makeRefetcher({
+        subscription: { sub_fake_1: subscriptionWith({ schedule: null }) },
+        subscription_schedule: { sched_fake_1: scheduleWith('price_fake_pro_m', 'price_fake_home_m', 'released') },
+      }),
+    };
+    await applyEventEffects(released, event('subscription_schedule.released', 'evt_fake_82', { id: 'sched_fake_1' }));
+    expect(db.rows('customer_subscriptions')[0]).toMatchObject({
+      offer_key: 'pro_monthly_standard',
+      scheduled_offer_key: null,
+      scheduled_change_at: null,
+    });
+  });
+
+  it('when the scheduled phase starts, the product flips and the OLD scope grant expires (no PRO for ever)', async () => {
+    const db = new FakeDb();
+    seedBoth(db);
+    await applyEventEffects(
+      { db, refetch: makeRefetcher({ subscription: { sub_fake_1: subscriptionWith() } }) },
+      event('customer.subscription.created', 'evt_fake_90', { id: 'sub_fake_1' }),
+    );
+    expect(db.rows('entitlements')[0]).toMatchObject({ scope: 'pro', status: 'active' });
+
+    // Stripe switched the item price to HOME at the phase boundary.
+    await applyEventEffects(
+      { db, refetch: makeRefetcher({ subscription: { sub_fake_1: subscriptionWith({ priceId: 'price_fake_home_m' }) } }) },
+      event('customer.subscription.updated', 'evt_fake_91', { id: 'sub_fake_1' }),
+    );
+    expect(db.rows('customer_subscriptions')).toHaveLength(1);
+    expect(db.rows('customer_subscriptions')[0]).toMatchObject({ offer_key: 'home_monthly_standard', product: 'home' });
+    const byScope = Object.fromEntries(db.rows('entitlements').map((r) => [r.scope, r.status]));
+    expect(byScope).toEqual({ pro: 'expired', home: 'active' });
+  });
+
+  it('HOME → PRO immediate upgrade: PRO granted now, HOME grant expired, same cache row', async () => {
+    const db = new FakeDb();
+    seedBoth(db);
+    await applyEventEffects(
+      { db, refetch: makeRefetcher({ subscription: { sub_fake_1: subscriptionWith({ priceId: 'price_fake_home_m' }) } }) },
+      event('customer.subscription.created', 'evt_fake_92', { id: 'sub_fake_1' }),
+    );
+    await applyEventEffects(
+      { db, refetch: makeRefetcher({ subscription: { sub_fake_1: subscriptionWith({ priceId: 'price_fake_pro_m' }) } }) },
+      event('customer.subscription.updated', 'evt_fake_93', { id: 'sub_fake_1' }),
+    );
+    expect(db.rows('customer_subscriptions')).toHaveLength(1);
+    expect(db.rows('customer_subscriptions')[0]).toMatchObject({
+      product: 'pro',
+      current_period_end: PERIOD_END_ISO, // same period end — Stripe prorated, no new cycle
+    });
+    const byScope = Object.fromEntries(db.rows('entitlements').map((r) => [r.scope, r.status]));
+    expect(byScope).toEqual({ home: 'expired', pro: 'active' });
+  });
+
+  it('a schedule whose next price is unknown to the catalog mirrors NO change and says so', async () => {
+    const db = new FakeDb();
+    seedBoth(db);
+    const result = await applyEventEffects(
+      {
+        db,
+        refetch: makeRefetcher({
+          subscription: { sub_fake_1: subscriptionWith({ schedule: 'sched_fake_1' }) },
+          subscription_schedule: { sched_fake_1: scheduleWith('price_fake_pro_m', 'price_fake_not_in_catalog') },
+        }),
+      },
+      event('customer.subscription.updated', 'evt_fake_94', { id: 'sub_fake_1' }),
+    );
+    expect(result.note).toBe('scheduled_change_unknown_price:price_fake_not_in_catalog');
+    expect(db.rows('customer_subscriptions')[0]).toMatchObject({ scheduled_offer_key: null, scheduled_change_at: null });
+  });
+
+  it('payment failure (past_due) is mirrored as past_due with grace — never as a cancellation', async () => {
+    const db = new FakeDb();
+    seedBoth(db);
+    await applyEventEffects(
+      { db, refetch: makeRefetcher({ subscription: { sub_fake_1: subscriptionWith() } }) },
+      event('customer.subscription.created', 'evt_fake_95', { id: 'sub_fake_1' }),
+    );
+    await applyEventEffects(
+      { db, refetch: makeRefetcher({ subscription: { sub_fake_1: subscriptionWith({ status: 'past_due' }) } }) },
+      event('customer.subscription.updated', 'evt_fake_96', { id: 'sub_fake_1' }),
+    );
+    expect(db.rows('customer_subscriptions')[0]).toMatchObject({
+      status: 'past_due',
+      cancel_at_period_end: false,
+      cancelled_at: null,
+      ended_at: null,
+    });
+    expect(db.rows('entitlements')[0]).toMatchObject({ status: 'active', ends_at: PERIOD_END_ISO });
+  });
+
+  it('a schedule event without a subscription is an honest no-op', async () => {
+    const db = new FakeDb();
+    const result = await applyEventEffects(
+      {
+        db,
+        refetch: makeRefetcher({
+          subscription_schedule: { sched_fake_9: { id: 'sched_fake_9', status: 'not_started', phases: [] } },
+        }),
+      },
+      event('subscription_schedule.created', 'evt_fake_97', { id: 'sched_fake_9' }),
+    );
+    expect(result.note).toBe('skipped_schedule_without_subscription');
+    expect(db.snapshot()).toBe(JSON.stringify([]));
+  });
+});
+
 // ── commissionable payment ────────────────────────────────────────────────────
 
 const PAID_AT_EPOCH = 1_781_000_000; // determines the tier-snapshot month
@@ -678,7 +923,6 @@ describe('connect_account_status writer + skipped_no_contract intents', () => {
       ['transfer.reversed', 'tr_fake_1'],
       ['transfer.created', 'tr_fake_1'],
       ['payment_intent.succeeded', 'pi_fake_1'],
-      ['subscription_schedule.released', 'sched_fake_1'],
       ['invoice.finalized', 'in_fake_1'],
       ['invoice.payment_failed', 'in_fake_1'],
       ['charge.dispute.created', 'dp_fake_1'],
