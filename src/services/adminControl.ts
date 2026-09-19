@@ -312,6 +312,28 @@ export async function approveProductRequest(
   return result;
 }
 
+/** Per partner, the same net figures the Partner sees (PARTNER permission). */
+export interface AdminPartnerPendingCommission {
+  readonly partnerId: string;
+  readonly heldNetCents: number;
+  readonly payableNetCents: number;
+  readonly inFlightCents: number;
+  readonly readyNetCents: number;
+  readonly pendingNetCents: number;
+  readonly readyState: 'positive_pending' | 'zero' | 'correction_carryforward';
+  readonly readyCorrectionCents: number;
+  readonly pendingState: 'positive_pending' | 'zero' | 'correction_carryforward';
+  readonly pendingCorrectionCents: number;
+  readonly livemode: boolean;
+}
+
+export async function getAdminPartnerPendingCommission(): Promise<AdminPartnerPendingCommission[]> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase.rpc('gellatti_admin_partner_pending_commission_v1');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as AdminPartnerPendingCommission[];
+}
+
 export async function getAdminDirectory<T = Record<string, unknown>>(
   section: 'USERS' | 'PARTNERS' | 'FINANCE' | 'AUDIT' | 'COMMUNITY',
 ): Promise<T[]> {

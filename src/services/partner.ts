@@ -64,6 +64,42 @@ export async function getPartnerWorkspace(): Promise<PartnerWorkspace> {
   return data as unknown as PartnerWorkspace;
 }
 
+/**
+ * Money still to be paid to the signed-in Partner, NET of refunds, disputes and
+ * other corrections — the payout authority's own netting
+ * (gellatti_partner_commission_netting_v1), stated on the server. The panel
+ * shows these numbers as they are; it adds nothing and subtracts nothing.
+ */
+export interface PendingCommission {
+  /** In the refund window: held entries plus their corrections. */
+  readonly heldNetCents: number;
+  /** What the next batch would pay: exactly the batch builder's net. */
+  readonly payableNetCents: number;
+  /** Already in a batch line that has not been settled yet. */
+  readonly inFlightCents: number;
+  /** payable + in flight: past the refund window, not yet paid ("Do wypłaty"). */
+  readonly readyNetCents: number;
+  /** held + payable + in flight: everything not yet paid out. */
+  readonly pendingNetCents: number;
+  /** What `readyNetCents` means — decided on the server, never from a sign. */
+  readonly readyState: PendingState;
+  /** The size of a correction carried forward, when readyState says so. */
+  readonly readyCorrectionCents: number;
+  readonly pendingState: PendingState;
+  readonly pendingCorrectionCents: number;
+  readonly livemode: boolean;
+}
+
+/** `correction_carryforward`: refunds or disputes after a payout, netted into the next settlements. */
+export type PendingState = 'positive_pending' | 'zero' | 'correction_carryforward';
+
+export async function getPendingCommission(): Promise<PendingCommission | null> {
+  if (!supabase) return unavailable();
+  const { data, error } = await supabase.rpc('gellatti_partner_pending_commission_v1');
+  if (error) throw new Error(error.message);
+  return (data ?? null) as unknown as PendingCommission | null;
+}
+
 export async function managePartnerCode(input: {
   action: 'CREATE' | 'ARCHIVE';
   code?: string;

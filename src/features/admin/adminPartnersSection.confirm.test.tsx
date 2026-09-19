@@ -38,8 +38,23 @@ const data = vi.hoisted(() => ({
       payoutsEnabled: false,
       clicks: 0,
       attributions: 0,
-      // The value measured for QA Partner A (45 held entries, 25 765 cents).
-      pendingCommission: 25765,
+      // The directory's GROSS sum. Deliberately different from the net figure
+      // below: the row must show the payout authority's number, not this one.
+      pendingCommission: 99999,
+    },
+    {
+      id: 'p2',
+      email: 'ola@example.com',
+      status: 'active',
+      tier: 'standard',
+      profile: { display_name: 'Ola Lody', slug: 'ola', moderation_status: 'APPROVED', logo_path: null },
+      codes: [],
+      links: [],
+      connectAccountId: 'acct_x',
+      payoutsEnabled: true,
+      clicks: 0,
+      attributions: 0,
+      pendingCommission: 0,
     },
   ],
 }));
@@ -48,6 +63,19 @@ vi.mock('@/services/adminControl', () => ({
   ...mocks,
   getAdminDirectory: vi.fn(async () => data.partners),
   getAdminInvites: vi.fn(async () => ({ partner: [] })),
+  // The payout authority's NET figure (measured for QA Partner A: 25 765 cents).
+  getAdminPartnerPendingCommission: vi.fn(async () => [
+    { partnerId: 'p1', heldNetCents: 25765, payableNetCents: 0, inFlightCents: 0,
+      readyNetCents: 0, pendingNetCents: 25765, livemode: false,
+      readyState: 'zero', readyCorrectionCents: 0,
+      pendingState: 'positive_pending', pendingCorrectionCents: 0 },
+    // A refund after payout larger than what waits: the server says it is a
+    // correction carried forward (measured on QA: a harness partner at −30 €).
+    { partnerId: 'p2', heldNetCents: 0, payableNetCents: -3000, inFlightCents: 0,
+      readyNetCents: -3000, pendingNetCents: -3000, livemode: false,
+      readyState: 'correction_carryforward', readyCorrectionCents: 3000,
+      pendingState: 'correction_carryforward', pendingCorrectionCents: 3000 },
+  ]),
   getAdminCommissionRules: vi.fn(async () => []),
   invitePartnerByEmail: vi.fn(),
   resendPartnerInvitation: vi.fn(),
@@ -220,13 +248,30 @@ describe('I-ADM-05 — sensitive admin actions ask first and ask why', () => {
   });
 });
 
-describe('the pending-commission figure reads as money', () => {
-  it('shows euros with the unit, not raw cents', () => {
+describe('the pending-commission figure is the payout authority\'s net, as money', () => {
+  it('shows the server\'s net figure in euros — not the directory\'s gross sum, not raw cents', async () => {
     /* Measured on the QA branch: the row printed "Oczekująca prowizja 25765"
-       while the Partner panel showed the same money as 257,65 €. The value
-       (held + eligible, gross) was right; only the rendering was not. */
+       (gross cents) while the Partner panel showed 257,65 €. The row now reads
+       gellatti_admin_partner_pending_commission_v1 — the same netting the
+       batch builder pays — and formats it like the Partner page. */
+    await waitFor(() => (document.body.textContent ?? '').includes('Oczekująca prowizja 257,65'));
     const text = document.body.textContent?.replace(/\u00a0/g, ' ') ?? '';
     expect(text).toContain('Oczekująca prowizja 257,65 €');
+    expect(text).not.toContain('999,99');
     expect(text).not.toContain('Oczekująca prowizja 25765');
+  });
+});
+
+describe('a correction carried forward reads as one, not as a negative pending sum', () => {
+  it('shows "Saldo korekt do rozliczenia 30,00 €" with the carry-forward note, never "−30,00 €"', async () => {
+    await waitFor(() => (document.body.textContent ?? '').includes('Saldo korekt do rozliczenia'));
+    const text = document.body.textContent?.replace(/\u00a0/g, ' ') ?? '';
+    expect(text).toContain('Saldo korekt do rozliczenia 30,00 €');
+    expect(text).not.toMatch(/Oczekująca prowizja\s*[−-]\s*30/);
+    expect(text).not.toMatch(/[−-]30,00/);
+    const note = Array.from(document.body.querySelectorAll('[title]')).find((el) =>
+      el.textContent?.includes('Saldo korekt do rozliczenia'),
+    );
+    expect(note?.getAttribute('title')).toBe('Kwota zostanie uwzględniona w kolejnych naliczeniach.');
   });
 });

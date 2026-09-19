@@ -30,6 +30,7 @@ import { useCodeAvailability } from '@/features/affiliate/codeAvailability';
 import {
   createPartnerContentLink,
   getPartnerWorkspace,
+  getPendingCommission,
   managePartnerCode,
   startConnectOnboarding,
   updatePartnerProfile,
@@ -38,6 +39,7 @@ import {
   type PartnerWorkspace,
 } from '@/services/partner';
 import { earningsSummary } from '@/features/affiliate/earningsSummary';
+import { CORRECTION_CARRYFORWARD_COPY } from '@/features/affiliate/commissionDisplay';
 import { PartnerFirstSteps } from '@/features/affiliate/PartnerFirstSteps';
 
 const sections = [
@@ -73,6 +75,13 @@ function Overview({ data }: { data: PartnerWorkspace }) {
   const codes = data.codes ?? [];
   const activeCodes = codes.filter((code) => code.status === 'active');
   const summary = earningsSummary(data.commissions ?? [], new Date());
+  /* "W trakcie" and "Do wypłaty" are the payout authority's NET figures
+     (after refunds, disputes and other corrections), stated on the server by
+     gellatti_partner_pending_commission_v1. They are shown as they come: this
+     page adds and subtracts nothing. Until they arrive — or if the server does
+     not have them yet — the tile says "—" instead of guessing. */
+  const pending = useQuery({ queryKey: ['partner-pending-commission'], queryFn: getPendingCommission });
+  const net = (cents: number | undefined) => (typeof cents === 'number' ? money(cents) : '—');
   const totals = codes.reduce(
     (sum, code) => ({
       clicks: sum.clicks + Number(code.clickCount),
@@ -112,14 +121,20 @@ function Overview({ data }: { data: PartnerWorkspace }) {
           ],
           [
             commissionStatusCopy('held').label,
-            money(summary.heldCents),
+            net(pending.data?.heldNetCents),
             commissionStatusCopy('held').help,
           ],
-          [
-            commissionStatusCopy('eligible').label,
-            money(summary.eligibleCents),
-            commissionStatusCopy('eligible').help,
-          ],
+          pending.data?.readyState === 'correction_carryforward'
+            ? [
+                CORRECTION_CARRYFORWARD_COPY.label,
+                net(pending.data.readyCorrectionCents),
+                CORRECTION_CARRYFORWARD_COPY.help,
+              ]
+            : [
+                commissionStatusCopy('eligible').label,
+                net(pending.data?.readyNetCents),
+                commissionStatusCopy('eligible').help,
+              ],
         ].map(([label, value, help]) => (
           <div key={label} className="bg-white px-3 py-3.5" title={help}>
             <dt className="font-mono text-[9.5px] leading-[1.2] font-semibold tracking-[0.1em] text-[#8a857d] uppercase">
