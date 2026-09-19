@@ -28,7 +28,11 @@ export interface CooperationCopy {
     readonly whatYouShareTitle: string;
     readonly whatYouShare: readonly string[];
     readonly howTitle: string;
-    readonly how: readonly { readonly step: string; readonly title: string; readonly body: string }[];
+    readonly how: readonly {
+      readonly step: string;
+      readonly title: string;
+      readonly body: string;
+    }[];
     readonly attributionTitle: string;
     readonly attributionBody: string;
   };
@@ -37,6 +41,8 @@ export interface CooperationCopy {
     readonly blurb: string;
     readonly signInFirst: string;
     readonly signInCta: string;
+    /** V11 names the shape of the flow: auth is a step inside the application. */
+    readonly signInStep: string;
     readonly displayName: string;
     readonly displayNamePlaceholder: string;
     readonly account: string;
@@ -142,9 +148,21 @@ export const cooperationCopyPl: CooperationCopy = {
     howTitle: 'Jak to działa',
     how: [
       { step: '01', title: 'Zgłoszenie', body: 'Krótki formularz i link do Twoich treści.' },
-      { step: '02', title: 'Decyzja', body: 'Gellatti sprawdza zgłoszenie i odpowiada w aplikacji.' },
-      { step: '03', title: 'Kod i link', body: 'Po zatwierdzeniu dostajesz własny kod i link partnerski.' },
-      { step: '04', title: 'Panel Partner', body: 'Widzisz kliknięcia, przypisania i rozliczenia.' },
+      {
+        step: '02',
+        title: 'Decyzja',
+        body: 'Gellatti sprawdza zgłoszenie i odpowiada w aplikacji.',
+      },
+      {
+        step: '03',
+        title: 'Kod i link',
+        body: 'Po zatwierdzeniu dostajesz własny kod i link partnerski.',
+      },
+      {
+        step: '04',
+        title: 'Panel Partner',
+        body: 'Widzisz kliknięcia, przypisania i rozliczenia.',
+      },
     ],
     attributionTitle: 'Przypisanie',
     attributionBody:
@@ -155,9 +173,15 @@ export const cooperationCopyPl: CooperationCopy = {
     title: 'Zgłoszenie partnerskie',
     blurb: 'Kilka pól. Resztę ustalimy w rozmowie.',
     signInFirst:
-      'Zgłoszenie łączymy z Twoim kontem Gellatti — dzięki temu po zatwierdzeniu tryb Partner ' +
-      'włącza się od razu, obok Twojego obecnego planu.',
-    signInCta: 'Zaloguj się',
+      'Wypełnisz krótki formularz. Konto Gellatti jest potrzebne, żebyśmy wiedzieli, komu ' +
+      'przypisać kod — założysz je po drodze, bez wychodzenia ze zgłoszenia.',
+    /* DESIGN V11 (owner 2026-09-19): the button states the visitor's INTENT.
+       It used to read „Zaloguj się", which is our internal step, not what they
+       came to do — and it made the first action of the recruitment funnel look
+       like a login wall. Signing in still happens, inside this flow, and the
+       visitor returns to the application rather than being dropped on HOME. */
+    signInCta: 'Zgłoś się',
+    signInStep: 'Krok 1 z 2 · konto, potem formularz',
     displayName: 'Nazwa twórcy',
     displayNamePlaceholder: 'Jak podpisujesz swoje treści',
     account: 'Konto Gellatti',
@@ -190,7 +214,8 @@ export const cooperationCopyPl: CooperationCopy = {
     submitting: 'Wysyłam…',
     seeCommunity: 'Zobacz Community',
     afterSubmit: 'Po wysłaniu zobaczysz status zgłoszenia tutaj i w powiadomieniach.',
-    error: 'Nie udało się wysłać zgłoszenia. Sprawdź nazwę i główny link, a potem spróbuj ponownie.',
+    error:
+      'Nie udało się wysłać zgłoszenia. Sprawdź nazwę i główny link, a potem spróbuj ponownie.',
   },
   state: {
     loading: 'Sprawdzam status zgłoszenia…',
@@ -207,8 +232,7 @@ export const cooperationCopyPl: CooperationCopy = {
     actionNone: 'nic nie musisz robić — odezwiemy się.',
     actionSubmit: 'wypełnij i wyślij zgłoszenie poniżej.',
     actionUpdate: 'uzupełnij zgłoszenie poniżej i wyślij je ponownie.',
-    actionReapply:
-      'nic nie musisz robić. Jeśli chcesz, możesz wysłać nowe zgłoszenie poniżej.',
+    actionReapply: 'nic nie musisz robić. Jeśli chcesz, możesz wysłać nowe zgłoszenie poniżej.',
     actionContact: 'napisz do nas — wyjaśnimy, co dalej.',
     contactCta: 'Napisz na info@gellatti.com',
   },
@@ -267,7 +291,11 @@ export const cooperationCopyEn: CooperationCopy = {
     how: [
       { step: '01', title: 'Application', body: 'A short form and a link to your work.' },
       { step: '02', title: 'Decision', body: 'Gellatti reviews it and answers in the app.' },
-      { step: '03', title: 'Code and link', body: 'Once approved you get your own partner code and link.' },
+      {
+        step: '03',
+        title: 'Code and link',
+        body: 'Once approved you get your own partner code and link.',
+      },
       { step: '04', title: 'Partner panel', body: 'See clicks, attributions and settlements.' },
     ],
     attributionTitle: 'Attribution',
@@ -279,9 +307,10 @@ export const cooperationCopyEn: CooperationCopy = {
     title: 'Partner application',
     blurb: 'A few fields. We sort out the rest in conversation.',
     signInFirst:
-      'The application is tied to your Gellatti account, so once approved the Partner mode ' +
-      'switches on immediately, alongside your current plan.',
-    signInCta: 'Sign in',
+      'A short form. A Gellatti account is what tells us whose code this is — you can create ' +
+      'one on the way, without leaving the application.',
+    signInCta: 'Apply',
+    signInStep: 'Step 1 of 2 · account, then the form',
     displayName: 'Creator name',
     displayNamePlaceholder: 'How you sign your work',
     account: 'Gellatti account',

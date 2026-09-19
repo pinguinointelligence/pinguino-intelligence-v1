@@ -38,6 +38,20 @@ vi.mock('@/components/shared/DestinationSurface', () => ({
   DestinationSurface: ({ children }: { children: ReactNode }) => <>{children}</>,
 }));
 
+/* GAP 1 (owner 2026-09-19): /partner no longer reads the protected workspace
+   RPC without a session — it is revoked from anon, and reading it anyway is
+   what showed a signed-out visitor a failure instead of the application.
+   These contracts describe a PARTNER'S OWN WORKSPACE, which exists only for a
+   signed-in Partner, so they present one. Nothing else about them changed.
+
+   The store is MOCKED rather than set with `setState`: these render through
+   `renderToStaticMarkup`, and on the server path zustand serves
+   `getInitialState()`, so a mutation made inside a test would never be seen. */
+vi.mock('@/stores/authStore', () => ({
+  useAuthStore: (selector: (state: { status: string; user: { id: string } }) => unknown) =>
+    selector({ status: 'authed', user: { id: 'partner-under-test' } }),
+}));
+
 const keys = <T extends object>(map: T) => Object.keys(map) as Array<keyof T & string>;
 
 const STRIPE_INVOICE = 'in_1RawStripeInvoice';
