@@ -50,6 +50,35 @@ nearness the tighter candidate wins. If Stage B finds nothing better, Stage A's 
 published unchanged with `directionRelaxationAttempted` recorded — "we tried and the
 normal result was still best" is itself evidence.
 
+## 3b · A range is a preference — unless it is a structural limit
+
+§ 3 says a `range` means „the line MAY move anywhere inside this interval". That is
+right for a dosage PREFERENCE and wrong for a verified calibration envelope, where the
+PROFILE places the line and the generic gram search has no authority over it at all.
+Conflating the two handed the search a lever on the Vegan inulin envelope, and two
+accepted contracts failed for it: the isolated solver lane (inulin reached 95 g against a
+calibrated maximum of 83.1 g, and the customer lost the whole Preview to a refusal) and
+`veganPersistenceContract`.
+
+`IngredientConstraint` therefore carries `structural?: boolean` on the range variant. It
+is set only by an authority that owns a physical or calibrated limit, never by a customer
+constraint, and a structural range:
+
+* stays **held** by the generic gram search — exactly as every range behaved before the
+  semantics was corrected;
+* offers no search window, so no rung can be placed inside it;
+* is **never widened** by the controlled ±2 relaxation, whatever interval it carries.
+
+This is § 7 applied to the one place where § 3 could otherwise have weakened a hard limit.
+Accepted vegan behaviour is restored byte-for-byte, the ±2 matrix is unchanged, and § 3
+keeps full effect everywhere the range really is a preference — which is where LOCK-01,
+LOCK-02, LOCK-03 and SORB −13 were won.
+
+Two authorities may also govern the SAME line. They now INTERSECT rather than
+first-wins: the floor is the higher of the two and the ceiling the lower, so no authority
+can be widened by another, and Stage B re-applies the holds after widening so a widened
+preference can never carry a structural ceiling with it.
+
 ## 4 · What may be relaxed — explicitly, per policy
 
 A range earns relaxability only by being registered, because every constraint keeps its
