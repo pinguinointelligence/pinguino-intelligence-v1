@@ -36,6 +36,7 @@ export type DiscoveryResult = Extract<
       | 'discovery_requested'
       | 'needs_confirmation'
       | 'failed'
+      | 'ambiguous'
       | 'resolved_exact';
   }
 >;
@@ -182,6 +183,7 @@ export async function startDiscovery(
   assertScanRunCurrent(ctx);
   const r = await port.research(identity, ctx);
   assertScanRunCurrent(ctx);
+  if (r.kind === 'ambiguous') return r;
   if (r.kind === 'existing_product')
     return {
       kind: 'resolved_exact',
@@ -220,6 +222,7 @@ export async function continueDiscovery(
   if (action.type === 'label') {
     const a = await port.analyzeLabel(session, action.images, ctx);
     assertScanRunCurrent(ctx);
+    if (a.kind === 'ambiguous') return a;
     if (a.kind === 'existing_product')
       return {
         kind: 'resolved_exact',
