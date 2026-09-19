@@ -121,6 +121,7 @@ import {
   type HomeFormulationModuleId,
   type MachineTechnology,
 } from '@/features/machine-catalog';
+import type { DirectionTargetOrigins } from '@/features/recipe-direction/directionTargetOrigin';
 import {
   DEFAULT_PRIORITY_MODE,
   savedPriorityMode,
@@ -495,6 +496,8 @@ export interface RecipeState {
       acknowledgeRecalculation?: boolean;
       /** Explicit Direction fallback accepted through Preview → Apply. */
       directionTargets?: RecipeDirectionTargets;
+      /** OD-29: whose those levels are, when the caller restored them from a record. */
+      directionTargetOrigins?: DirectionTargetOrigins;
     },
   ) =>
     | { ok: true }
@@ -1814,7 +1817,13 @@ export const useRecipeStore = create<RecipeState>()(
           const next = Math.max(-2, Math.min(2, current + delta)) as RecipeDirectionTarget;
           if (next === current) return {};
           const direction_targets = { ...state.direction_targets, [axis]: next };
-          useRecipeProfileStore.getState().setDirectionTargets(direction_targets);
+          /* OD-29: this is the customer moving the axis, so the level becomes theirs —
+             the restore path is the one that may carry unknown provenance, not this. */
+          const profile = useRecipeProfileStore.getState();
+          profile.setDirectionTargets(direction_targets, {
+            ...profile.directionTargetOrigins,
+            [axis]: 'user_explicit',
+          });
           return {
             direction_targets,
             direction_targets_active: true,
@@ -1993,7 +2002,11 @@ export const useRecipeStore = create<RecipeState>()(
           return { ok: false, code: 'write_verification_failed' };
         }
         if (options?.directionTargets) {
-          useRecipeProfileStore.getState().setDirectionTargets(options.directionTargets);
+          /* A restore: whose the levels are comes from the record. Without that word the
+             store reads them as `legacy_unknown`, which asks before changing them. */
+          useRecipeProfileStore
+            .getState()
+            .setDirectionTargets(options.directionTargets, options.directionTargetOrigins);
         }
         if (options?.acknowledgeRecalculation === false) {
           useRecipeProfileStore.getState().markRecalculationRequired();
@@ -2621,7 +2634,12 @@ export const useRecipeStore = create<RecipeState>()(
         set((state) => {
           if (state.direction_targets[axis] === target) return {};
           const direction_targets = { ...state.direction_targets, [axis]: target };
-          useRecipeProfileStore.getState().setDirectionTargets(direction_targets);
+          // OD-29: the customer set this level, so it is theirs from here on.
+          const directionProfile = useRecipeProfileStore.getState();
+          directionProfile.setDirectionTargets(direction_targets, {
+            ...directionProfile.directionTargetOrigins,
+            [axis]: 'user_explicit',
+          });
           return {
             direction_targets,
             // Owner P1-A: returning an axis to 0 selects the CLEAN MIDDLE — it
@@ -3583,12 +3601,7 @@ export const useRecipeStore = create<RecipeState>()(
         const projectedItems =
           sel.batchGrams == null && !enteringProfessionalFromHome
             ? resized.items
-            : rescaleWithOwnerStabilizerSystem(
-                state,
-                resized.items,
-                targetBatchGrams,
-                undefined,
-              );
+            : rescaleWithOwnerStabilizerSystem(state, resized.items, targetBatchGrams, undefined);
         const allocatedItems =
           sel.kind === 'home' && sel.batchGrams != null
             ? wholeGramHomeMachineResize(projectedItems)
