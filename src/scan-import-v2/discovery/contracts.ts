@@ -8,7 +8,12 @@
  * verification) — and keeps every fact with its provenance and every conflict visible. It never
  * invents technical values, never assigns ProductBehaviour, never creates a Mapper row.
  */
-import type { CodeIdentity, ExactCandidate, RequestContext } from '../contracts';
+import type {
+  CodeIdentity,
+  ExactCandidate,
+  RequestContext,
+  ScanImportV2Result,
+} from '../contracts';
 
 /** The seven distinct truths the owner listed — never collapsed into one "known" flag. */
 export type DiscoveryStage =
@@ -189,6 +194,7 @@ export interface FinalizeInput {
  * 2026-09-07, EAN 8480000804693). `null` means there is nothing to say, and silence is preserved.
  */
 export type ResearchOutcome =
+  | Extract<ScanImportV2Result, { kind: 'ambiguous' }>
   | { kind: 'existing_product'; product: ExactCandidate }
   | {
       kind: 'researched';
@@ -199,6 +205,7 @@ export type ResearchOutcome =
   | { kind: 'skipped'; session: DiscoverySession; reason: string; notice?: string | null };
 
 export type AnalyzeOutcome =
+  | Extract<ScanImportV2Result, { kind: 'ambiguous' }>
   | { kind: 'existing_product'; product: ExactCandidate }
   | { kind: 'analyzed'; session: DiscoverySession };
 

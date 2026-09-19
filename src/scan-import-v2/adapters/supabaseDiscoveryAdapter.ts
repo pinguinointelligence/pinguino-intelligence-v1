@@ -4,8 +4,13 @@
  * product-request lifecycle (`gellatti_submit_product_request_v1`, `gellatti_my_product_requests_v1`).
  * Request/response shapes mirror `src/services/productScanner.ts` exactly; nothing legacy is modified.
  */
-import type { CodeIdentity, ExactCandidate, RequestContext } from '../contracts';
-import { isScannerTransportError, NetworkError } from '../contracts';
+import type {
+  CodeIdentity,
+  ExactCandidate,
+  RequestContext,
+  ScanImportV2Result,
+} from '../contracts';
+import { isScannerTransportError, NetworkError, ScannerResponseError } from '../contracts';
 import { withProductScanFinalizeV2Contract } from '../../features/product-scanner/productScanFinalizeContract';
 import { assertScanRunCurrent } from '../runAuthority';
 import type {
@@ -137,6 +142,61 @@ function exactFromServer(p: Record<string, unknown>, identity: CodeIdentity): Ex
   };
 }
 
+/** The current analyze authority discloses only caller-visible product IDs for a conflict. */
+function conflictFromServer(
+  d: Record<string, unknown>,
+  identity: CodeIdentity,
+): Extract<ScanImportV2Result, { kind: 'ambiguous' }> {
+  const ids = d['productIds'];
+  if (
+    !Array.isArray(ids) ||
+    ids.length < 2 ||
+    !ids.every(
+      (id): id is string =>
+        typeof id === 'string' && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(id),
+    ) ||
+    new Set(ids.map((id) => id.toLowerCase())).size !== ids.length
+  )
+    throw new ScannerResponseError('product-scan-analyze: malformed_exact_conflict');
+  return { kind: 'ambiguous', identity, candidates: ids.map((productId) => ({ productId })) };
+}
+
+/** Analyze's label response has no kind; ean_lookup and existing_product have explicit kinds. */
+function analyzeResponse(d: Record<string, unknown>): Record<string, unknown> {
+  const kind = d['kind'];
+  if (
+    kind === 'EXACT_CONFLICT' &&
+    (d['error'] === undefined || d['error'] === 'exact_product_conflict')
+  )
+    return d;
+  if (d['error'] !== undefined)
+    throw new ScannerResponseError(`product-scan-analyze: ${String(d['error'])}`);
+  if (kind === 'existing_product') {
+    if (stringOrNull(obj(d['product'])['id'])) return d;
+  } else if (kind === 'ean_lookup' || kind === undefined) {
+    const result = d['result'];
+    if (
+      (result === null || (result && typeof result === 'object' && !Array.isArray(result))) &&
+      (d['missingCriticalFields'] === undefined ||
+        (Array.isArray(d['missingCriticalFields']) &&
+          d['missingCriticalFields'].every((field) => typeof field === 'string')))
+    )
+      return d;
+  }
+  throw new ScannerResponseError('product-scan-analyze: malformed_or_unknown_response');
+}
+
+const STRUCTURED_HTTP_KINDS: Readonly<Record<string, readonly string[]>> = {
+  'product-scan-analyze': ['EXACT_CONFLICT'],
+  'product-scan-finalize': [
+    'customer_product_not_ready',
+    'scan_assessment_stale',
+    'assessment_stale',
+    'family_confirmation_required',
+    'profile_preview',
+  ],
+};
+
 export function ledgerToLegacyResult(
   identity: CodeIdentity,
   ledger: FactLedger,
@@ -243,13 +303,25 @@ export function createSupabaseDiscoveryPort(
       // Only the existing business-response contract can turn a non-2xx response into a verdict.
       const verdict =
         status === undefined || status === 409 ? await structuredVerdict(error) : null;
-      if (verdict) return verdict;
+      if (verdict && STRUCTURED_HTTP_KINDS[name]?.includes(String(verdict['kind'])))
+        return name === 'product-scan-analyze' ? analyzeResponse(verdict) : verdict;
       const code = await serverCode(error);
-      throw new Error(`${name}: ${status ? `HTTP ${status}: ` : ''}${code ?? error.message}`);
+      const ResponseError = name === 'product-scan-analyze' ? ScannerResponseError : Error;
+      throw new ResponseError(
+        `${name}: ${status ? `HTTP ${status}: ` : ''}${code ?? 'invalid_response: ' + error.message}`,
+      );
     }
-    if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length === 0)
-      throw new Error(`${name}: malformed_response`);
+    if (
+      !data ||
+      typeof data !== 'object' ||
+      Array.isArray(data) ||
+      Object.keys(data).length === 0
+    ) {
+      const ResponseError = name === 'product-scan-analyze' ? ScannerResponseError : Error;
+      throw new ResponseError(`${name}: malformed_response`);
+    }
     const d = obj(data);
+    if (name === 'product-scan-analyze') return analyzeResponse(d);
     if (typeof d['error'] === 'string')
       throw Object.assign(new Error(`${name}: ${d['error']}`), { kind: 'service' });
     return d;
@@ -285,6 +357,7 @@ export function createSupabaseDiscoveryPort(
           barcode: legacyBarcode(identity),
         });
         assertScanRunCurrent(ctx);
+        if (d['kind'] === 'EXACT_CONFLICT') return conflictFromServer(d, identity);
         if (d['kind'] === 'existing_product')
           return {
             kind: 'existing_product',
@@ -325,6 +398,7 @@ export function createSupabaseDiscoveryPort(
         missingFields: [...s.missingCritical],
       });
       assertScanRunCurrent(ctx);
+      if (d['kind'] === 'EXACT_CONFLICT') return conflictFromServer(d, s.identity);
       return d['kind'] === 'existing_product'
         ? {
             kind: 'existing_product',
@@ -374,6 +448,7 @@ export function createSupabaseDiscoveryPort(
             ],
           };
         case 'scan_assessment_stale':
+        case 'assessment_stale':
           // the verdict moved between the screen and the save; the customer repeats, nothing is written
           return { kind: 'assessment_stale', readiness: readinessFromServer(d) };
         case 'customer_product_not_ready': {
