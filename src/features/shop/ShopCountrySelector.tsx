@@ -22,7 +22,19 @@ import {
  * availability, not a consolation — and the honest "not yet" is reserved for
  * the case where neither mode is real.
  */
-export function ShopCountrySelector({ className }: { className?: string }) {
+export function ShopCountrySelector({
+  className,
+  tone = 'paper',
+}: {
+  className?: string;
+  /**
+   * PRESENTATION ONLY. `inverse` is the same control on the dark entry block
+   * the Shop offer now stands on (DESIGN S1): a translucent white field instead
+   * of the ivory card, so the question reads on graphite. Every state, every
+   * label and every value is identical in both tones.
+   */
+  tone?: 'paper' | 'inverse';
+}) {
   const load = useShopCountryStore((state) => state.load);
   const countries = useShopCountryStore((state) => state.countries);
   const selected = useShopCountryStore((state) => state.selected);
@@ -56,10 +68,15 @@ export function ShopCountrySelector({ className }: { className?: string }) {
           ? { label: c.country.noneHere, tone: 'none' as const }
           : null;
 
+  const dark = tone === 'inverse';
+
   return (
     <div
       className={cn(
-        'rounded-[14px] border border-[var(--g-line)] bg-[var(--g-ivory)] px-[18px] py-4 md:px-5 md:py-[18px]',
+        'rounded-[14px] px-[18px] py-4 md:px-5 md:py-[18px]',
+        dark
+          ? 'bg-white/[0.07] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]'
+          : 'border border-[var(--g-line)] bg-[var(--g-ivory)]',
         className,
       )}
       data-testid="shop-country-selector"
@@ -67,7 +84,10 @@ export function ShopCountrySelector({ className }: { className?: string }) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1">
         <label
           htmlFor="shop-country"
-          className="text-[14.5px] font-semibold tracking-[-0.01em] text-[var(--g-ink)] md:text-[15px]"
+          className={cn(
+            'text-[14.5px] font-semibold tracking-[-0.01em] md:text-[15px]',
+            dark ? 'text-white' : 'text-[var(--g-ink)]',
+          )}
         >
           {c.country.question}
         </label>
@@ -75,9 +95,10 @@ export function ShopCountrySelector({ className }: { className?: string }) {
           <span
             className={cn(
               'font-mono text-[11.5px] font-semibold tracking-[0.02em]',
-              state.tone === 'ship' && 'text-[var(--g-ink)]',
-              state.tone === 'local' && 'text-[var(--g-attention-ink)]',
-              state.tone === 'none' && 'text-[var(--g-text-secondary)]',
+              state.tone === 'ship' && (dark ? 'text-white' : 'text-[var(--g-ink)]'),
+              state.tone === 'local' &&
+                (dark ? 'text-[var(--g-orange)]' : 'text-[var(--g-attention-ink)]'),
+              state.tone === 'none' && (dark ? 'text-white/60' : 'text-[var(--g-text-secondary)]'),
             )}
             data-testid="shop-country-state"
           >
@@ -86,7 +107,12 @@ export function ShopCountrySelector({ className }: { className?: string }) {
         ) : null}
       </div>
 
-      <p className="mt-1 text-[13px] leading-[1.45] text-[var(--g-text-secondary)]">
+      <p
+        className={cn(
+          'mt-1 text-[13px] leading-[1.45]',
+          dark ? 'text-white/60' : 'text-[var(--g-text-secondary)]',
+        )}
+      >
         {mode === 'none' && selected != null
           ? country?.documentAvailable
             ? c.country.noneHelperDocument
@@ -100,8 +126,10 @@ export function ShopCountrySelector({ className }: { className?: string }) {
         onChange={(event) => select(event.target.value)}
         disabled={countries.length === 0}
         className={cn(
-          'mt-3 h-[42px] w-full rounded-[10px] border border-[var(--g-line-strong)] bg-white px-3',
-          'text-[14px] text-[var(--g-ink)]',
+          'mt-3 h-[42px] w-full rounded-[10px] px-3 text-[14px]',
+          dark
+            ? 'border border-white/25 bg-white/[0.07] text-white [&>option]:text-[var(--g-ink)]'
+            : 'border border-[var(--g-line-strong)] bg-white text-[var(--g-ink)]',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
           'disabled:cursor-not-allowed disabled:text-[var(--g-lock)]',
         )}

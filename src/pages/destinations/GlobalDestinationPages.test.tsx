@@ -68,14 +68,17 @@ describe('canonical global destination hubs', () => {
   /* FRANCHISE — DESIGN F1 (owner 2026-09-18): the dark top on the facade, four
      formats in one row, ONE opened format, „Jak działa Gellatti”, and the
      compact enquiry form last. The page used to list the four formats twice. */
-  it('opens Franchise on four formats with no detail expanded', () => {
+  it('opens Franchise on four formats with Lokal already detailed', () => {
     const html = render(<FranchisePage />, '/franchise');
     for (const id of ['local', 'food-truck', 'cart', 'machines']) {
       expect(html).toContain(`data-testid="franchise-format-${id}"`);
     }
-    // The design's start state: the row, then „Jak działa Gellatti” — no four
-    // descriptions at once, and no block opened before anything is chosen.
-    expect(html).not.toContain('data-testid="franchise-format-panel"');
+    // Owner correction 2026-09-19: Lokal is selected and open from the FIRST
+    // render — a visitor never meets an empty state under the row — and there
+    // is still exactly one block, never four descriptions at once.
+    expect(html.match(/data-testid="franchise-format-panel"/g)).toHaveLength(1);
+    expect(html).toContain('data-franchise-format="local"');
+    expect(html).toContain('aria-selected="true"');
     expect(html).toContain('Jak działa Gellatti');
     // 2 x 2 up to the design's own breakpoint, four across from it.
     expect(html).toContain('grid-cols-2 gap-2 md:mt-[26px] md:grid-cols-4');

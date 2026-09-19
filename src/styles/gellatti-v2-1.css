@@ -544,3 +544,26 @@ body[data-app-drawer='open'] [data-testid='mobile-cockpit-trigger'] {
   border: 1px solid var(--g-line);
   background: #fff;
 }
+
+/* THE DESTINATION TOP'S CORNER — owner decision 2026-09-19.
+ *
+ * DESIGN gives the shared top a 16 px corner. It was rendering at 12 px because
+ * the blanket radius normaliser in `index.css` rewrites every `rounded-[Npx]`
+ * to `--radius-pro-studio` with `!important`, and this canvas sets that token to
+ * 12 px. The component asked for 16 and silently got 12.
+ *
+ * Fixed HERE, on the shared component's own marker, and deliberately NOT by:
+ *   - moving the global token (that is the whole app's corner, and the canvas's
+ *     panels, cards and controls are correct at 12 px), or
+ *   - three page-specific overrides (Franchise, Affiliate and Shop would then be
+ *     free to drift apart, which is exactly what „one hero system" forbids).
+ *
+ * One declaration, keyed on `[data-destination-top]`, so all three destinations
+ * carry the same corner by construction. `!important` is required only because
+ * the normaliser it corrects is itself `!important`; this selector is the more
+ * specific of the two, so it wins without weakening the normaliser for anything
+ * else on the page.
+ */
+.gellatti-destination [data-destination-top] {
+  border-radius: 16px !important;
+}
