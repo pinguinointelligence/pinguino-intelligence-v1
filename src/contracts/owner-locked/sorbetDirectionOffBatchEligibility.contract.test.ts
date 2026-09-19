@@ -151,7 +151,10 @@ describe('OWNER-LOCKED — an off-batch Sorbet still reaches the exact projectio
     expect(detectViolations(calculateRecipe(published))).toEqual([]);
     expect(Math.abs(plannedSum(published) - TARGET)).toBeLessThanOrEqual(0.1);
 
-    if (result.preview.directionCandidateSource !== 'sorbet_exact_projection') {
+    if (
+      result.preview.directionNearestSelected === true ||
+      result.preview.directionCandidateSource !== 'sorbet_exact_projection'
+    ) {
       // It displaced the projection, so it must be STRICTLY nearer — measured
       // on the engine's own Direction-substituted bands, not on a claim.
       expect(directionDistance(published)).toBeLessThan(directionDistance(projected!));

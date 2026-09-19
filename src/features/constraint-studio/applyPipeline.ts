@@ -118,6 +118,7 @@ import { isCrownBootstrapLine } from '@/features/formulation/crownBootstrapProve
 import {
   buildUserIntentBaseline,
   MATERIAL_USER_INTENT_DRIFT,
+  isMaterialUserIntentDeviation,
   measureUserIntentDrift,
   normalizedLineDrift,
   userIntentDriftTotal,
@@ -836,6 +837,12 @@ export interface ConstraintPreview {
    * executable proposal — the closed-form exact projection or the bounded
    * Main-constrained NEAREST search. Provenance only; the door re-derives it. */
   directionCandidateSource?: 'sorbet_exact_projection' | 'sorbet_nearest_search';
+  /**
+   * NAPRAWA 1B: the bounded best-legal selector replaced the candidate the
+   * preferred path produced with a strictly NEARER legal one. Diagnostic and
+   * test-facing only — no gate reads it, and Apply re-derives everything.
+   */
+  directionNearestSelected?: boolean;
   iteration?: IterationDiagnostics;
   /** ACCEPTANCE ADDENDUM (3): residual violations on NATIVE approved bands in
    * the PROPOSED state (classified by `classifyViolationBands` provenance).
@@ -7070,6 +7077,407 @@ function alreadyCleanMainGroupRefusal(
  * product's own authority rejects, and it is scoped to Crown-OFF drafts so the
  * frozen Crown-ON behaviour (GEL-P0-027) is untouched.
  */
+/* ── NAPRAWA 1B — BOUNDED BEST-LEGAL DIRECTION SELECTOR ──────────────────────
+ *
+ * OWNER DECISION (Variant B, 2026-09-19). The exact projection and the solver's
+ * own answer are the FAST, PREFERRED FIRST PATH. They are no longer the winner
+ * by construction: if a LEGAL candidate sits strictly nearer the requested
+ * Direction target in the same admissible space, that candidate is published.
+ *
+ * WHY THIS IS A SELECTOR AND NOT A WIDER SOLVER
+ * --------------------------------------------
+ * An earlier attempt widened the solver's own search. It moved accepted
+ * trajectories (seven `sharedDirectionNearestMatrix` cells, the multi-Main
+ * GEL-P0-025 case) and, worse, turned a clean Preview into `no_proposal` on a
+ * constrained milk starter — it cost a customer an answer. So this stage never
+ * touches the search. The solver produces the incumbent exactly as it does
+ * today; challengers are generated FROM that incumbent, each is built into a
+ * FULL Preview, and one is published only if that Preview is valid AND strictly
+ * nearer. A challenger that would cost a Preview simply loses. The failure mode
+ * is impossible by construction rather than guarded against.
+ *
+ * CONSTRAINTS ARE NOT RELAXED. Every challenger passes the SAME hard gates as
+ * the incumbent: §17 locks, Main/Crown identity and envelope, the required-line
+ * contract, positive-standard presence, the batch invariant, practicalization,
+ * Engine bands and critical warnings. Variant B is „search further", never
+ * „accept something worse to avoid a refusal".
+ */
+
+/** Engine-priced challengers one user-facing Preview may evaluate. */
+const DIRECTION_SELECTOR_EVALUATION_BUDGET = 240;
+
+/** How many times the selector may re-aim from its own best candidate. */
+const DIRECTION_SELECTOR_MAX_PASSES = 4;
+
+/** Below this the engine refuses the move anyway. */
+const DIRECTION_SELECTOR_MIN_MOVE_GRAMS = 0.5;
+
+/** A singular response row is not solvable; skip it rather than invent a step. */
+const DIRECTION_SELECTOR_RESPONSE_EPS = 1e-9;
+
+/** The engine's own distance from a candidate to the REQUESTED Direction target. */
+const directionDistanceOf = (candidate: RecipeInput): number =>
+  recipeDirectionViolations(candidate).reduce(
+    (total, violation) => total + violation.severity_points,
+    0,
+  );
+
+/**
+ * The requested axes as (metric, target) pairs, read from the caller's own
+ * Direction plan. The target is the MIDPOINT of the axis's approved band — for
+ * the Sorbet exact-preference point min = max, so the midpoint IS that point —
+ * which leaves whole-gram practicalization the most room inside the band.
+ * Nothing is invented: the metric, the band and the value all come from
+ * authorities that already exist.
+ */
+function requestedDirectionAxes(
+  input: RecipeInput,
+): Array<{ metric: 'pod' | 'npac'; target: number }> {
+  const plan = buildRecipeDirectionPlan(input);
+  const axes: Array<{ metric: 'pod' | 'npac'; target: number }> = [];
+  for (const axis of plan.axes) {
+    if (axis.status !== 'working' || axis.targetBand === null) continue;
+    if (axis.metric !== 'pod' && axis.metric !== 'npac') continue;
+    axes.push({ metric: axis.metric, target: (axis.targetBand.min + axis.targetBand.max) / 2 });
+  }
+  return axes;
+}
+
+const metricValueOf = (candidate: RecipeInput, metric: 'pod' | 'npac'): number => {
+  const result = calculateRecipe(candidate);
+  return metric === 'pod' ? result.pod_points : result.npac_points;
+};
+
+/**
+ * BOUNDED CHALLENGER SHAPES.
+ *
+ * At a fixed total mass every axis metric responds AFFINELY to a mass-neutral
+ * gram transfer — verified on the engine itself (POD 13.731241 -> 13.803189 ->
+ * 14.450721 -> 17.328641 for +1 / +10 / +50 g) — so the engine's own response is
+ * measurable with ONE probe per line. With that table the stage SOLVES the step
+ * that lands the requested axes, instead of hoping a rung of a fixed ladder
+ * happens to land there.
+ *
+ * Two shapes, both already legal move shapes elsewhere in this pipeline:
+ *   - SINGLE MOVER: one line against a reference, landing ONE axis exactly;
+ *   - PAIRED MOVERS: two lines against a reference, landing BOTH axes exactly.
+ * Every candidate is mass-neutral by construction and whole-gram, because the
+ * incumbent it starts from is the practicalized vector the customer would get.
+ *
+ * It is bounded by `budget`, which the caller owns for the WHOLE Preview.
+ */
+function directionChallengerVectors(
+  incumbent: RecipeInput,
+  set: ConstraintSet,
+  excludedIngredientIds: ReadonlySet<string>,
+  axes: ReadonlyArray<{ metric: 'pod' | 'npac'; target: number }>,
+  budget: { remaining: number },
+): RecipeInput[] {
+  if (axes.length === 0 || axes.length > 2) return [];
+  const vector = buildDraftCandidateVector(incumbent, set, excludedIngredientIds);
+  if (vector.length < 2) return [];
+  const batch = incumbent.target_batch_grams;
+
+  /** The PRESERVING reach of each line's own ladder — never the collapse rungs. */
+  const bounded = vector
+    .map((candidate) => {
+      const preserving = candidate.testedGrams.filter(
+        (grams) =>
+          candidate.anchorGrams === null ||
+          !isMaterialUserIntentDeviation(candidate.anchorGrams, grams, batch),
+      );
+      if (preserving.length === 0) return null;
+      return {
+        lineId: candidate.lineId,
+        current: candidate.currentGrams,
+        lo: Math.max(0, Math.min(candidate.currentGrams, ...preserving)),
+        hi: candidate.increasable
+          ? Math.max(candidate.currentGrams, ...preserving)
+          : candidate.currentGrams,
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  if (bounded.length < 2) return [];
+
+  const base = axes.map((axis) => metricValueOf(incumbent, axis.metric));
+  const need = axes.map((axis, index) => axis.target - base[index]!);
+  const byId = new Map(bounded.map((entry) => [entry.lineId, entry]));
+  const out: RecipeInput[] = [];
+  const seen = new Set<string>();
+
+  const emit = (deltas: Map<string, number>, referenceId: string): void => {
+    if (budget.remaining <= 0) return;
+    // Clamp to the ladder's own reach: the largest fraction of the solved step
+    // that keeps every moved line inside its existing bounds.
+    let scale = 1;
+    for (const [lineId, delta] of deltas) {
+      if (Math.abs(delta) < DIRECTION_SELECTOR_MIN_MOVE_GRAMS) continue;
+      const entry = byId.get(lineId);
+      if (entry === undefined) return;
+      const headroom = delta > 0 ? entry.hi - entry.current : entry.current - entry.lo;
+      if (headroom <= 0) return;
+      scale = Math.min(scale, headroom / Math.abs(delta));
+    }
+    if (scale <= 0) return;
+    for (const fraction of scale === 1 ? [1, 0.5] : [scale, scale / 2]) {
+      if (budget.remaining <= 0) return;
+      // Whole grams: the movers round first and the reference absorbs exactly
+      // their rounded sum, so the batch stays exact.
+      const moves = new Map<string, number>();
+      let moverDrift = 0;
+      for (const [lineId, delta] of deltas) {
+        if (lineId === referenceId) continue;
+        const entry = byId.get(lineId)!;
+        const rounded = Math.round(entry.current + delta * fraction) - entry.current;
+        moves.set(lineId, rounded);
+        moverDrift += rounded;
+      }
+      moves.set(referenceId, -moverDrift);
+      let admissible = true;
+      for (const [lineId, move] of moves) {
+        const entry = byId.get(lineId)!;
+        const target = entry.current + move;
+        if (target < 0 || target < entry.lo - 1e-9 || target > entry.hi + 1e-9) admissible = false;
+      }
+      if (!admissible) continue;
+      const moved = [...moves.values()].filter(
+        (move) => Math.abs(move) >= DIRECTION_SELECTOR_MIN_MOVE_GRAMS,
+      );
+      if (moved.length < 2) continue;
+      const candidate: RecipeInput = {
+        ...incumbent,
+        items: incumbent.items.map((item) =>
+          moves.has(item.id)
+            ? { ...item, planned_grams: item.planned_grams + moves.get(item.id)! }
+            : item,
+        ),
+      };
+      const key = candidate.items.map((item) => item.planned_grams.toFixed(3)).join('|');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      budget.remaining -= 1;
+      out.push(candidate);
+    }
+  };
+
+  for (const reference of bounded) {
+    if (budget.remaining <= 0) break;
+    if (reference.current < 1) continue;
+    const movers = bounded.filter((entry) => entry.lineId !== reference.lineId);
+    if (movers.length === 0) continue;
+
+    // The engine's own first-order response: one mass-neutral probe per line.
+    const response = new Map<string, number[]>();
+    for (const mover of movers) {
+      const probed: RecipeInput = {
+        ...incumbent,
+        items: incumbent.items.map((item) =>
+          item.id === mover.lineId
+            ? { ...item, planned_grams: item.planned_grams + 1 }
+            : item.id === reference.lineId
+              ? { ...item, planned_grams: item.planned_grams - 1 }
+              : item,
+        ),
+      };
+      response.set(
+        mover.lineId,
+        axes.map((axis, index) => metricValueOf(probed, axis.metric) - base[index]!),
+      );
+    }
+
+    // SINGLE MOVER — lands one axis exactly. Not reachable from the paired solve
+    // at any scale, and its absence is what made an earlier build path-dependent
+    // enough to break the accepted cross-level nearest contract.
+    for (const mover of movers) {
+      for (let axis = 0; axis < axes.length; axis += 1) {
+        const gradient = response.get(mover.lineId)![axis]!;
+        if (Math.abs(gradient) < DIRECTION_SELECTOR_RESPONSE_EPS) continue;
+        emit(
+          new Map([
+            [mover.lineId, need[axis]! / gradient],
+            [reference.lineId, -(need[axis]! / gradient)],
+          ]),
+          reference.lineId,
+        );
+      }
+    }
+
+    // PAIRED MOVERS — lands both axes exactly.
+    if (axes.length === 2) {
+      for (let i = 0; i < movers.length; i += 1) {
+        for (let j = i + 1; j < movers.length; j += 1) {
+          if (budget.remaining <= 0) break;
+          const a = response.get(movers[i]!.lineId)!;
+          const b = response.get(movers[j]!.lineId)!;
+          const determinant = a[0]! * b[1]! - b[0]! * a[1]!;
+          if (Math.abs(determinant) < DIRECTION_SELECTOR_RESPONSE_EPS) continue;
+          const x = (need[0]! * b[1]! - need[1]! * b[0]!) / determinant;
+          const y = (a[0]! * need[1]! - a[1]! * need[0]!) / determinant;
+          emit(
+            new Map([
+              [movers[i]!.lineId, x],
+              [movers[j]!.lineId, y],
+              [reference.lineId, -(x + y)],
+            ]),
+            reference.lineId,
+          );
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * THE FINAL SELECTOR — one definition of „nearest", applied once.
+ *
+ * NEAREST means: among the LEGAL candidates this run actually considered, the
+ * one whose engine-measured distance to the REQUESTED target is smallest. It
+ * does NOT mean the first found, nor the projection because it ran first, nor a
+ * sibling level's candidate that happens to sit closer, nor a rescue candidate
+ * measured from the wrong baseline.
+ *
+ * The search space is BOUNDED, so what this returns is „the best in the legal
+ * space that was searched" — not a proof of the global optimum. Where that
+ * distinction matters it is stated rather than implied; a budget that runs out
+ * never turns into a claim of infeasibility, because the incumbent is still
+ * published exactly as it would have been.
+ */
+function selectNearestLegalDirectionCandidate(
+  input: RecipeInput,
+  set: ConstraintSet,
+  createdAt: string,
+  options: OptimizePreviewOptions,
+  incumbent: BuildPreviewResult,
+): BuildPreviewResult {
+  // ── SCOPE AND COST GATES ──────────────────────────────────────────────────
+  // Once per user-facing Preview, never inside a re-entrant or probe pass.
+  if (optimizePreviewDepth > 1) return incumbent;
+  // `directionFallbackPass` is NOT a probe marker — the customer's own
+  // recalculation sets it (`constraintStudioStore.ts`), so excluding it would
+  // switch the selector off on exactly the path it exists for. The three below
+  // are the internal evaluations the customer never sees.
+  if (
+    options.softAnchorPass === true ||
+    options.directionNearestPass === true ||
+    (options.rescueSimulationLineIds?.length ?? 0) > 0
+  ) {
+    return incumbent;
+  }
+  if (!incumbent.ok) return incumbent;
+  if (!hasActiveExactDirectionObjective(input)) return incumbent;
+  if (incumbent.preview.diagnosticOnly === true) return incumbent;
+  const incumbentInput = incumbent.preview.proposedInput;
+  const incumbentDistance = directionDistanceOf(incumbentInput);
+  // Already there: nothing can be nearer than exact.
+  if (incumbentDistance <= SEVERITY_EPS) return incumbent;
+  if (incumbentInput.items.some((item) => item.actual_grams !== null)) return incumbent;
+  const target = input.target_batch_grams;
+  if (!(target > 0)) return incumbent;
+
+  const axes = requestedDirectionAxes(input);
+  if (axes.length === 0) return incumbent;
+  const solverSet = solverHolds(incumbentInput, set);
+  const excludedIngredientIds = new Set(
+    (options.excludedIngredientIds ?? []).map(canonicalIngredientIdFromSourceId),
+  );
+  const snapshots = options.productBehaviorSnapshots ?? {};
+  const mainMode =
+    normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode) === 'eco'
+      ? ('eco' as const)
+      : ('optimal' as const);
+
+  /**
+   * EVERY hard gate the incumbent passed, applied to a challenger. Nothing is
+   * relaxed and nothing new is invented: these are the pipeline's own checks.
+   */
+  const publishable = (candidate: RecipeInput): ConstraintPreview | null => {
+    const preview = finishPreview(
+      incumbent.preview.kind,
+      incumbent.preview.titlePl,
+      input,
+      set,
+      candidate,
+      incumbent.preview.nextConstraints,
+      incumbent.preview.violationsBefore,
+      incumbent.preview.explanation,
+      createdAt,
+    );
+    const executable = preview.proposedInput;
+    const result = calculateRecipe(executable);
+    if (detectViolations(result).length > 0) return null;
+    if (result.warnings.some((warning) => warning.severity === 'critical')) return null;
+    if (Math.abs(plannedSum(executable) - target) > BATCH_SUM_TOLERANCE_G) return null;
+    if (!verifyConstraintsPreserved(set, executable).ok) return null;
+    if (!verifyConstraintsPreserved(solverSet, executable).ok) return null;
+    if (!positiveStandardPresencePreserved(input, executable)) return null;
+    if (requiredLineContractViolations(input, executable).length > 0) return null;
+    if (!verifyMainIngredientIdentity(input, executable, set.byLineId).ok) return null;
+    if (options.requirePracticalPreview === true && preview.practicalization?.status !== 'ready') {
+      return null;
+    }
+    if (Object.keys(snapshots).length > 0 && captureMainIngredientIntent(executable).length > 0) {
+      const envelope = verifyMainEnvelope({
+        recipe: executable,
+        snapshots,
+        mode: mainMode,
+        enforceFloor: true,
+        technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+      });
+      if (!envelope.ok) return null;
+    }
+    return preview;
+  };
+
+  const budget = { remaining: DIRECTION_SELECTOR_EVALUATION_BUDGET };
+  let bestInput = incumbentInput;
+  let bestDistance = incumbentDistance;
+  let bestPreview: ConstraintPreview | null = null;
+
+  for (let pass = 0; pass < DIRECTION_SELECTOR_MAX_PASSES; pass += 1) {
+    if (budget.remaining <= 0 || bestDistance <= SEVERITY_EPS) break;
+    const challengers = directionChallengerVectors(
+      bestInput,
+      solverSet,
+      excludedIngredientIds,
+      axes,
+      budget,
+    );
+    if (challengers.length === 0) break;
+    let improvedThisPass = false;
+    for (const challenger of challengers) {
+      const distance = directionDistanceOf(challenger);
+      if (distance >= bestDistance - SEVERITY_EPS) continue;
+      const preview = publishable(challenger);
+      if (preview === null) continue;
+      // The PUBLISHED vector is what is ranked, because practicalization may
+      // round the exact one back out of the band.
+      const published = directionDistanceOf(preview.proposedInput);
+      if (published >= bestDistance - SEVERITY_EPS) continue;
+      bestInput = preview.proposedInput;
+      bestDistance = published;
+      bestPreview = preview;
+      improvedThisPass = true;
+    }
+    if (!improvedThisPass) break;
+  }
+
+  if (bestPreview === null) return incumbent;
+  // Carry every field the incumbent's own route established; only the candidate
+  // and the fields `finishPreview` re-derives from it change.
+  const merged: ConstraintPreview = {
+    ...incumbent.preview,
+    ...bestPreview,
+    // `directionCandidateSource` is deliberately INHERITED, not overwritten: it
+    // feeds `exactDirectionMainProofKind`, so inventing a value here would
+    // change the Main proof path for previews that never carried one. The
+    // selector records itself in its own field.
+    directionCandidateSource: incumbent.preview.directionCandidateSource,
+    directionNearestSelected: true,
+  };
+  return { ...incumbent, preview: merged };
+}
+
 /**
  * RE-ENTRANCY DEPTH of the preview pipeline (P1 — cost guard for the escape).
  *
@@ -7092,7 +7500,10 @@ export function buildOptimizePreview(
 ): BuildPreviewResult {
   optimizePreviewDepth += 1;
   try {
-    return buildOptimizePreviewOutermost(input, set, createdAt, options);
+    const answered = buildOptimizePreviewOutermost(input, set, createdAt, options);
+    // NAPRAWA 1B: the preferred path has answered; now publish the nearest legal
+    // candidate it or a bounded challenger can produce.
+    return selectNearestLegalDirectionCandidate(input, set, createdAt, options, answered);
   } finally {
     optimizePreviewDepth -= 1;
   }
