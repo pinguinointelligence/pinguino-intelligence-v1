@@ -3,6 +3,10 @@ import { canonicalToolboxComposition } from '@/data/ingredients/canonicalToolbox
 import { GELLATTI_STABILIZER_AUTHORITY } from '@/data/ingredients/gellattiStabilizerAuthority';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { substitutionIngredientFingerprint } from '@/features/ingredient-builder/recipeSubstitution';
+import {
+  rescueAdmissibility,
+  rescueToolboxEntry,
+} from '@/features/rescue-toolbox/rescueToolboxAuthority';
 
 export const STARTER_PACK_RESCUE_PALETTE_VERSION = 'owner-starter-pack-rescue-v1' as const;
 
@@ -119,28 +123,58 @@ export const starterPackRescuePalette = (): readonly StarterPackPaletteEntry[] =
 export const starterPackRescueWithNamePl = (mapperId: StarterPackRescueMapperId): string =>
   BY_MAPPER_ID.get(mapperId)?.withNamePl ?? mapperId;
 
+/**
+ * ADAPTER (NAPRAWA 5). The compatibility rules no longer live here: the single
+ * source of truth is `@/features/rescue-toolbox/rescueToolboxAuthority`, and
+ * this function translates its verdict into the legacy reason vocabulary its
+ * existing callers already understand.
+ *
+ * ONE RULE CHANGED, on the Owner's decision: `profile === 'protein_gelato'` no
+ * longer refuses every candidate with `blocked_science`. Protein is judged by
+ * the REAL Protein authority — its route, its qualification, its structural
+ * score and its hard gates, applied per candidate in `rescueProteinGate` — not
+ * by a switch on the category name. `blocked_science` is consequently never
+ * emitted any more; the member stays in the union so no caller's exhaustive
+ * handling breaks.
+ *
+ * Everything else is preserved exactly: an unhydratable payload is still
+ * `authority_unavailable`, a line already in the recipe is still
+ * `already_present` to THIS legacy contract (the NAPRAWA 5 pipeline reads
+ * `rescueAdmissibility` directly, where presence routes to Constraint Rescue
+ * instead of refusing), and dairy or egg on Sorbet or Vegan is still
+ * `profile_incompatible`.
+ *
+ * `profile` remains the profile under test. `input`, when supplied, is what the
+ * base route, the vegan payload check and presence are read from — both
+ * production callers pass `input.category` as `profile`, so the two always
+ * agree there.
+ */
 export function starterPackRescueEligibility(
   mapperId: StarterPackRescueMapperId,
   profile: ProductCategory,
   input?: RecipeInput,
 ): StarterPackRescueEligibility {
-  const entry = BY_MAPPER_ID.get(mapperId);
-  if (!entry || canonicalToolboxComposition(entry.toolboxId) === null) {
-    return { eligible: false, reason: 'authority_unavailable' };
-  }
-  if (input?.items.some((item) => canonicalIngredientId(item.ingredient) === mapperId)) {
-    return { eligible: false, reason: 'already_present' };
-  }
-  if (profile === 'protein_gelato') {
-    return { eligible: false, reason: 'blocked_science' };
-  }
-  if (
-    (profile === 'sorbet' || profile === 'vegan_gelato') &&
-    (mapperId === 'PI-ING-001645' || mapperId === 'PI-ING-000270' || mapperId === 'PI-ING-000260')
-  ) {
+  const entry = rescueToolboxEntry(mapperId);
+  if (entry === null) return { eligible: false, reason: 'authority_unavailable' };
+  if (entry.allowedProfiles !== 'all' && !entry.allowedProfiles.includes(profile)) {
     return { eligible: false, reason: 'profile_incompatible' };
   }
-  return { eligible: true, reason: 'eligible' };
+  if (input === undefined) {
+    // Without a draft only the profile question can be answered honestly: the
+    // base route, the vegan payload assessment and presence all need one.
+    return { eligible: true, reason: 'eligible' };
+  }
+  const verdict = rescueAdmissibility(entry, input, starterPackRescueIngredient(mapperId));
+  if (verdict.presence !== 'absent') {
+    return { eligible: false, reason: 'already_present' };
+  }
+  if (verdict.admissible) return { eligible: true, reason: 'eligible' };
+  // An unresolved base route is a MISSING AUTHORITY, never evidence that the
+  // candidate is wrong for this product.
+  if (verdict.reason === 'authority_unavailable' || verdict.reason === 'base_route_unresolved') {
+    return { eligible: false, reason: 'authority_unavailable' };
+  }
+  return { eligible: false, reason: 'profile_incompatible' };
 }
 
 export function starterPackRescueIngredient(
