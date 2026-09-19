@@ -72,6 +72,11 @@ export class NetworkError extends Error {
   readonly kind = 'network' as const;
 }
 
+/** A response-contract failure must not fall back to an earlier exact product. */
+export class ScannerResponseError extends Error {
+  readonly kind = 'service' as const;
+}
+
 export function canAttemptScannerRequest(ctx: RequestContext): boolean {
   return ctx.allowNetworkRequest ?? ctx.online;
 }
@@ -276,7 +281,12 @@ export type ScanImportV2Result =
       canonical: false;
       engineReady: false;
     }
-  | { kind: 'ambiguous'; identity: CodeIdentity; candidates: readonly ExactCandidate[] }
+  | {
+      kind: 'ambiguous';
+      identity: CodeIdentity;
+      /** Server conflicts may disclose only IDs; never invent missing product metadata. */
+      candidates: readonly (Pick<ExactCandidate, 'productId'> & Partial<ExactCandidate>)[];
+    }
   | {
       kind: 'unknown';
       identity: CodeIdentity;
