@@ -67,23 +67,32 @@ export function veganInulinLineIds(input: RecipeInput): string[] {
  */
 export function withVeganInulinEnvelopeHold(input: RecipeInput, set: ConstraintSet): ConstraintSet {
   if (input.category !== 'vegan_gelato') return set;
-  // THE ENVELOPE IS A PERCENTAGE, SO THE WINDOW MUST BE ONE TOO.
+  // THE CEILING IS TAKEN AGAINST THE TARGET BATCH, AND IT MUST STAY THERE.
   //
-  // The ceiling used to be taken against the TARGET batch while the vector the
-  // search actually moves is routinely off batch, and the executable is
-  // rescaled to the target at the end. A line sitting at the ceiling of an
-  // 840 g working vector is 9.5 % of it, and the rescale to 1000 g carries that
-  // 9.5 % straight through the 8.31 % envelope: on the vegan Horchata draft the
-  // search produced 80 g, the rescale made it 95 g, and the customer lost the
-  // whole Preview to a refusal (`recipeVectorProximity.test.ts`). Measuring the
-  // window against the vector's OWN mass is rescale-invariant, so what the
-  // search may reach is exactly what the envelope permits. On an on-batch
-  // vector the two masses are equal and nothing changes at all.
+  // A measured wrong turn, kept here so it is not taken twice. The 95 g breach
+  // this hold exists to stop was first blamed on the ceiling being measured
+  // against the TARGET batch while the vector the search moves is routinely off
+  // batch: a line at the ceiling of an 840 g working vector is 9.5 % of it, and
+  // the rescale to 1000 g carries that share through the 8.31 % envelope. So
+  // the window was made relative to the vector's own mass.
+  //
+  // That is rescale-invariant and it is also WRONG, because it makes the
+  // feasible region MOVE every time the search moves mass. A constraint the
+  // search cannot hold still is a constraint the search cannot converge
+  // against: measured on the vegan Strawberry refusal cell
+  // (`veganDirectionHistoryRegression.test.ts`, S−2/H−2), the relative window
+  // took one Preview from 1.35 s to 7.1–10.8 s — a 5.3x regression, and past
+  // the 5 s default timeout — for an answer that is a refusal either way.
+  //
+  // The breach was never this line's to fix. It came from the hold STEPPING
+  // ASIDE for another authority's preference band, and it is fixed below by
+  // INTERSECTING instead; `ownerInulinPolicy.permittedInulinBand` closes the
+  // same hole on the formulation side. With both in place the isolated solver
+  // lane is green (23/23) against the target-batch ceiling, so the relative
+  // window bought nothing and cost 5.3x.
   const total = input.target_batch_grams;
   if (!Number.isFinite(total) || total <= 0) return set;
-  const workingMass = input.items.reduce((sum, item) => sum + item.planned_grams, 0);
-  const envelopeMass = workingMass > 0 ? Math.min(workingMass, total) : total;
-  const ceilingGrams = (VEGAN_INULIN_CALIBRATION_MAX_PERCENT / 100) * envelopeMass;
+  const ceilingGrams = (VEGAN_INULIN_CALIBRATION_MAX_PERCENT / 100) * total;
   const lineIds = veganInulinLineIds(input).filter((lineId) => {
     const existing = set.byLineId[lineId];
     return existing === undefined || existing.mode === 'ai' || existing.mode === 'range';

@@ -170,7 +170,7 @@
     },
     {
       "path": "src/features/formulation/veganProfileConstraints.ts",
-      "sha256": "6567cf7bdb3dce31a6373ef54540e6411bf09c14637ad211f663972d85a6dadc"
+      "sha256": "b651db80cf46ce588750a1528313cb3fb6808bd1666976a2965fc71ad2998b18"
     },
     {
       "path": "src/features/formulation/violationBands.ts",
@@ -301,5 +301,5 @@
       "sha256": "a2207c9c4e9431daa728d6b03fe1b9c4a4a3ba3403a0c056f2808c0759a455c8"
     }
   ],
-  "sourceClosureSha256": "f45ec116d03566a131dc4a75489fa4ca6b8f16921e8e2be39ab94fcfaa9817e8"
+  "sourceClosureSha256": "640640c6529861b65c1886ec4b9384731e2af0311a01ecbb017c9470f7932d20"
 }
