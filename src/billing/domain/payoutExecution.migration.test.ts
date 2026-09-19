@@ -280,6 +280,26 @@ describe('scheduling — production actually invokes these', () => {
   it('runs after the Madrid month boundary in both DST states', () => {
     expect(SCHED_RAW).toContain('02:30 UTC is 03:30/04:30 Madrid');
   });
+
+  it('does not write the month snapshots a second time when the applied daily job owns them', () => {
+    /* `gellatti-partner-tier-snapshots` (applied separately, daily 02:30) runs
+       the same catch-up and the same writer 15 minutes earlier. Two schedulers
+       writing one month is how a double snapshot — and a duplicated job_runs
+       history — happens, so the monthly job delegates when the month already
+       has rows. */
+    const monthly = fn(SCHED, 'gellatti_partner_monthly_jobs_v1');
+    expect(monthly).toContain("to_regprocedure('public.gellatti_partner_tier_snapshot_job_v1()') is not null");
+    expect(monthly).toContain("from public.partner_tier_snapshots s");
+    expect(monthly).toContain("'owner', 'gellatti-partner-tier-snapshots'");
+  });
+
+  it('still repairs the month itself when nothing else wrote it', () => {
+    const monthly = fn(SCHED, 'gellatti_partner_monthly_jobs_v1');
+    expect(monthly).toContain("public.gellatti_run_partner_job_v1('tier_snapshot_catchup')");
+    expect(monthly).toContain("public.gellatti_run_partner_job_v1('tier_snapshots')");
+    expect(monthly).toContain("public.gellatti_run_partner_job_v1('commission_eligibility')");
+    expect(monthly).toContain("public.gellatti_run_partner_job_v1('payout_batch_test')");
+  });
 });
 
 describe('scheduling — recoverable, idempotent, observable', () => {

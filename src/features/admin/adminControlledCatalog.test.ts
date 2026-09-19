@@ -223,7 +223,10 @@ describe('country, Partner and invitation invariants', () => {
     expect(partner).toContain('gellatti_partner_workspace_v1');
     expect(partner).toContain('where p.user_id=auth.uid()');
     const edge = read('supabase', 'functions', 'admin-control', 'index.ts');
-    expect(edge).toContain("type: 'express'");
+    // Server-provisioned, Express-dashboard account. Accounts v2 since the
+    // sandbox refused /v1/accounts (connectProvisioningV2.test.ts pins the rest).
+    expect(edge).toContain("stripe.rawRequest('POST', '/v2/core/accounts'");
+    expect(edge).toContain("dashboard: 'express',");
     expect(edge).toContain('gellatti_admin_register_partner_connect_v1');
     expect(referralClickConflict).toContain('create unique index referral_clicks_dedupe_key_uniq');
     expect(referralClickConflict).not.toContain('where dedupe_key is not null');
