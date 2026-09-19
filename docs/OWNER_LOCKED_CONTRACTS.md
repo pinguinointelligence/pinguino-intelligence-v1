@@ -45,6 +45,78 @@ versions, `labelSettingsReturn`, „← Wróć”, print, missing data, allergen
 implementation commit trailer `Owner-Locked-Change-Approved: GEL-P0-033` and does not constitute
 `OWNER ACCEPTED` for the new UI.
 
+## Owner supersession — GEL-P0-039 (2026-09-19, `range != lock`)
+
+The Owner's decision **GLOBAL ±2 CONTROLLED RELAXATION** (2026-09-19) and its controlling
+clarification of the same day supersede one assumption that six accepted contracts had encoded:
+that a `{ mode: 'range' }` constraint on a stabilizer-role line is a HOLD. It is not.
+
+**The rules this supersession establishes.**
+
+1. A PREFERENCE range — an owner dosage window such as the published Gellatti Inulin authority
+   (2–8 % of the batch; 20–80 g at 1000 g) — is a SEARCHABLE WINDOW. The line moves inside it.
+2. A genuine STRUCTURAL, physical or calibration range is a HARD HOLD and is never widened.
+3. `is_stabilizer: true` is an ingredient classification. It does **not** make a range structural.
+4. Structurality comes from the AUTHORITY that created the constraint, never from the ingredient,
+   the profile or the machine. In code that is `IngredientConstraint.structural`, set by the
+   authority that writes the hold (for example `withVeganInulinEnvelopeHold`), and read generically
+   by `draftCandidateVector.isHeldByConstraint` / `searchWindow`.
+5. Where a preference range and a structural range govern the same line they are INTERSECTED —
+   higher floor, lower ceiling (`ownerInulinPolicy.permittedInulinBand`). Stage B (`±2` controlled
+   relaxation, `relaxableRangePolicy.withExtendedRelaxableRanges`) may widen only the PREFERENCE
+   range and never the structural one.
+
+**What is NOT superseded.** Every scientific protection the six contracts carry stands, and each is
+still asserted — several now more directly than before:
+
+- canonical Inulin never leaves the published 2–8 % band on any delivered vector;
+- the Vegan inulin calibration ceiling (`VEGAN_INULIN_CALIBRATION_MAX_PERCENT`) stays hard and is
+  deliberately NOT registered as relaxable;
+- the Sorbet Main group stays byte-exact through the Apply door;
+- Tara stays inside the owner band and is projected to whole grams;
+- an emptied row is still omitted by the zero-gram executable invariant;
+- a customer-chosen ingredient row is never deleted from the recipe (new guard, below).
+
+**The six contracts amended, with the vectors re-measured before → after.** Measure: Σ band
+distance over every requested axis (`directionBandDistance.directionDistance`), engine scores from
+`calculateRecipe`, customer-visible score from `recipeFitForInput`. Nothing below was re-snapshotted
+without a measurement.
+
+| contract | before — band enforced as a freeze | after — band as a window | verdict |
+| --- | --- | --- | --- |
+| `currentDraftOptimization.test.ts` test 1 | `l-inulin` ABSENT from `candidateVector` | present, `increasable`, rungs `[21, 25, 30, 40, 70, 80]` — every rung inside 20–80 | the protection is now asserted directly instead of by the proxy of absence |
+| `currentDraftOptimization.test.ts` test 2 | `l-inulin` asserted `toBeUndefined()` at 20 / 40 / 80 g | present at each; every rung and the proposal inside 20–80; `increasable === grams < 80` | same |
+| `stabilizerContractRegression.test.ts` Sweetness −1 | 523/226/42/62/91/**54**/2 · POD 13.930168 · NPAC 45.862889 · Σd 0 · €2.4250/kg · overall 87.833 | 499/229/44/69/78/**79**/2 · POD 13.909056 · NPAC 45.066390 · Σd 0 · €2.5908/kg · overall 87.531 | both reach; convergence improves (the accepted move INULIN 54.1 → 80 g cut severity 2.158788 → 1.769487, the largest single cut in the sweep); **cost score 100 → 98.789** — see the consequence below |
+| `stabilizerContractRegression.test.ts` G17 continuation | INULIN 54 · POD 13.930168 | INULIN 79 · POD 13.909056 | inherited from the Sweetness −1 seed it continues |
+| `sorbetDirectionApplyDoor.test.ts` softness −1 | 157/73/111/**55**/4 · 600 · POD 19.96650 · NPAC 46.906906 · **Σd 0.040406** | 156/74/110/**56**/4 · 600 · POD 20.00180 · NPAC 46.885638 · **Σd 0.016162** | **2.50× nearer**, Main byte-exact, zero relaxation |
+| `zeroGramExecutableInvariant.test.ts` § 11 | same vector as above | same vector as above | same |
+
+**The consequence, recorded rather than buried.** On the Sweetness −1 gelato fixture the newly
+searchable dosage window makes the solver spend 25 g more Inulin, which is dearer than the milk it
+displaces: cost/kg rises 6.8 % (€2.4250 → €2.5908) and the engine cost score falls 100 → 98.789.
+Technical (95.8333), flavour (70) and the customer-visible score (10/10) are unchanged, and no
+relaxation envelope is used (`relaxationCost` 0 — 79 g is inside the owner's own band). This is the
+price of rule 1 on that fixture and it is the Owner's to weigh.
+
+**Crown bootstrap crash (same decision, separate defect).** `crownBootstrapDirection.test.ts` died
+with `TypeError: Cannot read properties of undefined (reading 'planned_grams')`. Root cause: the
+served capture `__fixtures__/servedSorbetThreeFruitFixture.ts` documented that a non-seeded fruit row
+is „the same grams typed by the user" but encoded only the `AUTO_CROWN_SEED` half of that
+distinction. `recipeStore` writes `user_intent_anchor_grams` whenever a customer adds an ingredient,
+and `userLineBaselineGrams` reads exactly that, so every row of the capture reached CORE as
+`pi_auto_added` and therefore EMPTIABLE. Once the search could reach a vector that empties the two
+uncrowned 1 g fruit rows, the zero-gram executable invariant omitted them and the three-fruit sorbet
+came back with one fruit. The capture now carries the sidecar the served draft carries; the crash is
+gone at its root, not masked with optional chaining. Re-measured: Σd 0.130693 → **0.034895**
+(**3.75× nearer**) with both fruit rows preserved. New guard:
+`crownBootstrapDirection.test.ts` → „FIX 1 — a customer-chosen fruit row survives the search"
+(4 tests; all 4 fail when the sidecar is removed).
+
+Authorized by the Owner decision of 2026-09-19 and recorded with the implementation commit trailer
+`Owner-Locked-Change-Approved: GEL-P0-039`. None of the six amended files lives under
+`src/contracts/owner-locked/`, so `guardOwnerLockedContracts.mjs` does not gate them; the trailer and
+this entry are the record the Owner asked for, not a guard override.
+
 > ### ⚠ CI ACTIVATION IS STILL PENDING (2026-08-29)
 >
 > The contracts, both guards and the ledger are live on `staging`, and

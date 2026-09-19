@@ -139,6 +139,63 @@ describe('FIX 1 — the untouched PRO Crown seed is sized by the Main search', (
   });
 });
 
+/**
+ * REGRESSION — A FRUIT THE CUSTOMER PICKED IS NEVER OPTIMIZED OUT OF THE RECIPE.
+ *
+ * Root cause (2026-09-19, global ±2 controlled relaxation § 3). Once an owner
+ * dosage `range` stopped being enforced as a freeze, the Direction search could
+ * reach a vector that empties the two uncrowned 1 g fruit rows and spends their
+ * 2 g on water and dextrose. It is measurably nearer the requested level
+ * (Σ band distance 0.130693 → 0.020765) and the zero-gram executable invariant
+ * then legitimately OMITS an emptied row — so the served three-fruit sorbet came
+ * back containing one fruit, and `crownBootstrapDirection`'s helper dereferenced
+ * the missing row (`TypeError: Cannot read properties of undefined`).
+ *
+ * The crash was the honest signal; the defect was upstream of it. CORE's
+ * emptiable rule already protects a line that carries user intent, and
+ * `recipeStore` writes `user_intent_anchor_grams` the moment a customer adds an
+ * ingredient. This served capture documented the same distinction
+ * (`seeded: []` is the same grams typed by the user) but encoded only the
+ * AUTO_CROWN_SEED half, so every row reached CORE as `pi_auto_added`.
+ *
+ * These assertions fail if the capture ever loses that sidecar again, and they
+ * fail on the product truth rather than on a gram snapshot: a row the customer
+ * chose must still BE in the recipe they get back.
+ */
+describe('FIX 1 — a customer-chosen fruit row survives the search', () => {
+  const userChosen = (input: RecipeInput) =>
+    input.items.filter((item) => (item.user_intent_anchor_grams ?? 0) > 0).map((item) => item.id);
+
+  it('the served capture carries the user intent it documents', () => {
+    const typed = servedSorbetRecipe({ seeded: [] });
+    expect(userChosen(typed)).toEqual([...SERVED_FRUIT_IDS]);
+    // The untouched PRO Crown seed is PI's 1 g, never the customer's.
+    expect(userChosen(servedSorbetRecipe({ seeded: SERVED_FRUIT_IDS }))).toEqual([]);
+    expect(userChosen(servedSorbetRecipe({ mains: [strawberry], seeded: [strawberry] }))).toEqual([
+      cranberry,
+      watermelon,
+    ]);
+  });
+
+  it.each([
+    ['single seeded Main', { mains: [strawberry], seeded: [strawberry] }],
+    ['two seeded Mains', { mains: [strawberry, cranberry], seeded: [strawberry, cranberry] }],
+    // Two seeds plus the customer's own typed sibling — the P8-mixed shape,
+    // where the uncrowned row is the only user intent in the draft.
+    ['seeded pair, typed sibling', { seeded: [strawberry, watermelon] }],
+  ] as const)('%s: no customer-chosen row is deleted from the proposal', (_name, options) => {
+    const input = servedSorbetRecipe(options);
+    const chosen = userChosen(input);
+    expect(chosen.length).toBeGreaterThan(0);
+    const proposed = accepted(preview(input)).proposedInput;
+    const survivors = proposed.items.map((item) => item.id);
+    for (const lineId of chosen) {
+      expect(survivors, `${lineId} was deleted from the recipe`).toContain(lineId);
+      expect(grams(proposed, lineId)).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe('FIX 1 — a real lock always wins over the bootstrap', () => {
   it('P4: grams lock', () => {
     const result = accepted(
