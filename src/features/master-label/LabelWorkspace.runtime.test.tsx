@@ -473,6 +473,90 @@ describe('LabelWorkspace unified actual-run surface', () => {
     },
   );
 
+  it('prints a saved version straight away, without asking its skipped fields again', async () => {
+    /**
+     * The served complaint: every reprint of one finished batch reopened „Brakujące dane
+     * etykiety" for fields the operator had already been shown and consciously skipped.
+     * The skip is part of the version they saved, so a saved version prints as it is —
+     * and printing it again neither asks nor writes a second version.
+     */
+    const snap = incompletePrintSnapshot();
+    const repository = await renderWorkspace('label', {
+      snapshot: snap,
+      settingsHome: 'production',
+      profileOverrides: { market: 'EU', uiLanguage: 'pl', labelLanguages: ['pl'] },
+    });
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    vi.spyOn(window, 'print').mockImplementation(() => undefined);
+    const print = () =>
+      act(async () => {
+        host.querySelector<HTMLButtonElement>('[data-testid="label-print"]')!.click();
+        await Promise.resolve();
+      });
+
+    // 1. No saved version yet: the question is asked once.
+    await print();
+    expect(document.querySelector('[data-testid="label-print-missing-dialog"]')).not.toBeNull();
+
+    // 2. Skipped explicitly → v1 exists and is print-ready.
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>('[data-testid="label-print-missing-skip"]')!
+        .click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const first = await repository.getRunLabelSnapshot('run-label-workspace');
+    expect(first?.version).toBe(1);
+    const frozen = {
+      lot: first!.label.lotCode,
+      net: first!.label.netQuantityG,
+      actual: first!.label.actualBatchQuantityG,
+      ingredients: first!.label.ingredients.length,
+      createdAt: first!.createdAt,
+      snapshotId: first!.snapshotId,
+    };
+
+    /* 3. Come back to the finished batch later — the operator's real second print. The
+       saved version is loaded from the repository, and its skipped fields are still
+       unanswered, which is exactly when the dialog used to reappear. */
+    await act(async () => root.unmount());
+    root = createRoot(host);
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <LabelWorkspace
+            snapshot={snap}
+            repository={repository}
+            initialView="label"
+            settingsHome="production"
+            onOpenSettings={() => undefined}
+          />
+        </MemoryRouter>,
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await print();
+    expect(document.querySelector('[data-testid="label-print-missing-dialog"]')).toBeNull();
+    const after = await repository.getRunLabelSnapshot('run-label-workspace');
+    expect(after?.version).toBe(1);
+    expect(after?.snapshotId).toBe(frozen.snapshotId);
+    expect(after?.createdAt).toBe(frozen.createdAt);
+    expect(
+      (await repository.listRunLabelSnapshots()).filter(
+        (row) => row.runId === 'run-label-workspace',
+      ),
+    ).toHaveLength(1);
+
+    // 4. And the run truth it froze is untouched by the reprint.
+    expect(after?.label.lotCode).toBe(frozen.lot);
+    expect(after?.label.netQuantityG).toBe(frozen.net);
+    expect(after?.label.actualBatchQuantityG).toBe(frozen.actual);
+    expect(after?.label.ingredients).toHaveLength(frozen.ingredients);
+    expect(window.open).not.toHaveBeenCalled();
+  });
+
   it('applies only edited dialog values, prints them and preserves them after reopening', async () => {
     const snapshot = incompletePrintSnapshot();
     const repository = await renderWorkspace('label', {

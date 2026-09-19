@@ -324,13 +324,25 @@ export function LabelWorkspace({
     return persisted;
   };
 
+  /**
+   * True when this print would create no new version — the label in hand IS the frozen
+   * one already persisted for this run. Loading a saved version puts that exact object
+   * in `label`, and any edit replaces it, so the test is also the test for „has the
+   * operator changed anything since they saved".
+   *
+   * The same answer governs two things, which is why it lives in one place: whether a
+   * version is written, and whether the optional-data question is asked again. A saved
+   * version already carries the operator's answer to that question.
+   */
+  const printsFrozenVersion = (printable: MasterLabelData) => saved !== null && printable === label;
+
   const finalizeAndPrint = async (printableLabel: MasterLabelData) => {
     if (!profile || !snapshot || busy) return;
     setBusy(true);
     setError(null);
     try {
       let printable = printableLabel;
-      if (!saved || printableLabel !== label) {
+      if (!printsFrozenVersion(printableLabel)) {
         if (!profileWasPersisted) await persistProfile(profile);
         const frozen = await repository.saveRunLabelSnapshot(printableLabel);
         setSaved(frozen);
@@ -353,7 +365,11 @@ export function LabelWorkspace({
       setError(`${geometry.reason}. Zmień szerokość, wysokość albo średnicę w ustawieniach.`);
       return;
     }
-    if (printMissingFields(label).length > 0) {
+    /* Asking again for data the operator was already shown and consciously skipped would
+       make every reprint of one frozen version a negotiation. The skip is part of the
+       version they saved; „Zmień ustawienia" is where it is reconsidered, and that path
+       writes a new version rather than rewriting this one. */
+    if (!printsFrozenVersion(label) && printMissingFields(label).length > 0) {
       setPrintMissingOpen(true);
       return;
     }
