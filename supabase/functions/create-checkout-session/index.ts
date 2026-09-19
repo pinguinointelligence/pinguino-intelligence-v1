@@ -108,7 +108,25 @@ Deno.serve(async (req) => {
     .select('subscription_status, current_period_end')
     .eq('user_id', userId);
   if (existingError) return json(500, { error: 'subscription_lookup_failed' });
-  if (hasConflictingActiveSubscription(existing ?? [], new Date())) {
+  // The live webhook (stripe-webhook v2) writes customer_subscriptions; the
+  // 0003 `subscriptions` cache is the legacy v1 mirror. Both are consulted so
+  // a customer with a live plan is sent to Account → Plan i rozliczenia
+  // (upgrade/downgrade/cancel happen on the EXISTING subscription) instead of
+  // buying a second one. An expired/cancelled plan does NOT conflict: renewing
+  // after expiry is a new Checkout on purpose (real transaction date).
+  const { data: existingV2, error: existingV2Error } = await admin
+    .from('customer_subscriptions')
+    .select('status, current_period_end')
+    .eq('user_id', userId);
+  if (existingV2Error) return json(500, { error: 'subscription_lookup_failed' });
+  const existingRows = [
+    ...(existing ?? []),
+    ...(existingV2 ?? []).map((row) => ({
+      subscription_status: row.status as string,
+      current_period_end: (row.current_period_end as string | null) ?? null,
+    })),
+  ];
+  if (hasConflictingActiveSubscription(existingRows, new Date())) {
     return json(409, { error: 'conflicting_active_subscription' });
   }
 

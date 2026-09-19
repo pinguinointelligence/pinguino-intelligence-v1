@@ -6,7 +6,10 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { decidePortalEligibility } from '../../supabase/functions/create-portal-session/logic.ts';
+import {
+  decidePortalEligibility,
+  decidePortalFlow,
+} from '../../supabase/functions/create-portal-session/logic.ts';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
 const fnDir = join(ROOT, 'supabase', 'functions', 'create-portal-session');
@@ -32,6 +35,22 @@ describe('portal eligibility — auth user must already have a customer mapping'
       ok: false,
       reason: 'no_billing_customer',
     });
+  });
+});
+
+describe('portal flow — „Zaktualizuj metodę płatności” deep link', () => {
+  it('no flow → plain portal; payment_method_update → Stripe flow; anything else refused', () => {
+    expect(decidePortalFlow(undefined)).toEqual({ ok: true, flow: null });
+    expect(decidePortalFlow(null)).toEqual({ ok: true, flow: null });
+    expect(decidePortalFlow('')).toEqual({ ok: true, flow: null });
+    expect(decidePortalFlow('payment_method_update')).toEqual({ ok: true, flow: 'payment_method_update' });
+    expect(decidePortalFlow('subscription_cancel')).toEqual({ ok: false, reason: 'unknown_portal_flow' });
+    expect(decidePortalFlow({ type: 'payment_method_update' })).toEqual({ ok: false, reason: 'unknown_portal_flow' });
+  });
+
+  it('the entrypoint forwards the flow as flow_data and never stores card data', () => {
+    expect(/flow_data:\s*\{\s*type:\s*flow\.flow\s*\}/.test(indexSource)).toBe(true);
+    expect(/card_number|cardNumber|cvc/i.test(indexSource)).toBe(false);
   });
 });
 

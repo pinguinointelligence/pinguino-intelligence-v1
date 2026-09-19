@@ -134,6 +134,8 @@ Deno.serve(async (req) => {
       switch (resource) {
         case 'subscription':
           return (await stripe.subscriptions.retrieve(id)) as unknown as Record<string, unknown>;
+        case 'subscription_schedule':
+          return (await stripe.subscriptionSchedules.retrieve(id)) as unknown as Record<string, unknown>;
         case 'invoice':
           return (await stripe.invoices.retrieve(id)) as unknown as Record<string, unknown>;
         case 'charge':
