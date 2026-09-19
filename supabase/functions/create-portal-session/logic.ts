@@ -15,6 +15,24 @@ export type PortalEligibility =
   | { ok: true; customerId: string }
   | { ok: false; reason: 'no_billing_customer' };
 
+/**
+ * Optional portal deep link. Account → Plan i rozliczenia sends the customer
+ * straight to the payment-method update after a failed renewal (Stripe
+ * `flow_data.type = payment_method_update`) — card storage stays Stripe's.
+ * Anything else is refused rather than guessed.
+ */
+export type PortalFlow = 'payment_method_update';
+
+export type PortalFlowDecision =
+  | { ok: true; flow: PortalFlow | null }
+  | { ok: false; reason: 'unknown_portal_flow' };
+
+export function decidePortalFlow(raw: unknown): PortalFlowDecision {
+  if (raw === undefined || raw === null || raw === '') return { ok: true, flow: null };
+  if (raw === 'payment_method_update') return { ok: true, flow: raw };
+  return { ok: false, reason: 'unknown_portal_flow' };
+}
+
 /** Auth'd user → customer id requirement (the only portal precondition). */
 export function decidePortalEligibility(
   billingCustomer: BillingCustomerRow | null | undefined,
