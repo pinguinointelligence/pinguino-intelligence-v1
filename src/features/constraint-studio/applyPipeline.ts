@@ -124,6 +124,12 @@ import {
   userIntentDriftTotal,
   type UserIntentDeviation,
 } from '@/features/formulation/userLineIntent';
+import { directionRelaxationPermitted } from '@/features/recipe-direction/directionRelaxation';
+import {
+  relaxationCost,
+  relaxedOwnerRanges,
+  withExtendedRelaxableRanges,
+} from '@/features/recipe-direction/relaxableRangePolicy';
 import {
   isVerifiedRuntimeSubstitute,
   hasVerifiedMapperSubstitutionAuthorization,
@@ -843,6 +849,29 @@ export interface ConstraintPreview {
    * test-facing only — no gate reads it, and Apply re-derives everything.
    */
   directionNearestSelected?: boolean;
+  /* ── CONTROLLED ±2 RELAXATION EVIDENCE (owner decision 2026-09-19 § 16) ──
+   * Enough for scoring, tests and audit to tell the four states apart: inside
+   * the normal envelope; produced by the controlled extended envelope; which
+   * owner ranges it had to leave; and whether the requested target was fully
+   * reached even so. Diagnostic — no gate reads them, and Apply re-derives
+   * everything from `proposedInput`. */
+  /** Which envelope produced this candidate. Absent means the normal one. */
+  directionEnvelope?: 'normal' | 'extended';
+  /** TRUE when Stage B ran at all — even if the normal result still won. */
+  directionRelaxationAttempted?: boolean;
+  /** 0 = fully inside every owner band; 1 = at the controlled maximum. */
+  relaxationCost?: number;
+  /** Every owner band this candidate left, with what it was allowed. */
+  relaxedOwnerRanges?: ReadonlyArray<{
+    policyId: string;
+    lineIds: readonly string[];
+    grams: number;
+    normalMinGrams: number;
+    normalMaxGrams: number;
+    extendedMinGrams: number;
+    extendedMaxGrams: number;
+    normalizedExcursion: number;
+  }>;
   iteration?: IterationDiagnostics;
   /** ACCEPTANCE ADDENDUM (3): residual violations on NATIVE approved bands in
    * the PROPOSED state (classified by `classifyViolationBands` provenance).
@@ -2637,6 +2666,13 @@ function iterateSolverToFixedPoint(
      * „not adjustable" — and a fixed point is only ever claimed after the
      * user's own ingredients were really tried.
      */
+    /**
+     * ONE escape per solve. The escape exists to break a coordinate-descent
+     * trap, and a trap is broken once: letting it fire every round turns it
+     * from a way out into a second objective competing with repair for the
+     * round budget, which is how the Protein multi-Main −13 ECO cell reached
+     * `iteration_cap_diagnostic` instead of an answer.
+     */
     const searchDraftVector = (): DraftSweepResult | null => {
       draftVectorSearches += 1;
       const constraints = {
@@ -2680,28 +2716,70 @@ function iterateSolverToFixedPoint(
       // is itself produced by the coordinate-descent trap the escape exists for,
       // so the old reading was circular.
       //
-      // The condition is therefore a strict SUPERSET of the approved one: it
-      // still fires on the engine-clean case exactly as before, and it now also
-      // fires while the REQUESTED DIRECTION IS STILL UNREACHED — which is the
-      // trap, stated directly. No flow without an exact Direction objective is
-      // reached by either arm, so every other search keeps its previous
-      // candidate set and its previous cost byte-for-byte.
-      const directionOnlyResidual =
-        hasExactDirectionObjective &&
-        (detectViolations(calculateRecipe(working)).length === 0 ||
-          (directionEscape && recipeDirectionViolations(working).length > 0));
-      return sweepDraftCandidateVector({
-        start: working,
-        set: solverSet,
-        userIntentBaseline,
-        excludedIngredientIds,
-        constraints,
-        normalize,
-        measure,
-        startMeasure: current,
-        directionOnlyResidual,
+      // THE ESCAPE IS A FALLBACK, NOT A WIDER GATE. Firing it whenever the
+      // Direction was unreached let it PRE-EMPT ORDINARY REPAIR: the sweep
+      // optimises the Direction residual alone, so on a draft that still has
+      // real engine work to do it spends the round on the preference instead.
+      // `proteinMultiMainPositive.test.ts` caught exactly that — „repairs
+      // Protein support BEFORE searching the exact −13 ECO 2:1 Main envelope"
+      // — with the served −12 Banana landing on 405 g instead of 352 g and the
+      // other cell running into the iteration cap.
+      //
+      // So the APPROVED condition is asked first, exactly as before. The escape
+      // is consulted only when that pass has nothing to offer at all, which is
+      // the coordinate-descent trap it was written for and nothing else. Every
+      // flow without an exact Direction objective still never reaches it, a
+      // draft whose repair pass produces a move keeps its previous trajectory
+      // byte-for-byte, and the extra sweep costs one pass in the one case where
+      // the previous cost was a refusal.
+      const engineClean = detectViolations(calculateRecipe(working)).length === 0;
+      const sweep = (directionOnlyResidual: boolean) =>
+        sweepDraftCandidateVector({
+          start: working,
+          set: solverSet,
+          userIntentBaseline,
+          excludedIngredientIds,
+          constraints,
+          normalize,
+          measure,
+          startMeasure: current,
+          directionOnlyResidual,
+        });
 
-      });
+      const approved = sweep(hasExactDirectionObjective && engineClean);
+      if (approved !== null) return approved;
+      if (!directionEscape || !hasExactDirectionObjective || engineClean) return null;
+      if (directionEscapeUsedInPreview) return null;
+      if (recipeDirectionViolations(working).length === 0) return null;
+      const escaped = sweep(true);
+      if (escaped === null) return null;
+      // REPAIR OUTRANKS PREFERENCE. The escape sweep measures the DIRECTION
+      // residual alone, so left to itself it will happily buy a nearer
+      // preference with an engine band. On the Protein multi-Main draft that is
+      // precisely what it did — the served −12 Banana landed on 405 g instead
+      // of 352 g and the −13 ECO cell ran into the iteration cap
+      // (`proteinMultiMainPositive.test.ts`: „repairs Protein support BEFORE
+      // searching the exact −13 ECO 2:1 Main envelope").
+      //
+      // A Direction preference may therefore be bought with anything the
+      // engine does not price, and with nothing it does. This is the same rule
+      // the whole block already lives by — never relax a hard authority to
+      // reach a target — applied to the one pass that could not see it.
+      // The engine residual may not get worse…
+      if (totalSeverity(escaped.input) > totalSeverity(working) + SEVERITY_EPS) return null;
+      // … the canonical recipe fit may not get worse…
+      const before = recipeFitForInput(working).score;
+      const after = recipeFitForInput(escaped.input).score;
+      if (before === null || after === null || after <= before) return null;
+      // … and the MAIN GROUP IS NOT THE ESCAPE'S TO MOVE. This is the rule the
+      // NAPRAWA 1B selector already lives by, applied to the one pass that
+      // could reach a Main without it: the served −12 OPTIMAL draft came back
+      // with `banana-main` at 405 g where the customer crowned 352 g
+      // (`proteinMultiMainPositive.test.ts`). The Main frontier owns that line;
+      // a preference escape does not.
+      if (!mainGroupLinesByteIdentical(working, escaped.input)) return null;
+      directionEscapeUsedInPreview = true;
+      return escaped;
     };
 
     if (outcome.applied === null) {
@@ -7452,6 +7530,17 @@ function selectNearestLegalDirectionCandidate(
   createdAt: string,
   options: OptimizePreviewOptions,
   incumbent: BuildPreviewResult,
+  /**
+   * WHICH ENVELOPE THIS PASS MAY SEARCH (owner decision 2026-09-19 § 2, § 8).
+   *
+   * `normal` is Stage A and is what every request gets, ±1 and ±2 alike: the
+   * owner's standard ranges, never widened to make a level reach. `extended`
+   * is Stage B — available only to a ±2 request whose target Stage A could not
+   * reach, and even then only EXPLICITLY RELAXABLE ranges move. Nothing else
+   * differs between the two passes: same shapes, same budget, same hard gates,
+   * same one definition of nearest.
+   */
+  envelope: 'normal' | 'extended' = 'normal',
 ): BuildPreviewResult {
   // ── SCOPE AND COST GATES ──────────────────────────────────────────────────
   // Once per user-facing Preview, never inside a re-entrant or probe pass.
@@ -7501,7 +7590,14 @@ function selectNearestLegalDirectionCandidate(
 
   const axes = requestedDirectionAxes(input);
   if (axes.length === 0) return incumbent;
-  const solverSet = solverHolds(incumbentInput, set);
+  // STAGE B widens ONLY what the registry classifies relaxable, and only on the
+  // solver's own holds — a customer's own range carries a different interval and
+  // is never touched. Everything else in the set (locks, percents, structural
+  // ceilings, machine and safety limits) comes through untouched.
+  const solverSet =
+    envelope === 'extended'
+      ? withExtendedRelaxableRanges(input, solverHolds(incumbentInput, set))
+      : solverHolds(incumbentInput, set);
   const excludedIngredientIds = new Set(
     (options.excludedIngredientIds ?? []).map(canonicalIngredientIdFromSourceId),
   );
@@ -7567,6 +7663,7 @@ function selectNearestLegalDirectionCandidate(
   };
   let bestInput = incumbentInput;
   let bestDistance = incumbentDistance;
+  let bestCost = relaxationCost(incumbentInput);
   let bestPreview: ConstraintPreview | null = null;
 
   for (let pass = 0; pass < DIRECTION_SELECTOR_MAX_PASSES; pass += 1) {
@@ -7588,9 +7685,19 @@ function selectNearestLegalDirectionCandidate(
       // The PUBLISHED vector is what is ranked, because practicalization may
       // round the exact one back out of the band.
       const published = directionDistanceOf(preview.proposedInput);
-      if (published >= bestDistance - SEVERITY_EPS) continue;
+      // ONE definition of nearest decides; relaxation only breaks a TIE.
+      // „Prefer less relaxation when target quality is otherwise equivalent"
+      // (owner decision 2026-09-19, demand-driven relaxation § 6). A candidate
+      // that stays inside every owner band therefore beats an equally near one
+      // that left one, and no candidate is ever taken for relaxing less alone.
+      const publishedCost = relaxationCost(preview.proposedInput);
+      const nearer = published < bestDistance - SEVERITY_EPS;
+      const equallyNearButTighter =
+        Math.abs(published - bestDistance) <= SEVERITY_EPS && publishedCost < bestCost - 1e-12;
+      if (!nearer && !equallyNearButTighter) continue;
       bestInput = preview.proposedInput;
       bestDistance = published;
+      bestCost = publishedCost;
       bestPreview = preview;
       improvedThisPass = true;
     }
@@ -7616,8 +7723,89 @@ function selectNearestLegalDirectionCandidate(
         ? true
         : undefined,
     directionNearestSelected: true,
+    directionEnvelope: envelope,
+    relaxationCost: relaxationCost(bestPreview.proposedInput),
+    relaxedOwnerRanges: relaxedOwnerRanges(bestPreview.proposedInput).map((range) => ({
+      policyId: range.policyId,
+      lineIds: range.lineIds,
+      grams: range.grams,
+      normalMinGrams: range.normal.minGrams,
+      normalMaxGrams: range.normal.maxGrams,
+      extendedMinGrams: range.extended.minGrams,
+      extendedMaxGrams: range.extended.maxGrams,
+      normalizedExcursion: range.normalizedExcursion,
+    })),
   };
   return { ...incumbent, preview: merged };
+}
+
+/**
+ * STAGE B — CONTROLLED ±2 RELAXATION (owner decision 2026-09-19 § 2, § 8, § 13).
+ *
+ * DEMAND-DRIVEN, not request-driven. A ±2 request makes Stage B AVAILABLE; it
+ * does not make relaxation happen. The sequence the owner set out:
+ *
+ *   1. Stage A runs with normal bounds — always, for every level.
+ *   2. Ask whether the requested ±2 target is reached.
+ *   3. Only then is Stage B activated at all.
+ *   4. It generates candidates with the REGISTERED relaxable ranges widened.
+ *   5. A relaxed candidate wins ONLY by being nearer under the one canonical
+ *      nearest authority, while passing every hard gate unchanged.
+ *   6. On equal nearness the tighter candidate wins, inside the selector.
+ *   7. Nothing unrelated is ever relaxed: the registry decides, per policy.
+ *
+ * So leaving the normal envelope is never free and never automatic. If Stage A
+ * already reaches the target, Stage B does not run. If it runs and finds
+ * nothing nearer, Stage A's answer is published unchanged — with the attempt
+ * recorded, because „we tried and the normal result was still best" is itself
+ * evidence. If it finds something nearer, that candidate is published as VALID,
+ * flagged as relaxed, and the canonical fit charges it a modest ideality
+ * penalty. It is never rejected for having left a preference band.
+ *
+ * Hard authorities are untouched throughout: safety, physical limits, machine
+ * and process limits, batch capacity, Main/Crown, user locks and exact values
+ * are not relaxable and are not in the registry.
+ */
+function selectControlledRelaxationCandidate(
+  input: RecipeInput,
+  set: ConstraintSet,
+  createdAt: string,
+  options: OptimizePreviewOptions,
+  stageA: BuildPreviewResult,
+): BuildPreviewResult {
+  if (optimizePreviewDepth > 1) return stageA;
+  // 2. — only an EXTREME request may ever use it.
+  if (!directionRelaxationPermitted(input)) return stageA;
+  if (!stageA.ok) return stageA;
+  if (stageA.preview.diagnosticOnly === true) return stageA;
+  const stageADistance = directionDistanceOf(stageA.preview.proposedInput);
+  // 2. — and only when Stage A did not reach the requested target.
+  if (stageADistance <= SEVERITY_EPS) return stageA;
+  // 7. — nothing registered on this draft means nothing to widen.
+  const widened = withExtendedRelaxableRanges(input, solverHolds(stageA.preview.proposedInput, set));
+  if (widened === solverHolds(stageA.preview.proposedInput, set)) return stageA;
+
+  const stageB = selectNearestLegalDirectionCandidate(
+    input,
+    set,
+    createdAt,
+    options,
+    stageA,
+    'extended',
+  );
+  const attempted = { ...stageA.preview, directionRelaxationAttempted: true };
+  if (!stageB.ok) return { ...stageA, preview: attempted };
+  const stageBDistance = directionDistanceOf(stageB.preview.proposedInput);
+  // 5. — STRICTLY nearer, judged by the same authority that judged Stage A.
+  // Anything else keeps the normal result: the normal envelope is preferred and
+  // is never left for an equal answer.
+  if (!(stageBDistance < stageADistance - SEVERITY_EPS)) {
+    return { ...stageA, preview: attempted };
+  }
+  return {
+    ...stageB,
+    preview: { ...stageB.preview, directionRelaxationAttempted: true },
+  };
 }
 
 /**
@@ -7634,6 +7822,15 @@ function selectNearestLegalDirectionCandidate(
  */
 let optimizePreviewDepth = 0;
 
+/**
+ * ONE Direction escape per user-facing Preview. A coordinate-descent trap is
+ * broken once; a preview builds the solver many times over (seeds, Main
+ * candidates, strategies), and letting every one of them take the escape turns
+ * a way out into a second objective that competes with repair for the round
+ * budget. Reset with the outermost preview so it is never leaked between two.
+ */
+let directionEscapeUsedInPreview = false;
+
 export function buildOptimizePreview(
   input: RecipeInput,
   set: ConstraintSet,
@@ -7641,11 +7838,15 @@ export function buildOptimizePreview(
   options: OptimizePreviewOptions = {},
 ): BuildPreviewResult {
   optimizePreviewDepth += 1;
+  if (optimizePreviewDepth === 1) directionEscapeUsedInPreview = false;
   try {
     const answered = buildOptimizePreviewOutermost(input, set, createdAt, options);
-    // NAPRAWA 1B: the preferred path has answered; now publish the nearest legal
-    // candidate it or a bounded challenger can produce.
-    return selectNearestLegalDirectionCandidate(input, set, createdAt, options, answered);
+    // STAGE A — the normal / ideal envelope. The preferred path has answered;
+    // publish the nearest legal candidate it or a bounded challenger produces,
+    // inside the owner's standard ranges. This is the whole story for ±1.
+    const stageA = selectNearestLegalDirectionCandidate(input, set, createdAt, options, answered);
+    // STAGE B — the controlled extended envelope, for ±2 only, on demand.
+    return selectControlledRelaxationCandidate(input, set, createdAt, options, stageA);
   } finally {
     optimizePreviewDepth -= 1;
   }

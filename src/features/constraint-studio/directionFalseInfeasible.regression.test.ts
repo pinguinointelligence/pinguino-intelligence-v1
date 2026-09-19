@@ -38,10 +38,9 @@ import type { ConstraintSet } from '@/features/recipe-constraints';
 import { buildOptimizePreview } from './applyPipeline';
 import { buildDraftCandidateVector } from './draftCandidateVector';
 import {
-  OWNER_INULIN_POLICY,
-  ownerInulinGramBand,
-} from '@/features/product-intelligence/ownerInulinPolicy';
-import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+  relaxableOwnerRanges,
+  relaxationScorePenalty,
+} from '@/features/recipe-direction/relaxableRangePolicy';
 import drafts from './__fixtures__/directionFalseInfeasibleDrafts.json';
 
 type CaseKey = keyof typeof drafts;
@@ -166,39 +165,38 @@ describe('P1 — LOCK-01: CLOSED under Variant B, and the history is kept', () =
   });
 });
 
-describe('P1 — LOCK-02 / LOCK-03 on the Sorbet route: IMPROVED, and the residue is explained', () => {
+describe('P1 — LOCK-02 / LOCK-03 on the Sorbet route: CLOSED, and the history is kept', () => {
   /**
-   * STATUS CHANGED, EVIDENCE PRESERVED.
+   * STATUS CHANGED TWICE, EVIDENCE PRESERVED BOTH TIMES.
    *
    * LOCK-02 („the presented nearest is far from the requested level while a
    * candidate reachable in the same admissible space is much nearer") and
    * LOCK-03 („two different requested levels return the byte-identical
    * proposal") were OPEN because the earlier fix collided with the owner-locked
    * contract GEL-P0-025. Under the owner's Variant B decision that contract was
-   * amended (`sorbetDirectionOffBatchEligibility.contract.test.ts`), the nearest
-   * legal candidate now wins, and the numbers moved — incumbent distance →
-   * delivered distance, measured on these same fixtures:
+   * amended and the nearest legal candidate began to win, which moved the
+   * numbers a long way — and left a residue nothing in the search could reach.
    *
-   *   LOCK-01  2.52079 → 0.01000 (252.1x)   LOCK-02d 0.64737 → 0.02055 (31.5x)
-   *   LOCK-02a 1.11099 → 0.65306 (1.7x)     LOCK-02e 1.01452 → 0.04429 (22.9x)
-   *   LOCK-02b 3.11099 → 2.65306 (1.2x)     LOCK-02c 2.48116 → 0.97823 (2.5x)
+   * That residue was root-caused to a SEMANTIC error, not to the search: a line
+   * carrying `{ mode: 'range' }` was dropped from the adjustable vector, so an
+   * owner dosage band was enforced as a freeze and the lever that separates
+   * these levels was missing. The owner's 2026-09-19 decision § 3 corrected the
+   * semantics globally, and the residue closed with it.
    *
-   * WHY LOCK-02a/b STILL MOVE SO LITTLE — root-caused, not shrugged off. A
-   * candidate 32.7x nearer exists and passes EVERY publish gate: forcing
-   * [484, 283, 71, 79, 79, 4] into the selector takes LOCK-02a from 0.65306 to
-   * 0.02000 and LOCK-02b from 2.65306 to 0.15935. It is unreachable because it
-   * moves INULIN from 55 g to 79 g, and no search in this pipeline may move
-   * inulin here: `withOwnerInulinPolicyHold` writes the owner's dosage BAND onto
-   * the line as `{ mode: 'range', 20–80 g }`, and `isHeldByConstraint` in
-   * `draftCandidateVector.ts` reads ANY non-`ai` mode as a full HOLD, so the line
-   * leaves the adjustable vector altogether — although 79 g is INSIDE the owner's
-   * own band, and although that same file documents inulin as „available as the
-   * approved solids/body lever". The test below pins that mechanism.
+   * Incumbent distance → delivered distance, measured on these same fixtures:
    *
-   * Making a band behave like a band instead of a lock would change which lines
-   * the solver may move on EVERY recipe, not only on a Direction request. That is
-   * a semantic change on a protected path and it is not taken here: it is written
-   * up for the owner in `docs/audit/priority-1/NAPRAWA-1B.md`.
+   *              before § 3        after § 3
+   *   LOCK-01    2.52079 → 0.01000  2.41653 → 0.00000  TARGET REACHED, POD 15.0406
+   *   LOCK-02a   1.11099 → 0.65306  1.11099 → 0.02000  55.5x, POD 17.9960 of 18
+   *   LOCK-02b   3.11099 → 2.65306  3.11099 → 0.02000  155.5x, POD 16.0005 of 16
+   *   LOCK-02c   2.48116 → 0.97823  2.48116 → 0.76763  3.2x
+   *   LOCK-02d   0.64737 → 0.02055  0.64737 → 0.02829  22.9x
+   *   LOCK-02e   1.01452 → 0.04429  1.01452 → 0.02000  50.7x
+   *   CONTROL-C2 0.02000 → 0.02000  0.02000 → 0.02000  still refuses
+   *
+   * The 0.02000 floor is the Sorbet exact-preference point (min = max, AUD-
+   * SWEET-05), not a search failure: no non-zero Sorbet level can be formally
+   * `reached` at whole grams, however near the candidate is.
    *
    * What these tests pin either way: whatever the Sorbet route returns is
    * engine-legal, weighs the target batch and never quietly releases a lock.
@@ -228,56 +226,36 @@ describe('P1 — LOCK-02 / LOCK-03 on the Sorbet route: IMPROVED, and the residu
   });
 
   /**
-   * LOCK-03 — THE MATHEMATICS, BEFORE THE VERDICT.
+   * LOCK-03 — THE MATHEMATICS DECIDED, AND IT CHANGED ITS ANSWER.
    *
-   * „Two levels returned the same proposal" is only a defect if a DIFFERENT
-   * proposal was available for the farther one. Here it was not: the two
-   * requests converge on the same vector and that vector is a verified LOCAL
-   * OPTIMUM — no whole-gram mass-neutral transfer between two adjustable lines
-   * is strictly nearer to EITHER request. So the identical vector is the honest
-   * answer, and what must distinguish the levels is the DISTANCE the verdict
-   * reports, which it does: 0.65306 for −1 against 2.65306 for −2.
+   * Under the previous semantics −1 and −2 returned the BYTE-IDENTICAL vector,
+   * and that was correct: both requests were bounded by the same frontier and
+   * the shared point was a verified local optimum for each. The frontier was
+   * not physics, though — it was an owner dosage band being enforced as a lock,
+   * so the search could not use the one lever that separates the two levels.
    *
-   * This is a statement about the LEGAL SPACE THIS PIPELINE SEARCHES, not a
-   * proof of a global optimum: see the root cause above for a nearer candidate
-   * that only an authority change could reach.
+   * With `range` read as a WINDOW (owner decision 2026-09-19 § 3) the levels
+   * separate on their own. Nothing forces a difference here and nothing forces
+   * equality: the test asserts only that each level is answered on its own
+   * terms, and the INV-2 contract below still holds whichever way the
+   * mathematics goes.
    */
-  it('LOCK-03: the shared vector is a local optimum, and the verdict still separates the levels', () => {
+  it('LOCK-03: each level is answered on its own terms', () => {
     const minusOne = solve('LOCK-03-A-minus1');
     const minusTwo = solve('LOCK-03-A-minus2');
     expect(minusOne.ok && minusTwo.ok).toBe(true);
     if (!minusOne.ok || !minusTwo.ok) return;
 
-    // The two levels do land on the same vector …
-    expect(minusTwo.proposed.items.map((item) => item.planned_grams)).toEqual(
-      minusOne.proposed.items.map((item) => item.planned_grams),
-    );
-    // … and the verdict still tells them apart, because the DISTANCE differs.
-    expect(minusTwo.distance).toBeGreaterThan(minusOne.distance + 1);
-
-    // LOCAL OPTIMUM: no 1 g transfer between two adjustable lines is nearer.
+    // Each candidate is legal and weighs the batch — never traded for nearness.
     for (const solved of [minusOne, minusTwo]) {
-      const lines = solved.proposed.items;
-      const held = new Set(heldGrams(solved.proposed, draftFor('LOCK-03-A-minus1').constraints).map(([id]) => id));
-      const base = distanceAgainst(solved.input, solved.proposed);
-      for (const up of lines) {
-        for (const down of lines) {
-          if (up.id === down.id || held.has(up.id) || held.has(down.id)) continue;
-          if (down.planned_grams < 1) continue;
-          const moved: RecipeInput = {
-            ...solved.proposed,
-            items: lines.map((item) =>
-              item.id === up.id
-                ? { ...item, planned_grams: item.planned_grams + 1 }
-                : item.id === down.id
-                  ? { ...item, planned_grams: item.planned_grams - 1 }
-                  : item,
-            ),
-          };
-          expect(distanceAgainst(solved.input, moved)).toBeGreaterThanOrEqual(base - 1e-9);
-        }
-      }
+      expect(solved.nativeViolations).toEqual([]);
+      expect(solved.plannedSum).toBeCloseTo(solved.input.target_batch_grams, 6);
     }
+    // A LOWER requested sweetness lands at a LOWER POD. That is the whole claim
+    // LOCK-03 was about, and it is now true rather than vacuous.
+    const podOf = (candidate: RecipeInput) =>
+      calculateRecipe(candidate).indicators.find((indicator) => indicator.key === 'pod')!.value!;
+    expect(podOf(minusTwo.proposed)).toBeLessThan(podOf(minusOne.proposed));
   });
 
   /**
@@ -312,44 +290,65 @@ describe('P1 — LOCK-02 / LOCK-03 on the Sorbet route: IMPROVED, and the residu
   });
 
   /**
-   * THE LOCK-02 RESIDUE, PINNED AS A MECHANISM rather than left as an opinion.
+   * CLASS A — RANGE IS NOT LOCK (owner decision 2026-09-19 § 3, § 18 A).
    *
-   * The owner's inulin policy is a DOSAGE BAND. Written onto the line as a
-   * `range` constraint it is read by `isHeldByConstraint` as a HOLD, and the
-   * line disappears from the vector every search in this pipeline moves. If
-   * this test ever fails because inulin is back in the vector, the residue
-   * described above is gone with it and LOCK-02 should be re-measured.
+   * This test used to pin the OPPOSITE, as the recorded mechanism behind the
+   * LOCK-02 residue: a line carrying `{ mode: 'range' }` was dropped from the
+   * adjustable vector entirely, so an owner dosage band was enforced as a
+   * freeze and the nearest legal candidate — which needed that line moved
+   * INSIDE the owner's own band — was unreachable. That is what the residue
+   * was, and this is where it closed.
+   *
+   * A range now says what it means: the line MAY move, anywhere in the
+   * interval, and nowhere outside it.
    */
-  it('LOCK-02 residue: the owner inulin BAND removes the line from the adjustable vector entirely', () => {
+  it('CLASS A: a `range` line participates in the search, bounded by its own interval', () => {
     const { input, constraints } = draftFor('LOCK-02a');
-    const inVector = (set: ConstraintSet) =>
-      new Set(buildDraftCandidateVector(input, set, new Set()).map((candidate) => candidate.lineId));
-
-    // The line the OWNER POLICY governs — identified by the policy's own
-    // ingredient, never by gram value or by name.
-    const governed = input.items.find(
-      (item) =>
-        canonicalIngredientId(item.ingredient) === OWNER_INULIN_POLICY.mapperIngredientId,
+    const movable = input.items.find(
+      (item) => item.lock_type === 'unlocked' && item.actual_grams === null && item.planned_grams > 20,
     );
-    expect(governed).toBeDefined();
-    if (governed === undefined) return;
+    expect(movable).toBeDefined();
+    if (movable === undefined) return;
 
-    // It sits INSIDE the owner's own band, and the draft treats it as a lever …
-    const band = ownerInulinGramBand(input.target_batch_grams);
-    expect(governed.planned_grams).toBeGreaterThanOrEqual(band.minGrams);
-    expect(governed.planned_grams).toBeLessThanOrEqual(band.maxGrams);
-    expect(inVector(constraints).has(governed.id)).toBe(true);
-
-    // … until the band itself is written onto the line, which is exactly what
-    // `withOwnerInulinPolicyHold` does. Then it is gone from the vector, and no
-    // search in this pipeline can move it — not even within the band.
+    const band = { minGrams: movable.planned_grams - 10, maxGrams: movable.planned_grams + 10 };
     const banded: ConstraintSet = {
       byLineId: {
         ...constraints.byLineId,
-        [governed.id]: { mode: 'range', minGrams: band.minGrams, maxGrams: band.maxGrams },
+        [movable.id]: { mode: 'range', minGrams: band.minGrams, maxGrams: band.maxGrams },
       },
     };
-    expect(inVector(banded).has(governed.id)).toBe(false);
+    const candidate = buildDraftCandidateVector(input, banded, new Set()).find(
+      (entry) => entry.lineId === movable.id,
+    );
+    // It is IN the vector …
+    expect(candidate).toBeDefined();
+    if (candidate === undefined) return;
+    // … every rung it offers is inside the interval …
+    for (const grams of candidate.testedGrams) {
+      expect(grams).toBeGreaterThanOrEqual(band.minGrams - 1e-9);
+      expect(grams).toBeLessThanOrEqual(band.maxGrams + 1e-9);
+    }
+    // … and the interval's own edges are offered, because the best amount
+    // inside an owner band is very often the band's boundary.
+    expect(candidate.testedGrams).toContain(band.minGrams);
+    expect(candidate.testedGrams).toContain(band.maxGrams);
+  });
+
+  /**
+   * CLASS B / M — a line left inside its band pays no relaxation penalty
+   * (§ 18 B, § 18 M).
+   */
+  it('CLASS B/M: a candidate inside every owner band carries no relaxation cost', () => {
+    for (const key of ['LOCK-02a', 'LOCK-02b', 'LOCK-02c'] as CaseKey[]) {
+      const solved = solve(key);
+      expect(solved.ok).toBe(true);
+      if (!solved.ok) continue;
+      for (const range of relaxableOwnerRanges(solved.proposed)) {
+        expect(range.grams).toBeGreaterThanOrEqual(range.normal.minGrams - 1e-9);
+        expect(range.grams).toBeLessThanOrEqual(range.normal.maxGrams + 1e-9);
+      }
+      expect(relaxationScorePenalty(solved.proposed)).toBe(0);
+    }
   });
 });
 

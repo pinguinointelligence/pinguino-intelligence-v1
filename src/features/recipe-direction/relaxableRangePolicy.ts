@@ -38,8 +38,27 @@ import {
   type GramBand,
 } from './directionRelaxation';
 
-/** How many points of the canonical 1–10 fit a MAXIMUM excursion costs. */
-export const RELAXATION_MAX_SCORE_PENALTY = 4;
+/**
+ * THE MOST the canonical 1–10 fit may lose because a recipe used the approved
+ * emergency envelope — owner clarification 2026-09-19.
+ *
+ * Controlled relaxation is an IDEALITY signal, never an invalidity signal. A
+ * valid emergency-range solution must not be made to look defective: one
+ * quality point is the normal cost of leaving the preferred range, and two is
+ * the absolute ceiling, reached only when the excursion is essentially at the
+ * emergency edge or when more than one relaxable range was left. The same
+ * relaxation is never charged twice.
+ *
+ * The public score is an INTEGER by its own contract, so it cannot show the
+ * difference between an 81 g and a 90 g excursion. That proportionality is not
+ * lost: it lives in `relaxationCost` and in each range's `normalizedExcursion`,
+ * which rank candidates, drive diagnostics and are what a future refinement of
+ * the public scale would read.
+ */
+export const RELAXATION_SCORE_PENALTY_CAP = 2;
+
+/** At or beyond this share of the permitted excursion the penalty reaches the cap. */
+export const RELAXATION_SEVERE_COST = 0.9;
 
 /** Two bands are „the same band" when they agree to this many grams. */
 const BAND_IDENTITY_EPS = 1e-6;
@@ -133,13 +152,24 @@ export function relaxationCost(input: RecipeInput): number {
 }
 
 /**
- * Points off the canonical 1–10 fit. A recipe INSIDE every owner band pays
- * nothing, so nothing that does not relax can change score by this route.
+ * Points off the canonical 1–10 fit — CONSERVATIVE and BOUNDED.
+ *
+ *   inside every owner band            → 0   (nothing that does not relax moves)
+ *   controlled relaxation used         → 1
+ *   at the emergency edge, or more
+ *   than one range left behind         → 2   (the cap, never more)
+ *
+ * This never rejects and never reaches far enough to make a valid emergency
+ * solution look poor. Other reasons the canonical authority already had to
+ * reduce a score are untouched: this is subtracted from whatever that authority
+ * decided, so a genuine quality defect keeps its own weight.
  */
 export function relaxationScorePenalty(input: RecipeInput): number {
+  const relaxed = relaxedOwnerRanges(input);
+  if (relaxed.length === 0) return 0;
   const cost = relaxationCost(input);
-  if (!(cost > RANGE_EXCURSION_EPS)) return 0;
-  return Math.ceil(cost * RELAXATION_MAX_SCORE_PENALTY);
+  const severe = relaxed.length > 1 || cost >= RELAXATION_SEVERE_COST;
+  return severe ? RELAXATION_SCORE_PENALTY_CAP : 1;
 }
 
 const sameBand = (constraint: IngredientConstraint, band: GramBand): boolean =>
