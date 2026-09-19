@@ -106,31 +106,30 @@ export function HowItWorksPage() {
 }
 
 /**
- * DESIGN V3.0 GLOBAL MENU: „Pomoc" is the support door — contact and reporting a
- * problem. It is deliberately NOT the knowledge destination („Dlaczego to
- * dziala?"), which explains why a recipe works; the accepted menu carries both,
+ * DESIGN V3.0 GLOBAL MENU â âPomoc" is the support door: contact and reporting a
+ * problem. It is deliberately NOT the knowledge destination (âDlaczego to
+ * dziaÅa?"), which explains why a recipe works; the accepted menu carries both,
  * separated, because they answer different questions.
  *
- * This page invents no support system: it routes to `info@gellatti.com`, the
- * mailbox the app already uses for partner applications and cooperation, and
- * points at the knowledge destination for the questions that are not problems.
- * What else Pomoc should offer is an OWNER DECISION, recorded in
- * docs/OWNER-DECISION-LIST.md.
+ * OWNER DECISION OD-30 (19.09.2026): Pomoc v1 is a simple contact destination.
+ * No ticket backend is built â it uses `info@gellatti.com`, the official mailbox
+ * the app already uses for partner applications and cooperation. A form, a FAQ or
+ * an external support channel is a later, separate extension.
  */
 export function HelpPage() {
   return (
     <DestinationSurface
       eyebrow="Gellatti"
       title="Pomoc"
-      blurb="Napisz do nas, jesli cos nie dziala albo czegos brakuje."
+      blurb="Napisz do nas, jeśli coś nie działa albo czegoś brakuje."
       contextLabel="Pomoc"
     >
       <div className={ACCOUNT_PANEL}>
         <section>
-          <h2 className="text-base font-medium text-ink">Zglos problem</h2>
+          <h2 className="text-base font-medium text-ink">Zgłoś problem</h2>
           <p className="mt-2 max-w-[56ch] text-sm text-ink/70">
-            Opisz, co sie stalo i na ktorym ekranie. Jesli to blad w partii albo w
-            recepturze, dodaj jej nazwe i wersje — odpowiemy szybciej.
+            Opisz, co się stało i na którym ekranie. Jeśli to błąd w partii albo
+            recepturze, dodaj jej nazwę i wersję — odpowiemy szybciej.
           </p>
           <a
             href="mailto:info@gellatti.com"
@@ -141,13 +140,13 @@ export function HelpPage() {
           </a>
         </section>
         <section className="border-t border-[var(--g-line)]">
-          <h2 className="text-base font-medium text-ink">Szukasz wyjasnienia?</h2>
+          <h2 className="text-base font-medium text-ink">Szukasz wyjaśnienia?</h2>
           <p className="mt-2 max-w-[56ch] text-sm text-ink/70">
-            Jak dzialaja skladniki, dlaczego receptura sie udaje i samouczek — to
-            wszystko jest w „Dlaczego to dziala?”.
+            Jak działają składniki, dlaczego receptura się udaje i samouczek — wszystko
+            znajdziesz w „Dlaczego to działa?".
           </p>
           <Link to="/how-it-works" className={cn(quietLink, 'mt-3')} data-testid="help-knowledge">
-            <span>Dlaczego to dziala?</span>
+            <span>Dlaczego to działa?</span>
           </Link>
         </section>
       </div>
