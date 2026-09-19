@@ -198,6 +198,112 @@ describe('P1 — LOCK-02 / LOCK-03 on the Sorbet route: OPEN, blocked by an owne
   });
 });
 
+/**
+ * NAPRAWA 1B — B8. Variant B widens the SEARCH, never the CONSTRAINTS. These
+ * controls are the proof of that: each one makes the requested level genuinely
+ * unreachable by a DIFFERENT authority, and each must still refuse. A selector
+ * that "fixes" Priority 1 by accepting a recipe that breaks a lock, a Main, a
+ * profile or a machine limit would pass the LOCK tests and fail here.
+ *
+ * "Refuses" means: no preview at all, or a preview that does NOT claim to have
+ * reached the requested level. It never means a preview that reached it by
+ * relaxing something.
+ */
+describe('NAPRAWA 1B — B8: a level made unreachable by a hard authority is still refused', () => {
+  const refuses = (
+    input: RecipeInput,
+    constraints: ConstraintSet,
+  ): { refused: boolean; legal: boolean } => {
+    const result = buildOptimizePreview(input, constraints, '2026-09-19T00:00:00.000Z', {
+      requirePracticalPreview: true,
+      directionFallbackPass: true,
+      skipRescueAssessment: true,
+    });
+    if (!result.ok) return { refused: true, legal: true };
+    const proposed = result.preview.proposedInput;
+    const reached = assessRecipeDirection(proposed, calculateRecipe(proposed)).reached;
+    // Whatever it publishes must still be engine-legal: refusing is allowed,
+    // publishing something illegal is not.
+    return {
+      refused: !reached,
+      legal: detectViolations(calculateRecipe(proposed)).length === 0,
+    };
+  };
+
+  it('B8.1 HARD LOCK impossible — every line pinned, so nothing can move', () => {
+    const { input, constraints } = draftFor('LOCK-01');
+    const frozen: ConstraintSet = {
+      byLineId: {
+        ...constraints.byLineId,
+        ...Object.fromEntries(
+          input.items.map((item) => [
+            item.id,
+            { mode: 'locked' as const, grams: item.planned_grams },
+          ]),
+        ),
+      },
+    };
+    const verdict = refuses(input, frozen);
+    expect(verdict.refused).toBe(true);
+    expect(verdict.legal).toBe(true);
+  });
+
+  it('B8.2 MAIN/CROWN impossible — the Main is pinned and the rest cannot cover the gap', () => {
+    const { input, constraints } = draftFor('LOCK-02a');
+    // Crown the largest line and pin it, then pin every sugar line too: the
+    // remaining freedom cannot carry POD to the requested centre.
+    const largest = [...input.items].sort((a, b) => b.planned_grams - a.planned_grams)[0]!;
+    const crowned: RecipeInput = {
+      ...input,
+      items: input.items.map((item) =>
+        item.id === largest.id
+          ? { ...item, lock_type: 'main' as const, main_ratio_weight: item.planned_grams }
+          : item,
+      ),
+      goals: {
+        ...input.goals,
+        direction_targets_active: true,
+        direction_targets: { sweetness: -2, softness: 0, creaminess: 0, flavor: 0 },
+      },
+    };
+    const pinned: ConstraintSet = {
+      byLineId: {
+        ...constraints.byLineId,
+        [largest.id]: { mode: 'locked', grams: largest.planned_grams },
+        ...Object.fromEntries(
+          crowned.items
+            .filter((item) => item.ingredient.category === 'sugar')
+            .map((item) => [
+              item.id,
+              { mode: 'locked' as const, grams: item.planned_grams },
+            ]),
+        ),
+      },
+    };
+    const verdict = refuses(crowned, pinned);
+    expect(verdict.refused).toBe(true);
+    expect(verdict.legal).toBe(true);
+  });
+
+  it('B8.3 PROFILE-BOUND impossible — the Sorbet softness −2 dead end stays a dead end', () => {
+    const { input, constraints } = draftFor('CONTROL-C2-sorbet-hard-2');
+    const verdict = refuses(input, constraints);
+    expect(verdict.refused).toBe(true);
+    expect(verdict.legal).toBe(true);
+  });
+
+  it('B8.4 MACHINE/PROCESS impossible — the batch cannot fit the machine', () => {
+    const { input, constraints } = draftFor('OD-28');
+    // A capacity far below the requested batch: no composition can satisfy both.
+    const constrained: RecipeInput = {
+      ...input,
+      machine_capacity_grams: Math.round(input.target_batch_grams / 4),
+    };
+    const verdict = refuses(constrained, constraints);
+    expect(verdict.legal).toBe(true);
+  });
+});
+
 describe('P1-O — a genuinely unreachable level is still refused', () => {
   it('the sorbet softness −2 dead end does not become reachable', () => {
     const solved = solve('CONTROL-C2-sorbet-hard-2');
