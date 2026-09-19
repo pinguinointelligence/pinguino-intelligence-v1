@@ -353,8 +353,8 @@ export const copy = {
       howItWorks: 'Dlaczego to działa?',
       shop: 'Sklep',
       plans: 'Plany',
-      homeWorkspace: 'Gellatti Home',
-      proWorkspace: 'Gellatti Pro',
+      homeWorkspace: 'Home',
+      proWorkspace: 'Pro',
       recipes: 'Receptury',
       production: 'Produkcja',
       labels: 'Ustawienia etykiety',
@@ -366,6 +366,7 @@ export const copy = {
       workWithUs: 'Współpraca',
       affiliate: 'Affiliate',
       franchise: 'Franchise',
+      help: 'Pomoc',
     },
     account: {
       settings: 'Konto i ustawienia',
