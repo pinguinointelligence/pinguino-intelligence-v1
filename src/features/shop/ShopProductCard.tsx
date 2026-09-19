@@ -92,8 +92,17 @@ export function ShopProductCard({
           <ShopAllergenTags allergens={product.allergens} />
         </p>
 
-        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-2.5 gap-y-2.5 md:mt-3 md:flex-nowrap md:gap-3.5">
-          <div className="flex items-baseline gap-2">
+        {/* THE ACTION ROW WRAPS INSTEAD OF OVERFLOWING. Owner fix 2026-09-19.
+            `md:flex-nowrap` forced price + availability + a `shrink-0` button
+            onto one line from 768 px up, but in the two-column „Kup osobno" grid
+            each card only gets ~264 px of content there — so the button was
+            pushed 106 px OUTSIDE its own card and the page scrolled sideways by
+            82 px at 820 px wide. Wrapping is the honest fix: where the three fit
+            they still share a line (unchanged at 1024 and 1440), and where they
+            do not the button takes the next line. Nothing is clipped and no
+            horizontal scroll is introduced. */}
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-x-2.5 gap-y-2.5 md:mt-3 md:gap-3.5">
+          <div className="flex min-w-0 items-baseline gap-2">
             <span className="font-mono text-[16px] font-semibold tabular-nums">
               {shopMoney(product.priceCents, product.currency)}
             </span>
