@@ -106,6 +106,94 @@ describe('one format is open at a time', () => {
   });
 });
 
+describe('the open format leads with its photographs', () => {
+  const gallery = () => at('franchise-format-gallery');
+  /** The slide actually on show — read off the DOM, not off the component. */
+  const shown = () => {
+    const slides = [...document.querySelectorAll('[data-gallery-slide]')];
+    const active = slides.filter((s) => s.getAttribute('data-active') === 'true');
+    // Exactly one photograph is ever visible; the rest are hidden from AT too.
+    expect(active).toHaveLength(1);
+    expect(active[0]!.getAttribute('aria-hidden')).toBeNull();
+    expect(slides.filter((s) => s.getAttribute('aria-hidden') === 'true')).toHaveLength(
+      slides.length - 1,
+    );
+    return Number(active[0]!.getAttribute('data-gallery-slide'));
+  };
+  const sources = () =>
+    [...document.querySelectorAll<HTMLImageElement>(
+      '[data-testid="franchise-format-gallery"] img',
+    )].map((img) => img.getAttribute('src'));
+
+  it('puts the gallery ABOVE the description and the points', () => {
+    mount();
+    const panel = panels()[0]!;
+    const order = [...panel.querySelectorAll('[data-testid="franchise-format-gallery"], h2, ul')];
+    expect(order[0]!.getAttribute('data-testid')).toBe('franchise-format-gallery');
+    expect(order[1]!.tagName).toBe('H2');
+    expect(order[2]!.tagName).toBe('UL');
+  });
+
+  it('shows Food Truck open-and-serving first and keeps the towed shot LAST', () => {
+    mount();
+    click(at('franchise-format-food-truck'));
+    // OWNER ORDER 2026-09-19. W03 is the photograph the format already had; it
+    // is not deleted, it is the last slide.
+    expect(sources()).toEqual([
+      '/images/work-with-us/A07.png',
+      '/images/work-with-us/A06.png',
+      '/images/work-with-us/W03.png',
+    ]);
+    expect(shown()).toBe(0);
+    expect(gallery()!.getAttribute('data-gallery-count')).toBe('3');
+  });
+
+  it('pages with the arrows, and wraps rather than dead-ending', () => {
+    mount();
+    click(at('franchise-format-food-truck'));
+    click(at('franchise-gallery-right'));
+    expect(shown()).toBe(1);
+    click(at('franchise-gallery-right'));
+    expect(shown()).toBe(2);
+    click(at('franchise-gallery-right'));
+    expect(shown()).toBe(0);
+    click(at('franchise-gallery-left'));
+    expect(shown()).toBe(2);
+  });
+
+  it('starts each format at its OWN first photograph', () => {
+    mount();
+    click(at('franchise-format-food-truck'));
+    click(at('franchise-gallery-right'));
+    expect(shown()).toBe(1);
+    click(at('franchise-format-cart'));
+    // A stale index would open the cart on its second picture.
+    expect(shown()).toBe(0);
+    expect(sources()[0]).toBe('/images/work-with-us/A05.png');
+  });
+
+  it('draws NO controls for a format that still has one photograph', () => {
+    mount();
+    // Lokal is open from the first render and is the one awaiting more images.
+    expect(gallery()!.getAttribute('data-gallery-count')).toBe('1');
+    expect(at('franchise-gallery-left')).toBeNull();
+    expect(at('franchise-gallery-right')).toBeNull();
+  });
+
+  it('keeps every format\'s existing photograph somewhere in its gallery', () => {
+    mount();
+    for (const [id, existing] of [
+      ['local', 'F01'],
+      ['food-truck', 'W03'],
+      ['cart', 'W02'],
+      ['machines', 'W04'],
+    ] as const) {
+      click(at(`franchise-format-${id}`));
+      expect(sources()).toContain(`/images/work-with-us/${existing}.png`);
+    }
+  });
+});
+
 describe('the enquiry stays a form, on the page', () => {
   it('is rendered with the page, not behind a second contact mechanism', () => {
     mount();

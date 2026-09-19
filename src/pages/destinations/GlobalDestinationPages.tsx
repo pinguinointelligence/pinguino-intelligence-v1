@@ -32,6 +32,7 @@ import { ShopCartCount } from '@/features/shop/ShopCartCount';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
 import { shopCopy } from '@/copy/shop';
 import { DestinationTop } from '@/components/shared/destinationEditorial';
+import { FranchiseFormatGallery } from '@/features/franchise/FranchiseFormatGallery';
 import { FranchiseInquiryForm } from '@/features/franchise/FranchiseInquiryForm';
 import { OwnerAssetImage } from '@/features/work-with-us/OwnerAssetImage';
 import { franchiseSourceRouteFrom } from '@/features/franchise/franchiseConcepts';
@@ -254,18 +255,20 @@ export function FranchisePage() {
         aria-labelledby={`franchise-format-${format.id}`}
         data-testid="franchise-format-panel"
         data-franchise-format={format.id}
-        className="mt-3.5 grid gap-3.5 border-t-2 border-[var(--g-orange)] pt-4 md:mt-[18px] md:grid-cols-2 md:items-start md:gap-6"
+        className="mt-3.5 border-t-2 border-[var(--g-orange)] pt-4 md:mt-[18px]"
       >
-        <span className="block overflow-hidden rounded-[12px] bg-[#efe8dc]">
-          <span className="block aspect-[16/10]">
-            <OwnerAssetImage
-              key={format.image}
-              id={format.image}
-              sizes="(min-width: 768px) 45vw, 100vw"
-            />
-          </span>
-        </span>
-        <div className="min-w-0">
+        {/* Owner 2026-09-19, THE ORDER OF THIS BLOCK: photographs first, the
+            description under them, the points under that. The format's images
+            used to sit beside its text in a two-column split; they carry the
+            format now, so they lead and the reading runs straight down.
+            `key` restarts each format at its own first photograph. */}
+        <FranchiseFormatGallery
+          key={format.id}
+          images={format.gallery}
+          label={format.label}
+        />
+
+        <div className="mt-4 min-w-0 md:mt-[18px]">
           <h2 className="text-[21px] leading-[1.18] font-semibold tracking-[-0.02em] text-[var(--g-ink)] lg:text-[24px]">
             {format.label}
           </h2>
@@ -275,12 +278,14 @@ export function FranchisePage() {
           {format.body.map((paragraph) => (
             <p
               key={paragraph}
-              className="mt-[9px] max-w-[54ch] text-[13px] leading-[1.5] text-[#6f6b64]"
+              className="mt-[9px] max-w-[64ch] text-[13px] leading-[1.5] text-[#6f6b64]"
             >
               {paragraph}
             </p>
           ))}
-          <ul className="mt-3 grid gap-1.5">
+          {/* Two columns where there is room, so moving the points below a
+              full-width gallery does not turn the block into a long ribbon. */}
+          <ul className="mt-3.5 grid gap-1.5 md:grid-cols-2 md:gap-x-6">
             {format.points.map((point) => (
               <li
                 key={point}
