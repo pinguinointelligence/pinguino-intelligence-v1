@@ -12,7 +12,13 @@
  * the Produkcja area hosts.
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { CONFIG_VERSION, ENGINE_VERSION } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { ensureDurableProductionRecipe } from '@/features/production-workspace/ensureDurableProductionRecipe';
+import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
+import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
+import { recipeCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
+import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import {
   productionMachineGuide,
@@ -81,6 +87,9 @@ export function HomePreparation({
   const draft = useHomeDraftStore();
   const ownerUserId = useAuthStore((state) => state.user?.id ?? null);
   const production = useProductionSessionStore();
+  const persona = useProCorePersona();
+  const capabilities = useMemo(() => recipeCapabilitiesFor(persona), [persona]);
+  const repoState = useMemo(() => resolveRecipesRepository(), []);
   const activateSessionForAddress = production.activateSessionForAddress;
   const [productionGate, setProductionGate] = useState<{
     key: string;
@@ -89,6 +98,11 @@ export function HomePreparation({
   } | null>(null);
   const plannedInput = useMemo(() => buildRecipeInput(recipe), [recipe]);
   const plannedComposition = useMemo(() => recipeCompositionFromState(recipe), [recipe]);
+  /** OD-24: the recipe state a durable snapshot belongs to — the same fingerprint PRO uses. */
+  const productionFingerprint = useMemo(
+    () => productionVersionFingerprint(plannedInput, plannedComposition),
+    [plannedComposition, plannedInput],
+  );
   const gateKey = useMemo(
     () =>
       JSON.stringify({
@@ -187,11 +201,78 @@ export function HomePreparation({
         processReadiness = validation.processReadiness ?? processReadiness;
       }
       if (cancelled || useProductionSessionStore.getState().activeAddressKey !== addressKey) return;
+
+      /* OD-24 (Owner 19.09.2026) — a signed-in HOME batch is DURABLE, and it gets there
+         without the customer having to save the recipe to their library first. The
+         recipe needs an immutable version for the run to point at; when it has none, the
+         product takes a technical, hidden snapshot through the SAME save authority a
+         library save uses. From here `useProductionWorkspace` owns the batch exactly as
+         it does for PRO — there is no HOME production system beside it.
+
+         A failure here is shown and retried, never silently downgraded to a local batch:
+         a signed-in operator who thinks their run is on the server must actually have it
+         there (the local batch stays for demo / not-signed-in, OD-15). */
+      const repository = repoState.repository;
+      if (!repository) {
+        if (!cancelled) {
+          setProductionGate({
+            key: gateKey,
+            status: 'blocked',
+            message: 'Produkcja jest chwilowo niedostępna. Spróbuj ponownie.',
+          });
+        }
+        return;
+      }
+      const durable = await ensureDurableProductionRecipe({
+        repository,
+        ownerUserId,
+        recipeInput: plannedInput,
+        productComposition: plannedComposition,
+        title: name,
+        capabilities,
+        trace: { engineVersion: ENGINE_VERSION, configVersion: CONFIG_VERSION },
+        /* Read at the moment the batch actually starts, not at the render that scheduled
+           it: between the two there is a server round trip, and the recipe on record is
+           what the run must point at. */
+        existing: (() => {
+          const live = useRecipeStore.getState();
+          return {
+            recipeId: live.savedRecipeId ?? live.productionSnapshotRecipeId,
+            versionId: live.currentVersionId ?? live.productionSnapshotVersionId,
+            versionNumber: live.currentVersionNumber ?? live.productionSnapshotVersionNumber,
+            matchesCurrentRecipe:
+              live.savedProductionFingerprint === productionFingerprint ||
+              live.productionSnapshotFingerprint === productionFingerprint,
+          };
+        })(),
+      });
+      if (cancelled) return;
+      /* NOT `markSaved`: the customer did not save anything, and their recipe must not
+         start claiming they did. This records only what the run points at. */
+      if (durable.created) {
+        useRecipeStore.getState().markProductionSnapshot({
+          recipeId: durable.recipeId,
+          versionId: durable.versionId,
+          versionNumber: durable.versionNumber,
+          fingerprint: productionFingerprint,
+        });
+      }
+      /* STILL the local session presentation (#427). The durable reference above is what
+         it was missing; the remaining step of OD-24 is to hand the batch itself to
+         `ProductionProcessHost` / `useProductionWorkspace`, which needs HOME's „Partia
+         gotowa” actions moved onto the shared host's `hostAction`. Until that lands,
+         this keeps the accepted H4 screen working — it does NOT make the batch durable,
+         and a signed-in batch is not finished work until it is. */
       const carbonated = carbonatedProductsForRecipe(plannedInput, plannedComposition);
       const processAdvisories = [...processReadiness.blockers, ...processReadiness.advisories];
       useProductionSessionStore.getState().startNewSession({
         ownerUserId,
-        source,
+        source: {
+          ...source,
+          recipeId: durable.recipeId,
+          recipeVersionId: durable.versionId,
+          recipeVersionNumber: durable.versionNumber,
+        },
         plannedInput,
         plannedComposition,
         now: new Date().toISOString(),
@@ -214,7 +295,18 @@ export function HomePreparation({
     return () => {
       cancelled = true;
     };
-  }, [addressKey, gateKey, ownerUserId, plannedComposition, plannedInput, source]);
+  }, [
+    addressKey,
+    capabilities,
+    gateKey,
+    name,
+    ownerUserId,
+    plannedComposition,
+    plannedInput,
+    productionFingerprint,
+    repoState.repository,
+    source,
+  ]);
 
   const session = production.session;
   // The SAME machine hand-off authority PRO's Production uses — one rule, one file.
