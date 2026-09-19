@@ -8,16 +8,78 @@ three conditions are unmet, and this file says exactly which and why.
 
 | finding | closed? | proof |
 |---|---|---|
-| **AUD-SWEET-OD28** | **FIXED** (offline-staging-head) | Sweetness −1 REACHED: POD 13.751 ∈ [13, 14], NPAC 39.537 ∈ [39, 41], `detectViolations` `[]`, Σ 1340 g, whole grams, `diagnosticOnly false`. Regression test asserts the level is reached, the goal is not silently substituted, the strawberry lock is byte-exact and the solve is deterministic. |
+| **AUD-SWEET-OD28** | **FIXED** (offline-staging-head) | Sweetness −1 REACHED: POD 13.751 ∈ [13, 14], NPAC 39.537 ∈ [39, 41], `detectViolations` `[]`, Σ 1340 g, whole grams, `diagnosticOnly false`. |
 | **AUD-SWEET-13** | **FIXED** (offline-staging-head) | The rescue never offers a candidate farther from the requested level than the one the run already holds. Verified on all 8 cells. |
 
-## 2 · What is NOT closed
+Both come from **two small changes**: the paired-exchange gate widened to a strict
+superset (scoped to the solve that produces the shown preview), and the rescue's
+improvement baseline moved from the untouched draft to the candidate the run already
+holds.
 
-| finding | distance to the requested band | why it is not closed |
+## 2 · What is NOT closed — and why each was REVERTED rather than shipped
+
+The exact-target search that closed LOCK-01, LOCK-02 and LOCK-03 was reverted in full.
+Three independent findings from the suites forced it, in this order:
+
+| # | what broke | consequence |
 |---|---|---|
-| **LOCK-01** | 0.3159 → **0.0140** (22.6× nearer) | Still `consent_best_candidate`, not `reached`. The last 0.003 POD needs a combination of whole-gram moves across more than three lines at once; the stage solves over at most two movers plus a reference, so that combination is outside the shapes it can express. |
-| **LOCK-02** | 0.647–3.111 → **1.1×–30.8×** nearer | Two cells (A · −1 and A · −2) improve only 1.1×–1.5×. The aim is a bounded greedy search and stays path-dependent there. |
-| **LOCK-03** | narrowed on both levels (1.111 → 0.728 and 3.111 → 2.728) but **still byte-identical** | The requested level still does not reach the search on this recipe. One intermediate build DID separate them — and that build broke the accepted cross-level contract in `recipe-direction/sharedDirectionNearestMatrix.test.ts` („no other reachable candidate is nearer to this row's band"). Restoring that contract restored the byte-identity. **The two cannot be reconciled by tuning the greedy; they need the beam below.** The accepted contract won, and the gap is recorded rather than asserted away. |
+| 1 | Ranking both Sorbet generators by distance failed the OWNER-LOCKED contract `sorbetDirectionOffBatchEligibility.contract.test.ts` (**GEL-P0-025**): an off-batch Sorbet draft must be solved BY THE EXACT PROJECTION, not by the general search. | **LOCK-02 and LOCK-03 reverted** — they had reached 1.1×–30.8× nearer and unfrozen `line-1`, frozen at exactly 598 g in all 16 audited cells. |
+| 2 | The preview-level aim turned a clean Preview into `no_proposal` on the milk starter at Sweetness +2 / Softness +2 carrying an exact, a percent and a range constraint (`recipeDirectionTargets.test.ts`). | **LOCK-01 reverted** — it had reached 0.0140, 22.6× nearer than the 0.3159 halt point. An improvement that costs the customer an answer elsewhere is not an improvement. |
+| 3 | Removing the aim exposed that the in-solver half alone shifts accepted solver trajectories: seven `sharedDirectionNearestMatrix` cells and a SECOND case of GEL-P0-025 („a MULTI-Main off-batch draft is left to the certified Main frontier"). | The in-solver exact-target stage reverted as well; `draftCandidateVector.ts` has **no net change**. |
+
+So LOCK-01, LOCK-02 and LOCK-03 all sit exactly at their audited halt points
+(0.3159 · 1.111 / 3.111 / 2.4812 / 0.6474 / 1.0145 · byte-identical levels). Nothing was
+given back beyond what was reverted, and nothing is claimed that is not measured.
+
+**None of this is a dead end.** The search design is proven — the offline prototype in
+`evidence/p1l-prototype.json` reaches distance 0.023–0.042 on the same cells, and the
+production builds reached 22.6×–30.8× before being reverted. What is missing is the
+integration work that makes it safe: it must not out-rank the Sorbet projection, must not
+cost a Preview under constraints, and must not move accepted solver trajectories. That is
+real work with a real design (below), not a matter of tuning.
+
+### An owner-locked contract blocks the Sorbet half — OWNER DECISION NEEDED
+
+The Sorbet route (LOCK-02, LOCK-03) was fixed by running BOTH candidate generators and
+ranking them by distance instead of taking the first that merely improves. Measured, that
+reached candidates **1.1×–30.8× nearer**, and it unfroze `line-1`, which had sat at exactly
+598 g in all 16 audited cells.
+
+It also **failed an owner-locked contract**:
+`src/contracts/owner-locked/sorbetDirectionOffBatchEligibility.contract.test.ts`
+(**GEL-P0-025**) — *"an off-batch draft is solved by the exact projection, not the general
+search"*. Ranking by distance lets another generator out-rank the closed-form projection,
+so the locked SHAPE of that repair is lost, together with its documented reason: the
+projection answers in milliseconds where the general search took 50–92 s and, at ±30 g,
+published a proposal carrying an Engine violation.
+
+**AGENTS.md rule 11 is unambiguous — a locked contract is not rewritten to fit an
+implementation — so the change was reverted.** The Sorbet route is back to its accepted
+order of authority, and LOCK-02 and LOCK-03 are OPEN on that route.
+
+The two requirements genuinely conflict as stated:
+
+* GEL-P0-025 says the projection owns the answer for an off-batch Sorbet draft.
+* P1-K INV-2 says a candidate presented as the nearest may not be beaten by another legal
+  candidate the same run produced.
+
+They can be reconciled — for example by keeping the projection's precedence while still
+refusing to *label* its result „najbliższy" when the run holds something nearer, or by
+letting the projection's candidate be refined toward the target rather than replaced — but
+either is a change to accepted Sorbet behaviour and belongs to the owner, not to this task.
+
+**Grouped approval request (AGENTS.md rule 13), one item:**
+
+| | |
+|---|---|
+| **Locked contract** | GEL-P0-025 — `sorbetDirectionOffBatchEligibility.contract.test.ts` |
+| **Current accepted behaviour** | The first Sorbet generator whose candidate improves the Direction measure wins; the closed-form exact projection is tried first and therefore owns the answer whenever it improves anything at all. |
+| **Requested new behaviour** | The projection keeps its precedence, but its candidate may be refined toward the requested target by the same engine-verified exact-target stage, and the result may not be presented as „najbliższy" while the run holds a nearer legal candidate. |
+| **Reason** | LOCK-02: the presented „nearest" is 26×–156× farther from the requested level than a candidate reachable in the same admissible space. LOCK-03: two different requested levels return the byte-identical proposal. |
+| **Consequence** | Sorbet Direction proposals move (measured 1.1×–30.8× nearer); `line-1` and `line-5`, frozen in all 16 audited cells, start moving. |
+| **Risk** | The projection's speed and its zero-violation guarantee must be preserved; the refinement must not reintroduce the 50–92 s general-search path GEL-P0-025 was written to avoid. Bounded by the existing per-solve evaluation budget. |
+| **Alternatives** | (a) leave LOCK-02/LOCK-03 open on Sorbet; (b) change only the LABEL, so the dialog stops calling a non-nearest candidate „najbliższy" without changing which candidate is produced; (c) the full ranking change, which is what failed the contract. |
+| **Exact affected files / functions** | `src/features/constraint-studio/applyPipeline.ts` → `buildSorbetDirectionCandidatePreview`; `src/features/recipe-direction/sorbetNearestDirectionSearch.ts` → `searchSorbetNearestDirectionCandidate` (its contract holds Main, Inulin and the stabilizer byte-exact, which is what keeps `line-5` frozen). |
 
 ### The one technical step that would close them
 

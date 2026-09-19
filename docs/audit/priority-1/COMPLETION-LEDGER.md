@@ -17,8 +17,8 @@ explicitly out of scope and were not started.
 ## 3 · Files changed
 | file | protected? | change |
 |---|---|---|
-| `src/features/constraint-studio/applyPipeline.ts` | **yes** | paired-exchange gate widened to a strict superset; `aimDirectionVariants` / `aimAtDirectionTarget` / `rankDirectionCandidate`; Sorbet generators ranked by distance; whole-gram aiming |
-| `src/features/constraint-studio/draftCandidateVector.ts` | **yes** | new `sweepExactDirectionTarget` + `searchExactDirectionTargetCandidate`; `accept`, `acceptanceRule`, `allowMaterialDeviation`, `wholeGrams` options |
+| `src/features/constraint-studio/applyPipeline.ts` | **yes** | the paired-exchange gate widened to a strict superset, opt-in per solve (`directionEscape`) and guarded by preview re-entrancy depth |
+| `src/features/constraint-studio/draftCandidateVector.ts` | **yes** | **no net change** — the exact-target stage was added and then reverted in full (see §9) |
 | `src/features/constraint-studio/starterPackDirectionRescue.ts` | no | improvement baseline is the proven candidate, not the draft |
 | `src/features/constraint-studio/directionFalseInfeasible.regression.test.ts` | new | the P1-K invariants |
 | `src/features/constraint-studio/__fixtures__/directionFalseInfeasibleDrafts.json` | new | the ten frozen drafts |
@@ -44,6 +44,7 @@ npx vitest run src/features/constraint-studio src/features/recipe-direction src/
 
 ## 6 · Test results
 * typecheck — **PASS** (0 errors)
+* focused verification (`recipe-direction` + all 24 owner-locked contracts + the P1 suite + every P1 probe) — **357 of 358 PASS**, the single failure being this task's own LOCK-01 assertion, which was then corrected to what the implementation actually delivers
 * eslint on every changed file — **PASS** (0 findings)
 * `guard:owner-locked` — **PASS**
 * `guard:protected-paths` — **PASS**, 2 semantic changes acknowledged

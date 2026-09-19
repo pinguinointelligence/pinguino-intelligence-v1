@@ -113,77 +113,86 @@ describe('P1 — OD-28: a reachable Direction level is never reported as unreach
   });
 });
 
-describe('P1 — LOCK-01 / LOCK-02: the presented candidate is materially nearer than the halt point', () => {
+describe('P1 — LOCK-01: OPEN, and the mechanism that closed it cost a Preview elsewhere', () => {
   /**
-   * `halt` is the distance CORE reported on the served SHA — the candidate the
-   * customer was shown as „najbliższy". `bound` is the ceiling this fix must stay
-   * under: it sits between the halt point and what the fix actually achieves, so the
-   * test fails both if the defect returns AND if a later change quietly gives the
-   * ground back. Every number on the left is re-derived from the engine on each run;
-   * only the ceiling is written down.
+   * RECORDED, NOT ASSERTED AWAY.
+   *
+   * LOCK-01 („false infeasibility on an ordinary gelato with one ordinary gram
+   * lock": butter-pecan, SUCROSE held at 80 g, Sweetness +1, a candidate 0.3159
+   * from the [15, 16] band while an engine-verified whole-gram witness exists at
+   * POD 15.019) is still OPEN.
+   *
+   * It was closed, measurably — a preview-level aim that re-solved for the
+   * requested target from the chosen candidate reached 0.0140, 22.6× nearer. That
+   * aim also turned a clean Preview into `no_proposal` on the milk starter at
+   * Sweetness +2 / Softness +2 carrying an exact, a percent and a range
+   * constraint (`recipeDirectionTargets.test.ts`). An improvement that costs the
+   * customer an answer somewhere else is not an improvement, so it was removed;
+   * removing it in turn exposed that the in-solver half shifts accepted solver
+   * trajectories across `sharedDirectionNearestMatrix` and a second case of the
+   * owner-locked Sorbet projection contract, so that was reverted too.
+   *
+   * What this pins is the half that must hold either way: the candidate is
+   * engine-legal, weighs the target batch, and the 80 g lock is byte-exact. The
+   * distance gap stays visible in `docs/audit/priority-1/P1-S-closure.md`.
    */
-  const AUDITED: Record<string, { halt: number; bound: number }> = {
-    'LOCK-01': { halt: 0.3159, bound: 0.15 },
-    'LOCK-02a': { halt: 1.111, bound: 0.95 },
-    'LOCK-02b': { halt: 3.111, bound: 3.0 },
-    'LOCK-02c': { halt: 2.4812, bound: 1.7 },
-    'LOCK-02d': { halt: 0.6474, bound: 0.3 },
-    'LOCK-02e': { halt: 1.0145, bound: 0.5 },
-  };
+  it('LOCK-01: the candidate is legal, on batch, and holds the 80 g sugar lock', () => {
+    const solved = solve('LOCK-01');
+    expect(solved.ok).toBe(true);
+    if (!solved.ok) return;
+    expect(solved.nativeViolations).toEqual([]);
+    expect(solved.plannedSum).toBeCloseTo(solved.input.target_batch_grams, 6);
+    expect(heldGrams(solved.proposed, draftFor('LOCK-01').constraints)).toEqual(
+      heldGrams(solved.input, draftFor('LOCK-01').constraints),
+    );
+  });
+});
 
-  for (const key of Object.keys(AUDITED) as CaseKey[]) {
-    it(`${key}: materially nearer than the audited halt point, and still legal`, () => {
+describe('P1 — LOCK-02 / LOCK-03 on the Sorbet route: OPEN, blocked by an owner-locked contract', () => {
+  /**
+   * RECORDED, NOT ASSERTED AWAY.
+   *
+   * LOCK-02 („the presented «najbliższy» is 26×–156× farther from the requested
+   * level than a candidate reachable in the same admissible space") and LOCK-03
+   * („two different requested levels return the byte-identical proposal") are
+   * still OPEN on the Sorbet route.
+   *
+   * They were fixed, measurably: running BOTH Sorbet generators and ranking them
+   * by distance instead of taking the first that merely improves reached
+   * candidates 1.1×–30.8× nearer and unfroze `line-1`, which sat at exactly 598 g
+   * in all 16 audited cells. That change failed the OWNER-LOCKED contract
+   * `src/contracts/owner-locked/sorbetDirectionOffBatchEligibility.contract.test.ts`
+   * (GEL-P0-025): an off-batch Sorbet draft must be solved BY THE EXACT
+   * PROJECTION, not by the general search, and ranking by distance lets another
+   * generator out-rank the projection. A locked contract is not rewritten to fit
+   * an implementation, so the change was reverted, and the conflict is written up
+   * as a grouped approval request in `docs/audit/priority-1/P1-S-closure.md`.
+   *
+   * What this pins is the half that must hold either way: whatever the Sorbet
+   * route returns is engine-legal, weighs the target batch and never quietly
+   * releases a lock. The distance gap stays visible in the closure document
+   * instead of being asserted into agreement here.
+   */
+  for (const key of ['LOCK-02a', 'LOCK-02b', 'LOCK-02c', 'LOCK-02d', 'LOCK-02e'] as CaseKey[]) {
+    it(`${key}: the candidate is legal, on batch, and holds every lock`, () => {
       const solved = solve(key);
       expect(solved.ok).toBe(true);
       if (!solved.ok) return;
       expect(solved.nativeViolations).toEqual([]);
       expect(solved.plannedSum).toBeCloseTo(solved.input.target_batch_grams, 6);
-      expect(solved.distance).toBeLessThan(AUDITED[key]!.bound);
-      // no silent unlock: every held line keeps its exact grams
       expect(heldGrams(solved.proposed, draftFor(key).constraints)).toEqual(
         heldGrams(solved.input, draftFor(key).constraints),
       );
     });
   }
 
-  it('LOCK-02: the lines that lead to the target are no longer frozen out', () => {
-    const solved = solve('LOCK-02a');
-    if (!solved.ok) throw new Error('no preview');
-    const before = solved.input.items[0]!.planned_grams;
-    const after = solved.proposed.items[0]!.planned_grams;
-    // `line-1` (BLOOD ORANGE) sat at exactly 598 g in all 16 audited cells
-    expect(Math.abs(after - before)).toBeGreaterThan(1);
-  });
-});
-
-describe('P1 — LOCK-03: the requested LEVEL is separately attempted', () => {
-  /**
-   * OPEN GAP, recorded rather than asserted away.
-   *
-   * The audit found that Sweetness −1 and −2 return the BYTE-IDENTICAL proposal,
-   * so the requested level never reaches the search. The fix narrows the gap for
-   * both levels but does NOT yet separate them on this recipe: both still halt on
-   * the same lattice point. Asserting inequality here would be asserting something
-   * the implementation does not do.
-   *
-   * It is also not free to force: the shape that separates them is the same one
-   * whose ABSENCE broke the accepted cross-level contract in
-   * `recipe-direction/sharedDirectionNearestMatrix.test.ts` („no other reachable
-   * candidate is nearer to this row's band"). That contract is accepted behaviour
-   * and wins. What this test pins is the half that IS true — both levels now land
-   * materially nearer than the halt point the audit measured — so the ground
-   * cannot be given back while the gap stays visible.
-   */
-  it('both levels land materially nearer than the audited halt point', () => {
+  it('LOCK-03: each level still returns a legal candidate for its own request', () => {
     const minusOne = solve('LOCK-03-A-minus1');
     const minusTwo = solve('LOCK-03-A-minus2');
     expect(minusOne.ok && minusTwo.ok).toBe(true);
     if (!minusOne.ok || !minusTwo.ok) return;
     expect(minusOne.input.goals?.direction_targets?.sweetness).toBe(-1);
     expect(minusTwo.input.goals?.direction_targets?.sweetness).toBe(-2);
-    // audited halt points: 1.1110 for −1 and 3.1110 for −2
-    expect(minusOne.distance).toBeLessThan(0.95);
-    expect(minusTwo.distance).toBeLessThan(3.0);
     expect(minusOne.nativeViolations).toEqual([]);
     expect(minusTwo.nativeViolations).toEqual([]);
   });
