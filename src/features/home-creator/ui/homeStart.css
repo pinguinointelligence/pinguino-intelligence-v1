@@ -16,6 +16,39 @@
   padding: 14px 0 24px;
 }
 
+/*
+ * DESIGN V3.0 Version 10 §H1b — the working area is CENTRED in the space between the top
+ * workspace row and the bottom action, not parked under the tabs.
+ *
+ * The box it is centred in is the screen minus the pinned chrome above and below it: the
+ * global header (measured by `AppShell` into `--home-layer-top`) and the „Rozpocznij
+ * recepturę" bar (measured by this screen into `--home-start-cta-height`). Both are already
+ * measured for other reasons, so nothing new is guessed here.
+ *
+ * Only „Twój pomysł" is centred. „Receptury" is a grid of collections that fills and scrolls
+ * — there is no empty space in it to centre anything within.
+ *
+ * `safe center` keeps a short screen honest: when the composer is taller than the box the
+ * content starts at the top and scrolls, instead of being centred with its head cut off.
+ */
+.home-start[data-mode='idea'][data-at-start='true'] .home-start-body {
+  display: flex;
+  min-height: calc(
+    var(--gellatti-layout-viewport-height, 100svh) - var(--home-layer-top, 64px) -
+      var(--home-start-cta-height, 0px)
+  );
+  flex-direction: column;
+}
+/* The top workspace row keeps its place at the top; the working area takes the rest of
+   the box and sits in the middle of it. */
+.home-start[data-mode='idea'][data-at-start='true'] .home-start-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  justify-content: safe center;
+}
+
 .home-start-col {
   box-sizing: border-box;
   width: 100%;
@@ -29,11 +62,42 @@
   padding: 0 20px;
 }
 
+/* ── the top workspace row: where you start from, and „Reset" (Version 10 §H1b) ── */
+.home-start-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 20px;
+}
+.home-start-reset {
+  flex: 0 0 auto;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #ded9d0;
+  border-radius: 999px;
+  background: #ffffff;
+  font: 600 13px/1 var(--font-sans, Manrope, sans-serif);
+  color: #65635f;
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* Nothing to clear: still there, still readable, visibly not offering anything. */
+.home-start-reset[aria-disabled='true'] {
+  color: #a8a49c;
+  border-color: #ece8e1;
+  cursor: default;
+}
+.home-start-reset:focus-visible {
+  outline: 2px solid #101113;
+  outline-offset: 2px;
+}
+
 /* ── the two modes (.h-src / .h-pill) ─────────────────────────────────────── */
 .home-start-modes {
   display: flex;
   gap: 6px;
-  margin: 0 0 20px;
+  margin: 0;
 }
 .home-start-mode {
   flex: 0 0 auto;

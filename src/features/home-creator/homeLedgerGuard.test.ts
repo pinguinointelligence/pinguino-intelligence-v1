@@ -110,8 +110,9 @@ describe('the guard reads the real ledger correctly', () => {
   const { rows: parsed, problems } = parse(ledgerText);
 
   it('parses every requirement row at 17 columns with unique ids', () => {
-    // 222 + DESIGN H4 H-DES-H4-1..5 (HOME production).
-    expect(parsed.size).toBe(227);
+    // 222 + DESIGN H4 H-DES-H4-1..5 (HOME production) + DESIGN H1b H-DES-H1B-1
+    // (Version 10: górny wiersz obszaru roboczego, Reset i środkowanie).
+    expect(parsed.size).toBe(228);
     expect(problems).toEqual([]);
   });
 
