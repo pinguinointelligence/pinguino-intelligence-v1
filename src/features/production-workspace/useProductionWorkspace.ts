@@ -360,8 +360,10 @@ export const productionSourceForRecipe = (
     | 'productionSnapshotRecipeId'
     | 'productionSnapshotVersionId'
     | 'productionSnapshotVersionNumber'
+    | 'productionSnapshotFingerprint'
   >,
   executableVersionMatchesCurrent: boolean,
+  currentProductionFingerprint: string,
 ) => {
   const saved = {
     recipeId: recipe.savedRecipeId,
@@ -375,14 +377,23 @@ export const productionSourceForRecipe = (
      batch — the run then points at the technical production snapshot taken for it. The
      saved identity always wins: once a recipe is in the library, that is what its batches
      belong to. Nothing here makes an unsaved recipe look saved. */
+  /* A snapshot is evidence of ONE recipe state. Once the draft moves on, the snapshot on
+     record no longer describes it, and a run started against it would reference a version
+     whose contents are not the ones being weighed. The batch then has no durable source
+     until a fresh snapshot is taken — exactly the answer an unsaved recipe already gets. */
+  const snapshotDescribesCurrentRecipe =
+    recipe.productionSnapshotFingerprint !== null &&
+    recipe.productionSnapshotFingerprint === currentProductionFingerprint;
   const durable =
     saved.recipeId !== null
       ? saved
-      : {
-          recipeId: recipe.productionSnapshotRecipeId,
-          recipeVersionId: recipe.productionSnapshotVersionId,
-          recipeVersionNumber: recipe.productionSnapshotVersionNumber,
-        };
+      : snapshotDescribesCurrentRecipe
+        ? {
+            recipeId: recipe.productionSnapshotRecipeId,
+            recipeVersionId: recipe.productionSnapshotVersionId,
+            recipeVersionNumber: recipe.productionSnapshotVersionNumber,
+          }
+        : { recipeId: null, recipeVersionId: null, recipeVersionNumber: null };
   return {
     ...durable,
     recipeName: recipe.savedRecipeName?.trim() || 'Bieżąca receptura',
@@ -639,8 +650,13 @@ export function useProductionWorkspace(enabled: boolean) {
   }, [constraints, plannedInput, preview, recalculationTerminal, recipeLifecycle]);
 
   const source = useMemo(
-    () => productionSourceForRecipe(recipe, recipeLifecycle === 'READY'),
-    [recipe, recipeLifecycle],
+    () =>
+      productionSourceForRecipe(
+        recipe,
+        recipeLifecycle === 'READY',
+        currentProductionVersionFingerprint,
+      ),
+    [currentProductionVersionFingerprint, recipe, recipeLifecycle],
   );
   const sessionAddress = useMemo<ProductionSessionAddress>(
     () => ({
@@ -1727,7 +1743,16 @@ export function useProductionWorkspace(enabled: boolean) {
           plannedInput,
           plannedComposition,
         );
-        replaceSession(completedSession);
+        /* The run carries its frozen plan and actuals back, but not the completion
+           snapshot — the server stores that separately, and history reads it from there.
+           The batch that has JUST finished keeps the very snapshot that was frozen a line
+           above, so the finished screen and its label state the LOT, the final mass and
+           the confirmed order of this run instead of nothing at all. Nothing is
+           recomputed here: this is the object `completeRun` was given. */
+        replaceSession({
+          ...completedSession,
+          completionSnapshot: completionCandidate.completionSnapshot,
+        });
         announceFriendlyLabMoment(
           'production-complete',
           `production:${completedSession.sessionId}:${completedSession.completedAt ?? 'completed'}`,

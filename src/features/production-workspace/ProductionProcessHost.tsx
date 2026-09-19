@@ -10,6 +10,7 @@ import { useState, type ReactNode } from 'react';
 import { DialogShell } from '@/components/ui/DialogShell';
 import { ProductionProcess } from './process/ProductionProcess';
 import type { ProcessSheetFrame } from './process/ProductionProcessSheets';
+import type { ProductionProcessController } from './process/productionProcessSteps';
 import { useProductionWorkspace, type ProductionWorkspaceView } from './useProductionWorkspace';
 import { useDurableProductionProcess } from './useDurableProductionProcess';
 
@@ -32,6 +33,8 @@ export function ProductionProcessHost({
   hostAction,
   sheetFrame = ProcessLayer,
   empty = null,
+  done,
+  stepMemory,
   testId,
 }: {
   /** The run's recipe name — the host's frame already knows it (the „W toku" row). */
@@ -50,22 +53,55 @@ export function ProductionProcessHost({
    * rule intact — the hook still lives here and nowhere else.
    */
   empty?: ReactNode | ((production: ProductionWorkspaceView) => ReactNode);
+  /**
+   * What the host shows once the batch is FINISHED. Without it the finished run keeps the
+   * process view, which is what „Partie" wants; HOME brings its accepted „Partia gotowa"
+   * screen here rather than growing a second workspace beside this one (OD-24).
+   */
+  done?: (
+    production: ProductionWorkspaceView,
+    controller: ProductionProcessController,
+  ) => ReactNode;
+  /**
+   * Where the steps that leave no production record (machine preparation, the heat step)
+   * are remembered. The default is this component's own state, which is enough for a host
+   * that is never left mid-batch; HOME passes its draft store, so „Wróć", „Zapisz" and a
+   * refresh come back to the SAME step instead of to the top of the plan.
+   */
+  stepMemory?: {
+    doneStepIds: (sessionId: string) => readonly string[];
+    onStepDone: (sessionId: string, stepId: string) => void;
+  };
   testId: string;
 }) {
   const production = useProductionHost(true);
   const [doneStepIds, setDoneStepIds] = useState<{ sessionId: string; ids: string[] } | null>(null);
+  const sessionId = production.session?.sessionId ?? null;
   const controller = useDurableProductionProcess(production, {
-    doneStepIds:
-      doneStepIds && doneStepIds.sessionId === production.session?.sessionId ? doneStepIds.ids : [],
-    onStepDone: (sessionId, stepId) =>
+    doneStepIds: stepMemory
+      ? sessionId === null
+        ? []
+        : stepMemory.doneStepIds(sessionId)
+      : doneStepIds && doneStepIds.sessionId === sessionId
+        ? doneStepIds.ids
+        : [],
+    onStepDone: (runId, stepId) => {
+      if (stepMemory) {
+        stepMemory.onStepDone(runId, stepId);
+        return;
+      }
       setDoneStepIds((current) =>
-        current && current.sessionId === sessionId
-          ? { sessionId, ids: [...new Set([...current.ids, stepId])] }
-          : { sessionId, ids: [stepId] },
-      ),
+        current && current.sessionId === runId
+          ? { sessionId: runId, ids: [...new Set([...current.ids, stepId])] }
+          : { sessionId: runId, ids: [stepId] },
+      );
+    },
   });
   if (controller === null) {
     return <>{typeof empty === 'function' ? empty(production) : empty}</>;
+  }
+  if (done && production.session?.status === 'completed') {
+    return <>{done(production, controller)}</>;
   }
   return (
     <ProductionProcess

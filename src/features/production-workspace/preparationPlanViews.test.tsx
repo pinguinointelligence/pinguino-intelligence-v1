@@ -186,14 +186,14 @@ describe('PREP-10 one preparation plan in the existing views', () => {
 
     const home = readFileSync(resolve('src/features/home-creator/ui/HomePreparation.tsx'), 'utf8');
     const read = (path: string) => readFileSync(resolve(path), 'utf8');
-    const controller = read(
-      'src/features/production-workspace/process/useLocalProductionProcess.ts',
-    );
+    const controller = read('src/features/production-workspace/useDurableProductionProcess.ts');
     const steps = read('src/features/production-workspace/process/productionProcessSteps.ts');
     const view = read('src/features/production-workspace/process/ProductionProcess.tsx');
-    // DESIGN V3.0 IV D–I: HOME hosts the ONE batch process, whose numbered steps ARE this
-    // plan — its order and its words.
-    expect(home).toContain('useLocalProductionProcess(');
+    /* DESIGN V3.0 IV D–I: HOME hosts the ONE batch process, whose numbered steps ARE this
+       plan — its order and its words. OD-24: it hosts it through the SAME durable host
+       „Partie" uses, so the batch a HOME customer runs is the batch PRO runs. */
+    expect(home).toContain('<ProductionProcessHost');
+    expect(home).not.toContain('useLocalProductionProcess(');
     expect(controller).toContain('preparationPlanForSession(session, guide)');
     expect(controller).toContain('productionProcessSteps(plan');
     expect(view).toContain('planLine.instruction');

@@ -21,11 +21,49 @@ import { MACHINE_CATALOG, type MachineTechnology } from '@/features/machine-cata
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { productionTestComposition } from '@/features/production-workspace/productionTestComposition.fixture';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
+import {
+  attachPracticalRecipeAudit,
+  readPracticalRecipeAudit,
+} from '@/features/practical-recipe/practicalRecipe';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { InMemoryProduction } from '@/services/proCore/inMemoryProduction';
+import {
+  inMemoryProductionRepository,
+  type ProductionRepository,
+} from '@/services/proCore/productionRepository';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useHomeDraftStore } from '../homeDraftStore';
 import { HomePreparation } from './HomePreparation';
+
+/*
+ * OD-24 (Owner 19.09.2026): the batch a signed-in HOME customer runs is the DURABLE one —
+ * the same run, the same store and the same authority PRO uses. The doors it goes through
+ * are stood in for here: the reference in-memory production service the repository port
+ * already ships, and a recipe repository that answers the technical snapshot HOME takes so
+ * the run has an immutable version to point at. Nothing about the PLAN is faked.
+ */
+const mocks = vi.hoisted(() => ({
+  resolveProductionRepository: vi.fn(),
+  resolveRecipesRepository: vi.fn(),
+  validateRecipeBehaviorOnServer: vi.fn(),
+}));
+
+vi.mock('@/features/pro-core/proCoreProductionRepo', () => ({
+  resolveProductionRepository: mocks.resolveProductionRepository,
+  __resetDevProductionRepository: () => {},
+}));
+
+vi.mock('@/features/pro-core/proCoreRecipeRepo', () => ({
+  resolveRecipesRepository: mocks.resolveRecipesRepository,
+  __resetDevRecipesRepository: () => {},
+}));
+
+vi.mock('@/services/productIntelligence', () => ({
+  validateRecipeBehaviorOnServer: mocks.validateRecipeBehaviorOnServer,
+}));
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT =
   true;
@@ -128,28 +166,114 @@ function fixture(): { plannedInput: RecipeInput; plannedComposition: RecipeCompo
 
 let host: HTMLDivElement;
 let root: Root;
+let production: ProductionRepository;
+
+/**
+ * The real production service, in memory — the reference implementation the repository
+ * port already ships, so the run, its events and its recorded actuals behave exactly as
+ * they do behind the server. Only the TRUSTED Rescue verdict is stood in for: it is a
+ * server authority by design and refuses to run in a browser at all.
+ */
+function testProductionRepository(): ProductionRepository {
+  let seq = 0;
+  const service = new InMemoryProduction(
+    () => new Date('2026-09-19T10:00:00.000Z').toISOString(),
+    () => `run-${(seq += 1)}`,
+  );
+  const memory = inMemoryProductionRepository(service);
+  let activeRunId: string | null = null;
+  const { plannedInput, plannedComposition } = fixture();
+  return {
+    ...memory,
+    startRun: async (args) => {
+      const run = await memory.startRun(args);
+      activeRunId = run.runId;
+      return run;
+    },
+    authorizeRescue: async (input) => ({
+      authorizationId: `authorization-${input.stableOptionId}`,
+      candidateFingerprint: 'a'.repeat(64),
+      runId: input.runId,
+      stableOptionId: input.stableOptionId,
+      expectedActualRevision: input.expectedActualRevision,
+      expectedRescueRevision: input.expectedRescueRevision,
+      authorizedAt: '2026-09-19T10:00:00.000Z',
+      expiresAt: '2099-09-19T10:00:00.000Z',
+      preview: {
+        title: input.stableOptionId,
+        explanation: 'Serwer zweryfikował plan.',
+        finalMassG: plannedInput.target_batch_grams,
+        scoreDisplay: '10/10',
+        instructions: [],
+      },
+    }),
+    consumeRescue: async () => {
+      if (!activeRunId) throw new Error('no active run');
+      return service.applyRescue(activeRunId, plannedInput, plannedComposition);
+    },
+  };
+}
 
 beforeEach(() => {
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
   Element.prototype.scrollIntoView = () => {};
+  production = testProductionRepository();
+  mocks.resolveProductionRepository.mockReturnValue({
+    repository: production,
+    mode: 'backend',
+    isLocalDev: false,
+    unavailable: false,
+  });
+  let snapshots = 0;
+  mocks.resolveRecipesRepository.mockReturnValue({
+    repository: {
+      createRecipe: async () => {
+        snapshots += 1;
+        return {
+          recipe: { recipeId: `snapshot-recipe-${snapshots}` },
+          version: { versionId: `snapshot-version-${snapshots}`, versionNumber: 1 },
+        };
+      },
+    },
+    mode: 'backend',
+    isLocalDev: false,
+    unavailable: false,
+  });
+  mocks.validateRecipeBehaviorOnServer.mockResolvedValue({
+    ready: true,
+    module: 'PRODUCTION',
+    staleLineIds: [],
+    lines: [],
+    processReadiness: { schemaVersion: 1, status: 'READY', blockers: [], advisories: [] },
+  });
 });
 
-afterEach(() => {
-  act(() => root.unmount());
+afterEach(async () => {
+  await act(async () => root.unmount());
   host.remove();
   useProductionSessionStore.getState().clear();
   useHomeDraftStore.getState().startNew();
+  useRecipeStore.getState().resetToDemo();
   vi.clearAllMocks();
 });
 
 /* Sheets are portalled to <body>, so every query reads the whole document. */
 const byTestId = (id: string) => document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
-const click = (id: string) => {
+/** Every action on a durable batch is a server write; the test waits for it, as the UI does. */
+const settle = async () => {
+  await act(async () => {
+    for (let turn = 0; turn < 6; turn += 1) await Promise.resolve();
+  });
+};
+const click = async (id: string) => {
   const element = byTestId(id);
   expect(element, id).not.toBeNull();
-  act(() => element!.click());
+  await act(async () => {
+    element!.click();
+  });
+  await settle();
 };
 const text = () => document.body.textContent ?? '';
 const stepKind = () => byTestId('process-step')?.dataset.stepKind ?? null;
@@ -163,7 +287,7 @@ const lineState = (lineId: string) =>
     .session!.lines.find((candidate) => candidate.lineId === lineId)!;
 
 /** Types a number into the row's canonical amount control and leaves the field. */
-function typeAmount(rowId: string, value: string) {
+async function typeAmount(rowId: string, value: string) {
   const input = document.querySelector<HTMLInputElement>(
     `[data-testid="process-field-${rowId}"] input`,
   );
@@ -174,6 +298,7 @@ function typeAmount(rowId: string, value: string) {
     input!.dispatchEvent(new Event('input', { bubbles: true }));
   });
   act(() => input!.blur());
+  await settle();
 }
 
 const callbacks = {
@@ -184,8 +309,8 @@ const callbacks = {
   onCommunity: vi.fn(),
 };
 
-function render() {
-  act(() =>
+async function render() {
+  await act(async () =>
     root.render(
       <QueryClientProvider client={new QueryClient()}>
         <MemoryRouter>
@@ -194,46 +319,38 @@ function render() {
       </QueryClientProvider>,
     ),
   );
+  await settle();
 }
 
-function startPreparation(
+/**
+ * The customer's recipe, as the recipe store holds it when „Zróbmy to" is tapped: applied,
+ * in whole grams, with its products verified — the state every batch, HOME or PRO, starts
+ * from. Nothing here pre-creates a batch: the screen asks the shared authority for one.
+ */
+async function startPreparation(
   machineId: string | null,
   technology: MachineTechnology | null,
   machineKind: 'home' | 'professional' = 'home',
 ) {
   const { plannedInput, plannedComposition } = fixture();
   useAuthStore.setState({ user: { id: 'owner' } as never, status: 'authed' } as never);
+  useRecipeStore.getState().loadRecipeInput(plannedInput, { composition: plannedComposition });
+  // The machine belongs to the recipe the audit is taken of: it sets the batch capacity.
   useRecipeStore.setState({
     machineKind,
     machineId,
     machineTechnology: technology,
   } as never);
-  const draftId = useHomeDraftStore.getState().draftId;
-  useProductionSessionStore.getState().startNewSession({
-    ownerUserId: 'owner',
-    source: {
-      recipeId: draftId,
-      recipeVersionId: null,
-      recipeVersionNumber: null,
-      recipeName: 'QA',
-    },
-    plannedInput,
-    plannedComposition,
-    now: '2026-09-17T10:00:00.000Z',
-    sessionId: `home-plan-${machineId ?? machineKind}`,
-    processReadiness: 'READY_WITH_INFO',
-    processAdvisories: [
-      {
-        code: 'HEAT_TREATMENT_INDICATED',
-        lineId: plannedInput.items.at(-1)!.id,
-        productId: null,
-        mapperIngredientId: 'PI-ING-000492',
-        decision: 'HEAT_REQUIRED_FOR_FUNCTION',
-        verificationStatus: 'verified',
-      },
-    ],
-  });
-  render();
+  const applied = buildRecipeInput(useRecipeStore.getState(), 'planning');
+  useRecipeStore
+    .getState()
+    .acknowledgePracticalRecipeAudit(
+      readPracticalRecipeAudit(
+        attachPracticalRecipeAudit(applied, applied, '2026-09-19T09:00:00.000Z'),
+      )!,
+    );
+  useRecipeProfileStore.getState().acknowledgeRecalculation();
+  await render();
   return plannedInput;
 }
 
@@ -242,7 +359,7 @@ function startPreparation(
  * `weigh:<row>` for a weighed row, the step kind for a step without weighing, `finish`
  * for „Zakończ produkcję”.
  */
-function driveToTheEnd(onStep?: (kind: string | null) => void): string[] {
+async function driveToTheEnd(onStep?: (kind: string | null) => void): Promise<string[]> {
   const seen: string[] = [];
   for (let guard = 0; guard < 40 && !byTestId('home-production-complete'); guard += 1) {
     const kind = stepKind();
@@ -250,7 +367,7 @@ function driveToTheEnd(onStep?: (kind: string | null) => void): string[] {
     if (dockAction() === 'Zakończ produkcję') seen.push('finish');
     else if (kind === 'weigh') seen.push(`weigh:${currentRowName()}`);
     else seen.push(kind ?? 'none');
-    click('process-next');
+    await click('process-next');
   }
   return seen;
 }
@@ -270,11 +387,11 @@ const frozenBowl = (machineId: string, technology: MachineTechnology | null): bo
     (profile) => profile.id === machineId && profile.technology === 'frozen_bowl',
   );
 
-describe('HOME production follows one plan to the end for every supported machine', () => {
+describe('HOME production follows one plan to the end for every supported machine', async () => {
   it.each(SUPPORTED)(
     '%s: numbered steps, weighing with ✓, the machine’s own sequence, topping, Partia gotowa',
-    (machineId, technology) => {
-      const plannedInput = startPreparation(machineId, technology);
+    async (machineId, technology) => {
+      const plannedInput = await startPreparation(machineId, technology);
       const fruit = plannedInput.items[0]!;
       const heatedBase = plannedInput.items.slice(1);
       // No TARA, no „Dodałem dokładnie / za dużo”, no heat reminder with OK.
@@ -293,7 +410,7 @@ describe('HOME production follows one plan to the end for every supported machin
         expect(byTestId('process-before-start')?.textContent).toContain('Zamroź misę');
       }
 
-      expect(driveToTheEnd()).toEqual([
+      expect(await driveToTheEnd()).toEqual([
         ...(bowl ? ['before'] : []),
         // The heated part in plan order; fresh fruit (first in the recipe) waits.
         ...heatedBase.map((item) => `weigh:${item.ingredient.name}`),
@@ -312,14 +429,14 @@ describe('HOME production follows one plan to the end for every supported machin
     },
   );
 
-  it('shows each step at its moment: heat with its products, fruit after cooling, the Ninja sequence and picture, the topping with NIE MIKSUJ', () => {
-    const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+  it('shows each step at its moment: heat with its products, fruit after cooling, the Ninja sequence and picture, the topping with NIE MIKSUJ', async () => {
+    const plannedInput = await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     // Step 1: the heated part of the base, weighed row by row.
     expect(stepKind()).toBe('weigh');
     expect(byTestId('process-base-step')).not.toBeNull();
     expect(byTestId('process-heat-step')).toBeNull();
     for (let index = 1; index < plannedInput.items.length; index += 1) {
-      click('process-next');
+      await click('process-next');
     }
 
     // Step 2: the heat step — information from the plan and one „Gotowe”, no OK reminder.
@@ -330,12 +447,12 @@ describe('HOME production follows one plan to the end for every supported machin
     expect(heat.textContent).toContain(plannedInput.items.at(-1)!.ingredient.name);
     expect(heat.textContent).toContain('Po schłodzeniu');
     expect(byTestId('process-done-summary')?.textContent).toContain('Zrobione: 1 krok');
-    click('process-next');
+    await click('process-next');
 
     // Step 3: fresh fruit after cooling, with its own plan instruction.
     expect(byTestId('process-step')?.dataset.stepKind).toBe('weigh');
     expect(byTestId('process-base-step')?.textContent).toContain('Umyj, dodaj na zimno i zmiksuj');
-    click('process-next');
+    await click('process-next');
 
     // Step 4: the machine's own sequence and registered picture; the topping is set aside.
     const machine = byTestId('process-machine-step')!;
@@ -344,7 +461,7 @@ describe('HOME production follows one plan to the end for every supported machin
     expect(machine.textContent).toContain('Zamrażanie mieszanki w pojemniku: 24 h');
     expect(machine.textContent).not.toMatch(/Zamroź misę/);
     expect(byTestId('process-set-aside')?.textContent).toContain('NIE MIKSUJ');
-    click('process-next');
+    await click('process-next');
 
     // Step 5: the topping — the plan's own instruction and NIE MIKSUJ.
     const topping = byTestId('process-topping-step')!;
@@ -352,18 +469,18 @@ describe('HOME production follows one plan to the end for every supported machin
       'Pokrój truskawki i dodaj przy podaniu. Nie miksuj z bazą.',
     );
     expect(topping.querySelector('[data-testid="process-no-mix"]')?.textContent).toBe('NIE MIKSUJ');
-    click('process-next');
+    await click('process-next');
     // Confirming a topping never sends the customer back to the machine step.
     expect(byTestId('process-machine-step')).toBeNull();
     expect(dockAction()).toBe('Zakończ produkcję');
-    click('process-next');
+    await click('process-next');
     expect(byTestId('home-production-complete')).not.toBeNull();
   });
 });
 
-describe('weighing with ✓ at the right edge (corrections II/III)', () => {
-  it('the active row shows „Ile jest w naczyniu?” at the plan; its ✓ confirms and the next row takes over', () => {
-    const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+describe('weighing with ✓ at the right edge (corrections II/III)', async () => {
+  it('the active row shows „Ile jest w naczyniu?” at the plan; its ✓ confirms and the next row takes over', async () => {
+    const plannedInput = await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     const milk = plannedInput.items[1]!;
     const cream = plannedInput.items[2]!;
     const current = byTestId('process-current-row')!;
@@ -376,7 +493,7 @@ describe('weighing with ✓ at the right edge (corrections II/III)', () => {
     expect(byTestId(`process-tick-${milk.id}`)?.dataset.tickState).toBe('current');
     expect(byTestId(`process-tick-${cream.id}`)?.dataset.tickState).toBe('later');
 
-    click(`process-tick-${milk.id}`);
+    await click(`process-tick-${milk.id}`);
     expect(lineState(milk.id)).toMatchObject({
       confirmed: true,
       physicalAddedGrams: milk.planned_grams,
@@ -387,11 +504,11 @@ describe('weighing with ✓ at the right edge (corrections II/III)', () => {
     expect(byTestId('process-dock-lead')?.textContent).toBe(`Teraz: ${cream.ingredient.name}`);
   });
 
-  it('a later row stays available: its ✓ confirms it at its plan', () => {
-    const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+  it('a later row stays available: its ✓ confirms it at its plan', async () => {
+    const plannedInput = await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     const smp = plannedInput.items[3]!;
     expect(byTestId(`process-tick-${smp.id}`)?.dataset.tickState).toBe('later');
-    click(`process-tick-${smp.id}`);
+    await click(`process-tick-${smp.id}`);
     expect(lineState(smp.id)).toMatchObject({
       confirmed: true,
       physicalAddedGrams: smp.planned_grams,
@@ -399,11 +516,11 @@ describe('weighing with ✓ at the right edge (corrections II/III)', () => {
   });
 });
 
-describe('a confirmed deviation → „Korekta partii” → „Plan skorygowany”', () => {
-  it('shows the difference in red, asks for the decision after ✓, and applies the verified correction', () => {
-    const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+describe('a confirmed deviation → „Korekta partii” → „Plan skorygowany”', async () => {
+  it('shows the difference in red, asks for the decision after ✓, and applies the verified correction', async () => {
+    const plannedInput = await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     const milk = plannedInput.items[1]!;
-    typeAmount(milk.id, String(milk.planned_grams + 30));
+    await typeAmount(milk.id, String(milk.planned_grams + 30));
     expect(byTestId('process-current-row')?.dataset.deviation).toBe('true');
     expect(byTestId('process-difference')?.textContent).toBe(
       `+30 g względem planu (${milk.planned_grams} g)`,
@@ -413,7 +530,7 @@ describe('a confirmed deviation → „Korekta partii” → „Plan skorygowany
     expect(lineState(milk.id).confirmed).toBe(false);
     expect(byTestId('process-correction')).toBeNull();
 
-    click(`process-tick-${milk.id}`);
+    await click(`process-tick-${milk.id}`);
     const sheet = byTestId('process-correction');
     expect(sheet).not.toBeNull();
     expect(sheet!.textContent).toContain('Korekta partii');
@@ -438,10 +555,13 @@ describe('a confirmed deviation → „Korekta partii” → „Plan skorygowany
     const chosen =
       options.find((option) => option.dataset.testid === 'process-decision-keep_original_batch') ??
       options[0]!;
-    act(() => chosen.click());
+    await act(async () => {
+      chosen.click();
+    });
+    await settle();
     expect(chosen.getAttribute('aria-pressed')).toBe('true');
     expect(chosen.textContent).toContain('✓ Wybrano');
-    click('process-correction-apply');
+    await click('process-correction-apply');
 
     expect(byTestId('process-correction')).toBeNull();
     const strategy = useProductionSessionStore.getState().session!.lastDeviationDecision?.strategy;
@@ -455,18 +575,18 @@ describe('a confirmed deviation → „Korekta partii” → „Plan skorygowany
     expect(nextButton()?.disabled).toBe(false);
   });
 
-  it('„Wróć” from the correction reopens the row to correct the entry', () => {
-    const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+  it('„Wróć” from the correction reopens the row to correct the entry', async () => {
+    const plannedInput = await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     const milk = plannedInput.items[1]!;
-    typeAmount(milk.id, String(milk.planned_grams + 30));
-    click(`process-tick-${milk.id}`);
+    await typeAmount(milk.id, String(milk.planned_grams + 30));
+    await click(`process-tick-${milk.id}`);
     expect(byTestId('process-correction')).not.toBeNull();
-    click('process-correction-back');
+    await click('process-correction-back');
     expect(byTestId('process-correction')).toBeNull();
     expect(byTestId(`process-tick-${milk.id}`)?.dataset.tickState).toBe('current');
     expect(byTestId('process-current-row')?.textContent).toContain('Poprawiasz zapis');
-    typeAmount(milk.id, String(milk.planned_grams));
-    click(`process-tick-${milk.id}`);
+    await typeAmount(milk.id, String(milk.planned_grams));
+    await click(`process-tick-${milk.id}`);
     expect(byTestId('process-correction')).toBeNull();
     expect(lineState(milk.id)).toMatchObject({
       confirmed: true,
@@ -475,11 +595,11 @@ describe('a confirmed deviation → „Korekta partii” → „Plan skorygowany
   });
 });
 
-describe('„Co się stało?” in HOME', () => {
+describe('„Co się stało?” in HOME', async () => {
   it('has no „Chcę zmienić smak tej partii”; „Zważyłem inną ilość” opens the amount being weighed', async () => {
-    const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+    const plannedInput = await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     const milk = plannedInput.items[1]!;
-    click('process-trouble-open');
+    await click('process-trouble-open');
     const sheet = byTestId('process-trouble')!;
     expect(sheet.textContent).toContain('Co się stało?');
     expect(sheet.textContent).toContain(
@@ -487,7 +607,7 @@ describe('„Co się stało?” in HOME', () => {
     );
     expect(sheet.textContent).toContain('Zważyłem inną ilość');
     expect(sheet.textContent).not.toContain('Chcę zmienić smak tej partii');
-    click('process-trouble-weighed');
+    await click('process-trouble-weighed');
     expect(byTestId('process-trouble')).toBeNull();
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -498,25 +618,25 @@ describe('„Co się stało?” in HOME', () => {
   });
 });
 
-describe('interruption in HOME: „Wróć” and „Zapisz” keep the batch in its step', () => {
-  it('the frame calls back to the recipe, and the next visit opens the same step with the same rows', () => {
-    const plannedInput = startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+describe('interruption in HOME: „Wróć” and „Zapisz” keep the batch in its step', async () => {
+  it('the frame calls back to the recipe, and the next visit opens the same step with the same rows', async () => {
+    const plannedInput = await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
     for (let index = 1; index < plannedInput.items.length; index += 1) {
-      click('process-next');
+      await click('process-next');
     }
     expect(stepKind()).toBe('heat');
-    click('process-next');
+    await click('process-next');
     expect(byTestId('process-eyebrow')?.textContent).toBe('Produkcja · krok 3 z 5');
 
-    click('home-production-back');
+    await click('home-production-back');
     expect(callbacks.onBack).toHaveBeenCalledTimes(1);
-    click('home-production-save');
+    await click('home-production-save');
     expect(callbacks.onSaveBatch).toHaveBeenCalledTimes(1);
 
     // The page unmounts the frame; „Wróć do produkcji” mounts it again.
-    act(() => root.unmount());
+    await act(async () => root.unmount());
     root = createRoot(host);
-    render();
+    await render();
     expect(stepKind()).toBe('weigh');
     expect(byTestId('process-eyebrow')?.textContent).toBe('Produkcja · krok 3 z 5');
     expect(byTestId('process-done-summary')?.textContent).toContain('Zrobione: 2 kroki');
@@ -524,21 +644,21 @@ describe('interruption in HOME: „Wróć” and „Zapisz” keep the batch in 
   });
 });
 
-describe('an official recipe keeps its Professional machine in HOME (served 2026-09-18)', () => {
-  it('Mango Sorbet → „Zróbmy to”: the batch runs to the end and now ends at the batch freezer, never „Brakuje instrukcji urządzenia”', () => {
+describe('an official recipe keeps its Professional machine in HOME (served 2026-09-18)', async () => {
+  it('Mango Sorbet → „Zróbmy to”: the batch runs to the end and now ends at the batch freezer, never „Brakuje instrukcji urządzenia”', async () => {
     /* H4-6 (Owner 18.09.2026) changes ONE thing about this accepted flow: a Professional
        recipe used to run with no machine hand-off at all, so the batch ended with the
        base prepared and nothing said about freezing it. It now ends at the professional
        card — the same three technologically neutral steps PRO gets, from the same
        authority. What #422 fixed stays fixed: no dead end, no „Brakuje instrukcji
        urządzenia”, and no invented program name (H4-3). */
-    const plannedInput = startPreparation(null, null, 'professional');
+    const plannedInput = await startPreparation(null, null, 'professional');
     expect(byTestId('home-preparation-blocked')).toBeNull();
     expect(byTestId('process-eyebrow')?.textContent).toBe('Produkcja · krok 1 z 5');
     // The machine step is read WHILE it is on screen — after „Zakończ produkcję” the
     // batch is complete and no step is mounted any more.
     let machineStepText: string | null = null;
-    const sequence = driveToTheEnd((kind) => {
+    const sequence = await driveToTheEnd((kind) => {
       if (kind === 'machine') machineStepText = byTestId('process-machine-step')?.textContent ?? '';
     });
     expect(sequence).toEqual([
@@ -557,8 +677,8 @@ describe('an official recipe keeps its Professional machine in HOME (served 2026
     expect(byTestId('home-production-complete')).not.toBeNull();
   });
 
-  it('a HOME machine with no confirmed guide still refuses to invent a process', () => {
-    startPreparation('unknown-home-machine', null, 'home');
+  it('a HOME machine with no confirmed guide still refuses to invent a process', async () => {
+    await startPreparation('unknown-home-machine', null, 'home');
     expect(byTestId('home-preparation-blocked')).not.toBeNull();
   });
 });
