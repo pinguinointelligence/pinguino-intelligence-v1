@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
 import {
-  applicationPrimaryClasses,
+  applicationAccentClasses,
   applicationQuietClasses,
 } from '@/components/ui/applicationControlStyles';
+import { DestinationTop } from '@/components/shared/destinationEditorial';
 import { shopAvailabilityLabelPl, shopCopy as c, shopGrams, shopMoney } from '@/copy/shop';
 import type { ShopProduct } from '@/services/shop';
 import { SHOP_STARTER_SHOTS, type ShopShotId } from './shopStarterShots';
@@ -17,19 +18,39 @@ import {
 import { getShippingRate, type ShopShippingRate } from '@/services/shopCountries';
 
 /**
- * THE ONE featured offer — Shop C3, owner approved 2026-08-31, with the
- * product-emphasis correction of 2026-09-01.
+ * The primary action on the dark ground: the SAME approved control family at
+ * the same 12 px radius, in its accent member, with the approved disabled
+ * treatment unchanged (--g-lock on --g-line-quiet at full opacity).
+ */
+const ACCENT_CTA = applicationAccentClasses(
+  'min-h-[46px] px-7 text-[14px] disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:opacity-100',
+);
+/** The quiet companion link, on the same ground. */
+const QUIET_LINK = applicationQuietClasses('text-[13px] !text-white/75 hover:!text-white');
+
+/**
+ * THE ONE featured offer — Shop C3 (owner approved 2026-08-31), rebuilt on the
+ * shared destination top by DESIGN S1 (owner correction 2026-09-18).
  *
- * Photography on the left, commerce on the right, and no container around
- * either: the bags are shot on white, so the page ground carries the product.
+ * THE OFFER IS THE ENTRY BLOCK. The pack, the question, the conditions, the
+ * price and the action all stand on ONE dark ground — the same `DestinationTop`
+ * Sklep, Affiliate and Franchise share, with the same radius, the same 6 px
+ * Gellatti bar down the left edge and the same way a photograph meets it. The
+ * packshot fills the block's own right-hand side and fades into the ground: no
+ * frame, no card inside a card, no hard edge.
  *
- * The graphite belongs to the PRODUCT IDENTITY, never to the money. The name
- * sits in a graphite field edged in orange, carrying the pack facts on its
- * baseline; the price is ordinary ink on white below it, and the primary action
- * is the approved graphite control. Orange marks one thing — the made-to-order
- * condition.
+ * WHAT THIS SUPERSEDES. C3 put the graphite on the product NAME alone, the
+ * price on white below it and the action in the graphite control, because the
+ * page around them was ivory. The ground is dark now, so that division has
+ * nothing left to divide: the owner's correction moves the whole offer onto the
+ * graphite and gives the primary action the Gellatti accent, which on this
+ * ground is the only fill a customer can read as an action. The reading ORDER
+ * the owner fixed is untouched, and still enforced by the presentation
+ * contract: product → what it is → availability → price → add.
  *
- * Reading order, fixed: product → what it is → availability → price → add.
+ * Nothing about the commerce moved: the same catalogue product, the same
+ * country authority, the same resolved shipping rate (or none), the same cart
+ * call, the same 0 EUR local flow.
  */
 export function ShopStarterOffer({
   product,
@@ -90,84 +111,47 @@ export function ShopStarterOffer({
     : null;
 
   return (
-    <section
-      aria-labelledby="shop-starter"
-      className="grid items-start gap-5 md:grid-cols-[356px_minmax(0,1fr)] md:gap-16"
-      data-testid="shop-starter-offer"
+    <DestinationTop
+      eyebrow={c.hero.eyebrow}
+      title={name}
+      lede={mode === 'local' ? c.localPack.body : c.starterPack.offerLede}
+      visual={
+        /* The packshot is the block's own right-hand side, edge to edge. The
+           bag is shot on white, so the shared gradient carries that white into
+           the graphite instead of leaving a pasted rectangle. */
+        <img
+          src={primary.src}
+          alt={name}
+          width={900}
+          height={1166}
+          className="h-full w-full object-cover object-top"
+          data-testid="shop-starter-shot"
+        />
+      }
     >
-      {/* ── gallery: the primary shot dominates, two quiet alternates ── */}
-      <div className="grid gap-3 md:grid-cols-[48px_minmax(0,1fr)] md:items-center md:gap-4">
-        <div className="order-2 flex flex-row justify-center gap-4 md:order-none md:flex-col md:gap-3.5">
-          {alternates.map((alt) => (
-            <button
-              key={alt.id}
-              type="button"
-              onClick={() => setShot(alt.id)}
-              aria-label={alt.label}
-              className="pro-focus-ring block rounded-sm opacity-[0.88] transition-opacity hover:opacity-100"
-              data-testid={`shop-shot-${alt.id}`}
-            >
-              <img
-                src={alt.thumb}
-                alt=""
-                width={160}
-                height={207}
-                loading="lazy"
-                className="block h-[50px] w-10 object-contain md:h-[60px] md:w-12"
-              />
-            </button>
-          ))}
-        </div>
-        <div className="order-1 mx-auto w-full max-w-[186px] md:order-none md:mx-0 md:max-w-none">
-          <img
-            src={primary.src}
-            alt={name}
-            width={900}
-            height={1166}
-            className="block h-auto w-full"
-            data-testid="shop-starter-shot"
-          />
-        </div>
-      </div>
-
-      {/* ── commerce ── */}
-      <div className="min-w-0">
-        {/* The one graphite object in the offer: the product's own name. */}
-        <div className="rounded-[14px] border-l-[3px] border-[var(--g-orange)] bg-[var(--g-graphite)] px-[18px] pt-3.5 pb-4 md:px-7 md:pt-6 md:pb-[26px]">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5">
-            <h2
-              id="shop-starter"
-              className="text-[32px] leading-none font-extrabold tracking-[-0.05em] text-white md:text-[42px]"
-            >
-              {name}
-            </h2>
-            {facts ? (
-              <span className="font-mono text-[12.5px] whitespace-nowrap text-white/[0.78] tabular-nums md:text-[13.5px]">
-                {facts}
-              </span>
-            ) : null}
-          </div>
-        </div>
-
-        <p className="mt-3 max-w-[44ch] text-[14.5px] leading-relaxed text-[var(--g-text-secondary)] md:mt-5 md:text-[15.5px]">
-          {mode === 'local' ? c.localPack.body : c.starterPack.offerLede}
-        </p>
+      <div aria-labelledby="shop-starter" data-testid="shop-starter-offer">
+        <h2 id="shop-starter" className="sr-only">
+          {name}
+        </h2>
+        {facts ? (
+          <p className="font-mono text-[12.5px] text-white/[0.78] tabular-nums md:text-[13.5px]">
+            {facts}
+          </p>
+        ) : null}
 
         {/* The question sits BEFORE the money, because it decides which money
             is shown. Asking it in checkout would mean quoting a price and then
             taking it away. */}
-        <ShopCountrySelector className="mt-4 md:mt-[22px]" />
+        <ShopCountrySelector tone="inverse" className="mt-3.5 md:mt-4" />
 
-        {/* PHYSICAL — the pack ships. Conditions, then money, then the action.
-            Unchanged from the approved C3 offer; the country question above it
-            is what decides whether this branch renders at all. */}
+        {/* PHYSICAL — the pack ships. Conditions, then money, then the action. */}
         {mode === 'physical' ? (
           <>
-            <div className="mt-3 border-l-2 border-[var(--g-orange)] pl-[11px] md:mt-5 md:pl-[13px]">
+            <div className="mt-3 border-l-2 border-[var(--g-orange)] pl-[11px] md:mt-4 md:pl-[13px]">
               <p
                 className={cn(
                   'flex items-center gap-2.5 text-[13px] font-semibold md:text-[13.5px]',
-                  preorder ? 'text-[var(--g-attention-ink)]' : 'text-[var(--g-ink)]',
+                  'text-white',
                 )}
                 data-testid="shop-starter-availability"
               >
@@ -182,7 +166,7 @@ export function ShopStarterOffer({
               {/* A RESOLVED rate or nothing. Printing a constant would be a
                   promise checkout might not keep. */}
               {shippingRate ? (
-                <p className="mt-1 ml-4 text-[13px] text-[var(--g-text-secondary)]">
+                <p className="mt-1 ml-4 text-[13px] text-white/60">
                   {c.starterPack.offerShipping.replace(
                     '{amount}',
                     shopMoney(shippingRate.priceCents, shippingRate.currency),
@@ -191,36 +175,31 @@ export function ShopStarterOffer({
               ) : null}
             </div>
 
-            <div className="mt-3 flex flex-wrap items-baseline gap-3.5 md:mt-5">
+            <div className="mt-3 flex flex-wrap items-baseline gap-3.5 md:mt-4">
               <span
-                className="font-mono text-[29px] font-semibold tracking-[-0.01em] tabular-nums md:text-[30px]"
+                className="font-mono text-[29px] font-semibold tracking-[-0.01em] text-white tabular-nums md:text-[30px]"
                 data-testid="shop-starter-price"
               >
                 {shopMoney(product.priceCents, product.currency)}
               </span>
               {perKg ? (
-                <span className="font-mono text-[12.5px] text-[var(--g-text-secondary)] tabular-nums">
+                <span className="font-mono text-[12.5px] text-white/60 tabular-nums">
                   {perKg} {c.product.perKg}
                 </span>
               ) : null}
             </div>
 
-            <div className="mt-3.5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-5 md:mt-[22px]">
+            <div className="mt-3.5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-5 md:mt-4">
               <button
                 type="button"
                 onClick={onAdd}
                 disabled={soldOut}
-                className={applicationPrimaryClasses(
-                  cn(
-                    'min-h-[46px] px-7 text-[14px]',
-                    'disabled:cursor-not-allowed disabled:border-[var(--g-line-strong)] disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)] disabled:opacity-100',
-                  ),
-                )}
+                className={ACCENT_CTA}
                 data-testid={`shop-add-${product.sku}`}
               >
                 {inCart ? c.product.added : c.product.add}
               </button>
-              <a href="#shop-contents" className={applicationQuietClasses('text-[13px]')}>
+              <a href="#shop-contents" className={QUIET_LINK}>
                 {c.starterPack.contentsCta}
               </a>
             </div>
@@ -229,48 +208,68 @@ export function ShopStarterOffer({
 
         {/* LOCAL — the same seven components, sourced where the customer is.
             This is an OFFER, not a fallback: it keeps the product's own money
-            treatment (ink on white, never graphite) so 0 EUR reads as a real
-            price rather than an absence. */}
+            treatment so 0 EUR reads as a real price rather than an absence. */}
         {mode === 'local' ? (
           <>
-            <div className="mt-3 border-l-2 border-[var(--g-orange)] pl-[11px] md:mt-5 md:pl-[13px]">
+            <div className="mt-3 border-l-2 border-[var(--g-orange)] pl-[11px] md:mt-4 md:pl-[13px]">
               <p
-                className="text-[13px] font-semibold text-[var(--g-ink)] md:text-[13.5px]"
+                className="text-[13px] font-semibold text-white md:text-[13.5px]"
                 data-testid="shop-local-name"
               >
                 {c.localPack.name}
               </p>
-              <p className="mt-1 text-[13px] text-[var(--g-text-secondary)]">{c.localPack.lede}</p>
+              <p className="mt-1 text-[13px] text-white/60">{c.localPack.lede}</p>
             </div>
 
-            <div className="mt-3 flex flex-wrap items-baseline gap-3.5 md:mt-5">
+            <div className="mt-3 flex flex-wrap items-baseline gap-3.5 md:mt-4">
               <span
-                className="font-mono text-[29px] font-semibold tracking-[-0.01em] tabular-nums md:text-[30px]"
+                className="font-mono text-[29px] font-semibold tracking-[-0.01em] text-white tabular-nums md:text-[30px]"
                 data-testid="shop-local-price"
               >
                 {c.localPack.price}
               </span>
-              <span className="font-mono text-[12.5px] text-[var(--g-text-secondary)]">
-                {country?.name}
-              </span>
+              <span className="font-mono text-[12.5px] text-white/60">{country?.name}</span>
             </div>
 
-            <div className="mt-3.5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-5 md:mt-[22px]">
+            <div className="mt-3.5 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:gap-5 md:mt-4">
               <button
                 type="button"
                 onClick={onLocalPack}
-                className={applicationPrimaryClasses('min-h-[46px] px-7 text-[14px]')}
+                className={ACCENT_CTA}
                 data-testid="shop-local-cta"
               >
                 {c.localPack.cta}
               </button>
-              <a href="#shop-contents" className={applicationQuietClasses('text-[13px]')}>
+              <a href="#shop-contents" className={QUIET_LINK}>
                 {c.starterPack.contentsCta}
               </a>
             </div>
           </>
         ) : null}
+
+        {/* The strip only ever offers what is NOT on display. */}
+        <div className="mt-4 flex flex-row gap-3 md:mt-5">
+          {alternates.map((alt) => (
+            <button
+              key={alt.id}
+              type="button"
+              onClick={() => setShot(alt.id)}
+              aria-label={alt.label}
+              className="pro-focus-ring block rounded-[6px] bg-white/[0.07] p-1 opacity-[0.88] transition-opacity hover:opacity-100"
+              data-testid={`shop-shot-${alt.id}`}
+            >
+              <img
+                src={alt.thumb}
+                alt=""
+                width={160}
+                height={207}
+                loading="lazy"
+                className="block h-[46px] w-9 object-contain"
+              />
+            </button>
+          ))}
+        </div>
       </div>
-    </section>
+    </DestinationTop>
   );
 }
