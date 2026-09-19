@@ -51,9 +51,11 @@ vi.mock('@/features/constraint-studio/constraintStudioStore', () => ({
   useConstraintStudioStore: (selector: (state: { history: unknown[] }) => unknown) =>
     selector({ history: [] }),
 }));
+/* Version 10 §H1b: the action is „Reset" now, and the door behind it is the shared clean
+   start — the same two questions, asked of the whole workspace rather than of PRO alone. */
 vi.mock('@/pages/destinations/startNewProRecipe', () => ({
-  hasUnsavedProRecipeChanges: mocks.hasUnsaved,
-  startNewProRecipe: mocks.start,
+  workspaceHasResettableState: mocks.hasUnsaved,
+  resetWorkspaceToFreshStart: mocks.start,
 }));
 
 import { ProWorkbar } from './ProWorkbar';
@@ -95,7 +97,7 @@ describe('ProWorkbar new-recipe confirmation', () => {
   it('starts immediately when no unsaved material state exists', async () => {
     mocks.hasUnsaved.mockReturnValue(false);
 
-    await click(host.querySelector('[data-testid="pro-workbar-new-recipe"]'));
+    await click(host.querySelector('[data-testid="pro-workspace-reset"]'));
 
     expect(mocks.start).toHaveBeenCalledTimes(1);
     expect(mocks.start).toHaveBeenCalledWith('gelato');
@@ -105,11 +107,16 @@ describe('ProWorkbar new-recipe confirmation', () => {
   it('shows the exact confirmation copy and cancels or confirms an unsaved draft', async () => {
     mocks.hasUnsaved.mockReturnValue(true);
 
-    await click(host.querySelector('[data-testid="pro-workbar-new-recipe"]'));
+    await click(host.querySelector('[data-testid="pro-workspace-reset"]'));
     expect(mocks.start).not.toHaveBeenCalled();
-    expect(document.body.textContent).toContain('Rozpocząć nową recepturę?');
+    /* Version 10 §H1b: the question names what actually goes. Since Reset is one clean
+       start for HOME and PRO, „Twój pomysł" goes with it and the sentence says so. */
+    expect(document.body.textContent).toContain('Zacząć od nowa?');
     expect(document.body.textContent).toContain(
-      'Niezapisane zmiany w bieżącej recepturze zostaną usunięte.',
+      'Twój pomysł i niezapisane zmiany w bieżącej recepturze zostaną usunięte.',
+    );
+    expect(document.body.textContent).toContain(
+      'Zapisane receptury i Community zostają bez zmian.',
     );
 
     await click(
@@ -120,7 +127,7 @@ describe('ProWorkbar new-recipe confirmation', () => {
     expect(document.body.querySelector('[role="dialog"]')).toBeNull();
     expect(mocks.start).not.toHaveBeenCalled();
 
-    await click(host.querySelector('[data-testid="pro-workbar-new-recipe"]'));
+    await click(host.querySelector('[data-testid="pro-workspace-reset"]'));
     await click(document.body.querySelector('[data-testid="confirm-new-recipe"]'));
     expect(mocks.start).toHaveBeenCalledTimes(1);
   });

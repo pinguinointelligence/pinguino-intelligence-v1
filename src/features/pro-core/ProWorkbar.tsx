@@ -17,8 +17,8 @@ import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSav
 import { resolveSaveBlocker } from '@/features/recipes/saveBlocker';
 import { ReviewDecisionLabel } from '@/features/design-review/ReviewBadge';
 import {
-  hasUnsavedProRecipeChanges,
-  startNewProRecipe,
+  resetWorkspaceToFreshStart,
+  workspaceHasResettableState,
 } from '@/pages/destinations/startNewProRecipe';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
@@ -381,7 +381,10 @@ export function ProWorkbar({
   }, [onSaveAttentionChange, saveAttention]);
 
   const createNewDraft = () => {
-    startNewProRecipe(visibleProductType);
+    /* §H1b: the ONE clean start HOME and PRO share. It clears HOME's idea, chips and
+       profile answers too — the two are presentations of the same live recipe, so a reset
+       that left them standing would walk them into the next recipe on the next switch. */
+    resetWorkspaceToFreshStart(visibleProductType);
     setNameDraft(null);
     setNameError(null);
     setNewRecipeConfirmOpen(false);
@@ -389,7 +392,7 @@ export function ProWorkbar({
 
   const requestNewDraft = () => {
     const nameChanged = nameDraft !== null && nameDraft.trim() !== (savedRecipeName ?? '');
-    if (hasUnsavedProRecipeChanges(nameChanged)) {
+    if (workspaceHasResettableState(nameChanged)) {
       setNewRecipeConfirmOpen(true);
       return;
     }
@@ -549,6 +552,26 @@ export function ProWorkbar({
         data-recipe-identity-state={identityState}
         className=""
       >
+        {/* DESIGN V3.0 Version 10 §H1b — THE top workspace row, and „Reset" on its right.
+            HOME carries the same row above „Twój pomysł | Receptury", so the one action a
+            customer uses to begin again is in the same logical place in both
+            presentations. It used to sit under the card as „+ Nowa receptura" — the same
+            function, a second name, and the only place in the product where starting over
+            was filed under the recipe it was about to discard. */}
+        <div
+          className="mb-2 flex min-h-8 items-center justify-end"
+          data-testid="pro-workspace-top-row"
+        >
+          <button
+            type="button"
+            onClick={requestNewDraft}
+            data-testid="pro-workspace-reset"
+            className="pro-focus-ring inline-flex h-8 shrink-0 items-center rounded-full border border-[var(--g-line)] bg-white px-3.5 text-[12px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)] transition-colors hover:border-ink/35 hover:text-ink"
+          >
+            {w.reset}
+          </button>
+        </div>
+
         {/* OWNER AUTHORITY 2026-09-03: the RECIPE leads the column. The card is
             the first thing in the panel and the actions sit underneath it, in
             the 34 px the tongue already reserved — one band doing two jobs
@@ -696,16 +719,8 @@ export function ProWorkbar({
               (`iconButtonClasses('xs')` = size-7), so both sit centred on the rule
               and on ZAPISZ's label instead of two heights side by side. */}
           <div className="absolute inset-x-0 bottom-0 z-0 flex h-[34px] items-center gap-2.5 min-[68.5rem]:h-8 min-[68.5rem]:gap-2">
-            <button
-              type="button"
-              onClick={requestNewDraft}
-              data-testid="pro-workbar-new-recipe"
-              data-workbar-action-size="primary"
-              data-workbar-action-width="content"
-              className="pro-focus-ring shrink-0 rounded-full border border-[var(--g-line)] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)] transition-colors hover:border-ink/35 hover:text-ink min-[68.5rem]:inline-flex min-[68.5rem]:h-7 min-[68.5rem]:items-center min-[68.5rem]:py-0"
-            >
-              + Nowa receptura
-            </button>
+            {/* §H1b: „Reset" left this band for the top workspace row above the card. The
+                band keeps its 34 px and its rule, so nothing below it moved. */}
             {overflowMenu}
             <span aria-hidden className="h-px flex-1 bg-[var(--g-line)]" />
           </div>
@@ -773,6 +788,9 @@ export function ProWorkbar({
           open={newRecipeConfirmOpen}
           onCancel={() => setNewRecipeConfirmOpen(false)}
           onConfirm={createNewDraft}
+          title={w.resetTitle}
+          description={w.resetBody}
+          confirmLabel={w.reset}
         />
       </section>
     );
@@ -802,19 +820,19 @@ export function ProWorkbar({
           <button
             type="button"
             onClick={requestNewDraft}
-            data-testid="pro-workbar-new-recipe"
+            data-testid="pro-workspace-reset"
             data-workbar-action-size="primary"
             data-workbar-action-width="content"
             className={cn(
               /* OWNER FROZEN PRO VISUAL: inside the display column the save row
                  is a row of 44 px pills, and the PRIMARY leads it. DOM order
-                 stays New → Save → overflow for the docked bar; only the panel
+                 stays Reset → Save → overflow for the docked bar; only the panel
                  reorders visually, so one contract still describes both. */
               'shrink-0 border border-ink/15 bg-white text-xs font-semibold text-ink transition-colors hover:border-ink/35 hover:bg-[var(--g-ivory)]',
               'h-11 rounded-[14px] px-3 shadow-pro-e0',
             )}
           >
-            + Nowa receptura
+            {w.reset}
           </button>
           <button
             type="button"
@@ -911,6 +929,9 @@ export function ProWorkbar({
         open={newRecipeConfirmOpen}
         onCancel={() => setNewRecipeConfirmOpen(false)}
         onConfirm={createNewDraft}
+        title={w.resetTitle}
+        description={w.resetBody}
+        confirmLabel={w.reset}
       />
     </section>
   );

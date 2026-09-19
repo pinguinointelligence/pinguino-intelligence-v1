@@ -1,4 +1,5 @@
 import { useRecipeStore } from '@/stores/recipeStore';
+import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
@@ -56,6 +57,36 @@ export function startNewProRecipe(requestedVisible?: VisibleProductType): void {
   useConstraintStudioStore.getState().resetDraftSession();
   useConstraintStudioStore.setState({ proCoreRecipeId: null, lastSavedVersion: null });
   useProductionSessionStore.getState().clear();
+}
+
+/**
+ * DESIGN V3.0 Version 10 §H1b — „Reset": ONE clean start for the whole workspace.
+ *
+ * „Reset" is not a new function. It is the action HOME and PRO both already had — PRO
+ * called it „Nowa receptura", HOME called it „Reset" — and Version 10 gives it one name
+ * and one place. What it must leave behind is the state a NEW recipe would be built from:
+ * nothing of the previous idea, the chosen source, the draft, the machine, the profile,
+ * Direction, the staged calculation or the batch.
+ *
+ * The reason it clears HOME and PRO together rather than „whichever one I am in": the two
+ * are presentations of the SAME live recipe (`recipeStore`), so a reset in PRO that left
+ * HOME's idea, chips and profile answers standing would walk straight back into the next
+ * recipe the moment the customer switched. The single live recipe has a single clean start.
+ *
+ * Saved recipes, the library and Community are untouched — this discards work in progress,
+ * never anything the customer has put away.
+ */
+export function resetWorkspaceToFreshStart(requestedVisible?: VisibleProductType): void {
+  startNewProRecipe(requestedVisible);
+  useHomeDraftStore.getState().startNew();
+}
+
+/**
+ * Is there anything for „Reset" to clear? An empty workspace offers it quietly rather than
+ * promising an action that would do nothing (§H1b: empty HOME → Reset disabled/subtle).
+ */
+export function workspaceHasResettableState(nameChanged = false): boolean {
+  return hasUnsavedProRecipeChanges(nameChanged) || useHomeDraftStore.getState().hasDraft();
 }
 
 /**

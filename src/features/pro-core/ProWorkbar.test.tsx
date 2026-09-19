@@ -112,11 +112,13 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(source).not.toContain('<a\n          href="/pro/versions"');
   });
 
-  it('orders New, Save, compact menu, then right-aligned recipe status', () => {
+  it('orders Reset, Save, compact menu, then right-aligned recipe status', () => {
+    /* Version 10 §H1b: ONE name for the one clean start. „+ Nowa receptura" and HOME's
+       „Reset" were the same function under two names; the name is now „Reset" in both. */
     const html = render({ savedRecipeId: null, dirty: false });
-    expect(html).toContain('data-testid="pro-workbar-new-recipe"');
-    expect(html).toContain('+ Nowa receptura');
-    const newAt = html.indexOf('data-testid="pro-workbar-new-recipe"');
+    expect(html).toContain('data-testid="pro-workspace-reset"');
+    expect(html).not.toContain('Nowa receptura');
+    const newAt = html.indexOf('data-testid="pro-workspace-reset"');
     const saveAt = html.indexOf('data-testid="pro-workbar-save"');
     const menuAt = html.indexOf('data-testid="pro-workbar-menu"');
     const statusAt = html.indexOf('data-testid="pro-workbar-status"');
@@ -136,7 +138,10 @@ describe('ProWorkbar (sticky top workbar)', () => {
     // underneath it. Only the presentation contract moved — every behaviour
     // assertion in this file is untouched.
     const html = render({ savedRecipeId: null, dirty: false }, 'panel');
-    expect(html.match(/data-workbar-action-width="content"/g)).toHaveLength(2);
+    /* Version 10 §H1b: ZAPISZ is the only action left in the band — „Reset" moved up to
+       the top workspace row, so it no longer answers to the band's sizing contract. */
+    expect(html.match(/data-workbar-action-width="content"/g)).toHaveLength(1);
+    expect(html).toContain('data-testid="pro-workspace-top-row"');
     expect(html).toContain('data-workbar-status-placement="identity-card"');
     expect(html).toContain('data-testid="pro-recipe-identity-card"');
     expect(html).toContain('data-workbar-save-shape="tongue"');
@@ -153,21 +158,19 @@ describe('ProWorkbar (sticky top workbar)', () => {
     expect(html).toContain('absolute inset-x-0 bottom-0 z-0 flex h-[34px]');
     // Exactly one status node — the card must not duplicate it.
     expect(html.match(/data-testid="pro-workbar-status"/g)).toHaveLength(1);
-    /* SUPERSEDED, owner authority 2026-09-03. The panel used to render
-       New → Save → name to satisfy a canonical ordering contract written when
-       the actions stood ABOVE the card. The approved layout puts the card
-       first and the actions beneath it, so that order would now walk a
-       keyboard from the bottom-right control up to the name and back down to
-       the bottom-left. Source order follows the eye instead: the card's name,
-       then the two actions on the left of the band, then Save on its right.
-
-       The bar variant is untouched and still asserts New → Save → menu →
-       status in the test above; only the panel's own reading order moved. */
-    const newAt = html.indexOf('data-testid="pro-workbar-new-recipe"');
+    /* Version 10 §H1b — reading order, updated where the action moved. „Reset" now opens
+       the panel from the TOP workspace row (it is the row above the card, so a keyboard
+       meets it before the recipe it would discard); the card's name follows, and ZAPISZ
+       closes the band. The 2026-09-03 authority put the actions under the card to stop a
+       keyboard walking from the bottom-right control back up to the name — with only
+       ZAPISZ left in the band, that walk no longer exists. */
+    const resetAt = html.indexOf('data-testid="pro-workspace-reset"');
     const saveAt = html.indexOf('data-testid="pro-workbar-save"');
     const nameAt = html.indexOf('data-testid="pro-workbar-name"');
-    expect(nameAt).toBeLessThan(newAt);
-    expect(newAt).toBeLessThan(saveAt);
+    const cardAt = html.indexOf('data-testid="pro-recipe-identity-card"');
+    expect(resetAt).toBeGreaterThan(-1);
+    expect(resetAt).toBeLessThan(cardAt);
+    expect(nameAt).toBeLessThan(saveAt);
   });
 
   it('shows the tongue when there is something to save and hides it when clean', () => {

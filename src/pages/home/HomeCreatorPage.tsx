@@ -82,7 +82,11 @@ import {
   type HomeStartMode,
 } from '@/features/home-creator/homeComposerGate';
 import { officialRecipeCopy } from '@/copy/officialRecipeLibrary';
-import { startNewProRecipe } from '@/pages/destinations/startNewProRecipe';
+import {
+  resetWorkspaceToFreshStart,
+  startNewProRecipe,
+} from '@/pages/destinations/startNewProRecipe';
+import { HomeResetSheet } from '@/features/home-creator/ui/HomeResetSheet';
 import {
   OfficialRecipeHandoffError,
   officialRecipeHandoffNotices,
@@ -197,6 +201,8 @@ export function HomeCreatorPage() {
     readonly id: string;
   } | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
+  /** §H1b — „Reset" asked from the top workspace row, before anything is discarded. */
+  const [startResetAsk, setStartResetAsk] = useState(false);
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const [recipeNotice, setRecipeNotice] = useState<string | null>(null);
   const intentIngredients = useHomeIntentIngredients();
@@ -367,7 +373,9 @@ export function HomeCreatorPage() {
   // must all read the same figure (2026-09-18 audit: a sorbet showed as 2 containers).
   const derivation = useMemo(
     () =>
-      machine ? deriveMachineSetup(machine, visibleProductTypeFor(draft.profile ?? 'gelato')) : null,
+      machine
+        ? deriveMachineSetup(machine, visibleProductTypeFor(draft.profile ?? 'gelato'))
+        : null,
     [machine, draft.profile],
   );
   const recommendedBatchGrams = derivation?.recommendedBatchGrams ?? null;
@@ -1054,8 +1062,11 @@ export function HomeCreatorPage() {
    * not touched.
    */
   const resetToEmptyStart = () => {
-    startNewProRecipe(useRecipeStore.getState().visibleProductType ?? undefined);
-    useHomeDraftStore.getState().startNew();
+    /* §H1b: the ONE reset HOME and PRO share. Everything below it is this page's own
+       screen state — open questions, notices, a half-answered prompt — which belongs to
+       the page and could not be cleared from anywhere else. */
+    resetWorkspaceToFreshStart(useRecipeStore.getState().visibleProductType ?? undefined);
+    setStartResetAsk(false);
     setMachine(null);
     setAmount(null);
     setForceMachineStage(false);
@@ -1290,6 +1301,16 @@ export function HomeCreatorPage() {
             mode={startMode}
             onModeChange={setStartMode}
             atStart={atStart}
+            onReset={() => setStartResetAsk(true)}
+            /* Anything a new recipe must not inherit: a typed idea, a chip, a chosen
+               source, or a recipe already on the bench. */
+            resetEnabled={
+              composerHasText ||
+              draft.chips.length > 0 ||
+              draft.recipeReady ||
+              recipe.dirty ||
+              startMode !== 'idea'
+            }
             ideaReady={startCtaEnabled({
               mode: 'idea',
               chips: draft.chips,
@@ -1610,6 +1631,11 @@ export function HomeCreatorPage() {
             </button>
           </div>
         </DialogShell>
+      ) : null}
+
+      {/* §H1b — the SAME question the recipe screen asks, from the top workspace row. */}
+      {startResetAsk ? (
+        <HomeResetSheet onCancel={() => setStartResetAsk(false)} onReset={resetToEmptyStart} />
       ) : null}
 
       <RecipeCustomMachineDialog

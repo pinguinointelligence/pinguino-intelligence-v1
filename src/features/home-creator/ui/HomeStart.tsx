@@ -44,6 +44,8 @@ export function HomeStart({
   onCommunityOpened,
   busy = false,
   libraryRefusal = null,
+  onReset,
+  resetEnabled,
 }: {
   /** A new HOME draft (new recipe, account switch) is a fresh start screen. */
   draftId: string;
@@ -64,6 +66,10 @@ export function HomeStart({
   busy?: boolean;
   /** Why a Gellatti recipe chosen here could not be opened (the official door's refusal). */
   libraryRefusal?: { readonly recipeId: string; readonly message: string } | null;
+  /** §H1b — „Reset" in the top workspace row: the ONE clean start, asked for first. */
+  onReset: () => void;
+  /** Nothing to clear yet: the action stays, quietly, instead of promising a no-op. */
+  resetEnabled: boolean;
 }) {
   const copy = homeCreatorCopy;
   const [view, setView] = useState<HomeLibraryView>(EMPTY_LIBRARY_VIEW);
@@ -104,6 +110,9 @@ export function HomeStart({
       const height = barElement.offsetHeight;
       spaceElement.style.height = `${height}px`;
       root.style.scrollPaddingBottom = `${height}px`;
+      /* §H1b: the working area is centred in what is left between the header and THIS
+         bar, so the height it takes has to be a number the stylesheet can read. */
+      root.style.setProperty('--home-start-cta-height', `${height}px`);
     };
     reserve();
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(reserve);
@@ -111,6 +120,7 @@ export function HomeStart({
     return () => {
       observer?.disconnect();
       root.style.scrollPaddingBottom = '';
+      root.style.removeProperty('--home-start-cta-height');
     };
   }, [atStart]);
 
@@ -131,11 +141,33 @@ export function HomeStart({
   };
 
   return (
-    <div className="home-start" data-testid="home-start" data-mode={activeMode}>
+    <div
+      className="home-start"
+      data-testid="home-start"
+      data-mode={activeMode}
+      data-at-start={atStart ? 'true' : 'false'}
+    >
       <div className="home-start-body">
         {atStart ? (
           <div className="home-start-col">
-            <HomeStartModes mode={mode} onChange={onModeChange} />
+            {/* §H1b — THE top workspace row: where you start from on the left, „Reset" on
+                the right. PRO carries the same row, so the one action a customer uses to
+                begin again is in the same logical place in both presentations. */}
+            <div className="home-start-top" data-testid="home-workspace-top-row">
+              <HomeStartModes mode={mode} onChange={onModeChange} />
+              <button
+                type="button"
+                className="home-start-reset"
+                data-testid="home-workspace-reset"
+                aria-haspopup="dialog"
+                aria-disabled={!resetEnabled}
+                onClick={() => {
+                  if (resetEnabled) onReset();
+                }}
+              >
+                {copy.recipeScreen.reset}
+              </button>
+            </div>
           </div>
         ) : null}
         {library ? (
@@ -153,7 +185,7 @@ export function HomeStart({
             }}
           />
         ) : (
-          <div className="home-start-col">{idea}</div>
+          <div className="home-start-col home-start-main">{idea}</div>
         )}
       </div>
       {showAction ? (
