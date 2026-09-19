@@ -14,7 +14,10 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { REFERRAL_BONUS_DAYS } from './referralRewardRules';
 
-const panel = readFileSync(new URL('./ReferralPanel.tsx', import.meta.url), 'utf8');
+const panel = readFileSync(
+  new URL('./ReferralPanel.tsx', import.meta.url),
+  'utf8',
+);
 const affiliatePage = readFileSync(
   new URL('../../pages/destinations/AffiliatePage.tsx', import.meta.url),
   'utf8',

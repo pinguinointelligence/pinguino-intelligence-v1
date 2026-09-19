@@ -88,8 +88,7 @@ const returnedKeys = (definition: string): string[] => {
 };
 
 /** Anything that would identify the other person, or their purchase. */
-const IDENTIFYING =
-  /referred_user_id|stripe_subscription_id|stripe_invoice_id|attribution_id|reversal_reason|auth\.users|\bemail\b|full_name|display_name|profiles/;
+const IDENTIFYING = /referred_user_id|stripe_subscription_id|stripe_invoice_id|attribution_id|reversal_reason|auth\.users|\bemail\b|full_name|display_name|profiles/;
 
 const DASHBOARD = latestDefinition('gellatti_my_referral_dashboard_v1');
 const CLAIM = latestDefinition('gellatti_claim_referral_code_v1');
