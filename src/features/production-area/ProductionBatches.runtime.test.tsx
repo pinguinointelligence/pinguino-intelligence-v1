@@ -93,7 +93,13 @@ const serverRun = (runId: string, createdAt: string) =>
 
 function LocationProbe() {
   const location = useLocation();
-  return <output data-testid="location" data-path={location.pathname} />;
+  return (
+    <output
+      data-testid="location"
+      data-path={location.pathname}
+      data-search={location.search}
+    />
+  );
 }
 
 describe('Partie → W toku', () => {
@@ -168,6 +174,10 @@ describe('Partie → W toku', () => {
     host.querySelector<HTMLButtonElement>(
       `[data-in-progress-run-id="${runId}"] [data-testid="production-resume-run"]`,
     )!;
+  const continueButton = (runId: string) =>
+    host.querySelector<HTMLButtonElement>(
+      `[data-in-progress-run-id="${runId}"] [data-testid="production-continue-run"]`,
+    )!;
 
   it('shows the runs in progress after a refresh — newest first — instead of „Otwórz recepturę…”', async () => {
     await render();
@@ -179,9 +189,37 @@ describe('Partie → W toku', () => {
       sort: 'newest',
       limit: 5,
     });
-    // One black action: the newest run's „Wróć do partii”.
-    expect(resumeButton('run-r2').className).toContain('bg-ink');
-    expect(resumeButton('run-r1').className).not.toContain('bg-ink');
+    /* One black action, and Etap 2 moved WHICH one it is: continuing the batch is the
+       thing the operator came for. „Otwórz recepturę partii" replaces the workbench
+       context, so it stays quiet — and never black. */
+    expect(continueButton('run-r2').className).toContain('bg-ink');
+    expect(continueButton('run-r1').className).not.toContain('bg-ink');
+    expect(resumeButton('run-r2').className).not.toContain('bg-ink');
+  });
+
+  it('„Kontynuuj partię" opens the batch in place, taking nothing from the editor', async () => {
+    // A draft the operator has not saved — the thing the old path silently destroyed.
+    useRecipeStore.setState({ dirty: true });
+    const draftBefore = JSON.stringify(useRecipeStore.getState());
+    await render();
+    await vi.waitFor(() => expect(rows()).toHaveLength(2));
+
+    await act(async () => continueButton('run-r1').click());
+
+    // The batch lives in the ADDRESS, so a refresh finds it again…
+    await vi.waitFor(() =>
+      expect(
+        host.querySelector<HTMLElement>('[data-testid="location"]')?.dataset.search,
+      ).toContain('run=run-r1'),
+    );
+    // …the workbench was never asked for, and no gate appeared…
+    expect(mocks.resume).not.toHaveBeenCalled();
+    expect(document.body.querySelector('[data-testid="confirm-new-recipe"]')).toBeNull();
+    expect(host.querySelector<HTMLElement>('[data-testid="location"]')?.dataset.path).toBe(
+      '/production',
+    );
+    // …and the draft is exactly where the operator left it.
+    expect(JSON.stringify(useRecipeStore.getState())).toBe(draftBefore);
   });
 
   it('keeps the list from the server after a local clear („+ Nowa receptura”)', async () => {

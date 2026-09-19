@@ -58,6 +58,11 @@ export interface ProductionBatchesLabelsCopy {
     readonly inProgressLocalOnly: string;
     readonly resume: string;
     readonly resuming: string;
+    /** „Kontynuuj partię" — the batch itself, with the recipe left where it is. */
+    readonly continueBatch: string;
+    readonly continuing: string;
+    readonly continueBack: string;
+    readonly continueFailed: string;
     readonly resumeConfirmTitle: string;
     readonly resumeConfirmBody: string;
     readonly resumeFailed: {
@@ -157,8 +162,13 @@ export const productionBatchesLabelsCopyPl: ProductionBatchesLabelsCopy = {
     inProgressChecking: 'Sprawdzamy partie w toku…',
     inProgressLocalOnly:
       'Nie udało się teraz sprawdzić partii na koncie. Pokazujemy partie zapisane na tym urządzeniu.',
-    resume: 'Wróć do partii',
-    resuming: 'Otwieramy partię…',
+    resume: 'Otwórz recepturę partii',
+    resuming: 'Otwieramy recepturę…',
+    continueBatch: 'Kontynuuj partię',
+    continuing: 'Wczytujemy partię…',
+    continueBack: '← Wróć do partii',
+    continueFailed:
+      'Nie udało się otworzyć tej partii. Twoja otwarta receptura pozostała bez zmian.',
     resumeConfirmTitle: 'Otworzyć recepturę tej partii?',
     resumeConfirmBody: 'Niezapisane zmiany w bieżącej recepturze zostaną usunięte.',
     resumeFailed: {
