@@ -206,6 +206,7 @@ export function DestinationTop({
   visual,
   actions,
   note,
+  children,
 }: {
   eyebrow?: string;
   title: string;
@@ -214,6 +215,15 @@ export function DestinationTop({
   visual?: ReactNode;
   actions?: ReactNode;
   note?: string;
+  /**
+   * Content the page puts INSIDE the top, under the lede.
+   *
+   * Sklep is why this exists: there the offer itself is the entry block — the
+   * country question, the availability line, the price and the action all stand
+   * on the same dark ground as the title, rather than in a second card below
+   * it. Franchise and Affiliate pass nothing and are unaffected.
+   */
+  children?: ReactNode;
 }) {
   return (
     <section
@@ -226,6 +236,30 @@ export function DestinationTop({
           <span
             aria-hidden="true"
             className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,15,17,0.28)_0%,rgba(14,15,17,0.62)_46%,rgba(14,15,17,0.94)_82%,#0e0f11_100%)] md:bg-[linear-gradient(90deg,#0e0f11_0%,rgba(14,15,17,0.9)_26%,rgba(14,15,17,0.34)_66%,rgba(14,15,17,0.12)_100%)]"
+          />
+          {/* THE PHOTOGRAPH RETURNS TO THE GROUND AT EVERY EDGE IT REACHES.
+              Owner decision 2026-09-19.
+
+              The fade above carries the copy side only, so the picture used to
+              run to the block's outer edges at full opacity. On an editorial
+              photograph shot edge to edge that is invisible. On a PACKSHOT it is
+              not: the Starter Pack is photographed on a white studio ground, so
+              the block ended in a pale band with a hard vertical edge instead of
+              the photograph meeting the graphite.
+
+              This is a property of the SYSTEM, not a Shop patch — any
+              destination may be given a product photograph — so it lives on the
+              shared component and is deliberately gentle: a vignette over the
+              last fifth, reaching the ground only in the final pixels. On the
+              dark editorial frames Franchise and Affiliate use it is barely
+              perceptible; on the packshot it is what removes the band.
+
+              All three edges the picture can reach are returned, not just the
+              right one: the studio ground sits ABOVE the bag as well, so a
+              right-only vignette still left a pale wedge in the top corner. */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-[linear-gradient(0deg,#0e0f11_0%,rgba(14,15,17,0.5)_4%,rgba(14,15,17,0)_14%)] md:bg-[linear-gradient(270deg,#0e0f11_0%,rgba(14,15,17,0.62)_4%,rgba(14,15,17,0.22)_11%,rgba(14,15,17,0)_20%),linear-gradient(180deg,#0e0f11_0%,rgba(14,15,17,0.30)_4%,rgba(14,15,17,0)_13%),linear-gradient(0deg,#0e0f11_0%,rgba(14,15,17,0.30)_4%,rgba(14,15,17,0)_13%)]"
           />
         </span>
       ) : null}
@@ -249,6 +283,7 @@ export function DestinationTop({
             {lede}
           </p>
         ) : null}
+        {children ? <div className="mt-4 min-w-0">{children}</div> : null}
         {actions ? <div className="mt-4 flex flex-wrap items-center gap-3">{actions}</div> : null}
         {note ? (
           <small className="mt-3 block text-[11.5px] leading-[1.4] text-white/50">{note}</small>
