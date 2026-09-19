@@ -34,8 +34,14 @@ export interface ProductionAreaSection {
   /**
    * The section's tools are a Pro capability. A HOME or signed-out visitor still reaches it from
    * the bar (the area is one place for everyone) and is told plainly where the tools live.
+   *
+   * OD-32: the capability is NAMED rather than implied. This used to be a bare `proOnly` read
+   * against `canUseProductionMode`, so the moment a HOME plan gained the right to run a batch
+   * it also gained the label toolset — two unrelated things behind one flag.
    */
   proOnly: boolean;
+  /** Which capability actually opens it. Only meaningful when `proOnly`. */
+  requires?: 'canPrintProductionLabels';
 }
 
 const nested = (path: string) => (loc: ProductionAreaLocation) =>
@@ -75,6 +81,7 @@ export const PRODUCTION_AREA_SECTIONS: readonly ProductionAreaSection[] = [
     to: '/labels',
     matches: oneOf('/labels', '/label'),
     proOnly: true,
+    requires: 'canPrintProductionLabels',
   },
 ];
 

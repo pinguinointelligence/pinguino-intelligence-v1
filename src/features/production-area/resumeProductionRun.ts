@@ -4,6 +4,7 @@ import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
 import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
 import { hydrateProductionSessionFromRun } from '@/features/production-workspace/productionSession';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
+import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
 import { productionSourceForRecipe } from '@/features/production-workspace/useProductionWorkspace';
 import {
   openSavedRecipeVersion,
@@ -92,11 +93,16 @@ export async function resumeProductionRun({
     if (!remote || remote.status !== 'in_progress') return { ok: false, reason: 'run-missing' };
     let hydrated;
     try {
+      const input = buildRecipeInput(recipe, 'planning');
+      const composition = recipeCompositionFromState(recipe);
       hydrated = hydrateProductionSessionFromRun(
         remote,
-        productionSourceForRecipe(recipe, true),
-        buildRecipeInput(recipe, 'planning'),
-        recipeCompositionFromState(recipe),
+        /* The recipe was just opened AT the run's own saved version above, so the library
+           identity is what resolves here; the fingerprint is the same one that identity is
+           being read against. */
+        productionSourceForRecipe(recipe, true, productionVersionFingerprint(input, composition)),
+        input,
+        composition,
       );
     } catch {
       return { ok: false, reason: 'plan-differs' };

@@ -919,7 +919,7 @@ describe('supabaseProduction — createRun persists the frozen plan from an EXAC
     });
   });
 
-  it('refuses Production Mode for Demo and Home, and writes nothing', async () => {
+  it('refuses Production Mode for Demo, and writes nothing', async () => {
     const repo = repoFor(store);
     const args = (caps: typeof PRO) => ({
       ownerUserId: U1,
@@ -928,9 +928,23 @@ describe('supabaseProduction — createRun persists the frozen plan from an EXAC
       capabilities: caps,
       by: U1,
     });
+    /* OD-32 (Owner, 19.09.2026): HOME may run a batch. DEMO — the persona an unauthenticated
+       visitor resolves to — may not, and is still refused before anything is written. */
     await expect(repo.createRun(args(DEMO))).rejects.toThrow(/does not include Production Mode/i);
-    await expect(repo.createRun(args(HOME))).rejects.toThrow(/does not include Production Mode/i);
     expect(store.tables.production_runs).toHaveLength(0);
+  });
+
+  it('accepts Production Mode for a signed-in HOME plan (OD-32)', async () => {
+    const repo = repoFor(store);
+    await expect(
+      repo.createRun({
+        ownerUserId: U1,
+        version: makeVersion('ver-1'),
+        target: { kind: 'weight_g' as const, grams: 1000 },
+        capabilities: HOME,
+        by: U1,
+      }),
+    ).resolves.toMatchObject({ status: 'draft' });
   });
 
   it('refuses a volume run without a density (honest needs_more_information)', async () => {

@@ -38,19 +38,37 @@ import { CustomerShellV1 } from './CustomerShellV1';
  * ------------------------------------------------------------------ */
 
 const access = (over: Partial<EffectiveAccess>): EffectiveAccess => ({
-  canHome: false, canPro: false, canPartner: false, canAdmin: false,
-  exactGrams: false, saveRecipes: false, professionalScaling: false, partnerAnalytics: false,
-  accountAdministration: false, allowedModes: [], activeSourcesByScope: {}, denialReasons: [],
+  canHome: false,
+  canPro: false,
+  canPartner: false,
+  canAdmin: false,
+  exactGrams: false,
+  saveRecipes: false,
+  professionalScaling: false,
+  partnerAnalytics: false,
+  accountAdministration: false,
+  allowedModes: [],
+  activeSourcesByScope: {},
+  denialReasons: [],
   ...over,
 });
 
 const HOME_ACCESS = access({ canHome: true, exactGrams: true, saveRecipes: true });
-const PRO_ACCESS = access({ canPro: true, exactGrams: true, saveRecipes: true, professionalScaling: true });
+const PRO_ACCESS = access({
+  canPro: true,
+  exactGrams: true,
+  saveRecipes: true,
+  professionalScaling: true,
+});
 
 /** Persona under PRODUCTION semantics (isDev false — the DEV override is dead). */
 const productionPersona = () => {
   const s = useProCoreAccessStore.getState();
-  return resolveProCorePersona({ effectiveAccess: s.effectiveAccess, devPersona: s.devPersona, isDev: false });
+  return resolveProCorePersona({
+    effectiveAccess: s.effectiveAccess,
+    devPersona: s.devPersona,
+    isDev: false,
+  });
 };
 
 const renderShell = () =>
@@ -63,7 +81,8 @@ const renderShell = () =>
 const personaTraceOf = (html: string): string | null =>
   /data-persona="([a-z]+)"/.exec(html)?.[1] ?? null;
 
-const resetStore = () => useProCoreAccessStore.setState({ effectiveAccess: null, devPersona: null });
+const resetStore = () =>
+  useProCoreAccessStore.setState({ effectiveAccess: null, devPersona: null });
 beforeEach(resetStore);
 afterEach(resetStore);
 
@@ -114,7 +133,13 @@ describe('login transition — demo → home updates the persona without reload 
     expect(caps.canViewExactGrams).toBe(true);
     expect(caps.canSaveRecipe).toBe(true);
     expect(caps.maxSavedRecipes).toBe(1); // HOME_MAX_SAVED_RECIPES
-    expect(caps.canUseProductionMode).toBe(false); // Home never gets Pro entry
+    /* OD-32 (Owner, 19.09.2026): a signed-in HOME plan may run its own production batch.
+       „Home never gets Pro entry" is still true — it is just no longer this flag that says
+       so, because running a batch is a HOME use case. Two independent PRO-only probes, so
+       the guard is not a single point of failure. */
+    expect(caps.canUseProductionMode).toBe(true);
+    expect(caps.canUseProfessionalFlow).toBe(false);
+    expect(caps.canUseCosts).toBe(false);
   });
 });
 
@@ -156,7 +181,8 @@ describe('pro login after home logout — no cross-session persona leak', () => 
     expect(productionPersona()).toBe('pro');
     const caps = proCoreCapabilitiesFor(productionPersona());
     expect(caps.maxSavedRecipes).toBeNull(); // pro unlimited — never home's 1
-    expect(caps.canUseProductionMode).toBe(true); // the Pro capability entry
+    expect(caps.canUseProfessionalFlow).toBe(true); // the Pro-only capability entry
+    expect(caps.canUseProductionMode).toBe(true); // shared with HOME since OD-32
   });
 
   it('device-local machine state is keyed per account — one account never reads another’s', () => {

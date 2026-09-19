@@ -53,7 +53,7 @@ describe('InMemoryProduction — capability gate (Pro-only)', () => {
     );
   });
 
-  it('Demo and Home cannot use Production Mode; Pro can', () => {
+  it('Demo cannot use Production Mode; Home and Pro can', () => {
     const v = makeVersion('ver-1');
     const create = (caps: typeof PRO) =>
       svc.createRun({
@@ -63,8 +63,11 @@ describe('InMemoryProduction — capability gate (Pro-only)', () => {
         capabilities: caps,
         by: 'u1',
       });
+    /* OD-32 (Owner, 19.09.2026): a HOME plan may run a batch — making ice cream is what the
+       plan is for. DEMO is the persona an unauthenticated visitor resolves to, and this guard
+       is the last thing between them and a server-side run, so it stays. */
     expect(() => create(DEMO)).toThrow(/does not include Production Mode/i);
-    expect(() => create(HOME)).toThrow(/does not include Production Mode/i);
+    expect(create(HOME).status).toBe('draft');
     expect(create(PRO).status).toBe('draft');
   });
 });

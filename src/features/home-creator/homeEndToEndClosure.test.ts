@@ -11,9 +11,11 @@ const recipe = read('src/features/home-creator/ui/HomeRecipeSection.tsx');
 const review = read('src/features/home-creator/ui/HomeRecalculate.tsx');
 const orchestration = read('src/features/home-creator/homeRecalculation.ts');
 const preparation = read('src/features/home-creator/ui/HomePreparation.tsx');
-const processController = read(
-  'src/features/production-workspace/process/useLocalProductionProcess.ts',
-);
+/* OD-24: HOME's batch is the DURABLE one, so the controller behind its process is the
+   durable twin — the local controller stays for the demo / not-signed-in path. */
+const processController = read('src/features/production-workspace/useDurableProductionProcess.ts');
+const workspace = read('src/features/production-workspace/useProductionWorkspace.ts');
+const host = read('src/features/production-workspace/ProductionProcessHost.tsx');
 const processView = read('src/features/production-workspace/process/ProductionProcess.tsx');
 const draft = read('src/features/home-creator/homeDraftStore.ts');
 const amount = read('src/features/home-creator/ui/HomeAmountPrompt.tsx');
@@ -150,46 +152,66 @@ describe('GELLATTI HOME end-to-end closure — Owner matrix', () => {
     expect(review).toContain('void onApplied()');
   });
 
-  it('HOME-E2E-16 an unsaved recipe can enter Production', () => {
-    expect(preparation).toContain('recipeId: draft.draftId');
-    expect(preparation).toContain('recipeVersionId: null');
-    expect(preparation).not.toContain('saved_version_required');
+  it('HOME-E2E-16 an unsaved recipe enters Production on a DURABLE run, without saving it', () => {
+    /* OD-24: the batch is never local for a signed-in customer, and the customer is never
+       sent back to „Zapisz recepturę" to get one. The recipe gets a technical, hidden
+       version to point at, written through the same save authority a library save uses. */
+    expect(preparation).toContain('ensureDurableProductionRecipe({');
+    expect(preparation).toContain('markProductionSnapshot({');
+    expect(preparation).not.toContain('markSaved(');
+    // The PRO refusal „Zapisz wersję wykonawczą" is never shown to a HOME customer.
+    expect(preparation).toContain('saved_version_required: null');
+    expect(preparation).not.toContain('Zapisz wersję wykonawczą');
   });
 
   it('HOME-E2E-17 Preparation reads canonical Production steps', () => {
-    expect(preparation).toContain('useProductionSessionStore');
+    // OD-24: HOME hosts the ONE durable process rather than driving a store of its own.
+    expect(preparation).toContain('<ProductionProcessHost');
+    expect(preparation).not.toContain('useProductionSessionStore');
     expect(preparation).toContain('recipeCompositionFromState');
     // The machine hand-off comes from the ONE authority PRO's Production uses
     // (`productionMachineGuide`), never from HOME's own reading of the catalog.
     expect(preparation).toContain('productionMachineGuide');
     expect(preparation).not.toContain('machineEducationForSelection');
-    expect(preparation).toContain('validateRecipeBehaviorOnServer');
-    expect(preparation).toContain('evaluateRecipeConstraintAuthority');
+    /* The product and recipe gates did not get weaker by moving: they are the SHARED ones
+       every batch passes, which is why HOME no longer carries a copy of them. */
+    expect(workspace).toContain('validateRecipeBehaviorOnServer({');
+    expect(workspace).toContain('evaluateRecipeConstraintAuthority({');
+    expect(host).toContain('useDurableProductionProcess(production');
   });
 
   it('HOME-E2E-18 a confirmed deviation uses Production Rescue („Korekta partii”)', () => {
     // DESIGN V3.0 IV: „Dodałem za dużo” and TARA are gone — the ✓ with a different amount
     // opens the same decision PRO Production offers, through the same gate and authority,
     // in the ONE shared batch process HOME hosts (DESIGN H4).
-    expect(preparation).toContain('useLocalProductionProcess(');
+    expect(preparation).not.toContain('useLocalProductionProcess(');
     for (const source of [preparation, processView]) {
       expect(source).not.toContain('home-production-overage');
       expect(source).not.toContain('home-production-tare');
     }
-    expect(processController).toContain('browserProductionRescueDecision(session)');
-    expect(processController).toContain('assessProductionRescue');
-    expect(processController).toContain('applyVerifiedRescueInput');
-    expect(processController).toContain('productionDecisionOptions(');
+    /* OD-24 made this STRONGER: HOME's deviation is now decided by the server-authorised
+       Rescue („authorizeRescue" → „consumeRescue"), the exact gate PRO passes — not by the
+       browser assessment the local controller falls back to. */
+    expect(processController).toContain('production.deviationDecisionUnresolved');
+    expect(processController).toContain('productionDecisionOptions({');
+    expect(processController).not.toContain('assessProductionRescue(');
+    expect(workspace).toContain('requestRescueAuthorization');
+    expect(workspace).toContain('consumeAuthorizedRescue');
   });
 
   it('HOME-E2E-19 topping appears only after the machine stage', () => {
     expect(processController).toContain("machineDone: session.stage === 'addons'");
-    expect(processController).toContain("store().replaceSession({ ...session, stage: 'addons' })");
+    expect(processController).toContain("store().replaceSession({ ...current, stage: 'addons' })");
     expect(processView).toContain('process-topping-step');
   });
 
   it('HOME-E2E-20 Production reaches canonical Gotowe', () => {
-    expect(processController).toContain('completeProductionSession');
+    /* OD-24: „Zakończ produkcję" now closes the DURABLE run — the same
+       `completeProductionSession` snapshot, written by the shared workspace and frozen on
+       the server, rather than only in this browser. */
+    expect(processController).toContain('production.complete()');
+    expect(workspace).toContain('completeProductionSession(');
+    expect(workspace).toContain('repositoryState.repository.completeRun(');
     expect(preparation).toContain('home-production-complete');
   });
 
@@ -273,7 +295,11 @@ describe('GELLATTI HOME end-to-end closure — Owner matrix', () => {
     expect(draft).toContain('persist(');
     expect(draft).toContain('amountAnswersByChipId');
     expect(draft).toContain('usageAnswersByChipId');
-    expect(preparation).toContain('activateSessionForAddress');
+    /* OD-24: the batch itself survives a refresh because it is a durable run the shared
+       workspace resolves by address; what HOME still keeps with the draft is the memory of
+       the steps that leave no production record. */
+    expect(workspace).toContain('activateSessionForAddress(sessionAddress)');
+    expect(preparation).toContain('markPreparationStepDone');
   });
 
   it('HOME-E2E-36 login/payment continuation does not reset the recipe', () => {

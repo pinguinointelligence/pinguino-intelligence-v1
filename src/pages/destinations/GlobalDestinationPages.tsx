@@ -539,8 +539,10 @@ export function ProductsHubPage() {
               <MyProductsPanel />
             </>
           ) : (
-            /* „Moja cena” is a PRO price — HOME's catalogue shows no price column or row. */
-            <GlobalCatalogSearchPanel showPrivatePrice={capabilities.canUseProductionMode} />
+            /* „Moja cena” is a PRO price — HOME's catalogue shows no price column or row.
+               Gated on the costing capability itself: after OD-32 a HOME customer may run a
+               batch, which says nothing about seeing ingredient costs. */
+            <GlobalCatalogSearchPanel showPrivatePrice={capabilities.canUseCosts} />
           )}
           <div className={productOpen ? 'max-lg:hidden' : undefined}>
             <nav
@@ -596,7 +598,11 @@ export function ProductionHubPage() {
        renders): the history shortcut, the work in progress, the history. */
     <ProductionAreaSurface section="batches">
       {capabilities.canUseProductionMode ? (
-        <ProductionBatches />
+        /* OD-32: a signed-in HOME customer runs real batches, so „W toku" and „Kontynuuj
+           partię" are theirs — that is the batch the decision granted, and it is the only way
+           back to a run left on another device. „Historia produkcji" is a separate PRO
+           capability and does not arrive with it. */
+        <ProductionBatches canViewHistory={capabilities.canViewProductionHistory} />
       ) : persona === 'home' ? (
         <HomeBatches />
       ) : (

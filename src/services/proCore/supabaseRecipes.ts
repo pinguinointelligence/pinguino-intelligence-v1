@@ -495,6 +495,9 @@ export class SupabaseRecipes {
       p_note: null,
       p_serving_profile: columns.serving_profile,
       p_active_engine_label: columns.active_engine_label,
+      // OD-24: a technical production snapshot goes through the SAME door as a library
+      // save — one authority, one transaction, one word of difference.
+      p_origin: args.origin ?? 'library',
     })) as {
       data: CreateRecipeRpcResult | null;
       error: { code?: string; message?: string } | null;
@@ -559,6 +562,7 @@ export class SupabaseRecipes {
         user_id: uid,
         name: args.title,
         description: args.notes ?? null,
+        origin: args.origin ?? 'library',
         recipe_input: args.recipeInput,
         product_composition: args.productComposition ?? null,
         engine_version: args.trace.engineVersion,

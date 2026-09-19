@@ -30,8 +30,15 @@ describe('production source integrity', () => {
           savedRecipeName: 'Pistacja',
           currentVersionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
           currentVersionNumber: 3,
+          // OD-24: a saved recipe has no use for a production snapshot — the library
+          // identity always wins, and these stay empty.
+          productionSnapshotRecipeId: null,
+          productionSnapshotVersionId: null,
+          productionSnapshotVersionNumber: null,
+          productionSnapshotFingerprint: null,
         },
         true,
+        'fingerprint:current',
       ),
     ).toEqual({
       recipeId: 'recipe-1',
@@ -47,8 +54,15 @@ describe('production source integrity', () => {
           savedRecipeName: 'Pistacja',
           currentVersionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
           currentVersionNumber: 3,
+          // OD-24: a saved recipe has no use for a production snapshot — the library
+          // identity always wins, and these stay empty.
+          productionSnapshotRecipeId: null,
+          productionSnapshotVersionId: null,
+          productionSnapshotVersionNumber: null,
+          productionSnapshotFingerprint: null,
         },
         false,
+        'fingerprint:current',
       ),
     ).toEqual({
       recipeId: 'recipe-1',
@@ -432,5 +446,98 @@ describe('trusted Production Rescue authorization basis', () => {
     expect(hookSource).toContain("module: 'PRODUCTION'");
     expect(hookSource).toContain('validateRecipeBehaviorOnServer({');
     expect(hookSource).toContain('practicalGate.ready && !behaviorServerReady');
+  });
+});
+
+describe('OD-24 — a recipe outside the library can still run a durable batch', () => {
+  const FINGERPRINT = 'fingerprint:current';
+
+  it('OD24-SOURCE-A an unsaved recipe runs from its production snapshot', () => {
+    /* HOME does not have to save to „Receptury → Moje" to make a batch: the technical
+       snapshot taken for the run is what the run points at. */
+    expect(
+      productionSourceForRecipe(
+        {
+          savedRecipeId: null,
+          savedRecipeName: null,
+          currentVersionId: null,
+          currentVersionNumber: null,
+          productionSnapshotRecipeId: 'snapshot-recipe',
+          productionSnapshotVersionId: 'snapshot-version',
+          productionSnapshotVersionNumber: 1,
+          productionSnapshotFingerprint: FINGERPRINT,
+        },
+        true,
+        FINGERPRINT,
+      ),
+    ).toEqual({
+      recipeId: 'snapshot-recipe',
+      recipeVersionId: 'snapshot-version',
+      recipeVersionNumber: 1,
+      recipeName: 'Bieżąca receptura',
+    });
+  });
+
+  it('OD24-SOURCE-B the library identity always wins — a saved recipe never runs from a snapshot', () => {
+    expect(
+      productionSourceForRecipe(
+        {
+          savedRecipeId: 'recipe-1',
+          savedRecipeName: 'Pistacja',
+          currentVersionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
+          currentVersionNumber: 3,
+          productionSnapshotRecipeId: 'snapshot-recipe',
+          productionSnapshotVersionId: 'snapshot-version',
+          productionSnapshotVersionNumber: 1,
+          productionSnapshotFingerprint: FINGERPRINT,
+        },
+        true,
+        FINGERPRINT,
+      ),
+    ).toMatchObject({
+      recipeId: 'recipe-1',
+      recipeVersionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
+    });
+  });
+
+  it('OD24-SOURCE-C no saved recipe and no snapshot is still no durable source', () => {
+    expect(
+      productionSourceForRecipe(
+        {
+          savedRecipeId: null,
+          savedRecipeName: null,
+          currentVersionId: null,
+          currentVersionNumber: null,
+          productionSnapshotRecipeId: null,
+          productionSnapshotVersionId: null,
+          productionSnapshotVersionNumber: null,
+          productionSnapshotFingerprint: null,
+        },
+        true,
+        FINGERPRINT,
+      ),
+    ).toMatchObject({ recipeId: null, recipeVersionId: null });
+  });
+
+  it('OD24-SOURCE-D a snapshot that no longer describes the recipe is NOT a source', () => {
+    /* The draft moved on after the snapshot was taken. Starting a batch against the old
+       version id would file the new grams under a version that does not contain them;
+       the recipe simply has no durable source until a fresh snapshot is written. */
+    expect(
+      productionSourceForRecipe(
+        {
+          savedRecipeId: null,
+          savedRecipeName: null,
+          currentVersionId: null,
+          currentVersionNumber: null,
+          productionSnapshotRecipeId: 'snapshot-recipe',
+          productionSnapshotVersionId: 'snapshot-version',
+          productionSnapshotVersionNumber: 1,
+          productionSnapshotFingerprint: 'fingerprint:before-the-edit',
+        },
+        true,
+        FINGERPRINT,
+      ),
+    ).toMatchObject({ recipeId: null, recipeVersionId: null, recipeVersionNumber: null });
   });
 });

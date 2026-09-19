@@ -119,7 +119,7 @@ export function AppShell({
   const audience = navigationAudience({
     authenticated: authStatus === 'authed' || devMemberPreview,
     canSaveRecipes: capabilities.canSaveRecipe,
-    canUseProductionMode: capabilities.canUseProductionMode,
+    canUseProfessionalFlow: capabilities.canUseProfessionalFlow,
   });
   const brandDestination = audience === 'pro' ? '/pro/recipe' : audience === 'home' ? '/home' : '/';
   const activeView = location.pathname.startsWith('/pro')

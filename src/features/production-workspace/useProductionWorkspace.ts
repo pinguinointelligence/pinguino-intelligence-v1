@@ -354,18 +354,52 @@ export const selectProductionRunForRecipeVersion = (
 export const productionSourceForRecipe = (
   recipe: Pick<
     RecipeState,
-    'savedRecipeId' | 'savedRecipeName' | 'currentVersionId' | 'currentVersionNumber'
+    | 'savedRecipeId'
+    | 'savedRecipeName'
+    | 'currentVersionId'
+    | 'currentVersionNumber'
+    | 'productionSnapshotRecipeId'
+    | 'productionSnapshotVersionId'
+    | 'productionSnapshotVersionNumber'
+    | 'productionSnapshotFingerprint'
   >,
   executableVersionMatchesCurrent: boolean,
-) => ({
-  recipeId: recipe.savedRecipeId,
-  recipeVersionId:
-    executableVersionMatchesCurrent && recipe.savedRecipeId && recipe.currentVersionId
-      ? recipe.currentVersionId
-      : null,
-  recipeVersionNumber: executableVersionMatchesCurrent ? recipe.currentVersionNumber : null,
-  recipeName: recipe.savedRecipeName?.trim() || 'Bieżąca receptura',
-});
+  currentProductionFingerprint: string,
+) => {
+  const saved = {
+    recipeId: recipe.savedRecipeId,
+    recipeVersionId:
+      executableVersionMatchesCurrent && recipe.savedRecipeId && recipe.currentVersionId
+        ? recipe.currentVersionId
+        : null,
+    recipeVersionNumber: executableVersionMatchesCurrent ? recipe.currentVersionNumber : null,
+  };
+  /* OD-24: a recipe the customer has NOT put in their library can still run a durable
+     batch — the run then points at the technical production snapshot taken for it. The
+     saved identity always wins: once a recipe is in the library, that is what its batches
+     belong to. Nothing here makes an unsaved recipe look saved. */
+  /* A snapshot is evidence of ONE recipe state. Once the draft moves on, the snapshot on
+     record no longer describes it, and a run started against it would reference a version
+     whose contents are not the ones being weighed. The batch then has no durable source
+     until a fresh snapshot is taken — exactly the answer an unsaved recipe already gets. */
+  const snapshotDescribesCurrentRecipe =
+    recipe.productionSnapshotFingerprint !== null &&
+    recipe.productionSnapshotFingerprint === currentProductionFingerprint;
+  const durable =
+    saved.recipeId !== null
+      ? saved
+      : snapshotDescribesCurrentRecipe
+        ? {
+            recipeId: recipe.productionSnapshotRecipeId,
+            recipeVersionId: recipe.productionSnapshotVersionId,
+            recipeVersionNumber: recipe.productionSnapshotVersionNumber,
+          }
+        : { recipeId: null, recipeVersionId: null, recipeVersionNumber: null };
+  return {
+    ...durable,
+    recipeName: recipe.savedRecipeName?.trim() || 'Bieżąca receptura',
+  };
+};
 
 export type ProductionPrerequisiteCode =
   | 'preview_required'
@@ -644,9 +678,17 @@ export function useProductionWorkspace(
         };
   }, [constraints, plannedInput, preview, recalculationTerminal, recipeLifecycle]);
 
+  /* Both authorities, kept: staging's run context still overrides the editor's source for a
+     run being resumed, and OD-24's fingerprint still refuses a production snapshot that has
+     stopped describing the recipe on the bench. */
   const editorSource = useMemo(
-    () => productionSourceForRecipe(recipe, recipeLifecycle === 'READY'),
-    [recipe, recipeLifecycle],
+    () =>
+      productionSourceForRecipe(
+        recipe,
+        recipeLifecycle === 'READY',
+        currentProductionVersionFingerprint,
+      ),
+    [currentProductionVersionFingerprint, recipe, recipeLifecycle],
   );
   const source = runContext?.source ?? editorSource;
   const sessionAddress = useMemo<ProductionSessionAddress>(
@@ -1736,6 +1778,11 @@ export function useProductionWorkspace(
           plannedInput,
           plannedComposition,
         );
+        /* `hydrateProductionSessionFromRun` already rebuilds the completion snapshot for a
+           finished run, from the run's OWN actuals and the server's `completedAt`. Carrying
+           the local candidate over it looked like belt and braces and was worse: the LOT is
+           derived from that timestamp, so a local clock would have been allowed to name the
+           batch instead of the server. */
         replaceSession(completedSession);
         announceFriendlyLabMoment(
           'production-complete',

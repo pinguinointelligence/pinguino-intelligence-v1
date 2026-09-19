@@ -18,21 +18,21 @@ describe('plan-aware global navigation', () => {
       navigationAudience({
         authenticated: false,
         canSaveRecipes: true,
-        canUseProductionMode: true,
+        canUseProfessionalFlow: true,
       }),
     ).toBe('guest');
     expect(
       navigationAudience({
         authenticated: true,
         canSaveRecipes: true,
-        canUseProductionMode: false,
+        canUseProfessionalFlow: false,
       }),
     ).toBe('home');
     expect(
       navigationAudience({
         authenticated: true,
         canSaveRecipes: true,
-        canUseProductionMode: true,
+        canUseProfessionalFlow: true,
       }),
     ).toBe('pro');
   });

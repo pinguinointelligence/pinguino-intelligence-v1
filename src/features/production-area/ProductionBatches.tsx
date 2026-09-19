@@ -22,6 +22,11 @@ import { resolveLabelRepository } from '@/services/labels/labelRepository';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { hasUnsavedProRecipeChanges } from '@/pages/destinations/startNewProRecipe';
 import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
+import { useRecipeStore } from '@/stores/recipeStore';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
+import { productionSourceForRecipe } from '@/features/production-workspace/useProductionWorkspace';
 import { useProductionHistoryPages } from './useProductionHistoryPages';
 import { useInProgressRuns, type InProgressBatch } from './useInProgressRuns';
 import { resumeProductionRun, type ResumeProductionRunFailure } from './resumeProductionRun';
@@ -82,7 +87,7 @@ function ChevronDown() {
  * `loadCanonicalProductionHistory`, paged. Browsing never calls a production
  * store action, never starts a run and never writes a label version.
  */
-export function ProductionBatches() {
+export function ProductionBatches({ canViewHistory = true }: { canViewHistory?: boolean } = {}) {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -97,8 +102,13 @@ export function ProductionBatches() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key]);
 
+  /* OD-32: a signed-in HOME customer runs batches here, so „W toku" and „Kontynuuj partię"
+     are theirs — that IS the batch the decision granted. „Historia produkcji", with its LOT
+     codes, masses and label versions, is a separate PRO capability and must not arrive with
+     it. Disabled here rather than merely hidden, so HOME never even reads the history or
+     label repositories. */
   const history = useProductionHistoryPages({
-    enabled: true,
+    enabled: canViewHistory,
     ownerUserId,
     productionRepository,
     labelRepository,
@@ -281,23 +291,29 @@ export function ProductionBatches() {
 
   return (
     <div
-      className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,26rem)] lg:items-start lg:gap-10"
+      className={
+        canViewHistory
+          ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(320px,26rem)] lg:items-start lg:gap-10'
+          : undefined
+      }
       data-testid="production-batches"
     >
       <div className="min-w-0">
-        <button
-          type="button"
-          onClick={jumpToHistory}
-          aria-controls="production-history"
-          className="pro-focus-ring flex min-h-12 w-full items-center justify-between gap-3 border-b border-[var(--g-line)] py-3 text-left lg:hidden"
-          data-testid="production-history-jump"
-        >
-          <span className="text-[15px] text-ink">{c.historyJump}</span>
-          <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-[var(--g-text-secondary)]">
-            <span className="truncate">{historyCount}</span>
-            <ChevronDown />
-          </span>
-        </button>
+        {canViewHistory ? (
+          <button
+            type="button"
+            onClick={jumpToHistory}
+            aria-controls="production-history"
+            className="pro-focus-ring flex min-h-12 w-full items-center justify-between gap-3 border-b border-[var(--g-line)] py-3 text-left lg:hidden"
+            data-testid="production-history-jump"
+          >
+            <span className="text-[15px] text-ink">{c.historyJump}</span>
+            <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-[var(--g-text-secondary)]">
+              <span className="truncate">{historyCount}</span>
+              <ChevronDown />
+            </span>
+          </button>
+        ) : null}
 
         <section
           className="pt-6 lg:pt-0"
@@ -452,143 +468,145 @@ export function ProductionBatches() {
         </section>
       </div>
 
-      <section
-        id="production-history"
-        ref={historyRef}
-        tabIndex={-1}
-        aria-labelledby="production-history-heading"
-        className="mt-10 scroll-mt-24 border-t border-[var(--g-line)] pt-8 focus:outline-none lg:mt-0 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8"
-        data-testid="production-history"
-      >
-        <h2 id="production-history-heading" className="text-[17px] font-semibold text-ink">
-          {c.historyTitle}
-        </h2>
-        <p className="mt-1 text-xs text-[var(--g-text-secondary)]">{c.historyHelper}</p>
-        {history.state === 'loading' ? (
-          <p className="mt-5 text-sm text-[var(--g-text-secondary)]" role="status">
-            {c.historyLoading}
-          </p>
-        ) : null}
-        {history.state === 'error' ? (
-          <WorkflowNotice
-            className="mt-5"
-            variant="blocking"
-            role="alert"
-            title={c.historyErrorTitle}
-            description={c.historyErrorBody}
-            action={
-              <button
-                type="button"
-                className={buttonClasses('ghost', 'sm')}
-                onClick={history.retry}
-              >
-                {c.retry}
-              </button>
-            }
-          />
-        ) : null}
-        <div className="mt-3">
-          {history.entries.map(({ run, snapshot }) => {
-            // The label list is ONE read for all rows; a run absent from it has no saved label.
-            const versions = history.labelVersionsByRun
-              ? (history.labelVersionsByRun.get(run.runId) ?? 0)
-              : null;
-            const lot = lotCodeForDisplay(
-              snapshot.lotCode ??
-                productionLotCodeForRun(snapshot.sessionId, snapshot.productionCompletedAt),
-            );
-            return (
-              <div
-                key={run.runId}
-                ref={(element) => {
-                  if (element) rowRefs.current.set(run.runId, element);
-                  else rowRefs.current.delete(run.runId);
-                }}
-                tabIndex={-1}
-                className={cn(
-                  'border-b border-[var(--g-line)] py-4 focus:outline-none',
-                  markedRunId === run.runId &&
-                    '-mx-3 rounded-[12px] border-transparent bg-[var(--g-ivory)] px-3',
-                )}
-                data-production-run-id={run.runId}
-                data-focused={markedRunId === run.runId ? 'true' : undefined}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <strong className="block text-[15px] font-semibold text-ink">
-                      {snapshot.source.recipeName}
-                    </strong>
-                    <p className="mt-1 text-xs text-[var(--g-text-secondary)]">
-                      {c.rowWhen(
-                        formatDateTime(snapshot.productionCompletedAt),
-                        snapshot.source.recipeVersionNumber,
-                      )}
-                    </p>
-                    <p
-                      className="mt-0.5 text-xs text-[var(--g-text-secondary)]"
-                      data-testid="production-history-label-status"
-                    >
-                      {versions === null ? c.rowLot(lot) : c.rowLabel(lot, versions)}
-                    </p>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <span className="block font-mono text-base font-semibold text-ink tabular-nums">
-                      {c.rowActual(massFormat.format(snapshot.actualFinalMassG))}
-                    </span>
-                    <span className="text-xs text-[var(--g-text-secondary)]">
-                      {c.rowPlanned(massFormat.format(snapshot.originalBatchTargetG))}
-                    </span>
-                  </div>
-                </div>
-                <Link
-                  to={`/labels?run=${encodeURIComponent(run.runId)}`}
-                  onClick={(event) => openLabel(event, run.runId)}
-                  className={cn(buttonClasses('ghost', 'sm'), 'mt-3')}
-                  data-testid="production-history-open-label"
+      {canViewHistory ? (
+        <section
+          id="production-history"
+          ref={historyRef}
+          tabIndex={-1}
+          aria-labelledby="production-history-heading"
+          className="mt-10 scroll-mt-24 border-t border-[var(--g-line)] pt-8 focus:outline-none lg:mt-0 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-8"
+          data-testid="production-history"
+        >
+          <h2 id="production-history-heading" className="text-[17px] font-semibold text-ink">
+            {c.historyTitle}
+          </h2>
+          <p className="mt-1 text-xs text-[var(--g-text-secondary)]">{c.historyHelper}</p>
+          {history.state === 'loading' ? (
+            <p className="mt-5 text-sm text-[var(--g-text-secondary)]" role="status">
+              {c.historyLoading}
+            </p>
+          ) : null}
+          {history.state === 'error' ? (
+            <WorkflowNotice
+              className="mt-5"
+              variant="blocking"
+              role="alert"
+              title={c.historyErrorTitle}
+              description={c.historyErrorBody}
+              action={
+                <button
+                  type="button"
+                  className={buttonClasses('ghost', 'sm')}
+                  onClick={history.retry}
                 >
-                  {c.openLabel}
-                </Link>
+                  {c.retry}
+                </button>
+              }
+            />
+          ) : null}
+          <div className="mt-3">
+            {history.entries.map(({ run, snapshot }) => {
+              // The label list is ONE read for all rows; a run absent from it has no saved label.
+              const versions = history.labelVersionsByRun
+                ? (history.labelVersionsByRun.get(run.runId) ?? 0)
+                : null;
+              const lot = lotCodeForDisplay(
+                snapshot.lotCode ??
+                  productionLotCodeForRun(snapshot.sessionId, snapshot.productionCompletedAt),
+              );
+              return (
+                <div
+                  key={run.runId}
+                  ref={(element) => {
+                    if (element) rowRefs.current.set(run.runId, element);
+                    else rowRefs.current.delete(run.runId);
+                  }}
+                  tabIndex={-1}
+                  className={cn(
+                    'border-b border-[var(--g-line)] py-4 focus:outline-none',
+                    markedRunId === run.runId &&
+                      '-mx-3 rounded-[12px] border-transparent bg-[var(--g-ivory)] px-3',
+                  )}
+                  data-production-run-id={run.runId}
+                  data-focused={markedRunId === run.runId ? 'true' : undefined}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <strong className="block text-[15px] font-semibold text-ink">
+                        {snapshot.source.recipeName}
+                      </strong>
+                      <p className="mt-1 text-xs text-[var(--g-text-secondary)]">
+                        {c.rowWhen(
+                          formatDateTime(snapshot.productionCompletedAt),
+                          snapshot.source.recipeVersionNumber,
+                        )}
+                      </p>
+                      <p
+                        className="mt-0.5 text-xs text-[var(--g-text-secondary)]"
+                        data-testid="production-history-label-status"
+                      >
+                        {versions === null ? c.rowLot(lot) : c.rowLabel(lot, versions)}
+                      </p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <span className="block font-mono text-base font-semibold text-ink tabular-nums">
+                        {c.rowActual(massFormat.format(snapshot.actualFinalMassG))}
+                      </span>
+                      <span className="text-xs text-[var(--g-text-secondary)]">
+                        {c.rowPlanned(massFormat.format(snapshot.originalBatchTargetG))}
+                      </span>
+                    </div>
+                  </div>
+                  <Link
+                    to={`/labels?run=${encodeURIComponent(run.runId)}`}
+                    onClick={(event) => openLabel(event, run.runId)}
+                    className={cn(buttonClasses('ghost', 'sm'), 'mt-3')}
+                    data-testid="production-history-open-label"
+                  >
+                    {c.openLabel}
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+          {history.state === 'ready' && history.total === 0 && history.entries.length === 0 ? (
+            <EmptyState className="mt-5" title={c.historyEmptyTitle} body={c.historyEmptyBody} />
+          ) : null}
+          {history.state !== 'loading' && history.total > 0 ? (
+            history.readCount < history.total ? (
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className={buttonClasses('ghost', 'sm')}
+                  onClick={history.loadOlder}
+                  disabled={history.olderState === 'loading'}
+                  data-testid="production-history-more"
+                >
+                  {history.olderState === 'loading' ? c.loadingOlder : c.showOlder}
+                </button>
+                <span
+                  className="text-xs text-[var(--g-text-secondary)]"
+                  data-testid="production-history-shown"
+                >
+                  {c.shownOf(history.readCount, history.total)}
+                </span>
               </div>
-            );
-          })}
-        </div>
-        {history.state === 'ready' && history.total === 0 && history.entries.length === 0 ? (
-          <EmptyState className="mt-5" title={c.historyEmptyTitle} body={c.historyEmptyBody} />
-        ) : null}
-        {history.state !== 'loading' && history.total > 0 ? (
-          history.readCount < history.total ? (
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                className={buttonClasses('ghost', 'sm')}
-                onClick={history.loadOlder}
-                disabled={history.olderState === 'loading'}
-                data-testid="production-history-more"
-              >
-                {history.olderState === 'loading' ? c.loadingOlder : c.showOlder}
-              </button>
-              <span
-                className="text-xs text-[var(--g-text-secondary)]"
+            ) : (
+              <p
+                className="mt-5 text-xs text-[var(--g-text-secondary)]"
                 data-testid="production-history-shown"
               >
-                {c.shownOf(history.readCount, history.total)}
-              </span>
-            </div>
-          ) : (
-            <p
-              className="mt-5 text-xs text-[var(--g-text-secondary)]"
-              data-testid="production-history-shown"
-            >
-              {c.allShown(history.total)}
+                {c.allShown(history.total)}
+              </p>
+            )
+          ) : null}
+          {history.olderState === 'error' ? (
+            <p className="mt-3 text-sm text-status-error" role="alert">
+              {c.historyOlderError}
             </p>
-          )
-        ) : null}
-        {history.olderState === 'error' ? (
-          <p className="mt-3 text-sm text-status-error" role="alert">
-            {c.historyOlderError}
-          </p>
-        ) : null}
-      </section>
+          ) : null}
+        </section>
+      ) : null}
 
       <NewRecipeConfirmationDialog
         open={pendingResume !== null}
@@ -608,22 +626,38 @@ export function ProductionBatches() {
 
 /**
  * Produkcja → Partie (HOME), Etap 1. HOME has no production history. A HOME
- * preparation that is already running (the local session of the current HOME
- * draft) is offered back where it lives; entering this page never creates one.
+ * preparation that is already running is offered back where it lives; entering this page never
+ * creates one.
+ *
+ * OD-24: it is found by the recipe the batch actually belongs to, not by the HOME draft id.
+ * Before OD-24 a HOME batch was a local session addressed by `home-draft:<uuid>`; now it is the
+ * same durable run PRO makes, addressed by the recipe version it was made from — so the old
+ * comparison could never be true again and this card had silently stopped appearing. The source
+ * comes from the ONE authority that resolves it everywhere else, so HOME cannot drift from it
+ * a second time.
  */
 export function HomeBatches() {
   const ownerUserId = useAuthStore((state) => state.user?.id ?? null);
-  const draftId = useHomeDraftStore((state) => state.draftId);
   const preparationStarted = useHomeDraftStore((state) => state.preparationStarted);
+  const recipe = useRecipeStore();
   const sessionsById = useProductionSessionStore((state) => state.sessionsById) ?? EMPTY_SESSIONS;
-  const running = preparationStarted
-    ? (Object.values(sessionsById).find(
-        (session) =>
-          session.status === 'in_progress' &&
-          session.ownerUserId === ownerUserId &&
-          session.source.recipeId === draftId,
-      ) ?? null)
-    : null;
+  const source = useMemo(() => {
+    const input = buildRecipeInput(recipe, 'planning');
+    return productionSourceForRecipe(
+      recipe,
+      true,
+      productionVersionFingerprint(input, recipeCompositionFromState(recipe)),
+    );
+  }, [recipe]);
+  const running =
+    preparationStarted && source.recipeId !== null
+      ? (Object.values(sessionsById).find(
+          (session) =>
+            session.status === 'in_progress' &&
+            session.ownerUserId === ownerUserId &&
+            session.source.recipeId === source.recipeId,
+        ) ?? null)
+      : null;
 
   if (running) {
     return (

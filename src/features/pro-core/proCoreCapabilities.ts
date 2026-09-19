@@ -68,76 +68,97 @@ export interface ProCoreCapabilities {
   canScaleRecipe: boolean;
   /** View the production-run history. Pro-only. */
   canViewProductionHistory: boolean;
+  /**
+   * Print the production label — the one with composition, allergens, LOT and dates, which
+   * serves product put on sale. OD-32 let a signed-in HOME customer run a batch; that is a
+   * different thing from labelling it for sale, and before OD-32 this section happened to be
+   * gated on `canUseProductionMode`. Naming it stops the two drifting back together.
+   */
+  canPrintProductionLabels: boolean;
   /** Use the ingredient-costing surface. Pro-only. */
   canUseCosts: boolean;
 }
 
 /** The canonical persona → capability matrix. Frozen so it can never be mutated at runtime. */
-export const PRO_CORE_CAPABILITIES: Readonly<Record<ProCorePersona, ProCoreCapabilities>> = Object.freeze({
-  demo: Object.freeze({
-    canSaveRecipe: false,
-    canViewRecipeVersions: false,
-    canRestoreRecipeVersion: false,
-    maxSavedRecipes: 0,
-    canViewExactGrams: false,
-    canUseProductionMode: false,
-    canExport: false,
-    canCompareRecipeVersions: false,
-    canUseProfessionalFlow: false,
-    canChooseProfessionalServingMode: false,
-    canUseProfessionalMonitor: false,
-    canEditIngredientGrams: false,
-    canLockIngredientGrams: false,
-    canSetIngredientRange: false,
-    canRepairRecipe: false,
-    canRepairProductionBatch: false,
-    canScaleRecipe: false,
-    canViewProductionHistory: false,
-    canUseCosts: false,
-  }),
-  home: Object.freeze({
-    canSaveRecipe: true,
-    canViewRecipeVersions: true,
-    canRestoreRecipeVersion: true,
-    maxSavedRecipes: HOME_MAX_SAVED_RECIPES,
-    canViewExactGrams: true,
-    canUseProductionMode: false,
-    canExport: true,
-    canCompareRecipeVersions: true,
-    canUseProfessionalFlow: false,
-    canChooseProfessionalServingMode: false,
-    canUseProfessionalMonitor: false,
-    canEditIngredientGrams: false,
-    canLockIngredientGrams: false,
-    canSetIngredientRange: false,
-    canRepairRecipe: false,
-    canRepairProductionBatch: false,
-    canScaleRecipe: false,
-    canViewProductionHistory: false,
-    canUseCosts: false,
-  }),
-  pro: Object.freeze({
-    canSaveRecipe: true,
-    canViewRecipeVersions: true,
-    canRestoreRecipeVersion: true,
-    maxSavedRecipes: PRO_MAX_SAVED_RECIPES,
-    canViewExactGrams: true,
-    canUseProductionMode: true,
-    canExport: true,
-    canCompareRecipeVersions: true,
-    canUseProfessionalFlow: true,
-    canChooseProfessionalServingMode: true,
-    canUseProfessionalMonitor: true,
-    canEditIngredientGrams: true,
-    canLockIngredientGrams: true,
-    canSetIngredientRange: true,
-    canRepairRecipe: true,
-    canRepairProductionBatch: true,
-    canScaleRecipe: true,
-    canViewProductionHistory: true,
-    canUseCosts: true,
-  }),
-});
+export const PRO_CORE_CAPABILITIES: Readonly<Record<ProCorePersona, ProCoreCapabilities>> =
+  Object.freeze({
+    demo: Object.freeze({
+      canSaveRecipe: false,
+      canViewRecipeVersions: false,
+      canRestoreRecipeVersion: false,
+      maxSavedRecipes: 0,
+      canViewExactGrams: false,
+      canUseProductionMode: false,
+      canExport: false,
+      canCompareRecipeVersions: false,
+      canUseProfessionalFlow: false,
+      canChooseProfessionalServingMode: false,
+      canUseProfessionalMonitor: false,
+      canEditIngredientGrams: false,
+      canLockIngredientGrams: false,
+      canSetIngredientRange: false,
+      canRepairRecipe: false,
+      canRepairProductionBatch: false,
+      canScaleRecipe: false,
+      canViewProductionHistory: false,
+      canPrintProductionLabels: false,
+      canUseCosts: false,
+    }),
+    home: Object.freeze({
+      canSaveRecipe: true,
+      canViewRecipeVersions: true,
+      canRestoreRecipeVersion: true,
+      maxSavedRecipes: HOME_MAX_SAVED_RECIPES,
+      canViewExactGrams: true,
+      /* OD-32 (Owner, 19.09.2026) — making ice cream is what the HOME plan is FOR. Starting a
+       batch is a basic HOME use case, and „durable" is how the batch is stored, not a
+       professional feature in itself: a signed-in HOME customer runs the same shared
+       production chain PRO runs. This was false, and OD-24 had just moved HOME onto that
+       chain — so `startRun` refused every HOME batch and the customer saw only „Nie udało się
+       bezpiecznie rozpocząć partii.".
+
+       It reaches signed-in HOME and nobody else: an unauthenticated visitor has no
+       `effectiveAccess` at all (`providers.tsx` only sets it for a signed-in user), so they
+       resolve to `demo`, which keeps `canUseProductionMode: false` below. */
+      canUseProductionMode: true,
+      canExport: true,
+      canCompareRecipeVersions: true,
+      canUseProfessionalFlow: false,
+      canChooseProfessionalServingMode: false,
+      canUseProfessionalMonitor: false,
+      canEditIngredientGrams: false,
+      canLockIngredientGrams: false,
+      canSetIngredientRange: false,
+      canRepairRecipe: false,
+      canRepairProductionBatch: false,
+      canScaleRecipe: false,
+      canViewProductionHistory: false,
+      canPrintProductionLabels: false,
+      canUseCosts: false,
+    }),
+    pro: Object.freeze({
+      canSaveRecipe: true,
+      canViewRecipeVersions: true,
+      canRestoreRecipeVersion: true,
+      maxSavedRecipes: PRO_MAX_SAVED_RECIPES,
+      canViewExactGrams: true,
+      canUseProductionMode: true,
+      canExport: true,
+      canCompareRecipeVersions: true,
+      canUseProfessionalFlow: true,
+      canChooseProfessionalServingMode: true,
+      canUseProfessionalMonitor: true,
+      canEditIngredientGrams: true,
+      canLockIngredientGrams: true,
+      canSetIngredientRange: true,
+      canRepairRecipe: true,
+      canRepairProductionBatch: true,
+      canScaleRecipe: true,
+      canViewProductionHistory: true,
+      canPrintProductionLabels: true,
+      canUseCosts: true,
+    }),
+  });
 
 /** Resolve the full PRO CORE capability set for a persona. */
 export function proCoreCapabilitiesFor(persona: ProCorePersona): ProCoreCapabilities {

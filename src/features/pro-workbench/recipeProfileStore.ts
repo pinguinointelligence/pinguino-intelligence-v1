@@ -10,6 +10,11 @@ import {
   normalizeFormulationStrategy,
   type FormulationStrategy,
 } from '@/features/formulation-strategy/strategy';
+import {
+  DEFAULT_DIRECTION_TARGET_ORIGINS,
+  LEGACY_DIRECTION_TARGET_ORIGINS,
+  type DirectionTargetOrigins,
+} from '@/features/recipe-direction/directionTargetOrigin';
 
 export type AdjustableAxisId = 'sweetness' | 'softness' | 'creaminess' | 'flavor';
 export type DirectionTarget = RecipeDirectionTarget;
@@ -58,6 +63,12 @@ export interface ProfileSettingsSnapshot {
   machineCapacityGrams: number | null;
   directionTargets: DirectionTargets;
   directionIntents?: DirectionIntents;
+  /**
+   * OD-29 — WHOSE each level is, saved with the recipe. Absent on records written before
+   * provenance existed; the reader turns that absence into `legacy_unknown`, never into
+   * permission to change the level silently.
+   */
+  directionTargetOrigins?: DirectionTargetOrigins;
   ingredientUxByLineId?: Readonly<Record<string, PersistedIngredientUxMeta>>;
 }
 
@@ -109,6 +120,16 @@ export interface CalculatedRecipeAuthority {
 export interface RecipeProfileState {
   directionTargets: DirectionTargets;
   directionIntents: DirectionIntents;
+  /**
+   * OD-29 (Owner 19.09.2026) — WHOSE level each axis carries.
+   *
+   * A level the customer moved themselves may never be changed for them when it turns
+   * out to be unreachable; a level nobody chose is the system's own default and may be
+   * met at its nearest feasible value, said out loud afterwards. Only the customer's own
+   * moves flip an axis to `user_explicit`; opening a draft or a saved recipe does not,
+   * because restoring a stored value is not a decision taken now.
+   */
+  directionTargetOrigins: DirectionTargetOrigins;
   awaitingRecalculation: boolean;
   openedContextSeq: number | null;
   activeDraftIdentity: string | null;
@@ -150,7 +171,14 @@ export interface RecipeProfileState {
   rebindDraftIdentity: (identity: string) => void;
   moveAxisTarget: (axis: AdjustableAxisId, delta: -1 | 1) => void;
   moveAxisIntent: (axis: AdjustableAxisId, delta: number) => void;
-  setDirectionTargets: (targets: DirectionTargets) => void;
+  /**
+   * OD-29: restoring stored levels must restore WHOSE they are. A caller that knows the
+   * provenance passes it; a record written before provenance existed passes nothing and
+   * gets `legacy_unknown`, which is consent-required — never a silent `system_default`.
+   */
+  setDirectionTargets: (targets: DirectionTargets, origins?: DirectionTargetOrigins) => void;
+  /** Back to the profile defaults — provenance goes back to the system with them. */
+  resetDirectionTargetsToDefaults: () => void;
   markRecalculationRequired: () => void;
   acknowledgeRecalculation: () => void;
   confirmSettings: (signature: string, draftIdentity: string, contextSeq: number) => void;
@@ -266,6 +294,7 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
     (set, get) => ({
       directionTargets: DEFAULT_DIRECTION_TARGETS,
       directionIntents: DEFAULT_DIRECTION_INTENTS,
+      directionTargetOrigins: DEFAULT_DIRECTION_TARGET_ORIGINS,
       machineAccountDefault: null,
       awaitingRecalculation: false,
       openedContextSeq: null,
@@ -341,6 +370,8 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
             ...state.directionIntents,
             [axis]: clampTarget(state.directionTargets[axis] + delta),
           },
+          // OD-29: this axis now carries a level the customer chose.
+          directionTargetOrigins: { ...state.directionTargetOrigins, [axis]: 'user_explicit' },
           awaitingRecalculation: true,
         })),
 
@@ -354,13 +385,25 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
             ...state.directionIntents,
             [axis]: clampIntent(state.directionIntents[axis] + delta),
           },
+          // OD-29: the same move, on the finer control — the same authorship.
+          directionTargetOrigins: { ...state.directionTargetOrigins, [axis]: 'user_explicit' },
           awaitingRecalculation: true,
         })),
 
-      setDirectionTargets: (directionTargets) =>
+      setDirectionTargets: (directionTargets, origins) =>
         set({
           directionTargets: { ...directionTargets },
           directionIntents: { ...directionTargets },
+          directionTargetOrigins: { ...(origins ?? LEGACY_DIRECTION_TARGET_ORIGINS) },
+        }),
+
+      /** A reset to the profile's own defaults: those levels are the system's again. */
+      resetDirectionTargetsToDefaults: () =>
+        set({
+          directionTargets: DEFAULT_DIRECTION_TARGETS,
+          directionIntents: DEFAULT_DIRECTION_INTENTS,
+          directionTargetOrigins: DEFAULT_DIRECTION_TARGET_ORIGINS,
+          awaitingRecalculation: true,
         }),
 
       markRecalculationRequired: () => set({ awaitingRecalculation: true }),
@@ -454,6 +497,7 @@ export const useRecipeProfileStore = create<RecipeProfileState>()(
         set({
           directionTargets: DEFAULT_DIRECTION_TARGETS,
           directionIntents: DEFAULT_DIRECTION_INTENTS,
+          directionTargetOrigins: DEFAULT_DIRECTION_TARGET_ORIGINS,
           awaitingRecalculation: false,
           openedContextSeq: null,
           activeDraftIdentity: null,

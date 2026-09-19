@@ -50,7 +50,7 @@ export function AppNavDrawer() {
   const audience = navigationAudience({
     authenticated: authStatus === 'authed' || devMemberPreview,
     canSaveRecipes: capabilities.canSaveRecipe,
-    canUseProductionMode: capabilities.canUseProductionMode,
+    canUseProfessionalFlow: capabilities.canUseProfessionalFlow,
   });
   const loc = { pathname: location.pathname, search: location.search };
   // the first row follows the workspace the customer is in, not their plan

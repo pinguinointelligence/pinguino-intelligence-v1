@@ -36,6 +36,10 @@ export async function listMine(): Promise<SavedRecipe[]> {
   const { data, error } = await supabase
     .from(TABLE)
     .select('*')
+    /* OD-24: „Receptury → Moje" is the customer's library. A `production_snapshot` is
+       infrastructure a HOME batch needed for its durable run — it is not a recipe the
+       customer saved, so it is not listed here and does not count against their limit. */
+    .eq('origin', 'library')
     .order('updated_at', { ascending: false });
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as SavedRecipe[];
