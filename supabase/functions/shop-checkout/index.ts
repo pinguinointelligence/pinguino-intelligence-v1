@@ -13,6 +13,9 @@
  *  - the Stripe call carries a deterministic idempotency key;
  *  - the order row is written BEFORE Stripe, so a session can always be
  *    correlated back to exactly one order.
+ *  - an order needs an active HOME or PRO plan (owner, 2026-09-18), asked of
+ *    the existing Billing authority before anything is read, written or sent
+ *    to Stripe (`_shared/shopPlanGate.ts`). The shop itself stays public.
  *
  * Required env (names only): STRIPE_SECRET_KEY, STRIPE_API_VERSION,
  * BILLING_REDIRECT_URL_ALLOWLIST, plus the auto-injected SUPABASE_* values.
@@ -20,6 +23,7 @@
 import Stripe from 'npm:stripe@18';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { isAllowedRedirectUrl, parseUrlAllowlist } from '../_shared/urlAllowlist.ts';
+import { decideShopOrderPlan } from '../_shared/shopPlanGate.ts';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -116,6 +120,17 @@ Deno.serve(async (req) => {
   if (userError || !userData?.user) return json(401, { error: 'unauthorized' });
   const user = userData.user;
 
+  const admin = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    { auth: { persistSession: false } },
+  );
+
+  /* PUBLIC VIEW, ORDER only with an active HOME or PRO plan (owner, 2026-09-18). Asked first, so a refused account
+     leaves no order, no items and no Stripe session behind — and a stale pending session is not reused either. */
+  const plan = await decideShopOrderPlan(admin, user.id);
+  if (!plan.allowed) return json(plan.status, { error: plan.error });
+
   let body: {
     items?: Array<{ sku?: string; quantity?: number }>;
     successUrl?: string;
@@ -153,12 +168,6 @@ Deno.serve(async (req) => {
     }))
     .filter((item) => item.sku !== '');
   if (requested.length === 0) return json(400, { error: 'cart_empty' });
-
-  const admin = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    { auth: { persistSession: false } },
-  );
 
   const { data: products, error: productError } = await admin
     .from('shop_products')
