@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { PartnerApplicationPanel } from '@/features/partner-application/PartnerApplicationPanel';
+import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/Button';
 import { customerErrorMessage } from '@/copy/customerError';
 import { CopyValueButton } from '@/features/affiliate/CopyValueButton';
@@ -263,49 +264,31 @@ function Codes({ data }: { data: PartnerWorkspace }) {
           {customerErrorMessage(mutation.error, 'partner')}
         </p>
       ) : null}
-      <div className="mt-6 overflow-x-auto">
-        <table className="w-full min-w-[980px] border-collapse text-left text-xs">
-          <thead>
-            <tr className="border-y border-ink/15 bg-stone-50 text-[10px] uppercase tracking-[0.1em] text-stone-500">
-              {[
-                'Kod / kanał',
-                'Status',
-                'Kliknięcia',
-                'Unikalni',
-                'Rejestracje',
-                'Klienci',
-                ...(showActive ? ['Aktywne subskrypcje'] : []),
-                'Przychód brutto',
-                'Zwroty',
-                'Prowizja oczekująca',
-                'Zatwierdzona',
-                'Wypłacona',
-                '',
-              ].map((h) => (
-                <th key={h} className="px-3 py-3 font-semibold">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {codes.map((item) => (
-              <CodeRow
-                key={item.id}
-                item={item}
-                onArchive={() => archive.mutate(item.id)}
-                showActive={showActive}
-                publicPath={data.profile ? `/${data.profile.slug}/${item.slug}` : null}
-              />
-            ))}
-          </tbody>
-        </table>
+      {/* DESIGN V11 (owner 2026-09-19): one CARD per code, not a 12-column
+          table pinned to `min-w-[980px]`. The table did not fit any phone and
+          barely fit a tablet, so the numbers a partner actually checks lived
+          behind a sideways scroll. NOTHING was dropped to make it fit: every
+          column — clicks, unique visitors, signups, paying customers, active
+          subscriptions where the payload supplies them, gross revenue, refunds
+          and the held / approved / paid split — is on the card, grouped instead
+          of laid end to end. */}
+      <div className="mt-6 grid gap-3 md:grid-cols-2">
+        {codes.map((item) => (
+          <CodeCard
+            key={item.id}
+            item={item}
+            onArchive={() => archive.mutate(item.id)}
+            showActive={showActive}
+            publicPath={data.profile ? `/${data.profile.slug}/${item.slug}` : null}
+          />
+        ))}
       </div>
     </>
   );
 }
 
-function CodeRow({
+/** One code, readable at any width. Same data as the row it replaces. */
+function CodeCard({
   item,
   onArchive,
   showActive,
@@ -317,56 +300,99 @@ function CodeRow({
   /** The code's own public URL path; null until the partner has a public profile. */
   publicPath: string | null;
 }) {
+  const status = partnerCodeStatusCopy(item.status);
+  const active = item.status === 'active';
+  /* The funnel reads left to right; the money reads as its own group. Active
+     subscriptions appear only when the payload actually carries them — an
+     absent figure is not rendered as a zero. */
+  const funnel: ReadonlyArray<readonly [string, string | number]> = [
+    ['Kliknięcia', item.clickCount],
+    ['Unikalni', item.uniqueVisitors],
+    ['Rejestracje', item.signups],
+    ['Klienci', item.paidCustomers],
+    ...(showActive
+      ? ([['Aktywne subskrypcje', countOrNull(item.activeSubscriptions) ?? '—']] as const)
+      : []),
+  ];
+  const ledger: ReadonlyArray<readonly [string, string]> = [
+    ['Przychód brutto', money(item.grossAttributedRevenueCents)],
+    ['Zwroty', money(item.refundCommissionCents)],
+    ['Prowizja oczekująca', money(item.pendingCommissionCents)],
+    ['Zatwierdzona', money(item.approvedCommissionCents)],
+    ['Wypłacona', money(item.paidCommissionCents)],
+  ];
   return (
-    <tr className="border-b border-ink/10">
-      <td className="px-3 py-4">
-        <strong className="font-mono text-ink">{item.code}</strong>
-        <span className="mt-1 block text-[10px] text-stone-500">
-          {item.label ?? 'Bez etykiety'}
+    <article
+      data-testid={`partner-code-${item.code}`}
+      className={cn(
+        'min-w-0 rounded-[12px] bg-white p-4 shadow-[inset_0_0_0_1px_#ded9d0]',
+        !active && 'bg-[#fbfaf7]',
+      )}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <strong className="font-mono text-[14px] text-ink">{item.code}</strong>
+        <span
+          title={status.help}
+          className={cn(
+            'rounded-full px-2.5 py-1 text-[11px] font-semibold',
+            active ? 'bg-[#101113] text-white' : 'bg-[#e7e3dd] text-[#65635f]',
+          )}
+        >
+          {status.label}
         </span>
-        {/* H-DASH-06: a current code's public link, and one click to copy either. */}
-        {item.status === 'active' ? (
-          <span className="mt-1 flex flex-wrap items-center gap-x-3">
-            {publicPath ? (
-              <span className="font-mono text-[10px] text-stone-500">{publicPath}</span>
-            ) : null}
-            <CopyValueButton value={item.code} label="Kopiuj kod" />
-            {publicPath ? (
-              <CopyValueButton
-                value={() => `${window.location.origin}${publicPath}`}
-                label="Kopiuj link"
-              />
-            ) : null}
-          </span>
-        ) : null}
-      </td>
-      <td className="px-3 py-4" title={partnerCodeStatusCopy(item.status).help}>
-        {partnerCodeStatusCopy(item.status).label}
-      </td>
-      <td className="px-3 py-4 tabular-nums">{item.clickCount}</td>
-      <td className="px-3 py-4 tabular-nums">{item.uniqueVisitors}</td>
-      <td className="px-3 py-4 tabular-nums">{item.signups}</td>
-      <td className="px-3 py-4 tabular-nums">{item.paidCustomers}</td>
-      {showActive ? (
-        <td className="px-3 py-4 tabular-nums">{countOrNull(item.activeSubscriptions) ?? '—'}</td>
+      </div>
+      <small className="mt-1 block text-[11.5px] text-stone-500">
+        {item.label ?? 'Bez etykiety'}
+      </small>
+
+      {/* H-DASH-06: a current code's public link, and one click to copy either. */}
+      {active ? (
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          {publicPath ? (
+            <span className="font-mono text-[11px] break-all text-stone-500">{publicPath}</span>
+          ) : null}
+          <CopyValueButton value={item.code} label="Kopiuj kod" />
+          {publicPath ? (
+            <CopyValueButton
+              value={() => `${window.location.origin}${publicPath}`}
+              label="Kopiuj link"
+            />
+          ) : null}
+        </div>
       ) : null}
-      <td className="px-3 py-4 tabular-nums">{money(item.grossAttributedRevenueCents)}</td>
-      <td className="px-3 py-4 tabular-nums">{money(item.refundCommissionCents)}</td>
-      <td className="px-3 py-4 tabular-nums">{money(item.pendingCommissionCents)}</td>
-      <td className="px-3 py-4 tabular-nums">{money(item.approvedCommissionCents)}</td>
-      <td className="px-3 py-4 tabular-nums">{money(item.paidCommissionCents)}</td>
-      <td className="px-3 py-4">
-        {item.status === 'active' ? (
-          <button
-            type="button"
-            onClick={onArchive}
-            className="pro-focus-ring min-h-10 text-xs font-semibold text-ink underline underline-offset-4"
-          >
-            Archiwizuj
-          </button>
-        ) : null}
-      </td>
-    </tr>
+
+      <dl className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+        {funnel.map(([label, value]) => (
+          <div key={label} className="min-w-0">
+            <dt className="font-mono text-[9.5px] tracking-[0.1em] text-[#8a857d] uppercase">
+              {label}
+            </dt>
+            <dd className="mt-0.5 text-[15px] font-semibold tabular-nums text-[#3b3833]">
+              {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-ink/10 pt-3">
+        {ledger.map(([label, value]) => (
+          <div key={label} className="flex min-w-0 items-baseline justify-between gap-2">
+            <dt className="text-[11.5px] text-stone-500">{label}</dt>
+            <dd className="font-mono text-[12.5px] font-semibold tabular-nums text-ink">{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {active ? (
+        <button
+          type="button"
+          onClick={onArchive}
+          className="pro-focus-ring mt-3 min-h-10 text-xs font-semibold text-ink underline underline-offset-4"
+        >
+          Archiwizuj
+        </button>
+      ) : null}
+    </article>
   );
 }
 
@@ -795,8 +821,24 @@ export function PartnerPage() {
   const section: Section = sections.some(([id]) => id === requested)
     ? (requested as Section)
     : 'overview';
-  const query = useQuery({ queryKey: ['partner-workspace'], queryFn: getPartnerWorkspace });
-  const data = query.data;
+  /* GAP 1 (owner 2026-09-19): `gellatti_partner_workspace_v1` is REVOKED FROM
+     ANON. This query used to run for everyone, so a signed-out visitor opening
+     /partner got a permission error from the RPC and the page rendered „Nie
+     udało się odczytać bezpiecznego panelu Partner." — the application surface
+     below never got a chance to draw. The visitor was told the product was
+     broken when in fact they were simply not signed in yet.
+
+     The auth store is the authority for who is asking. The RPC's own grants are
+     NOT weakened and the workspace does NOT become anonymously readable: the
+     protected read is simply never attempted without a session. */
+  const authStatus = useAuthStore((state) => state.status);
+  const authed = authStatus === 'authed';
+  const query = useQuery({
+    queryKey: ['partner-workspace'],
+    queryFn: getPartnerWorkspace,
+    enabled: authed,
+  });
+  const data = authed ? query.data : undefined;
   const content = useMemo(() => {
     if (!data?.ok) return null;
     if (section === 'overview') return <Overview data={data} />;
@@ -811,6 +853,38 @@ export function PartnerPage() {
   useEffect(() => {
     if (requested !== section) setParams({ section }, { replace: true });
   }, [requested, section, setParams]);
+
+  /* GAP 2 (owner 2026-09-19): /partner#partner-application is the canonical
+     application destination every „Zgłoś się" points at. The browser resolves a
+     hash once, on load — and at that moment this page is still deciding whether
+     it has a session and still waiting on the workspace read, so the element
+     does not exist yet and the jump silently does nothing.
+
+     So the hash is honoured when the surface ACTUALLY APPEARS, whichever state
+     it appears in: signed out, signed in without an application, pending, more
+     information, rejected. An approved Partner resolves to the workspace, which
+     has no such surface — that is the existing lifecycle and is not an error,
+     so nothing is scrolled and nothing is reported. */
+  const wantsApplication = useLocation().hash === '#partner-application';
+  const jumped = useRef(false);
+  useEffect(() => {
+    if (!wantsApplication || jumped.current) return;
+    const target = document.getElementById('partner-application');
+    if (!target) return;
+    jumped.current = true;
+    /* Reaching the surface is the point; scrolling to it is the nicety. A host
+       without smooth scrolling must not throw out of an effect and take the
+       page down with it. */
+    try {
+      target.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+    } catch {
+      /* the anchor is rendered either way */
+    }
+    /* Focus follows the scroll so a keyboard visitor lands on the surface too,
+       without stealing focus from a control they may already be using. */
+    const focusable = target.querySelector<HTMLElement>('button, a[href], input, [tabindex]');
+    focusable?.focus({ preventScroll: true });
+  }, [wantsApplication, authed, query.isPending, data, section]);
   return (
     <DestinationSurface eyebrow="GELLATTI" title="Partner">
       <div className="grid gap-8 xl:grid-cols-[220px_minmax(0,1fr)]">
@@ -840,10 +914,20 @@ export function PartnerPage() {
           ))}
         </nav>
         <main className="min-w-0">
-          {query.isPending ? (
+          {/* A visitor with no session is not an error state — it is the first
+              step of the application. The signed-out surface owns its own
+              „Zgłoś się" intent and opens auth as an internal step. */}
+          {!authed ? (
+            authStatus === 'loading' ? (
+              <ApplicationState kind="loading" title="Wczytuję tryb Partner…" />
+            ) : (
+              <PartnerApplicationPanel />
+            )
+          ) : null}
+          {authed && query.isPending ? (
             <ApplicationState kind="loading" title="Wczytuję tryb Partner…" />
           ) : null}
-          {query.isError ? (
+          {authed && query.isError ? (
             <ApplicationState
               kind="error"
               title="Nie udało się odczytać bezpiecznego panelu Partner."
@@ -865,9 +949,9 @@ export function PartnerPage() {
                  "in progress" heading above an empty application form. */
               <PartnerApplicationPanel />
             )
-          ) : (
+          ) : authed ? (
             content
-          )}
+          ) : null}
         </main>
       </div>
     </DestinationSurface>

@@ -127,6 +127,9 @@ export function PartnerApplicationPanel() {
         >
           {c.form.signInCta}
         </button>
+        {/* V11 names the shape of the flow so „Zgłoś się" opening an auth
+            modal is expected rather than a surprise. */}
+        <p className="mt-2.5 text-[12px] text-stone-500">{c.form.signInStep}</p>
       </div>
     );
   }
