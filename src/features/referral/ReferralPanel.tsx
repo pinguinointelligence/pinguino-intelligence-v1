@@ -199,10 +199,18 @@ export function ReferralPanel() {
             />
           </div>
 
+          {/* DESIGN V11 `.rf-active` (owner 2026-09-19): an active bonus is a
+              STATE, so it reads as a chip rather than another line of prose.
+              Same copy, same date, same authority — only the weight changes. */}
           {data.activeBonusEndsAt ? (
-            <p className="mt-3 text-[12.5px] text-[var(--g-text-secondary)]">
-              {c.stats.activeUntil}{' '}
-              <span className={numeric}>{data.activeBonusEndsAt.slice(0, 10)}</span>
+            <p className="mt-3">
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full bg-[#101113] px-3 py-1.5 text-[12px] font-semibold text-white"
+                data-testid="referral-active-bonus"
+              >
+                {c.stats.activeUntil}{' '}
+                <span className={numeric}>{data.activeBonusEndsAt.slice(0, 10)}</span>
+              </span>
             </p>
           ) : null}
 

@@ -264,49 +264,31 @@ function Codes({ data }: { data: PartnerWorkspace }) {
           {customerErrorMessage(mutation.error, 'partner')}
         </p>
       ) : null}
-      <div className="mt-6 overflow-x-auto">
-        <table className="w-full min-w-[980px] border-collapse text-left text-xs">
-          <thead>
-            <tr className="border-y border-ink/15 bg-stone-50 text-[10px] uppercase tracking-[0.1em] text-stone-500">
-              {[
-                'Kod / kanał',
-                'Status',
-                'Kliknięcia',
-                'Unikalni',
-                'Rejestracje',
-                'Klienci',
-                ...(showActive ? ['Aktywne subskrypcje'] : []),
-                'Przychód brutto',
-                'Zwroty',
-                'Prowizja oczekująca',
-                'Zatwierdzona',
-                'Wypłacona',
-                '',
-              ].map((h) => (
-                <th key={h} className="px-3 py-3 font-semibold">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {codes.map((item) => (
-              <CodeRow
-                key={item.id}
-                item={item}
-                onArchive={() => archive.mutate(item.id)}
-                showActive={showActive}
-                publicPath={data.profile ? `/${data.profile.slug}/${item.slug}` : null}
-              />
-            ))}
-          </tbody>
-        </table>
+      {/* DESIGN V11 (owner 2026-09-19): one CARD per code, not a 12-column
+          table pinned to `min-w-[980px]`. The table did not fit any phone and
+          barely fit a tablet, so the numbers a partner actually checks lived
+          behind a sideways scroll. NOTHING was dropped to make it fit: every
+          column — clicks, unique visitors, signups, paying customers, active
+          subscriptions where the payload supplies them, gross revenue, refunds
+          and the held / approved / paid split — is on the card, grouped instead
+          of laid end to end. */}
+      <div className="mt-6 grid gap-3 md:grid-cols-2">
+        {codes.map((item) => (
+          <CodeCard
+            key={item.id}
+            item={item}
+            onArchive={() => archive.mutate(item.id)}
+            showActive={showActive}
+            publicPath={data.profile ? `/${data.profile.slug}/${item.slug}` : null}
+          />
+        ))}
       </div>
     </>
   );
 }
 
-function CodeRow({
+/** One code, readable at any width. Same data as the row it replaces. */
+function CodeCard({
   item,
   onArchive,
   showActive,
@@ -318,56 +300,99 @@ function CodeRow({
   /** The code's own public URL path; null until the partner has a public profile. */
   publicPath: string | null;
 }) {
+  const status = partnerCodeStatusCopy(item.status);
+  const active = item.status === 'active';
+  /* The funnel reads left to right; the money reads as its own group. Active
+     subscriptions appear only when the payload actually carries them — an
+     absent figure is not rendered as a zero. */
+  const funnel: ReadonlyArray<readonly [string, string | number]> = [
+    ['Kliknięcia', item.clickCount],
+    ['Unikalni', item.uniqueVisitors],
+    ['Rejestracje', item.signups],
+    ['Klienci', item.paidCustomers],
+    ...(showActive
+      ? ([['Aktywne subskrypcje', countOrNull(item.activeSubscriptions) ?? '—']] as const)
+      : []),
+  ];
+  const ledger: ReadonlyArray<readonly [string, string]> = [
+    ['Przychód brutto', money(item.grossAttributedRevenueCents)],
+    ['Zwroty', money(item.refundCommissionCents)],
+    ['Prowizja oczekująca', money(item.pendingCommissionCents)],
+    ['Zatwierdzona', money(item.approvedCommissionCents)],
+    ['Wypłacona', money(item.paidCommissionCents)],
+  ];
   return (
-    <tr className="border-b border-ink/10">
-      <td className="px-3 py-4">
-        <strong className="font-mono text-ink">{item.code}</strong>
-        <span className="mt-1 block text-[10px] text-stone-500">
-          {item.label ?? 'Bez etykiety'}
+    <article
+      data-testid={`partner-code-${item.code}`}
+      className={cn(
+        'min-w-0 rounded-[12px] bg-white p-4 shadow-[inset_0_0_0_1px_#ded9d0]',
+        !active && 'bg-[#fbfaf7]',
+      )}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <strong className="font-mono text-[14px] text-ink">{item.code}</strong>
+        <span
+          title={status.help}
+          className={cn(
+            'rounded-full px-2.5 py-1 text-[11px] font-semibold',
+            active ? 'bg-[#101113] text-white' : 'bg-[#e7e3dd] text-[#65635f]',
+          )}
+        >
+          {status.label}
         </span>
-        {/* H-DASH-06: a current code's public link, and one click to copy either. */}
-        {item.status === 'active' ? (
-          <span className="mt-1 flex flex-wrap items-center gap-x-3">
-            {publicPath ? (
-              <span className="font-mono text-[10px] text-stone-500">{publicPath}</span>
-            ) : null}
-            <CopyValueButton value={item.code} label="Kopiuj kod" />
-            {publicPath ? (
-              <CopyValueButton
-                value={() => `${window.location.origin}${publicPath}`}
-                label="Kopiuj link"
-              />
-            ) : null}
-          </span>
-        ) : null}
-      </td>
-      <td className="px-3 py-4" title={partnerCodeStatusCopy(item.status).help}>
-        {partnerCodeStatusCopy(item.status).label}
-      </td>
-      <td className="px-3 py-4 tabular-nums">{item.clickCount}</td>
-      <td className="px-3 py-4 tabular-nums">{item.uniqueVisitors}</td>
-      <td className="px-3 py-4 tabular-nums">{item.signups}</td>
-      <td className="px-3 py-4 tabular-nums">{item.paidCustomers}</td>
-      {showActive ? (
-        <td className="px-3 py-4 tabular-nums">{countOrNull(item.activeSubscriptions) ?? '—'}</td>
+      </div>
+      <small className="mt-1 block text-[11.5px] text-stone-500">
+        {item.label ?? 'Bez etykiety'}
+      </small>
+
+      {/* H-DASH-06: a current code's public link, and one click to copy either. */}
+      {active ? (
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          {publicPath ? (
+            <span className="font-mono text-[11px] break-all text-stone-500">{publicPath}</span>
+          ) : null}
+          <CopyValueButton value={item.code} label="Kopiuj kod" />
+          {publicPath ? (
+            <CopyValueButton
+              value={() => `${window.location.origin}${publicPath}`}
+              label="Kopiuj link"
+            />
+          ) : null}
+        </div>
       ) : null}
-      <td className="px-3 py-4 tabular-nums">{money(item.grossAttributedRevenueCents)}</td>
-      <td className="px-3 py-4 tabular-nums">{money(item.refundCommissionCents)}</td>
-      <td className="px-3 py-4 tabular-nums">{money(item.pendingCommissionCents)}</td>
-      <td className="px-3 py-4 tabular-nums">{money(item.approvedCommissionCents)}</td>
-      <td className="px-3 py-4 tabular-nums">{money(item.paidCommissionCents)}</td>
-      <td className="px-3 py-4">
-        {item.status === 'active' ? (
-          <button
-            type="button"
-            onClick={onArchive}
-            className="pro-focus-ring min-h-10 text-xs font-semibold text-ink underline underline-offset-4"
-          >
-            Archiwizuj
-          </button>
-        ) : null}
-      </td>
-    </tr>
+
+      <dl className="mt-3.5 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+        {funnel.map(([label, value]) => (
+          <div key={label} className="min-w-0">
+            <dt className="font-mono text-[9.5px] tracking-[0.1em] text-[#8a857d] uppercase">
+              {label}
+            </dt>
+            <dd className="mt-0.5 text-[15px] font-semibold tabular-nums text-[#3b3833]">
+              {value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-ink/10 pt-3">
+        {ledger.map(([label, value]) => (
+          <div key={label} className="flex min-w-0 items-baseline justify-between gap-2">
+            <dt className="text-[11.5px] text-stone-500">{label}</dt>
+            <dd className="font-mono text-[12.5px] font-semibold tabular-nums text-ink">{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {active ? (
+        <button
+          type="button"
+          onClick={onArchive}
+          className="pro-focus-ring mt-3 min-h-10 text-xs font-semibold text-ink underline underline-offset-4"
+        >
+          Archiwizuj
+        </button>
+      ) : null}
+    </article>
   );
 }
 
