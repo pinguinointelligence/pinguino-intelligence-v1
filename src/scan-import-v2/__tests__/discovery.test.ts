@@ -307,6 +307,29 @@ describe('Unknown product flow — discovery lifecycle (owner acceptance matrix)
     expect(r.evidenceError).toBe('provider_timeout');
     expect(r.next).toBe('label_photo');
   });
+  it('S15-FIX-18 provider_unavailable cannot unlock finalize even with an empty gap list', async () => {
+    const { d, p } = setup();
+    d.research = async (identity) => ({
+      kind: 'researched',
+      evidenceError: 'provider_unavailable',
+      session: {
+        sessionId: `sess-${identity.canonicalGtin13}`,
+        identity,
+        result: null,
+        overlayState: null,
+        missingCritical: [],
+        usage: { visionCalls: 0, webCalls: 0 },
+      },
+    });
+
+    const r = pendingOf(await runScanImportV2(scan(GTIN), ctx(), p));
+    expect(r).toMatchObject({
+      evidenceError: 'provider_unavailable',
+      next: 'label_photo',
+      canonical: false,
+      engineReady: false,
+    });
+  });
   it('SERVER EXACT during discovery (product the client authority missed) resolves as the exact product, never a new one', async () => {
     const { d, p } = setup();
     d.serverCatalogue.set(

@@ -143,6 +143,7 @@ type Phase =
       web: CanonicalRegistryIdentity | null;
       next: 'finalize' | 'analyze_label' | null;
       note: string | null;
+      externalEvidenceUnavailable: boolean;
     }
   | { kind: 'offline' }
   | { kind: 'label'; session: DiscoverySession; note: string | null }
@@ -473,6 +474,7 @@ export function ScanFlow({
                 web,
                 next: r.next === 'finalize' ? 'finalize' : 'analyze_label',
                 note: noteText,
+                externalEvidenceUnavailable: r.evidenceError !== null,
               });
               return;
             }
@@ -504,6 +506,7 @@ export function ScanFlow({
             noteText,
             ctx,
             run,
+            r.evidenceError !== null,
           );
           return;
         }
@@ -605,7 +608,12 @@ export function ScanFlow({
     note: string | null,
     ctx: RequestContext,
     run: ScanRunAuthority,
+    externalEvidenceUnavailable = false,
   ) => {
+    if (externalEvidenceUnavailable) {
+      setPhase({ kind: 'label', session, note });
+      return;
+    }
     if (web) {
       // Exact-GTIN data is already in the server session. This is presentation/prefill only.
       setRecognized(web);
@@ -1302,6 +1310,7 @@ export function ScanFlow({
                     phase.note,
                     ctx,
                     operationRun,
+                    phase.externalEvidenceUnavailable,
                   );
                 }, operationRun);
               }}

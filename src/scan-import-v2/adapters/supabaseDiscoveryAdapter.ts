@@ -12,6 +12,7 @@ import type {
 } from '../contracts';
 import { isScannerTransportError, NetworkError, ScannerResponseError } from '../contracts';
 import { withProductScanFinalizeV2Contract } from '../../features/product-scanner/productScanFinalizeContract';
+import { labelAnalysisCallPlan } from '../../features/product-scanner/labelAnalysisRequest';
 import { assertScanRunCurrent } from '../runAuthority';
 import type {
   AnalyzeOutcome,
@@ -390,11 +391,14 @@ export function createSupabaseDiscoveryPort(
       // The session itself is adopted by id, never by canonical barcode.
       assertScanRunCurrent(ctx);
       const s = adopt(session);
+      const callPlan = labelAnalysisCallPlan(s.usage.visionCalls);
+      if (!callPlan.allowed)
+        throw new ScannerResponseError(`product-scan-analyze: ${callPlan.error}`);
       const d = await invoke('product-scan-analyze', {
         sessionId: s.sessionId,
         images: [...images],
         barcode: legacyBarcode(s.identity),
-        accurateRetry: false,
+        accurateRetry: callPlan.accurateRetry,
         missingFields: [...s.missingCritical],
       });
       assertScanRunCurrent(ctx);

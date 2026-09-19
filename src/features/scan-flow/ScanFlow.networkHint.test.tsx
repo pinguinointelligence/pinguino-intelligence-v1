@@ -259,4 +259,25 @@ describe('Scanner explicit network attempt', () => {
     expect(restored.value).toBe('95');
     expect(host.textContent).toContain('Clásica café soluble');
   });
+
+  it('S15-FIX-18 provider_unavailable keeps the same session on a label/retry action and never finalizes', async () => {
+    invoke.mockResolvedValue(
+      ok({
+        sessionId: 'network-session',
+        kind: 'ean_lookup',
+        outcome: 'provider_unavailable',
+        providerUnavailable: true,
+        retryable: true,
+        notice: 'Nie udało się teraz połączyć ze źródłem danych o produktach.',
+        result: null,
+        missingCriticalFields: [],
+        usage: { visionCalls: 0, webCalls: 0 },
+      }),
+    );
+    await capture();
+    expect(calls('product-scan-analyze')).toHaveLength(1);
+    expect(calls('product-scan-finalize')).toHaveLength(0);
+    expect(host.textContent).toContain('Zrób zdjęcie');
+    expect(host.textContent).toContain('Nie udało się teraz połączyć');
+  });
 });

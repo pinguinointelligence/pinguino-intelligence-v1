@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { requestedLabelFields } from './labelAnalysisRequest';
+import {
+  analysisIdempotencyKey,
+  labelAnalysisCallPlan,
+  requestedLabelFields,
+} from './labelAnalysisRequest';
 
 /*
   Reproduces the owner's 2026-09-07 runs, from the secured sessions:
@@ -41,5 +45,38 @@ describe('which label fields a photograph is asked to read', () => {
 
   it('a non-array is not a wish list', () => {
     expect(requestedLabelFields('nutrition' as unknown as string[], ALL).fields).toEqual([...ALL]);
+  });
+
+  it('S15-FIX-14 identical completed photo payloads reuse one stable reservation identity', () => {
+    const key = analysisIdempotencyKey('session-1', 'fast', 'a'.repeat(64), 0);
+    expect(analysisIdempotencyKey('session-1', 'fast', 'a'.repeat(64), 0)).toBe(key);
+  });
+
+  it('S15-FIX-15 a different second photo has a distinct identity and uses the bounded accurate pass', () => {
+    expect(analysisIdempotencyKey('session-1', 'fast', 'a'.repeat(64), 0)).not.toBe(
+      analysisIdempotencyKey('session-1', 'accurate', 'b'.repeat(64), 0),
+    );
+    expect(labelAnalysisCallPlan(1, 2)).toEqual({
+      allowed: true,
+      accurateRetry: true,
+      callKind: 'accurate',
+      error: null,
+    });
+  });
+
+  it('S15-FIX-16 a third completed photo is refused before another provider call', () => {
+    expect(labelAnalysisCallPlan(2, 2)).toEqual({
+      allowed: false,
+      accurateRetry: true,
+      callKind: 'accurate',
+      error: 'session_vision_limit',
+    });
+  });
+
+  it('S15-FIX-17 a known failed attempt gets one new stable retry identity', () => {
+    const failed = analysisIdempotencyKey('session-1', 'fast', 'a'.repeat(64), 0);
+    const retry = analysisIdempotencyKey('session-1', 'fast', 'a'.repeat(64), 1);
+    expect(retry).not.toBe(failed);
+    expect(analysisIdempotencyKey('session-1', 'fast', 'a'.repeat(64), 1)).toBe(retry);
   });
 });

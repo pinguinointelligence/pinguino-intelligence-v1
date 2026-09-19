@@ -234,6 +234,60 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
       },
     });
   });
+  it('S15-FIX-15 uses the existing accurate pass for a different second photo', async () => {
+    const c = client({
+      'product-scan-analyze': {
+        sessionId: 'S1',
+        result: { identity: { displayName: 'L' } },
+        missingCriticalFields: ['ingredientsText'],
+        usage: { visionCalls: 2, webCalls: 0 },
+      },
+    });
+    const identity = id('4305615614434');
+    await createSupabaseDiscoveryPort(c).analyzeLabel(
+      {
+        sessionId: 'S1',
+        identity,
+        result: { identity: { displayName: 'prior valid' } },
+        overlayState: 'SCAN_DRAFT',
+        missingCritical: ['ingredientsText'],
+        usage: { visionCalls: 1, webCalls: 0 },
+      },
+      [
+        {
+          assetId: 'second-photo',
+          mime: 'image/jpeg',
+          base64: 'x',
+          source: 'camera_manual',
+          originalMime: 'image/jpeg',
+          transformations: [],
+          qualityScore: 1,
+        },
+      ],
+      ctx(),
+    );
+    expect(c.calls[0]?.body).toMatchObject({ accurateRetry: true });
+  });
+
+  it('S15-FIX-16 refuses an exhausted photo budget without invoking the provider', async () => {
+    const c = client({});
+    const identity = id('4305615614434');
+    await expect(
+      createSupabaseDiscoveryPort(c).analyzeLabel(
+        {
+          sessionId: 'S1',
+          identity,
+          result: null,
+          overlayState: null,
+          missingCritical: [],
+          usage: { visionCalls: 2, webCalls: 0 },
+        },
+        [],
+        ctx(),
+      ),
+    ).rejects.toThrow('session_vision_limit');
+    expect(c.calls).toEqual([]);
+  });
   it('finalize: family_confirmation_required / not_ready / idempotent are mapped; no engine readiness is invented', async () => {
     const mk = (resp: unknown) =>
       createSupabaseDiscoveryPort(client({ 'product-scan-finalize': resp }), {

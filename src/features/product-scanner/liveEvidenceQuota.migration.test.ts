@@ -36,10 +36,14 @@ describe('a failed analysis costs the session nothing', () => {
     );
   });
 
-  it('never lets a failure erase an analysis the session already holds', () => {
+  it('S15-FIX-19 never lets a failed retry erase valid evidence the session already holds', () => {
     const body = fn('complete_product_scan_analysis_v1');
-    expect(body).toContain("overlay_state=case when p_status='completed' then p_overlay_state else overlay_state end");
-    expect(body).toContain("result_json=case when p_status='completed' then p_result else result_json end");
+    expect(body).toContain(
+      "overlay_state=case when p_status='completed' then p_overlay_state else overlay_state end",
+    );
+    expect(body).toContain(
+      "result_json=case when p_status='completed' then p_result else result_json end",
+    );
     expect(body).toContain("when v_session.result_json is not null then 'analyzed'");
   });
 
@@ -63,7 +67,7 @@ describe('a failed analysis costs the session nothing', () => {
 
   it('keeps the successful-call ceiling at two', () => {
     const body = fn('reserve_product_scan_analysis_v1');
-    expect(body).toContain("if v_session.vision_calls>=2 then");
+    expect(body).toContain('if v_session.vision_calls>=2 then');
     expect(body).toContain("'reason','fast_call_already_used'");
     expect(body).toContain("'reason','accurate_retry_requires_one_fast_call'");
   });
@@ -88,7 +92,9 @@ describe('the exact GTIN lookup has its own reservation', () => {
   it('writes source provenance exactly as a label analysis does', () => {
     const body = fn('complete_product_scan_ean_lookup_v1');
     expect(body).toContain('insert into public.product_scan_external_sources');
-    expect(body).toContain("item->>'sourceType' in ('barcode_registry','manufacturer','retailer','web_search')");
+    expect(body).toContain(
+      "item->>'sourceType' in ('barcode_registry','manufacturer','retailer','web_search')",
+    );
     expect(body).toContain("item->>'url'~*'^https://'");
   });
 
