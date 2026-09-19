@@ -42,6 +42,7 @@ import {
   type BuildPreviewResult,
   type ConstraintPreview,
 } from './applyPipeline';
+import { ownerInulinGramBand } from '@/features/product-intelligence/ownerInulinPolicy';
 import { buildDraftCandidateVector } from './draftCandidateVector';
 import { selectCanonicalDraft, useConstraintStudioStore } from './constraintStudioStore';
 
@@ -152,13 +153,32 @@ describe('the optimizer receives the CURRENT draft (owner Phase 1, tests 1–3)'
     expect(inulin, 'Inulin must be in the candidate vector').toBeDefined();
     expect(inulin!.increasable).toBe(true);
     expect(inulin!.testedGrams.length).toBeGreaterThan(0);
-    // …and the runtime projects the published 2–8% authority as a solver
-    // range, so the line is governed rather than offered as an unconstrained
-    // candidate.
+    // …and the runtime projects the published 2–8 % authority as a solver
+    // RANGE, so the line is GOVERNED — it may move, and only inside the band.
+    //
+    // AMENDED 2026-09-19 (global ±2 controlled relaxation § 3, Owner decision
+    // „range != lock"; supersession GEL-P0-039). This assertion used to read
+    // `.not.toContain('l-inulin')`: the runtime band was implemented by
+    // DROPPING the line from the adjustable vector, which enforced a dosage
+    // PREFERENCE as a FREEZE. The scientific protection it was written to keep
+    // — canonical Inulin never leaves 2–8 % of the batch — is unchanged and is
+    // now asserted DIRECTLY, on every rung the optimizer may actually try,
+    // instead of by the proxy of absence.
     const preview = previewOf(buildOptimizePreview(rec, NO, AT));
-    expect(preview.iteration!.candidateVector.map((candidate) => candidate.lineId)).not.toContain(
-      'l-inulin',
+    const governed = preview.iteration!.candidateVector.find(
+      (candidate) => candidate.lineId === 'l-inulin',
     );
+    expect(governed, 'the governed line participates — a range is a window, not a lock').toBeDefined();
+    const band = ownerInulinGramBand(TARGET);
+    for (const rung of governed!.testedGrams) {
+      expect(rung).toBeGreaterThanOrEqual(band.minGrams);
+      expect(rung).toBeLessThanOrEqual(band.maxGrams);
+    }
+    // Measured on this draft (20 g of 1000 g): [21, 25, 30, 40, 70, 80] —
+    // every rung inside 20–80, the floor never crossed, 0 g unreachable.
+    expect(governed!.testedGrams).toEqual([21, 25, 30, 40, 70, 80]);
+    expect(inulinGrams(preview.proposedInput)).toBeGreaterThanOrEqual(band.minGrams);
+    expect(inulinGrams(preview.proposedInput)).toBeLessThanOrEqual(band.maxGrams);
   });
 
   it('test 2: the CURRENT amount reaches the optimizer — never a stale/reference value', () => {
@@ -170,10 +190,19 @@ describe('the optimizer receives the CURRENT draft (owner Phase 1, tests 1–3)'
       // grams and the CURRENT total (955 / 1045 …), not a 1000 g reference.
       expect(iteration.draftPlannedSumGrams).toBeCloseTo(plannedSum(rec), 6);
       expect(iteration.draftLineGrams.find((l) => l.lineId === 'l-inulin')!.grams).toBe(grams);
-      // The runtime range governs the canonical line, so it is intentionally
-      // absent from the unconstrained candidate vector and remains in-band.
+      // The runtime range GOVERNS the canonical line (§ 3, GEL-P0-039): it is
+      // present in the vector and every value it may be tested at, and the
+      // amount finally proposed, stay inside the published 2–8 % band. The
+      // superseded form of this assertion demanded the line be ABSENT, which
+      // is how a preference band came to behave as a lock.
       const seen = iteration.candidateVector.find((c) => c.lineId === 'l-inulin');
-      expect(seen).toBeUndefined();
+      expect(seen, 'the governed line participates in the search').toBeDefined();
+      for (const rung of seen!.testedGrams) {
+        expect(rung).toBeGreaterThanOrEqual(20);
+        expect(rung).toBeLessThanOrEqual(80);
+      }
+      // A line already at the ceiling has no upward rung left to try.
+      expect(seen!.increasable).toBe(grams < 80);
       expect(inulinGrams(preview.proposedInput)).toBeGreaterThanOrEqual(20);
       expect(inulinGrams(preview.proposedInput)).toBeLessThanOrEqual(80);
       expect(iteration.startPlannedSumGrams).toBeCloseTo(TARGET, 6);

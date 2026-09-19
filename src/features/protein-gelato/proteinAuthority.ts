@@ -30,6 +30,11 @@ import type { ConstraintSet } from '@/features/recipe-constraints';
 import { recipeTechnicalFit, type TechnicalFitPresentation } from '@/features/recipe-score';
 import { MATCH_SCORE_LABELS, type TenPointScore } from '@/features/recipe-score/recipeMatchScore';
 import { assessRecipeDirection } from '@/features/recipe-direction/recipeDirectionAssessment';
+import {
+  relaxationCost,
+  relaxationScorePenalty,
+  relaxedOwnerRanges,
+} from '@/features/recipe-direction/relaxableRangePolicy';
 
 import {
   assessProteinQualification,
@@ -701,10 +706,23 @@ export function recipeFitForInput(
   if (base.score === null) return base;
   if (!protein.applicable && direction.score === null) return base;
 
-  const score = Math.min(
-    base.score,
-    direction.score ?? 10,
-    protein.applicable && protein.score !== null ? protein.score : 10,
+  // CONTROLLED RELAXATION IS PRICED HERE, AND ONLY HERE (owner decision
+  // 2026-09-19 § 9–§ 11). A recipe that had to leave an owner's preferred
+  // dosage band is a VALID recipe — it is never rejected for that — but it is
+  // less ideal than one that did not, so the canonical fit says so. A recipe
+  // inside every owner band pays nothing, so this can only ever move a score
+  // that actually relaxed something. There is no second scale: the penalty is
+  // taken off the existing 1–10 fit, and the proportional cost it came from
+  // stays available as `relaxationCost` for ranking and for evidence.
+  const relaxation = relaxationCost(input);
+  const relaxationPenalty = relaxationScorePenalty(input);
+  const score = Math.max(
+    1,
+    Math.min(
+      base.score,
+      direction.score ?? 10,
+      protein.applicable && protein.score !== null ? protein.score : 10,
+    ) - relaxationPenalty,
   ) as TenPointScore;
   const label = MATCH_SCORE_LABELS[score];
   const directionAria = direction.active
@@ -719,6 +737,23 @@ export function recipeFitForInput(
     label,
     display: `${score}/10`,
     ariaText: `Dopasowanie receptury: ${score} na 10 — ${label}.${directionAria}${proteinAria}`,
-    validatedNative: base.validatedNative && (!protein.applicable || protein.qualification.qualified),
+    // A relaxed recipe is inside no owner band it should be in, so it can never
+    // be the validated-native 10/10 state.
+    validatedNative:
+      base.validatedNative &&
+      (!protein.applicable || protein.qualification.qualified) &&
+      relaxationPenalty === 0,
+    relaxationCost: relaxation,
+    relaxationPenalty,
+    relaxedRanges: relaxedOwnerRanges(input).map((range) => ({
+      policyId: range.policyId,
+      lineIds: range.lineIds,
+      grams: range.grams,
+      normalMinGrams: range.normal.minGrams,
+      normalMaxGrams: range.normal.maxGrams,
+      extendedMinGrams: range.extended.minGrams,
+      extendedMaxGrams: range.extended.maxGrams,
+      normalizedExcursion: range.normalizedExcursion,
+    })),
   };
 }

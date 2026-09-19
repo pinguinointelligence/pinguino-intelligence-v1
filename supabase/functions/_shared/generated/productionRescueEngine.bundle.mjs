@@ -6446,6 +6446,1033 @@ function recipeCompositionFromState(state) {
 }
 
 //#endregion
+//#region src/spine/temperatureRegulator.ts
+const TEMPERATURE_REGULATOR_CONFIG_VERSION = "0.1.0";
+/**
+* Protein product qualification carried by the Protein regulator rows.
+*
+* REPLACES `PROTEIN_GELATO_TARGET` (Protein Engine v2, owner decision
+* 2026-08-22). The old constant declared a 20 % protein BY MASS target with a
+* 0.1 pp tolerance and a user-facing 1 pp control step. It had no provenance —
+* no controlled frozen-dessert study exceeds 10 % protein — and it is almost
+* certainly a unit confusion with the EU claim threshold, which is 20 % of
+* ENERGY, not of mass.
+*
+* There is no target and no control step any more: protein % is an OUTPUT.
+* What the profile still asserts is that a Protein product must be able to
+* carry its own claim — Regulation (EC) No 1924/2006, Annex, "HIGH PROTEIN":
+* at least 20 % of the energy value of the food provided by protein.
+*
+* The runtime authority lives in
+* `src/features/protein-gelato/proteinQualification.ts`; this entry records it
+* in the regulator registry so every Protein temperature row states the rule
+* it is evaluated under.
+*/
+const PROTEIN_GELATO_QUALIFICATION = {
+	highProteinEnergySharePercent: 20,
+	source: "EU Regulation (EC) No 1924/2006, Annex — HIGH PROTEIN"
+};
+const standardGelatoMinus11 = {
+	productProfile: "standard_gelato",
+	servingTemperatureC: -11,
+	status: "locked_base_reference_zero_delta",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	npac: {
+		band: [33, 43],
+		cleanCenter: [39, 41],
+		overlapNext: [42, 43]
+	},
+	iceFraction: { band: [45, 54.5] },
+	pod: { band: [12, 17] },
+	lactose: { band: [4, 6] },
+	lactoseSanding: { band: [5, 9] },
+	fat: { band: [5, 12] },
+	aeratingProtein: { band: [3, 6] },
+	proteinShareInSolids: { band: [9, 13] },
+	solids: { band: [31, 45] },
+	water: { band: [57, 70] },
+	stabilizer: { required: true },
+	disabledGates: [],
+	advisoryGates: [],
+	notes: ["−11 °C = base reference / zero delta — the current Base Engine is already calibrated for −11 °C", "NPAC alone is not enough: lactose, sanding, ice fraction, protein, solids, water and stabilizer still gate"]
+};
+const standardGelatoMinus12 = {
+	productProfile: "standard_gelato",
+	servingTemperatureC: -12,
+	status: "locked_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	npac: {
+		band: [42, 50],
+		cleanCenter: [45, 46.2],
+		lockedReference: 46.18,
+		lowerCleanAnchor: 44.98,
+		overlapPrevious: [42, 43],
+		overlapNext: [48, 50]
+	},
+	iceFraction: {
+		band: [46, 54],
+		lockedReference: 50.34
+	},
+	pod: {
+		band: [12, 17],
+		lockedReference: 15.57
+	},
+	lactose: {
+		band: [4, 6],
+		lockedReference: 5.44
+	},
+	lactoseSanding: {
+		band: [5, 9],
+		lockedReference: 8.62
+	},
+	fat: {
+		band: [5, 12],
+		lockedReference: 6.19
+	},
+	aeratingProtein: {
+		band: [3, 6],
+		lockedReference: 3.65
+	},
+	proteinShareInSolids: {
+		band: [9, 13],
+		lockedReference: 9.9
+	},
+	solids: {
+		band: [31, 44],
+		lockedReference: 36.82
+	},
+	water: {
+		band: [56, 70],
+		lockedReference: 63.18
+	},
+	stabilizer: { required: true },
+	disabledGates: [],
+	advisoryGates: [],
+	notes: ["main locked reference: G17", "lower clean anchor: G15"]
+};
+const standardGelatoMinus13 = {
+	productProfile: "standard_gelato",
+	servingTemperatureC: -13,
+	status: "locked_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	npac: {
+		band: [48, 55],
+		cleanCenter: [51.5, 53.2],
+		lockedReference: 53.15,
+		lowerCleanAnchor: 51.77,
+		overlapPrevious: [48, 50]
+	},
+	iceFraction: {
+		band: [46, 52],
+		lockedReference: 49.69
+	},
+	pod: {
+		band: [12, 17],
+		lockedReference: 16.37
+	},
+	lactose: {
+		band: [4, 6],
+		lockedReference: 5.51
+	},
+	lactoseSanding: {
+		band: [5, 9],
+		lockedReference: 8.78
+	},
+	fat: {
+		band: [5, 12],
+		lockedReference: 5.89
+	},
+	aeratingProtein: {
+		band: [3, 6],
+		lockedReference: 3.69
+	},
+	proteinShareInSolids: {
+		band: [9, 13],
+		lockedReference: 9.93
+	},
+	solids: {
+		band: [35, 45],
+		lockedReference: 37.22
+	},
+	water: {
+		band: [55, 65],
+		lockedReference: 62.78
+	},
+	stabilizer: { required: true },
+	disabledGates: [],
+	advisoryGates: [],
+	notes: ["main locked reference: G18", "lower clean anchor: G11"]
+};
+const PROTEIN_DISABLED_GATES = [
+	"lactose",
+	"lactose_sanding",
+	"aerating_protein",
+	"protein_share_in_solids"
+];
+const proteinGelatoMinus11 = {
+	productProfile: "protein_gelato",
+	servingTemperatureC: -11,
+	status: "owner_approved_standard_physics_protein_v1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	npac: {
+		band: [33, 42],
+		cleanCenter: [39, 41],
+		overlapNext: [42, 42]
+	},
+	iceFraction: { band: [45, 54.5] },
+	pod: { band: [12, 17] },
+	fat: { band: [5, 12] },
+	solids: { band: [31, 45] },
+	water: { band: [57, 70] },
+	proteinQualification: PROTEIN_GELATO_QUALIFICATION,
+	stabilizer: { required: true },
+	disabledGates: PROTEIN_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["separate Protein Gelato profile; Standard Gelato serving physics reused by owner decision", "protein % is an OUTPUT of the formulation; the profile only requires the recipe to earn the HIGH PROTEIN claim, and never replaces Main flavor identity"]
+};
+const proteinGelatoMinus12 = {
+	productProfile: "protein_gelato",
+	servingTemperatureC: -12,
+	status: "owner_approved_standard_physics_protein_v1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	npac: {
+		band: [42, 50],
+		cleanCenter: [45, 46.2],
+		lockedReference: 46.18,
+		lowerCleanAnchor: 44.98,
+		overlapPrevious: [42, 43],
+		overlapNext: [48, 50]
+	},
+	iceFraction: {
+		band: [46, 54],
+		lockedReference: 50.34
+	},
+	pod: {
+		band: [12, 17],
+		lockedReference: 15.57
+	},
+	fat: {
+		band: [5, 12],
+		lockedReference: 6.19
+	},
+	solids: {
+		band: [31, 44],
+		lockedReference: 36.82
+	},
+	water: {
+		band: [56, 70],
+		lockedReference: 63.18
+	},
+	proteinQualification: PROTEIN_GELATO_QUALIFICATION,
+	stabilizer: { required: true },
+	disabledGates: PROTEIN_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["separate Protein Gelato profile; G17/G15 physical calibration reused by owner decision"]
+};
+const proteinGelatoMinus13 = {
+	productProfile: "protein_gelato",
+	servingTemperatureC: -13,
+	status: "owner_approved_standard_physics_protein_v1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	npac: {
+		band: [48, 55],
+		cleanCenter: [51.5, 53.2],
+		lockedReference: 53.15,
+		lowerCleanAnchor: 51.77,
+		overlapPrevious: [48, 50]
+	},
+	iceFraction: {
+		band: [46, 52],
+		lockedReference: 49.69
+	},
+	pod: {
+		band: [12, 17],
+		lockedReference: 16.37
+	},
+	fat: {
+		band: [5, 12],
+		lockedReference: 5.89
+	},
+	solids: {
+		band: [35, 45],
+		lockedReference: 37.22
+	},
+	water: {
+		band: [55, 65],
+		lockedReference: 62.78
+	},
+	proteinQualification: PROTEIN_GELATO_QUALIFICATION,
+	stabilizer: { required: true },
+	disabledGates: PROTEIN_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["separate Protein Gelato profile; G18/G11 physical calibration reused by owner decision"]
+};
+const SORBET_DISABLED_GATES = [
+	"dairy_fat_logic",
+	"lactose",
+	"lactose_sanding",
+	"aerating_dairy_protein",
+	"dairy_protein_share_in_solids",
+	"msnf_required_gate"
+];
+const sorbetMinus11 = {
+	productProfile: "sorbet",
+	servingTemperatureC: -11,
+	status: "locked_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: {
+		band: [15, 25],
+		lockedReference: 19.16
+	},
+	npac: {
+		band: [35, 40],
+		cleanCenter: [37, 38],
+		lockedReference: 37.71,
+		overlapNext: [39, 40]
+	},
+	iceFraction: {
+		band: [51, 59],
+		lockedReference: 57.43
+	},
+	solids: {
+		band: [25, 33],
+		lockedReference: 27.85
+	},
+	water: {
+		band: [67, 75],
+		lockedReference: 72.15
+	},
+	stabilizer: { required: true },
+	disabledGates: SORBET_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["main locked reference: S01", "never evaluated with Standard Gelato dairy gates"]
+};
+const sorbetMinus12 = {
+	productProfile: "sorbet",
+	servingTemperatureC: -12,
+	status: "locked_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: {
+		band: [15, 25],
+		lockedReference: 19.97
+	},
+	npac: {
+		band: [42, 49],
+		cleanCenter: [44, 45],
+		lockedReference: 44.18,
+		overlapPrevious: [39, 40],
+		overlapNext: [48, 49]
+	},
+	iceFraction: {
+		band: [51, 59],
+		lockedReference: 55.95
+	},
+	solids: {
+		band: [25, 33],
+		lockedReference: 29.29
+	},
+	water: {
+		band: [67, 73],
+		lockedReference: 70.71
+	},
+	stabilizer: { required: true },
+	disabledGates: SORBET_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["main locked reference: S02"]
+};
+const sorbetMinus13 = {
+	productProfile: "sorbet",
+	servingTemperatureC: -13,
+	status: "locked_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: {
+		band: [15, 25],
+		lockedReference: 21.21
+	},
+	npac: {
+		band: [48, 55],
+		cleanCenter: [51, 52.5],
+		lockedReference: 52.22,
+		overlapPrevious: [48, 49]
+	},
+	iceFraction: {
+		band: [50, 58],
+		lockedReference: 54.28
+	},
+	solids: {
+		band: [25, 33],
+		lockedReference: 30.82
+	},
+	water: {
+		band: [67, 73],
+		lockedReference: 69.18
+	},
+	stabilizer: { required: true },
+	disabledGates: SORBET_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["main locked reference: S03"]
+};
+const VEGAN_DISABLED_GATES = [
+	"lactose",
+	"lactose_sanding",
+	"aerating_dairy_protein",
+	"dairy_protein_share_in_solids",
+	"msnf_required_gate"
+];
+const veganGelatoMinus11 = {
+	productProfile: "vegan_gelato",
+	servingTemperatureC: -11,
+	status: "locked_pinguino_internal_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: { band: [13, 25] },
+	npac: {
+		band: [35, 52],
+		cleanCenter: [40, 47],
+		overlapNext: [47, 52]
+	},
+	iceFraction: { band: [45, 61] },
+	fat: { band: [0, 12] },
+	solids: { band: [30, 43] },
+	water: { band: [54, 72] },
+	stabilizer: { required: true },
+	disabledGates: VEGAN_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["derived from GELLATTI temperature logic — locked internal v0.1, not externally confirmed", "never fails because lactose or dairy protein is 0"]
+};
+const veganGelatoMinus12 = {
+	productProfile: "vegan_gelato",
+	servingTemperatureC: -12,
+	status: "locked_pinguino_internal_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: { band: [13, 25] },
+	npac: {
+		band: [44, 59],
+		cleanCenter: [48, 54],
+		overlapPrevious: [44, 52],
+		overlapNext: [54, 59]
+	},
+	iceFraction: { band: [46, 60] },
+	fat: { band: [0, 12] },
+	solids: { band: [30, 43] },
+	water: { band: [52, 70] },
+	stabilizer: { required: true },
+	disabledGates: VEGAN_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["derived from GELLATTI temperature logic — locked internal v0.1, not externally confirmed"]
+};
+const veganGelatoMinus13 = {
+	productProfile: "vegan_gelato",
+	servingTemperatureC: -13,
+	status: "locked_pinguino_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: {
+		band: [13, 25],
+		lockedReference: 22.08,
+		mediumEvidence: 20.58
+	},
+	npac: {
+		band: [50, 64],
+		cleanCenter: [53.5, 60],
+		lockedReference: 59.47,
+		mediumEvidence: 53.75
+	},
+	iceFraction: {
+		band: [46, 58],
+		lockedReference: 51.06,
+		mediumEvidence: 51.35
+	},
+	fat: {
+		band: [0, 12],
+		lockedReference: 5.08,
+		mediumEvidence: 4.21
+	},
+	solids: {
+		band: [30, 43],
+		lockedReference: 36.24,
+		mediumEvidence: 36.17
+	},
+	water: {
+		band: [50, 67],
+		lockedReference: 63.76,
+		mediumEvidence: 63.83
+	},
+	stabilizer: { required: true },
+	disabledGates: VEGAN_DISABLED_GATES,
+	advisoryGates: [],
+	notes: ["observed calibration anchor — external calibration data directly exposed Vegan −13 °C", "main clean reference: V02 fixed; medium evidence: V02-AUTO"]
+};
+const CHOCOLATE_PROTEIN_SHARE = {
+	band: [8, 13],
+	visibleBenchmark: [9, 13],
+	hardMinimum: 7,
+	notes: ["soft/advisory gate — never a standard-gelato hard fail when chocolate structure is good"]
+};
+const chocolateGelatoMinus11 = {
+	productProfile: "chocolate_gelato",
+	servingTemperatureC: -11,
+	status: "locked_pinguino_internal_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: { band: [12, 20] },
+	npac: {
+		band: [34, 45],
+		cleanCenter: [40, 42],
+		overlapNext: [43, 45]
+	},
+	iceFraction: { band: [45, 54.5] },
+	lactose: { band: [4, 6] },
+	lactoseSanding: { band: [5, 9] },
+	fat: { band: [5, 12] },
+	aeratingProtein: { band: [3, 6] },
+	proteinShareInSolids: CHOCOLATE_PROTEIN_SHARE,
+	solids: { band: [31, 45] },
+	water: { band: [57, 70] },
+	stabilizer: { required: true },
+	disabledGates: [],
+	advisoryGates: ["protein_share_in_solids"],
+	notes: ["derived from Standard Gelato temperature logic with chocolate-specific overrides", "chocolate/cocoa solids dilute protein share — do not overcorrect with skimmed milk powder if lactose sanding worsens"]
+};
+const chocolateGelatoMinus12 = {
+	productProfile: "chocolate_gelato",
+	servingTemperatureC: -12,
+	status: "locked_pinguino_internal_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: { band: [12, 20] },
+	npac: {
+		band: [43, 52],
+		cleanCenter: [47, 49.5],
+		overlapPrevious: [43, 45],
+		overlapNext: [49, 52]
+	},
+	iceFraction: { band: [46, 54] },
+	lactose: { band: [4, 6] },
+	lactoseSanding: { band: [5, 9] },
+	fat: { band: [5, 12] },
+	aeratingProtein: { band: [3, 6] },
+	proteinShareInSolids: CHOCOLATE_PROTEIN_SHARE,
+	solids: { band: [31, 45] },
+	water: { band: [56, 70] },
+	stabilizer: { required: true },
+	disabledGates: [],
+	advisoryGates: ["protein_share_in_solids"],
+	notes: ["derived from Standard Gelato temperature logic with chocolate-specific overrides", "higher/wider than typical Standard Gelato — cocoa bitterness and cocoa solids change product tolerance"]
+};
+const chocolateGelatoMinus13 = {
+	productProfile: "chocolate_gelato",
+	servingTemperatureC: -13,
+	status: "locked_pinguino_v0_1",
+	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
+	pod: {
+		band: [12, 20],
+		fixedReference: 18.43,
+		optimizedEvidence: 15.8
+	},
+	npac: {
+		band: [49, 57],
+		cleanCenter: [49.8, 54.1],
+		fixedReference: 54.08,
+		lowerEvidence: 49.8,
+		overlapPrevious: [49, 52]
+	},
+	iceFraction: {
+		band: [46, 52],
+		fixedReference: 43.97,
+		optimizedEvidence: 46.11
+	},
+	lactose: {
+		band: [4, 6],
+		fixedReference: 4.61,
+		optimizedEvidence: 5.37
+	},
+	lactoseSanding: {
+		band: [5, 9],
+		fixedReference: 8.41,
+		optimizedEvidence: 9.37
+	},
+	fat: {
+		band: [5, 12],
+		fixedReference: 10.37,
+		optimizedEvidence: 8.95
+	},
+	aeratingProtein: {
+		band: [3, 6],
+		fixedReference: 3.09,
+		optimizedEvidence: 3.59
+	},
+	proteinShareInSolids: {
+		...CHOCOLATE_PROTEIN_SHARE,
+		fixedReference: 6.84,
+		optimizedEvidence: 8.42
+	},
+	solids: {
+		band: [35, 45],
+		fixedReference: 45.12,
+		optimizedEvidence: 42.62
+	},
+	water: {
+		band: [55, 65],
+		fixedReference: 54.88,
+		optimizedEvidence: 57.38
+	},
+	stabilizer: { required: true },
+	disabledGates: [],
+	advisoryGates: ["protein_share_in_solids"],
+	notes: ["main observed chocolate setting — C01 fixed is stress/reference evidence, C01 optimized is optimizer behavior evidence", "chocolate tolerates POD up to 20 — cocoa bitterness reduces perceived sweetness"]
+};
+const REGISTRY = {
+	standard_gelato: {
+		[-11]: standardGelatoMinus11,
+		[-12]: standardGelatoMinus12,
+		[-13]: standardGelatoMinus13
+	},
+	sorbet: {
+		[-11]: sorbetMinus11,
+		[-12]: sorbetMinus12,
+		[-13]: sorbetMinus13
+	},
+	vegan_gelato: {
+		[-11]: veganGelatoMinus11,
+		[-12]: veganGelatoMinus12,
+		[-13]: veganGelatoMinus13
+	},
+	chocolate_gelato: {
+		[-11]: chocolateGelatoMinus11,
+		[-12]: chocolateGelatoMinus12,
+		[-13]: chocolateGelatoMinus13
+	},
+	protein_gelato: {
+		[-11]: proteinGelatoMinus11,
+		[-12]: proteinGelatoMinus12,
+		[-13]: proteinGelatoMinus13
+	}
+};
+const isActiveProfile = (value) => value === "standard_gelato" || value === "sorbet" || value === "vegan_gelato" || value === "chocolate_gelato" || value === "protein_gelato";
+const isSupportedTemperature = (value) => value === -11 || value === -12 || value === -13;
+/**
+* Untrusted lookup: unsupported product or temperature returns null —
+* NEVER a fallback to another product or another temperature.
+*/
+const getTemperatureRegulatorSettingsOrNull = (productProfile, servingTemperatureC) => isActiveProfile(productProfile) && isSupportedTemperature(servingTemperatureC) ? REGISTRY[productProfile][servingTemperatureC] : null;
+
+//#endregion
+//#region src/features/protein-gelato/proteinHardnessAuthority.ts
+/**
+* CANONICAL PROTEIN HARDNESS AUTHORITY — owner decision 2026-09-03 (option A).
+*
+* Protein hardness is targeted through **ice fraction**, never through NPAC. The
+* NPAC route stays blocked and that scientific statement is unchanged: at an
+* otherwise constant formulation, instrumental hardness rises 13.60 N → 47.66 N
+* as protein goes 4 % → 10 % (Applied Food Research 2(1) 100029, 2022), so the
+* Gelato NPAC→hardness calibration does not transfer to a high-protein mix.
+* Restoring hardness through the ice-fraction path does not overturn that.
+*
+* This module OWNS nothing scientific. Every number it returns comes from the
+* already-published Protein regulator entry (`iceFraction.band`, status
+* `owner_approved_standard_physics_protein_v1`), and its availability comes from
+* the shared engine gate `hasDirectIceAuthorityAtTemperature`. It exists so the
+* mapping stops being owned by the legacy PI-Monitor surface.
+*
+* GRANULARITY IS THE AUTHORITY'S, NOT THE UI'S. Sorbet publishes five distinct
+* NPAC centres per temperature (`SORBET_HARDNESS_TARGET_CENTERS`) and therefore
+* earns five positions. Protein publishes an ice BAND with **no clean centre and
+* no per-level centres** — no `iceFraction` entry on any profile carries one —
+* so it supports exactly the three positions the existing `texturePreference`
+* semantics express: `lower_safe_side / clean_center / upper_safe_side`.
+* Rendering five positions where −2 ≡ −1 would be fake precision. A genuine
+* five-level Protein control is a future calibration task, not a code change.
+*/
+/**
+* The exact Direction value each position WRITES. Never ±2 — the authority has
+* no fourth or fifth target to write.
+*/
+const PROTEIN_HARDNESS_TARGET_VALUE = Object.freeze({
+	softer: -1,
+	balanced: 0,
+	firmer: 1
+});
+/**
+* DISPLAY ONLY — project a stored Direction value onto the three positions.
+* Many-to-one, so a draft that already carries ±2 (set elsewhere, or inherited)
+* renders honestly instead of being silently rewritten. Reading must never write.
+*/
+function projectProteinHardnessForDisplay(stored) {
+	if (stored < 0) return "softer";
+	if (stored > 0) return "firmer";
+	return "balanced";
+}
+/**
+* Availability, from the SHARED engine gate — the same authority the customer
+* Monitor surface used. Never a local re-derivation.
+*/
+function proteinHardnessApplies(category, servingTemperatureC) {
+	return category === "protein_gelato" && hasDirectIceAuthorityAtTemperature(category, servingTemperatureC);
+}
+/**
+* The ice-fraction target band for a position, derived ONLY by dividing the
+* published Protein band at its own midpoint:
+*
+*   softer   → lower safe side  (less frozen water reads softer)
+*   balanced → the published band, unnarrowed (the clean centre)
+*   firmer   → upper safe side
+*
+* The polarity is the documented one — "low ice fraction = softer, high =
+* harder" (`piMonitorAxes`) — and is the INVERSE of NPAC, where a higher value
+* is softer. No limit is restated here and no centre is invented: the midpoint
+* is arithmetic on the published band, nothing more.
+*
+* Returns `null` when Protein has no approved ice band at this temperature, so
+* the caller refuses honestly instead of guessing.
+*/
+function proteinHardnessIceBand(servingTemperatureC, step) {
+	const band = getTemperatureRegulatorSettingsOrNull("protein_gelato", servingTemperatureC)?.iceFraction?.band ?? null;
+	if (!band) return null;
+	const [min, max] = band;
+	if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) return null;
+	const midpoint = (min + max) / 2;
+	if (step === "softer") return {
+		min,
+		max: midpoint
+	};
+	if (step === "firmer") return {
+		min: midpoint,
+		max
+	};
+	return {
+		min,
+		max
+	};
+}
+/** Convenience: the band for a stored Direction value, via the display projection. */
+function proteinHardnessBandForTarget(servingTemperatureC, stored) {
+	return proteinHardnessIceBand(servingTemperatureC, projectProteinHardnessForDisplay(stored));
+}
+
+//#endregion
+//#region src/features/recipe-direction/recipeDirectionTargets.ts
+const DEFAULT_RECIPE_DIRECTION_TARGETS = Object.freeze({
+	sweetness: 0,
+	softness: 0,
+	creaminess: 0,
+	flavor: 0
+});
+const profileForCategory = (category) => {
+	switch (category) {
+		case "milk_gelato":
+		case "fruit_gelato":
+		case "nut_gelato":
+		case "alcohol_gelato":
+		case "custom": return "standard_gelato";
+		case "chocolate_gelato": return "chocolate_gelato";
+		case "sorbet": return "sorbet";
+		case "vegan_gelato": return "vegan_gelato";
+		case "protein_gelato": return "protein_gelato";
+	}
+};
+const targetFifth = (band, target) => {
+	const [min, max] = band;
+	const fifth = (max - min) / 5;
+	const index = target + 2;
+	return {
+		min: min + index * fifth,
+		max: min + (index + 1) * fifth
+	};
+};
+/** Scope guard: profiles outside this Gelato-only change retain their accepted
+* three-zone calibration even though the stored target is now lossless. */
+const legacyTargetThird = (band, target) => {
+	const [min, max] = band;
+	const third = (max - min) / 3;
+	if (target < 0) return {
+		min,
+		max: min + third
+	};
+	if (target > 0) return {
+		min: max - third,
+		max
+	};
+	return {
+		min: min + third,
+		max: max - third
+	};
+};
+const softnessBand = (band, cleanCenter, target) => {
+	const firmSpanMidpoint = (band[0] + cleanCenter[0]) / 2;
+	const softSpanMidpoint = (cleanCenter[1] + band[1]) / 2;
+	if (target === -2) return {
+		min: softSpanMidpoint,
+		max: band[1]
+	};
+	if (target === -1) return {
+		min: cleanCenter[1],
+		max: softSpanMidpoint
+	};
+	if (target === 1) return {
+		min: firmSpanMidpoint,
+		max: cleanCenter[0]
+	};
+	if (target === 2) return {
+		min: band[0],
+		max: firmSpanMidpoint
+	};
+	return {
+		min: cleanCenter[0],
+		max: cleanCenter[1]
+	};
+};
+const SORBET_SWEETNESS_TARGET_CENTERS = Object.freeze({
+	[-2]: 16,
+	[-1]: 18,
+	0: 20,
+	1: 22,
+	2: 24
+});
+const SORBET_HARDNESS_TARGET_CENTERS = Object.freeze({
+	[-11]: Object.freeze({
+		[-2]: 39.5,
+		[-1]: 38.5,
+		0: 37.5,
+		1: 36.5,
+		2: 35.5
+	}),
+	[-12]: Object.freeze({
+		[-2]: 48.3,
+		[-1]: 46.9,
+		0: 45.5,
+		1: 44.1,
+		2: 42.7
+	}),
+	[-13]: Object.freeze({
+		[-2]: 54.3,
+		[-1]: 52.9,
+		0: 51.5,
+		1: 50.1,
+		2: 48.7
+	})
+});
+const exactPreferencePoint = (center) => ({
+	min: center,
+	max: center
+});
+function normalizeRecipeDirectionTargets(value) {
+	const normalize = (candidate) => {
+		if (candidate == null || !Number.isFinite(candidate)) return 0;
+		return Math.max(-2, Math.min(2, Math.round(candidate)));
+	};
+	return {
+		sweetness: normalize(value?.sweetness),
+		softness: normalize(value?.softness),
+		creaminess: normalize(value?.creaminess),
+		flavor: normalize(value?.flavor)
+	};
+}
+/**
+* The plan depends ONLY on these four values, and the pipeline rebuilds it many
+* times per solve (every violation measure, every candidate, every advisor
+* simulation). Memoising on that exact value fingerprint — not on object
+* identity — is safe for any caller and removes a large amount of repeated work
+* from the Direction and Rescue hot paths.
+*/
+const DIRECTION_PLAN_CACHE_LIMIT = 512;
+const directionPlanCache = /* @__PURE__ */ new Map();
+const directionPlanKey = (input) => [
+	input.category,
+	input.target_temperature_c,
+	input.goals?.direction_targets_active === true ? 1 : 0,
+	input.goals?.direction_targets?.sweetness ?? 0,
+	input.goals?.direction_targets?.softness ?? 0,
+	input.goals?.direction_targets?.creaminess ?? 0,
+	input.goals?.direction_targets?.flavor ?? 0
+].join("|");
+function buildRecipeDirectionPlan(input) {
+	const cacheKey = directionPlanKey(input);
+	const cached = directionPlanCache.get(cacheKey);
+	if (cached) return cached;
+	const plan = computeRecipeDirectionPlan(input);
+	if (directionPlanCache.size >= 512) {
+		const oldest = directionPlanCache.keys().next().value;
+		if (oldest !== void 0) directionPlanCache.delete(oldest);
+	}
+	directionPlanCache.set(cacheKey, plan);
+	return plan;
+}
+function computeRecipeDirectionPlan(input) {
+	const targets = normalizeRecipeDirectionTargets(input.goals?.direction_targets);
+	const enabled = input.goals?.direction_targets_active === true;
+	const profile = profileForCategory(input.category);
+	const regulator = profile ? getTemperatureRegulatorSettingsOrNull(profile, input.target_temperature_c) : null;
+	const axes = [];
+	const bands = {};
+	const sweetnessOperational = profile === "vegan_gelato" || profile === "standard_gelato" || profile === "protein_gelato" || profile === "sorbet" && (input.target_temperature_c === -11 || input.target_temperature_c === -12 || input.target_temperature_c === -13) || profile === "chocolate_gelato" && (input.target_temperature_c === -11 || input.target_temperature_c === -12);
+	const softnessOperational = profile === "vegan_gelato" || profile === "standard_gelato" || profile === "sorbet" && (input.target_temperature_c === -11 || input.target_temperature_c === -12 || input.target_temperature_c === -13);
+	if (regulator?.pod && sweetnessOperational) {
+		const targetCenter = profile === "sorbet" ? SORBET_SWEETNESS_TARGET_CENTERS[targets.sweetness] : null;
+		const targetBand = targetCenter !== null ? exactPreferencePoint(targetCenter) : profile === "standard_gelato" || profile === "vegan_gelato" || profile === "protein_gelato" ? targetFifth(regulator.pod.band, targets.sweetness) : legacyTargetThird(regulator.pod.band, targets.sweetness);
+		if (enabled) bands.pod = targetBand;
+		axes.push({
+			axis: "sweetness",
+			target: targets.sweetness,
+			status: "working",
+			metric: "pod",
+			targetBand,
+			targetCenter,
+			reason: null
+		});
+	} else if (!sweetnessOperational && regulator?.pod) axes.push({
+		axis: "sweetness",
+		target: targets.sweetness,
+		status: "blocked_runtime",
+		metric: "pod",
+		targetBand: null,
+		targetCenter: null,
+		reason: "Pełna ścieżka −1/0/+1 dla tego profilu i temperatury nie ma jeszcze zweryfikowanego, bezpiecznego podglądu i zastosowania zmian."
+	});
+	else axes.push({
+		axis: "sweetness",
+		target: targets.sweetness,
+		status: "blocked_data",
+		metric: "pod",
+		targetBand: null,
+		targetCenter: null,
+		reason: "Brak zatwierdzonego zakresu POD dla tego profilu i temperatury."
+	});
+	if (proteinHardnessApplies(input.category, input.target_temperature_c)) {
+		const proteinBand = proteinHardnessBandForTarget(input.target_temperature_c, targets.softness);
+		if (proteinBand) {
+			if (enabled) bands.ice_fraction = proteinBand;
+			axes.push({
+				axis: "softness",
+				target: targets.softness,
+				status: "working",
+				metric: "ice_fraction",
+				targetBand: proteinBand,
+				targetCenter: null,
+				reason: null
+			});
+		} else axes.push({
+			axis: "softness",
+			target: targets.softness,
+			status: "blocked_data",
+			metric: "ice_fraction",
+			targetBand: null,
+			targetCenter: null,
+			reason: "Brak zatwierdzonego zakresu lodu dla tego profilu i temperatury."
+		});
+	} else if (regulator?.npac?.cleanCenter && softnessOperational) {
+		const sorbetTemperature = input.target_temperature_c;
+		const targetCenter = profile === "sorbet" ? SORBET_HARDNESS_TARGET_CENTERS[sorbetTemperature]?.[targets.softness] ?? null : null;
+		const targetBand = targetCenter !== null ? exactPreferencePoint(targetCenter) : softnessBand(regulator.npac.band, regulator.npac.cleanCenter, targets.softness);
+		if (enabled) bands.npac = targetBand;
+		axes.push({
+			axis: "softness",
+			target: targets.softness,
+			status: "working",
+			metric: "npac",
+			targetBand,
+			targetCenter,
+			reason: null
+		});
+	} else if (!softnessOperational && regulator?.npac?.cleanCenter) axes.push({
+		axis: "softness",
+		target: targets.softness,
+		status: "blocked_science",
+		metric: "npac",
+		targetBand: null,
+		targetCenter: null,
+		reason: "Brakuje zweryfikowanych danych miękkości dla tej kategorii. Gellatti nie użyje danych z innego typu receptury."
+	});
+	else axes.push({
+		axis: "softness",
+		target: targets.softness,
+		status: "blocked_data",
+		metric: "npac",
+		targetBand: null,
+		targetCenter: null,
+		reason: "Brak zatwierdzonego czystego centrum NPAC dla tego profilu i temperatury."
+	});
+	axes.push({
+		axis: "creaminess",
+		target: targets.creaminess,
+		status: "blocked_science",
+		metric: null,
+		targetBand: null,
+		targetCenter: null,
+		reason: "Brak zatwierdzonego modelu sensorycznej kremowości; sam tłuszcz nie jest kremowością."
+	}, {
+		axis: "flavor",
+		target: targets.flavor,
+		status: "blocked_data",
+		metric: null,
+		targetBand: null,
+		targetCenter: null,
+		reason: "Brak zweryfikowanych profili mocy smaku dla poszczególnych klas składników."
+	});
+	return {
+		profile,
+		servingTemperatureC: input.target_temperature_c,
+		bands,
+		axes
+	};
+}
+
+//#endregion
+//#region src/features/recipe-direction/directionRelaxation.ts
+/** The only Direction level that may leave the normal envelope. */
+const DIRECTION_EXTREME_LEVEL = 2;
+/** The controlled fallback extends each boundary by 50 % of its OWN value. */
+const EXTENDED_RANGE_LOWER_FACTOR = .5;
+const EXTENDED_RANGE_UPPER_FACTOR = 1.5;
+/** Excursions smaller than this are rounding, not a relaxation. */
+const RANGE_EXCURSION_EPS = 1e-9;
+/**
+* TRUE ⇔ this draft is asking for an EXTREME Direction level, which is the only
+* request that may use the controlled extended envelope. Read from the draft's
+* own canonical targets, so every surface — solver, practicalization, scoring,
+* tests — answers the question identically without extra plumbing.
+*/
+function directionRelaxationPermitted(input) {
+	if (input.goals?.direction_targets_active !== true) return false;
+	const targets = normalizeRecipeDirectionTargets(input.goals?.direction_targets);
+	return Object.values(targets).some((target) => Math.abs(target) >= 2);
+}
+/**
+* The one controlled extreme band for a normal band. Derived from the ORIGINAL
+* bounds every time, so it can never compound: applying it twice returns the
+* same interval.
+*/
+function extendedGramBand(normal) {
+	return {
+		minGrams: normal.minGrams * EXTENDED_RANGE_LOWER_FACTOR,
+		maxGrams: normal.maxGrams * EXTENDED_RANGE_UPPER_FACTOR
+	};
+}
+/**
+* The band a draft may actually use: the normal one, or the controlled extreme
+* one when — and only when — an extreme level was requested.
+*/
+function permittedGramBand(input, normal) {
+	return directionRelaxationPermitted(input) ? extendedGramBand(normal) : normal;
+}
+/**
+* NORMALIZED excursion outside a normal band: 0 inside it, 1 at the extreme
+* band's own edge, >1 beyond what the policy permits at all.
+*
+* Normalized — not raw grams — so the same penalty curve is fair to a 20–80 g
+* band and to a 100–200 g one. Saturation is the CALLER's business: a score
+* clamps it, a legality check refuses above 1.
+*/
+function normalizedRangeExcursion(grams, normal) {
+	const extended = extendedGramBand(normal);
+	if (grams > normal.maxGrams + 1e-9) {
+		const reach = extended.maxGrams - normal.maxGrams;
+		return reach > 0 ? (grams - normal.maxGrams) / reach : Number.POSITIVE_INFINITY;
+	}
+	if (grams < normal.minGrams - 1e-9) {
+		const reach = normal.minGrams - extended.minGrams;
+		return reach > 0 ? (normal.minGrams - grams) / reach : Number.POSITIVE_INFINITY;
+	}
+	return 0;
+}
+
+//#endregion
 //#region src/features/product-intelligence/ownerInulinPolicy.ts
 const OWNER_INULIN_POLICY = Object.freeze({
 	policyId: "gellatti-generic-inulin",
@@ -6464,6 +7491,29 @@ function ownerInulinGramBand(baseGrams) {
 		maxGrams: baseGrams * OWNER_INULIN_POLICY.maxPercent / 100
 	};
 }
+/**
+* THE BAND THIS DRAFT MAY ACTUALLY OCCUPY — a PREFERENCE widened by the
+* controlled ±2 relaxation, then INTERSECTED with every STRUCTURAL limit that
+* governs the same line.
+*
+* Relaxing a preference must never relax a structural ceiling. The Vegan
+* calibration envelope is one: widening this dosage preference under a ±2
+* request took a vegan draft to 95 g against a calibrated maximum of 83.1 g,
+* and the whole Preview was then refused — the customer lost an answer because
+* two authorities disagreed about the same line
+* (`recipeVectorProximity.test.ts`). The tighter limit always wins.
+*/
+function permittedInulinBand(input) {
+	const normal = ownerInulinGramBand(input.target_batch_grams);
+	const permitted = permittedGramBand(input, normal);
+	const structuralMaxGrams = input.category === "vegan_gelato" ? VEGAN_INULIN_CALIBRATION_MAX_PERCENT / 100 * input.target_batch_grams : Number.POSITIVE_INFINITY;
+	const maxGrams = Math.min(permitted.maxGrams, structuralMaxGrams);
+	return {
+		minGrams: Math.min(permitted.minGrams, maxGrams),
+		preferredGrams: normal.preferredGrams,
+		maxGrams
+	};
+}
 /** Exact canonical Inulin lines governed by the published Gellatti policy.
 * This deliberately does not borrow the policy for another fibre/inulin SKU. */
 const ownerInulinPolicyLineIds = (input) => input.items.filter((item) => canonicalIngredientId(item.ingredient) === OWNER_INULIN_POLICY.mapperIngredientId).map((item) => item.id);
@@ -6479,18 +7529,21 @@ function ownerInulinPolicyIssues(input) {
 	const grams = input.items.filter((item) => governed.has(item.id)).reduce((sum, item) => sum + item.planned_grams, 0);
 	if (!(grams > 0)) return [];
 	const band = ownerInulinGramBand(input.target_batch_grams);
+	const permitted = permittedInulinBand(input);
 	const base = {
 		lineIds,
 		grams,
 		minGrams: band.minGrams,
 		maxGrams: band.maxGrams,
+		permittedMinGrams: permitted.minGrams,
+		permittedMaxGrams: permitted.maxGrams,
 		provenance: OWNER_INULIN_POLICY.provenance
 	};
-	if (grams < band.minGrams - 1e-9) return [{
+	if (grams < permitted.minGrams - 1e-9) return [{
 		...base,
 		code: "inulin_below_owner_minimum"
 	}];
-	if (grams > band.maxGrams + 1e-9) return [{
+	if (grams > permitted.maxGrams + 1e-9) return [{
 		...base,
 		code: "inulin_above_owner_maximum"
 	}];
@@ -7715,974 +8768,6 @@ function recipeToppingsFromFrozenBehavior(toppings, authority, projection) {
 }
 
 //#endregion
-//#region src/spine/temperatureRegulator.ts
-const TEMPERATURE_REGULATOR_CONFIG_VERSION = "0.1.0";
-/**
-* Protein product qualification carried by the Protein regulator rows.
-*
-* REPLACES `PROTEIN_GELATO_TARGET` (Protein Engine v2, owner decision
-* 2026-08-22). The old constant declared a 20 % protein BY MASS target with a
-* 0.1 pp tolerance and a user-facing 1 pp control step. It had no provenance —
-* no controlled frozen-dessert study exceeds 10 % protein — and it is almost
-* certainly a unit confusion with the EU claim threshold, which is 20 % of
-* ENERGY, not of mass.
-*
-* There is no target and no control step any more: protein % is an OUTPUT.
-* What the profile still asserts is that a Protein product must be able to
-* carry its own claim — Regulation (EC) No 1924/2006, Annex, "HIGH PROTEIN":
-* at least 20 % of the energy value of the food provided by protein.
-*
-* The runtime authority lives in
-* `src/features/protein-gelato/proteinQualification.ts`; this entry records it
-* in the regulator registry so every Protein temperature row states the rule
-* it is evaluated under.
-*/
-const PROTEIN_GELATO_QUALIFICATION = {
-	highProteinEnergySharePercent: 20,
-	source: "EU Regulation (EC) No 1924/2006, Annex — HIGH PROTEIN"
-};
-const standardGelatoMinus11 = {
-	productProfile: "standard_gelato",
-	servingTemperatureC: -11,
-	status: "locked_base_reference_zero_delta",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	npac: {
-		band: [33, 43],
-		cleanCenter: [39, 41],
-		overlapNext: [42, 43]
-	},
-	iceFraction: { band: [45, 54.5] },
-	pod: { band: [12, 17] },
-	lactose: { band: [4, 6] },
-	lactoseSanding: { band: [5, 9] },
-	fat: { band: [5, 12] },
-	aeratingProtein: { band: [3, 6] },
-	proteinShareInSolids: { band: [9, 13] },
-	solids: { band: [31, 45] },
-	water: { band: [57, 70] },
-	stabilizer: { required: true },
-	disabledGates: [],
-	advisoryGates: [],
-	notes: ["−11 °C = base reference / zero delta — the current Base Engine is already calibrated for −11 °C", "NPAC alone is not enough: lactose, sanding, ice fraction, protein, solids, water and stabilizer still gate"]
-};
-const standardGelatoMinus12 = {
-	productProfile: "standard_gelato",
-	servingTemperatureC: -12,
-	status: "locked_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	npac: {
-		band: [42, 50],
-		cleanCenter: [45, 46.2],
-		lockedReference: 46.18,
-		lowerCleanAnchor: 44.98,
-		overlapPrevious: [42, 43],
-		overlapNext: [48, 50]
-	},
-	iceFraction: {
-		band: [46, 54],
-		lockedReference: 50.34
-	},
-	pod: {
-		band: [12, 17],
-		lockedReference: 15.57
-	},
-	lactose: {
-		band: [4, 6],
-		lockedReference: 5.44
-	},
-	lactoseSanding: {
-		band: [5, 9],
-		lockedReference: 8.62
-	},
-	fat: {
-		band: [5, 12],
-		lockedReference: 6.19
-	},
-	aeratingProtein: {
-		band: [3, 6],
-		lockedReference: 3.65
-	},
-	proteinShareInSolids: {
-		band: [9, 13],
-		lockedReference: 9.9
-	},
-	solids: {
-		band: [31, 44],
-		lockedReference: 36.82
-	},
-	water: {
-		band: [56, 70],
-		lockedReference: 63.18
-	},
-	stabilizer: { required: true },
-	disabledGates: [],
-	advisoryGates: [],
-	notes: ["main locked reference: G17", "lower clean anchor: G15"]
-};
-const standardGelatoMinus13 = {
-	productProfile: "standard_gelato",
-	servingTemperatureC: -13,
-	status: "locked_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	npac: {
-		band: [48, 55],
-		cleanCenter: [51.5, 53.2],
-		lockedReference: 53.15,
-		lowerCleanAnchor: 51.77,
-		overlapPrevious: [48, 50]
-	},
-	iceFraction: {
-		band: [46, 52],
-		lockedReference: 49.69
-	},
-	pod: {
-		band: [12, 17],
-		lockedReference: 16.37
-	},
-	lactose: {
-		band: [4, 6],
-		lockedReference: 5.51
-	},
-	lactoseSanding: {
-		band: [5, 9],
-		lockedReference: 8.78
-	},
-	fat: {
-		band: [5, 12],
-		lockedReference: 5.89
-	},
-	aeratingProtein: {
-		band: [3, 6],
-		lockedReference: 3.69
-	},
-	proteinShareInSolids: {
-		band: [9, 13],
-		lockedReference: 9.93
-	},
-	solids: {
-		band: [35, 45],
-		lockedReference: 37.22
-	},
-	water: {
-		band: [55, 65],
-		lockedReference: 62.78
-	},
-	stabilizer: { required: true },
-	disabledGates: [],
-	advisoryGates: [],
-	notes: ["main locked reference: G18", "lower clean anchor: G11"]
-};
-const PROTEIN_DISABLED_GATES = [
-	"lactose",
-	"lactose_sanding",
-	"aerating_protein",
-	"protein_share_in_solids"
-];
-const proteinGelatoMinus11 = {
-	productProfile: "protein_gelato",
-	servingTemperatureC: -11,
-	status: "owner_approved_standard_physics_protein_v1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	npac: {
-		band: [33, 42],
-		cleanCenter: [39, 41],
-		overlapNext: [42, 42]
-	},
-	iceFraction: { band: [45, 54.5] },
-	pod: { band: [12, 17] },
-	fat: { band: [5, 12] },
-	solids: { band: [31, 45] },
-	water: { band: [57, 70] },
-	proteinQualification: PROTEIN_GELATO_QUALIFICATION,
-	stabilizer: { required: true },
-	disabledGates: PROTEIN_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["separate Protein Gelato profile; Standard Gelato serving physics reused by owner decision", "protein % is an OUTPUT of the formulation; the profile only requires the recipe to earn the HIGH PROTEIN claim, and never replaces Main flavor identity"]
-};
-const proteinGelatoMinus12 = {
-	productProfile: "protein_gelato",
-	servingTemperatureC: -12,
-	status: "owner_approved_standard_physics_protein_v1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	npac: {
-		band: [42, 50],
-		cleanCenter: [45, 46.2],
-		lockedReference: 46.18,
-		lowerCleanAnchor: 44.98,
-		overlapPrevious: [42, 43],
-		overlapNext: [48, 50]
-	},
-	iceFraction: {
-		band: [46, 54],
-		lockedReference: 50.34
-	},
-	pod: {
-		band: [12, 17],
-		lockedReference: 15.57
-	},
-	fat: {
-		band: [5, 12],
-		lockedReference: 6.19
-	},
-	solids: {
-		band: [31, 44],
-		lockedReference: 36.82
-	},
-	water: {
-		band: [56, 70],
-		lockedReference: 63.18
-	},
-	proteinQualification: PROTEIN_GELATO_QUALIFICATION,
-	stabilizer: { required: true },
-	disabledGates: PROTEIN_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["separate Protein Gelato profile; G17/G15 physical calibration reused by owner decision"]
-};
-const proteinGelatoMinus13 = {
-	productProfile: "protein_gelato",
-	servingTemperatureC: -13,
-	status: "owner_approved_standard_physics_protein_v1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	npac: {
-		band: [48, 55],
-		cleanCenter: [51.5, 53.2],
-		lockedReference: 53.15,
-		lowerCleanAnchor: 51.77,
-		overlapPrevious: [48, 50]
-	},
-	iceFraction: {
-		band: [46, 52],
-		lockedReference: 49.69
-	},
-	pod: {
-		band: [12, 17],
-		lockedReference: 16.37
-	},
-	fat: {
-		band: [5, 12],
-		lockedReference: 5.89
-	},
-	solids: {
-		band: [35, 45],
-		lockedReference: 37.22
-	},
-	water: {
-		band: [55, 65],
-		lockedReference: 62.78
-	},
-	proteinQualification: PROTEIN_GELATO_QUALIFICATION,
-	stabilizer: { required: true },
-	disabledGates: PROTEIN_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["separate Protein Gelato profile; G18/G11 physical calibration reused by owner decision"]
-};
-const SORBET_DISABLED_GATES = [
-	"dairy_fat_logic",
-	"lactose",
-	"lactose_sanding",
-	"aerating_dairy_protein",
-	"dairy_protein_share_in_solids",
-	"msnf_required_gate"
-];
-const sorbetMinus11 = {
-	productProfile: "sorbet",
-	servingTemperatureC: -11,
-	status: "locked_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: {
-		band: [15, 25],
-		lockedReference: 19.16
-	},
-	npac: {
-		band: [35, 40],
-		cleanCenter: [37, 38],
-		lockedReference: 37.71,
-		overlapNext: [39, 40]
-	},
-	iceFraction: {
-		band: [51, 59],
-		lockedReference: 57.43
-	},
-	solids: {
-		band: [25, 33],
-		lockedReference: 27.85
-	},
-	water: {
-		band: [67, 75],
-		lockedReference: 72.15
-	},
-	stabilizer: { required: true },
-	disabledGates: SORBET_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["main locked reference: S01", "never evaluated with Standard Gelato dairy gates"]
-};
-const sorbetMinus12 = {
-	productProfile: "sorbet",
-	servingTemperatureC: -12,
-	status: "locked_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: {
-		band: [15, 25],
-		lockedReference: 19.97
-	},
-	npac: {
-		band: [42, 49],
-		cleanCenter: [44, 45],
-		lockedReference: 44.18,
-		overlapPrevious: [39, 40],
-		overlapNext: [48, 49]
-	},
-	iceFraction: {
-		band: [51, 59],
-		lockedReference: 55.95
-	},
-	solids: {
-		band: [25, 33],
-		lockedReference: 29.29
-	},
-	water: {
-		band: [67, 73],
-		lockedReference: 70.71
-	},
-	stabilizer: { required: true },
-	disabledGates: SORBET_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["main locked reference: S02"]
-};
-const sorbetMinus13 = {
-	productProfile: "sorbet",
-	servingTemperatureC: -13,
-	status: "locked_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: {
-		band: [15, 25],
-		lockedReference: 21.21
-	},
-	npac: {
-		band: [48, 55],
-		cleanCenter: [51, 52.5],
-		lockedReference: 52.22,
-		overlapPrevious: [48, 49]
-	},
-	iceFraction: {
-		band: [50, 58],
-		lockedReference: 54.28
-	},
-	solids: {
-		band: [25, 33],
-		lockedReference: 30.82
-	},
-	water: {
-		band: [67, 73],
-		lockedReference: 69.18
-	},
-	stabilizer: { required: true },
-	disabledGates: SORBET_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["main locked reference: S03"]
-};
-const VEGAN_DISABLED_GATES = [
-	"lactose",
-	"lactose_sanding",
-	"aerating_dairy_protein",
-	"dairy_protein_share_in_solids",
-	"msnf_required_gate"
-];
-const veganGelatoMinus11 = {
-	productProfile: "vegan_gelato",
-	servingTemperatureC: -11,
-	status: "locked_pinguino_internal_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: { band: [13, 25] },
-	npac: {
-		band: [35, 52],
-		cleanCenter: [40, 47],
-		overlapNext: [47, 52]
-	},
-	iceFraction: { band: [45, 61] },
-	fat: { band: [0, 12] },
-	solids: { band: [30, 43] },
-	water: { band: [54, 72] },
-	stabilizer: { required: true },
-	disabledGates: VEGAN_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["derived from GELLATTI temperature logic — locked internal v0.1, not externally confirmed", "never fails because lactose or dairy protein is 0"]
-};
-const veganGelatoMinus12 = {
-	productProfile: "vegan_gelato",
-	servingTemperatureC: -12,
-	status: "locked_pinguino_internal_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: { band: [13, 25] },
-	npac: {
-		band: [44, 59],
-		cleanCenter: [48, 54],
-		overlapPrevious: [44, 52],
-		overlapNext: [54, 59]
-	},
-	iceFraction: { band: [46, 60] },
-	fat: { band: [0, 12] },
-	solids: { band: [30, 43] },
-	water: { band: [52, 70] },
-	stabilizer: { required: true },
-	disabledGates: VEGAN_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["derived from GELLATTI temperature logic — locked internal v0.1, not externally confirmed"]
-};
-const veganGelatoMinus13 = {
-	productProfile: "vegan_gelato",
-	servingTemperatureC: -13,
-	status: "locked_pinguino_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: {
-		band: [13, 25],
-		lockedReference: 22.08,
-		mediumEvidence: 20.58
-	},
-	npac: {
-		band: [50, 64],
-		cleanCenter: [53.5, 60],
-		lockedReference: 59.47,
-		mediumEvidence: 53.75
-	},
-	iceFraction: {
-		band: [46, 58],
-		lockedReference: 51.06,
-		mediumEvidence: 51.35
-	},
-	fat: {
-		band: [0, 12],
-		lockedReference: 5.08,
-		mediumEvidence: 4.21
-	},
-	solids: {
-		band: [30, 43],
-		lockedReference: 36.24,
-		mediumEvidence: 36.17
-	},
-	water: {
-		band: [50, 67],
-		lockedReference: 63.76,
-		mediumEvidence: 63.83
-	},
-	stabilizer: { required: true },
-	disabledGates: VEGAN_DISABLED_GATES,
-	advisoryGates: [],
-	notes: ["observed calibration anchor — external calibration data directly exposed Vegan −13 °C", "main clean reference: V02 fixed; medium evidence: V02-AUTO"]
-};
-const CHOCOLATE_PROTEIN_SHARE = {
-	band: [8, 13],
-	visibleBenchmark: [9, 13],
-	hardMinimum: 7,
-	notes: ["soft/advisory gate — never a standard-gelato hard fail when chocolate structure is good"]
-};
-const chocolateGelatoMinus11 = {
-	productProfile: "chocolate_gelato",
-	servingTemperatureC: -11,
-	status: "locked_pinguino_internal_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: { band: [12, 20] },
-	npac: {
-		band: [34, 45],
-		cleanCenter: [40, 42],
-		overlapNext: [43, 45]
-	},
-	iceFraction: { band: [45, 54.5] },
-	lactose: { band: [4, 6] },
-	lactoseSanding: { band: [5, 9] },
-	fat: { band: [5, 12] },
-	aeratingProtein: { band: [3, 6] },
-	proteinShareInSolids: CHOCOLATE_PROTEIN_SHARE,
-	solids: { band: [31, 45] },
-	water: { band: [57, 70] },
-	stabilizer: { required: true },
-	disabledGates: [],
-	advisoryGates: ["protein_share_in_solids"],
-	notes: ["derived from Standard Gelato temperature logic with chocolate-specific overrides", "chocolate/cocoa solids dilute protein share — do not overcorrect with skimmed milk powder if lactose sanding worsens"]
-};
-const chocolateGelatoMinus12 = {
-	productProfile: "chocolate_gelato",
-	servingTemperatureC: -12,
-	status: "locked_pinguino_internal_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: { band: [12, 20] },
-	npac: {
-		band: [43, 52],
-		cleanCenter: [47, 49.5],
-		overlapPrevious: [43, 45],
-		overlapNext: [49, 52]
-	},
-	iceFraction: { band: [46, 54] },
-	lactose: { band: [4, 6] },
-	lactoseSanding: { band: [5, 9] },
-	fat: { band: [5, 12] },
-	aeratingProtein: { band: [3, 6] },
-	proteinShareInSolids: CHOCOLATE_PROTEIN_SHARE,
-	solids: { band: [31, 45] },
-	water: { band: [56, 70] },
-	stabilizer: { required: true },
-	disabledGates: [],
-	advisoryGates: ["protein_share_in_solids"],
-	notes: ["derived from Standard Gelato temperature logic with chocolate-specific overrides", "higher/wider than typical Standard Gelato — cocoa bitterness and cocoa solids change product tolerance"]
-};
-const chocolateGelatoMinus13 = {
-	productProfile: "chocolate_gelato",
-	servingTemperatureC: -13,
-	status: "locked_pinguino_v0_1",
-	configVersion: TEMPERATURE_REGULATOR_CONFIG_VERSION,
-	pod: {
-		band: [12, 20],
-		fixedReference: 18.43,
-		optimizedEvidence: 15.8
-	},
-	npac: {
-		band: [49, 57],
-		cleanCenter: [49.8, 54.1],
-		fixedReference: 54.08,
-		lowerEvidence: 49.8,
-		overlapPrevious: [49, 52]
-	},
-	iceFraction: {
-		band: [46, 52],
-		fixedReference: 43.97,
-		optimizedEvidence: 46.11
-	},
-	lactose: {
-		band: [4, 6],
-		fixedReference: 4.61,
-		optimizedEvidence: 5.37
-	},
-	lactoseSanding: {
-		band: [5, 9],
-		fixedReference: 8.41,
-		optimizedEvidence: 9.37
-	},
-	fat: {
-		band: [5, 12],
-		fixedReference: 10.37,
-		optimizedEvidence: 8.95
-	},
-	aeratingProtein: {
-		band: [3, 6],
-		fixedReference: 3.09,
-		optimizedEvidence: 3.59
-	},
-	proteinShareInSolids: {
-		...CHOCOLATE_PROTEIN_SHARE,
-		fixedReference: 6.84,
-		optimizedEvidence: 8.42
-	},
-	solids: {
-		band: [35, 45],
-		fixedReference: 45.12,
-		optimizedEvidence: 42.62
-	},
-	water: {
-		band: [55, 65],
-		fixedReference: 54.88,
-		optimizedEvidence: 57.38
-	},
-	stabilizer: { required: true },
-	disabledGates: [],
-	advisoryGates: ["protein_share_in_solids"],
-	notes: ["main observed chocolate setting — C01 fixed is stress/reference evidence, C01 optimized is optimizer behavior evidence", "chocolate tolerates POD up to 20 — cocoa bitterness reduces perceived sweetness"]
-};
-const REGISTRY = {
-	standard_gelato: {
-		[-11]: standardGelatoMinus11,
-		[-12]: standardGelatoMinus12,
-		[-13]: standardGelatoMinus13
-	},
-	sorbet: {
-		[-11]: sorbetMinus11,
-		[-12]: sorbetMinus12,
-		[-13]: sorbetMinus13
-	},
-	vegan_gelato: {
-		[-11]: veganGelatoMinus11,
-		[-12]: veganGelatoMinus12,
-		[-13]: veganGelatoMinus13
-	},
-	chocolate_gelato: {
-		[-11]: chocolateGelatoMinus11,
-		[-12]: chocolateGelatoMinus12,
-		[-13]: chocolateGelatoMinus13
-	},
-	protein_gelato: {
-		[-11]: proteinGelatoMinus11,
-		[-12]: proteinGelatoMinus12,
-		[-13]: proteinGelatoMinus13
-	}
-};
-const isActiveProfile = (value) => value === "standard_gelato" || value === "sorbet" || value === "vegan_gelato" || value === "chocolate_gelato" || value === "protein_gelato";
-const isSupportedTemperature = (value) => value === -11 || value === -12 || value === -13;
-/**
-* Untrusted lookup: unsupported product or temperature returns null —
-* NEVER a fallback to another product or another temperature.
-*/
-const getTemperatureRegulatorSettingsOrNull = (productProfile, servingTemperatureC) => isActiveProfile(productProfile) && isSupportedTemperature(servingTemperatureC) ? REGISTRY[productProfile][servingTemperatureC] : null;
-
-//#endregion
-//#region src/features/protein-gelato/proteinHardnessAuthority.ts
-/**
-* CANONICAL PROTEIN HARDNESS AUTHORITY — owner decision 2026-09-03 (option A).
-*
-* Protein hardness is targeted through **ice fraction**, never through NPAC. The
-* NPAC route stays blocked and that scientific statement is unchanged: at an
-* otherwise constant formulation, instrumental hardness rises 13.60 N → 47.66 N
-* as protein goes 4 % → 10 % (Applied Food Research 2(1) 100029, 2022), so the
-* Gelato NPAC→hardness calibration does not transfer to a high-protein mix.
-* Restoring hardness through the ice-fraction path does not overturn that.
-*
-* This module OWNS nothing scientific. Every number it returns comes from the
-* already-published Protein regulator entry (`iceFraction.band`, status
-* `owner_approved_standard_physics_protein_v1`), and its availability comes from
-* the shared engine gate `hasDirectIceAuthorityAtTemperature`. It exists so the
-* mapping stops being owned by the legacy PI-Monitor surface.
-*
-* GRANULARITY IS THE AUTHORITY'S, NOT THE UI'S. Sorbet publishes five distinct
-* NPAC centres per temperature (`SORBET_HARDNESS_TARGET_CENTERS`) and therefore
-* earns five positions. Protein publishes an ice BAND with **no clean centre and
-* no per-level centres** — no `iceFraction` entry on any profile carries one —
-* so it supports exactly the three positions the existing `texturePreference`
-* semantics express: `lower_safe_side / clean_center / upper_safe_side`.
-* Rendering five positions where −2 ≡ −1 would be fake precision. A genuine
-* five-level Protein control is a future calibration task, not a code change.
-*/
-/**
-* The exact Direction value each position WRITES. Never ±2 — the authority has
-* no fourth or fifth target to write.
-*/
-const PROTEIN_HARDNESS_TARGET_VALUE = Object.freeze({
-	softer: -1,
-	balanced: 0,
-	firmer: 1
-});
-/**
-* DISPLAY ONLY — project a stored Direction value onto the three positions.
-* Many-to-one, so a draft that already carries ±2 (set elsewhere, or inherited)
-* renders honestly instead of being silently rewritten. Reading must never write.
-*/
-function projectProteinHardnessForDisplay(stored) {
-	if (stored < 0) return "softer";
-	if (stored > 0) return "firmer";
-	return "balanced";
-}
-/**
-* Availability, from the SHARED engine gate — the same authority the customer
-* Monitor surface used. Never a local re-derivation.
-*/
-function proteinHardnessApplies(category, servingTemperatureC) {
-	return category === "protein_gelato" && hasDirectIceAuthorityAtTemperature(category, servingTemperatureC);
-}
-/**
-* The ice-fraction target band for a position, derived ONLY by dividing the
-* published Protein band at its own midpoint:
-*
-*   softer   → lower safe side  (less frozen water reads softer)
-*   balanced → the published band, unnarrowed (the clean centre)
-*   firmer   → upper safe side
-*
-* The polarity is the documented one — "low ice fraction = softer, high =
-* harder" (`piMonitorAxes`) — and is the INVERSE of NPAC, where a higher value
-* is softer. No limit is restated here and no centre is invented: the midpoint
-* is arithmetic on the published band, nothing more.
-*
-* Returns `null` when Protein has no approved ice band at this temperature, so
-* the caller refuses honestly instead of guessing.
-*/
-function proteinHardnessIceBand(servingTemperatureC, step) {
-	const band = getTemperatureRegulatorSettingsOrNull("protein_gelato", servingTemperatureC)?.iceFraction?.band ?? null;
-	if (!band) return null;
-	const [min, max] = band;
-	if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) return null;
-	const midpoint = (min + max) / 2;
-	if (step === "softer") return {
-		min,
-		max: midpoint
-	};
-	if (step === "firmer") return {
-		min: midpoint,
-		max
-	};
-	return {
-		min,
-		max
-	};
-}
-/** Convenience: the band for a stored Direction value, via the display projection. */
-function proteinHardnessBandForTarget(servingTemperatureC, stored) {
-	return proteinHardnessIceBand(servingTemperatureC, projectProteinHardnessForDisplay(stored));
-}
-
-//#endregion
-//#region src/features/recipe-direction/recipeDirectionTargets.ts
-const DEFAULT_RECIPE_DIRECTION_TARGETS = Object.freeze({
-	sweetness: 0,
-	softness: 0,
-	creaminess: 0,
-	flavor: 0
-});
-const profileForCategory = (category) => {
-	switch (category) {
-		case "milk_gelato":
-		case "fruit_gelato":
-		case "nut_gelato":
-		case "alcohol_gelato":
-		case "custom": return "standard_gelato";
-		case "chocolate_gelato": return "chocolate_gelato";
-		case "sorbet": return "sorbet";
-		case "vegan_gelato": return "vegan_gelato";
-		case "protein_gelato": return "protein_gelato";
-	}
-};
-const targetFifth = (band, target) => {
-	const [min, max] = band;
-	const fifth = (max - min) / 5;
-	const index = target + 2;
-	return {
-		min: min + index * fifth,
-		max: min + (index + 1) * fifth
-	};
-};
-/** Scope guard: profiles outside this Gelato-only change retain their accepted
-* three-zone calibration even though the stored target is now lossless. */
-const legacyTargetThird = (band, target) => {
-	const [min, max] = band;
-	const third = (max - min) / 3;
-	if (target < 0) return {
-		min,
-		max: min + third
-	};
-	if (target > 0) return {
-		min: max - third,
-		max
-	};
-	return {
-		min: min + third,
-		max: max - third
-	};
-};
-const softnessBand = (band, cleanCenter, target) => {
-	const firmSpanMidpoint = (band[0] + cleanCenter[0]) / 2;
-	const softSpanMidpoint = (cleanCenter[1] + band[1]) / 2;
-	if (target === -2) return {
-		min: softSpanMidpoint,
-		max: band[1]
-	};
-	if (target === -1) return {
-		min: cleanCenter[1],
-		max: softSpanMidpoint
-	};
-	if (target === 1) return {
-		min: firmSpanMidpoint,
-		max: cleanCenter[0]
-	};
-	if (target === 2) return {
-		min: band[0],
-		max: firmSpanMidpoint
-	};
-	return {
-		min: cleanCenter[0],
-		max: cleanCenter[1]
-	};
-};
-const SORBET_SWEETNESS_TARGET_CENTERS = Object.freeze({
-	[-2]: 16,
-	[-1]: 18,
-	0: 20,
-	1: 22,
-	2: 24
-});
-const SORBET_HARDNESS_TARGET_CENTERS = Object.freeze({
-	[-11]: Object.freeze({
-		[-2]: 39.5,
-		[-1]: 38.5,
-		0: 37.5,
-		1: 36.5,
-		2: 35.5
-	}),
-	[-12]: Object.freeze({
-		[-2]: 48.3,
-		[-1]: 46.9,
-		0: 45.5,
-		1: 44.1,
-		2: 42.7
-	}),
-	[-13]: Object.freeze({
-		[-2]: 54.3,
-		[-1]: 52.9,
-		0: 51.5,
-		1: 50.1,
-		2: 48.7
-	})
-});
-const exactPreferencePoint = (center) => ({
-	min: center,
-	max: center
-});
-function normalizeRecipeDirectionTargets(value) {
-	const normalize = (candidate) => {
-		if (candidate == null || !Number.isFinite(candidate)) return 0;
-		return Math.max(-2, Math.min(2, Math.round(candidate)));
-	};
-	return {
-		sweetness: normalize(value?.sweetness),
-		softness: normalize(value?.softness),
-		creaminess: normalize(value?.creaminess),
-		flavor: normalize(value?.flavor)
-	};
-}
-/**
-* The plan depends ONLY on these four values, and the pipeline rebuilds it many
-* times per solve (every violation measure, every candidate, every advisor
-* simulation). Memoising on that exact value fingerprint — not on object
-* identity — is safe for any caller and removes a large amount of repeated work
-* from the Direction and Rescue hot paths.
-*/
-const DIRECTION_PLAN_CACHE_LIMIT = 512;
-const directionPlanCache = /* @__PURE__ */ new Map();
-const directionPlanKey = (input) => [
-	input.category,
-	input.target_temperature_c,
-	input.goals?.direction_targets_active === true ? 1 : 0,
-	input.goals?.direction_targets?.sweetness ?? 0,
-	input.goals?.direction_targets?.softness ?? 0,
-	input.goals?.direction_targets?.creaminess ?? 0,
-	input.goals?.direction_targets?.flavor ?? 0
-].join("|");
-function buildRecipeDirectionPlan(input) {
-	const cacheKey = directionPlanKey(input);
-	const cached = directionPlanCache.get(cacheKey);
-	if (cached) return cached;
-	const plan = computeRecipeDirectionPlan(input);
-	if (directionPlanCache.size >= 512) {
-		const oldest = directionPlanCache.keys().next().value;
-		if (oldest !== void 0) directionPlanCache.delete(oldest);
-	}
-	directionPlanCache.set(cacheKey, plan);
-	return plan;
-}
-function computeRecipeDirectionPlan(input) {
-	const targets = normalizeRecipeDirectionTargets(input.goals?.direction_targets);
-	const enabled = input.goals?.direction_targets_active === true;
-	const profile = profileForCategory(input.category);
-	const regulator = profile ? getTemperatureRegulatorSettingsOrNull(profile, input.target_temperature_c) : null;
-	const axes = [];
-	const bands = {};
-	const sweetnessOperational = profile === "vegan_gelato" || profile === "standard_gelato" || profile === "protein_gelato" || profile === "sorbet" && (input.target_temperature_c === -11 || input.target_temperature_c === -12 || input.target_temperature_c === -13) || profile === "chocolate_gelato" && (input.target_temperature_c === -11 || input.target_temperature_c === -12);
-	const softnessOperational = profile === "vegan_gelato" || profile === "standard_gelato" || profile === "sorbet" && (input.target_temperature_c === -11 || input.target_temperature_c === -12 || input.target_temperature_c === -13);
-	if (regulator?.pod && sweetnessOperational) {
-		const targetCenter = profile === "sorbet" ? SORBET_SWEETNESS_TARGET_CENTERS[targets.sweetness] : null;
-		const targetBand = targetCenter !== null ? exactPreferencePoint(targetCenter) : profile === "standard_gelato" || profile === "vegan_gelato" || profile === "protein_gelato" ? targetFifth(regulator.pod.band, targets.sweetness) : legacyTargetThird(regulator.pod.band, targets.sweetness);
-		if (enabled) bands.pod = targetBand;
-		axes.push({
-			axis: "sweetness",
-			target: targets.sweetness,
-			status: "working",
-			metric: "pod",
-			targetBand,
-			targetCenter,
-			reason: null
-		});
-	} else if (!sweetnessOperational && regulator?.pod) axes.push({
-		axis: "sweetness",
-		target: targets.sweetness,
-		status: "blocked_runtime",
-		metric: "pod",
-		targetBand: null,
-		targetCenter: null,
-		reason: "Pełna ścieżka −1/0/+1 dla tego profilu i temperatury nie ma jeszcze zweryfikowanego, bezpiecznego podglądu i zastosowania zmian."
-	});
-	else axes.push({
-		axis: "sweetness",
-		target: targets.sweetness,
-		status: "blocked_data",
-		metric: "pod",
-		targetBand: null,
-		targetCenter: null,
-		reason: "Brak zatwierdzonego zakresu POD dla tego profilu i temperatury."
-	});
-	if (proteinHardnessApplies(input.category, input.target_temperature_c)) {
-		const proteinBand = proteinHardnessBandForTarget(input.target_temperature_c, targets.softness);
-		if (proteinBand) {
-			if (enabled) bands.ice_fraction = proteinBand;
-			axes.push({
-				axis: "softness",
-				target: targets.softness,
-				status: "working",
-				metric: "ice_fraction",
-				targetBand: proteinBand,
-				targetCenter: null,
-				reason: null
-			});
-		} else axes.push({
-			axis: "softness",
-			target: targets.softness,
-			status: "blocked_data",
-			metric: "ice_fraction",
-			targetBand: null,
-			targetCenter: null,
-			reason: "Brak zatwierdzonego zakresu lodu dla tego profilu i temperatury."
-		});
-	} else if (regulator?.npac?.cleanCenter && softnessOperational) {
-		const sorbetTemperature = input.target_temperature_c;
-		const targetCenter = profile === "sorbet" ? SORBET_HARDNESS_TARGET_CENTERS[sorbetTemperature]?.[targets.softness] ?? null : null;
-		const targetBand = targetCenter !== null ? exactPreferencePoint(targetCenter) : softnessBand(regulator.npac.band, regulator.npac.cleanCenter, targets.softness);
-		if (enabled) bands.npac = targetBand;
-		axes.push({
-			axis: "softness",
-			target: targets.softness,
-			status: "working",
-			metric: "npac",
-			targetBand,
-			targetCenter,
-			reason: null
-		});
-	} else if (!softnessOperational && regulator?.npac?.cleanCenter) axes.push({
-		axis: "softness",
-		target: targets.softness,
-		status: "blocked_science",
-		metric: "npac",
-		targetBand: null,
-		targetCenter: null,
-		reason: "Brakuje zweryfikowanych danych miękkości dla tej kategorii. Gellatti nie użyje danych z innego typu receptury."
-	});
-	else axes.push({
-		axis: "softness",
-		target: targets.softness,
-		status: "blocked_data",
-		metric: "npac",
-		targetBand: null,
-		targetCenter: null,
-		reason: "Brak zatwierdzonego czystego centrum NPAC dla tego profilu i temperatury."
-	});
-	axes.push({
-		axis: "creaminess",
-		target: targets.creaminess,
-		status: "blocked_science",
-		metric: null,
-		targetBand: null,
-		targetCenter: null,
-		reason: "Brak zatwierdzonego modelu sensorycznej kremowości; sam tłuszcz nie jest kremowością."
-	}, {
-		axis: "flavor",
-		target: targets.flavor,
-		status: "blocked_data",
-		metric: null,
-		targetBand: null,
-		targetCenter: null,
-		reason: "Brak zweryfikowanych profili mocy smaku dla poszczególnych klas składników."
-	});
-	return {
-		profile,
-		servingTemperatureC: input.target_temperature_c,
-		bands,
-		axes
-	};
-}
-
-//#endregion
 //#region src/features/recipe-direction/recipeDirectionAssessment.ts
 /**
 * Product-layer target fit only. Native Engine bands remain the sole safety
@@ -8728,6 +8813,96 @@ function assessRecipeDirection(input, result) {
 			reason: axis.reason ?? "Brak kalibracji."
 		})) : []
 	};
+}
+
+//#endregion
+//#region src/features/recipe-direction/relaxableRangePolicy.ts
+/**
+* THE WHOLE public-score cost of using the approved emergency envelope — owner
+* clarification 2026-09-19, and it is ONE point.
+*
+* Controlled relaxation is an IDEALITY signal, never an invalidity signal, and
+* the signal is BINARY on the public scale: the recipe either stayed inside the
+* owner's preferred ranges or it did not. It costs the same one point whether
+* the excursion is barely outside the normal band, midway through the approved
+* emergency range, or at its boundary — and the same one point whether one
+* range was left or several. Using MORE of an envelope the owner explicitly
+* approved is not a second defect, so it is never charged twice and can never
+* turn 10/10 into 8/10.
+*
+* SEVERITY IS NOT LOST, it simply is not on the public integer: `relaxationCost`
+* and each range's `normalizedExcursion` keep it continuously, and those are
+* what rank candidates, break ties, drive diagnostics and would drive any
+* future refinement of the public scale. So 81 g and 120 g are NOT equivalent
+* internally — 120 g carries the higher cost and loses to 81 g whenever target
+* quality is otherwise equal — while both, if they are what safely reaches the
+* requested level, are VALID and cost the same single public point.
+*
+* Other authorities keep their own weight: this is subtracted from whatever the
+* canonical seam already decided, so a genuine quality defect is never masked.
+*/
+const RELAXATION_SCORE_PENALTY_CAP = 1;
+const RELAXABLE_POLICIES = Object.freeze([{
+	policyId: OWNER_INULIN_POLICY.policyId,
+	provenance: OWNER_INULIN_POLICY.provenance,
+	lineIds: ownerInulinPolicyLineIds,
+	normalBand: (input) => {
+		const band = ownerInulinGramBand(input.target_batch_grams);
+		return {
+			minGrams: band.minGrams,
+			maxGrams: band.maxGrams
+		};
+	}
+}]);
+/**
+* Every registered owner band on this draft that is currently CARRYING a dose.
+* A policy with presence semantics („absent and 0 g are the same thing") is
+* silent at 0 g, so an absent lever is never an excursion.
+*/
+function relaxableOwnerRanges(input) {
+	const ranges = [];
+	for (const policy of RELAXABLE_POLICIES) {
+		const lineIds = policy.lineIds(input);
+		if (lineIds.length === 0) continue;
+		const governed = new Set(lineIds);
+		const grams = input.items.filter((item) => governed.has(item.id)).reduce((sum, item) => sum + item.planned_grams, 0);
+		if (!(grams > 0)) continue;
+		const normal = policy.normalBand(input);
+		ranges.push({
+			policyId: policy.policyId,
+			provenance: policy.provenance,
+			lineIds: [...lineIds],
+			grams,
+			normal,
+			extended: extendedGramBand(normal),
+			normalizedExcursion: normalizedRangeExcursion(grams, normal)
+		});
+	}
+	return ranges;
+}
+/** The owner bands this draft actually left — the ones a score must charge for. */
+function relaxedOwnerRanges(input) {
+	return relaxableOwnerRanges(input).filter((range) => range.normalizedExcursion > RANGE_EXCURSION_EPS);
+}
+/**
+* ONE canonical relaxation cost in [0, 1]. Each excursion is capped at its own
+* permitted maximum first, then combined multiplicatively: every further
+* relaxation takes a share of what IDEALITY is left, so the cost rises with
+* each one, is never double counted, and can never run away.
+*/
+function relaxationCost(input) {
+	let ideal = 1;
+	for (const range of relaxedOwnerRanges(input)) ideal *= 1 - Math.min(1, range.normalizedExcursion);
+	return 1 - ideal;
+}
+/**
+* Points off the canonical 1–10 fit — exactly one, or none at all.
+*
+*   inside every owner band     → 0
+*   any controlled relaxation   → 1, however far and however many ranges
+*/
+function relaxationScorePenalty(input) {
+	return relaxedOwnerRanges(input).length === 0 ? 0 : 1;
 }
 
 //#endregion
@@ -9575,7 +9750,9 @@ function recipeFitForInput(input, result = calculateRecipe(input)) {
 	const protein = assessProteinFormulation(input, result);
 	if (base.score === null) return base;
 	if (!protein.applicable && direction.score === null) return base;
-	const score = Math.min(base.score, direction.score ?? 10, protein.applicable && protein.score !== null ? protein.score : 10);
+	const relaxation = relaxationCost(input);
+	const relaxationPenalty = relaxationScorePenalty(input);
+	const score = Math.max(1, Math.min(base.score, direction.score ?? 10, protein.applicable && protein.score !== null ? protein.score : 10) - relaxationPenalty);
 	const label = MATCH_SCORE_LABELS[score];
 	const directionAria = direction.active ? ` Kierunek receptury: ${direction.reachedAxisCount} z ${direction.supportedAxisCount} obsługiwanych osi w celu.` : "";
 	const proteinAria = protein.applicable ? ` Białko ${protein.actualPercent?.toFixed(1)}% masy, ${protein.qualification.energySharePercent?.toFixed(0)}% energii.` : "";
@@ -9585,7 +9762,19 @@ function recipeFitForInput(input, result = calculateRecipe(input)) {
 		label,
 		display: `${score}/10`,
 		ariaText: `Dopasowanie receptury: ${score} na 10 — ${label}.${directionAria}${proteinAria}`,
-		validatedNative: base.validatedNative && (!protein.applicable || protein.qualification.qualified)
+		validatedNative: base.validatedNative && (!protein.applicable || protein.qualification.qualified) && relaxationPenalty === 0,
+		relaxationCost: relaxation,
+		relaxationPenalty,
+		relaxedRanges: relaxedOwnerRanges(input).map((range) => ({
+			policyId: range.policyId,
+			lineIds: range.lineIds,
+			grams: range.grams,
+			normalMinGrams: range.normal.minGrams,
+			normalMaxGrams: range.normal.maxGrams,
+			extendedMinGrams: range.extended.minGrams,
+			extendedMaxGrams: range.extended.maxGrams,
+			normalizedExcursion: range.normalizedExcursion
+		}))
 	};
 }
 

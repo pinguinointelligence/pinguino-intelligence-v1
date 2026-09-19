@@ -1,0 +1,391 @@
+{
+ "sweetness/-2": {
+  "axis": "sweetness",
+  "level": -2,
+  "fallbackPresent": true,
+  "fallbackBestNull": true,
+  "heldCandidate": {
+   "pod": 19.062758,
+   "npac": 37.45176455430178,
+   "lines": 6,
+   "items": [
+    [
+     "BLOOD ORANGE · Campisi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     194
+    ],
+    [
+     "SUCROSE SUGAR · Sweete",
+     79
+    ],
+    [
+     "DEXTROSE MONOHYDRATE ·",
+     70
+    ],
+    [
+     "INULIN · Fibre · Powde",
+     55
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4
+    ]
+   ],
+   "violations": [],
+   "distance": 3.1109934456982167,
+   "reached": false
+  },
+  "rescueOffered": null,
+  "rescueBestMapperId": null,
+  "rescueRecordCount": 7,
+  "verdict": "n/a"
+ },
+ "sweetness/-1": {
+  "axis": "sweetness",
+  "level": -1,
+  "fallbackPresent": true,
+  "fallbackBestNull": true,
+  "heldCandidate": {
+   "pod": 19.062758,
+   "npac": 37.45176455430178,
+   "lines": 6,
+   "items": [
+    [
+     "BLOOD ORANGE · Campisi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     194
+    ],
+    [
+     "SUCROSE SUGAR · Sweete",
+     79
+    ],
+    [
+     "DEXTROSE MONOHYDRATE ·",
+     70
+    ],
+    [
+     "INULIN · Fibre · Powde",
+     55
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4
+    ]
+   ],
+   "violations": [],
+   "distance": 1.1109934456982167,
+   "reached": false
+  },
+  "rescueOffered": null,
+  "rescueBestMapperId": null,
+  "rescueRecordCount": 7,
+  "verdict": "n/a"
+ },
+ "sweetness/+1": {
+  "axis": "sweetness",
+  "level": 1,
+  "fallbackPresent": true,
+  "fallbackBestNull": true,
+  "heldCandidate": {
+   "pod": 22.000158000000003,
+   "npac": 37.42212808338452,
+   "lines": 6,
+   "items": [
+    [
+     "BLOOD ORANGE · Campisi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     175
+    ],
+    [
+     "SUCROSE SUGAR · Sweete",
+     136
+    ],
+    [
+     "DEXTROSE MONOHYDRATE ·",
+     32
+    ],
+    [
+     "INULIN · Fibre · Powde",
+     55
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4
+    ]
+   ],
+   "violations": [],
+   "distance": 0.08787191661547865,
+   "reached": false
+  },
+  "rescueOffered": null,
+  "rescueBestMapperId": null,
+  "rescueRecordCount": 7,
+  "verdict": "n/a"
+ },
+ "sweetness/+2": {
+  "axis": "sweetness",
+  "level": 2,
+  "fallbackPresent": true,
+  "fallbackBestNull": true,
+  "heldCandidate": {
+   "pod": 23.982658,
+   "npac": 37.498308142199384,
+   "lines": 6,
+   "items": [
+    [
+     "BLOOD ORANGE · Campisi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     162
+    ],
+    [
+     "SUCROSE SUGAR · Sweete",
+     174
+    ],
+    [
+     "DEXTROSE MONOHYDRATE ·",
+     7
+    ],
+    [
+     "INULIN · Fibre · Powde",
+     55
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4
+    ]
+   ],
+   "violations": [],
+   "distance": 0.027341999999999304,
+   "reached": false
+  },
+  "rescueOffered": null,
+  "rescueBestMapperId": null,
+  "rescueRecordCount": 7,
+  "verdict": "n/a"
+ },
+ "softness/-1": {
+  "axis": "softness",
+  "level": -1,
+  "fallbackPresent": true,
+  "fallbackBestNull": true,
+  "heldCandidate": {
+   "pod": 19.999258,
+   "npac": 38.46989940784568,
+   "lines": 6,
+   "items": [
+    [
+     "BLOOD ORANGE · Campisi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     186
+    ],
+    [
+     "SUCROSE SUGAR · Sweete",
+     92
+    ],
+    [
+     "DEXTROSE MONOHYDRATE ·",
+     65
+    ],
+    [
+     "INULIN · Fibre · Powde",
+     55
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4
+    ]
+   ],
+   "violations": [],
+   "distance": 0.040100592154319374,
+   "reached": false
+  },
+  "rescueOffered": null,
+  "rescueBestMapperId": null,
+  "rescueRecordCount": 7,
+  "verdict": "n/a"
+ },
+ "softness/+1": {
+  "axis": "softness",
+  "level": 1,
+  "fallbackPresent": true,
+  "fallbackBestNull": true,
+  "heldCandidate": {
+   "pod": 19.981458000000003,
+   "npac": 36.41907180615506,
+   "lines": 6,
+   "items": [
+    [
+     "BLOOD ORANGE · Campisi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     190
+    ],
+    [
+     "SUCROSE SUGAR · Sweete",
+     102
+    ],
+    [
+     "DEXTROSE MONOHYDRATE ·",
+     51
+    ],
+    [
+     "INULIN · Fibre · Powde",
+     55
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4
+    ]
+   ],
+   "violations": [],
+   "distance": 0.09947019384493672,
+   "reached": false
+  },
+  "rescueOffered": {
+   "pod": 20.038109000000002,
+   "npac": 36.55464559693998,
+   "lines": 7,
+   "items": [
+    [
+     "BLOOD ORANGE · Campisi",
+     529
+    ],
+    [
+     "WATER · Liquid",
+     259
+    ],
+    [
+     "SUCROSE SUGAR · Sweete",
+     90
+    ],
+    [
+     "DEXTROSE MONOHYDRATE ·",
+     54
+    ],
+    [
+     "INULIN · Fibre · Powde",
+     54
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4
+    ],
+    [
+     "FRUCTOSE · Sweetener ·",
+     10
+    ]
+   ],
+   "violations": [],
+   "distance": 0.09275459693997945,
+   "reached": false
+  },
+  "rescueBestMapperId": "PI-ING-000496",
+  "rescueRecordCount": 7,
+  "verdict": "offered is better"
+ },
+ "softness/+2": {
+  "axis": "softness",
+  "level": 2,
+  "fallbackPresent": true,
+  "fallbackBestNull": true,
+  "heldCandidate": {
+   "pod": 19.972558000000003,
+   "npac": 35.39929494509891,
+   "lines": 6,
+   "items": [
+    [
+     "BLOOD ORANGE · Campisi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     192
+    ],
+    [
+     "SUCROSE SUGAR · Sweete",
+     107
+    ],
+    [
+     "DEXTROSE MONOHYDRATE ·",
+     44
+    ],
+    [
+     "INULIN · Fibre · Powde",
+     55
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4
+    ]
+   ],
+   "violations": [],
+   "distance": 0.12814705490108835,
+   "reached": false
+  },
+  "rescueOffered": null,
+  "rescueBestMapperId": null,
+  "rescueRecordCount": 7,
+  "verdict": "n/a"
+ },
+ "softness/-2 (the one true dead end)": {
+  "axis": "softness",
+  "level": -2,
+  "fallbackPresent": true,
+  "fallbackBestNull": true,
+  "heldCandidate": {
+   "pod": 20.008158,
+   "npac": 39.50099177032425,
+   "lines": 6,
+   "items": [
+    [
+     "BLOOD ORANGE · Campisi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     184
+    ],
+    [
+     "SUCROSE SUGAR · Sweete",
+     87
+    ],
+    [
+     "DEXTROSE MONOHYDRATE ·",
+     72
+    ],
+    [
+     "INULIN · Fibre · Powde",
+     55
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4
+    ]
+   ],
+   "violations": [],
+   "distance": 0.02,
+   "reached": false
+  },
+  "rescueOffered": null,
+  "rescueBestMapperId": null,
+  "rescueRecordCount": 7,
+  "verdict": "n/a"
+ }
+}

@@ -1,0 +1,690 @@
+{
+ "draft": {
+  "targets": {
+   "sweetness": -1,
+   "softness": 0,
+   "creaminess": 0,
+   "flavor": 0
+  },
+  "active": true,
+  "batch": 1340,
+  "sum": 1847,
+  "items": [
+   [
+    "MILK · 3.5% FAT · Chilled",
+    901,
+    "unlocked",
+    "milk_3_5"
+   ],
+   [
+    "CREAM 30% · Mlekovita Crea",
+    174,
+    "unlocked",
+    "cream_30"
+   ],
+   [
+    "SKIMMED MILK POWDER · 0.8%",
+    47,
+    "unlocked",
+    "smp"
+   ],
+   [
+    "SUCROSE SUGAR · Sweetener ",
+    174,
+    "unlocked",
+    "sucrose"
+   ],
+   [
+    "DEXTROSE MONOHYDRATE · Swe",
+    40,
+    "unlocked",
+    "dextrose"
+   ],
+   [
+    "TARA GUM · Stabilizer",
+    4,
+    "unlocked",
+    "tara_gum"
+   ],
+   [
+    "STRAWBERRIES · Fresh Fruit",
+    507,
+    "grams",
+    "PI-ING-001553"
+   ]
+  ],
+  "pod": 13.51957552788305,
+  "npac": 27.587151735534455,
+  "nativeViolations": [
+   "ice_fraction:high:60.214:sev1.203",
+   "npac:low:27.587:sev1.203",
+   "total_solids:low:26.274:sev0.675",
+   "water:high:73.726:sev0.573",
+   "fat:low:4.637:sev0.104",
+   "aerating_protein:low:2.785:sev0.143",
+   "lactose:low:3.892:sev0.108"
+  ],
+  "directionViolations": [
+   "ice_fraction:high:60.214:sev1.203",
+   "npac:low:27.587:sev11.413",
+   "total_solids:low:26.274:sev0.675",
+   "water:high:73.726:sev0.573",
+   "fat:low:4.637:sev0.104",
+   "aerating_protein:low:2.785:sev0.143",
+   "lactose:low:3.892:sev0.108"
+  ],
+  "reached": false,
+  "residuals": [
+   {
+    "axis": "sweetness",
+    "reached": true
+   },
+   {
+    "axis": "softness",
+    "reached": false
+   }
+  ]
+ },
+ "plan": {
+  "profile": "standard_gelato",
+  "tempC": -11,
+  "bands": {
+   "pod": {
+    "min": 13,
+    "max": 14
+   },
+   "npac": {
+    "min": 39,
+    "max": 41
+   }
+  },
+  "axes": [
+   {
+    "axis": "sweetness",
+    "target": -1,
+    "status": "working",
+    "metric": "pod",
+    "band": {
+     "min": 13,
+     "max": 14
+    },
+    "center": null,
+    "reason": null
+   },
+   {
+    "axis": "softness",
+    "target": 0,
+    "status": "working",
+    "metric": "npac",
+    "band": {
+     "min": 39,
+     "max": 41
+    },
+    "center": null,
+    "reason": null
+   },
+   {
+    "axis": "creaminess",
+    "target": 0,
+    "status": "blocked_science",
+    "metric": null,
+    "band": null,
+    "center": null,
+    "reason": "Brak zatwierdzonego modelu sensorycznej kremowości; sam tłuszcz nie jest kremowością."
+   },
+   {
+    "axis": "flavor",
+    "target": 0,
+    "status": "blocked_data",
+    "metric": null,
+    "band": null,
+    "center": null,
+    "reason": "Brak zweryfikowanych profili mocy smaku dla poszczególnych klas składników."
+   }
+  ]
+ },
+ "exactObjectiveActive": true,
+ "fallbackLadder": [
+  {
+   "sweetness": 0,
+   "softness": 0,
+   "creaminess": 0,
+   "flavor": 0
+  }
+ ],
+ "candidateVector": [
+  {
+   "line": "MILK · 3.5% FAT · Chilled",
+   "id": "milk_3_5",
+   "current": 901,
+   "anchor": null,
+   "materialFloor": null,
+   "increasable": true,
+   "testedGrams": [
+    767,
+    834,
+    874.2,
+    887.6,
+    894.3,
+    899.66,
+    902.34,
+    907.7,
+    914.4,
+    927.8,
+    968,
+    1035
+   ]
+  },
+  {
+   "line": "CREAM 30% · Mlekovita Crea",
+   "id": "cream_30",
+   "current": 174,
+   "anchor": null,
+   "materialFloor": null,
+   "increasable": true,
+   "testedGrams": [
+    0,
+    40,
+    107,
+    147.2,
+    160.6,
+    167.3,
+    172.66,
+    175.34,
+    180.7,
+    187.4,
+    200.8,
+    241,
+    308
+   ]
+  },
+  {
+   "line": "SKIMMED MILK POWDER · 0.8%",
+   "id": "smp",
+   "current": 47,
+   "anchor": null,
+   "materialFloor": null,
+   "increasable": true,
+   "testedGrams": [
+    0,
+    20.2,
+    33.6,
+    40.3,
+    45.66,
+    48.34,
+    53.7,
+    60.4,
+    73.8,
+    114,
+    181
+   ]
+  },
+  {
+   "line": "SUCROSE SUGAR · Sweetener ",
+   "id": "sucrose",
+   "current": 174,
+   "anchor": null,
+   "materialFloor": null,
+   "increasable": true,
+   "testedGrams": [
+    40,
+    107,
+    147.2,
+    160.6,
+    167.3,
+    172.66,
+    175.34,
+    180.7,
+    187.4,
+    200.8,
+    241,
+    308
+   ]
+  },
+  {
+   "line": "DEXTROSE MONOHYDRATE · Swe",
+   "id": "dextrose",
+   "current": 40,
+   "anchor": null,
+   "materialFloor": null,
+   "increasable": true,
+   "testedGrams": [
+    13.2,
+    26.6,
+    33.3,
+    38.66,
+    41.34,
+    46.7,
+    53.4,
+    66.8,
+    107,
+    174
+   ]
+  }
+ ],
+ "excludedFromVector": [
+  [
+   "TARA GUM · Stabilizer",
+   4,
+   "unlocked"
+  ],
+  [
+   "STRAWBERRIES · Fresh Fruit",
+   507,
+   "grams"
+  ]
+ ],
+ "stepFractions": [
+  0.001,
+  0.005,
+  0.01,
+  0.02,
+  0.05,
+  0.1
+ ],
+ "maxSolverRounds": 18,
+ "experiment": "baseline",
+ "coreAnswerMinus1": {
+  "ok": true,
+  "diagnosticOnly": false,
+  "reached": true,
+  "proposed": {
+   "targets": {
+    "sweetness": -1,
+    "softness": 0,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "active": true,
+   "batch": 1340,
+   "sum": 1340,
+   "items": [
+    [
+     "MILK · 3.5% FAT · Chilled",
+     178,
+     "unlocked",
+     "milk_3_5"
+    ],
+    [
+     "CREAM 30% · Mlekovita Crea",
+     389,
+     "unlocked",
+     "cream_30"
+    ],
+    [
+     "SKIMMED MILK POWDER · 0.8%",
+     106,
+     "unlocked",
+     "smp"
+    ],
+    [
+     "SUCROSE SUGAR · Sweetener ",
+     87,
+     "unlocked",
+     "sucrose"
+    ],
+    [
+     "DEXTROSE MONOHYDRATE · Swe",
+     69,
+     "unlocked",
+     "dextrose"
+    ],
+    [
+     "TARA GUM · Stabilizer",
+     4,
+     "unlocked",
+     "tara_gum"
+    ],
+    [
+     "STRAWBERRIES · Fresh Fruit",
+     507,
+     "grams",
+     "PI-ING-001553"
+    ]
+   ],
+   "pod": 13.751328358208955,
+   "npac": 39.53700256863161,
+   "nativeViolations": [],
+   "directionViolations": [],
+   "reached": true,
+   "residuals": [
+    {
+     "axis": "sweetness",
+     "reached": true
+    },
+    {
+     "axis": "softness",
+     "reached": true
+    }
+   ]
+  },
+  "iteration": {
+   "solverInvocations": 5,
+   "draftVectorSearches": 5,
+   "stopReason": "all_bands_in_range",
+   "stopDetail": null,
+   "capped": false,
+   "rounds": [
+    {
+     "round": 0,
+     "violations": 9,
+     "severityPoints": 20.157039323211194,
+     "userIntentDrift": 0
+    },
+    {
+     "round": 1,
+     "violations": 5,
+     "severityPoints": 8.849227135237772,
+     "userIntentDrift": 0
+    },
+    {
+     "round": 2,
+     "violations": 2,
+     "severityPoints": 6.047502982721951,
+     "userIntentDrift": 0
+    },
+    {
+     "round": 3,
+     "violations": 2,
+     "severityPoints": 4.9314177765512,
+     "userIntentDrift": 0
+    },
+    {
+     "round": 4,
+     "violations": 2,
+     "severityPoints": 4.5928180611709895,
+     "userIntentDrift": 0
+    },
+    {
+     "round": 5,
+     "violations": 0,
+     "severityPoints": 0,
+     "userIntentDrift": 0
+    }
+   ],
+   "attemptedMoves": [
+    {
+     "round": 1,
+     "move": "lower milk_3_5 558.2 g → 491.2 g + lower cream_30 117.8 g → 91.0 g + raise smp 32.8 g → 59.6 g + raise sucrose 118.0 g → 124.7 g + raise dextrose 27.0 g → 53.8 g",
+     "outcome": "applied",
+     "rejectionReason": null,
+     "violationsBefore": 9,
+     "severityBefore": 20.157039323211194,
+     "violationsAfter": 5,
+     "severityAfter": 8.849227135237772
+    },
+    {
+     "round": 2,
+     "move": "lower milk_3_5 514.1 g → 380.1 g + lower cream_30 104.5 g → 91.1 g + raise smp 67.2 g → 80.6 g + lower sucrose 142.9 g → 136.2 g + lower dextrose 62.7 g → 56.0 g",
+     "outcome": "applied",
+     "rejectionReason": null,
+     "violationsBefore": 5,
+     "severityBefore": 8.849227135237772,
+     "violationsAfter": 2,
+     "severityAfter": 6.047502982721951
+    },
+    {
+     "round": 3,
+     "move": "raise cream_30 92.6 g → 93.9 g + raise smp 80.5 g → 93.9 g + lower sucrose 136.0 g → 129.3 g",
+     "outcome": "applied",
+     "rejectionReason": null,
+     "violationsBefore": 2,
+     "severityBefore": 6.047502982721951,
+     "violationsAfter": 2,
+     "severityAfter": 4.9314177765512
+    },
+    {
+     "round": 4,
+     "move": "raise cream_30 93.0 g → 94.4 g + raise smp 93.0 g → 99.7 g + lower sucrose 129.1 g → 127.8 g",
+     "outcome": "applied",
+     "rejectionReason": null,
+     "violationsBefore": 2,
+     "severityBefore": 4.9314177765512,
+     "violationsAfter": 2,
+     "severityAfter": 4.5928180611709895
+    },
+    {
+     "round": 5,
+     "move": "raise milk_3_5 452.8 g → 454.2 g + raise cream_30 93.4 g → 94.8 g + lower milk_3_5 452.7 g → 318.7 g + raise cream_30 94.6 g → 228.6 g + lower smp 98.8 g → 85.4 g + raise cream_30 228.6 g → 242.0 g + lower sucrose 127.6 g → 114.2 g + raise dextrose 55.3 g → 68.7 g + lower dextrose 68.7 g → 62.0 g + raise smp 85.4 g → 92.1 g + lower milk_3_5 318.7 g → 184.7 g + raise cream_30 242.0 g → 376.0 g + lower smp 92.1 g → 78.7 g + raise cream_30 376.0 g → 389.4 g + lower sucrose 114.2 g → 87.4 g + raise smp 78.7 g → 105.5 g + lower milk_3_5 184.7 g → 178.0 g + raise dextrose 62.0 g → 68.7 g",
+     "outcome": "applied",
+     "rejectionReason": null,
+     "violationsBefore": 2,
+     "severityBefore": 4.5928180611709895,
+     "violationsAfter": 0,
+     "severityAfter": 0
+    }
+   ],
+   "attemptedMoveCount": 5,
+   "candidateVector": [
+    {
+     "lineId": "new-recipe-0-milk_3_5",
+     "ingredientId": "milk_3_5",
+     "ingredientName": "MILK · 3.5% FAT · Chilled",
+     "currentGrams": 558.2211055276382,
+     "increasable": true,
+     "testedGrams": [
+      424.2211055276382,
+      491.2211055276382,
+      531.4211055276382,
+      544.8211055276382,
+      551.5211055276382,
+      556.8811055276382,
+      559.5611055276382,
+      564.9211055276382,
+      571.6211055276382,
+      585.0211055276382,
+      625.2211055276382,
+      692.2211055276382
+     ]
+    },
+    {
+     "lineId": "new-recipe-1-cream_30",
+     "ingredientId": "cream_30",
+     "ingredientName": "CREAM 30% · Mlekovita Cream · Chilled",
+     "currentGrams": 108.31155778894473,
+     "increasable": true,
+     "testedGrams": [
+      0,
+      41.311557788944725,
+      81.51155778894473,
+      94.91155778894472,
+      101.61155778894472,
+      106.97155778894472,
+      109.65155778894473,
+      115.01155778894473,
+      121.71155778894473,
+      135.11155778894474,
+      175.31155778894473,
+      242.31155778894473
+     ]
+    },
+    {
+     "lineId": "new-recipe-2-smp",
+     "ingredientId": "smp",
+     "ingredientName": "SKIMMED MILK POWDER · 0.8% FAT · Dairy · Dry",
+     "currentGrams": 29.160804020100503,
+     "increasable": true,
+     "testedGrams": [
+      0,
+      2.3608040201005025,
+      15.760804020100503,
+      22.460804020100504,
+      27.820804020100503,
+      30.500804020100503,
+      35.8608040201005,
+      42.560804020100505,
+      55.960804020100504,
+      96.1608040201005,
+      163.1608040201005
+     ]
+    },
+    {
+     "lineId": "new-recipe-3-sucrose",
+     "ingredientId": "sucrose",
+     "ingredientName": "SUCROSE SUGAR · Sweetener · Dry",
+     "currentGrams": 108.31155778894473,
+     "increasable": true,
+     "testedGrams": [
+      41.311557788944725,
+      81.51155778894473,
+      94.91155778894472,
+      101.61155778894472,
+      106.97155778894472,
+      109.65155778894473,
+      115.01155778894473,
+      121.71155778894473,
+      135.11155778894474,
+      175.31155778894473,
+      242.31155778894473
+     ]
+    },
+    {
+     "lineId": "new-recipe-4-dextrose",
+     "ingredientId": "dextrose",
+     "ingredientName": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+     "currentGrams": 24.99497487437186,
+     "increasable": true,
+     "testedGrams": [
+      11.594974874371859,
+      18.29497487437186,
+      23.65497487437186,
+      26.33497487437186,
+      31.69497487437186,
+      38.39497487437186,
+      51.79497487437186,
+      91.99497487437186,
+      158.99497487437185
+     ]
+    }
+   ]
+  }
+ },
+ "witness": {
+  "targets": {
+   "sweetness": -1,
+   "softness": 0,
+   "creaminess": 0,
+   "flavor": 0
+  },
+  "active": true,
+  "batch": 1340,
+  "sum": 1340,
+  "items": [
+   [
+    "MILK · 3.5% FAT · Chilled",
+    365,
+    "unlocked",
+    "milk_3_5"
+   ],
+   [
+    "CREAM 30% · Mlekovita Crea",
+    200,
+    "unlocked",
+    "cream_30"
+   ],
+   [
+    "SKIMMED MILK POWDER · 0.8%",
+    102,
+    "unlocked",
+    "smp"
+   ],
+   [
+    "SUCROSE SUGAR · Sweetener ",
+    82,
+    "unlocked",
+    "sucrose"
+   ],
+   [
+    "DEXTROSE MONOHYDRATE · Swe",
+    80,
+    "unlocked",
+    "dextrose"
+   ],
+   [
+    "TARA GUM · Stabilizer",
+    4,
+    "unlocked",
+    "tara_gum"
+   ],
+   [
+    "STRAWBERRIES · Fresh Fruit",
+    507,
+    "grams",
+    "PI-ING-001553"
+   ]
+  ],
+  "pod": 13.983355223880597,
+  "npac": 39.19758917443431,
+  "nativeViolations": [],
+  "directionViolations": [],
+  "reached": true,
+  "residuals": [
+   {
+    "axis": "sweetness",
+    "reached": true
+   },
+   {
+    "axis": "softness",
+    "reached": true
+   }
+  ]
+ },
+ "witnessReachability": [
+  {
+   "line": "MILK · 3.5% FAT · Chilled",
+   "from": 901,
+   "want": 365,
+   "inVector": true,
+   "exactRungExists": false,
+   "nearestRung": 767
+  },
+  {
+   "line": "CREAM 30% · Mlekovita Crea",
+   "from": 174,
+   "want": 200,
+   "inVector": true,
+   "exactRungExists": false,
+   "nearestRung": 200.8
+  },
+  {
+   "line": "SKIMMED MILK POWDER · 0.8%",
+   "from": 47,
+   "want": 102,
+   "inVector": true,
+   "exactRungExists": false,
+   "nearestRung": 114
+  },
+  {
+   "line": "SUCROSE SUGAR · Sweetener ",
+   "from": 174,
+   "want": 82,
+   "inVector": true,
+   "exactRungExists": false,
+   "nearestRung": 107
+  },
+  {
+   "line": "DEXTROSE MONOHYDRATE · Swe",
+   "from": 40,
+   "want": 80,
+   "inVector": true,
+   "exactRungExists": false,
+   "nearestRung": 66.8
+  },
+  {
+   "line": "TARA GUM · Stabilizer",
+   "from": 4,
+   "want": 4,
+   "inVector": false,
+   "exactRungExists": false,
+   "nearestRung": null
+  },
+  {
+   "line": "STRAWBERRIES · Fresh Fruit",
+   "from": 507,
+   "want": 507,
+   "inVector": false,
+   "exactRungExists": false,
+   "nearestRung": null
+  }
+ ]
+}

@@ -1,0 +1,2851 @@
+{
+ "LOCK-01": {
+  "label": "LOCK-01",
+  "recipeId": "classic-butter-pecan",
+  "cfg": "B",
+  "axis": "sweetness",
+  "level": 1,
+  "experiment": "baseline",
+  "baselineApplied": {
+   "terminalState": "PREVIEW_READY",
+   "applied": true,
+   "previewKind": "optimize",
+   "directionReached": false,
+   "directionFallback": null,
+   "batchRescaled": false,
+   "practicalization": "ready",
+   "issueCode": null,
+   "message": null
+  },
+  "lock": {
+   "lineId": "classic-butter-pecan-line-4",
+   "name": "SUCROSE SUGAR · Sweetener · Dry",
+   "grams": 80,
+   "lock": "grams"
+  },
+  "planAxis": [
+   {
+    "axis": "sweetness",
+    "target": 1,
+    "status": "working",
+    "metric": "pod",
+    "band": {
+     "min": 15,
+     "max": 16
+    },
+    "center": null
+   }
+  ],
+  "draft": {
+   "targets": {
+    "sweetness": 1,
+    "softness": 0,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "batch": 1000,
+   "sum": 1000,
+   "items": [
+    [
+     "classic-butter-pecan-line-1",
+     "MILK · 3.5% FAT · Chille",
+     591,
+     "unlocked"
+    ],
+    [
+     "classic-butter-pecan-line-2",
+     "CREAM 30% · Mlekovita Cr",
+     100,
+     "unlocked"
+    ],
+    [
+     "classic-butter-pecan-line-3",
+     "SKIMMED MILK POWDER · 0.",
+     35,
+     "unlocked"
+    ],
+    [
+     "classic-butter-pecan-line-4",
+     "SUCROSE SUGAR · Sweetene",
+     80,
+     "grams"
+    ],
+    [
+     "classic-butter-pecan-line-5",
+     "DEXTROSE MONOHYDRATE · S",
+     60,
+     "unlocked"
+    ],
+    [
+     "classic-butter-pecan-line-6",
+     "INULIN · Fibre · Powder",
+     43,
+     "unlocked"
+    ],
+    [
+     "classic-butter-pecan-line-7",
+     "BUTTER UNSALTED · Mlekov",
+     30,
+     "unlocked"
+    ],
+    [
+     "classic-butter-pecan-line-8",
+     "PECANS · Dry Roasted · U",
+     59,
+     "unlocked"
+    ],
+    [
+     "classic-butter-pecan-line-9",
+     "TARA GUM · Stabilizer",
+     2,
+     "unlocked"
+    ]
+   ],
+   "pod": 13.7312412,
+   "npac": 41.000351837274934,
+   "nativeViolations": [],
+   "directionViolations": [
+    "npac:high:41.000:sev0.010",
+    "pod:low:13.731:sev2.538"
+   ],
+   "reached": false,
+   "residuals": [
+    {
+     "axis": "sweetness",
+     "reached": false
+    },
+    {
+     "axis": "softness",
+     "reached": false
+    }
+   ]
+  },
+  "candidateVector": [
+   {
+    "line": "classic-butter-pecan-line-1",
+    "name": "MILK · 3.5% FAT · Chille",
+    "current": 591,
+    "increasable": true,
+    "anchor": 550,
+    "floor": 274.5,
+    "rungs": [
+     1,
+     137.75,
+     274.5,
+     491,
+     541,
+     571,
+     581,
+     586,
+     590,
+     592,
+     596,
+     601,
+     611,
+     641,
+     691
+    ]
+   },
+   {
+    "line": "classic-butter-pecan-line-2",
+    "name": "CREAM 30% · Mlekovita Cr",
+    "current": 100,
+    "increasable": true,
+    "anchor": 100,
+    "floor": 49.5,
+    "rungs": [
+     1,
+     25.25,
+     49.5,
+     50,
+     80,
+     90,
+     95,
+     99,
+     101,
+     105,
+     110,
+     120,
+     150,
+     200
+    ]
+   },
+   {
+    "line": "classic-butter-pecan-line-3",
+    "name": "SKIMMED MILK POWDER · 0.",
+    "current": 35,
+    "increasable": true,
+    "anchor": 35,
+    "floor": 17,
+    "rungs": [
+     1,
+     9,
+     15,
+     17,
+     25,
+     30,
+     34,
+     36,
+     40,
+     45,
+     55,
+     85,
+     135
+    ]
+   },
+   {
+    "line": "classic-butter-pecan-line-5",
+    "name": "DEXTROSE MONOHYDRATE · S",
+    "current": 60,
+    "increasable": true,
+    "anchor": 60,
+    "floor": 29.5,
+    "rungs": [
+     1,
+     10,
+     15.25,
+     29.5,
+     40,
+     50,
+     55,
+     59,
+     61,
+     65,
+     70,
+     80,
+     110,
+     160
+    ]
+   },
+   {
+    "line": "classic-butter-pecan-line-6",
+    "name": "INULIN · Fibre · Powder",
+    "current": 43,
+    "increasable": true,
+    "anchor": 43,
+    "floor": 21,
+    "rungs": [
+     1,
+     11,
+     21,
+     23,
+     33,
+     38,
+     42,
+     44,
+     48,
+     53,
+     63,
+     93,
+     143
+    ]
+   },
+   {
+    "line": "classic-butter-pecan-line-7",
+    "name": "BUTTER UNSALTED · Mlekov",
+    "current": 30,
+    "increasable": true,
+    "anchor": 30,
+    "floor": 14.5,
+    "rungs": [
+     1,
+     7.75,
+     10,
+     14.5,
+     20,
+     25,
+     29,
+     31,
+     35,
+     40,
+     50,
+     80,
+     130
+    ]
+   },
+   {
+    "line": "classic-butter-pecan-line-8",
+    "name": "PECANS · Dry Roasted · U",
+    "current": 59,
+    "increasable": true,
+    "anchor": 100,
+    "floor": 49.5,
+    "rungs": [
+     1,
+     9,
+     25.25,
+     39,
+     49,
+     49.5,
+     54,
+     58,
+     60,
+     64,
+     69,
+     79,
+     109,
+     159
+    ]
+   }
+  ],
+  "excludedFromVector": [
+   [
+    "classic-butter-pecan-line-4",
+    "SUCROSE SUGAR · Sweetene",
+    80,
+    "grams"
+   ],
+   [
+    "classic-butter-pecan-line-9",
+    "TARA GUM · Stabilizer",
+    2,
+    "unlocked"
+   ]
+  ],
+  "core": {
+   "ok": true,
+   "diagnosticOnly": false,
+   "reached": false,
+   "decisionReason": null,
+   "proposed": {
+    "targets": {
+     "sweetness": 1,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "batch": 1000,
+    "sum": 1000,
+    "items": [
+     [
+      "classic-butter-pecan-line-1",
+      "MILK · 3.5% FAT · Chille",
+      708,
+      "unlocked"
+     ],
+     [
+      "classic-butter-pecan-line-2",
+      "CREAM 30% · Mlekovita Cr",
+      56,
+      "unlocked"
+     ],
+     [
+      "classic-butter-pecan-line-3",
+      "SKIMMED MILK POWDER · 0.",
+      18,
+      "unlocked"
+     ],
+     [
+      "classic-butter-pecan-line-4",
+      "SUCROSE SUGAR · Sweetene",
+      80,
+      "grams"
+     ],
+     [
+      "classic-butter-pecan-line-5",
+      "DEXTROSE MONOHYDRATE · S",
+      81,
+      "unlocked"
+     ],
+     [
+      "classic-butter-pecan-line-6",
+      "INULIN · Fibre · Powder",
+      43,
+      "unlocked"
+     ],
+     [
+      "classic-butter-pecan-line-7",
+      "BUTTER UNSALTED · Mlekov",
+      1,
+      "unlocked"
+     ],
+     [
+      "classic-butter-pecan-line-8",
+      "PECANS · Dry Roasted · U",
+      11,
+      "unlocked"
+     ],
+     [
+      "classic-butter-pecan-line-9",
+      "TARA GUM · Stabilizer",
+      2,
+      "unlocked"
+     ]
+    ],
+    "pod": 14.985646799999996,
+    "npac": 40.89957124778367,
+    "nativeViolations": [],
+    "directionViolations": [
+     "pod:low:14.986:sev0.029"
+    ],
+    "reached": false,
+    "residuals": [
+     {
+      "axis": "sweetness",
+      "reached": false
+     },
+     {
+      "axis": "softness",
+      "reached": true
+     }
+    ]
+   },
+   "iteration": {
+    "stopReason": "fixed_point_no_proposal",
+    "stopDetail": "missing_candidate",
+    "capped": false,
+    "rounds": [
+     {
+      "round": 0,
+      "violations": 4,
+      "severityPoints": 17.07236180358547,
+      "userIntentDrift": 1.3253001520003074
+     },
+     {
+      "round": 1,
+      "violations": 2,
+      "severityPoints": 7.7848142596694245,
+      "userIntentDrift": 1.8099183840754787
+     },
+     {
+      "round": 2,
+      "violations": 1,
+      "severityPoints": 2.8465437004075618,
+      "userIntentDrift": 1.8037085846013252
+     },
+     {
+      "round": 3,
+      "violations": 1,
+      "severityPoints": 2.6687843386070718,
+      "userIntentDrift": 1.896993488943483
+     },
+     {
+      "round": 4,
+      "violations": 1,
+      "severityPoints": 2.5080809118447895,
+      "userIntentDrift": 1.9460868364846218
+     },
+     {
+      "round": 5,
+      "violations": 1,
+      "severityPoints": 2.3728144841268524,
+      "userIntentDrift": 1.9578684747651895
+     },
+     {
+      "round": 6,
+      "violations": 1,
+      "severityPoints": 2.240321511691331,
+      "userIntentDrift": 1.9750990938669266
+     },
+     {
+      "round": 7,
+      "violations": 1,
+      "severityPoints": 1.6215557967770522,
+      "userIntentDrift": 1.8787064467687495
+     },
+     {
+      "round": 8,
+      "violations": 1,
+      "severityPoints": 1.5463647457593872,
+      "userIntentDrift": 1.8853788395883646
+     },
+     {
+      "round": 9,
+      "violations": 1,
+      "severityPoints": 1.2183250900166378,
+      "userIntentDrift": 2.1553869405056205
+     },
+     {
+      "round": 10,
+      "violations": 1,
+      "severityPoints": 1.1571435636421263,
+      "userIntentDrift": 2.1965307528658258
+     },
+     {
+      "round": 11,
+      "violations": 1,
+      "severityPoints": 1.0036653036034018,
+      "userIntentDrift": 2.331280837197469
+     },
+     {
+      "round": 12,
+      "violations": 1,
+      "severityPoints": 0.9140408625527314,
+      "userIntentDrift": 2.3971804634749425
+     },
+     {
+      "round": 13,
+      "violations": 1,
+      "severityPoints": 0.8629935348713111,
+      "userIntentDrift": 2.4301809048465244
+     },
+     {
+      "round": 14,
+      "violations": 1,
+      "severityPoints": 0.8394905360366032,
+      "userIntentDrift": 2.440358695218164
+     }
+    ],
+    "moves": [
+     "1|applied||raise PI-ING-000236 613.7 g → 713.7 g + lower PI-ING-000180 106.9 g → 49.5 g + raise PI-ING-000270 30.8 g → 40.8 g + raise PI-ING-000494 26.1 g → 46.1 g + lower",
+     "2|rejected|constrained_add_blocked|add sucrose 33.2 g",
+     "2|applied||lower PI-ING-000236 658.2 g → 558.2 g + lower PI-ING-000180 57.3 g → 52.3 g + raise PI-ING-000494 50.8 g → 55.8 g + lower PI-ING-000176 16.2 g → 14.5 g + lower ",
+     "3|applied||raise PI-ING-000494 56.9 g → 57.9 g + lower PI-ING-000176 14.8 g → 14.5 g + lower PI-ING-001570 65.0 g → 55.0 g",
+     "4|applied||raise PI-ING-000494 58.5 g → 59.5 g + lower PI-ING-000176 14.7 g → 14.5 g + lower PI-ING-001570 55.6 g → 49.5 g",
+     "5|applied||raise PI-ING-000494 59.8 g → 60.8 g + lower PI-ING-000176 14.6 g → 14.5 g",
+     "6|applied||raise PI-ING-000494 60.8 g → 61.8 g + lower PI-ING-001570 49.7 g → 49.5 g",
+     "7|applied||lower PI-ING-000270 46.0 g → 31.5 g + raise PI-ING-000494 61.7 g → 67.5 g + raise PI-ING-000236 655.2 g → 663.9 g",
+     "8|applied||lower PI-ING-000236 663.9 g → 658.9 g + lower PI-ING-000180 54.8 g → 53.8 g + lower PI-ING-000176 14.6 g → 14.5 g + lower PI-ING-001570 49.9 g → 49.5 g",
+     "9|applied||lower PI-ING-000236 663.7 g → 662.7 g + lower PI-ING-000180 53.9 g → 52.9 g + lower PI-ING-001570 49.6 g → 49.5 g + lower PI-ING-000270 31.8 g → 24.4 g + raise ",
+     "10|applied||lower PI-ING-000236 668.9 g → 667.9 g + lower PI-ING-000180 53.0 g → 49.5 g + lower PI-ING-000176 14.6 g → 14.5 g + lower PI-ING-001570 49.8 g → 49.5 g",
+     "11|applied||lower PI-ING-000180 49.7 g → 49.5 g + lower PI-ING-000270 24.5 g → 20.8 g + raise PI-ING-000494 71.5 g → 72.9 g + raise PI-ING-000236 671.8 g → 674.1 g",
+     "12|applied||lower PI-ING-000236 674.1 g → 673.1 g + lower PI-ING-000180 49.6 g → 49.5 g + lower PI-ING-000270 20.8 g → 18.9 g + raise PI-ING-000494 73.0 g → 73.7 g + raise ",
+     "13|applied||lower PI-ING-000236 675.1 g → 674.1 g + lower PI-ING-000180 49.6 g → 49.5 g + lower PI-ING-000270 18.9 g → 18.0 g + raise PI-ING-000494 73.8 g → 74.1 g + raise ",
+     "14|applied||lower PI-ING-000236 675.5 g → 674.5 g + lower PI-ING-000180 49.6 g → 49.5 g + lower PI-ING-001570 49.7 g → 49.5 g + lower PI-ING-000270 18.0 g → 17.7 g + raise ",
+     "15|none|missing_candidate|none",
+     "15|none|draft_vector_no_improvement|draft-vector (6 adjustable lines)"
+    ]
+   }
+  },
+  "ui": {
+   "outcome": {
+    "terminalState": "PREVIEW_READY",
+    "applied": false,
+    "previewKind": null,
+    "directionReached": null,
+    "directionFallback": null,
+    "batchRescaled": null,
+    "practicalization": null,
+    "issueCode": null,
+    "message": null
+   },
+   "terminal": "PREVIEW_READY",
+   "bestCandidate": {
+    "pod": null,
+    "items": null
+   },
+   "fallbackBest": {
+    "targets": {
+     "sweetness": 0,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "reached": true
+   },
+   "fallbackAttempts": [
+    {
+     "targets": {
+      "sweetness": 0,
+      "softness": 0,
+      "creaminess": 0,
+      "flavor": 0
+     },
+     "reached": true
+    }
+   ]
+  }
+ },
+ "LOCK-02a": {
+  "label": "LOCK-02a A/sweet-1",
+  "recipeId": "classic-blood-orange-sorbet",
+  "cfg": "A",
+  "axis": "sweetness",
+  "level": -1,
+  "experiment": "baseline",
+  "baselineApplied": {
+   "terminalState": "PREVIEW_READY",
+   "applied": true,
+   "previewKind": "optimize",
+   "directionReached": false,
+   "directionFallback": null,
+   "batchRescaled": true,
+   "practicalization": "ready",
+   "issueCode": null,
+   "message": null
+  },
+  "lock": null,
+  "planAxis": [
+   {
+    "axis": "sweetness",
+    "target": -1,
+    "status": "working",
+    "metric": "pod",
+    "band": {
+     "min": 18,
+     "max": 18
+    },
+    "center": 18
+   }
+  ],
+  "draft": {
+   "targets": {
+    "sweetness": -1,
+    "softness": 0,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "batch": 1000,
+   "sum": 1000,
+   "items": [
+    [
+     "classic-blood-orange-sorbet-line-1",
+     "BLOOD ORANGE · Campisi C",
+     598,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-2",
+     "WATER · Liquid",
+     180,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-3",
+     "SUCROSE SUGAR · Sweetene",
+     104,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-4",
+     "DEXTROSE MONOHYDRATE · S",
+     59,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-5",
+     "INULIN · Fibre · Powder",
+     55,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-6",
+     "TARA GUM · Stabilizer",
+     4,
+     "unlocked"
+    ]
+   ],
+   "pod": 20.763058,
+   "npac": 39.03676736949149,
+   "nativeViolations": [],
+   "directionViolations": [
+    "npac:high:39.037:sev1.537",
+    "pod:high:20.763:sev2.763"
+   ],
+   "reached": false,
+   "residuals": [
+    {
+     "axis": "sweetness",
+     "reached": false
+    },
+    {
+     "axis": "softness",
+     "reached": false
+    }
+   ]
+  },
+  "candidateVector": [
+   {
+    "line": "classic-blood-orange-sorbet-line-1",
+    "name": "BLOOD ORANGE · Campisi C",
+    "current": 598,
+    "increasable": true,
+    "anchor": 450,
+    "floor": 224.5,
+    "rungs": [
+     1,
+     112.75,
+     224.5,
+     498,
+     548,
+     578,
+     588,
+     593,
+     597,
+     599,
+     603,
+     608,
+     618,
+     648,
+     698
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-2",
+    "name": "WATER · Liquid",
+    "current": 180,
+    "increasable": true,
+    "anchor": 314,
+    "floor": 156.5,
+    "rungs": [
+     1,
+     78.75,
+     80,
+     130,
+     156.5,
+     160,
+     170,
+     175,
+     179,
+     181,
+     185,
+     190,
+     200,
+     230,
+     280
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-3",
+    "name": "SUCROSE SUGAR · Sweetene",
+    "current": 104,
+    "increasable": true,
+    "anchor": 90,
+    "floor": 44.5,
+    "rungs": [
+     1,
+     4,
+     22.75,
+     44.5,
+     54,
+     84,
+     94,
+     99,
+     103,
+     105,
+     109,
+     114,
+     124,
+     154,
+     204
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-4",
+    "name": "DEXTROSE MONOHYDRATE · S",
+    "current": 59,
+    "increasable": true,
+    "anchor": 90,
+    "floor": 44.5,
+    "rungs": [
+     1,
+     9,
+     22.75,
+     39,
+     44.5,
+     49,
+     54,
+     58,
+     60,
+     64,
+     69,
+     79,
+     109,
+     159
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-5",
+    "name": "INULIN · Fibre · Powder",
+    "current": 55,
+    "increasable": true,
+    "anchor": 55,
+    "floor": 27,
+    "rungs": [
+     1,
+     5,
+     14,
+     27,
+     35,
+     45,
+     50,
+     54,
+     56,
+     60,
+     65,
+     75,
+     105,
+     155
+    ]
+   }
+  ],
+  "excludedFromVector": [
+   [
+    "classic-blood-orange-sorbet-line-6",
+    "TARA GUM · Stabilizer",
+    4,
+    "unlocked"
+   ]
+  ],
+  "core": {
+   "ok": true,
+   "diagnosticOnly": false,
+   "reached": false,
+   "decisionReason": null,
+   "proposed": {
+    "targets": {
+     "sweetness": -1,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "batch": 1000,
+    "sum": 1000,
+    "items": [
+     [
+      "classic-blood-orange-sorbet-line-1",
+      "BLOOD ORANGE · Campisi C",
+      489,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-2",
+      "WATER · Liquid",
+      294,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-3",
+      "SUCROSE SUGAR · Sweetene",
+      79,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-4",
+      "DEXTROSE MONOHYDRATE · S",
+      79,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-5",
+      "INULIN · Fibre · Powder",
+      55,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-6",
+      "TARA GUM · Stabilizer",
+      4,
+      "unlocked"
+     ]
+    ],
+    "pod": 18.690169,
+    "npac": 37.61246424922948,
+    "nativeViolations": [],
+    "directionViolations": [
+     "npac:high:37.612:sev0.112",
+     "pod:high:18.690:sev0.690"
+    ],
+    "reached": false,
+    "residuals": [
+     {
+      "axis": "sweetness",
+      "reached": false
+     },
+     {
+      "axis": "softness",
+      "reached": false
+     }
+    ]
+   },
+   "iteration": null
+  },
+  "ui": {
+   "outcome": {
+    "terminalState": "PREVIEW_READY",
+    "applied": false,
+    "previewKind": null,
+    "directionReached": null,
+    "directionFallback": null,
+    "batchRescaled": null,
+    "practicalization": null,
+    "issueCode": null,
+    "message": null
+   },
+   "terminal": "PREVIEW_READY",
+   "bestCandidate": {
+    "pod": null,
+    "items": null
+   },
+   "fallbackBest": null,
+   "fallbackAttempts": [
+    {
+     "targets": {
+      "sweetness": 0,
+      "softness": 0,
+      "creaminess": 0,
+      "flavor": 0
+     },
+     "reached": false
+    }
+   ]
+  }
+ },
+ "LOCK-02b": {
+  "label": "LOCK-02b A/sweet-2",
+  "recipeId": "classic-blood-orange-sorbet",
+  "cfg": "A",
+  "axis": "sweetness",
+  "level": -2,
+  "experiment": "baseline",
+  "baselineApplied": {
+   "terminalState": "PREVIEW_READY",
+   "applied": true,
+   "previewKind": "optimize",
+   "directionReached": false,
+   "directionFallback": null,
+   "batchRescaled": true,
+   "practicalization": "ready",
+   "issueCode": null,
+   "message": null
+  },
+  "lock": null,
+  "planAxis": [
+   {
+    "axis": "sweetness",
+    "target": -2,
+    "status": "working",
+    "metric": "pod",
+    "band": {
+     "min": 16,
+     "max": 16
+    },
+    "center": 16
+   }
+  ],
+  "draft": {
+   "targets": {
+    "sweetness": -2,
+    "softness": 0,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "batch": 1000,
+   "sum": 1000,
+   "items": [
+    [
+     "classic-blood-orange-sorbet-line-1",
+     "BLOOD ORANGE · Campisi C",
+     598,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-2",
+     "WATER · Liquid",
+     180,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-3",
+     "SUCROSE SUGAR · Sweetene",
+     104,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-4",
+     "DEXTROSE MONOHYDRATE · S",
+     59,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-5",
+     "INULIN · Fibre · Powder",
+     55,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-6",
+     "TARA GUM · Stabilizer",
+     4,
+     "unlocked"
+    ]
+   ],
+   "pod": 20.763058,
+   "npac": 39.03676736949149,
+   "nativeViolations": [],
+   "directionViolations": [
+    "npac:high:39.037:sev1.537",
+    "pod:high:20.763:sev4.763"
+   ],
+   "reached": false,
+   "residuals": [
+    {
+     "axis": "sweetness",
+     "reached": false
+    },
+    {
+     "axis": "softness",
+     "reached": false
+    }
+   ]
+  },
+  "candidateVector": [
+   {
+    "line": "classic-blood-orange-sorbet-line-1",
+    "name": "BLOOD ORANGE · Campisi C",
+    "current": 598,
+    "increasable": true,
+    "anchor": 450,
+    "floor": 224.5,
+    "rungs": [
+     1,
+     112.75,
+     224.5,
+     498,
+     548,
+     578,
+     588,
+     593,
+     597,
+     599,
+     603,
+     608,
+     618,
+     648,
+     698
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-2",
+    "name": "WATER · Liquid",
+    "current": 180,
+    "increasable": true,
+    "anchor": 314,
+    "floor": 156.5,
+    "rungs": [
+     1,
+     78.75,
+     80,
+     130,
+     156.5,
+     160,
+     170,
+     175,
+     179,
+     181,
+     185,
+     190,
+     200,
+     230,
+     280
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-3",
+    "name": "SUCROSE SUGAR · Sweetene",
+    "current": 104,
+    "increasable": true,
+    "anchor": 90,
+    "floor": 44.5,
+    "rungs": [
+     1,
+     4,
+     22.75,
+     44.5,
+     54,
+     84,
+     94,
+     99,
+     103,
+     105,
+     109,
+     114,
+     124,
+     154,
+     204
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-4",
+    "name": "DEXTROSE MONOHYDRATE · S",
+    "current": 59,
+    "increasable": true,
+    "anchor": 90,
+    "floor": 44.5,
+    "rungs": [
+     1,
+     9,
+     22.75,
+     39,
+     44.5,
+     49,
+     54,
+     58,
+     60,
+     64,
+     69,
+     79,
+     109,
+     159
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-5",
+    "name": "INULIN · Fibre · Powder",
+    "current": 55,
+    "increasable": true,
+    "anchor": 55,
+    "floor": 27,
+    "rungs": [
+     1,
+     5,
+     14,
+     27,
+     35,
+     45,
+     50,
+     54,
+     56,
+     60,
+     65,
+     75,
+     105,
+     155
+    ]
+   }
+  ],
+  "excludedFromVector": [
+   [
+    "classic-blood-orange-sorbet-line-6",
+    "TARA GUM · Stabilizer",
+    4,
+    "unlocked"
+   ]
+  ],
+  "core": {
+   "ok": true,
+   "diagnosticOnly": false,
+   "reached": false,
+   "decisionReason": null,
+   "proposed": {
+    "targets": {
+     "sweetness": -2,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "batch": 1000,
+    "sum": 1000,
+    "items": [
+     [
+      "classic-blood-orange-sorbet-line-1",
+      "BLOOD ORANGE · Campisi C",
+      517,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-2",
+      "WATER · Liquid",
+      269,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-3",
+      "SUCROSE SUGAR · Sweetene",
+      79,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-4",
+      "DEXTROSE MONOHYDRATE · S",
+      76,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-5",
+      "INULIN · Fibre · Powder",
+      55,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-6",
+      "TARA GUM · Stabilizer",
+      4,
+      "unlocked"
+     ]
+    ],
+    "pod": 18.735857,
+    "npac": 37.381417926282566,
+    "nativeViolations": [],
+    "directionViolations": [
+     "npac:low:37.381:sev0.119",
+     "pod:high:18.736:sev2.736"
+    ],
+    "reached": false,
+    "residuals": [
+     {
+      "axis": "sweetness",
+      "reached": false
+     },
+     {
+      "axis": "softness",
+      "reached": false
+     }
+    ]
+   },
+   "iteration": null
+  },
+  "ui": {
+   "outcome": {
+    "terminalState": "PREVIEW_READY",
+    "applied": false,
+    "previewKind": null,
+    "directionReached": null,
+    "directionFallback": null,
+    "batchRescaled": null,
+    "practicalization": null,
+    "issueCode": null,
+    "message": null
+   },
+   "terminal": "PREVIEW_READY",
+   "bestCandidate": {
+    "pod": null,
+    "items": null
+   },
+   "fallbackBest": null,
+   "fallbackAttempts": [
+    {
+     "targets": {
+      "sweetness": -1,
+      "softness": 0,
+      "creaminess": 0,
+      "flavor": 0
+     },
+     "reached": false
+    },
+    {
+     "targets": {
+      "sweetness": 0,
+      "softness": 0,
+      "creaminess": 0,
+      "flavor": 0
+     },
+     "reached": false
+    }
+   ]
+  }
+ },
+ "LOCK-02c": {
+  "label": "LOCK-02c B/sweet-1",
+  "recipeId": "classic-blood-orange-sorbet",
+  "cfg": "B",
+  "axis": "sweetness",
+  "level": -1,
+  "experiment": "baseline",
+  "baselineApplied": {
+   "terminalState": "PREVIEW_READY",
+   "applied": true,
+   "previewKind": "optimize",
+   "directionReached": false,
+   "directionFallback": null,
+   "batchRescaled": true,
+   "practicalization": "ready",
+   "issueCode": null,
+   "message": null
+  },
+  "lock": {
+   "lineId": "classic-blood-orange-sorbet-line-3",
+   "name": "SUCROSE SUGAR · Sweetener · Dry",
+   "grams": 104,
+   "lock": "grams"
+  },
+  "planAxis": [
+   {
+    "axis": "sweetness",
+    "target": -1,
+    "status": "working",
+    "metric": "pod",
+    "band": {
+     "min": 18,
+     "max": 18
+    },
+    "center": 18
+   }
+  ],
+  "draft": {
+   "targets": {
+    "sweetness": -1,
+    "softness": 0,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "batch": 1000,
+   "sum": 1000,
+   "items": [
+    [
+     "classic-blood-orange-sorbet-line-1",
+     "BLOOD ORANGE · Campisi C",
+     598,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-2",
+     "WATER · Liquid",
+     180,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-3",
+     "SUCROSE SUGAR · Sweetene",
+     104,
+     "grams"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-4",
+     "DEXTROSE MONOHYDRATE · S",
+     59,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-5",
+     "INULIN · Fibre · Powder",
+     55,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-6",
+     "TARA GUM · Stabilizer",
+     4,
+     "unlocked"
+    ]
+   ],
+   "pod": 20.763058,
+   "npac": 39.03676736949149,
+   "nativeViolations": [],
+   "directionViolations": [
+    "npac:high:39.037:sev1.537",
+    "pod:high:20.763:sev2.763"
+   ],
+   "reached": false,
+   "residuals": [
+    {
+     "axis": "sweetness",
+     "reached": false
+    },
+    {
+     "axis": "softness",
+     "reached": false
+    }
+   ]
+  },
+  "candidateVector": [
+   {
+    "line": "classic-blood-orange-sorbet-line-1",
+    "name": "BLOOD ORANGE · Campisi C",
+    "current": 598,
+    "increasable": true,
+    "anchor": 450,
+    "floor": 224.5,
+    "rungs": [
+     1,
+     112.75,
+     224.5,
+     498,
+     548,
+     578,
+     588,
+     593,
+     597,
+     599,
+     603,
+     608,
+     618,
+     648,
+     698
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-2",
+    "name": "WATER · Liquid",
+    "current": 180,
+    "increasable": true,
+    "anchor": 314,
+    "floor": 156.5,
+    "rungs": [
+     1,
+     78.75,
+     80,
+     130,
+     156.5,
+     160,
+     170,
+     175,
+     179,
+     181,
+     185,
+     190,
+     200,
+     230,
+     280
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-4",
+    "name": "DEXTROSE MONOHYDRATE · S",
+    "current": 59,
+    "increasable": true,
+    "anchor": 90,
+    "floor": 44.5,
+    "rungs": [
+     1,
+     9,
+     22.75,
+     39,
+     44.5,
+     49,
+     54,
+     58,
+     60,
+     64,
+     69,
+     79,
+     109,
+     159
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-5",
+    "name": "INULIN · Fibre · Powder",
+    "current": 55,
+    "increasable": true,
+    "anchor": 55,
+    "floor": 27,
+    "rungs": [
+     1,
+     5,
+     14,
+     27,
+     35,
+     45,
+     50,
+     54,
+     56,
+     60,
+     65,
+     75,
+     105,
+     155
+    ]
+   }
+  ],
+  "excludedFromVector": [
+   [
+    "classic-blood-orange-sorbet-line-3",
+    "SUCROSE SUGAR · Sweetene",
+    104,
+    "grams"
+   ],
+   [
+    "classic-blood-orange-sorbet-line-6",
+    "TARA GUM · Stabilizer",
+    4,
+    "unlocked"
+   ]
+  ],
+  "core": {
+   "ok": true,
+   "diagnosticOnly": false,
+   "reached": false,
+   "decisionReason": null,
+   "proposed": {
+    "targets": {
+     "sweetness": -1,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "batch": 1000,
+    "sum": 1000,
+    "items": [
+     [
+      "classic-blood-orange-sorbet-line-1",
+      "BLOOD ORANGE · Campisi C",
+      225,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-2",
+      "WATER · Liquid",
+      530,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-3",
+      "SUCROSE SUGAR · Sweetene",
+      104,
+      "grams"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-4",
+      "DEXTROSE MONOHYDRATE · S",
+      82,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-5",
+      "INULIN · Fibre · Powder",
+      55,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-6",
+      "TARA GUM · Stabilizer",
+      4,
+      "unlocked"
+     ]
+    ],
+    "pod": 18.921125,
+    "npac": 37.40084406312953,
+    "nativeViolations": [],
+    "directionViolations": [
+     "npac:low:37.401:sev0.099",
+     "pod:high:18.921:sev0.921"
+    ],
+    "reached": false,
+    "residuals": [
+     {
+      "axis": "sweetness",
+      "reached": false
+     },
+     {
+      "axis": "softness",
+      "reached": false
+     }
+    ]
+   },
+   "iteration": null
+  },
+  "ui": {
+   "outcome": {
+    "terminalState": "PREVIEW_READY",
+    "applied": false,
+    "previewKind": null,
+    "directionReached": null,
+    "directionFallback": null,
+    "batchRescaled": null,
+    "practicalization": null,
+    "issueCode": null,
+    "message": null
+   },
+   "terminal": "PREVIEW_READY",
+   "bestCandidate": {
+    "pod": null,
+    "items": null
+   },
+   "fallbackBest": null,
+   "fallbackAttempts": [
+    {
+     "targets": {
+      "sweetness": 0,
+      "softness": 0,
+      "creaminess": 0,
+      "flavor": 0
+     },
+     "reached": false
+    }
+   ]
+  }
+ },
+ "LOCK-02d": {
+  "label": "LOCK-02d B/hard-1",
+  "recipeId": "classic-blood-orange-sorbet",
+  "cfg": "B",
+  "axis": "softness",
+  "level": -1,
+  "experiment": "baseline",
+  "baselineApplied": {
+   "terminalState": "PREVIEW_READY",
+   "applied": true,
+   "previewKind": "optimize",
+   "directionReached": false,
+   "directionFallback": null,
+   "batchRescaled": true,
+   "practicalization": "ready",
+   "issueCode": null,
+   "message": null
+  },
+  "lock": {
+   "lineId": "classic-blood-orange-sorbet-line-3",
+   "name": "SUCROSE SUGAR · Sweetener · Dry",
+   "grams": 104,
+   "lock": "grams"
+  },
+  "planAxis": [
+   {
+    "axis": "softness",
+    "target": -1,
+    "status": "working",
+    "metric": "npac",
+    "band": {
+     "min": 38.5,
+     "max": 38.5
+    },
+    "center": 38.5
+   }
+  ],
+  "draft": {
+   "targets": {
+    "sweetness": 0,
+    "softness": -1,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "batch": 1000,
+   "sum": 1000,
+   "items": [
+    [
+     "classic-blood-orange-sorbet-line-1",
+     "BLOOD ORANGE · Campisi C",
+     598,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-2",
+     "WATER · Liquid",
+     180,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-3",
+     "SUCROSE SUGAR · Sweetene",
+     104,
+     "grams"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-4",
+     "DEXTROSE MONOHYDRATE · S",
+     59,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-5",
+     "INULIN · Fibre · Powder",
+     55,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-6",
+     "TARA GUM · Stabilizer",
+     4,
+     "unlocked"
+    ]
+   ],
+   "pod": 20.763058,
+   "npac": 39.03676736949149,
+   "nativeViolations": [],
+   "directionViolations": [
+    "npac:high:39.037:sev0.537",
+    "pod:high:20.763:sev0.763"
+   ],
+   "reached": false,
+   "residuals": [
+    {
+     "axis": "sweetness",
+     "reached": false
+    },
+    {
+     "axis": "softness",
+     "reached": false
+    }
+   ]
+  },
+  "candidateVector": [
+   {
+    "line": "classic-blood-orange-sorbet-line-1",
+    "name": "BLOOD ORANGE · Campisi C",
+    "current": 598,
+    "increasable": true,
+    "anchor": 450,
+    "floor": 224.5,
+    "rungs": [
+     1,
+     112.75,
+     224.5,
+     498,
+     548,
+     578,
+     588,
+     593,
+     597,
+     599,
+     603,
+     608,
+     618,
+     648,
+     698
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-2",
+    "name": "WATER · Liquid",
+    "current": 180,
+    "increasable": true,
+    "anchor": 314,
+    "floor": 156.5,
+    "rungs": [
+     1,
+     78.75,
+     80,
+     130,
+     156.5,
+     160,
+     170,
+     175,
+     179,
+     181,
+     185,
+     190,
+     200,
+     230,
+     280
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-4",
+    "name": "DEXTROSE MONOHYDRATE · S",
+    "current": 59,
+    "increasable": true,
+    "anchor": 90,
+    "floor": 44.5,
+    "rungs": [
+     1,
+     9,
+     22.75,
+     39,
+     44.5,
+     49,
+     54,
+     58,
+     60,
+     64,
+     69,
+     79,
+     109,
+     159
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-5",
+    "name": "INULIN · Fibre · Powder",
+    "current": 55,
+    "increasable": true,
+    "anchor": 55,
+    "floor": 27,
+    "rungs": [
+     1,
+     5,
+     14,
+     27,
+     35,
+     45,
+     50,
+     54,
+     56,
+     60,
+     65,
+     75,
+     105,
+     155
+    ]
+   }
+  ],
+  "excludedFromVector": [
+   [
+    "classic-blood-orange-sorbet-line-3",
+    "SUCROSE SUGAR · Sweetene",
+    104,
+    "grams"
+   ],
+   [
+    "classic-blood-orange-sorbet-line-6",
+    "TARA GUM · Stabilizer",
+    4,
+    "unlocked"
+   ]
+  ],
+  "core": {
+   "ok": true,
+   "diagnosticOnly": false,
+   "reached": false,
+   "decisionReason": null,
+   "proposed": {
+    "targets": {
+     "sweetness": 0,
+     "softness": -1,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "batch": 1000,
+    "sum": 1000,
+    "items": [
+     [
+      "classic-blood-orange-sorbet-line-1",
+      "BLOOD ORANGE · Campisi C",
+      433,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-2",
+      "WATER · Liquid",
+      334,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-3",
+      "SUCROSE SUGAR · Sweetene",
+      104,
+      "grams"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-4",
+      "DEXTROSE MONOHYDRATE · S",
+      70,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-5",
+      "INULIN · Fibre · Powder",
+      55,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-6",
+      "TARA GUM · Stabilizer",
+      4,
+      "unlocked"
+     ]
+    ],
+    "pod": 20.008293,
+    "npac": 38.53904919352531,
+    "nativeViolations": [],
+    "directionViolations": [
+     "npac:high:38.539:sev0.039",
+     "pod:high:20.008:sev0.010"
+    ],
+    "reached": false,
+    "residuals": [
+     {
+      "axis": "sweetness",
+      "reached": false
+     },
+     {
+      "axis": "softness",
+      "reached": false
+     }
+    ]
+   },
+   "iteration": null
+  },
+  "ui": {
+   "outcome": {
+    "terminalState": "PREVIEW_READY",
+    "applied": false,
+    "previewKind": null,
+    "directionReached": null,
+    "directionFallback": null,
+    "batchRescaled": null,
+    "practicalization": null,
+    "issueCode": null,
+    "message": null
+   },
+   "terminal": "PREVIEW_READY",
+   "bestCandidate": {
+    "pod": null,
+    "items": null
+   },
+   "fallbackBest": null,
+   "fallbackAttempts": [
+    {
+     "targets": {
+      "sweetness": 0,
+      "softness": 0,
+      "creaminess": 0,
+      "flavor": 0
+     },
+     "reached": false
+    }
+   ]
+  }
+ },
+ "LOCK-02e": {
+  "label": "LOCK-02e B/hard-2",
+  "recipeId": "classic-blood-orange-sorbet",
+  "cfg": "B",
+  "axis": "softness",
+  "level": -2,
+  "experiment": "baseline",
+  "baselineApplied": {
+   "terminalState": "PREVIEW_READY",
+   "applied": true,
+   "previewKind": "optimize",
+   "directionReached": false,
+   "directionFallback": null,
+   "batchRescaled": true,
+   "practicalization": "ready",
+   "issueCode": null,
+   "message": null
+  },
+  "lock": {
+   "lineId": "classic-blood-orange-sorbet-line-3",
+   "name": "SUCROSE SUGAR · Sweetener · Dry",
+   "grams": 104,
+   "lock": "grams"
+  },
+  "planAxis": [
+   {
+    "axis": "softness",
+    "target": -2,
+    "status": "working",
+    "metric": "npac",
+    "band": {
+     "min": 39.5,
+     "max": 39.5
+    },
+    "center": 39.5
+   }
+  ],
+  "draft": {
+   "targets": {
+    "sweetness": 0,
+    "softness": -2,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "batch": 1000,
+   "sum": 1000,
+   "items": [
+    [
+     "classic-blood-orange-sorbet-line-1",
+     "BLOOD ORANGE · Campisi C",
+     598,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-2",
+     "WATER · Liquid",
+     180,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-3",
+     "SUCROSE SUGAR · Sweetene",
+     104,
+     "grams"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-4",
+     "DEXTROSE MONOHYDRATE · S",
+     59,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-5",
+     "INULIN · Fibre · Powder",
+     55,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-6",
+     "TARA GUM · Stabilizer",
+     4,
+     "unlocked"
+    ]
+   ],
+   "pod": 20.763058,
+   "npac": 39.03676736949149,
+   "nativeViolations": [],
+   "directionViolations": [
+    "npac:low:39.037:sev0.463",
+    "pod:high:20.763:sev0.763"
+   ],
+   "reached": false,
+   "residuals": [
+    {
+     "axis": "sweetness",
+     "reached": false
+    },
+    {
+     "axis": "softness",
+     "reached": false
+    }
+   ]
+  },
+  "candidateVector": [
+   {
+    "line": "classic-blood-orange-sorbet-line-1",
+    "name": "BLOOD ORANGE · Campisi C",
+    "current": 598,
+    "increasable": true,
+    "anchor": 450,
+    "floor": 224.5,
+    "rungs": [
+     1,
+     112.75,
+     224.5,
+     498,
+     548,
+     578,
+     588,
+     593,
+     597,
+     599,
+     603,
+     608,
+     618,
+     648,
+     698
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-2",
+    "name": "WATER · Liquid",
+    "current": 180,
+    "increasable": true,
+    "anchor": 314,
+    "floor": 156.5,
+    "rungs": [
+     1,
+     78.75,
+     80,
+     130,
+     156.5,
+     160,
+     170,
+     175,
+     179,
+     181,
+     185,
+     190,
+     200,
+     230,
+     280
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-4",
+    "name": "DEXTROSE MONOHYDRATE · S",
+    "current": 59,
+    "increasable": true,
+    "anchor": 90,
+    "floor": 44.5,
+    "rungs": [
+     1,
+     9,
+     22.75,
+     39,
+     44.5,
+     49,
+     54,
+     58,
+     60,
+     64,
+     69,
+     79,
+     109,
+     159
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-5",
+    "name": "INULIN · Fibre · Powder",
+    "current": 55,
+    "increasable": true,
+    "anchor": 55,
+    "floor": 27,
+    "rungs": [
+     1,
+     5,
+     14,
+     27,
+     35,
+     45,
+     50,
+     54,
+     56,
+     60,
+     65,
+     75,
+     105,
+     155
+    ]
+   }
+  ],
+  "excludedFromVector": [
+   [
+    "classic-blood-orange-sorbet-line-3",
+    "SUCROSE SUGAR · Sweetene",
+    104,
+    "grams"
+   ],
+   [
+    "classic-blood-orange-sorbet-line-6",
+    "TARA GUM · Stabilizer",
+    4,
+    "unlocked"
+   ]
+  ],
+  "core": {
+   "ok": true,
+   "diagnosticOnly": false,
+   "reached": false,
+   "decisionReason": null,
+   "proposed": {
+    "targets": {
+     "sweetness": 0,
+     "softness": -2,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "batch": 1000,
+    "sum": 1000,
+    "items": [
+     [
+      "classic-blood-orange-sorbet-line-1",
+      "BLOOD ORANGE · Campisi C",
+      382,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-2",
+      "WATER · Liquid",
+      378,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-3",
+      "SUCROSE SUGAR · Sweetene",
+      104,
+      "grams"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-4",
+      "DEXTROSE MONOHYDRATE · S",
+      77,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-5",
+      "INULIN · Fibre · Powder",
+      55,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-6",
+      "TARA GUM · Stabilizer",
+      4,
+      "unlocked"
+     ]
+    ],
+    "pod": 20.036722000000005,
+    "npac": 39.40224149245795,
+    "nativeViolations": [],
+    "directionViolations": [
+     "npac:low:39.402:sev0.098",
+     "pod:high:20.037:sev0.037"
+    ],
+    "reached": false,
+    "residuals": [
+     {
+      "axis": "sweetness",
+      "reached": false
+     },
+     {
+      "axis": "softness",
+      "reached": false
+     }
+    ]
+   },
+   "iteration": null
+  },
+  "ui": {
+   "outcome": {
+    "terminalState": "PREVIEW_READY",
+    "applied": false,
+    "previewKind": null,
+    "directionReached": null,
+    "directionFallback": null,
+    "batchRescaled": null,
+    "practicalization": null,
+    "issueCode": null,
+    "message": null
+   },
+   "terminal": "PREVIEW_READY",
+   "bestCandidate": {
+    "pod": null,
+    "items": null
+   },
+   "fallbackBest": null,
+   "fallbackAttempts": [
+    {
+     "targets": {
+      "sweetness": 0,
+      "softness": -1,
+      "creaminess": 0,
+      "flavor": 0
+     },
+     "reached": false
+    },
+    {
+     "targets": {
+      "sweetness": 0,
+      "softness": 0,
+      "creaminess": 0,
+      "flavor": 0
+     },
+     "reached": false
+    }
+   ]
+  }
+ },
+ "LOCK-03-B-plus1": {
+  "label": "LOCK-03 B/sweet+1",
+  "recipeId": "classic-blood-orange-sorbet",
+  "cfg": "B",
+  "axis": "sweetness",
+  "level": 1,
+  "experiment": "baseline",
+  "baselineApplied": {
+   "terminalState": "PREVIEW_READY",
+   "applied": true,
+   "previewKind": "optimize",
+   "directionReached": false,
+   "directionFallback": null,
+   "batchRescaled": true,
+   "practicalization": "ready",
+   "issueCode": null,
+   "message": null
+  },
+  "lock": {
+   "lineId": "classic-blood-orange-sorbet-line-3",
+   "name": "SUCROSE SUGAR · Sweetener · Dry",
+   "grams": 104,
+   "lock": "grams"
+  },
+  "planAxis": [
+   {
+    "axis": "sweetness",
+    "target": 1,
+    "status": "working",
+    "metric": "pod",
+    "band": {
+     "min": 22,
+     "max": 22
+    },
+    "center": 22
+   }
+  ],
+  "draft": {
+   "targets": {
+    "sweetness": 1,
+    "softness": 0,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "batch": 1000,
+   "sum": 1000,
+   "items": [
+    [
+     "classic-blood-orange-sorbet-line-1",
+     "BLOOD ORANGE · Campisi C",
+     598,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-2",
+     "WATER · Liquid",
+     180,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-3",
+     "SUCROSE SUGAR · Sweetene",
+     104,
+     "grams"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-4",
+     "DEXTROSE MONOHYDRATE · S",
+     59,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-5",
+     "INULIN · Fibre · Powder",
+     55,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-6",
+     "TARA GUM · Stabilizer",
+     4,
+     "unlocked"
+    ]
+   ],
+   "pod": 20.763058,
+   "npac": 39.03676736949149,
+   "nativeViolations": [],
+   "directionViolations": [
+    "npac:high:39.037:sev1.537",
+    "pod:low:20.763:sev1.237"
+   ],
+   "reached": false,
+   "residuals": [
+    {
+     "axis": "sweetness",
+     "reached": false
+    },
+    {
+     "axis": "softness",
+     "reached": false
+    }
+   ]
+  },
+  "candidateVector": [
+   {
+    "line": "classic-blood-orange-sorbet-line-1",
+    "name": "BLOOD ORANGE · Campisi C",
+    "current": 598,
+    "increasable": true,
+    "anchor": 450,
+    "floor": 224.5,
+    "rungs": [
+     1,
+     112.75,
+     224.5,
+     498,
+     548,
+     578,
+     588,
+     593,
+     597,
+     599,
+     603,
+     608,
+     618,
+     648,
+     698
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-2",
+    "name": "WATER · Liquid",
+    "current": 180,
+    "increasable": true,
+    "anchor": 314,
+    "floor": 156.5,
+    "rungs": [
+     1,
+     78.75,
+     80,
+     130,
+     156.5,
+     160,
+     170,
+     175,
+     179,
+     181,
+     185,
+     190,
+     200,
+     230,
+     280
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-4",
+    "name": "DEXTROSE MONOHYDRATE · S",
+    "current": 59,
+    "increasable": true,
+    "anchor": 90,
+    "floor": 44.5,
+    "rungs": [
+     1,
+     9,
+     22.75,
+     39,
+     44.5,
+     49,
+     54,
+     58,
+     60,
+     64,
+     69,
+     79,
+     109,
+     159
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-5",
+    "name": "INULIN · Fibre · Powder",
+    "current": 55,
+    "increasable": true,
+    "anchor": 55,
+    "floor": 27,
+    "rungs": [
+     1,
+     5,
+     14,
+     27,
+     35,
+     45,
+     50,
+     54,
+     56,
+     60,
+     65,
+     75,
+     105,
+     155
+    ]
+   }
+  ],
+  "excludedFromVector": [
+   [
+    "classic-blood-orange-sorbet-line-3",
+    "SUCROSE SUGAR · Sweetene",
+    104,
+    "grams"
+   ],
+   [
+    "classic-blood-orange-sorbet-line-6",
+    "TARA GUM · Stabilizer",
+    4,
+    "unlocked"
+   ]
+  ],
+  "core": {
+   "ok": true,
+   "diagnosticOnly": false,
+   "reached": false,
+   "decisionReason": null,
+   "proposed": {
+    "targets": {
+     "sweetness": 1,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "batch": 1000,
+    "sum": 1000,
+    "items": [
+     [
+      "classic-blood-orange-sorbet-line-1",
+      "BLOOD ORANGE · Campisi C",
+      629,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-2",
+      "WATER · Liquid",
+      156,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-3",
+      "SUCROSE SUGAR · Sweetene",
+      104,
+      "grams"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-4",
+      "DEXTROSE MONOHYDRATE · S",
+      52,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-5",
+      "INULIN · Fibre · Powder",
+      55,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-6",
+      "TARA GUM · Stabilizer",
+      4,
+      "unlocked"
+     ]
+    ],
+    "pod": 20.546208999999998,
+    "npac": 37.736544315717865,
+    "nativeViolations": [],
+    "directionViolations": [
+     "npac:high:37.737:sev0.237",
+     "pod:low:20.546:sev1.454"
+    ],
+    "reached": false,
+    "residuals": [
+     {
+      "axis": "sweetness",
+      "reached": false
+     },
+     {
+      "axis": "softness",
+      "reached": false
+     }
+    ]
+   },
+   "iteration": null
+  },
+  "ui": {
+   "outcome": {
+    "terminalState": "PREVIEW_READY",
+    "applied": false,
+    "previewKind": null,
+    "directionReached": null,
+    "directionFallback": null,
+    "batchRescaled": null,
+    "practicalization": null,
+    "issueCode": null,
+    "message": null
+   },
+   "terminal": "PREVIEW_READY",
+   "bestCandidate": {
+    "pod": null,
+    "items": null
+   },
+   "fallbackBest": null,
+   "fallbackAttempts": [
+    {
+     "targets": {
+      "sweetness": 0,
+      "softness": 0,
+      "creaminess": 0,
+      "flavor": 0
+     },
+     "reached": false
+    }
+   ]
+  }
+ },
+ "LOCK-03-B-plus2": {
+  "label": "LOCK-03 B/sweet+2",
+  "recipeId": "classic-blood-orange-sorbet",
+  "cfg": "B",
+  "axis": "sweetness",
+  "level": 2,
+  "experiment": "baseline",
+  "baselineApplied": {
+   "terminalState": "PREVIEW_READY",
+   "applied": true,
+   "previewKind": "optimize",
+   "directionReached": false,
+   "directionFallback": null,
+   "batchRescaled": true,
+   "practicalization": "ready",
+   "issueCode": null,
+   "message": null
+  },
+  "lock": {
+   "lineId": "classic-blood-orange-sorbet-line-3",
+   "name": "SUCROSE SUGAR · Sweetener · Dry",
+   "grams": 104,
+   "lock": "grams"
+  },
+  "planAxis": [
+   {
+    "axis": "sweetness",
+    "target": 2,
+    "status": "working",
+    "metric": "pod",
+    "band": {
+     "min": 24,
+     "max": 24
+    },
+    "center": 24
+   }
+  ],
+  "draft": {
+   "targets": {
+    "sweetness": 2,
+    "softness": 0,
+    "creaminess": 0,
+    "flavor": 0
+   },
+   "batch": 1000,
+   "sum": 1000,
+   "items": [
+    [
+     "classic-blood-orange-sorbet-line-1",
+     "BLOOD ORANGE · Campisi C",
+     598,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-2",
+     "WATER · Liquid",
+     180,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-3",
+     "SUCROSE SUGAR · Sweetene",
+     104,
+     "grams"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-4",
+     "DEXTROSE MONOHYDRATE · S",
+     59,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-5",
+     "INULIN · Fibre · Powder",
+     55,
+     "unlocked"
+    ],
+    [
+     "classic-blood-orange-sorbet-line-6",
+     "TARA GUM · Stabilizer",
+     4,
+     "unlocked"
+    ]
+   ],
+   "pod": 20.763058,
+   "npac": 39.03676736949149,
+   "nativeViolations": [],
+   "directionViolations": [
+    "npac:high:39.037:sev1.537",
+    "pod:low:20.763:sev3.237"
+   ],
+   "reached": false,
+   "residuals": [
+    {
+     "axis": "sweetness",
+     "reached": false
+    },
+    {
+     "axis": "softness",
+     "reached": false
+    }
+   ]
+  },
+  "candidateVector": [
+   {
+    "line": "classic-blood-orange-sorbet-line-1",
+    "name": "BLOOD ORANGE · Campisi C",
+    "current": 598,
+    "increasable": true,
+    "anchor": 450,
+    "floor": 224.5,
+    "rungs": [
+     1,
+     112.75,
+     224.5,
+     498,
+     548,
+     578,
+     588,
+     593,
+     597,
+     599,
+     603,
+     608,
+     618,
+     648,
+     698
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-2",
+    "name": "WATER · Liquid",
+    "current": 180,
+    "increasable": true,
+    "anchor": 314,
+    "floor": 156.5,
+    "rungs": [
+     1,
+     78.75,
+     80,
+     130,
+     156.5,
+     160,
+     170,
+     175,
+     179,
+     181,
+     185,
+     190,
+     200,
+     230,
+     280
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-4",
+    "name": "DEXTROSE MONOHYDRATE · S",
+    "current": 59,
+    "increasable": true,
+    "anchor": 90,
+    "floor": 44.5,
+    "rungs": [
+     1,
+     9,
+     22.75,
+     39,
+     44.5,
+     49,
+     54,
+     58,
+     60,
+     64,
+     69,
+     79,
+     109,
+     159
+    ]
+   },
+   {
+    "line": "classic-blood-orange-sorbet-line-5",
+    "name": "INULIN · Fibre · Powder",
+    "current": 55,
+    "increasable": true,
+    "anchor": 55,
+    "floor": 27,
+    "rungs": [
+     1,
+     5,
+     14,
+     27,
+     35,
+     45,
+     50,
+     54,
+     56,
+     60,
+     65,
+     75,
+     105,
+     155
+    ]
+   }
+  ],
+  "excludedFromVector": [
+   [
+    "classic-blood-orange-sorbet-line-3",
+    "SUCROSE SUGAR · Sweetene",
+    104,
+    "grams"
+   ],
+   [
+    "classic-blood-orange-sorbet-line-6",
+    "TARA GUM · Stabilizer",
+    4,
+    "unlocked"
+   ]
+  ],
+  "core": {
+   "ok": true,
+   "diagnosticOnly": false,
+   "reached": false,
+   "decisionReason": null,
+   "proposed": {
+    "targets": {
+     "sweetness": 2,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "batch": 1000,
+    "sum": 1000,
+    "items": [
+     [
+      "classic-blood-orange-sorbet-line-1",
+      "BLOOD ORANGE · Campisi C",
+      629,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-2",
+      "WATER · Liquid",
+      156,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-3",
+      "SUCROSE SUGAR · Sweetene",
+      104,
+      "grams"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-4",
+      "DEXTROSE MONOHYDRATE · S",
+      52,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-5",
+      "INULIN · Fibre · Powder",
+      55,
+      "unlocked"
+     ],
+     [
+      "classic-blood-orange-sorbet-line-6",
+      "TARA GUM · Stabilizer",
+      4,
+      "unlocked"
+     ]
+    ],
+    "pod": 20.546208999999998,
+    "npac": 37.736544315717865,
+    "nativeViolations": [],
+    "directionViolations": [
+     "npac:high:37.737:sev0.237",
+     "pod:low:20.546:sev3.454"
+    ],
+    "reached": false,
+    "residuals": [
+     {
+      "axis": "sweetness",
+      "reached": false
+     },
+     {
+      "axis": "softness",
+      "reached": false
+     }
+    ]
+   },
+   "iteration": null
+  },
+  "ui": {
+   "outcome": {
+    "terminalState": "PREVIEW_READY",
+    "applied": false,
+    "previewKind": null,
+    "directionReached": null,
+    "directionFallback": null,
+    "batchRescaled": null,
+    "practicalization": null,
+    "issueCode": null,
+    "message": null
+   },
+   "terminal": "PREVIEW_READY",
+   "bestCandidate": {
+    "pod": null,
+    "items": null
+   },
+   "fallbackBest": null,
+   "fallbackAttempts": [
+    {
+     "targets": {
+      "sweetness": 1,
+      "softness": 0,
+      "creaminess": 0,
+      "flavor": 0
+     },
+     "reached": false
+    },
+    {
+     "targets": {
+      "sweetness": 0,
+      "softness": 0,
+      "creaminess": 0,
+      "flavor": 0
+     },
+     "reached": false
+    }
+   ]
+  }
+ }
+}

@@ -106,6 +106,23 @@ const EXPECTED_SOURCE_CLOSURE = [
   'src/features/recipe-constraints/gelatoStabilizerSystemAuthority.ts',
   'src/features/recipe-constraints/recipeConstraintAuthority.ts',
   'src/features/recipe-constraints/sorbetStabilizerSystemAuthority.ts',
+  // REVIEWED 2026-09-19 (global ±2 controlled relaxation, Owner decision
+  // „range != lock"). Two pure projections, no IO, network, dataset,
+  // persistence or mutable runtime state, and no ingredient knowledge beyond
+  // the canonical identity the Inulin policy already owns:
+  //   - `directionRelaxation.ts` answers whether a draft REQUESTED the ±2
+  //     extreme and what interval a preference band then spans. Reachable
+  //     because `ownerInulinPolicy.ts` (already reviewed here) now asks it for
+  //     the permitted band instead of assuming the normal one.
+  //   - `relaxableRangePolicy.ts` is the registry of which owner bands may be
+  //     widened and what leaving one costs on the public score. Reachable
+  //     because `proteinAuthority.ts` (already reviewed here) subtracts that
+  //     single penalty point from the canonical fit.
+  // Neither adds, relaxes or invents a scientific limit: a structural range is
+  // never registered, and Rescue itself stays add-only and revalidated by
+  // Engine and frozen ProductBehavior.
+  'src/features/recipe-direction/directionRelaxation.ts',
+  'src/features/recipe-direction/relaxableRangePolicy.ts',
   'src/features/recipe-direction/recipeDirectionAssessment.ts',
   'src/features/recipe-direction/recipeDirectionTargets.ts',
   'src/features/recipe-score/recipeMatchScore.ts',

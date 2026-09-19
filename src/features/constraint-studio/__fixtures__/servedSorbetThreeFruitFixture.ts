@@ -240,6 +240,7 @@ const line = (
   grams: number,
   main = false,
   seeded = false,
+  userChosen = false,
 ): RecipeItem => ({
   id,
   ingredient: engineIngredient,
@@ -248,6 +249,21 @@ const line = (
   lock_type: main ? 'main' : 'unlocked',
   ...(main ? { main_ratio_weight: 1 } : {}),
   ...(seeded ? { amount_provenance: AUTO_CROWN_SEED } : {}),
+  // THE SIDECAR THE STORE ACTUALLY WRITES. `recipeStore` sets
+  // `user_intent_anchor_grams` the moment a user ADDS an ingredient and both it
+  // and `user_target_grams` the moment a user TYPES an amount; it deletes them
+  // again for a PI-placed row. `userLineBaselineGrams` reads exactly those two
+  // fields, so a fruit row that claims to be "the grams the user typed" but
+  // carries neither is classified `pi_auto_added` and becomes EMPTIABLE.
+  //
+  // This fixture documented that distinction (`seeded: []` is the same grams
+  // typed by the user) while encoding only the AUTO_CROWN_SEED half of it, so
+  // the user half was nominal. Once the Direction search could reach a vector
+  // that empties the two uncrowned 1 g fruit rows, the zero-gram executable
+  // invariant omitted the emptied rows and the served sorbet came back with one
+  // fruit instead of three. The capture now carries what the served draft
+  // carries.
+  ...(userChosen && grams > 0 ? { user_intent_anchor_grams: grams } : {}),
 });
 
 export interface ServedSorbetOptions {
@@ -267,7 +283,16 @@ export function servedSorbetRecipe({
   directionActive = true,
 }: ServedSorbetOptions = {}): RecipeInput {
   const fruitLine = (id: string, engineIngredient: EngineIngredient) =>
-    line(id, engineIngredient, fruitGrams, mains.includes(id), seeded.includes(id));
+    line(
+      id,
+      engineIngredient,
+      fruitGrams,
+      mains.includes(id),
+      seeded.includes(id),
+      // A fruit the customer picked is user intent unless it is still carrying
+      // the untouched PRO Crown bootstrap seed — that 1 g is PI's, not theirs.
+      !seeded.includes(id),
+    );
   const items: RecipeItem[] = [
     line('new-recipe-1-water', WATER, 144.95094339622642),
     line('new-recipe-2-sucrose', SUCROSE, 77.7056603773585),

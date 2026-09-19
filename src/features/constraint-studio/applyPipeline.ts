@@ -118,11 +118,19 @@ import { isCrownBootstrapLine } from '@/features/formulation/crownBootstrapProve
 import {
   buildUserIntentBaseline,
   MATERIAL_USER_INTENT_DRIFT,
+  isMaterialUserIntentDeviation,
   measureUserIntentDrift,
   normalizedLineDrift,
+  USER_INTENT_DRIFT_EPS,
   userIntentDriftTotal,
   type UserIntentDeviation,
 } from '@/features/formulation/userLineIntent';
+import { directionRelaxationPermitted } from '@/features/recipe-direction/directionRelaxation';
+import {
+  relaxationCost,
+  relaxedOwnerRanges,
+  withExtendedRelaxableRanges,
+} from '@/features/recipe-direction/relaxableRangePolicy';
 import {
   isVerifiedRuntimeSubstitute,
   hasVerifiedMapperSubstitutionAuthorization,
@@ -836,6 +844,35 @@ export interface ConstraintPreview {
    * executable proposal — the closed-form exact projection or the bounded
    * Main-constrained NEAREST search. Provenance only; the door re-derives it. */
   directionCandidateSource?: 'sorbet_exact_projection' | 'sorbet_nearest_search';
+  /**
+   * NAPRAWA 1B: the bounded best-legal selector replaced the candidate the
+   * preferred path produced with a strictly NEARER legal one. Diagnostic and
+   * test-facing only — no gate reads it, and Apply re-derives everything.
+   */
+  directionNearestSelected?: boolean;
+  /* ── CONTROLLED ±2 RELAXATION EVIDENCE (owner decision 2026-09-19 § 16) ──
+   * Enough for scoring, tests and audit to tell the four states apart: inside
+   * the normal envelope; produced by the controlled extended envelope; which
+   * owner ranges it had to leave; and whether the requested target was fully
+   * reached even so. Diagnostic — no gate reads them, and Apply re-derives
+   * everything from `proposedInput`. */
+  /** Which envelope produced this candidate. Absent means the normal one. */
+  directionEnvelope?: 'normal' | 'extended';
+  /** TRUE when Stage B ran at all — even if the normal result still won. */
+  directionRelaxationAttempted?: boolean;
+  /** 0 = fully inside every owner band; 1 = at the controlled maximum. */
+  relaxationCost?: number;
+  /** Every owner band this candidate left, with what it was allowed. */
+  relaxedOwnerRanges?: ReadonlyArray<{
+    policyId: string;
+    lineIds: readonly string[];
+    grams: number;
+    normalMinGrams: number;
+    normalMaxGrams: number;
+    extendedMinGrams: number;
+    extendedMaxGrams: number;
+    normalizedExcursion: number;
+  }>;
   iteration?: IterationDiagnostics;
   /** ACCEPTANCE ADDENDUM (3): residual violations on NATIVE approved bands in
    * the PROPOSED state (classified by `classifyViolationBands` provenance).
@@ -2467,6 +2504,22 @@ function iterateSolverToFixedPoint(
   // `fitProteinFormulation` sweeps its own bounded ladder instead.
   minimumProteinScore: number | null = null,
   productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+  /**
+   * MAY THIS SOLVE USE THE DIRECTION ESCAPE? (P1 — cost boundary.)
+   *
+   * The paired-exchange pass is what lets a Direction request escape the
+   * coordinate-descent trap, and it is worth its price exactly once: on the
+   * solve that produces the candidate the customer is shown. It is NOT worth it
+   * on the Main frontier's internal probes, which run this solver hundreds of
+   * times inside a single preview to size one line — there the answer is a
+   * gram value, not a Direction verdict, and the old behaviour is both correct
+   * and cheap. Measured on `mainTechnicalMaximum.test.ts`: 53 s with the escape
+   * scoped to the shown solve, minutes with it on every probe.
+   *
+   * Default false, so every existing caller keeps its previous cost; the two
+   * routes that build the shown preview opt in explicitly.
+   */
+  directionEscape = false,
 ): {
   working: RecipeInput;
   lastProposal: CorrectionProposal | null;
@@ -2614,6 +2667,13 @@ function iterateSolverToFixedPoint(
      * „not adjustable" — and a fixed point is only ever claimed after the
      * user's own ingredients were really tried.
      */
+    /**
+     * ONE escape per solve. The escape exists to break a coordinate-descent
+     * trap, and a trap is broken once: letting it fire every round turns it
+     * from a way out into a second objective competing with repair for the
+     * round budget, which is how the Protein multi-Main −13 ECO cell reached
+     * `iteration_cap_diagnostic` instead of an answer.
+     */
     const searchDraftVector = (): DraftSweepResult | null => {
       draftVectorSearches += 1;
       const constraints = {
@@ -2647,21 +2707,80 @@ function iterateSolverToFixedPoint(
       // When an approved exact Direction target is active, fit outranks cost
       // in ECO. Use the same canonical measure as OPTIMAL until the target is
       // reached; inactive and unsupported profiles keep their prior ECO path.
-      // Owner P1-A: the paired-exchange pass may only fire when a Direction
-      // preference is the ONLY residual — the recipe is otherwise engine-clean.
-      const directionOnlyResidual =
-        hasExactDirectionObjective && detectViolations(calculateRecipe(working)).length === 0;
-      return sweepDraftCandidateVector({
-        start: working,
-        set: solverSet,
-        userIntentBaseline,
-        excludedIngredientIds,
-        constraints,
-        normalize,
-        measure,
-        startMeasure: current,
-        directionOnlyResidual,
-      });
+      // Owner P1-A scoped the paired-exchange pass to „a Direction preference is
+      // the ONLY residual", read as „no other band is out". P1 (OD-28) measured
+      // what that costs: the HOME strawberry gelato halts with ONE unrelated
+      // native residual (`fat:low`, severity 0.439) still open, so the gate is
+      // false, the exchange pass returns at its first line, and CORE answers
+      // „Nie da się osiągnąć poziomu −1" at POD 16.050 while a clean whole-gram
+      // candidate exists at POD 13.98. The residual that switched the escape off
+      // is itself produced by the coordinate-descent trap the escape exists for,
+      // so the old reading was circular.
+      //
+      // THE ESCAPE IS A FALLBACK, NOT A WIDER GATE. Firing it whenever the
+      // Direction was unreached let it PRE-EMPT ORDINARY REPAIR: the sweep
+      // optimises the Direction residual alone, so on a draft that still has
+      // real engine work to do it spends the round on the preference instead.
+      // `proteinMultiMainPositive.test.ts` caught exactly that — „repairs
+      // Protein support BEFORE searching the exact −13 ECO 2:1 Main envelope"
+      // — with the served −12 Banana landing on 405 g instead of 352 g and the
+      // other cell running into the iteration cap.
+      //
+      // So the APPROVED condition is asked first, exactly as before. The escape
+      // is consulted only when that pass has nothing to offer at all, which is
+      // the coordinate-descent trap it was written for and nothing else. Every
+      // flow without an exact Direction objective still never reaches it, a
+      // draft whose repair pass produces a move keeps its previous trajectory
+      // byte-for-byte, and the extra sweep costs one pass in the one case where
+      // the previous cost was a refusal.
+      const engineClean = detectViolations(calculateRecipe(working)).length === 0;
+      const sweep = (directionOnlyResidual: boolean) =>
+        sweepDraftCandidateVector({
+          start: working,
+          set: solverSet,
+          userIntentBaseline,
+          excludedIngredientIds,
+          constraints,
+          normalize,
+          measure,
+          startMeasure: current,
+          directionOnlyResidual,
+        });
+
+      const approved = sweep(hasExactDirectionObjective && engineClean);
+      if (approved !== null) return approved;
+      if (!directionEscape || !hasExactDirectionObjective || engineClean) return null;
+      if (directionEscapeUsedInPreview) return null;
+      if (recipeDirectionViolations(working).length === 0) return null;
+      const escaped = sweep(true);
+      if (escaped === null) return null;
+      // REPAIR OUTRANKS PREFERENCE. The escape sweep measures the DIRECTION
+      // residual alone, so left to itself it will happily buy a nearer
+      // preference with an engine band. On the Protein multi-Main draft that is
+      // precisely what it did — the served −12 Banana landed on 405 g instead
+      // of 352 g and the −13 ECO cell ran into the iteration cap
+      // (`proteinMultiMainPositive.test.ts`: „repairs Protein support BEFORE
+      // searching the exact −13 ECO 2:1 Main envelope").
+      //
+      // A Direction preference may therefore be bought with anything the
+      // engine does not price, and with nothing it does. This is the same rule
+      // the whole block already lives by — never relax a hard authority to
+      // reach a target — applied to the one pass that could not see it.
+      // The engine residual may not get worse…
+      if (totalSeverity(escaped.input) > totalSeverity(working) + SEVERITY_EPS) return null;
+      // … the canonical recipe fit may not get worse…
+      const before = recipeFitForInput(working).score;
+      const after = recipeFitForInput(escaped.input).score;
+      if (before === null || after === null || after <= before) return null;
+      // … and the MAIN GROUP IS NOT THE ESCAPE'S TO MOVE. This is the rule the
+      // NAPRAWA 1B selector already lives by, applied to the one pass that
+      // could reach a Main without it: the served −12 OPTIMAL draft came back
+      // with `banana-main` at 405 g where the customer crowned 352 g
+      // (`proteinMultiMainPositive.test.ts`). The Main frontier owns that line;
+      // a preference escape does not.
+      if (!mainGroupLinesByteIdentical(working, escaped.input)) return null;
+      directionEscapeUsedInPreview = true;
+      return escaped;
     };
 
     if (outcome.applied === null) {
@@ -5802,6 +5921,7 @@ function iterateFormulationSeed(
   set: ConstraintSet,
   proposedInput: RecipeInput,
   options: OptimizePreviewOptions = {},
+  directionEscape = false,
 ): ReturnType<typeof iterateSolverToFixedPoint> {
   const solverSet = solverHolds(proposedInput, set);
   const constrainedIngredientIds = new Set(
@@ -5840,6 +5960,7 @@ function iterateFormulationSeed(
     options.effectivePriceOverrides,
     null,
     options.productBehaviorSnapshots,
+    directionEscape,
   );
 }
 
@@ -6080,6 +6201,7 @@ function buildFormulationPreviewInternal(
     solverSet,
     built.proposal.proposedInput,
     solverOptions,
+    optimizePreviewDepth <= 1,
   );
   // An uncrowned manual Main target is answered by the Crown authority itself
   // (capped at the request), so it takes precedence over the generic nearest
@@ -6605,6 +6727,25 @@ function buildSorbetDirectionCandidatePreview(params: {
         })?.candidate ?? null,
     },
   ];
+  /**
+   * FIRST GENERATOR THAT IMPROVES WINS — the accepted Sorbet order of authority.
+   *
+   * P1 (LOCK-02 / LOCK-03) measured that this presents a candidate as
+   * „najbliższy" that is 26×–156× farther from the requested target than one
+   * reachable in the same admissible space, and that it returns the
+   * byte-identical proposal for two different requested levels. An earlier cut
+   * of this fix ranked all generators by distance instead, and that reached
+   * candidates 1.1×–30.8× nearer — but it also failed the OWNER-LOCKED contract
+   * `sorbetDirectionOffBatchEligibility.contract.test.ts` (GEL-P0-025), which
+   * requires an off-batch Sorbet draft to be solved BY THE EXACT PROJECTION and
+   * not by the general search. Ranking by distance lets another generator
+   * out-rank the projection, so the locked shape of the repair is lost.
+   *
+   * A locked contract is not rewritten to fit an implementation. The accepted
+   * order stands, LOCK-02 and LOCK-03 stay OPEN on the Sorbet route, and the
+   * conflict is recorded in docs/audit/priority-1/P1-S-closure.md as work that
+   * needs the owner's decision rather than a quiet change here.
+   */
   for (const generator of generators) {
     const candidate = generator.generate();
     if (candidate === null || !verifyConstraintsPreserved(solverSet, candidate).ok) continue;
@@ -7015,7 +7156,756 @@ function alreadyCleanMainGroupRefusal(
  * product's own authority rejects, and it is scoped to Crown-OFF drafts so the
  * frozen Crown-ON behaviour (GEL-P0-027) is untouched.
  */
+/* ── NAPRAWA 1B — BOUNDED BEST-LEGAL DIRECTION SELECTOR ──────────────────────
+ *
+ * OWNER DECISION (Variant B, 2026-09-19). The exact projection and the solver's
+ * own answer are the FAST, PREFERRED FIRST PATH. They are no longer the winner
+ * by construction: if a LEGAL candidate sits strictly nearer the requested
+ * Direction target in the same admissible space, that candidate is published.
+ *
+ * WHY THIS IS A SELECTOR AND NOT A WIDER SOLVER
+ * --------------------------------------------
+ * An earlier attempt widened the solver's own search. It moved accepted
+ * trajectories (seven `sharedDirectionNearestMatrix` cells, the multi-Main
+ * GEL-P0-025 case) and, worse, turned a clean Preview into `no_proposal` on a
+ * constrained milk starter — it cost a customer an answer. So this stage never
+ * touches the search. The solver produces the incumbent exactly as it does
+ * today; challengers are generated FROM that incumbent, each is built into a
+ * FULL Preview, and one is published only if that Preview is valid AND strictly
+ * nearer. A challenger that would cost a Preview simply loses. The failure mode
+ * is impossible by construction rather than guarded against.
+ *
+ * CONSTRAINTS ARE NOT RELAXED. Every challenger passes the SAME hard gates as
+ * the incumbent: §17 locks, Main/Crown identity and envelope, the required-line
+ * contract, positive-standard presence, the batch invariant, practicalization,
+ * Engine bands and critical warnings. Variant B is „search further", never
+ * „accept something worse to avoid a refusal".
+ */
+
+/**
+ * Engine-priced challengers one user-facing Preview may evaluate, and how many
+ * times the selector may re-aim from its own best candidate.
+ *
+ * BOTH are sized from a measurement on the P1 lock cells, not a guess. Holding
+ * everything else fixed, the improvement over the incumbent's own distance is:
+ *
+ *            240 / 4     240 / 10    600 / 10
+ *   LOCK-01   87.9x        87.9x      254.8x   <- the candidate budget binds
+ *   LOCK-02c   4.2x         4.4x        4.4x   <- the pass count binds
+ *   every other lock cell and the whole Sorbet nearest matrix: IDENTICAL.
+ *
+ * So neither number is padding, and neither is free: at 600/10 the guard suite
+ * `mainTechnicalMaximum.test.ts` measures 53.08 s against its ~52–54 s
+ * baseline, because the depth gate keeps this stage out of inner previews.
+ */
+const DIRECTION_SELECTOR_EVALUATION_BUDGET = 600;
+
+/** See above: measured, and LOCK-02c is the cell that needs the extra passes. */
+const DIRECTION_SELECTOR_MAX_PASSES = 10;
+
+/** Bisection depth on ONE solved ray: resolution `scale / 2^n`, cost n engine prices. */
+const DIRECTION_SELECTOR_LINE_SEARCH_PROBES = 6;
+
+/**
+ * Every BISECTION probe one user-facing Preview may price, across all rays.
+ * Besides these the line search prices each solved ray's full step once, which
+ * needs no budget of its own: a ray is only ever priced from inside `emit`, and
+ * `emit` stops as soon as the candidate budget above is spent.
+ *
+ * MEASURED, and it must not bind: with the bound lifted the heaviest P1 cell
+ * (LOCK-01) asks for 1146 probes, LOCK-02a for 708, LOCK-02b for 600 and
+ * everything else for 120 or fewer. At 600 the three heaviest cells ran DRY,
+ * which does not lie about feasibility — the incumbent still publishes — but it
+ * does make the answer depend on where the budget happened to run out. 1500
+ * clears the worst observed case with headroom; a probe is one `calculateRecipe`
+ * and `mainTechnicalMaximum.test.ts` still measures inside its ~52–54 s baseline.
+ */
+const DIRECTION_SELECTOR_LINE_SEARCH_BUDGET = 1500;
+
+/** Below this the engine refuses the move anyway. */
+const DIRECTION_SELECTOR_MIN_MOVE_GRAMS = 0.5;
+
+/** A singular response row is not solvable; skip it rather than invent a step. */
+const DIRECTION_SELECTOR_RESPONSE_EPS = 1e-9;
+
+/** The engine's own distance from a candidate to the REQUESTED Direction target. */
+const directionDistanceOf = (candidate: RecipeInput): number =>
+  recipeDirectionViolations(candidate).reduce(
+    (total, violation) => total + violation.severity_points,
+    0,
+  );
+
+/**
+ * The requested axes as (metric, target) pairs, read from the caller's own
+ * Direction plan. The target is the MIDPOINT of the axis's approved band — for
+ * the Sorbet exact-preference point min = max, so the midpoint IS that point —
+ * which leaves whole-gram practicalization the most room inside the band.
+ * Nothing is invented: the metric, the band and the value all come from
+ * authorities that already exist.
+ */
+function requestedDirectionAxes(
+  input: RecipeInput,
+): Array<{ metric: 'pod' | 'npac'; target: number }> {
+  const plan = buildRecipeDirectionPlan(input);
+  const axes: Array<{ metric: 'pod' | 'npac'; target: number }> = [];
+  for (const axis of plan.axes) {
+    if (axis.status !== 'working' || axis.targetBand === null) continue;
+    if (axis.metric !== 'pod' && axis.metric !== 'npac') continue;
+    axes.push({ metric: axis.metric, target: (axis.targetBand.min + axis.targetBand.max) / 2 });
+  }
+  return axes;
+}
+
+/**
+ * The engine's own reading of one axis, or NULL when it has none. A recipe the
+ * engine cannot price on an axis has no measurable response on it, so the
+ * callers below stand down rather than treat „no reading" as a number.
+ */
+const metricValueOf = (candidate: RecipeInput, metric: 'pod' | 'npac'): number | null => {
+  const result = calculateRecipe(candidate);
+  const value = metric === 'pod' ? result.pod_points : result.npac_points;
+  return value === null || !Number.isFinite(value) ? null : value;
+};
+
+/**
+ * BOUNDED CHALLENGER SHAPES.
+ *
+ * At a fixed total mass every axis metric responds AFFINELY to a mass-neutral
+ * gram transfer — verified on the engine itself (POD 13.731241 -> 13.803189 ->
+ * 14.450721 -> 17.328641 for +1 / +10 / +50 g) — so the engine's own response is
+ * measurable with ONE probe per line. With that table the stage SOLVES the step
+ * that lands the requested axes, instead of hoping a rung of a fixed ladder
+ * happens to land there.
+ *
+ * Two shapes, both already legal move shapes elsewhere in this pipeline:
+ *   - SINGLE MOVER: one line against a reference, landing ONE axis exactly;
+ *   - PAIRED MOVERS: two lines against a reference, landing BOTH axes exactly.
+ * Every candidate is mass-neutral by construction and whole-gram, because the
+ * incumbent it starts from is the practicalized vector the customer would get.
+ *
+ * It is bounded by `budget`, which the caller owns for the WHOLE Preview.
+ */
+function directionChallengerVectors(
+  incumbent: RecipeInput,
+  set: ConstraintSet,
+  excludedIngredientIds: ReadonlySet<string>,
+  axes: ReadonlyArray<{ metric: 'pod' | 'npac'; target: number }>,
+  budget: { remaining: number; probes: number },
+): RecipeInput[] {
+  if (axes.length === 0 || axes.length > 2) return [];
+  const vector = buildDraftCandidateVector(incumbent, set, excludedIngredientIds);
+  if (vector.length < 2) return [];
+  const batch = incumbent.target_batch_grams;
+
+  /** The PRESERVING reach of each line's own ladder — never the collapse rungs. */
+  const bounded = vector
+    .map((candidate) => {
+      const preserving = candidate.testedGrams.filter(
+        (grams) =>
+          candidate.anchorGrams === null ||
+          !isMaterialUserIntentDeviation(candidate.anchorGrams, grams, batch),
+      );
+      if (preserving.length === 0) return null;
+      return {
+        lineId: candidate.lineId,
+        current: candidate.currentGrams,
+        lo: Math.max(0, Math.min(candidate.currentGrams, ...preserving)),
+        hi: candidate.increasable
+          ? Math.max(candidate.currentGrams, ...preserving)
+          : candidate.currentGrams,
+      };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  if (bounded.length < 2) return [];
+
+  const base = axes.map((axis) => metricValueOf(incumbent, axis.metric));
+  // No reading on an axis means no measurable response to solve against.
+  if (base.some((value) => value === null)) return [];
+  const need = axes.map((axis, index) => axis.target - base[index]!);
+  const byId = new Map(bounded.map((entry) => [entry.lineId, entry]));
+  const out: RecipeInput[] = [];
+  const seen = new Set<string>();
+
+  /**
+   * The whole-gram, mass-neutral MOVE a given fraction of a solved step lands
+   * on, or null when it leaves the ladder box. Whole grams: the movers round
+   * first and the reference absorbs exactly their rounded sum, so the batch
+   * stays exact.
+   */
+  const movesAt = (
+    deltas: Map<string, number>,
+    referenceId: string,
+    fraction: number,
+  ): Map<string, number> | null => {
+    const moves = new Map<string, number>();
+    let moverDrift = 0;
+    for (const [lineId, delta] of deltas) {
+      if (lineId === referenceId) continue;
+      const entry = byId.get(lineId)!;
+      const rounded = Math.round(entry.current + delta * fraction) - entry.current;
+      moves.set(lineId, rounded);
+      moverDrift += rounded;
+    }
+    moves.set(referenceId, -moverDrift);
+    for (const [lineId, move] of moves) {
+      const entry = byId.get(lineId)!;
+      const landing = entry.current + move;
+      if (landing < 0 || landing < entry.lo - 1e-9 || landing > entry.hi + 1e-9) return null;
+    }
+    return moves;
+  };
+
+  /** Below two whole-gram movers the engine has nothing to transfer. */
+  const worthEvaluating = (moves: Map<string, number>): boolean =>
+    [...moves.values()].filter((move) => Math.abs(move) >= DIRECTION_SELECTOR_MIN_MOVE_GRAMS)
+      .length >= 2;
+
+  const vectorFor = (moves: Map<string, number>): RecipeInput => ({
+    ...incumbent,
+    items: incumbent.items.map((item) =>
+      moves.has(item.id)
+        ? { ...item, planned_grams: item.planned_grams + moves.get(item.id)! }
+        : item,
+    ),
+  });
+
+  const emit = (deltas: Map<string, number>, referenceId: string): void => {
+    if (budget.remaining <= 0) return;
+    // Clamp to the ladder's own reach: the largest fraction of the solved step
+    // that keeps every moved line inside its existing bounds.
+    let scale = 1;
+    for (const [lineId, delta] of deltas) {
+      if (Math.abs(delta) < DIRECTION_SELECTOR_MIN_MOVE_GRAMS) continue;
+      const entry = byId.get(lineId);
+      if (entry === undefined) return;
+      const headroom = delta > 0 ? entry.hi - entry.current : entry.current - entry.lo;
+      if (headroom <= 0) return;
+      scale = Math.min(scale, headroom / Math.abs(delta));
+    }
+    if (scale <= 0) return;
+
+    // ── THE LADDER BOX IS NOT THE ONLY BOUND: THE ENGINE'S BANDS ARE ────────
+    //
+    // A FAR request solves a LONG step, and a long step leaves the legal region
+    // (`ice_fraction`, `water`, `total_solids`) well before it leaves the
+    // ladder box. Offering only `scale` and `scale / 2` then offers nothing
+    // legal at all, so a far request converged WORSE than a near one on the
+    // very same draft: Sorbet -13 Sweetness +2 published POD 21.2966 while +1,
+    // from a byte-identical incumbent, published 21.7877 — the +1 candidate was
+    // nearer to +2's own band than +2's was, which is exactly the „nearest is
+    // not nearest" defect this selector exists to remove
+    // (`sharedDirectionNearestMatrix.test.ts` §8).
+    //
+    // Along one solved ray each axis moves AFFINELY, so distance to the
+    // requested target is monotone up to the exact landing point: the best
+    // point on the ray is the FARTHEST legal one. A fixed-depth bisection finds
+    // it — a bounded line search on ONE ray, not a wider search: the shapes,
+    // the box and the candidate budget are unchanged, and the probe budget is
+    // its own accounted bound.
+    const fractions = [scale, scale / 2];
+    // A probe is only spent where it can pay: the WHOLE step has to be inside
+    // the box and large enough to be a transfer at all — shortening cannot make
+    // a too-small step meaningful — and it has to be the engine that refuses it.
+    // Without this guard the probe budget drained on steps no fraction could
+    // rescue, and the line search switched itself off half way through the very
+    // cells it exists for (LOCK-01, LOCK-02a/b: 0 probes left).
+    const fullMoves = movesAt(deltas, referenceId, scale);
+    if (
+      fullMoves !== null &&
+      worthEvaluating(fullMoves) &&
+      detectViolations(calculateRecipe(vectorFor(fullMoves))).length > 0
+    ) {
+      let reachable = 0;
+      let refused = scale;
+      for (let probe = 0; probe < DIRECTION_SELECTOR_LINE_SEARCH_PROBES; probe += 1) {
+        if (budget.probes <= 0) break;
+        budget.probes -= 1;
+        const middle = (reachable + refused) / 2;
+        const moves = movesAt(deltas, referenceId, middle);
+        if (
+          moves !== null &&
+          worthEvaluating(moves) &&
+          detectViolations(calculateRecipe(vectorFor(moves))).length === 0
+        ) {
+          reachable = middle;
+        } else {
+          refused = middle;
+        }
+      }
+      // `reachable === 0` means the ray is refused from its first gram: the
+      // incumbent stands, exactly as before. Nothing is relaxed to avoid that.
+      if (reachable > 0) fractions.push(reachable, reachable / 2);
+    }
+
+    for (const fraction of fractions) {
+      if (budget.remaining <= 0) return;
+      const moves = movesAt(deltas, referenceId, fraction);
+      if (moves === null || !worthEvaluating(moves)) continue;
+      const candidate = vectorFor(moves);
+      const key = candidate.items.map((item) => item.planned_grams.toFixed(3)).join('|');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      budget.remaining -= 1;
+      out.push(candidate);
+    }
+  };
+
+  for (const reference of bounded) {
+    if (budget.remaining <= 0) break;
+    if (reference.current < 1) continue;
+    const movers = bounded.filter((entry) => entry.lineId !== reference.lineId);
+    if (movers.length === 0) continue;
+
+    // The engine's own first-order response: one mass-neutral probe per line.
+    const response = new Map<string, number[]>();
+    for (const mover of movers) {
+      const probed: RecipeInput = {
+        ...incumbent,
+        items: incumbent.items.map((item) =>
+          item.id === mover.lineId
+            ? { ...item, planned_grams: item.planned_grams + 1 }
+            : item.id === reference.lineId
+              ? { ...item, planned_grams: item.planned_grams - 1 }
+              : item,
+        ),
+      };
+      const probedValues = axes.map((axis) => metricValueOf(probed, axis.metric));
+      if (probedValues.some((value) => value === null)) continue;
+      response.set(
+        mover.lineId,
+        probedValues.map((value, index) => value! - base[index]!),
+      );
+    }
+
+    // SINGLE MOVER — lands one axis exactly. Not reachable from the paired solve
+    // at any scale, and its absence is what made an earlier build path-dependent
+    // enough to break the accepted cross-level nearest contract.
+    for (const mover of movers) {
+      for (let axis = 0; axis < axes.length; axis += 1) {
+        const gradient = response.get(mover.lineId)![axis]!;
+        if (Math.abs(gradient) < DIRECTION_SELECTOR_RESPONSE_EPS) continue;
+        emit(
+          new Map([
+            [mover.lineId, need[axis]! / gradient],
+            [reference.lineId, -(need[axis]! / gradient)],
+          ]),
+          reference.lineId,
+        );
+      }
+    }
+
+    // PAIRED MOVERS — lands both axes exactly.
+    if (axes.length === 2) {
+      for (let i = 0; i < movers.length; i += 1) {
+        for (let j = i + 1; j < movers.length; j += 1) {
+          if (budget.remaining <= 0) break;
+          const a = response.get(movers[i]!.lineId)!;
+          const b = response.get(movers[j]!.lineId)!;
+          const determinant = a[0]! * b[1]! - b[0]! * a[1]!;
+          if (Math.abs(determinant) < DIRECTION_SELECTOR_RESPONSE_EPS) continue;
+          const x = (need[0]! * b[1]! - need[1]! * b[0]!) / determinant;
+          const y = (a[0]! * need[1]! - a[1]! * need[0]!) / determinant;
+          emit(
+            new Map([
+              [movers[i]!.lineId, x],
+              [movers[j]!.lineId, y],
+              [reference.lineId, -(x + y)],
+            ]),
+            reference.lineId,
+          );
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * THE FINAL SELECTOR — one definition of „nearest", applied once.
+ *
+ * NEAREST means: among the LEGAL candidates this run actually considered, the
+ * one whose engine-measured distance to the REQUESTED target is smallest. It
+ * does NOT mean the first found, nor the projection because it ran first, nor a
+ * sibling level's candidate that happens to sit closer, nor a rescue candidate
+ * measured from the wrong baseline.
+ *
+ * The search space is BOUNDED, so what this returns is „the best in the legal
+ * space that was searched" — not a proof of the global optimum. Where that
+ * distinction matters it is stated rather than implied; a budget that runs out
+ * never turns into a claim of infeasibility, because the incumbent is still
+ * published exactly as it would have been.
+ */
+function selectNearestLegalDirectionCandidate(
+  input: RecipeInput,
+  set: ConstraintSet,
+  createdAt: string,
+  options: OptimizePreviewOptions,
+  incumbent: BuildPreviewResult,
+  /**
+   * WHICH ENVELOPE THIS PASS MAY SEARCH (owner decision 2026-09-19 § 2, § 8).
+   *
+   * `normal` is Stage A and is what every request gets, ±1 and ±2 alike: the
+   * owner's standard ranges, never widened to make a level reach. `extended`
+   * is Stage B — available only to a ±2 request whose target Stage A could not
+   * reach, and even then only EXPLICITLY RELAXABLE ranges move. Nothing else
+   * differs between the two passes: same shapes, same budget, same hard gates,
+   * same one definition of nearest.
+   */
+  envelope: 'normal' | 'extended' = 'normal',
+): BuildPreviewResult {
+  // ── SCOPE AND COST GATES ──────────────────────────────────────────────────
+  // Once per user-facing Preview, never inside a re-entrant or probe pass.
+  if (optimizePreviewDepth > 1) return incumbent;
+  // `directionFallbackPass` is NOT a probe marker — the customer's own
+  // recalculation sets it (`constraintStudioStore.ts`), so excluding it would
+  // switch the selector off on exactly the path it exists for. The three below
+  // are the internal evaluations the customer never sees.
+  if (
+    options.softAnchorPass === true ||
+    options.directionNearestPass === true ||
+    (options.rescueSimulationLineIds?.length ?? 0) > 0
+  ) {
+    return incumbent;
+  }
+  if (!incumbent.ok) return incumbent;
+  if (!hasActiveExactDirectionObjective(input)) return incumbent;
+  if (incumbent.preview.diagnosticOnly === true) return incumbent;
+  const incumbentInput = incumbent.preview.proposedInput;
+  const incumbentDistance = directionDistanceOf(incumbentInput);
+  // Already there: nothing can be nearer than exact.
+  if (incumbentDistance <= SEVERITY_EPS) return incumbent;
+  if (incumbentInput.items.some((item) => item.actual_grams !== null)) return incumbent;
+  // THE EXACT/PRACTICAL MAIN RELATIONSHIP IS NOT THE SELECTOR'S TO BREAK.
+  //
+  // Challengers are built from the PRACTICALIZED vector, because that is the one
+  // the customer receives. When practicalization ROUNDED a Main line, the
+  // incumbent's Main proof is tied to its exact (fractional) vector — the served
+  // 1000 -> 670 role-aware rescale keeps `exactInput` at 401.807… while the
+  // executable carries 402 (`sorbetDirectionApplyDoor.test.ts`). A challenger
+  // rebuilt from the rounded vector would silently make 402 the exact value too,
+  // so the selector stands aside for that whole class rather than produce a
+  // nearer candidate on a broken proof.
+  const incumbentExact =
+    incumbent.preview.practicalization?.status === 'ready'
+      ? incumbent.preview.practicalization.audit.exactInput
+      : null;
+  if (
+    incumbentExact !== null &&
+    captureMainIngredientIntent(incumbentInput).length > 0 &&
+    !mainGroupLinesByteIdentical(incumbentExact, incumbentInput)
+  ) {
+    return incumbent;
+  }
+  const target = input.target_batch_grams;
+  if (!(target > 0)) return incumbent;
+
+  const axes = requestedDirectionAxes(input);
+  if (axes.length === 0) return incumbent;
+  // STAGE B widens ONLY what the registry classifies relaxable, and only on the
+  // solver's own holds — a customer's own range carries a different interval and
+  // is never touched. Everything else in the set (locks, percents, structural
+  // ceilings, machine and safety limits) comes through untouched.
+  //
+  // STAGE B RE-APPLIES THE HOLDS AFTER WIDENING. Widening a registered
+  // PREFERENCE band must never widen a STRUCTURAL one that governs the same
+  // line, so the holds run again over the widened set: a structural ceiling
+  // intersects whatever interval it finds and can only narrow it. Without this
+  // second pass a vegan ±2 request took inulin past its calibrated structural
+  // maximum (`recipeVectorProximity.test.ts`) — the preference had been widened
+  // and the ceiling was no longer there to stop it.
+  const solverSet =
+    envelope === 'extended'
+      ? solverHolds(
+          incumbentInput,
+          withExtendedRelaxableRanges(input, solverHolds(incumbentInput, set)),
+        )
+      : solverHolds(incumbentInput, set);
+  const excludedIngredientIds = new Set(
+    (options.excludedIngredientIds ?? []).map(canonicalIngredientIdFromSourceId),
+  );
+  const snapshots = options.productBehaviorSnapshots ?? {};
+  const mainMode =
+    normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode) === 'eco'
+      ? ('eco' as const)
+      : ('optimal' as const);
+
+  /**
+   * EVERY hard gate the incumbent passed, applied to a challenger. Nothing is
+   * relaxed and nothing new is invented: these are the pipeline's own checks.
+   */
+  const publishable = (candidate: RecipeInput): ConstraintPreview | null => {
+    const preview = finishPreview(
+      incumbent.preview.kind,
+      incumbent.preview.titlePl,
+      input,
+      set,
+      candidate,
+      incumbent.preview.nextConstraints,
+      incumbent.preview.violationsBefore,
+      incumbent.preview.explanation,
+      createdAt,
+    );
+    const executable = preview.proposedInput;
+    const result = calculateRecipe(executable);
+    if (detectViolations(result).length > 0) return null;
+    if (result.warnings.some((warning) => warning.severity === 'critical')) return null;
+    if (Math.abs(plannedSum(executable) - target) > BATCH_SUM_TOLERANCE_G) return null;
+    if (!verifyConstraintsPreserved(set, executable).ok) return null;
+    if (!verifyConstraintsPreserved(solverSet, executable).ok) return null;
+    if (!positiveStandardPresencePreserved(input, executable)) return null;
+    if (requiredLineContractViolations(input, executable).length > 0) return null;
+    if (!verifyMainIngredientIdentity(input, executable, set.byLineId).ok) return null;
+    // THE MAIN GROUP IS NOT THE SELECTOR'S TO MOVE. Main lines are not in the
+    // adjustable vector, but practicalization redistributes rounding across the
+    // whole recipe, so a challenger can still shift a Main by a fraction of a
+    // gram. The served Sorbet Apply-door regression depends on the Main group
+    // staying byte-exact through this stage (`sorbetDirectionApplyDoor.test.ts`:
+    // Main 600 g held; the 1000 -> 670 role-aware rescale round-trip). A nearer
+    // Direction candidate is never worth moving the Main the customer crowned.
+    if (!mainGroupLinesByteIdentical(incumbentInput, executable)) return null;
+    // A PREFERENCE IS NOT WORTH REWRITING THE CUSTOMER'S RECIPE.
+    //
+    // Every other gate here asks whether the candidate is LEGAL. None asked
+    // whether it is still the customer's recipe, and a Direction-ranked search
+    // will happily buy a nearer target by parking batch mass wherever the bands
+    // allow: on the vegan Horchata draft it published GROUND CINNAMON at 82 g
+    // where the customer typed 2 g, against an accepted ceiling of 25 g
+    // (`recipeVectorProximity.test.ts`).
+    //
+    // The pipeline already owns the right measure — `userIntentDriftTotal`, the
+    // solver's own ranking key for „how far is this from what the user asked".
+    // So the rule needs no new threshold and no new authority: a candidate
+    // published for being NEARER on Direction may not be FURTHER from the
+    // customer than the one it replaces. Growth is still free (engine §11: do
+    // not freeze the recipe) — it simply may not be paid for with the
+    // customer's own amounts.
+    if (
+      userIntentDriftTotal(userIntentBaselineForSelector, executable) >
+      incumbentUserIntentDrift + USER_INTENT_DRIFT_EPS
+    ) {
+      return null;
+    }
+    if (options.requirePracticalPreview === true && preview.practicalization?.status !== 'ready') {
+      return null;
+    }
+    if (Object.keys(snapshots).length > 0 && captureMainIngredientIntent(executable).length > 0) {
+      const envelope = verifyMainEnvelope({
+        recipe: executable,
+        snapshots,
+        mode: mainMode,
+        enforceFloor: true,
+        technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+      });
+      if (!envelope.ok) return null;
+    }
+    return preview;
+  };
+
+  // The customer's own amounts, measured once, from the draft they typed — not
+  // from the incumbent, so a chain of challengers cannot drift away one step at
+  // a time while each step looks harmless.
+  const userIntentBaselineForSelector = buildUserIntentBaseline(input, solverSet);
+  const incumbentUserIntentDrift = userIntentDriftTotal(
+    userIntentBaselineForSelector,
+    incumbentInput,
+  );
+
+  const budget = {
+    remaining: DIRECTION_SELECTOR_EVALUATION_BUDGET,
+    probes: DIRECTION_SELECTOR_LINE_SEARCH_BUDGET,
+  };
+  let bestInput = incumbentInput;
+  let bestDistance = incumbentDistance;
+  let bestCost = relaxationCost(incumbentInput);
+  let bestPreview: ConstraintPreview | null = null;
+
+  for (let pass = 0; pass < DIRECTION_SELECTOR_MAX_PASSES; pass += 1) {
+    if (budget.remaining <= 0 || bestDistance <= SEVERITY_EPS) break;
+    const challengers = directionChallengerVectors(
+      bestInput,
+      solverSet,
+      excludedIngredientIds,
+      axes,
+      budget,
+    );
+    if (challengers.length === 0) break;
+    let improvedThisPass = false;
+    for (const challenger of challengers) {
+      const distance = directionDistanceOf(challenger);
+      if (distance >= bestDistance - SEVERITY_EPS) continue;
+      const preview = publishable(challenger);
+      if (preview === null) continue;
+      // The PUBLISHED vector is what is ranked, because practicalization may
+      // round the exact one back out of the band.
+      const published = directionDistanceOf(preview.proposedInput);
+      // ONE definition of nearest decides; relaxation only breaks a TIE.
+      // „Prefer less relaxation when target quality is otherwise equivalent"
+      // (owner decision 2026-09-19, demand-driven relaxation § 6). A candidate
+      // that stays inside every owner band therefore beats an equally near one
+      // that left one, and no candidate is ever taken for relaxing less alone.
+      const publishedCost = relaxationCost(preview.proposedInput);
+      const nearer = published < bestDistance - SEVERITY_EPS;
+      const equallyNearButTighter =
+        Math.abs(published - bestDistance) <= SEVERITY_EPS && publishedCost < bestCost - 1e-12;
+      if (!nearer && !equallyNearButTighter) continue;
+      bestInput = preview.proposedInput;
+      bestDistance = published;
+      bestCost = publishedCost;
+      bestPreview = preview;
+      improvedThisPass = true;
+    }
+    if (!improvedThisPass) break;
+  }
+
+  if (bestPreview === null) return incumbent;
+  // Carry every field the incumbent's own route established; only the candidate
+  // and the fields `finishPreview` re-derives from it change.
+  const merged: ConstraintPreview = {
+    ...incumbent.preview,
+    ...bestPreview,
+    // `directionCandidateSource` is deliberately INHERITED, not overwritten: it
+    // feeds `exactDirectionMainProofKind`, so inventing a value here would
+    // change the Main proof path for previews that never carried one. The
+    // selector records itself in its own field.
+    directionCandidateSource: incumbent.preview.directionCandidateSource,
+    // Re-derived, never inherited: the flag describes THIS vector, and the
+    // Main proof (`exactDirectionMainProofKind`) reads it.
+    mainHeldByExactDirection:
+      incumbent.preview.mainHeldByExactDirection === true &&
+      mainGroupLinesByteIdentical(input, bestPreview.proposedInput)
+        ? true
+        : undefined,
+    directionNearestSelected: true,
+    directionEnvelope: envelope,
+    relaxationCost: relaxationCost(bestPreview.proposedInput),
+    relaxedOwnerRanges: relaxedOwnerRanges(bestPreview.proposedInput).map((range) => ({
+      policyId: range.policyId,
+      lineIds: range.lineIds,
+      grams: range.grams,
+      normalMinGrams: range.normal.minGrams,
+      normalMaxGrams: range.normal.maxGrams,
+      extendedMinGrams: range.extended.minGrams,
+      extendedMaxGrams: range.extended.maxGrams,
+      normalizedExcursion: range.normalizedExcursion,
+    })),
+  };
+  return { ...incumbent, preview: merged };
+}
+
+/**
+ * STAGE B — CONTROLLED ±2 RELAXATION (owner decision 2026-09-19 § 2, § 8, § 13).
+ *
+ * DEMAND-DRIVEN, not request-driven. A ±2 request makes Stage B AVAILABLE; it
+ * does not make relaxation happen. The sequence the owner set out:
+ *
+ *   1. Stage A runs with normal bounds — always, for every level.
+ *   2. Ask whether the requested ±2 target is reached.
+ *   3. Only then is Stage B activated at all.
+ *   4. It generates candidates with the REGISTERED relaxable ranges widened.
+ *   5. A relaxed candidate wins ONLY by being nearer under the one canonical
+ *      nearest authority, while passing every hard gate unchanged.
+ *   6. On equal nearness the tighter candidate wins, inside the selector.
+ *   7. Nothing unrelated is ever relaxed: the registry decides, per policy.
+ *
+ * So leaving the normal envelope is never free and never automatic. If Stage A
+ * already reaches the target, Stage B does not run. If it runs and finds
+ * nothing nearer, Stage A's answer is published unchanged — with the attempt
+ * recorded, because „we tried and the normal result was still best" is itself
+ * evidence. If it finds something nearer, that candidate is published as VALID,
+ * flagged as relaxed, and the canonical fit charges it a modest ideality
+ * penalty. It is never rejected for having left a preference band.
+ *
+ * Hard authorities are untouched throughout: safety, physical limits, machine
+ * and process limits, batch capacity, Main/Crown, user locks and exact values
+ * are not relaxable and are not in the registry.
+ */
+function selectControlledRelaxationCandidate(
+  input: RecipeInput,
+  set: ConstraintSet,
+  createdAt: string,
+  options: OptimizePreviewOptions,
+  stageA: BuildPreviewResult,
+): BuildPreviewResult {
+  if (optimizePreviewDepth > 1) return stageA;
+  // 2. — only an EXTREME request may ever use it.
+  if (!directionRelaxationPermitted(input)) return stageA;
+  if (!stageA.ok) return stageA;
+  if (stageA.preview.diagnosticOnly === true) return stageA;
+  const stageADistance = directionDistanceOf(stageA.preview.proposedInput);
+  // 2. — and only when Stage A did not reach the requested target.
+  if (stageADistance <= SEVERITY_EPS) return stageA;
+  // 7. — nothing registered on this draft means nothing to widen.
+  const widened = withExtendedRelaxableRanges(input, solverHolds(stageA.preview.proposedInput, set));
+  if (widened === solverHolds(stageA.preview.proposedInput, set)) return stageA;
+
+  const stageB = selectNearestLegalDirectionCandidate(
+    input,
+    set,
+    createdAt,
+    options,
+    stageA,
+    'extended',
+  );
+  const attempted = { ...stageA.preview, directionRelaxationAttempted: true };
+  if (!stageB.ok) return { ...stageA, preview: attempted };
+  const stageBDistance = directionDistanceOf(stageB.preview.proposedInput);
+  // 5. — STRICTLY nearer, judged by the same authority that judged Stage A.
+  // Anything else keeps the normal result: the normal envelope is preferred and
+  // is never left for an equal answer.
+  if (!(stageBDistance < stageADistance - SEVERITY_EPS)) {
+    return { ...stageA, preview: attempted };
+  }
+  return {
+    ...stageB,
+    preview: { ...stageB.preview, directionRelaxationAttempted: true },
+  };
+}
+
+/**
+ * RE-ENTRANCY DEPTH of the preview pipeline (P1 — cost guard for the escape).
+ *
+ * Every internal re-entry — the soft-anchor probe, the Direction fallback ladder,
+ * a Rescue simulation, a substitution, a removal, the Main frontier's own probes —
+ * goes back through `buildOptimizePreview`. Those inner previews are evaluations,
+ * not answers: the customer is shown exactly ONE of them, the outermost. The
+ * Direction escape belongs to that one and to no other — it is what decides a
+ * Direction VERDICT, while an inner preview is deciding a gram value. Without
+ * this, `mainTechnicalMaximum.test.ts` — which builds hundreds of inner
+ * previews — went from 53 s to minutes.
+ */
+let optimizePreviewDepth = 0;
+
+/**
+ * ONE Direction escape per user-facing Preview. A coordinate-descent trap is
+ * broken once; a preview builds the solver many times over (seeds, Main
+ * candidates, strategies), and letting every one of them take the escape turns
+ * a way out into a second objective that competes with repair for the round
+ * budget. Reset with the outermost preview so it is never leaked between two.
+ */
+let directionEscapeUsedInPreview = false;
+
 export function buildOptimizePreview(
+  input: RecipeInput,
+  set: ConstraintSet,
+  createdAt: string,
+  options: OptimizePreviewOptions = {},
+): BuildPreviewResult {
+  optimizePreviewDepth += 1;
+  if (optimizePreviewDepth === 1) directionEscapeUsedInPreview = false;
+  try {
+    const answered = buildOptimizePreviewOutermost(input, set, createdAt, options);
+    // STAGE A — the normal / ideal envelope. The preferred path has answered;
+    // publish the nearest legal candidate it or a bounded challenger produces,
+    // inside the owner's standard ranges. This is the whole story for ±1.
+    const stageA = selectNearestLegalDirectionCandidate(input, set, createdAt, options, answered);
+    // STAGE B — the controlled extended envelope, for ±2 only, on demand.
+    return selectControlledRelaxationCandidate(input, set, createdAt, options, stageA);
+  } finally {
+    optimizePreviewDepth -= 1;
+  }
+}
+
+function buildOptimizePreviewOutermost(
   input: RecipeInput,
   set: ConstraintSet,
   createdAt: string,
@@ -8593,6 +9483,7 @@ function buildOptimizePreviewWithDirection(
     options.effectivePriceOverrides,
     null,
     options.productBehaviorSnapshots,
+    optimizePreviewDepth <= 1,
   );
   // Same precedence as the formulation route: the Crown authority owns an
   // uncrowned manual Main target, capped at the request.

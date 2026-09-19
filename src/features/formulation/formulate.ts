@@ -53,7 +53,7 @@ import {
 import {
   OWNER_INULIN_POLICY,
   ownerInulinGramBand,
-  ownerInulinPresentDoseIsValid,
+  ownerInulinDoseIsPermitted,
 } from '@/features/product-intelligence/ownerInulinPolicy';
 import { resolveMainRatioScale } from './mainIngredientContract';
 
@@ -189,7 +189,7 @@ export function routeFormulationMode(input: RecipeInput, set: ConstraintSet): Mo
     .reduce((total, item) => total + item.planned_grams, 0);
   const ownerInulinNeedsFormulation =
     selectedInulinGrams > 0 &&
-    !ownerInulinPresentDoseIsValid(input.target_batch_grams, selectedInulinGrams);
+    !ownerInulinDoseIsPermitted(input, selectedInulinGrams);
   const stabilizerAssessment = gelatoStabilizerSystemApplies(input.category)
     ? assessGelatoStabilizerSystem(input)
     : sorbetStabilizerSystemApplies(input.category)
@@ -660,7 +660,7 @@ export function buildFormulationProposal(
     (sum, line) => sum + line.item.planned_grams,
     0,
   );
-  const ownerInulinAlreadyValid = ownerInulinPresentDoseIsValid(batch, positiveInulinTotal);
+  const ownerInulinAlreadyValid = ownerInulinDoseIsPermitted(input, positiveInulinTotal);
   const ownerInulinBand = ownerInulinGramBand(batch);
 
   // 2. Map template roles → selected lines (role grams split equally when the

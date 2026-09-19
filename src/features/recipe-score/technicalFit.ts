@@ -68,6 +68,27 @@ export interface TechnicalFitPresentation {
   provisional: boolean;
   /** Honest count of out-of-band metrics driving the degrade. */
   violationCount: number;
+  /* ── controlled-relaxation evidence (owner decision 2026-09-19) ─────────
+   * Only the `recipeFitForInput` seam fills these; the pure engine-result
+   * adapter above knows nothing about owner dosage bands and leaves them out.
+   * `relaxationCost` is the PROPORTIONAL quantity (0 = fully inside every
+   * owner band, 1 = at the controlled maximum); the integer `score` above is
+   * the public view of it, and is never shown with decimals. */
+  /** 0 when nothing was relaxed. */
+  relaxationCost?: number;
+  /** Whole points already subtracted from `score`. */
+  relaxationPenalty?: number;
+  /** Every owner band this recipe left, with what it was allowed. */
+  relaxedRanges?: ReadonlyArray<{
+    policyId: string;
+    lineIds: readonly string[];
+    grams: number;
+    normalMinGrams: number;
+    normalMaxGrams: number;
+    extendedMinGrams: number;
+    extendedMaxGrams: number;
+    normalizedExcursion: number;
+  }>;
 }
 
 const clampToScale = (value: number): TenPointScore =>

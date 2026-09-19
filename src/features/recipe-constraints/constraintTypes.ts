@@ -24,7 +24,28 @@ export type IngredientConstraint =
   | { mode: 'ai' }
   | { mode: 'locked'; grams: number }
   | { mode: 'percent'; percent: number }
-  | { mode: 'range'; minGrams: number; maxGrams: number };
+  | {
+      mode: 'range';
+      minGrams: number;
+      maxGrams: number;
+      /**
+       * TRUE ⇒ this interval is a genuinely HARD profile / calibration limit,
+       * not a dosage PREFERENCE (owner decision 2026-09-19 § 7).
+       *
+       * `range` normally means „the line MAY move anywhere inside this
+       * interval". A structural envelope says something different: the line is
+       * governed by verified formulation science and the search has no
+       * authority to place it, only the profile does. The generic gram search
+       * therefore treats a structural range as a HOLD, exactly as it treated
+       * every range before that semantics was corrected, while every
+       * preference range became searchable.
+       *
+       * Never set by a customer constraint — only by an authority that owns a
+       * physical or calibrated limit. It is never widened by the controlled
+       * ±2 relaxation.
+       */
+      structural?: boolean;
+    };
 
 /** Per-recipe constraint set, keyed by recipe line id (`RecipeItem.id`). */
 export interface ConstraintSet {
