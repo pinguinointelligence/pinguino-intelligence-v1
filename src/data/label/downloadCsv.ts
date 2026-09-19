@@ -20,8 +20,14 @@ export function downloadCsv(filename: string, csv: string): void {
 /**
  * Print through an isolated iframe in the current document. The native dialog
  * opens only after the document, fonts and images are ready.
+ *
+ * `documentName` becomes the name the browser suggests when the operator saves the
+ * printout as PDF. Chrome takes that name from the TOP document's title, not from the
+ * printed iframe's — which is why a label used to be saved under the application's own
+ * name. So the host title is borrowed for the length of the dialog and put back after,
+ * including when printing throws.
  */
-export async function printLabelHtml(html: string): Promise<void> {
+export async function printLabelHtml(html: string, documentName?: string): Promise<void> {
   const frame = document.createElement('iframe');
   frame.title = 'Dokument etykiety do wydruku';
   frame.setAttribute('aria-hidden', 'true');
@@ -63,6 +69,24 @@ export async function printLabelHtml(html: string): Promise<void> {
           }),
     ),
   );
-  target.addEventListener('afterprint', () => frame.remove(), { once: true });
-  target.print();
+  const hostTitle = document.title;
+  const restoreTitle = () => {
+    if (documentName) document.title = hostTitle;
+  };
+  target.addEventListener(
+    'afterprint',
+    () => {
+      restoreTitle();
+      frame.remove();
+    },
+    { once: true },
+  );
+  if (documentName) document.title = documentName;
+  try {
+    target.print();
+  } catch (cause) {
+    restoreTitle();
+    frame.remove();
+    throw cause;
+  }
 }
