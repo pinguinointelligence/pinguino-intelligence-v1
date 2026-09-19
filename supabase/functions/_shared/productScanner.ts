@@ -268,6 +268,107 @@ export function extractResponseText(payload: Record<string, unknown>): string | 
   return null;
 }
 
+export type StructuredProviderOutputFailure =
+  'model_refusal' | 'provider_incomplete' | 'missing_output' | 'malformed_json' | 'schema_invalid';
+
+export type StructuredProviderOutput =
+  | { ok: true; value: Record<string, unknown> }
+  | { ok: false; reasonCode: StructuredProviderOutputFailure };
+
+const schemaObject = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
+function providerRefused(payload: Record<string, unknown>): boolean {
+  if (!Array.isArray(payload.output)) return false;
+  return payload.output.some((item) => {
+    const row = schemaObject(item);
+    if (row.type === 'refusal' || (typeof row.refusal === 'string' && row.refusal.trim() !== ''))
+      return true;
+    return Array.isArray(row.content)
+      ? row.content.some((part) => {
+          const content = schemaObject(part);
+          return (
+            content.type === 'refusal' ||
+            (typeof content.refusal === 'string' && content.refusal.trim() !== '')
+          );
+        })
+      : false;
+  });
+}
+
+/** Minimal JSON-Schema evaluator for the strict provider schemas used by Scanner. */
+export function matchesStructuredProviderSchema(value: unknown, schemaValue: unknown): boolean {
+  const schema = schemaObject(schemaValue);
+  if ('const' in schema && !Object.is(value, schema.const)) return false;
+  if (Array.isArray(schema.enum) && !schema.enum.some((entry) => Object.is(entry, value)))
+    return false;
+
+  const declaredTypes = Array.isArray(schema.type)
+    ? schema.type.map(String)
+    : typeof schema.type === 'string'
+      ? [schema.type]
+      : [];
+  const matchesType = (type: string): boolean => {
+    if (type === 'null') return value === null;
+    if (type === 'array') return Array.isArray(value);
+    if (type === 'object')
+      return value !== null && typeof value === 'object' && !Array.isArray(value);
+    if (type === 'number') return typeof value === 'number' && Number.isFinite(value);
+    if (type === 'integer') return typeof value === 'number' && Number.isInteger(value);
+    return typeof value === type;
+  };
+  if (declaredTypes.length > 0 && !declaredTypes.some(matchesType)) return false;
+
+  if (Array.isArray(value)) {
+    if (typeof schema.maxItems === 'number' && value.length > schema.maxItems) return false;
+    return (
+      schema.items === undefined ||
+      value.every((item) => matchesStructuredProviderSchema(item, schema.items))
+    );
+  }
+  if (value !== null && typeof value === 'object') {
+    const row = value as Record<string, unknown>;
+    const properties = schemaObject(schema.properties);
+    const required = Array.isArray(schema.required) ? schema.required.map(String) : [];
+    if (required.some((key) => !(key in row))) return false;
+    if (schema.additionalProperties === false) {
+      const allowed = new Set(Object.keys(properties));
+      if (Object.keys(row).some((key) => !allowed.has(key))) return false;
+    }
+    return Object.entries(row).every(
+      ([key, item]) =>
+        properties[key] === undefined || matchesStructuredProviderSchema(item, properties[key]),
+    );
+  }
+  return true;
+}
+
+/**
+ * Refusal, missing text, malformed JSON and schema-invalid JSON are four different failures.
+ * None may be normalized into an empty-but-completed Scanner result.
+ */
+export function parseStructuredProviderOutput(
+  payload: Record<string, unknown>,
+  schema: unknown,
+): StructuredProviderOutput {
+  if (providerRefused(payload)) return { ok: false, reasonCode: 'model_refusal' };
+  if (payload.status !== 'completed') return { ok: false, reasonCode: 'provider_incomplete' };
+  const text = extractResponseText(payload);
+  if (!text || text.trim() === '') return { ok: false, reasonCode: 'missing_output' };
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { ok: false, reasonCode: 'malformed_json' };
+  }
+  if (!matchesStructuredProviderSchema(parsed, schema)) {
+    return { ok: false, reasonCode: 'schema_invalid' };
+  }
+  return { ok: true, value: parsed as Record<string, unknown> };
+}
+
 export function webCallsInResponse(payload: Record<string, unknown>): number {
   if (!Array.isArray(payload.output)) return 0;
   return payload.output.filter(

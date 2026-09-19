@@ -4,9 +4,9 @@ import {
   PRODUCT_SCAN_RESPONSE_SCHEMA,
   scanResultFromLookupFacts,
   SYSTEM_PROMPT,
-  extractResponseText,
   mergeProductScanResults,
   normalizeValidatedBarcode,
+  parseStructuredProviderOutput,
   scannerCaptureFormatForSymbology,
   sha256Text,
   stableJson,
@@ -15,7 +15,10 @@ import {
   validateServerResult,
   webCallsInResponse,
 } from '../_shared/productScanner.ts';
-import { requestedLabelFields } from '../../../src/features/product-scanner/labelAnalysisRequest.ts';
+import {
+  analysisIdempotencyKey,
+  requestedLabelFields,
+} from '../../../src/features/product-scanner/labelAnalysisRequest.ts';
 import {
   candidateFromGtinRow,
   exactLookupQueries,
@@ -39,9 +42,12 @@ import {
   lookupSkippedNoticePl,
 } from '../../../src/features/product-scanner/eanLookupOutcome.ts';
 import {
-  openFoodFactsApiUrl,
-  openFoodFactsFactsForExactEan,
-} from '../../../src/features/product-scanner/openFoodFactsDirectLookup.ts';
+  combineExternalEvidenceResults,
+  fetchOpenFoodFactsEvidence,
+  type ExternalEvidenceAttempt,
+  type ExternalEvidenceOutcome,
+  type ExternalEvidenceResult,
+} from '../../../src/features/product-scanner/externalEvidenceOutcome.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -93,6 +99,11 @@ const objectValue = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+
+const nonNegativeNumber = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
 const isOpenFoodFactsSource = (fact: Record<string, unknown>): boolean => {
   if (fact.sourceDomain === 'world.openfoodfacts.org') return true;
   if (typeof fact.sourceUrl !== 'string') return false;
@@ -659,56 +670,35 @@ Deno.serve(async (request) => {
       response's own `code` is byte-for-byte the normalized scanned EAN. Existing research remains
       available, but only for fields the direct record did not supply.
     */
-    let directFacts: Record<string, unknown>[] = [];
-    try {
-      const endpoint = new URL(openFoodFactsApiUrl(barcode));
-      endpoint.searchParams.set(
-        'fields',
-        [
-          'code',
-          'product_name',
-          'generic_name',
-          'brands',
-          'quantity',
-          'categories',
-          'categories_tags',
-          'ingredients_text',
-          'allergens',
-          'allergens_tags',
-          'origins',
-          'origins_tags',
-          'nutrition_data_per',
-          'nutriments',
-        ].join(','),
-      );
-      const response = await fetch(endpoint, {
-        method: 'GET',
-        signal: AbortSignal.timeout(8_000),
-        headers: {
-          Accept: 'application/json',
-          'User-Agent': 'GellattiProductScanner/1.0 (https://pinguinoai.com)',
-        },
-      });
-      if (response.status === 404) {
-        directFacts = [];
-      } else if (response.ok) {
-        directFacts = openFoodFactsFactsForExactEan(
-          await response.json(),
-          barcode,
-          new Date().toISOString(),
-        ).facts;
-      }
-    } catch {
-      // The existing research provider below is the bounded fallback for every missing field.
-    }
+    const directEvidence = await fetchOpenFoodFactsEvidence({
+      sessionId,
+      canonicalGtin: barcode,
+      attemptedAt: new Date().toISOString(),
+    });
+    const directFacts = directEvidence.facts;
 
     const directFields = new Set(directFacts.map((fact) => String(fact.field ?? '')));
     const unresolvedLookupFields = EAN_LOOKUP_FIELDS.filter((field) => !directFields.has(field));
-    let fallbackFacts: Record<string, unknown>[] = [];
-    let fallbackProviderError: string | null = null;
+    let fallbackEvidence: ExternalEvidenceResult | null = null;
     /** What the provider ACTUALLY did — a cache hit costs nothing and must say so. */
     let providerWebCalls = 0;
     if (unresolvedLookupFields.length > 0) {
+      const attemptedAt = new Date().toISOString();
+      const fallbackAttempt = (
+        outcome: ExternalEvidenceOutcome,
+        reasonCode: string,
+        retryable: boolean,
+        sourceReceipt: string | null = null,
+      ): ExternalEvidenceAttempt => ({
+        provider: 'intimport_enrich',
+        outcome,
+        reasonCode,
+        retryable,
+        attemptedAt,
+        sessionId,
+        canonicalGtin: barcode,
+        sourceReceipt,
+      });
       try {
         // The narrowest dedicated server-side source path this repository has, called
         // with its OWN flag, its OWN caps and its OWN source-authority classification.
@@ -747,31 +737,93 @@ Deno.serve(async (request) => {
             researchStep: { kind: 'GTIN_LOOKUP', url: null, allowedDomains: [] },
             fields: unresolvedLookupFields,
           }),
+          signal: AbortSignal.timeout(15_000),
         });
-        const payload = objectValue(await response.json());
-        if (!response.ok) throw new Error('lookup_provider_failed');
+        let payload: Record<string, unknown>;
+        try {
+          payload = objectValue(await response.json());
+        } catch {
+          payload = {};
+        }
+        const declaredOutcome = [
+          'FOUND',
+          'NOT_FOUND',
+          'UNAVAILABLE',
+          'RATE_LIMITED',
+          'TIMEOUT',
+          'MALFORMED',
+          'FAILED',
+        ].includes(String(payload.providerOutcome))
+          ? (String(payload.providerOutcome) as ExternalEvidenceOutcome)
+          : null;
+        const typedOutcome: ExternalEvidenceOutcome =
+          declaredOutcome ??
+          (response.status === 429
+            ? 'RATE_LIMITED'
+            : response.status >= 500
+              ? 'UNAVAILABLE'
+              : 'MALFORMED');
+        const reasonCode =
+          typeof payload.reasonCode === 'string'
+            ? payload.reasonCode
+            : response.ok
+              ? 'fallback_missing_typed_outcome'
+              : `fallback_http_${response.status}`;
+        const sourceReceipt =
+          typeof payload.evidenceReceipt === 'string'
+            ? payload.evidenceReceipt
+            : typeof payload.sourceReceipt === 'string'
+              ? payload.sourceReceipt
+              : null;
         /*
           OFF was already acquired and exact-EAN verified above. The fallback may supply missing
           manufacturer/retailer facts, but any OFF copy it reports is discarded so it cannot
           become a second registry receipt or independently populate competing OFF fields.
         */
-        fallbackFacts = Array.isArray(payload.facts)
-          ? payload.facts.map(objectValue).filter((fact) => !isOpenFoodFactsSource(fact))
-          : [];
-        fallbackProviderError = typeof payload.error === 'string' ? payload.error : null;
+        const fallbackFacts =
+          typedOutcome === 'FOUND' && Array.isArray(payload.facts)
+            ? payload.facts.map(objectValue).filter((fact) => !isOpenFoodFactsSource(fact))
+            : [];
         providerWebCalls =
-          payload.cacheHit === true ? 0 : Math.max(0, Math.min(3, Number(payload.webCalls ?? 1)));
-      } catch {
-        fallbackProviderError = 'lookup_provider_unavailable';
+          payload.cacheHit === true
+            ? 0
+            : Math.min(3, nonNegativeNumber(payload.webCalls ?? payload.calls));
+        fallbackEvidence = {
+          attempt: fallbackAttempt(
+            typedOutcome,
+            reasonCode,
+            typeof payload.retryable === 'boolean'
+              ? payload.retryable
+              : !['FOUND', 'NOT_FOUND'].includes(typedOutcome),
+            sourceReceipt,
+          ),
+          facts: fallbackFacts,
+        };
+      } catch (error) {
+        const name =
+          error && typeof error === 'object'
+            ? String((error as { name?: unknown }).name ?? '')
+            : '';
+        const timedOut = name === 'AbortError' || name === 'TimeoutError';
+        fallbackEvidence = {
+          attempt: fallbackAttempt(
+            timedOut ? 'TIMEOUT' : 'UNAVAILABLE',
+            timedOut ? 'fallback_timeout' : 'fallback_fetch_failed',
+            true,
+          ),
+          facts: [],
+        };
       }
     }
-    const facts = [...directFacts, ...(fallbackProviderError ? [] : fallbackFacts)];
+    const combinedEvidence = combineExternalEvidenceResults([
+      directEvidence,
+      ...(fallbackEvidence ? [fallbackEvidence] : []),
+    ]);
+    const facts = combinedEvidence.facts;
     const lookupResult = scanResultFromLookupFacts(facts);
-    // A usable direct OFF record is already an answer even if research for its remaining fields
-    // was temporarily unavailable. With no direct facts, preserve the prior retryable semantics.
-    const providerAnswered = directFacts.length > 0 || fallbackProviderError === null;
     const verdict = eanLookupVerdict({
-      providerAnswered,
+      providerOutcome: combinedEvidence.outcome,
+      providerRetryable: combinedEvidence.retryable,
       resultSurvived: lookupResult !== null,
       providerWebCalls,
     });
@@ -809,23 +861,46 @@ Deno.serve(async (request) => {
           (priorAssets ?? []).map((asset) => String(asset.id)),
         )
       : null;
-    if (merged && lookupValidation) {
-      const { error: lookupCompleteError } = await service.rpc(
-        'complete_product_scan_ean_lookup_v1',
-        {
-          p_actor_user_id: auth.user.id,
-          p_session_id: sessionId,
-          p_result: merged,
-          p_validation: {
+    const priorValidation = objectValue(existingSession?.validation_json);
+    const priorExternalEvidence = objectValue(priorValidation.externalEvidence);
+    const priorExternalAttempts = Array.isArray(priorExternalEvidence.attempts)
+      ? priorExternalEvidence.attempts.filter(
+          (attempt) => attempt && typeof attempt === 'object' && !Array.isArray(attempt),
+        )
+      : [];
+    const externalEvidence = {
+      sessionId,
+      canonicalGtin: barcode,
+      outcome: combinedEvidence.outcome,
+      attempts: [...priorExternalAttempts, ...combinedEvidence.attempts].slice(-8),
+    };
+    const validationForPersistence = {
+      ...priorValidation,
+      ...(lookupValidation
+        ? {
             missingCriticalFields: lookupValidation.missingCriticalFields,
             highRiskAuthorityRequired: lookupValidation.highRiskAuthorityRequired,
-          },
-          p_overlay_state: lookupValidation.overlayState,
-          p_cost_usd: providerWebCalls * 0.01,
-        },
-      );
-      if (lookupCompleteError) return json({ error: 'scanner_result_persistence_failed' }, 503);
-    }
+          }
+        : {}),
+      externalEvidence,
+    };
+    const persistenceOverlay =
+      lookupValidation?.overlayState ??
+      (typeof existingSession?.overlay_state === 'string' ? existingSession.overlay_state : null) ??
+      'SCAN_DRAFT';
+    const { error: lookupCompleteError } = await service.rpc(
+      'complete_product_scan_ean_lookup_v1',
+      {
+        p_actor_user_id: auth.user.id,
+        p_session_id: sessionId,
+        // null records the typed attempt without manufacturing a result or changing session state.
+        p_result: merged,
+        p_validation: validationForPersistence,
+        p_overlay_state: persistenceOverlay,
+        p_cost_usd: providerWebCalls * 0.01,
+      },
+    );
+    if (lookupCompleteError) return json({ error: 'scanner_result_persistence_failed' }, 503);
     /*
       GIVE AN UNSPENT ALLOWANCE BACK. `reserve_product_scan_ean_lookup_v1` increments web_calls
       BEFORE the provider is called and refuses at `web_calls >= 1`, so a provider that never
@@ -834,26 +909,38 @@ Deno.serve(async (request) => {
       restricted to the case where nothing was billed, and the RPC checks that independently
       against the session, its external sources and the provider's own usage ledger.
     */
+    let lookupRetryable = verdict.retryable;
     if (verdict.releaseReservation) {
-      const { error: releaseError } = await service.rpc('release_product_scan_ean_lookup_v1', {
-        p_actor_user_id: auth.user.id,
-        p_session_id: sessionId,
-      });
+      const { data: release, error: releaseError } = await service.rpc(
+        'release_product_scan_ean_lookup_v1',
+        {
+          p_actor_user_id: auth.user.id,
+          p_session_id: sessionId,
+        },
+      );
       if (releaseError) return json({ error: 'scanner_lookup_release_failed' }, 503);
+      // A provider may have billed tokens without web calls. Its own usage ledger then correctly
+      // refuses release; do not advertise a retry that the same session cannot perform.
+      lookupRetryable = objectValue(release).released === true;
     }
     return json({
       sessionId,
       kind: 'ean_lookup',
       outcome: verdict.outcome,
+      externalEvidenceOutcome: combinedEvidence.outcome,
       resolvedNothing: verdict.outcome === 'resolved_nothing',
       providerUnavailable: verdict.outcome === 'provider_unavailable',
       /** Whether pressing "try again" on THIS session can produce a different answer. */
-      retryable: verdict.retryable,
+      retryable: lookupRetryable,
       /** Plain Polish, ready to show: what happened, and what resolves it. */
       notice: verdict.noticePl,
       result: merged ?? existingSession?.result_json ?? null,
-      overlayState: lookupValidation?.overlayState ?? null,
-      missingCriticalFields: lookupValidation?.missingCriticalFields ?? [],
+      overlayState: lookupValidation?.overlayState ?? existingSession?.overlay_state ?? null,
+      missingCriticalFields:
+        lookupValidation?.missingCriticalFields ??
+        (Array.isArray(priorValidation.missingCriticalFields)
+          ? priorValidation.missingCriticalFields
+          : []),
       usage: {
         visionCalls: Number(existingSession?.vision_calls ?? 0),
         webCalls: providerWebCalls,
@@ -970,6 +1057,9 @@ Deno.serve(async (request) => {
   const callKind = accurateRetry ? 'accurate' : 'fast';
   const maxVisionCalls = Math.min(2, nonNegativeIntegerEnv('PRODUCT_SCANNER_MAX_VISION_CALLS', 2));
   const priorVisionCalls = Number(existingSession?.vision_calls ?? 0);
+  if (priorVisionCalls >= maxVisionCalls) {
+    return json({ error: 'session_vision_limit', retryable: false }, 429);
+  }
   if (accurateRetry && priorVisionCalls < 1) {
     return json({ error: 'accurate_retry_requires_fast_evidence' }, 409);
   }
@@ -1015,6 +1105,21 @@ Deno.serve(async (request) => {
       projectId,
     }),
   );
+  const { count: priorFailedAttempts, error: failedAttemptsError } = await service
+    .from('product_scan_usage_ledger')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', auth.user.id)
+    .eq('session_id', sessionId)
+    .eq('call_kind', callKind)
+    .eq('payload_hash', payloadHash)
+    .eq('status', 'failed');
+  if (failedAttemptsError) return json({ error: 'scanner_budget_preflight_failed' }, 503);
+  const idempotencyKey = analysisIdempotencyKey(
+    sessionId,
+    callKind,
+    payloadHash,
+    priorFailedAttempts ?? 0,
+  );
   const forwardedIp =
     request.headers.get('cf-connecting-ip') ??
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
@@ -1039,7 +1144,7 @@ Deno.serve(async (request) => {
       p_ip_hash: ipHash,
       p_device_hash: deviceHash,
       p_retry_reason: accurateRetry ? 'missing_or_uncertain_label_evidence' : null,
-      p_idempotency_key: `${sessionId}:${callKind}`,
+      p_idempotency_key: idempotencyKey,
       p_payload_hash: payloadHash,
       p_estimated_cost_usd: estimatedCost,
       p_web_requested: allowWeb,
@@ -1109,12 +1214,134 @@ Deno.serve(async (request) => {
     openAiBody.tools = [{ type: 'web_search' }];
     openAiBody.max_tool_calls = 1;
   }
-  let responsePayload: Record<string, unknown>;
-  let providerDiagnostic: Record<string, unknown> = {};
   const requestStartedAt = Date.now();
+  const providerAttempt = (
+    outcome: 'FOUND' | 'UNAVAILABLE' | 'RATE_LIMITED' | 'TIMEOUT' | 'MALFORMED' | 'FAILED',
+    reasonCode: string,
+    retryable: boolean,
+  ) => ({
+    provider: 'openai_responses',
+    outcome,
+    reasonCode,
+    retryable,
+    attemptedAt: new Date(requestStartedAt).toISOString(),
+    sessionId,
+    canonicalGtin: barcode,
+    sourceReceipt: outcome === 'FOUND' ? String(reserved.reservationId ?? '') || null : null,
+    callKind,
+  });
+  const withProviderAttempt = (
+    validationValue: unknown,
+    attempt: ReturnType<typeof providerAttempt>,
+  ): Record<string, unknown> => {
+    const validation = objectValue(validationValue);
+    const priorAttempts = Array.isArray(validation.providerAttempts)
+      ? validation.providerAttempts.filter(
+          (item) => item && typeof item === 'object' && !Array.isArray(item),
+        )
+      : [];
+    return {
+      ...validation,
+      providerAttempts: [...priorAttempts, attempt].slice(-8),
+    };
+  };
+  const appendFailedProviderAttempt = async (
+    attempt: ReturnType<typeof providerAttempt>,
+  ): Promise<boolean> => {
+    // Failure completion intentionally preserves prior session evidence. Append only provenance,
+    // using optimistic concurrency so a late failure cannot overwrite newer validation state.
+    for (let retry = 0; retry < 2; retry += 1) {
+      const { data: current, error: currentError } = await service
+        .from('product_scan_sessions')
+        .select('validation_json,updated_at,state')
+        .eq('id', sessionId)
+        .eq('user_id', auth.user.id)
+        .single();
+      if (currentError) return false;
+      if (current.state === 'expired' || current.state === 'finalized') return true;
+      const { data: updated, error: updateError } = await service
+        .from('product_scan_sessions')
+        .update({ validation_json: withProviderAttempt(current.validation_json, attempt) })
+        .eq('id', sessionId)
+        .eq('user_id', auth.user.id)
+        .eq('updated_at', current.updated_at)
+        .select('id')
+        .maybeSingle();
+      if (updateError) return false;
+      if (updated) return true;
+    }
+    return false;
+  };
+  const failedAnalysis = async (
+    error: string,
+    providerOutcome: 'UNAVAILABLE' | 'RATE_LIMITED' | 'TIMEOUT' | 'MALFORMED' | 'FAILED',
+    status: number,
+    responsePayload: Record<string, unknown> = {},
+    providerDiagnostic: Record<string, unknown> = {},
+  ): Promise<Response> => {
+    const usage = objectValue(responsePayload.usage);
+    const inputTokens = nonNegativeNumber(usage.input_tokens);
+    const outputTokens = nonNegativeNumber(usage.output_tokens);
+    const webCalls = Math.min(1, webCallsInResponse(responsePayload));
+    const latencyMs = Date.now() - requestStartedAt;
+    const actualCost =
+      (inputTokens / 1_000_000) * pricing.input +
+      (outputTokens / 1_000_000) * pricing.output +
+      webCalls * 0.01;
+    const { error: failurePersistenceError } = await service.rpc(
+      'complete_product_scan_analysis_v1',
+      {
+        p_actor_user_id: auth.user.id,
+        p_session_id: sessionId,
+        p_reservation_id: reserved.reservationId,
+        p_status: 'failed',
+        p_result: null,
+        p_validation: {
+          error,
+          providerOutcome,
+          retryable: true,
+          attemptedAt: new Date(requestStartedAt).toISOString(),
+          ...providerDiagnostic,
+        },
+        // The RPC preserves the previous overlay/result on failure.
+        p_overlay_state: 'BLOCKED',
+        p_input_tokens: inputTokens,
+        p_output_tokens: outputTokens,
+        p_web_calls: webCalls,
+        p_latency_ms: latencyMs,
+        p_actual_cost_usd: actualCost,
+      },
+    );
+    if (failurePersistenceError) return json({ error: 'scanner_result_persistence_failed' }, 503);
+    const provenancePersisted = await appendFailedProviderAttempt(
+      providerAttempt(providerOutcome, error, true),
+    );
+    if (!provenancePersisted)
+      return json(
+        { error: 'scanner_result_persistence_failed', providerOutcome, reasonCode: error },
+        503,
+      );
+    return json(
+      {
+        error,
+        providerOutcome,
+        retryable: true,
+        providerDiagnostic,
+        usage: {
+          visionCalls: accurateRetry ? 2 : 1,
+          webCalls,
+          estimatedCostUsd: actualCost,
+        },
+      },
+      status,
+    );
+  };
+
+  let response: Response;
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
+    response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
+      signal: AbortSignal.timeout(30_000),
       headers: {
         Authorization: `Bearer ${openAiKey}`,
         'Content-Type': 'application/json',
@@ -1122,55 +1349,74 @@ Deno.serve(async (request) => {
       },
       body: JSON.stringify(openAiBody),
     });
+  } catch (error) {
+    const name =
+      error && typeof error === 'object' ? String((error as { name?: unknown }).name ?? '') : '';
+    return name === 'AbortError' || name === 'TimeoutError'
+      ? failedAnalysis('scanner_provider_timeout', 'TIMEOUT', 504)
+      : failedAnalysis('scanner_provider_unavailable', 'UNAVAILABLE', 502);
+  }
+
+  let responsePayload: Record<string, unknown>;
+  try {
     responsePayload = objectValue(await response.json());
-    if (!response.ok) {
-      const providerError = objectValue(responsePayload.error);
-      providerDiagnostic = {
-        providerStatus: response.status,
-        providerType:
-          typeof providerError.type === 'string' ? providerError.type.slice(0, 100) : null,
-        providerCode:
-          typeof providerError.code === 'string' ? providerError.code.slice(0, 100) : null,
-        providerParam:
-          typeof providerError.param === 'string' ? providerError.param.slice(0, 200) : null,
-      };
-      throw new Error('provider_request_failed');
-    }
   } catch {
-    const latencyMs = Date.now() - requestStartedAt;
-    await service.rpc('complete_product_scan_analysis_v1', {
-      p_actor_user_id: auth.user.id,
-      p_session_id: sessionId,
-      p_reservation_id: reserved.reservationId,
-      p_status: 'failed',
-      p_result: null,
-      p_validation: { error: 'provider_request_failed', ...providerDiagnostic },
-      p_overlay_state: 'BLOCKED',
-      p_input_tokens: 0,
-      p_output_tokens: 0,
-      p_web_calls: 0,
-      p_latency_ms: latencyMs,
-      p_actual_cost_usd: 0,
-    });
-    return json(
-      {
-        error: 'scanner_provider_unavailable',
+    return failedAnalysis('scanner_model_output_malformed', 'MALFORMED', 502);
+  }
+  if (!response.ok) {
+    const providerError = objectValue(responsePayload.error);
+    const providerDiagnostic = {
+      providerStatus: response.status,
+      providerType:
+        typeof providerError.type === 'string' ? providerError.type.slice(0, 100) : null,
+      providerCode:
+        typeof providerError.code === 'string' ? providerError.code.slice(0, 100) : null,
+      providerParam:
+        typeof providerError.param === 'string' ? providerError.param.slice(0, 200) : null,
+    };
+    if (response.status === 429)
+      return failedAnalysis(
+        'scanner_provider_rate_limited',
+        'RATE_LIMITED',
+        429,
+        responsePayload,
         providerDiagnostic,
-        usage: { visionCalls: accurateRetry ? 2 : 1, webCalls: 0, estimatedCostUsd: 0 },
-      },
+      );
+    return failedAnalysis(
+      'scanner_provider_unavailable',
+      'UNAVAILABLE',
       502,
+      responsePayload,
+      providerDiagnostic,
     );
   }
-  const outputText = extractResponseText(responsePayload);
-  let result: unknown;
-  try {
-    result = outputText ? JSON.parse(outputText) : null;
-  } catch {
-    result = null;
+
+  const structured = parseStructuredProviderOutput(responsePayload, PRODUCT_SCAN_RESPONSE_SCHEMA);
+  if (!structured.ok) {
+    const error =
+      structured.reasonCode === 'model_refusal'
+        ? 'scanner_model_refusal'
+        : structured.reasonCode === 'provider_incomplete'
+          ? 'scanner_model_incomplete'
+          : structured.reasonCode === 'missing_output'
+            ? 'scanner_model_output_missing'
+            : structured.reasonCode === 'malformed_json'
+              ? 'scanner_model_output_malformed'
+              : 'scanner_model_output_schema_invalid';
+    return failedAnalysis(
+      error,
+      structured.reasonCode === 'model_refusal' || structured.reasonCode === 'provider_incomplete'
+        ? 'FAILED'
+        : 'MALFORMED',
+      502,
+      responsePayload,
+      { modelOutputFailure: structured.reasonCode },
+    );
   }
+  const result = structured.value;
   const usage = objectValue(responsePayload.usage);
-  const inputTokens = Number(usage.input_tokens ?? 0);
-  const outputTokens = Number(usage.output_tokens ?? 0);
+  const inputTokens = nonNegativeNumber(usage.input_tokens);
+  const outputTokens = nonNegativeNumber(usage.output_tokens);
   const webCalls = Math.min(1, webCallsInResponse(responsePayload));
   const latencyMs = Date.now() - requestStartedAt;
   const actualCost =
@@ -1183,27 +1429,9 @@ Deno.serve(async (request) => {
     images.map((image) => String(image.assetId)),
   );
   if (!currentCallValidation.ok) {
-    await service.rpc('complete_product_scan_analysis_v1', {
-      p_actor_user_id: auth.user.id,
-      p_session_id: sessionId,
-      p_reservation_id: reserved.reservationId,
-      p_status: 'failed',
-      p_result: currentCallResult,
-      p_validation: currentCallValidation,
-      p_overlay_state: 'BLOCKED',
-      p_input_tokens: inputTokens,
-      p_output_tokens: outputTokens,
-      p_web_calls: webCalls,
-      p_latency_ms: latencyMs,
-      p_actual_cost_usd: actualCost,
+    return failedAnalysis('scanner_result_validation_failed', 'MALFORMED', 422, responsePayload, {
+      validationFailure: 'current_call',
     });
-    return json(
-      {
-        error: 'scanner_result_validation_failed',
-        usage: { visionCalls: accurateRetry ? 2 : 1, webCalls, estimatedCostUsd: actualCost },
-      },
-      422,
-    );
   }
   const cumulativeResult = mergeProductScanResults(
     existingSession?.result_json,
@@ -1212,38 +1440,29 @@ Deno.serve(async (request) => {
   );
   const validation = validateServerResult(cumulativeResult, sessionAssetIds);
   if (!validation.ok) {
-    await service.rpc('complete_product_scan_analysis_v1', {
-      p_actor_user_id: auth.user.id,
-      p_session_id: sessionId,
-      p_reservation_id: reserved.reservationId,
-      p_status: 'failed',
-      p_result: cumulativeResult,
-      p_validation: validation,
-      p_overlay_state: 'BLOCKED',
-      p_input_tokens: inputTokens,
-      p_output_tokens: outputTokens,
-      p_web_calls: webCalls,
-      p_latency_ms: latencyMs,
-      p_actual_cost_usd: actualCost,
-    });
-    return json(
-      {
-        error: 'scanner_cumulative_validation_failed',
-        usage: { visionCalls: accurateRetry ? 2 : 1, webCalls, estimatedCostUsd: actualCost },
-      },
+    return failedAnalysis(
+      'scanner_cumulative_validation_failed',
+      'MALFORMED',
       422,
+      responsePayload,
+      { validationFailure: 'cumulative' },
     );
   }
+  const completionValidation = withProviderAttempt(
+    {
+      ...objectValue(existingSession?.validation_json),
+      missingCriticalFields: validation.missingCriticalFields,
+      highRiskAuthorityRequired: validation.highRiskAuthorityRequired,
+    },
+    providerAttempt('FOUND', 'label_analysis_completed', false),
+  );
   const { error: completeError } = await service.rpc('complete_product_scan_analysis_v1', {
     p_actor_user_id: auth.user.id,
     p_session_id: sessionId,
     p_reservation_id: reserved.reservationId,
     p_status: 'completed',
     p_result: cumulativeResult,
-    p_validation: {
-      missingCriticalFields: validation.missingCriticalFields,
-      highRiskAuthorityRequired: validation.highRiskAuthorityRequired,
-    },
+    p_validation: completionValidation,
     p_overlay_state: validation.overlayState,
     p_input_tokens: inputTokens,
     p_output_tokens: outputTokens,

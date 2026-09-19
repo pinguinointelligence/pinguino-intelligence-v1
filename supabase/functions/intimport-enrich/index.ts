@@ -10,8 +10,17 @@ import {
   strongerEanConfirmation,
   type PageEanConfirmation,
 } from '../_shared/pageEanConfirmation.ts';
-import { sha256Text, stableJson } from '../_shared/productScanner.ts';
+import {
+  parseStructuredProviderOutput,
+  sha256Text,
+  stableJson,
+  webCallsInResponse,
+} from '../_shared/productScanner.ts';
 import { sanitizeAccumulatedScannerEvidence } from '../_shared/scannerRescuePipeline.ts';
+import {
+  INTIMPORT_ENRICHMENT_SCHEMA,
+  classifyIntimportEnrichment,
+} from '../../../src/features/product-scanner/intimportEnrichmentOutcome.ts';
 import {
   PRODUCT_RECOGNITION_MODEL_SCHEMA,
   PRODUCT_RECOGNITION_CACHE_REVISION,
@@ -53,6 +62,11 @@ const objectValue = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+
+const nonNegativeNumber = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
 
 const numberEnv = (name: string, fallback: number): number => {
   const value = Number(Deno.env.get(name));
@@ -179,61 +193,6 @@ const RESEARCHABLE = new Set([
   'waterPercent',
   'totalSolidsPercent',
 ]);
-
-/**
- * Strict provider schema. The model reports what it FOUND and where; it never
- * reports how sure it is, and it never sees or sets a confidence score.
- */
-const ENRICHMENT_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['sources', 'facts', 'notFound'],
-  properties: {
-    sources: {
-      type: 'array',
-      maxItems: 6,
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['url', 'title', 'kind'],
-        properties: {
-          url: { type: 'string' },
-          title: { type: 'string' },
-          kind: {
-            type: 'string',
-            enum: ['manufacturer', 'brand', 'technical_pdf', 'retailer', 'database', 'other'],
-          },
-        },
-      },
-    },
-    facts: {
-      type: 'array',
-      maxItems: 24,
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['field', 'value', 'sourceUrl', 'sourceStatedEan'],
-        properties: {
-          field: { type: 'string' },
-          /** Verbatim from the source. Never inferred, never paraphrased into a claim. */
-          value: { type: 'string' },
-          sourceUrl: { type: 'string' },
-          /*
-            The barcode PRINTED ON THAT PAGE, verbatim, or "" when the page shows none. It is the
-            page's own claim about which article it describes, and the SERVER — never the model —
-            decides what it is worth by comparing it to the code that was scanned. Without it a
-            retailer page can only be trusted by its domain, and a domain proves the seller is
-            real, never that the page is the right article: the way two sibling products with
-            adjacent EANs contaminate each other.
-          */
-          sourceStatedEan: { type: 'string' },
-        },
-      },
-    },
-    /** Fields the model looked for and genuinely could not find. */
-    notFound: { type: 'array', maxItems: 24, items: { type: 'string' } },
-  },
-} as const;
 
 const SYSTEM_PROMPT = `You research PUBLIC product information for Gellatti's catalogue.
 
@@ -761,8 +720,29 @@ Deno.serve(async (request) => {
         };
       });
     }
+    const cachedVerdict = classifyIntimportEnrichment(cachedResult, requestedFields);
+    if (cachedVerdict.outcome === 'MALFORMED') {
+      return json(
+        {
+          providerOutcome: 'MALFORMED',
+          reasonCode: 'cached_enrichment_contract_mismatch',
+          retryable: true,
+          facts: [],
+          sources: [],
+          notFound: [],
+          calls: 0,
+          cacheHit: true,
+          error: 'provider_cached_enrichment_contract_mismatch',
+        },
+        502,
+      );
+    }
     return json({
       ...cachedResult,
+      providerOutcome: cachedVerdict.outcome,
+      reasonCode: cachedVerdict.reasonCode,
+      completeness: cachedVerdict.completeness,
+      retryable: false,
       evidenceReceipt: idempotencyKey,
       cacheHit: true,
       calls: 0,
@@ -797,10 +777,73 @@ Deno.serve(async (request) => {
       : `No GTIN is known — identify the exact product by brand, name, variant and net quantity.\n`);
 
   const startedAt = Date.now();
-  let payload: Record<string, unknown>;
+  const attemptedAt = new Date(startedAt).toISOString();
+  const failedProviderResponse = async (
+    providerOutcome: 'UNAVAILABLE' | 'RATE_LIMITED' | 'TIMEOUT' | 'MALFORMED' | 'FAILED',
+    reasonCode: string,
+    status: number,
+    providerPayload: Record<string, unknown> = {},
+  ): Promise<Response> => {
+    const usage = objectValue(providerPayload.usage);
+    const inputTokens = nonNegativeNumber(usage.input_tokens);
+    const outputTokens = nonNegativeNumber(usage.output_tokens);
+    const webCalls = Math.min(4, webCallsInResponse(providerPayload));
+    const failure = {
+      providerOutcome,
+      reasonCode,
+      retryable: true,
+      attemptedAt,
+      canonicalGtin: identity.barcode,
+      facts: [],
+      sources: [],
+      notFound: [],
+      calls: webCalls,
+      webCalls,
+      latencyMs: Date.now() - startedAt,
+      inputTokens,
+      outputTokens,
+      model,
+      error: `provider_${reasonCode}`,
+    };
+    // Persist only attempts for which the provider returned billable usage. A transport failure
+    // with no usage must leave the outer Scanner reservation releasable for a safe retry.
+    if (webCalls > 0 || inputTokens > 0 || outputTokens > 0) {
+      const failedUsageKey = await sha256Text(
+        `${idempotencyKey}:${reasonCode}:${startedAt}:${crypto.randomUUID()}`,
+      );
+      const { error: failedUsageError } = await service.from('intimport_enrichment_usage').insert({
+        user_id: auth.user.id,
+        import_id: importId,
+        idempotency_key: failedUsageKey,
+        model,
+        web_calls: webCalls,
+        input_tokens: inputTokens,
+        output_tokens: outputTokens,
+        latency_ms: failure.latencyMs,
+        fields_requested: requestedFields,
+        result_json: failure,
+      });
+      if (failedUsageError) {
+        return json(
+          {
+            ...failure,
+            providerOutcome: 'FAILED',
+            reasonCode: 'usage_persistence_failed',
+            retryable: false,
+            error: 'provider_usage_persistence_failed',
+          },
+          503,
+        );
+      }
+    }
+    return json(failure, status);
+  };
+
+  let response: Response;
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
+    response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
+      signal: AbortSignal.timeout(12_000),
       headers: {
         Authorization: `Bearer ${openAiKey}`,
         'Content-Type': 'application/json',
@@ -826,47 +869,47 @@ Deno.serve(async (request) => {
             type: 'json_schema',
             name: 'gellatti_intimport_enrichment',
             strict: true,
-            schema: ENRICHMENT_SCHEMA,
+            schema: INTIMPORT_ENRICHMENT_SCHEMA,
           },
         },
       }),
     });
+  } catch (error) {
+    const name =
+      error && typeof error === 'object' ? String((error as { name?: unknown }).name ?? '') : '';
+    return name === 'AbortError' || name === 'TimeoutError'
+      ? failedProviderResponse('TIMEOUT', 'timeout', 504)
+      : failedProviderResponse('UNAVAILABLE', 'unavailable', 502);
+  }
+
+  let payload: Record<string, unknown>;
+  try {
     payload = objectValue(await response.json());
-    if (!response.ok) throw new Error('provider_request_failed');
   } catch {
-    // A single product's failure must never fail the batch (§26).
-    return json(
-      {
-        facts: [],
-        sources: [],
-        notFound: requestedFields,
-        calls: 0,
-        error: 'provider_unavailable',
-      },
-      200,
-    );
+    return failedProviderResponse('MALFORMED', 'invalid_json_response', 502);
+  }
+  if (!response.ok) {
+    if (response.status === 429)
+      return failedProviderResponse('RATE_LIMITED', 'rate_limited', 429, payload);
+    if (response.status >= 500)
+      return failedProviderResponse('UNAVAILABLE', `http_${response.status}`, 502, payload);
+    return failedProviderResponse('FAILED', `http_${response.status}`, 502, payload);
+  }
+
+  const structured = parseStructuredProviderOutput(payload, INTIMPORT_ENRICHMENT_SCHEMA);
+  if (!structured.ok) {
+    return structured.reasonCode === 'model_refusal' ||
+      structured.reasonCode === 'provider_incomplete'
+      ? failedProviderResponse('FAILED', structured.reasonCode, 502, payload)
+      : failedProviderResponse('MALFORMED', structured.reasonCode, 502, payload);
+  }
+  const parsed = structured.value;
+  const declaredVerdict = classifyIntimportEnrichment(parsed, requestedFields);
+  if (declaredVerdict.outcome === 'MALFORMED') {
+    return failedProviderResponse('MALFORMED', declaredVerdict.reasonCode, 502, payload);
   }
 
   const latencyMs = Date.now() - startedAt;
-  const outputText = Array.isArray(payload.output)
-    ? payload.output
-        .flatMap((item) => {
-          const row = objectValue(item);
-          return Array.isArray(row.content) ? row.content : [];
-        })
-        .map((part) => objectValue(part).text)
-        .filter((text): text is string => typeof text === 'string')
-        .join('')
-    : null;
-
-  // A malformed provider response is ignored, never partially trusted.
-  const parsed: Record<string, unknown> = (() => {
-    try {
-      return outputText ? objectValue(JSON.parse(outputText)) : {};
-    } catch {
-      return {};
-    }
-  })();
 
   const declaredSources = Array.isArray(parsed.sources) ? parsed.sources : [];
   const sourceByUrl = new Map<string, { url: string; title: string }>();
@@ -939,13 +982,29 @@ Deno.serve(async (request) => {
       },
     ];
   });
+  // A syntactically valid model fact is not useful evidence until the existing server authority
+  // filters accept it. Reclassify after those filters so rejected facts cannot produce FOUND.
+  const enrichmentVerdict = classifyIntimportEnrichment({ ...parsed, facts }, requestedFields);
+  if (enrichmentVerdict.outcome === 'MALFORMED') {
+    return failedProviderResponse(
+      'MALFORMED',
+      facts.length === 0 ? 'enrichment_no_authoritative_facts' : enrichmentVerdict.reasonCode,
+      502,
+      payload,
+    );
+  }
 
-  const webCalls = Array.isArray(payload.output)
-    ? payload.output.filter((item) => String(objectValue(item).type ?? '').includes('web_search'))
-        .length
-    : 0;
+  const webCalls = webCallsInResponse(payload);
   const usage = objectValue(payload.usage);
   const result = {
+    providerOutcome: enrichmentVerdict.outcome,
+    reasonCode: enrichmentVerdict.reasonCode,
+    completeness: enrichmentVerdict.completeness,
+    retryable: false,
+    attemptedAt,
+    canonicalGtin: identity.barcode,
+    sourceReceipt: idempotencyKey,
+    evidenceReceipt: idempotencyKey,
     requestIdentity: identity,
     requestedFields,
     researchStep,
@@ -958,12 +1017,12 @@ Deno.serve(async (request) => {
     calls: Math.max(1, webCalls),
     webCalls,
     latencyMs,
-    inputTokens: Number(usage.input_tokens ?? 0),
-    outputTokens: Number(usage.output_tokens ?? 0),
+    inputTokens: nonNegativeNumber(usage.input_tokens),
+    outputTokens: nonNegativeNumber(usage.output_tokens),
     model,
   };
 
-  await service.from('intimport_enrichment_usage').insert({
+  const { error: usageInsertError } = await service.from('intimport_enrichment_usage').insert({
     user_id: auth.user.id,
     import_id: importId,
     idempotency_key: idempotencyKey,
@@ -975,6 +1034,21 @@ Deno.serve(async (request) => {
     fields_requested: requestedFields,
     result_json: result,
   });
+  if (usageInsertError) {
+    return json(
+      {
+        ...result,
+        providerOutcome: 'FAILED',
+        reasonCode: 'usage_persistence_failed',
+        retryable: false,
+        facts: [],
+        sources: [],
+        notFound: [],
+        error: 'provider_usage_persistence_failed',
+      },
+      503,
+    );
+  }
 
-  return json({ ...result, evidenceReceipt: idempotencyKey, cacheHit: false });
+  return json({ ...result, cacheHit: false });
 });

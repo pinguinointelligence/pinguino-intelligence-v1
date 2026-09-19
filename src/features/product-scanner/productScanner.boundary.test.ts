@@ -15,6 +15,7 @@ const read = (path: string) => readFileSync(resolve(process.cwd(), path), 'utf8'
 describe('Product Scanner server/client/security boundary', () => {
   const service = read('src/services/productScanner.ts');
   const analyze = read('supabase/functions/product-scan-analyze/index.ts');
+  const externalEvidence = read('src/features/product-scanner/externalEvidenceOutcome.ts');
   const finalize = read('supabase/functions/product-scan-finalize/index.ts');
   const sharedOnboarding = read('supabase/functions/_shared/sharedProductOnboarding.ts');
   const migration = read('supabase/migrations/20260821120000_product_scanner_v1.sql');
@@ -153,12 +154,13 @@ describe('Product Scanner server/client/security boundary', () => {
       analyze.indexOf('// Pre-existing implicit any[]'),
     );
     expect(lookupBranch.indexOf('if (exact)')).toBeLessThan(
-      lookupBranch.indexOf('openFoodFactsApiUrl(barcode)'),
+      lookupBranch.indexOf('fetchOpenFoodFactsEvidence({'),
     );
-    expect(lookupBranch.indexOf('openFoodFactsApiUrl(barcode)')).toBeLessThan(
+    expect(lookupBranch.indexOf('fetchOpenFoodFactsEvidence({')).toBeLessThan(
       lookupBranch.indexOf('/functions/v1/intimport-enrich'),
     );
-    expect(lookupBranch).toContain('openFoodFactsFactsForExactEan');
+    expect(externalEvidence).toContain('openFoodFactsApiUrl(input.canonicalGtin)');
+    expect(externalEvidence).toContain('openFoodFactsFactsForExactEan');
     expect(lookupBranch).toContain('unresolvedLookupFields');
     expect(lookupBranch).toContain('fields: unresolvedLookupFields');
   });

@@ -327,8 +327,20 @@ describe('provider runs server-side only', () => {
     expect(edgeSource).toContain("Math.min(2, numberEnv('INTIMPORT_MAX_CALLS_PER_PRODUCT', 2))");
   });
 
-  it('degrades one product rather than failing the batch', () => {
-    expect(edgeSource).toContain("error: 'provider_unavailable'");
+  it('returns a typed provider failure rather than degrading one product into absence', () => {
+    const failureStart = edgeSource.indexOf('const failedProviderResponse');
+    const failureBlock = edgeSource.slice(
+      failureStart,
+      edgeSource.indexOf('let response: Response;', failureStart),
+    );
+
+    expect(failureBlock).toContain('providerOutcome,');
+    expect(failureBlock).toContain('reasonCode,');
+    expect(failureBlock).toContain('retryable: true');
+    expect(failureBlock).toContain('notFound: []');
+    expect(failureBlock).toContain('return json(failure, status)');
+    expect(failureBlock).not.toContain('notFound: requestedFields');
+    expect(edgeSource).toContain("failedProviderResponse('UNAVAILABLE', 'unavailable', 502)");
   });
 });
 

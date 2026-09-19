@@ -67,7 +67,7 @@ function pending(
   });
   const stage = stageFromLedger(ledger);
   const next: Extract<ScanImportV2Result, { kind: 'discovered_pending' }>['next'] =
-    ledger.missingCritical.length > 0 ? 'label_photo' : 'finalize';
+    evidenceError !== null || ledger.missingCritical.length > 0 ? 'label_photo' : 'finalize';
   return {
     kind: 'discovered_pending',
     identity: session.identity,

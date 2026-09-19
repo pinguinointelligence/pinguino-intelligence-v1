@@ -29,3 +29,46 @@ export function requestedLabelFields(
   if (known.length === 0) return { fields: [...allFields], rejected: false };
   return { fields: known, rejected: false };
 }
+
+export type LabelAnalysisCallKind = 'fast' | 'accurate';
+
+export function labelAnalysisCallPlan(
+  completedVisionCalls: number,
+  maxVisionCalls = 2,
+): {
+  allowed: boolean;
+  accurateRetry: boolean;
+  callKind: LabelAnalysisCallKind;
+  error: 'session_vision_limit' | null;
+} {
+  const used = Math.max(0, Math.trunc(completedVisionCalls));
+  const maximum = Math.max(0, Math.trunc(maxVisionCalls));
+  const accurateRetry = used > 0;
+  return used >= maximum
+    ? {
+        allowed: false,
+        accurateRetry,
+        callKind: accurateRetry ? 'accurate' : 'fast',
+        error: 'session_vision_limit',
+      }
+    : {
+        allowed: true,
+        accurateRetry,
+        callKind: accurateRetry ? 'accurate' : 'fast',
+        error: null,
+      };
+}
+
+/**
+ * Completed/in-flight identical payloads keep one key. A known failed attempt advances the final
+ * ordinal, permitting one bounded retry while concurrent replays of that retry still deduplicate.
+ */
+export function analysisIdempotencyKey(
+  sessionId: string,
+  callKind: LabelAnalysisCallKind,
+  payloadHash: string,
+  priorFailedAttempts: number,
+): string {
+  const ordinal = Math.max(0, Math.trunc(priorFailedAttempts));
+  return `${sessionId}:${callKind}:${payloadHash}:${ordinal}`;
+}

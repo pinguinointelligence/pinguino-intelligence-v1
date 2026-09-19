@@ -72,6 +72,21 @@ describe('what an EAN lookup owes the customer', () => {
       ).toBe(false);
     });
 
+    it('fails closed when provider usage persistence cannot prove a retry is safe', () => {
+      expect(
+        eanLookupVerdict({
+          providerOutcome: 'FAILED',
+          providerRetryable: false,
+          resultSurvived: false,
+          providerWebCalls: 0,
+        }),
+      ).toMatchObject({
+        outcome: 'provider_unavailable',
+        releaseReservation: false,
+        retryable: false,
+      });
+    });
+
     it('says nothing when the lookup simply worked', () => {
       const verdict = eanLookupVerdict({
         providerAnswered: true,
@@ -135,7 +150,7 @@ describe('what an EAN lookup owes the customer', () => {
     });
 
     it('tells the client whether a retry can help, and what to say', () => {
-      expect(analyze()).toContain('retryable: verdict.retryable');
+      expect(analyze()).toContain('retryable: lookupRetryable');
       expect(analyze()).toContain('notice: verdict.noticePl');
       expect(analyze()).toContain('lookupSkippedNoticePl(skippedReason)');
     });

@@ -84,24 +84,33 @@ export function lookupSkippedNoticePl(reason: string | null | undefined): string
 }
 
 export function eanLookupVerdict(input: {
+  /** Typed aggregate from direct OFF + fallback. Only NOT_FOUND means authoritative absence. */
+  providerOutcome?:
+    'FOUND' | 'NOT_FOUND' | 'UNAVAILABLE' | 'RATE_LIMITED' | 'TIMEOUT' | 'MALFORMED' | 'FAILED';
   /** Did the provider return a usable response at all (as opposed to a transport/HTTP failure)? */
-  providerAnswered: boolean;
+  providerAnswered?: boolean;
   /** Did anything survive `scanResultFromLookupFacts` — i.e. at least one external source? */
   resultSurvived: boolean;
   /** What the provider says it actually did. A cache hit is 0 and costs nothing. */
   providerWebCalls: number;
+  /** False when retry safety cannot be proven (for example, provider-usage persistence failed). */
+  providerRetryable?: boolean;
 }): EanLookupVerdict {
-  if (!input.providerAnswered) {
+  const unavailable = input.providerOutcome
+    ? !['FOUND', 'NOT_FOUND'].includes(input.providerOutcome)
+    : input.providerAnswered !== true;
+  if (unavailable) {
+    const retryable = input.providerRetryable !== false;
     return {
       outcome: 'provider_unavailable',
       // Belt and braces: a provider that failed cannot have reported calls, but if it somehow
       // did, the money wins and the allowance stays spent.
-      releaseReservation: input.providerWebCalls <= 0,
-      retryable: true,
+      releaseReservation: retryable && input.providerWebCalls <= 0,
+      retryable,
       noticePl: LOOKUP_PROVIDER_UNAVAILABLE_PL,
     };
   }
-  if (input.resultSurvived) {
+  if (input.providerOutcome === 'FOUND' || input.resultSurvived) {
     return {
       outcome: 'resolved',
       releaseReservation: false,
