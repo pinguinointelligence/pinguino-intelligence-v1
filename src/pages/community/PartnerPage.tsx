@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router';
+import { useLocation, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { PartnerApplicationPanel } from '@/features/partner-application/PartnerApplicationPanel';
+import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/Button';
 import { customerErrorMessage } from '@/copy/customerError';
 import { CopyValueButton } from '@/features/affiliate/CopyValueButton';
@@ -795,8 +796,24 @@ export function PartnerPage() {
   const section: Section = sections.some(([id]) => id === requested)
     ? (requested as Section)
     : 'overview';
-  const query = useQuery({ queryKey: ['partner-workspace'], queryFn: getPartnerWorkspace });
-  const data = query.data;
+  /* GAP 1 (owner 2026-09-19): `gellatti_partner_workspace_v1` is REVOKED FROM
+     ANON. This query used to run for everyone, so a signed-out visitor opening
+     /partner got a permission error from the RPC and the page rendered „Nie
+     udało się odczytać bezpiecznego panelu Partner." — the application surface
+     below never got a chance to draw. The visitor was told the product was
+     broken when in fact they were simply not signed in yet.
+
+     The auth store is the authority for who is asking. The RPC's own grants are
+     NOT weakened and the workspace does NOT become anonymously readable: the
+     protected read is simply never attempted without a session. */
+  const authStatus = useAuthStore((state) => state.status);
+  const authed = authStatus === 'authed';
+  const query = useQuery({
+    queryKey: ['partner-workspace'],
+    queryFn: getPartnerWorkspace,
+    enabled: authed,
+  });
+  const data = authed ? query.data : undefined;
   const content = useMemo(() => {
     if (!data?.ok) return null;
     if (section === 'overview') return <Overview data={data} />;
@@ -811,6 +828,38 @@ export function PartnerPage() {
   useEffect(() => {
     if (requested !== section) setParams({ section }, { replace: true });
   }, [requested, section, setParams]);
+
+  /* GAP 2 (owner 2026-09-19): /partner#partner-application is the canonical
+     application destination every „Zgłoś się" points at. The browser resolves a
+     hash once, on load — and at that moment this page is still deciding whether
+     it has a session and still waiting on the workspace read, so the element
+     does not exist yet and the jump silently does nothing.
+
+     So the hash is honoured when the surface ACTUALLY APPEARS, whichever state
+     it appears in: signed out, signed in without an application, pending, more
+     information, rejected. An approved Partner resolves to the workspace, which
+     has no such surface — that is the existing lifecycle and is not an error,
+     so nothing is scrolled and nothing is reported. */
+  const wantsApplication = useLocation().hash === '#partner-application';
+  const jumped = useRef(false);
+  useEffect(() => {
+    if (!wantsApplication || jumped.current) return;
+    const target = document.getElementById('partner-application');
+    if (!target) return;
+    jumped.current = true;
+    /* Reaching the surface is the point; scrolling to it is the nicety. A host
+       without smooth scrolling must not throw out of an effect and take the
+       page down with it. */
+    try {
+      target.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+    } catch {
+      /* the anchor is rendered either way */
+    }
+    /* Focus follows the scroll so a keyboard visitor lands on the surface too,
+       without stealing focus from a control they may already be using. */
+    const focusable = target.querySelector<HTMLElement>('button, a[href], input, [tabindex]');
+    focusable?.focus({ preventScroll: true });
+  }, [wantsApplication, authed, query.isPending, data, section]);
   return (
     <DestinationSurface eyebrow="GELLATTI" title="Partner">
       <div className="grid gap-8 xl:grid-cols-[220px_minmax(0,1fr)]">
@@ -840,10 +889,20 @@ export function PartnerPage() {
           ))}
         </nav>
         <main className="min-w-0">
-          {query.isPending ? (
+          {/* A visitor with no session is not an error state — it is the first
+              step of the application. The signed-out surface owns its own
+              „Zgłoś się" intent and opens auth as an internal step. */}
+          {!authed ? (
+            authStatus === 'loading' ? (
+              <ApplicationState kind="loading" title="Wczytuję tryb Partner…" />
+            ) : (
+              <PartnerApplicationPanel />
+            )
+          ) : null}
+          {authed && query.isPending ? (
             <ApplicationState kind="loading" title="Wczytuję tryb Partner…" />
           ) : null}
-          {query.isError ? (
+          {authed && query.isError ? (
             <ApplicationState
               kind="error"
               title="Nie udało się odczytać bezpiecznego panelu Partner."
@@ -865,9 +924,9 @@ export function PartnerPage() {
                  "in progress" heading above an empty application form. */
               <PartnerApplicationPanel />
             )
-          ) : (
+          ) : authed ? (
             content
-          )}
+          ) : null}
         </main>
       </div>
     </DestinationSurface>

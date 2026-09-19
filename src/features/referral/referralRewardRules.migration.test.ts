@@ -84,7 +84,10 @@ describe('refer-a-friend — separation from the Affiliate money lane', () => {
     expect(partnerReads.length).toBeGreaterThan(0);
     expect(FUNCTIONS).toMatch(/partner_attribution_wins/);
     expect(FUNCTIONS).toMatch(/partner_attribution_exists/);
-    for (const verb of ['insert into public.referral_attributions', 'update public.referral_attributions']) {
+    for (const verb of [
+      'insert into public.referral_attributions',
+      'update public.referral_attributions',
+    ]) {
       expect(FUNCTIONS.toLowerCase()).not.toContain(verb);
     }
   });
@@ -101,7 +104,9 @@ describe('refer-a-friend — separation from the Affiliate money lane', () => {
     // The ONE existing table it touches is `entitlements`, and only to widen a
     // vocabulary — no column of a partner table is altered.
     const alters = SCHEMA.match(/alter table public\.(\w+)/g) ?? [];
-    expect([...new Set(alters)]).toEqual(expect.arrayContaining(['alter table public.entitlements']));
+    expect([...new Set(alters)]).toEqual(
+      expect.arrayContaining(['alter table public.entitlements']),
+    );
     for (const alter of alters) {
       expect(alter).toMatch(
         /alter table public\.(entitlements|user_referral_codes|user_referral_attributions|referral_rewards|pro_bonus_consumptions)/,
@@ -125,12 +130,16 @@ describe('refer-a-friend — a user can never mint value', () => {
       );
       expect(FUNCTIONS).toMatch(revoke);
       // …and never grants them back.
-      expect(FUNCTIONS).not.toMatch(new RegExp(`grant execute on function public\\.${fn}[^;]*authenticated`));
+      expect(FUNCTIONS).not.toMatch(
+        new RegExp(`grant execute on function public\\.${fn}[^;]*authenticated`),
+      );
     }
   });
 
   it('grants users only the two harmless entry points', () => {
-    const granted = [...FUNCTIONS.matchAll(/grant execute on function public\.(\w+)\([^)]*\)[^;]*to ([^;]+);/g)]
+    const granted = [
+      ...FUNCTIONS.matchAll(/grant execute on function public\.(\w+)\([^)]*\)[^;]*to ([^;]+);/g),
+    ]
       .filter(([, , roles]) => /authenticated/.test(roles ?? ''))
       .map(([, name]) => name);
     expect(new Set(granted)).toEqual(

@@ -68,7 +68,13 @@ function RewardRow({ row }: { row: ReferralRewardRow }) {
         >
           {reversed ? c.rewardStatus.reversed : c.rewardStatus.earned}
         </span>
-        <span className={cn(numeric, 'text-[14px] font-semibold', reversed && 'line-through opacity-55')}>
+        <span
+          className={cn(
+            numeric,
+            'text-[14px] font-semibold',
+            reversed && 'line-through opacity-55',
+          )}
+        >
           +{row.bonusDays}
         </span>
       </span>
@@ -130,13 +136,19 @@ export function ReferralPanel() {
       </p>
 
       {!signedIn ? (
-        <p className="mt-5 text-[13px] text-[var(--g-text-muted)]" data-testid="referral-signed-out">
+        <p
+          className="mt-5 text-[13px] text-[var(--g-text-muted)]"
+          data-testid="referral-signed-out"
+        >
           {c.claim.not_authenticated}
         </p>
       ) : dashboard.isPending ? (
         <p className="mt-5 text-[13px] text-[var(--g-text-muted)]">{c.panel.loading}</p>
       ) : !data?.ok || !code ? (
-        <p className="mt-5 text-[13px] text-[var(--g-text-muted)]" data-testid="referral-unavailable">
+        <p
+          className="mt-5 text-[13px] text-[var(--g-text-muted)]"
+          data-testid="referral-unavailable"
+        >
           {c.panel.unavailable}
         </p>
       ) : (
@@ -200,7 +212,9 @@ export function ReferralPanel() {
             </h3>
             <ul className="mt-2 flex flex-col gap-1.5">
               <li className="text-[13px] text-[var(--g-text-secondary)]">
-                {fillTemplate(c.rules.monthlyTemplate, { days: String(REFERRAL_BONUS_DAYS.monthly) })}
+                {fillTemplate(c.rules.monthlyTemplate, {
+                  days: String(REFERRAL_BONUS_DAYS.monthly),
+                })}
               </li>
               <li className="text-[13px] text-[var(--g-text-secondary)]">
                 {fillTemplate(c.rules.annualTemplate, { days: String(REFERRAL_BONUS_DAYS.annual) })}

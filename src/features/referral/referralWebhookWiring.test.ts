@@ -65,7 +65,10 @@ class RewardFakeDb implements DbClient {
 
   async rpc(fn: string, args: Record<string, unknown>) {
     this.calls.push({ fn, args });
-    if (fn === 'gellatti_record_referral_reward_v1' || fn === 'gellatti_reverse_referral_reward_v1') {
+    if (
+      fn === 'gellatti_record_referral_reward_v1' ||
+      fn === 'gellatti_reverse_referral_reward_v1'
+    ) {
       return { data: this.rpcResult, error: null };
     }
     return { data: [], error: null };
@@ -89,18 +92,30 @@ const world = (catalogCadence = 'annual', product = 'pro'): Record<string, Row[]
   // No referral_attributions row at all: the commission lane has nothing.
   referral_attributions: [],
   customer_subscriptions: [
-    { id: 'cache-1', user_id: 'referred-user', offer_key: 'pro_yearly_standard', product, stripe_subscription_id: 'sub_1' },
+    {
+      id: 'cache-1',
+      user_id: 'referred-user',
+      offer_key: 'pro_yearly_standard',
+      product,
+      stripe_subscription_id: 'sub_1',
+    },
   ],
-  billing_price_catalog: [
-    { offer_key: 'pro_yearly_standard', commission_cadence: catalogCadence },
-  ],
+  billing_price_catalog: [{ offer_key: 'pro_yearly_standard', commission_cadence: catalogCadence }],
   commission_entries: [],
 });
 
-const refetch = (object: Row) =>
+const refetch =
+  (object: Row) =>
   async (resource: StripeResource, id: string): Promise<Row> => {
     if (resource === 'invoice' && id === object.id) return object;
-    if (resource === 'charge') return { id, invoice: 'in_ref_1', amount: 2900, payment_intent: 'pi_1', refunds: { data: [] } };
+    if (resource === 'charge')
+      return {
+        id,
+        invoice: 'in_ref_1',
+        amount: 2900,
+        payment_intent: 'pi_1',
+        refunds: { data: [] },
+      };
     throw new Error(`refetch miss: ${resource} ${id}`);
   };
 
@@ -193,7 +208,10 @@ describe('refer-a-friend — the reward lane runs where the commission lane cann
       event('invoice.voided', 'evt_7', { id: 'in_ref_1' }),
     );
     const call = db.calls.find((c) => c.fn === 'gellatti_reverse_referral_reward_v1');
-    expect(call?.args).toMatchObject({ p_stripe_invoice_id: 'in_ref_1', p_reason: 'invoice.voided' });
+    expect(call?.args).toMatchObject({
+      p_stripe_invoice_id: 'in_ref_1',
+      p_reason: 'invoice.voided',
+    });
     expect(result.note).toContain('referral_reward_reversed');
   });
 
@@ -202,7 +220,14 @@ describe('refer-a-friend — the reward lane runs where the commission lane cann
     db.rpcResult = { ok: true, reason: 'reversed' };
     const disputeRefetch = async (resource: StripeResource, id: string): Promise<Row> => {
       if (resource === 'dispute') return { id: 'dp_1', charge: 'ch_1', amount: 2900 };
-      if (resource === 'charge') return { id: 'ch_1', invoice: 'in_ref_1', amount: 2900, payment_intent: 'pi_1', refunds: { data: [] } };
+      if (resource === 'charge')
+        return {
+          id: 'ch_1',
+          invoice: 'in_ref_1',
+          amount: 2900,
+          payment_intent: 'pi_1',
+          refunds: { data: [] },
+        };
       throw new Error(`refetch miss: ${resource} ${id}`);
     };
     const result = await applyEventEffects(
