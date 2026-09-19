@@ -61,8 +61,37 @@ describe('canonical global destination hubs', () => {
 
   it('keeps Franchise separate from the Collaboration destination', () => {
     const html = render(<FranchisePage />, '/franchise');
-    expect(html).toContain('Zapytaj o Franchise');
+    expect(html).toContain('Franchise');
     expect(html).not.toContain('href="/work-with-us"');
+  });
+
+  /* FRANCHISE — DESIGN F1 (owner 2026-09-18): the dark top on the facade, four
+     formats in one row, ONE opened format, „Jak działa Gellatti”, and the
+     compact enquiry form last. The page used to list the four formats twice. */
+  it('opens Franchise on four formats with no detail expanded', () => {
+    const html = render(<FranchisePage />, '/franchise');
+    for (const id of ['local', 'food-truck', 'cart', 'machines']) {
+      expect(html).toContain(`data-testid="franchise-format-${id}"`);
+    }
+    // The design's start state: the row, then „Jak działa Gellatti” — no four
+    // descriptions at once, and no block opened before anything is chosen.
+    expect(html).not.toContain('data-testid="franchise-format-panel"');
+    expect(html).toContain('Jak działa Gellatti');
+    // 2 x 2 up to the design's own breakpoint, four across from it.
+    expect(html).toContain('grid-cols-2 gap-2 md:mt-[26px] md:grid-cols-4');
+    // Every closed card already carries its photograph.
+    expect(html).toContain('/images/work-with-us/F01.png');
+    expect(html).toContain('/images/work-with-us/W03.png');
+    expect(html).toContain('/images/work-with-us/W02.png');
+    expect(html).toContain('/images/work-with-us/W04.png');
+    // The form stays a form, on the page, and is the only contact here.
+    expect(html).toContain('id="franchise-inquiry"');
+    expect(html).not.toContain('data-testid="franchise-contact-open"');
+  });
+
+  it("answers a lane CTA with that lane's format", () => {
+    const html = render(<FranchisePage />, '/franchise?from=%2Ftrailer#lead');
+    expect(html).toContain('data-franchise-format="food-truck"');
   });
 
   it('consolidates customer product intake under one Products destination', () => {
