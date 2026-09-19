@@ -176,7 +176,33 @@ export function buildStarterPackDirectionRescue(
     };
   }
   const bands = requestedDirectionBands(request.input);
-  const currentDistance = directionDistance(request.input, bands);
+  /**
+   * THE IMPROVEMENT BASELINE OF THIS RESCUE (P1 — AUD-SWEET-13).
+   *
+   * It used to be the UNTOUCHED DRAFT alone. The caller, however, only reaches
+   * this builder after the run has already PROVEN a candidate, and it hands
+   * that candidate in as `normalResult` — so „materially helps" was measured
+   * against a recipe nobody was being offered. Measured on the served tree
+   * (blood-orange sorbet, PRO, 1000 g): in 7 of the 7 cells the rescue answers,
+   * the candidate it offered was FARTHER from the requested level than the one
+   * the run already held (sweetness +2: 0.027 → 1.859, a factor of 68), while
+   * adding an unrequested seventh line, under a headline that promises the
+   * customer it gets CLOSER to the level.
+   *
+   * The baseline is therefore the BEST thing the run can already show: the
+   * proven candidate when there is one, the draft otherwise. A rescue candidate
+   * now has to beat what the customer could already have — which is the only
+   * reading under which „Można zbliżyć się bardziej do poziomu X" is true.
+   *
+   * Nothing else changes: the same engine judges, the same hard gates, the same
+   * ranking. When no candidate was proven, `normalResult` carries no preview and
+   * the baseline is the draft, exactly as before.
+   */
+  const provenCandidate = request.normalResult.ok ? request.normalResult.preview : null;
+  const currentDistance = directionDistance(
+    provenCandidate?.proposedInput ?? request.input,
+    bands,
+  );
   const records: StarterPackRescueRecord[] = [];
 
   for (const mapperId of STARTER_PACK_RESCUE_MAPPER_IDS) {

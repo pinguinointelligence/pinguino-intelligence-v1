@@ -1,0 +1,3630 @@
+{
+ "OD-28": {
+  "input": {
+   "items": [
+    {
+     "id": "new-recipe-0-milk_3_5",
+     "ingredient": {
+      "id": "milk_3_5",
+      "name": "MILK · 3.5% FAT · Chilled",
+      "category": "dairy",
+      "composition": {
+       "water_percent": 88.1,
+       "solids_percent": 11.9,
+       "fat_percent": 3.5,
+       "protein_percent": 3,
+       "carbohydrate_percent": 4.7,
+       "sugar_percent": 4.7,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 4.7,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.1,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 60,
+       "saturated_fat_percent": 2.24
+      },
+      "pod_value": 0.752,
+      "pac_value": 5.285,
+      "npac_value": null,
+      "de_value": null,
+      "cost_per_kg": 1.2,
+      "confidence_score": 85,
+      "source_type": "manual",
+      "is_verified": false,
+      "canonical_ingredient_id": "PI-ING-000236",
+      "cost_currency": "EUR",
+      "identity_provenance": "template"
+     },
+     "planned_grams": 901,
+     "actual_grams": null,
+     "lock_type": "unlocked"
+    },
+    {
+     "id": "new-recipe-1-cream_30",
+     "ingredient": {
+      "id": "cream_30",
+      "name": "CREAM 30% · Mlekovita Cream · Chilled",
+      "category": "dairy",
+      "composition": {
+       "water_percent": 63.9173,
+       "solids_percent": 36.0827,
+       "fat_percent": 30,
+       "protein_percent": 2.3,
+       "carbohydrate_percent": 3.2,
+       "sugar_percent": 3.2,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 3.2,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.08,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 292,
+       "saturated_fat_percent": 19.2
+      },
+      "pod_value": 0.512,
+      "pac_value": 3.668,
+      "npac_value": null,
+      "de_value": null,
+      "cost_per_kg": 3.2,
+      "confidence_score": 85,
+      "source_type": "manual",
+      "is_verified": false,
+      "canonical_ingredient_id": "PI-ING-000180",
+      "cost_currency": "EUR",
+      "identity_provenance": "template"
+     },
+     "planned_grams": 174,
+     "actual_grams": null,
+     "lock_type": "unlocked"
+    },
+    {
+     "id": "new-recipe-2-smp",
+     "ingredient": {
+      "id": "smp",
+      "name": "SKIMMED MILK POWDER · 0.8% FAT · Dairy · Dry",
+      "category": "dairy",
+      "composition": {
+       "water_percent": 3.12,
+       "solids_percent": 96.88,
+       "fat_percent": 0.8,
+       "protein_percent": 35.7,
+       "carbohydrate_percent": 51.98,
+       "sugar_percent": 51,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 51,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 1.2,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 362,
+       "saturated_fat_percent": 0.512
+      },
+      "pod_value": 8.16,
+      "pac_value": 58.02,
+      "npac_value": null,
+      "de_value": null,
+      "cost_per_kg": 6.5,
+      "confidence_score": 85,
+      "source_type": "manual",
+      "is_verified": false,
+      "canonical_ingredient_id": "PI-ING-000270",
+      "cost_currency": "EUR",
+      "identity_provenance": "template"
+     },
+     "planned_grams": 47,
+     "actual_grams": null,
+     "lock_type": "unlocked"
+    },
+    {
+     "id": "new-recipe-3-sucrose",
+     "ingredient": {
+      "id": "sucrose",
+      "name": "SUCROSE SUGAR · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 0,
+       "solids_percent": 100,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 100,
+       "sugar_percent": 100,
+       "sucrose_percent": 100,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 400,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 100,
+      "pac_value": 100,
+      "npac_value": null,
+      "de_value": null,
+      "cost_per_kg": 1.2,
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "canonical_ingredient_id": "PI-ING-000514",
+      "cost_currency": "EUR",
+      "identity_provenance": "template"
+     },
+     "planned_grams": 174,
+     "actual_grams": null,
+     "lock_type": "unlocked"
+    },
+    {
+     "id": "new-recipe-4-dextrose",
+     "ingredient": {
+      "id": "dextrose",
+      "name": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 9.1,
+       "solids_percent": 90.9,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 90.9,
+       "sugar_percent": 90.9,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 90.9,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 364,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 72.7,
+      "pac_value": 172.7,
+      "npac_value": null,
+      "de_value": null,
+      "cost_per_kg": 2.8,
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "canonical_ingredient_id": "PI-ING-000494",
+      "cost_currency": "EUR",
+      "identity_provenance": "template"
+     },
+     "planned_grams": 40,
+     "actual_grams": null,
+     "lock_type": "unlocked"
+    },
+    {
+     "id": "new-recipe-5-tara_gum",
+     "ingredient": {
+      "id": "tara_gum",
+      "name": "TARA GUM · Stabilizer",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 9.5,
+       "solids_percent": 90.5,
+       "fat_percent": 0.5,
+       "protein_percent": 2,
+       "carbohydrate_percent": 1.5,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 86.5,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 180,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "npac_value": null,
+      "de_value": null,
+      "cost_per_kg": 20,
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "canonical_ingredient_id": "PI-ING-000492",
+      "cost_currency": "EUR",
+      "identity_provenance": "template"
+     },
+     "planned_grams": 4,
+     "actual_grams": null,
+     "lock_type": "unlocked"
+    },
+    {
+     "id": "line-mu885ee6-0",
+     "ingredient": {
+      "id": "PI-ING-001553",
+      "canonical_ingredient_id": "PI-ING-001553",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "fresh_fruit_profile",
+      "carbonation_status": "UNKNOWN",
+      "name": "STRAWBERRIES · Fresh Fruit",
+      "category": "fruit",
+      "composition": {
+       "water_percent": 89,
+       "solids_percent": 11,
+       "fat_percent": 0.3,
+       "protein_percent": 0.7,
+       "carbohydrate_percent": 8,
+       "sugar_percent": 5.8,
+       "sucrose_percent": 1,
+       "glucose_percent": 2.4,
+       "dextrose_percent": 0,
+       "fructose_percent": 2.4,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 2,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 32
+      },
+      "pod_value": 6.928,
+      "pac_value": 10.12,
+      "de_value": null,
+      "cost_per_kg": null,
+      "cost_currency": "EUR",
+      "confidence_score": 95,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      }
+     },
+     "planned_grams": 507,
+     "actual_grams": null,
+     "lock_type": "grams",
+     "grams_constraint": {
+      "grams": 507
+     },
+     "user_target_grams": 507,
+     "user_intent_anchor_grams": 507
+    }
+   ],
+   "mode": "classic",
+   "category": "milk_gelato",
+   "target_temperature_c": -11,
+   "target_batch_grams": 1340,
+   "machine_capacity_grams": null,
+   "machine_capacity_source": null,
+   "goals": {
+    "formulation_strategy": "optimal",
+    "flavor_intensity": "balanced",
+    "cost_priority": "balanced",
+    "direction_targets": {
+     "sweetness": -1,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "direction_targets_active": true,
+    "excluded_ingredient_ids": [],
+    "unavailable_main_ingredient_ids": []
+   }
+  },
+  "constraints": {
+   "byLineId": {
+    "line-mu885ee6-0": {
+     "mode": "locked",
+     "grams": 507
+    }
+   }
+  }
+ },
+ "LOCK-01": {
+  "input": {
+   "items": [
+    {
+     "id": "classic-butter-pecan-line-1",
+     "ingredient": {
+      "id": "PI-ING-000236",
+      "canonical_ingredient_id": "PI-ING-000236",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "milk",
+      "carbonation_status": "UNKNOWN",
+      "name": "MILK · 3.5% FAT · Chilled",
+      "category": "dairy",
+      "composition": {
+       "water_percent": 88.1,
+       "solids_percent": 11.9,
+       "fat_percent": 3.5,
+       "protein_percent": 3,
+       "carbohydrate_percent": 4.7,
+       "sugar_percent": 4.7,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 4.7,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.1,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 60,
+       "saturated_fat_percent": 2.24
+      },
+      "pod_value": 0.752,
+      "pac_value": 5.285,
+      "de_value": null,
+      "cost_per_kg": 1.2,
+      "cost_currency": "EUR",
+      "confidence_score": 85,
+      "source_type": "ai_estimated",
+      "is_verified": false,
+      "flags": {
+       "is_dairy": true,
+       "is_animal_origin": true,
+       "vegan_eligibility": "VEGAN_FALSE",
+       "vegan_eligibility_reasons": [
+        "mapper_vegan_false",
+        "animal_category",
+        "animal_identity",
+        "milk_fat_present",
+        "milk_solids_present",
+        "lactose_present"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 591,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 550,
+     "notes": "Mleko 3.5%"
+    },
+    {
+     "id": "classic-butter-pecan-line-2",
+     "ingredient": {
+      "id": "PI-ING-000180",
+      "canonical_ingredient_id": "PI-ING-000180",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "cream",
+      "carbonation_status": "UNKNOWN",
+      "name": "CREAM 30% · Mlekovita Cream · Chilled",
+      "category": "dairy",
+      "composition": {
+       "water_percent": 63.9173,
+       "solids_percent": 36.0827,
+       "fat_percent": 30,
+       "protein_percent": 2.3,
+       "carbohydrate_percent": 3.2,
+       "sugar_percent": 3.2,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 3.2,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.08,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 292,
+       "saturated_fat_percent": 19.2
+      },
+      "pod_value": 0.512,
+      "pac_value": 3.668,
+      "de_value": null,
+      "cost_per_kg": 3.2,
+      "cost_currency": "EUR",
+      "confidence_score": 85,
+      "source_type": "ai_estimated",
+      "is_verified": false,
+      "flags": {
+       "is_dairy": true,
+       "is_animal_origin": true,
+       "vegan_eligibility": "VEGAN_FALSE",
+       "vegan_eligibility_reasons": [
+        "mapper_vegan_false",
+        "animal_category",
+        "animal_identity",
+        "milk_fat_present",
+        "milk_solids_present",
+        "lactose_present"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 100,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 100,
+     "notes": "Śmietanka 30%"
+    },
+    {
+     "id": "classic-butter-pecan-line-3",
+     "ingredient": {
+      "id": "PI-ING-000270",
+      "canonical_ingredient_id": "PI-ING-000270",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "skimmed_milk_powder",
+      "carbonation_status": "UNKNOWN",
+      "name": "SKIMMED MILK POWDER · 0.8% FAT · Dairy · Dry",
+      "category": "dairy",
+      "composition": {
+       "water_percent": 3.12,
+       "solids_percent": 96.88,
+       "fat_percent": 0.8,
+       "protein_percent": 35.7,
+       "carbohydrate_percent": 51.98,
+       "sugar_percent": 51,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 51,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 1.2,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 362,
+       "saturated_fat_percent": 0.512
+      },
+      "pod_value": 8.16,
+      "pac_value": 58.02,
+      "de_value": null,
+      "cost_per_kg": 6.5,
+      "cost_currency": "EUR",
+      "confidence_score": 85,
+      "source_type": "ai_estimated",
+      "is_verified": false,
+      "flags": {
+       "is_dairy": true,
+       "is_animal_origin": true,
+       "vegan_eligibility": "VEGAN_FALSE",
+       "vegan_eligibility_reasons": [
+        "mapper_vegan_false",
+        "animal_category",
+        "animal_identity",
+        "milk_fat_present",
+        "milk_solids_present",
+        "lactose_present"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 35,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 35,
+     "notes": "Odtłuszczone mleko w proszku"
+    },
+    {
+     "id": "classic-butter-pecan-line-4",
+     "ingredient": {
+      "id": "PI-ING-000514",
+      "canonical_ingredient_id": "PI-ING-000514",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "sucrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "SUCROSE SUGAR · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 0,
+       "solids_percent": 100,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 100,
+       "sugar_percent": 100,
+       "sucrose_percent": 100,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 400,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 100,
+      "pac_value": 100,
+      "de_value": null,
+      "cost_per_kg": 1.2,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 80,
+     "actual_grams": null,
+     "lock_type": "grams",
+     "user_intent_anchor_grams": 80,
+     "notes": "Sacharoza",
+     "grams_constraint": {
+      "grams": 80
+     }
+    },
+    {
+     "id": "classic-butter-pecan-line-5",
+     "ingredient": {
+      "id": "PI-ING-000494",
+      "canonical_ingredient_id": "PI-ING-000494",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "dextrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 9.1,
+       "solids_percent": 90.9,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 90.9,
+       "sugar_percent": 90.9,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 90.9,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 364,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 72.7,
+      "pac_value": 172.7,
+      "de_value": null,
+      "cost_per_kg": 2.8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 60,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 60,
+     "notes": "Dekstroza"
+    },
+    {
+     "id": "classic-butter-pecan-line-6",
+     "ingredient": {
+      "id": "PI-ING-000456",
+      "canonical_ingredient_id": "PI-ING-000456",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "inulin",
+      "carbonation_status": "UNKNOWN",
+      "name": "INULIN · Fibre · Powder",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 3,
+       "solids_percent": 97,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 8,
+       "sugar_percent": 8,
+       "sucrose_percent": 8,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 89,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 210,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 8,
+      "pac_value": 8,
+      "de_value": null,
+      "cost_per_kg": 8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 43,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 43,
+     "notes": "Inulina"
+    },
+    {
+     "id": "classic-butter-pecan-line-7",
+     "ingredient": {
+      "id": "PI-ING-000176",
+      "canonical_ingredient_id": "PI-ING-000176",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "unsalted_butter",
+      "carbonation_status": "UNKNOWN",
+      "name": "BUTTER UNSALTED · Mlekovita Butter",
+      "category": "dairy",
+      "composition": {
+       "water_percent": 16.5,
+       "solids_percent": 83.5,
+       "fat_percent": 82,
+       "protein_percent": 0.7,
+       "carbohydrate_percent": 0.7,
+       "sugar_percent": 0.7,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0.7,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.2,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 744,
+       "saturated_fat_percent": 52.48
+      },
+      "pod_value": 0.112,
+      "pac_value": 1.87,
+      "de_value": null,
+      "cost_per_kg": 6,
+      "cost_currency": "EUR",
+      "confidence_score": 85,
+      "source_type": "ai_estimated",
+      "is_verified": false,
+      "flags": {
+       "is_dairy": true,
+       "is_animal_origin": true,
+       "vegan_eligibility": "VEGAN_FALSE",
+       "vegan_eligibility_reasons": [
+        "mapper_vegan_false",
+        "animal_category",
+        "animal_identity",
+        "milk_fat_present",
+        "milk_solids_present",
+        "lactose_present"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 30,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 30,
+     "notes": "Masło niesolone"
+    },
+    {
+     "id": "classic-butter-pecan-line-8",
+     "ingredient": {
+      "id": "PI-ING-001570",
+      "canonical_ingredient_id": "PI-ING-001570",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "pecan_roasted",
+      "carbonation_status": "UNKNOWN",
+      "name": "PECANS · Dry Roasted · Unsalted",
+      "category": "nut_paste",
+      "composition": {
+       "water_percent": 1.12,
+       "solids_percent": 98.88,
+       "fat_percent": 74.27,
+       "protein_percent": 9.5,
+       "carbohydrate_percent": 4.15,
+       "sugar_percent": 4.06,
+       "sucrose_percent": 3.98,
+       "glucose_percent": 0.04,
+       "dextrose_percent": 0,
+       "fructose_percent": 0.04,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 9.4,
+       "salt_percent": 0.0025,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 710,
+       "saturated_fat_percent": 6.283
+      },
+      "pod_value": 4.0788,
+      "pac_value": 4.14662,
+      "de_value": null,
+      "cost_per_kg": null,
+      "cost_currency": "EUR",
+      "confidence_score": 92,
+      "source_type": "ai_estimated",
+      "is_verified": false,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": null
+     },
+     "planned_grams": 59,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 100,
+     "notes": "Pekany prażone"
+    },
+    {
+     "id": "classic-butter-pecan-line-9",
+     "ingredient": {
+      "id": "PI-ING-000492",
+      "canonical_ingredient_id": "PI-ING-000492",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "tara_gum",
+      "carbonation_status": "UNKNOWN",
+      "name": "TARA GUM · Stabilizer",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 9.5,
+       "solids_percent": 90.5,
+       "fat_percent": 0.5,
+       "protein_percent": 2,
+       "carbohydrate_percent": 1.5,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 86.5,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 180,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": 20,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 2,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 2,
+     "notes": "Guma tara"
+    }
+   ],
+   "mode": "classic",
+   "category": "milk_gelato",
+   "target_temperature_c": -11,
+   "target_batch_grams": 1000,
+   "machine_capacity_grams": null,
+   "machine_capacity_source": null,
+   "goals": {
+    "formulation_strategy": "optimal",
+    "flavor_intensity": "balanced",
+    "cost_priority": "balanced",
+    "direction_targets": {
+     "sweetness": 1,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "direction_targets_active": true,
+    "excluded_ingredient_ids": [],
+    "unavailable_main_ingredient_ids": []
+   }
+  },
+  "constraints": {
+   "byLineId": {
+    "classic-butter-pecan-line-4": {
+     "mode": "locked",
+     "grams": 80
+    }
+   }
+  }
+ },
+ "LOCK-02a": {
+  "input": {
+   "items": [
+    {
+     "id": "classic-blood-orange-sorbet-line-1",
+     "ingredient": {
+      "id": "PI-ING-000358",
+      "canonical_ingredient_id": "PI-ING-000358",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "fruit_juice",
+      "carbonation_status": "UNKNOWN",
+      "name": "BLOOD ORANGE · Campisi Citrus Juice · Frozen · BIO",
+      "category": "fruit",
+      "composition": {
+       "water_percent": 91.27,
+       "solids_percent": 8.73,
+       "fat_percent": 0,
+       "protein_percent": 0.5,
+       "carbohydrate_percent": 8.2,
+       "sugar_percent": 8.2,
+       "sucrose_percent": 3.4,
+       "glucose_percent": 2.3,
+       "dextrose_percent": 0,
+       "fructose_percent": 2.5,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.03,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 33,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 9.421,
+      "pac_value": 12.696,
+      "de_value": null,
+      "cost_per_kg": 2.5,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 598,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 450,
+     "notes": "Blood orange juice"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-2",
+     "ingredient": {
+      "id": "PI-ING-001409",
+      "canonical_ingredient_id": "PI-ING-001409",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "water",
+      "carbonation_status": "UNKNOWN",
+      "name": "WATER · Liquid",
+      "category": "other",
+      "composition": {
+       "water_percent": 100,
+       "solids_percent": 0,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 0,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": null,
+      "cost_currency": "EUR",
+      "confidence_score": 95,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": null
+     },
+     "planned_grams": 180,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 314,
+     "notes": "Woda"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-3",
+     "ingredient": {
+      "id": "PI-ING-000514",
+      "canonical_ingredient_id": "PI-ING-000514",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "sucrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "SUCROSE SUGAR · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 0,
+       "solids_percent": 100,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 100,
+       "sugar_percent": 100,
+       "sucrose_percent": 100,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 400,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 100,
+      "pac_value": 100,
+      "de_value": null,
+      "cost_per_kg": 1.2,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 104,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Sacharoza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-4",
+     "ingredient": {
+      "id": "PI-ING-000494",
+      "canonical_ingredient_id": "PI-ING-000494",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "dextrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 9.1,
+       "solids_percent": 90.9,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 90.9,
+       "sugar_percent": 90.9,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 90.9,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 364,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 72.7,
+      "pac_value": 172.7,
+      "de_value": null,
+      "cost_per_kg": 2.8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 59,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Dekstroza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-5",
+     "ingredient": {
+      "id": "PI-ING-000456",
+      "canonical_ingredient_id": "PI-ING-000456",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "inulin",
+      "carbonation_status": "UNKNOWN",
+      "name": "INULIN · Fibre · Powder",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 3,
+       "solids_percent": 97,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 8,
+       "sugar_percent": 8,
+       "sucrose_percent": 8,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 89,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 210,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 8,
+      "pac_value": 8,
+      "de_value": null,
+      "cost_per_kg": 8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 55,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 55,
+     "notes": "Inulina"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-6",
+     "ingredient": {
+      "id": "PI-ING-000492",
+      "canonical_ingredient_id": "PI-ING-000492",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "tara_gum",
+      "carbonation_status": "UNKNOWN",
+      "name": "TARA GUM · Stabilizer",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 9.5,
+       "solids_percent": 90.5,
+       "fat_percent": 0.5,
+       "protein_percent": 2,
+       "carbohydrate_percent": 1.5,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 86.5,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 180,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": 20,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 4,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 1,
+     "notes": "Guma tara"
+    }
+   ],
+   "mode": "classic",
+   "category": "sorbet",
+   "target_temperature_c": -11,
+   "target_batch_grams": 1000,
+   "machine_capacity_grams": null,
+   "machine_capacity_source": null,
+   "goals": {
+    "formulation_strategy": "optimal",
+    "flavor_intensity": "balanced",
+    "cost_priority": "balanced",
+    "direction_targets": {
+     "sweetness": -1,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "direction_targets_active": true,
+    "excluded_ingredient_ids": [],
+    "unavailable_main_ingredient_ids": []
+   }
+  },
+  "constraints": {
+   "byLineId": {}
+  }
+ },
+ "LOCK-02b": {
+  "input": {
+   "items": [
+    {
+     "id": "classic-blood-orange-sorbet-line-1",
+     "ingredient": {
+      "id": "PI-ING-000358",
+      "canonical_ingredient_id": "PI-ING-000358",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "fruit_juice",
+      "carbonation_status": "UNKNOWN",
+      "name": "BLOOD ORANGE · Campisi Citrus Juice · Frozen · BIO",
+      "category": "fruit",
+      "composition": {
+       "water_percent": 91.27,
+       "solids_percent": 8.73,
+       "fat_percent": 0,
+       "protein_percent": 0.5,
+       "carbohydrate_percent": 8.2,
+       "sugar_percent": 8.2,
+       "sucrose_percent": 3.4,
+       "glucose_percent": 2.3,
+       "dextrose_percent": 0,
+       "fructose_percent": 2.5,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.03,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 33,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 9.421,
+      "pac_value": 12.696,
+      "de_value": null,
+      "cost_per_kg": 2.5,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 598,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 450,
+     "notes": "Blood orange juice"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-2",
+     "ingredient": {
+      "id": "PI-ING-001409",
+      "canonical_ingredient_id": "PI-ING-001409",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "water",
+      "carbonation_status": "UNKNOWN",
+      "name": "WATER · Liquid",
+      "category": "other",
+      "composition": {
+       "water_percent": 100,
+       "solids_percent": 0,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 0,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": null,
+      "cost_currency": "EUR",
+      "confidence_score": 95,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": null
+     },
+     "planned_grams": 180,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 314,
+     "notes": "Woda"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-3",
+     "ingredient": {
+      "id": "PI-ING-000514",
+      "canonical_ingredient_id": "PI-ING-000514",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "sucrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "SUCROSE SUGAR · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 0,
+       "solids_percent": 100,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 100,
+       "sugar_percent": 100,
+       "sucrose_percent": 100,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 400,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 100,
+      "pac_value": 100,
+      "de_value": null,
+      "cost_per_kg": 1.2,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 104,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Sacharoza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-4",
+     "ingredient": {
+      "id": "PI-ING-000494",
+      "canonical_ingredient_id": "PI-ING-000494",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "dextrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 9.1,
+       "solids_percent": 90.9,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 90.9,
+       "sugar_percent": 90.9,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 90.9,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 364,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 72.7,
+      "pac_value": 172.7,
+      "de_value": null,
+      "cost_per_kg": 2.8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 59,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Dekstroza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-5",
+     "ingredient": {
+      "id": "PI-ING-000456",
+      "canonical_ingredient_id": "PI-ING-000456",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "inulin",
+      "carbonation_status": "UNKNOWN",
+      "name": "INULIN · Fibre · Powder",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 3,
+       "solids_percent": 97,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 8,
+       "sugar_percent": 8,
+       "sucrose_percent": 8,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 89,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 210,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 8,
+      "pac_value": 8,
+      "de_value": null,
+      "cost_per_kg": 8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 55,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 55,
+     "notes": "Inulina"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-6",
+     "ingredient": {
+      "id": "PI-ING-000492",
+      "canonical_ingredient_id": "PI-ING-000492",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "tara_gum",
+      "carbonation_status": "UNKNOWN",
+      "name": "TARA GUM · Stabilizer",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 9.5,
+       "solids_percent": 90.5,
+       "fat_percent": 0.5,
+       "protein_percent": 2,
+       "carbohydrate_percent": 1.5,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 86.5,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 180,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": 20,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 4,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 1,
+     "notes": "Guma tara"
+    }
+   ],
+   "mode": "classic",
+   "category": "sorbet",
+   "target_temperature_c": -11,
+   "target_batch_grams": 1000,
+   "machine_capacity_grams": null,
+   "machine_capacity_source": null,
+   "goals": {
+    "formulation_strategy": "optimal",
+    "flavor_intensity": "balanced",
+    "cost_priority": "balanced",
+    "direction_targets": {
+     "sweetness": -2,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "direction_targets_active": true,
+    "excluded_ingredient_ids": [],
+    "unavailable_main_ingredient_ids": []
+   }
+  },
+  "constraints": {
+   "byLineId": {}
+  }
+ },
+ "LOCK-02c": {
+  "input": {
+   "items": [
+    {
+     "id": "classic-blood-orange-sorbet-line-1",
+     "ingredient": {
+      "id": "PI-ING-000358",
+      "canonical_ingredient_id": "PI-ING-000358",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "fruit_juice",
+      "carbonation_status": "UNKNOWN",
+      "name": "BLOOD ORANGE · Campisi Citrus Juice · Frozen · BIO",
+      "category": "fruit",
+      "composition": {
+       "water_percent": 91.27,
+       "solids_percent": 8.73,
+       "fat_percent": 0,
+       "protein_percent": 0.5,
+       "carbohydrate_percent": 8.2,
+       "sugar_percent": 8.2,
+       "sucrose_percent": 3.4,
+       "glucose_percent": 2.3,
+       "dextrose_percent": 0,
+       "fructose_percent": 2.5,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.03,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 33,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 9.421,
+      "pac_value": 12.696,
+      "de_value": null,
+      "cost_per_kg": 2.5,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 598,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 450,
+     "notes": "Blood orange juice"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-2",
+     "ingredient": {
+      "id": "PI-ING-001409",
+      "canonical_ingredient_id": "PI-ING-001409",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "water",
+      "carbonation_status": "UNKNOWN",
+      "name": "WATER · Liquid",
+      "category": "other",
+      "composition": {
+       "water_percent": 100,
+       "solids_percent": 0,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 0,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": null,
+      "cost_currency": "EUR",
+      "confidence_score": 95,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": null
+     },
+     "planned_grams": 180,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 314,
+     "notes": "Woda"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-3",
+     "ingredient": {
+      "id": "PI-ING-000514",
+      "canonical_ingredient_id": "PI-ING-000514",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "sucrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "SUCROSE SUGAR · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 0,
+       "solids_percent": 100,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 100,
+       "sugar_percent": 100,
+       "sucrose_percent": 100,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 400,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 100,
+      "pac_value": 100,
+      "de_value": null,
+      "cost_per_kg": 1.2,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 104,
+     "actual_grams": null,
+     "lock_type": "grams",
+     "user_intent_anchor_grams": 90,
+     "notes": "Sacharoza",
+     "grams_constraint": {
+      "grams": 104
+     }
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-4",
+     "ingredient": {
+      "id": "PI-ING-000494",
+      "canonical_ingredient_id": "PI-ING-000494",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "dextrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 9.1,
+       "solids_percent": 90.9,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 90.9,
+       "sugar_percent": 90.9,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 90.9,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 364,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 72.7,
+      "pac_value": 172.7,
+      "de_value": null,
+      "cost_per_kg": 2.8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 59,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Dekstroza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-5",
+     "ingredient": {
+      "id": "PI-ING-000456",
+      "canonical_ingredient_id": "PI-ING-000456",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "inulin",
+      "carbonation_status": "UNKNOWN",
+      "name": "INULIN · Fibre · Powder",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 3,
+       "solids_percent": 97,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 8,
+       "sugar_percent": 8,
+       "sucrose_percent": 8,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 89,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 210,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 8,
+      "pac_value": 8,
+      "de_value": null,
+      "cost_per_kg": 8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 55,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 55,
+     "notes": "Inulina"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-6",
+     "ingredient": {
+      "id": "PI-ING-000492",
+      "canonical_ingredient_id": "PI-ING-000492",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "tara_gum",
+      "carbonation_status": "UNKNOWN",
+      "name": "TARA GUM · Stabilizer",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 9.5,
+       "solids_percent": 90.5,
+       "fat_percent": 0.5,
+       "protein_percent": 2,
+       "carbohydrate_percent": 1.5,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 86.5,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 180,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": 20,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 4,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 1,
+     "notes": "Guma tara"
+    }
+   ],
+   "mode": "classic",
+   "category": "sorbet",
+   "target_temperature_c": -11,
+   "target_batch_grams": 1000,
+   "machine_capacity_grams": null,
+   "machine_capacity_source": null,
+   "goals": {
+    "formulation_strategy": "optimal",
+    "flavor_intensity": "balanced",
+    "cost_priority": "balanced",
+    "direction_targets": {
+     "sweetness": -1,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "direction_targets_active": true,
+    "excluded_ingredient_ids": [],
+    "unavailable_main_ingredient_ids": []
+   }
+  },
+  "constraints": {
+   "byLineId": {
+    "classic-blood-orange-sorbet-line-3": {
+     "mode": "locked",
+     "grams": 104
+    }
+   }
+  }
+ },
+ "LOCK-02d": {
+  "input": {
+   "items": [
+    {
+     "id": "classic-blood-orange-sorbet-line-1",
+     "ingredient": {
+      "id": "PI-ING-000358",
+      "canonical_ingredient_id": "PI-ING-000358",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "fruit_juice",
+      "carbonation_status": "UNKNOWN",
+      "name": "BLOOD ORANGE · Campisi Citrus Juice · Frozen · BIO",
+      "category": "fruit",
+      "composition": {
+       "water_percent": 91.27,
+       "solids_percent": 8.73,
+       "fat_percent": 0,
+       "protein_percent": 0.5,
+       "carbohydrate_percent": 8.2,
+       "sugar_percent": 8.2,
+       "sucrose_percent": 3.4,
+       "glucose_percent": 2.3,
+       "dextrose_percent": 0,
+       "fructose_percent": 2.5,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.03,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 33,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 9.421,
+      "pac_value": 12.696,
+      "de_value": null,
+      "cost_per_kg": 2.5,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 598,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 450,
+     "notes": "Blood orange juice"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-2",
+     "ingredient": {
+      "id": "PI-ING-001409",
+      "canonical_ingredient_id": "PI-ING-001409",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "water",
+      "carbonation_status": "UNKNOWN",
+      "name": "WATER · Liquid",
+      "category": "other",
+      "composition": {
+       "water_percent": 100,
+       "solids_percent": 0,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 0,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": null,
+      "cost_currency": "EUR",
+      "confidence_score": 95,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": null
+     },
+     "planned_grams": 180,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 314,
+     "notes": "Woda"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-3",
+     "ingredient": {
+      "id": "PI-ING-000514",
+      "canonical_ingredient_id": "PI-ING-000514",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "sucrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "SUCROSE SUGAR · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 0,
+       "solids_percent": 100,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 100,
+       "sugar_percent": 100,
+       "sucrose_percent": 100,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 400,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 100,
+      "pac_value": 100,
+      "de_value": null,
+      "cost_per_kg": 1.2,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 104,
+     "actual_grams": null,
+     "lock_type": "grams",
+     "user_intent_anchor_grams": 90,
+     "notes": "Sacharoza",
+     "grams_constraint": {
+      "grams": 104
+     }
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-4",
+     "ingredient": {
+      "id": "PI-ING-000494",
+      "canonical_ingredient_id": "PI-ING-000494",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "dextrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 9.1,
+       "solids_percent": 90.9,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 90.9,
+       "sugar_percent": 90.9,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 90.9,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 364,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 72.7,
+      "pac_value": 172.7,
+      "de_value": null,
+      "cost_per_kg": 2.8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 59,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Dekstroza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-5",
+     "ingredient": {
+      "id": "PI-ING-000456",
+      "canonical_ingredient_id": "PI-ING-000456",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "inulin",
+      "carbonation_status": "UNKNOWN",
+      "name": "INULIN · Fibre · Powder",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 3,
+       "solids_percent": 97,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 8,
+       "sugar_percent": 8,
+       "sucrose_percent": 8,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 89,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 210,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 8,
+      "pac_value": 8,
+      "de_value": null,
+      "cost_per_kg": 8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 55,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 55,
+     "notes": "Inulina"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-6",
+     "ingredient": {
+      "id": "PI-ING-000492",
+      "canonical_ingredient_id": "PI-ING-000492",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "tara_gum",
+      "carbonation_status": "UNKNOWN",
+      "name": "TARA GUM · Stabilizer",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 9.5,
+       "solids_percent": 90.5,
+       "fat_percent": 0.5,
+       "protein_percent": 2,
+       "carbohydrate_percent": 1.5,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 86.5,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 180,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": 20,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 4,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 1,
+     "notes": "Guma tara"
+    }
+   ],
+   "mode": "classic",
+   "category": "sorbet",
+   "target_temperature_c": -11,
+   "target_batch_grams": 1000,
+   "machine_capacity_grams": null,
+   "machine_capacity_source": null,
+   "goals": {
+    "formulation_strategy": "optimal",
+    "flavor_intensity": "balanced",
+    "cost_priority": "balanced",
+    "direction_targets": {
+     "sweetness": 0,
+     "softness": -1,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "direction_targets_active": true,
+    "excluded_ingredient_ids": [],
+    "unavailable_main_ingredient_ids": []
+   }
+  },
+  "constraints": {
+   "byLineId": {
+    "classic-blood-orange-sorbet-line-3": {
+     "mode": "locked",
+     "grams": 104
+    }
+   }
+  }
+ },
+ "LOCK-02e": {
+  "input": {
+   "items": [
+    {
+     "id": "classic-blood-orange-sorbet-line-1",
+     "ingredient": {
+      "id": "PI-ING-000358",
+      "canonical_ingredient_id": "PI-ING-000358",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "fruit_juice",
+      "carbonation_status": "UNKNOWN",
+      "name": "BLOOD ORANGE · Campisi Citrus Juice · Frozen · BIO",
+      "category": "fruit",
+      "composition": {
+       "water_percent": 91.27,
+       "solids_percent": 8.73,
+       "fat_percent": 0,
+       "protein_percent": 0.5,
+       "carbohydrate_percent": 8.2,
+       "sugar_percent": 8.2,
+       "sucrose_percent": 3.4,
+       "glucose_percent": 2.3,
+       "dextrose_percent": 0,
+       "fructose_percent": 2.5,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.03,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 33,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 9.421,
+      "pac_value": 12.696,
+      "de_value": null,
+      "cost_per_kg": 2.5,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 598,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 450,
+     "notes": "Blood orange juice"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-2",
+     "ingredient": {
+      "id": "PI-ING-001409",
+      "canonical_ingredient_id": "PI-ING-001409",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "water",
+      "carbonation_status": "UNKNOWN",
+      "name": "WATER · Liquid",
+      "category": "other",
+      "composition": {
+       "water_percent": 100,
+       "solids_percent": 0,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 0,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": null,
+      "cost_currency": "EUR",
+      "confidence_score": 95,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": null
+     },
+     "planned_grams": 180,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 314,
+     "notes": "Woda"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-3",
+     "ingredient": {
+      "id": "PI-ING-000514",
+      "canonical_ingredient_id": "PI-ING-000514",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "sucrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "SUCROSE SUGAR · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 0,
+       "solids_percent": 100,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 100,
+       "sugar_percent": 100,
+       "sucrose_percent": 100,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 400,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 100,
+      "pac_value": 100,
+      "de_value": null,
+      "cost_per_kg": 1.2,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 104,
+     "actual_grams": null,
+     "lock_type": "grams",
+     "user_intent_anchor_grams": 90,
+     "notes": "Sacharoza",
+     "grams_constraint": {
+      "grams": 104
+     }
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-4",
+     "ingredient": {
+      "id": "PI-ING-000494",
+      "canonical_ingredient_id": "PI-ING-000494",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "dextrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 9.1,
+       "solids_percent": 90.9,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 90.9,
+       "sugar_percent": 90.9,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 90.9,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 364,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 72.7,
+      "pac_value": 172.7,
+      "de_value": null,
+      "cost_per_kg": 2.8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 59,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Dekstroza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-5",
+     "ingredient": {
+      "id": "PI-ING-000456",
+      "canonical_ingredient_id": "PI-ING-000456",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "inulin",
+      "carbonation_status": "UNKNOWN",
+      "name": "INULIN · Fibre · Powder",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 3,
+       "solids_percent": 97,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 8,
+       "sugar_percent": 8,
+       "sucrose_percent": 8,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 89,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 210,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 8,
+      "pac_value": 8,
+      "de_value": null,
+      "cost_per_kg": 8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 55,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 55,
+     "notes": "Inulina"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-6",
+     "ingredient": {
+      "id": "PI-ING-000492",
+      "canonical_ingredient_id": "PI-ING-000492",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "tara_gum",
+      "carbonation_status": "UNKNOWN",
+      "name": "TARA GUM · Stabilizer",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 9.5,
+       "solids_percent": 90.5,
+       "fat_percent": 0.5,
+       "protein_percent": 2,
+       "carbohydrate_percent": 1.5,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 86.5,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 180,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": 20,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 4,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 1,
+     "notes": "Guma tara"
+    }
+   ],
+   "mode": "classic",
+   "category": "sorbet",
+   "target_temperature_c": -11,
+   "target_batch_grams": 1000,
+   "machine_capacity_grams": null,
+   "machine_capacity_source": null,
+   "goals": {
+    "formulation_strategy": "optimal",
+    "flavor_intensity": "balanced",
+    "cost_priority": "balanced",
+    "direction_targets": {
+     "sweetness": 0,
+     "softness": -2,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "direction_targets_active": true,
+    "excluded_ingredient_ids": [],
+    "unavailable_main_ingredient_ids": []
+   }
+  },
+  "constraints": {
+   "byLineId": {
+    "classic-blood-orange-sorbet-line-3": {
+     "mode": "locked",
+     "grams": 104
+    }
+   }
+  }
+ },
+ "LOCK-03-A-minus1": {
+  "input": {
+   "items": [
+    {
+     "id": "classic-blood-orange-sorbet-line-1",
+     "ingredient": {
+      "id": "PI-ING-000358",
+      "canonical_ingredient_id": "PI-ING-000358",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "fruit_juice",
+      "carbonation_status": "UNKNOWN",
+      "name": "BLOOD ORANGE · Campisi Citrus Juice · Frozen · BIO",
+      "category": "fruit",
+      "composition": {
+       "water_percent": 91.27,
+       "solids_percent": 8.73,
+       "fat_percent": 0,
+       "protein_percent": 0.5,
+       "carbohydrate_percent": 8.2,
+       "sugar_percent": 8.2,
+       "sucrose_percent": 3.4,
+       "glucose_percent": 2.3,
+       "dextrose_percent": 0,
+       "fructose_percent": 2.5,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.03,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 33,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 9.421,
+      "pac_value": 12.696,
+      "de_value": null,
+      "cost_per_kg": 2.5,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 598,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 450,
+     "notes": "Blood orange juice"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-2",
+     "ingredient": {
+      "id": "PI-ING-001409",
+      "canonical_ingredient_id": "PI-ING-001409",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "water",
+      "carbonation_status": "UNKNOWN",
+      "name": "WATER · Liquid",
+      "category": "other",
+      "composition": {
+       "water_percent": 100,
+       "solids_percent": 0,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 0,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": null,
+      "cost_currency": "EUR",
+      "confidence_score": 95,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": null
+     },
+     "planned_grams": 180,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 314,
+     "notes": "Woda"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-3",
+     "ingredient": {
+      "id": "PI-ING-000514",
+      "canonical_ingredient_id": "PI-ING-000514",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "sucrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "SUCROSE SUGAR · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 0,
+       "solids_percent": 100,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 100,
+       "sugar_percent": 100,
+       "sucrose_percent": 100,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 400,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 100,
+      "pac_value": 100,
+      "de_value": null,
+      "cost_per_kg": 1.2,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 104,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Sacharoza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-4",
+     "ingredient": {
+      "id": "PI-ING-000494",
+      "canonical_ingredient_id": "PI-ING-000494",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "dextrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 9.1,
+       "solids_percent": 90.9,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 90.9,
+       "sugar_percent": 90.9,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 90.9,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 364,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 72.7,
+      "pac_value": 172.7,
+      "de_value": null,
+      "cost_per_kg": 2.8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 59,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Dekstroza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-5",
+     "ingredient": {
+      "id": "PI-ING-000456",
+      "canonical_ingredient_id": "PI-ING-000456",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "inulin",
+      "carbonation_status": "UNKNOWN",
+      "name": "INULIN · Fibre · Powder",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 3,
+       "solids_percent": 97,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 8,
+       "sugar_percent": 8,
+       "sucrose_percent": 8,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 89,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 210,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 8,
+      "pac_value": 8,
+      "de_value": null,
+      "cost_per_kg": 8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 55,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 55,
+     "notes": "Inulina"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-6",
+     "ingredient": {
+      "id": "PI-ING-000492",
+      "canonical_ingredient_id": "PI-ING-000492",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "tara_gum",
+      "carbonation_status": "UNKNOWN",
+      "name": "TARA GUM · Stabilizer",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 9.5,
+       "solids_percent": 90.5,
+       "fat_percent": 0.5,
+       "protein_percent": 2,
+       "carbohydrate_percent": 1.5,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 86.5,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 180,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": 20,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 4,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 1,
+     "notes": "Guma tara"
+    }
+   ],
+   "mode": "classic",
+   "category": "sorbet",
+   "target_temperature_c": -11,
+   "target_batch_grams": 1000,
+   "machine_capacity_grams": null,
+   "machine_capacity_source": null,
+   "goals": {
+    "formulation_strategy": "optimal",
+    "flavor_intensity": "balanced",
+    "cost_priority": "balanced",
+    "direction_targets": {
+     "sweetness": -1,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "direction_targets_active": true,
+    "excluded_ingredient_ids": [],
+    "unavailable_main_ingredient_ids": []
+   }
+  },
+  "constraints": {
+   "byLineId": {}
+  }
+ },
+ "LOCK-03-A-minus2": {
+  "input": {
+   "items": [
+    {
+     "id": "classic-blood-orange-sorbet-line-1",
+     "ingredient": {
+      "id": "PI-ING-000358",
+      "canonical_ingredient_id": "PI-ING-000358",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "fruit_juice",
+      "carbonation_status": "UNKNOWN",
+      "name": "BLOOD ORANGE · Campisi Citrus Juice · Frozen · BIO",
+      "category": "fruit",
+      "composition": {
+       "water_percent": 91.27,
+       "solids_percent": 8.73,
+       "fat_percent": 0,
+       "protein_percent": 0.5,
+       "carbohydrate_percent": 8.2,
+       "sugar_percent": 8.2,
+       "sucrose_percent": 3.4,
+       "glucose_percent": 2.3,
+       "dextrose_percent": 0,
+       "fructose_percent": 2.5,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.03,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 33,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 9.421,
+      "pac_value": 12.696,
+      "de_value": null,
+      "cost_per_kg": 2.5,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 598,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 450,
+     "notes": "Blood orange juice"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-2",
+     "ingredient": {
+      "id": "PI-ING-001409",
+      "canonical_ingredient_id": "PI-ING-001409",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "water",
+      "carbonation_status": "UNKNOWN",
+      "name": "WATER · Liquid",
+      "category": "other",
+      "composition": {
+       "water_percent": 100,
+       "solids_percent": 0,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 0,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": null,
+      "cost_currency": "EUR",
+      "confidence_score": 95,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": null
+     },
+     "planned_grams": 180,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 314,
+     "notes": "Woda"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-3",
+     "ingredient": {
+      "id": "PI-ING-000514",
+      "canonical_ingredient_id": "PI-ING-000514",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "sucrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "SUCROSE SUGAR · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 0,
+       "solids_percent": 100,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 100,
+       "sugar_percent": 100,
+       "sucrose_percent": 100,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 400,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 100,
+      "pac_value": 100,
+      "de_value": null,
+      "cost_per_kg": 1.2,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 104,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Sacharoza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-4",
+     "ingredient": {
+      "id": "PI-ING-000494",
+      "canonical_ingredient_id": "PI-ING-000494",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "dextrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 9.1,
+       "solids_percent": 90.9,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 90.9,
+       "sugar_percent": 90.9,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 90.9,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 364,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 72.7,
+      "pac_value": 172.7,
+      "de_value": null,
+      "cost_per_kg": 2.8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 59,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Dekstroza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-5",
+     "ingredient": {
+      "id": "PI-ING-000456",
+      "canonical_ingredient_id": "PI-ING-000456",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "inulin",
+      "carbonation_status": "UNKNOWN",
+      "name": "INULIN · Fibre · Powder",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 3,
+       "solids_percent": 97,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 8,
+       "sugar_percent": 8,
+       "sucrose_percent": 8,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 89,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 210,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 8,
+      "pac_value": 8,
+      "de_value": null,
+      "cost_per_kg": 8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 55,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 55,
+     "notes": "Inulina"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-6",
+     "ingredient": {
+      "id": "PI-ING-000492",
+      "canonical_ingredient_id": "PI-ING-000492",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "tara_gum",
+      "carbonation_status": "UNKNOWN",
+      "name": "TARA GUM · Stabilizer",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 9.5,
+       "solids_percent": 90.5,
+       "fat_percent": 0.5,
+       "protein_percent": 2,
+       "carbohydrate_percent": 1.5,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 86.5,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 180,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": 20,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 4,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 1,
+     "notes": "Guma tara"
+    }
+   ],
+   "mode": "classic",
+   "category": "sorbet",
+   "target_temperature_c": -11,
+   "target_batch_grams": 1000,
+   "machine_capacity_grams": null,
+   "machine_capacity_source": null,
+   "goals": {
+    "formulation_strategy": "optimal",
+    "flavor_intensity": "balanced",
+    "cost_priority": "balanced",
+    "direction_targets": {
+     "sweetness": -2,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "direction_targets_active": true,
+    "excluded_ingredient_ids": [],
+    "unavailable_main_ingredient_ids": []
+   }
+  },
+  "constraints": {
+   "byLineId": {}
+  }
+ },
+ "CONTROL-C2-sorbet-hard-2": {
+  "input": {
+   "items": [
+    {
+     "id": "classic-blood-orange-sorbet-line-1",
+     "ingredient": {
+      "id": "PI-ING-000358",
+      "canonical_ingredient_id": "PI-ING-000358",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "fruit_juice",
+      "carbonation_status": "UNKNOWN",
+      "name": "BLOOD ORANGE · Campisi Citrus Juice · Frozen · BIO",
+      "category": "fruit",
+      "composition": {
+       "water_percent": 91.27,
+       "solids_percent": 8.73,
+       "fat_percent": 0,
+       "protein_percent": 0.5,
+       "carbohydrate_percent": 8.2,
+       "sugar_percent": 8.2,
+       "sucrose_percent": 3.4,
+       "glucose_percent": 2.3,
+       "dextrose_percent": 0,
+       "fructose_percent": 2.5,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0.03,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 33,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 9.421,
+      "pac_value": 12.696,
+      "de_value": null,
+      "cost_per_kg": 2.5,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 598,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 450,
+     "notes": "Blood orange juice"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-2",
+     "ingredient": {
+      "id": "PI-ING-001409",
+      "canonical_ingredient_id": "PI-ING-001409",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "water",
+      "carbonation_status": "UNKNOWN",
+      "name": "WATER · Liquid",
+      "category": "other",
+      "composition": {
+       "water_percent": 100,
+       "solids_percent": 0,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 0,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": null,
+      "cost_currency": "EUR",
+      "confidence_score": 95,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": null
+     },
+     "planned_grams": 180,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 314,
+     "notes": "Woda"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-3",
+     "ingredient": {
+      "id": "PI-ING-000514",
+      "canonical_ingredient_id": "PI-ING-000514",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "sucrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "SUCROSE SUGAR · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 0,
+       "solids_percent": 100,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 100,
+       "sugar_percent": 100,
+       "sucrose_percent": 100,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 400,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 100,
+      "pac_value": 100,
+      "de_value": null,
+      "cost_per_kg": 1.2,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 104,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Sacharoza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-4",
+     "ingredient": {
+      "id": "PI-ING-000494",
+      "canonical_ingredient_id": "PI-ING-000494",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "dextrose",
+      "carbonation_status": "UNKNOWN",
+      "name": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+      "category": "sugar",
+      "composition": {
+       "water_percent": 9.1,
+       "solids_percent": 90.9,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 90.9,
+       "sugar_percent": 90.9,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 90.9,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 0,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 364,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 72.7,
+      "pac_value": 172.7,
+      "de_value": null,
+      "cost_per_kg": 2.8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 59,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 90,
+     "notes": "Dekstroza"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-5",
+     "ingredient": {
+      "id": "PI-ING-000456",
+      "canonical_ingredient_id": "PI-ING-000456",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "inulin",
+      "carbonation_status": "UNKNOWN",
+      "name": "INULIN · Fibre · Powder",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 3,
+       "solids_percent": 97,
+       "fat_percent": 0,
+       "protein_percent": 0,
+       "carbohydrate_percent": 8,
+       "sugar_percent": 8,
+       "sucrose_percent": 8,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 89,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 210,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 8,
+      "pac_value": 8,
+      "de_value": null,
+      "cost_per_kg": 8,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 55,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 55,
+     "notes": "Inulina"
+    },
+    {
+     "id": "classic-blood-orange-sorbet-line-6",
+     "ingredient": {
+      "id": "PI-ING-000492",
+      "canonical_ingredient_id": "PI-ING-000492",
+      "private_product_id": null,
+      "identity_provenance": "mapper",
+      "source_subcategory": "tara_gum",
+      "carbonation_status": "UNKNOWN",
+      "name": "TARA GUM · Stabilizer",
+      "category": "stabilizer",
+      "composition": {
+       "water_percent": 9.5,
+       "solids_percent": 90.5,
+       "fat_percent": 0.5,
+       "protein_percent": 2,
+       "carbohydrate_percent": 1.5,
+       "sugar_percent": 0,
+       "sucrose_percent": 0,
+       "glucose_percent": 0,
+       "dextrose_percent": 0,
+       "fructose_percent": 0,
+       "lactose_percent": 0,
+       "polyol_percent": 0,
+       "fiber_percent": 86.5,
+       "salt_percent": 0,
+       "alcohol_percent": 0,
+       "kcal_per_100g": 180,
+       "saturated_fat_percent": 0
+      },
+      "pod_value": 0,
+      "pac_value": 0,
+      "de_value": null,
+      "cost_per_kg": 20,
+      "cost_currency": "EUR",
+      "confidence_score": 98,
+      "source_type": "verified_db",
+      "is_verified": true,
+      "flags": {
+       "is_stabilizer": true,
+       "vegan_eligibility": "VEGAN_VERIFIED",
+       "vegan_eligibility_reasons": [
+        "verified_mapper_vegan_true"
+       ]
+      },
+      "cost_source": "reference"
+     },
+     "planned_grams": 4,
+     "actual_grams": null,
+     "lock_type": "unlocked",
+     "user_intent_anchor_grams": 1,
+     "notes": "Guma tara"
+    }
+   ],
+   "mode": "classic",
+   "category": "sorbet",
+   "target_temperature_c": -11,
+   "target_batch_grams": 1000,
+   "machine_capacity_grams": null,
+   "machine_capacity_source": null,
+   "goals": {
+    "formulation_strategy": "optimal",
+    "flavor_intensity": "balanced",
+    "cost_priority": "balanced",
+    "direction_targets": {
+     "sweetness": 0,
+     "softness": -2,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "direction_targets_active": true,
+    "excluded_ingredient_ids": [],
+    "unavailable_main_ingredient_ids": []
+   }
+  },
+  "constraints": {
+   "byLineId": {}
+  }
+ }
+}

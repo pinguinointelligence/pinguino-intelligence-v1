@@ -57,6 +57,8 @@ import {
   buildDraftCandidateVector,
   describeDraftAdjustment,
   sweepDraftCandidateVector,
+  searchExactDirectionTargetCandidate,
+  type ExactDirectionAxisTarget,
   type DraftStateMeasure,
   type DraftSweepResult,
 } from './draftCandidateVector';
@@ -1059,6 +1061,36 @@ function beatsBaseline(current: RecipeInput, proposed: RecipeInput): boolean {
   const baselineViolations = detectViolations(calculateRecipe(baseline)).length;
   if (proposedViolations < baselineViolations) return true;
   return totalSeverity(proposed) < totalSeverity(baseline) - SEVERITY_EPS;
+}
+
+/**
+ * THE REQUESTED DIRECTION AXES as plain (read, target) pairs for the solver's
+ * exact-target stage (P1 false-infeasible closure).
+ *
+ * This is the ONLY place that translates a Direction plan into numbers for that
+ * stage, so `draftCandidateVector` keeps its deliberate no-Direction boundary.
+ * It invents nothing: the metric is the axis's own metric, the target is the
+ * MIDPOINT of the axis's own approved band (for the Sorbet exact-preference
+ * point, min = max, so the midpoint IS that point), and the value is read from
+ * `calculateRecipe`. Aiming at the midpoint rather than an edge is what leaves
+ * the whole-gram practicalization its rounding margin inside the band.
+ */
+function exactDirectionAxisTargets(input: RecipeInput): ExactDirectionAxisTarget[] {
+  const plan = buildRecipeDirectionPlan(input);
+  const axes: ExactDirectionAxisTarget[] = [];
+  for (const axis of plan.axes) {
+    if (axis.status !== 'working' || axis.targetBand === null) continue;
+    if (axis.metric !== 'pod' && axis.metric !== 'npac') continue;
+    const metric = axis.metric;
+    axes.push({
+      read: (candidate) => {
+        const result = calculateRecipe(candidate);
+        return metric === 'pod' ? result.pod_points : result.npac_points;
+      },
+      target: (axis.targetBand.min + axis.targetBand.max) / 2,
+    });
+  }
+  return axes;
 }
 
 const isConstrained = (set: ConstraintSet, lineId: string): boolean => {
@@ -2647,10 +2679,26 @@ function iterateSolverToFixedPoint(
       // When an approved exact Direction target is active, fit outranks cost
       // in ECO. Use the same canonical measure as OPTIMAL until the target is
       // reached; inactive and unsupported profiles keep their prior ECO path.
-      // Owner P1-A: the paired-exchange pass may only fire when a Direction
-      // preference is the ONLY residual — the recipe is otherwise engine-clean.
+      // Owner P1-A scoped the paired-exchange pass to „a Direction preference is
+      // the ONLY residual", read as „no other band is out". P1 (OD-28) measured
+      // what that costs: the HOME strawberry gelato halts with ONE unrelated
+      // native residual (`fat:low`, severity 0.439) still open, so the gate is
+      // false, the exchange pass returns at its first line, and CORE answers
+      // „Nie da się osiągnąć poziomu −1" at POD 16.050 while a clean whole-gram
+      // candidate exists at POD 13.98. The residual that switched the escape off
+      // is itself produced by the coordinate-descent trap the escape exists for,
+      // so the old reading was circular.
+      //
+      // The condition is therefore a strict SUPERSET of the approved one: it
+      // still fires on the engine-clean case exactly as before, and it now also
+      // fires while the REQUESTED DIRECTION IS STILL UNREACHED — which is the
+      // trap, stated directly. No flow without an exact Direction objective is
+      // reached by either arm, so every other search keeps its previous
+      // candidate set and its previous cost byte-for-byte.
       const directionOnlyResidual =
-        hasExactDirectionObjective && detectViolations(calculateRecipe(working)).length === 0;
+        hasExactDirectionObjective &&
+        (detectViolations(calculateRecipe(working)).length === 0 ||
+          recipeDirectionViolations(working).length > 0);
       return sweepDraftCandidateVector({
         start: working,
         set: solverSet,
@@ -2661,6 +2709,9 @@ function iterateSolverToFixedPoint(
         measure,
         startMeasure: current,
         directionOnlyResidual,
+        exactDirectionTargets: hasExactDirectionObjective
+          ? exactDirectionAxisTargets(working)
+          : undefined,
       });
     };
 
@@ -3006,6 +3057,155 @@ const requiredLineContractViolations = (before: RecipeInput, after: RecipeInput)
     .map((item) => item.id);
 };
 
+/** How many aiming passes one preview may run. Orchestration only. */
+const DIRECTION_AIM_MAX_PASSES = 6;
+
+/** How many aimed candidates one call may hand back for the caller to rank. */
+const DIRECTION_AIM_MAX_VARIANTS = 8;
+
+/**
+ * AIM AT THE REQUESTED DIRECTION TARGET (P1 — the false-infeasible closure).
+ *
+ * This is the ONE place the pipeline asks the question it was answering by
+ * accident: not „did some strictly-improving move exist" but „is the candidate
+ * we are about to SHOW actually the nearest one we can build". It runs only
+ * when the requested exact Direction target is still unreached — i.e. exactly
+ * when the customer is about to be told „nie da się osiągnąć poziomu X" or
+ * „najbliższy możliwy poziom to Y".
+ *
+ * It adds NO science and NO new admissible space: the solver's own exact-target
+ * stage is re-run from the chosen candidate, over the same adjustable lines,
+ * inside the same ladder bounds, through the engine's own action applier, and
+ * the result is kept only when EVERY gate that already decides a candidate
+ * still passes — §17 constraints, positive-standard presence, the required-line
+ * contract, Main identity, the batch invariant — and only when it is strictly
+ * NEARER to the requested target with no new native violation.
+ *
+ * Returns null when nothing nearer exists; the caller then presents exactly what
+ * it presented before.
+ */
+function aimDirectionVariants(
+  input: RecipeInput,
+  set: ConstraintSet,
+  candidate: RecipeInput,
+  options: OptimizePreviewOptions,
+  allowMaterialDeviation = false,
+): RecipeInput[] {
+  if (!hasActiveExactDirectionObjective(input)) return [];
+  const targets = exactDirectionAxisTargets(input);
+  if (targets.length === 0) return [];
+  const target = candidate.target_batch_grams;
+  if (!(target > 0)) return [];
+  if (candidate.items.some((item) => item.actual_grams !== null)) return [];
+
+  const aimSet = solverHolds(candidate, set);
+  const excludedIngredientIds = new Set(
+    (options.excludedIngredientIds ?? []).map(canonicalIngredientIdFromSourceId),
+  );
+  const constraints = {
+    context: recipeContext(candidate),
+    mode: candidate.mode,
+    allow_main_ingredient_reduction: false,
+    machine_capacity_grams: null,
+    target_batch_grams: target,
+  } as const;
+  const measure = (probe: RecipeInput): DraftStateMeasure => {
+    const list = recipeDirectionViolations(probe);
+    return {
+      violations: list.length,
+      severityPoints: list.reduce((sum, violation) => sum + violation.severity_points, 0),
+    };
+  };
+  const nativeViolationsOf = (probe: RecipeInput) => detectViolations(calculateRecipe(probe)).length;
+  const baselineNative = nativeViolationsOf(candidate);
+  /** Every gate that already decides a candidate — none of them is relaxed here. */
+  const admissible = (probe: RecipeInput): boolean =>
+    Math.abs(plannedSum(probe) - target) <= BATCH_SUM_TOLERANCE_G &&
+    verifyConstraintsPreserved(aimSet, probe).ok &&
+    verifyConstraintsPreserved(set, probe).ok &&
+    positiveStandardPresencePreserved(input, probe) &&
+    requiredLineContractViolations(input, probe).length === 0 &&
+    verifyMainIngredientIdentity(input, probe, set.byLineId).ok &&
+    nativeViolationsOf(probe) <= baselineNative;
+
+  /**
+   * Two acceptance rules, both bounded, and the NEARER result wins.
+   *
+   * `strictly_better` is the solver's own rule and follows the same trajectory
+   * the rest of the pipeline would; `nearest` takes the smallest-distance step
+   * available. Neither dominates — greedily taking the nearest step can end
+   * worse than following the solver's rule, and vice versa — so both are run
+   * and the candidate that ends up nearest to the requested target is returned.
+   */
+  const visited: RecipeInput[] = [];
+  const runRule = (rule: 'strictly_better' | 'nearest'): void => {
+    let state = candidate;
+    let best = measure(state);
+    for (let pass = 0; pass < DIRECTION_AIM_MAX_PASSES; pass += 1) {
+      if (best.violations === 0) break;
+      const step = searchExactDirectionTargetCandidate({
+        start: state,
+        set: aimSet,
+        excludedIngredientIds,
+        constraints,
+        normalize: (probe) => probe,
+        measure,
+        startMeasure: best,
+        exactDirectionTargets: targets,
+        allowMaterialDeviation,
+        accept: admissible,
+        acceptanceRule: rule,
+      });
+      if (step === null || !admissible(step.input)) break;
+      state = step.input;
+      best = step.measure;
+      visited.push(state);
+    }
+  };
+  // EVERY state the aim reached, not just the two endpoints. Neither acceptance
+  // rule dominates, and on an exact-POINT target which state survives whole-gram
+  // practicalization best is the caller's measure to make, not this one's — a
+  // greedy trajectory must not decide that for it.
+  runRule('strictly_better');
+  runRule('nearest');
+  const ranked = [...visited].sort((left, right) => {
+    const a = measure(left);
+    const b = measure(right);
+    return a.violations - b.violations || a.severityPoints - b.severityPoints;
+  });
+  const seen = new Set<string>();
+  const unique: RecipeInput[] = [];
+  for (const variant of ranked) {
+    const key = variant.items.map((item) => item.planned_grams.toFixed(4)).join('|');
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(variant);
+    if (unique.length >= DIRECTION_AIM_MAX_VARIANTS) break;
+  }
+  return unique;
+}
+
+/**
+ * The single nearest aimed candidate, for callers that want one answer.
+ * Ranked on the exact (pre-practicalization) vector; a caller that practicalizes
+ * and cares about the rounded result ranks `aimDirectionVariants` itself.
+ */
+function aimAtDirectionTarget(
+  input: RecipeInput,
+  set: ConstraintSet,
+  candidate: RecipeInput,
+  options: OptimizePreviewOptions,
+  allowMaterialDeviation = false,
+): RecipeInput | null {
+  const severity = (probe: RecipeInput) =>
+    recipeDirectionViolations(probe).reduce((sum, violation) => sum + violation.severity_points, 0);
+  let best: RecipeInput | null = null;
+  for (const variant of aimDirectionVariants(input, set, candidate, options, allowMaterialDeviation)) {
+    if (best === null || severity(variant) < severity(best)) best = variant;
+  }
+  return best;
+}
+
 /**
  * Post-solve proximity polish for a no-Main exact Direction recipe. The
  * established candidate is a seed, not authority: it
@@ -3202,6 +3402,40 @@ const polishDirectionVector = (
 };
 
 /**
+ * THE DIRECTION CANDIDATE RANKER (P1 — the single nearest/feasibility authority).
+ *
+ * Every route that is about to SHOW a Direction candidate ranks it here. The
+ * existing proximity polish runs first and is unchanged; then, when the
+ * requested level is still unreached, the candidate is put through the one
+ * check the customer's refusal actually claims to have made — is anything
+ * nearer buildable in this same admissible space? — and the nearer of the two
+ * is what the customer sees.
+ *
+ * It is one function at three call sites because those three ARE the decision:
+ * the formulation route, the local-correction route and the practical polish.
+ */
+const rankDirectionCandidate = (
+  input: RecipeInput,
+  set: ConstraintSet,
+  candidate: RecipeInput,
+  createdAt: string,
+  options: OptimizePreviewOptions,
+): RecipeInput => {
+  const polished = polishDirectionVector(input, set, candidate, createdAt, options);
+  // PRESERVE FIRST (§8/§12): aim without ever collapsing a positive user line.
+  const preserved = aimAtDirectionTarget(input, set, polished, options) ?? polished;
+  if (recipeDirectionViolations(preserved).length === 0) return preserved;
+  // DEVIATE ONLY WHEN IT PROVES NECESSARY: a second pass may reach into the
+  // deviating region of the ladder, and its result is kept ONLY when it fully
+  // REACHES the requested level — never to shave a residual. The existing
+  // user-intent deviation report and its consent gate then describe it, exactly
+  // as they already do for the single-line sweep's deviating rungs.
+  const deviating = aimAtDirectionTarget(input, set, preserved, options, true);
+  if (deviating !== null && recipeDirectionViolations(deviating).length === 0) return deviating;
+  return preserved;
+};
+
+/**
  * Whole-gram practicalization is part of the executable contract, so it may
  * change the Direction tier used by the pre-practicalization proximity rank.
  * Re-run the same generic x_user polish once on the physical Preview vector
@@ -3227,7 +3461,7 @@ const polishPracticalDirectionPreview = (
   ) {
     return preview;
   }
-  const ranked = polishDirectionVector(input, set, preview.proposedInput, createdAt, options);
+  const ranked = rankDirectionCandidate(input, set, preview.proposedInput, createdAt, options);
   if (
     workingStateFingerprint(ranked, preview.nextConstraints) ===
     workingStateFingerprint(preview.proposedInput, preview.nextConstraints)
@@ -6164,7 +6398,7 @@ function buildFormulationPreviewInternal(
   // (distance 1.3677 from [14,15]) while a legal 15.1365 candidate — distance
   // 0.1365 — was reachable from the same draft. Conceding while something
   // strictly nearer exists is precisely the non-nearest NEAREST this fixes.
-  const directionRanked = polishDirectionVector(
+  const directionRanked = rankDirectionCandidate(
     input,
     set,
     improveDirectionNearestVector(input, set, working, createdAt, options),
@@ -6605,9 +6839,43 @@ function buildSorbetDirectionCandidatePreview(params: {
         })?.candidate ?? null,
     },
   ];
+  /**
+   * NEAREST MUST BE NEAREST (P1 — LOCK-02 / LOCK-03).
+   *
+   * This used to return the FIRST generator whose candidate merely IMPROVED the
+   * Direction measure, so the closed-form projection short-circuited the search
+   * behind it and the customer was shown a candidate presented as „najbliższy"
+   * that was not. Measured on the served tree (blood-orange sorbet, 1000 g):
+   * the presented candidate sat 26×–156× farther from the requested target than
+   * one reachable in the same admissible space, and — because the requested
+   * LEVEL only scales the residual, never the descent — sweetness −1 and −2
+   * returned byte-identical proposals.
+   *
+   * Both generators now run, each is additionally aimed at the requested target
+   * by the shared ranker, and the NEAREST engine-legal result wins. Every gate
+   * that decided a candidate before still decides it; only the choice between
+   * several passing candidates changed, and it changed to the one the label
+   * already claimed.
+   */
+  const aimedGenerators: Array<{
+    source: NonNullable<ConstraintPreview['directionCandidateSource']>;
+    candidate: RecipeInput;
+  }> = [];
   for (const generator of generators) {
-    const candidate = generator.generate();
-    if (candidate === null || !verifyConstraintsPreserved(solverSet, candidate).ok) continue;
+    const seed = generator.generate();
+    if (seed === null) continue;
+    aimedGenerators.push({ source: generator.source, candidate: seed });
+    for (const variant of aimDirectionVariants(input, set, seed, options)) {
+      aimedGenerators.push({ source: generator.source, candidate: variant });
+    }
+  }
+  for (const variant of aimDirectionVariants(input, set, working, options)) {
+    aimedGenerators.push({ source: 'sorbet_nearest_search', candidate: variant });
+  }
+  let best: { preview: ConstraintPreview; distance: number; violations: number } | null = null;
+  for (const generator of aimedGenerators) {
+    const candidate = generator.candidate;
+    if (!verifyConstraintsPreserved(solverSet, candidate).ok) continue;
     const changed = candidate.items.some(
       (item, index) =>
         Math.abs(item.planned_grams - (input.items[index]?.planned_grams ?? Number.NaN)) > 1e-9,
@@ -6646,9 +6914,17 @@ function buildSorbetDirectionCandidatePreview(params: {
       if (mainGroupLinesByteIdentical(input, preview.proposedInput)) {
         preview.mainHeldByExactDirection = true;
       }
-      return mainSafePreview(input, preview, options.productBehaviorSnapshots);
+      const distance = directionSeverity(afterDirection);
+      if (
+        best === null ||
+        afterDirection.length < best.violations ||
+        (afterDirection.length === best.violations && distance < best.distance - SEVERITY_EPS)
+      ) {
+        best = { preview, distance, violations: afterDirection.length };
+      }
     }
   }
+  if (best !== null) return mainSafePreview(input, best.preview, options.productBehaviorSnapshots);
   return null;
 }
 
@@ -8777,7 +9053,7 @@ function buildOptimizePreviewWithDirection(
 
   // SHARED DIRECTION NEAREST: rank the final candidate by its distance to the
   // band the user actually requested before it is practicalized into a Preview.
-  working = polishDirectionVector(
+  working = rankDirectionCandidate(
     input,
     set,
     improveDirectionNearestVector(input, set, working, createdAt, options),

@@ -1,0 +1,225 @@
+{
+ "C1": {
+  "label": "C1 no degrees of freedom",
+  "note": "every line but the last is gram-locked at its applied value: the requested level cannot be reached by construction",
+  "recipeId": "classic-butter-pecan",
+  "axis": "sweetness",
+  "level": 2,
+  "lockedLines": [
+   [
+    "MILK · 3.5% FAT · Ch",
+    591
+   ],
+   [
+    "CREAM 30% · Mlekovit",
+    100
+   ],
+   [
+    "SKIMMED MILK POWDER ",
+    35
+   ],
+   [
+    "SUCROSE SUGAR · Swee",
+    80
+   ],
+   [
+    "DEXTROSE MONOHYDRATE",
+    60
+   ],
+   [
+    "INULIN · Fibre · Pow",
+    43
+   ],
+   [
+    "BUTTER UNSALTED · Ml",
+    30
+   ],
+   [
+    "PECANS · Dry Roasted",
+    59
+   ]
+  ],
+  "coreReached": null,
+  "coreDistance": null,
+  "coreNativeViolations": null,
+  "coreOk": false,
+  "coreCode": "no_proposal",
+  "diagnosticOnly": null,
+  "uiTerminal": "BLOCKED_WITH_EXACT_ACTION",
+  "fallbackBest": null,
+  "fallbackAttempts": [
+   {
+    "t": {
+     "sweetness": 1,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "reached": false
+   },
+   {
+    "t": {
+     "sweetness": 0,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "reached": false
+   }
+  ],
+  "rescueBest": null,
+  "REFUSES": true
+ },
+ "C2": {
+  "label": "C2 sorbet softness -2 (audit: the one true dead end)",
+  "note": "the audit proved this cell has no applicable rescue; it must stay a refusal",
+  "recipeId": "classic-blood-orange-sorbet",
+  "axis": "softness",
+  "level": -2,
+  "lockedLines": [],
+  "coreReached": false,
+  "coreDistance": 0.02,
+  "coreNativeViolations": [],
+  "coreOk": true,
+  "coreCode": null,
+  "diagnosticOnly": false,
+  "uiTerminal": "PREVIEW_READY",
+  "fallbackBest": null,
+  "fallbackAttempts": [
+   {
+    "t": {
+     "sweetness": 0,
+     "softness": -1,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "reached": false
+   },
+   {
+    "t": {
+     "sweetness": 0,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "reached": false
+   }
+  ],
+  "rescueBest": null,
+  "REFUSES": true
+ },
+ "C3": {
+  "label": "C3 sugar lines locked, sweetness +2",
+  "note": "the lines that carry POD are pinned; +2 is unreachable",
+  "recipeId": "classic-crema-di-buontalenti",
+  "axis": "sweetness",
+  "level": 2,
+  "lockedLines": [
+   [
+    "MILK · 3.5% FAT · Ch",
+    575
+   ],
+   [
+    "SWEET CREAM · 35% FA",
+    133
+   ],
+   [
+    "EGG YOLK · Egg · Chi",
+    89
+   ],
+   [
+    "SUCROSE SUGAR · Swee",
+    133
+   ],
+   [
+    "DEXTROSE MONOHYDRATE",
+    31
+   ]
+  ],
+  "coreReached": null,
+  "coreDistance": null,
+  "coreNativeViolations": null,
+  "coreOk": false,
+  "coreCode": "no_proposal",
+  "diagnosticOnly": null,
+  "uiTerminal": "BLOCKED_WITH_EXACT_ACTION",
+  "fallbackBest": null,
+  "fallbackAttempts": [
+   {
+    "t": {
+     "sweetness": 1,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "reached": false
+   },
+   {
+    "t": {
+     "sweetness": 0,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "reached": false
+   }
+  ],
+  "rescueBest": null,
+  "REFUSES": true
+ },
+ "C4": {
+  "label": "C4 sorbet with every line but two locked, sweetness -2",
+  "note": "two free lines only",
+  "recipeId": "classic-blood-orange-sorbet",
+  "axis": "sweetness",
+  "level": -2,
+  "lockedLines": [
+   [
+    "BLOOD ORANGE · Campi",
+    598
+   ],
+   [
+    "WATER · Liquid",
+    180
+   ],
+   [
+    "SUCROSE SUGAR · Swee",
+    104
+   ],
+   [
+    "DEXTROSE MONOHYDRATE",
+    59
+   ]
+  ],
+  "coreReached": null,
+  "coreDistance": null,
+  "coreNativeViolations": null,
+  "coreOk": false,
+  "coreCode": "no_proposal",
+  "diagnosticOnly": null,
+  "uiTerminal": "BLOCKED_WITH_EXACT_ACTION",
+  "fallbackBest": null,
+  "fallbackAttempts": [
+   {
+    "t": {
+     "sweetness": -1,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "reached": false
+   },
+   {
+    "t": {
+     "sweetness": 0,
+     "softness": 0,
+     "creaminess": 0,
+     "flavor": 0
+    },
+    "reached": false
+   }
+  ],
+  "rescueBest": null,
+  "REFUSES": true
+ }
+}
