@@ -54,14 +54,18 @@ export function ProcessCorrectionSheet({
   onSelect,
   onApply,
   onBack,
+  onRetry,
 }: {
   frame: ProcessSheetFrame;
   correction: ProductionCorrectionView;
   onSelect: (id: ProductionDecisionId) => void;
   onApply: () => void;
   onBack: () => void;
+  /** Ask the authority again when it gave no options; absent when there is no retry. */
+  onRetry?: (() => void) | null;
 }) {
-  const { what, options, impossibleReason, recommendedId, selectedId, applyLabel } = correction;
+  const { what, options, pendingReason, impossibleReason, recommendedId, selectedId, applyLabel } =
+    correction;
   return (
     <Frame
       label={copy.correctionEyebrow}
@@ -85,6 +89,17 @@ export function ProcessCorrectionSheet({
           {what.name}: {copy.correctionInVessel}{' '}
           <b className="font-semibold text-[var(--g-ink)]">{formatProductionGrams(what.actualG)}</b>{' '}
           · {copy.correctionPlan} {formatProductionGrams(what.planG)}
+        </p>
+      ) : null}
+      {/* No options AND no reason would leave the operator holding the vessel in front of
+          a sheet that says nothing. A controller waiting on an authority says so here. */}
+      {options.length === 0 && pendingReason ? (
+        <p
+          className="mt-3 shrink-0 text-[13px] leading-[1.4] text-[#5f5a52]"
+          role="status"
+          data-testid="process-correction-pending"
+        >
+          {pendingReason}
         </p>
       ) : null}
       {options.length > 0 ? (
@@ -151,6 +166,16 @@ export function ProcessCorrectionSheet({
         >
           {copy.back}
         </button>
+        {options.length === 0 && onRetry ? (
+          <button
+            type="button"
+            className={primaryButton}
+            onClick={onRetry}
+            data-testid="process-correction-retry"
+          >
+            {copy.correctionRetry}
+          </button>
+        ) : null}
         {options.length > 0 ? (
           <button
             type="button"
