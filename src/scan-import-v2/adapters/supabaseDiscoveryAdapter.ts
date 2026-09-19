@@ -5,7 +5,7 @@
  * Request/response shapes mirror `src/services/productScanner.ts` exactly; nothing legacy is modified.
  */
 import type { CodeIdentity, ExactCandidate, RequestContext } from '../contracts';
-import { NetworkError } from '../contracts';
+import { isScannerTransportError, NetworkError } from '../contracts';
 import { withProductScanFinalizeV2Contract } from '../../features/product-scanner/productScanFinalizeContract';
 import { assertScanRunCurrent } from '../runAuthority';
 import type {
@@ -176,10 +176,13 @@ export function createSupabaseDiscoveryPort(
   const sessionsById = new Map<string, DiscoverySession>();
   /*
     Recognition prefetch and startDiscovery intentionally race the same logical lookup. The
-    explicit scan-run id identifies one scanner run, so both readers share one promise while a
-    later rescan (including a retry after provider failure) gets a fresh request and receipt.
+    explicit scan-run id identifies one scanner run, so both readers share one promise. A user
+    retry may replace a rejected promise, retaining the session; pending/successful work is reused.
   */
-  const researchByRun = new Map<string, Promise<ResearchOutcome>>();
+  const researchByRun = new Map<
+    string,
+    { request: Promise<ResearchOutcome>; failed: boolean; attempt: number }
+  >();
   const remember = (session: DiscoverySession): DiscoverySession => {
     sessionsById.set(session.sessionId, session);
     return session;
@@ -235,12 +238,17 @@ export function createSupabaseDiscoveryPort(
   const invoke = async (name: string, body: unknown): Promise<Record<string, unknown>> => {
     const { data, error } = await client.functions.invoke(name, { body });
     if (error) {
-      if (NETWORK.test(error.message)) throw new NetworkError(error.message);
-      const verdict = await structuredVerdict(error);
+      const status = (error as { context?: { status?: number } }).context?.status;
+      if (isScannerTransportError(error)) throw new NetworkError(error.message);
+      // Only the existing business-response contract can turn a non-2xx response into a verdict.
+      const verdict =
+        status === undefined || status === 409 ? await structuredVerdict(error) : null;
       if (verdict) return verdict;
       const code = await serverCode(error);
-      throw new Error(`${name}: ${code ?? error.message}`);
+      throw new Error(`${name}: ${status ? `HTTP ${status}: ` : ''}${code ?? error.message}`);
     }
+    if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length === 0)
+      throw new Error(`${name}: malformed_response`);
     const d = obj(data);
     if (typeof d['error'] === 'string') throw new Error(`${name}: ${d['error']}`);
     return d;
@@ -264,7 +272,8 @@ export function createSupabaseDiscoveryPort(
       assertScanRunCurrent(ctx);
       const runKey = `${ctx.accountId ?? 'guest'}:${ctx.scanRun?.id ?? ctx.now}:${identity.canonicalGtin13}`;
       const current = researchByRun.get(runKey);
-      if (current) return current;
+      const attempt = ctx.requestAttempt ?? 0;
+      if (current && (!current.failed || current.attempt === attempt)) return current.request;
       const request = (async (): Promise<ResearchOutcome> => {
         assertScanRunCurrent(ctx);
         const s = sessionFor(identity, ctx);
@@ -294,7 +303,11 @@ export function createSupabaseDiscoveryPort(
           notice,
         };
       })();
-      researchByRun.set(runKey, request);
+      const entry = { request, failed: false, attempt };
+      researchByRun.set(runKey, entry);
+      void request.catch(() => {
+        entry.failed = true;
+      });
       // Bound the mount-lifetime cache without invalidating the active run's shared promise.
       if (researchByRun.size > 32) researchByRun.delete(researchByRun.keys().next().value!);
       return request;
