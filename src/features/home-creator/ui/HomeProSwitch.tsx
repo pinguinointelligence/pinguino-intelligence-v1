@@ -26,6 +26,14 @@ import { useHomeViewStore } from '../homeViewStore';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { requestLeave } from '@/features/production-area/unsavedGuard';
 
+/**
+ * The switch's hairline. DESIGN V3.0 correction VII names it exactly (#ebe6dd) and lists
+ * „delikatność linii" among the things that change, so it is one step lighter than the
+ * general `--g-line` (#ded9d0). Hairlines of this kind are already written as literals in
+ * this codebase (e.g. the #efebe4 rules under the header).
+ */
+const SWITCH_LINE = '#ebe6dd';
+
 const SEGMENT_LABEL: Readonly<Record<HomeViewMode, string>> = {
   home: homeCreatorCopy.switch.home,
   pro: homeCreatorCopy.switch.pro,
@@ -79,10 +87,15 @@ export function HomeProSwitch({
       data-testid="home-pro-switch"
       data-neutral={activeView === null ? 'true' : undefined}
       className={cn(
-        'inline-flex shrink-0 items-center gap-0 overflow-hidden rounded-full border p-0.5',
+        /* DESIGN V3.0 correction VII — the capsule is 28 px on phone and 30 px from `sm`,
+           measured the way the design measures it: 1 px border + 2 px padding + the
+           segment. `overflow-hidden` is deliberately gone — it used to clip the invisible
+           vertical extension that gives each segment its 44 px touch target, and it never
+           had anything to clip: both segments are `rounded-full` themselves. */
+        'inline-flex shrink-0 items-center gap-0 rounded-full border p-0.5',
         className,
       )}
-      style={{ borderColor: 'var(--g-line)', background: 'var(--g-ivory)' }}
+      style={{ borderColor: SWITCH_LINE, background: 'var(--g-ivory)' }}
     >
       {segments.map((segment) => {
         const treatment = segmentTreatment(segment, activeView);
@@ -97,11 +110,23 @@ export function HomeProSwitch({
             data-treatment={treatment}
             onClick={() => go(segment)}
             className={cn(
-              // Owner, mobile: the switch sat too large in the phone header. It shrinks
-              // below `sm` only — the desktop header keeps the geometry it was frozen with.
-              'min-h-[26px] px-1.5 text-[10px] tracking-[0.06em]',
-              'sm:min-h-[32px] sm:px-4 sm:text-[11px] sm:tracking-[0.14em]',
-              'rounded-full font-bold transition-colors',
+              /* DESIGN V3.0 correction VII, „Kierunek HOME/PRO (zaakceptowany)": the switch
+                 comes down to the scale of the account button. Phone: segment 22 px, 10 px
+                 at 600, 0.06 em, 8 px sides. From `sm` (iPad and desktop): segment 24 px,
+                 10.5 px at 600, 0.07 em, 10 px sides. The desktop switch this replaces was
+                 38 px tall with bold 11 px at 0.14 em — the geometry the design cites as
+                 the old one. Both options, the black active segment and the behaviour are
+                 unchanged; only size, weight, spacing and the line's delicacy move. */
+              'h-[22px] px-2 text-[10px] tracking-[0.06em]',
+              'sm:h-[24px] sm:px-2.5 sm:text-[10.5px] sm:tracking-[0.07em]',
+              'rounded-full font-semibold transition-colors',
+              /* A 22/24 px segment is below the 44 px a thumb needs, so each segment
+                 carries an INVISIBLE vertical extension: 22 + 11 + 11 and 24 + 10 + 10
+                 both land on exactly 44 px. Nothing is painted — the capsule keeps its
+                 size, and the header does not grow. */
+              'relative',
+              "after:absolute after:inset-x-0 after:-inset-y-[11px] after:content-['']",
+              'sm:after:-inset-y-[10px]',
               'focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40',
             )}
             style={
