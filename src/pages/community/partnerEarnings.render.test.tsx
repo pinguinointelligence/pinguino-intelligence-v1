@@ -79,11 +79,14 @@ const WORKSPACE: PartnerWorkspace = {
   ],
 };
 
-const render = (section: 'overview' | 'earnings' | 'payouts') => {
+const render = (
+  section: 'overview' | 'earnings' | 'payouts',
+  override: Partial<PartnerWorkspace> = {},
+) => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
-  client.setQueryData(['partner-workspace'], WORKSPACE);
+  client.setQueryData(['partner-workspace'], { ...WORKSPACE, ...override });
   return renderToStaticMarkup(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[`/partner?section=${section}`]}>
@@ -97,7 +100,6 @@ const flat = (value: string) => value.replace(/\s+/g, ' ');
 const text = (html: string) => flat(html.replace(/<[^>]+>/g, ' '));
 const eur = (cents: number) =>
   flat(new Intl.NumberFormat('pl-PL', { style: 'currency', currency: 'EUR' }).format(cents / 100));
-const day = (iso: string) => flat(new Date(iso).toLocaleDateString('pl-PL'));
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -127,7 +129,29 @@ describe('H-DASH-07 — each commission says when it can settle', () => {
   it('the table has a "Do wypłaty od" column with the eligible date', () => {
     const earnings = text(render('earnings'));
     expect(earnings).toContain('Do wypłaty od');
-    expect(earnings).toContain(day('2026-10-02T10:00:00.000Z'));
+    // 2026-10-02T10:00Z is 12:00 on 2 October in Madrid.
+    expect(earnings).toContain('2.10.2026');
+  });
+
+  it('accounting dates are Madrid calendar days, labelled, whatever zone the browser is in', () => {
+    // An eligibility at 00:00 Madrid on 1 December is 23:00 UTC on 30 November; a
+    // browser-zone formatter printed 30.11.2026 west of Madrid.
+    const original = process.env.TZ;
+    try {
+      for (const zone of ['Europe/Lisbon', 'America/New_York', 'UTC', 'Asia/Tokyo']) {
+        process.env.TZ = zone;
+        const earnings = text(
+          render('earnings', {
+            commissions: [commission('m1', 'held', 499, '2026-09-15T10:00:00.000Z', '2026-11-30T23:00:00.000Z')],
+          }),
+        );
+        expect(earnings, zone).toContain('1.12.2026');
+        expect(earnings, zone).not.toContain('30.11.2026');
+        expect(earnings, zone).toContain('Daty rozliczeń według kalendarza Madrytu (Europe/Madrid).');
+      }
+    } finally {
+      process.env.TZ = original;
+    }
   });
 
   it('a commission without an eligible date shows a dash, not "Invalid Date"', () => {
