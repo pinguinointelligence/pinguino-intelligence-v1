@@ -45,6 +45,7 @@ import {
   APIPage,
   FranchisePage,
   HowItWorksPage,
+  HelpPage,
   LabelsHubPage,
   MachinesPage,
   MobileEquipmentPage,
@@ -144,6 +145,10 @@ export function AppRoutes() {
       <Route path="/home" element={<RoleAwareEntryRoute entry="home" />} />
       <Route path="/start" element={<LegacyDestinationRedirect pathname={CUSTOMER_HOME_PATH} />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
+      {/* DESIGN V3.0 GLOBAL MENU: Pomoc is support (contact, reporting a
+          problem) and is its own destination, separate from the knowledge
+          page above it. The menu carries both, separated. */}
+      <Route path="/help" element={<HelpPage />} />
       <Route path="/shop" element={<ShopPage />} />
       {/* The 0 EUR Local pack is its own ROUTE so the intent survives auth and
           refresh — see `LocalStarterPackPage`. */}
