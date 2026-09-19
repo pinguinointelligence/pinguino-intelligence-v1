@@ -301,6 +301,15 @@ export function ProductionProcess({
       <div
         data-testid={currentStep.scope === 'addon' ? 'process-topping-step' : 'process-base-step'}
       >
+        {/* H4-4: weighing and topping show their own owner image as soon as one is
+            approved; until then the step stands on its text, as it does today. */}
+        {currentStep.illustration ? (
+          <PreparationIllustrationImage
+            illustration={currentStep.illustration}
+            sizes="168px"
+            className="mb-3 w-full max-w-[168px]"
+          />
+        ) : null}
         <ProcessStepText text={sharedInstruction}>
           {currentStep.scope === 'addon' ? <ProcessNoMix /> : null}
         </ProcessStepText>
@@ -362,6 +371,14 @@ export function ProductionProcess({
     } else if (step.kind === 'heat') {
       body = (
         <div data-testid="process-heat-step">
+          {/* H4-4: shown the moment an owner image for this step kind is approved. */}
+          {step.illustration ? (
+            <PreparationIllustrationImage
+              illustration={step.illustration}
+              sizes="168px"
+              className="mb-3 w-full max-w-[168px]"
+            />
+          ) : null}
           <ProcessStepText text={step.details[0] ?? null} note={step.details.slice(1).join(' ')} />
           <ProcessStepBox testId="process-heat-products">
             <span>

@@ -30,6 +30,8 @@ const line = (
   note: null,
   moved: false,
   afterCooling,
+  illustration: null,
+  illustrationStatus: 'asset_needed' as const,
   sourceIds: [],
 });
 
@@ -54,6 +56,8 @@ const plan: PreparationPlan = {
       heatLineIds: ['tara'],
       precedingLineIds: ['milk', 'tara'],
       details: ['Sposób…', 'Następnie schłódź.'],
+      illustration: null,
+      illustrationStatus: 'asset_needed' as const,
       sourceIds: [],
     },
     line('fruit', 'base', true),
@@ -67,6 +71,7 @@ const plan: PreparationPlan = {
       // H4-3: this fixture's machine has no confirmed program label.
       programName: null,
       programStatus: 'data_needed' as const,
+      illustrationStatus: 'asset_needed' as const,
       illustration: null,
       sourceIds: [],
     },
