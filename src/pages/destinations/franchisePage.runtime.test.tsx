@@ -76,15 +76,18 @@ const setValue = (control: HTMLInputElement, value: string) => {
 };
 
 describe('one format is open at a time', () => {
-  it('offers the four formats and opens none of them by itself', () => {
+  it('offers the four formats and opens Lokal from the first render', () => {
     mount();
     for (const id of ['local', 'food-truck', 'cart', 'machines']) {
       expect(at(`franchise-format-${id}`)).not.toBeNull();
     }
-    expect(panels()).toHaveLength(0);
+    // Owner correction 2026-09-19: no empty state under the row, ever.
+    expect(panels()).toHaveLength(1);
+    expect(openFormat()).toBe('local');
+    expect(at('franchise-format-local')!.getAttribute('aria-selected')).toBe('true');
   });
 
-  it('a click opens exactly one block and closes the previous', () => {
+  it('a click swaps the one open block, it never opens a second', () => {
     mount();
     click(at('franchise-format-machines'));
     expect(panels()).toHaveLength(1);
