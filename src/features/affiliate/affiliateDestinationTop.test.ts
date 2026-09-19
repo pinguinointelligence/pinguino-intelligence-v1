@@ -35,7 +35,11 @@ describe('the shared destination top', () => {
   });
 
   it('keeps both calls to action and the honest note the hero always carried', () => {
-    expect(page).toContain('href="#affiliate-application"');
+    /* DESIGN V11 (owner 2026-09-19): the application action now goes to the
+       ONE real form instead of scrolling to a band on this page that then
+       linked onward. Two actions, as always — only the first one's destination
+       changed, and it changed to a shorter path. */
+    expect(page).toContain('href="/partner#partner-application"');
     expect(page).toContain('href="#affiliate-how"');
     expect(page).toContain('note={c.hero.note}');
   });
