@@ -22,6 +22,11 @@ import { resolveLabelRepository } from '@/services/labels/labelRepository';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { hasUnsavedProRecipeChanges } from '@/pages/destinations/startNewProRecipe';
 import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
+import { useRecipeStore } from '@/stores/recipeStore';
+import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
+import { productionSourceForRecipe } from '@/features/production-workspace/useProductionWorkspace';
 import { useProductionHistoryPages } from './useProductionHistoryPages';
 import { useInProgressRuns, type InProgressBatch } from './useInProgressRuns';
 import { resumeProductionRun, type ResumeProductionRunFailure } from './resumeProductionRun';
@@ -511,22 +516,38 @@ export function ProductionBatches() {
 
 /**
  * Produkcja → Partie (HOME), Etap 1. HOME has no production history. A HOME
- * preparation that is already running (the local session of the current HOME
- * draft) is offered back where it lives; entering this page never creates one.
+ * preparation that is already running is offered back where it lives; entering this page never
+ * creates one.
+ *
+ * OD-24: it is found by the recipe the batch actually belongs to, not by the HOME draft id.
+ * Before OD-24 a HOME batch was a local session addressed by `home-draft:<uuid>`; now it is the
+ * same durable run PRO makes, addressed by the recipe version it was made from — so the old
+ * comparison could never be true again and this card had silently stopped appearing. The source
+ * comes from the ONE authority that resolves it everywhere else, so HOME cannot drift from it
+ * a second time.
  */
 export function HomeBatches() {
   const ownerUserId = useAuthStore((state) => state.user?.id ?? null);
-  const draftId = useHomeDraftStore((state) => state.draftId);
   const preparationStarted = useHomeDraftStore((state) => state.preparationStarted);
+  const recipe = useRecipeStore();
   const sessionsById = useProductionSessionStore((state) => state.sessionsById) ?? EMPTY_SESSIONS;
-  const running = preparationStarted
-    ? (Object.values(sessionsById).find(
-        (session) =>
-          session.status === 'in_progress' &&
-          session.ownerUserId === ownerUserId &&
-          session.source.recipeId === draftId,
-      ) ?? null)
-    : null;
+  const source = useMemo(() => {
+    const input = buildRecipeInput(recipe, 'planning');
+    return productionSourceForRecipe(
+      recipe,
+      true,
+      productionVersionFingerprint(input, recipeCompositionFromState(recipe)),
+    );
+  }, [recipe]);
+  const running =
+    preparationStarted && source.recipeId !== null
+      ? (Object.values(sessionsById).find(
+          (session) =>
+            session.status === 'in_progress' &&
+            session.ownerUserId === ownerUserId &&
+            session.source.recipeId === source.recipeId,
+        ) ?? null)
+      : null;
 
   if (running) {
     return (
