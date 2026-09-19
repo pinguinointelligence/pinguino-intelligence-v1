@@ -110,19 +110,27 @@ const EMPTY: RescueDoseScreenOutcome = Object.freeze({
  * when there is nothing to absorb the mass with, which is itself information:
  * that dose cannot be screened and is left to the expensive tier.
  */
-export function screenedRescueVector(
+export interface RescueAddition {
+  readonly ingredient: EngineIngredient;
+  readonly lineId: string;
+  readonly grams: number;
+}
+
+/** The general form: any number of additions absorbed by the same rule. One
+ *  addition is the single-candidate screen; two is the bounded pair search. */
+export function screenedRescueVectorFor(
   input: RecipeInput,
-  ingredient: EngineIngredient,
-  lineId: string,
-  grams: number,
+  additions: readonly RescueAddition[],
 ): RecipeInput | null {
-  if (!(grams > 0)) return null;
+  if (additions.length === 0) return null;
+  if (additions.some((addition) => !(addition.grams > 0))) return null;
+  const added = additions.reduce((sum, addition) => sum + addition.grams, 0);
   const movable = input.items.filter(
     (item) => item.lock_type === 'unlocked' && item.actual_grams === null && item.planned_grams > 0,
   );
   const movableMass = movable.reduce((sum, item) => sum + item.planned_grams, 0);
-  if (!(movableMass > grams)) return null;
-  const factor = (movableMass - grams) / movableMass;
+  if (!(movableMass > added)) return null;
+  const factor = (movableMass - added) / movableMass;
   const movableIds = new Set(movable.map((item) => item.id));
   return {
     ...input,
@@ -132,15 +140,24 @@ export function screenedRescueVector(
           ? { ...item, planned_grams: item.planned_grams * factor }
           : { ...item },
       ),
-      {
-        id: lineId,
-        ingredient,
-        planned_grams: grams,
+      ...additions.map((addition) => ({
+        id: addition.lineId,
+        ingredient: addition.ingredient,
+        planned_grams: addition.grams,
         actual_grams: null,
         lock_type: 'unlocked' as const,
-      },
+      })),
     ],
   };
+}
+
+export function screenedRescueVector(
+  input: RecipeInput,
+  ingredient: EngineIngredient,
+  lineId: string,
+  grams: number,
+): RecipeInput | null {
+  return screenedRescueVectorFor(input, [{ ingredient, lineId, grams }]);
 }
 
 export interface RescueDoseScreenArgs {
