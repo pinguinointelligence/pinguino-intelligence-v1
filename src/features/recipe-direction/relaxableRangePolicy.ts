@@ -39,26 +39,30 @@ import {
 } from './directionRelaxation';
 
 /**
- * THE MOST the canonical 1–10 fit may lose because a recipe used the approved
- * emergency envelope — owner clarification 2026-09-19.
+ * THE WHOLE public-score cost of using the approved emergency envelope — owner
+ * clarification 2026-09-19, and it is ONE point.
  *
- * Controlled relaxation is an IDEALITY signal, never an invalidity signal. A
- * valid emergency-range solution must not be made to look defective: one
- * quality point is the normal cost of leaving the preferred range, and two is
- * the absolute ceiling, reached only when the excursion is essentially at the
- * emergency edge or when more than one relaxable range was left. The same
- * relaxation is never charged twice.
+ * Controlled relaxation is an IDEALITY signal, never an invalidity signal, and
+ * the signal is BINARY on the public scale: the recipe either stayed inside the
+ * owner's preferred ranges or it did not. It costs the same one point whether
+ * the excursion is barely outside the normal band, midway through the approved
+ * emergency range, or at its boundary — and the same one point whether one
+ * range was left or several. Using MORE of an envelope the owner explicitly
+ * approved is not a second defect, so it is never charged twice and can never
+ * turn 10/10 into 8/10.
  *
- * The public score is an INTEGER by its own contract, so it cannot show the
- * difference between an 81 g and a 90 g excursion. That proportionality is not
- * lost: it lives in `relaxationCost` and in each range's `normalizedExcursion`,
- * which rank candidates, drive diagnostics and are what a future refinement of
- * the public scale would read.
+ * SEVERITY IS NOT LOST, it simply is not on the public integer: `relaxationCost`
+ * and each range's `normalizedExcursion` keep it continuously, and those are
+ * what rank candidates, break ties, drive diagnostics and would drive any
+ * future refinement of the public scale. So 81 g and 120 g are NOT equivalent
+ * internally — 120 g carries the higher cost and loses to 81 g whenever target
+ * quality is otherwise equal — while both, if they are what safely reaches the
+ * requested level, are VALID and cost the same single public point.
+ *
+ * Other authorities keep their own weight: this is subtracted from whatever the
+ * canonical seam already decided, so a genuine quality defect is never masked.
  */
-export const RELAXATION_SCORE_PENALTY_CAP = 2;
-
-/** At or beyond this share of the permitted excursion the penalty reaches the cap. */
-export const RELAXATION_SEVERE_COST = 0.9;
+export const RELAXATION_SCORE_PENALTY_CAP = 1;
 
 /** Two bands are „the same band" when they agree to this many grams. */
 const BAND_IDENTITY_EPS = 1e-6;
@@ -152,24 +156,13 @@ export function relaxationCost(input: RecipeInput): number {
 }
 
 /**
- * Points off the canonical 1–10 fit — CONSERVATIVE and BOUNDED.
+ * Points off the canonical 1–10 fit — exactly one, or none at all.
  *
- *   inside every owner band            → 0   (nothing that does not relax moves)
- *   controlled relaxation used         → 1
- *   at the emergency edge, or more
- *   than one range left behind         → 2   (the cap, never more)
- *
- * This never rejects and never reaches far enough to make a valid emergency
- * solution look poor. Other reasons the canonical authority already had to
- * reduce a score are untouched: this is subtracted from whatever that authority
- * decided, so a genuine quality defect keeps its own weight.
+ *   inside every owner band     → 0
+ *   any controlled relaxation   → 1, however far and however many ranges
  */
 export function relaxationScorePenalty(input: RecipeInput): number {
-  const relaxed = relaxedOwnerRanges(input);
-  if (relaxed.length === 0) return 0;
-  const cost = relaxationCost(input);
-  const severe = relaxed.length > 1 || cost >= RELAXATION_SEVERE_COST;
-  return severe ? RELAXATION_SCORE_PENALTY_CAP : 1;
+  return relaxedOwnerRanges(input).length === 0 ? 0 : RELAXATION_SCORE_PENALTY_CAP;
 }
 
 const sameBand = (constraint: IngredientConstraint, band: GramBand): boolean =>

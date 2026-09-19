@@ -254,25 +254,22 @@ describe('§18 M / N — the penalty is conservative, bounded and never doubled'
     }
   });
 
-  it('N: one controlled excursion costs ONE point, and nothing ever costs more than the cap', () => {
+  it('N: controlled relaxation costs ONE public point, wherever in the envelope it lands', () => {
     const { input, lineId } = governedDraft();
     const normal = relaxableOwnerRanges(input)[0]!.normal;
     const extended = extendedGramBand(normal);
-    // A modest excursion is worth exactly one point — an ideality signal.
-    expect(
-      relaxationScorePenalty(
-        withGovernedGrams(atLevel(input, 2), lineId, normal.maxGrams + (extended.maxGrams - normal.maxGrams) * 0.2),
-      ),
-    ).toBe(1);
-    // Even at the very edge of what the policy permits it stays at the cap …
-    for (const share of [0.5, 0.9, 1]) {
+    // Barely outside, midway, and at the approved boundary — all one point.
+    for (const share of [0.01, 0.2, 0.5, 0.9, 1]) {
       const grams = normal.maxGrams + (extended.maxGrams - normal.maxGrams) * share;
-      const penalty = relaxationScorePenalty(withGovernedGrams(atLevel(input, 2), lineId, grams));
-      expect(penalty).toBeGreaterThanOrEqual(1);
-      expect(penalty).toBeLessThanOrEqual(RELAXATION_SCORE_PENALTY_CAP);
+      expect(relaxationScorePenalty(withGovernedGrams(atLevel(input, 2), lineId, grams))).toBe(1);
     }
-    // … and the cap is small enough that a valid emergency result never looks defective.
-    expect(RELAXATION_SCORE_PENALTY_CAP).toBeLessThanOrEqual(2);
+    // The lower side is charged the same single point.
+    expect(
+      relaxationScorePenalty(withGovernedGrams(atLevel(input, 2), lineId, extended.minGrams)),
+    ).toBe(1);
+    // And one point is the whole contract: using more of an envelope the owner
+    // approved is not a second defect, so 10/10 can never become 8/10 by it.
+    expect(RELAXATION_SCORE_PENALTY_CAP).toBe(1);
   });
 
   it('N: the continuous cost keeps the proportionality the integer cannot show', () => {

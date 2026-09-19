@@ -49,6 +49,30 @@ box, so **every** rung was illegal. Fixed by a fixed-depth bisection for the far
 point on the ray. Both levels now deliver POD 21.7877. Guarded by `INV-2: a farther request
 never converges worse than a nearer one on the same draft`.
 
+## FINAL UPDATE — owner decision 2026-09-19, GLOBAL ±2 CONTROLLED RELAXATION
+
+Supersedes the Variant B table above. Neither earlier table is rewritten: each records
+what was true when it was written. Full write-up and every measurement:
+`GLOBAL-PLUS-MINUS-2-RELAXATION.md`.
+
+The Variant B residue was root-caused to a SEMANTIC error rather than to the search — a
+line carrying `{ mode: 'range' }` was dropped from the adjustable vector, so an owner
+dosage band was enforced as a freeze. Correcting that globally (§ 3) closed the remaining
+findings **inside the normal envelope**, before the ±2 relaxation stage existed.
+
+| finding | status | measured |
+|---|---|---|
+| **AUD-SWEET-OD28** | **FIXED** (served verification pending) | distance **0.00000**, `reached: true`, normal envelope, zero relaxation |
+| **LOCK-01** | **FIXED** (served verification pending) | distance **0.00000**, `reached: true`, POD 15.0406 in [15, 16], the 80 g lock byte-exact |
+| **LOCK-02** | **CLOSED** | a–0.02000 · b–0.02000 · c–0.76763 · d–0.02829 · e–0.02000, all in the NORMAL envelope. The 0.02000 floor is the Sorbet exact-preference point (AUD-SWEET-05), not a search failure |
+| **LOCK-03** | **CLOSED** | the two levels now return DIFFERENT vectors and different PODs. Nothing forced a difference; the lever that separates them simply stopped being frozen |
+| **AUD-SWEET-13** | **FIXED** | unchanged by this work; re-verified |
+| genuine-infeasible controls | **still refuse** | all four, each through a different authority, with zero relaxation |
+
+The earlier LOCK-02 owner decision request in `NAPRAWA-1B.md` § 9 is **withdrawn as
+resolved**: it asked whether an owner dosage BAND should stop behaving as a LOCK, and the
+owner's 2026-09-19 decision § 3 answered yes, globally.
+
 ## Findings the fix touches but does NOT close (recorded, not acted on)
 
 * **AUD-SWEET-05 / RC-INF-2 (P2)** — the Sorbet exact-preference point (`min = max`, `reached`

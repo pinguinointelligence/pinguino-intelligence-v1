@@ -266,7 +266,15 @@ the levels` in `directionFalseInfeasible.regression.test.ts`.
 This is a statement about **the legal space this pipeline searches**, not a proof of a
 global optimum — see § 9.
 
-## 9 · The LOCK-02 residue — root-caused, and NOT fixed here
+## 9 · The LOCK-02 residue — RESOLVED by owner decision 2026-09-19
+
+> **This section is superseded and kept for the record.** The decision request below was
+> answered: the owner's GLOBAL ±2 CONTROLLED RELAXATION decision § 3 ruled that a `range`
+> is a window and not a lock, globally. The residue closed inside the normal envelope —
+> LOCK-02a and LOCK-02b went to distance 0.02000 (the Sorbet exact-preference floor) with
+> zero relaxation. See `GLOBAL-PLUS-MINUS-2-RELAXATION.md`. Nothing below is still open.
+
+### The original write-up, unchanged
 
 LOCK-02a / LOCK-02b still move only 1.7× / 1.2×. That is not where the search gave up; it
 is where an **authority** stops it, and the cause is exact.
