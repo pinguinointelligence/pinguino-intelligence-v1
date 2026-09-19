@@ -287,9 +287,18 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
       lock_type: 'main',
     });
     expect(candidate!.proposedInput.items.map((item) => [item.id, item.planned_grams])).toEqual([
+    // NAPRAWA 1B (owner decision, Variant B): the bounded best-legal selector
+    // publishes 73/111 instead of 74/110 here. Measured on this very fixture,
+    // both axes exact points (POD 20, NPAC 46.9), Main byte-exact at 600 g and
+    // only the canonical adjustable roles moved:
+    //     74/110  POD 19.99380  NPAC 46.80957  violations []  distance 0.100430
+    //     73/111  POD 19.96650  NPAC 46.90691  violations []  distance 0.043500
+    // 2.3x nearer to the requested level. The old vector was the LOCK-02 defect
+    // in miniature, sitting in a served fixture: a candidate presented as the
+    // nearest that measurably was not.
       ['new-recipe-1-water', 157],
-      ['new-recipe-2-sucrose', 74],
-      ['new-recipe-3-dextrose', 110],
+      ['new-recipe-2-sucrose', 73],
+      ['new-recipe-3-dextrose', 111],
       ['new-recipe-4-inulin', 55],
       ['new-recipe-5-tara_gum', 4],
       ['line-strawberry', 600],
@@ -303,8 +312,8 @@ describe('Apply door — Sorbet exact Direction keeps the Main group byte-exact 
     expect(after.history).toHaveLength(1);
     expect(grams()).toEqual([
       ['new-recipe-1-water', 157],
-      ['new-recipe-2-sucrose', 74],
-      ['new-recipe-3-dextrose', 110],
+      ['new-recipe-2-sucrose', 73],
+      ['new-recipe-3-dextrose', 111],
       ['new-recipe-4-inulin', 55],
       ['new-recipe-5-tara_gum', 4],
       ['line-strawberry', 600],

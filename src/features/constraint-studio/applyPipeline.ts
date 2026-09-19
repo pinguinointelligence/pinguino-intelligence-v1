@@ -7372,6 +7372,27 @@ function selectNearestLegalDirectionCandidate(
   // Already there: nothing can be nearer than exact.
   if (incumbentDistance <= SEVERITY_EPS) return incumbent;
   if (incumbentInput.items.some((item) => item.actual_grams !== null)) return incumbent;
+  // THE EXACT/PRACTICAL MAIN RELATIONSHIP IS NOT THE SELECTOR'S TO BREAK.
+  //
+  // Challengers are built from the PRACTICALIZED vector, because that is the one
+  // the customer receives. When practicalization ROUNDED a Main line, the
+  // incumbent's Main proof is tied to its exact (fractional) vector — the served
+  // 1000 -> 670 role-aware rescale keeps `exactInput` at 401.807… while the
+  // executable carries 402 (`sorbetDirectionApplyDoor.test.ts`). A challenger
+  // rebuilt from the rounded vector would silently make 402 the exact value too,
+  // so the selector stands aside for that whole class rather than produce a
+  // nearer candidate on a broken proof.
+  const incumbentExact =
+    incumbent.preview.practicalization?.status === 'ready'
+      ? incumbent.preview.practicalization.audit.exactInput
+      : null;
+  if (
+    incumbentExact !== null &&
+    captureMainIngredientIntent(incumbentInput).length > 0 &&
+    !mainGroupLinesByteIdentical(incumbentExact, incumbentInput)
+  ) {
+    return incumbent;
+  }
   const target = input.target_batch_grams;
   if (!(target > 0)) return incumbent;
 
@@ -7413,6 +7434,14 @@ function selectNearestLegalDirectionCandidate(
     if (!positiveStandardPresencePreserved(input, executable)) return null;
     if (requiredLineContractViolations(input, executable).length > 0) return null;
     if (!verifyMainIngredientIdentity(input, executable, set.byLineId).ok) return null;
+    // THE MAIN GROUP IS NOT THE SELECTOR'S TO MOVE. Main lines are not in the
+    // adjustable vector, but practicalization redistributes rounding across the
+    // whole recipe, so a challenger can still shift a Main by a fraction of a
+    // gram. The served Sorbet Apply-door regression depends on the Main group
+    // staying byte-exact through this stage (`sorbetDirectionApplyDoor.test.ts`:
+    // Main 600 g held; the 1000 -> 670 role-aware rescale round-trip). A nearer
+    // Direction candidate is never worth moving the Main the customer crowned.
+    if (!mainGroupLinesByteIdentical(incumbentInput, executable)) return null;
     if (options.requirePracticalPreview === true && preview.practicalization?.status !== 'ready') {
       return null;
     }
@@ -7473,6 +7502,13 @@ function selectNearestLegalDirectionCandidate(
     // change the Main proof path for previews that never carried one. The
     // selector records itself in its own field.
     directionCandidateSource: incumbent.preview.directionCandidateSource,
+    // Re-derived, never inherited: the flag describes THIS vector, and the
+    // Main proof (`exactDirectionMainProofKind`) reads it.
+    mainHeldByExactDirection:
+      incumbent.preview.mainHeldByExactDirection === true &&
+      mainGroupLinesByteIdentical(input, bestPreview.proposedInput)
+        ? true
+        : undefined,
     directionNearestSelected: true,
   };
   return { ...incumbent, preview: merged };
