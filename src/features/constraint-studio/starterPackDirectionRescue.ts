@@ -12,6 +12,11 @@ import {
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { verifyMainIngredientIdentity } from '@/features/formulation/mainIngredientContract';
 import { rescueProteinGate } from '@/features/rescue-toolbox/rescueProteinGate';
+import {
+  rescueDosageWindow,
+  rescueToolboxEntry,
+} from '@/features/rescue-toolbox/rescueToolboxAuthority';
+import { screenRescueDoses } from '@/features/rescue-toolbox/rescueDoseSearch';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import {
   buildStarterPackRescueCandidatePreview,
@@ -250,7 +255,38 @@ export function buildStarterPackDirectionRescue(
       continue;
     }
     const probeRecords: StarterPackRescueRecord[] = [];
-    for (const probeGrams of starterPackRescueProbeGrams(mapperId, request.input)) {
+    /**
+     * THE SMALLEST WINNING WHOLE-GRAM DOSE (Owner, NAPRAWA 5).
+     *
+     * This used to iterate `starterPackRescueProbeGrams` — a fixed
+     * 1 / 2 / 4 / 8 % grid. The Owner demoted those to starting probes only:
+     * the engine must find the smallest winning practical whole-gram dose,
+     * including values such as 4 g, 7 g and 13 g, which a four-point grid can
+     * never express.
+     *
+     * A Preview costs on the order of ten seconds, so the window is SCREENED at
+     * one-gram resolution with `calculateRecipe` and only the finalists are
+     * PROVEN here. Nothing is ever accepted on the screen. When no canonical
+     * dosage window exists the old grid remains the fallback, so a candidate
+     * never silently stops being evaluated.
+     */
+    const toolboxEntry = rescueToolboxEntry(mapperId);
+    const dosageWindow = toolboxEntry === null ? null : rescueDosageWindow(toolboxEntry, request.input);
+    const screen =
+      dosageWindow === null
+        ? null
+        : screenRescueDoses({
+            input: request.input,
+            ingredient,
+            lineId: starterPackRescueLineId(mapperId),
+            window: dosageWindow,
+            bands,
+          });
+    const probeGramsList =
+      screen !== null && screen.finalists.length > 0
+        ? screen.finalists
+        : starterPackRescueProbeGrams(mapperId, request.input);
+    for (const probeGrams of probeGramsList) {
       const probePreparationStarted = nowMs();
       const simulatedInput = withStarterPackRescueCandidate(request.input, mapperId, probeGrams)!;
       timing.candidatePreparationMs += nowMs() - probePreparationStarted;
