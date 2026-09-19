@@ -19,7 +19,10 @@ import type { RecipeInput } from '@/engine';
 import type { RecipeProcessEvidence } from '@/features/education';
 import { MACHINE_CATALOG, type MachineTechnology } from '@/features/machine-catalog';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
+import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
+import { resetDurableProductionRecipeForTests } from '@/features/production-workspace/ensureDurableProductionRecipe';
 import { productionTestComposition } from '@/features/production-workspace/productionTestComposition.fixture';
+import { buildProductionForecastInput } from '@/features/production-workspace/productionSession';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import {
   attachPracticalRecipeAudit,
@@ -33,6 +36,9 @@ import {
   type ProductionRepository,
 } from '@/services/proCore/productionRepository';
 import type { RecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { resolveEffectiveAccess } from '@/access/accountAccess/effectiveAccess';
+import { productionCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
+import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useHomeDraftStore } from '../homeDraftStore';
@@ -88,11 +94,18 @@ const evidence = (
 
 function fixture(): { plannedInput: RecipeInput; plannedComposition: RecipeCompositionMetadata } {
   const template = DEFAULT_PRESET.items[0]!;
+  /* 60 g, not 200: the recipe this fixture describes now has to pass the SAME profile
+     authority every batch passes (OD-24 put HOME on the shared start gate). At 200 g the
+     extra line pushed ice_fraction, nPAC, total solids and water out of the gelato
+     profile — the old test never noticed because it injected a session straight into the
+     store and walked past the gate. Nothing about the PLAN this file is about depends on
+     the number: the fresh line is still first in the recipe and still weighed after the
+     heat step. */
   const strawberries = {
     ...template,
     id: 'fresh-strawberries',
     actual_grams: null,
-    planned_grams: 200,
+    planned_grams: 60,
   };
   // Real milk-base shape: milk, cream, SMP, sucrose, dextrose, tara (last) + fresh fruit FIRST.
   const items = [
@@ -106,19 +119,43 @@ function fixture(): { plannedInput: RecipeInput; plannedComposition: RecipeCompo
   };
   const composition = productionTestComposition(plannedInput);
   const tara = items.at(-1)!;
+  /* The context the resolver freezes onto a real snapshot. „RESOLVED with no context" is not a
+     resolved snapshot: `readProductBehaviorSnapshot` rewrites exactly that combination to
+     REVALIDATION_REQUIRED while the recipe is loaded, and the module gate refuses on that state
+     BEFORE it ever reads `moduleEligibility` — which is why every base line was named in
+     „Brak zatwierdzonego uprawnienia RECIPE_VERSION". The eligibility itself was never wrong. */
+  const resolutionContext = (
+    processScope: ProductBehaviorSnapshot['processScope'],
+  ): ProductBehaviorSnapshot['resolutionContext'] => ({
+    accountId: 'owner',
+    productProfile: plannedInput.category,
+    temperatureC: plannedInput.target_temperature_c,
+    mode: 'optimal',
+    processScope,
+    requestedRole: 'STANDARD',
+    module: processScope === 'BASE_FORMULATION' ? 'BASE_RECIPE' : 'TOPPING',
+  });
   const overlay = (
     lineId: string,
     facts: Partial<ProductBehaviorSnapshot>,
     processEvidence: RecipeProcessEvidence[],
-  ): ProductBehaviorSnapshot => ({
-    ...composition.behaviorSnapshots[lineId === 'strawberry-topping' ? tara.id : lineId]!,
-    ...facts,
-    lineId,
-    sharedFacts: {
-      ...composition.behaviorSnapshots[tara.id]!.sharedFacts!,
-      processEvidence,
-    },
-  });
+  ): ProductBehaviorSnapshot => {
+    const merged: ProductBehaviorSnapshot = {
+      ...composition.behaviorSnapshots[lineId === 'strawberry-topping' ? tara.id : lineId]!,
+      ...facts,
+      lineId,
+      sharedFacts: {
+        ...composition.behaviorSnapshots[tara.id]!.sharedFacts!,
+        processEvidence,
+      },
+    };
+    // Read AFTER the merge: the topping overrides `processScope` through `facts`.
+    return {
+      ...merged,
+      resolutionState: 'RESOLVED',
+      resolutionContext: resolutionContext(merged.processScope),
+    };
+  };
   const behaviorSnapshots: Record<string, ProductBehaviorSnapshot> = {};
   for (const item of items) {
     behaviorSnapshots[item.id] =
@@ -151,8 +188,15 @@ function fixture(): { plannedInput: RecipeInput; plannedComposition: RecipeCompo
       baseOrder: items.map((item) => item.id),
       toppings: [
         {
+          /* A saved topping is only kept when its explicit canonical id matches the one its
+             ingredient resolves to; without it `loadRecipeInput` drops the record AND its
+             behaviour snapshot, the run's plan loses its POST_PROCESS_ADDON line, and the
+             „NIE MIKSUJ" step this file is about could never render at all. */
           id: 'strawberry-topping',
-          ingredient: template.ingredient,
+          ingredient: {
+            ...template.ingredient,
+            canonical_ingredient_id: canonicalIngredientId(template.ingredient),
+          },
           planned_grams: 40,
           actual_grams: null,
           process_scope: 'POST_PROCESS_ADDON',
@@ -182,7 +226,7 @@ function testProductionRepository(): ProductionRepository {
   );
   const memory = inMemoryProductionRepository(service);
   let activeRunId: string | null = null;
-  const { plannedInput, plannedComposition } = fixture();
+  const { plannedInput } = fixture();
   return {
     ...memory,
     startRun: async (args) => {
@@ -209,7 +253,18 @@ function testProductionRepository(): ProductionRepository {
     }),
     consumeRescue: async () => {
       if (!activeRunId) throw new Error('no active run');
-      return service.applyRescue(activeRunId, plannedInput, plannedComposition);
+      /* What the trusted authority actually writes back: a plan that ACCOUNTS for what is in
+         the vessel. Handing back the original plan would leave the confirmed line still off
+         its target, so the deviation would read as unresolved and „Korekta partii" would never
+         close. `buildProductionForecastInput` is the same shared helper the PRO harness uses to
+         stand in for this. */
+      const live = useProductionSessionStore.getState().session;
+      if (!live) throw new Error('no live session');
+      return service.applyRescue(
+        activeRunId,
+        buildProductionForecastInput(live),
+        live.plannedComposition,
+      );
     },
   };
 }
@@ -219,6 +274,9 @@ beforeEach(() => {
   document.body.append(host);
   root = createRoot(host);
   Element.prototype.scrollIntoView = () => {};
+  // The durable-snapshot door keeps in-flight work in a MODULE-level map whose key is identical
+  // for every case in this matrix; without this, case N can be handed case N-1's promise.
+  resetDurableProductionRecipeForTests();
   production = testProductionRepository();
   mocks.resolveProductionRepository.mockReturnValue({
     repository: production,
@@ -256,6 +314,8 @@ afterEach(async () => {
   useProductionSessionStore.getState().clear();
   useHomeDraftStore.getState().startNew();
   useRecipeStore.getState().resetToDemo();
+  // The entitlement belongs to this file's cases only.
+  useProCoreAccessStore.setState({ effectiveAccess: null, devPersona: null } as never);
   vi.clearAllMocks();
 });
 
@@ -263,9 +323,18 @@ afterEach(async () => {
 const byTestId = (id: string) => document.querySelector<HTMLElement>(`[data-testid="${id}"]`);
 /** Every action on a durable batch is a server write; the test waits for it, as the UI does. */
 const settle = async () => {
-  await act(async () => {
-    for (let turn = 0; turn < 6; turn += 1) await Promise.resolve();
-  });
+  /* A durable batch is a CHAIN of awaited doors, and each opens only after React has COMMITTED
+     what the one before it wrote: the snapshot effect → `markProductionSnapshot` → the source
+     gains a version id → server product validation → the recipe reads ready → the auto-start
+     effect → `startNewSession` (authority → validation → `startRun`) → the session is restored.
+     Spinning microtasks inside ONE act never lets React render between them, so each round gets
+     its own act. No fake timers: React 19 drives act's own flush loop on a real timer. */
+  for (let round = 0; round < 6; round += 1) {
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  }
 };
 const click = async (id: string) => {
   const element = byTestId(id);
@@ -334,8 +403,33 @@ async function startPreparation(
 ) {
   const { plannedInput, plannedComposition } = fixture();
   useAuthStore.setState({ user: { id: 'owner' } as never, status: 'authed' } as never);
+  /* The entitlement a signed-in customer who may run production actually carries, produced by
+     the REAL account-access resolver and written to the store the app writes it to — no mocked
+     persona, no DEV-only `devPersona` override, so the capability path keeps its teeth.
+
+     OD-32 (pending): today this has to be a PRO-scope entitlement, because
+     `PRO_CORE_CAPABILITIES.home.canUseProductionMode` is false and BOTH production repositories
+     refuse `startRun` without it — so a HOME-plan customer cannot start the durable batch OD-24
+     gives them. `od32CapabilityBlocker` below pins that fact; when the owner rules that HOME's
+     plan includes making ice cream, that test fails first and this seed becomes `hasPro: false`.
+     Nothing else in this file changes either way. */
+  useProCoreAccessStore.getState().setEffectiveAccess(
+    resolveEffectiveAccess({
+      identity: { userId: 'owner', email: null, emailVerified: true },
+      accountState: 'active',
+      entitlements: {
+        hasHome: true,
+        hasPro: true,
+        hasPartnerMode: false,
+        sourcesByScope: { home: ['paid_subscription'], pro: ['paid_subscription'] },
+        explanation: [],
+      },
+      partnerStatus: 'none',
+      adminRole: 'none',
+    } as never),
+  );
   useRecipeStore.getState().loadRecipeInput(plannedInput, { composition: plannedComposition });
-  // The machine belongs to the recipe the audit is taken of: it sets the batch capacity.
+  // The machine belongs to the recipe the audit is taken of, so it is set before it is read.
   useRecipeStore.setState({
     machineKind,
     machineId,
@@ -680,5 +774,23 @@ describe('an official recipe keeps its Professional machine in HOME (served 2026
   it('a HOME machine with no confirmed guide still refuses to invent a process', async () => {
     await startPreparation('unknown-home-machine', null, 'home');
     expect(byTestId('home-preparation-blocked')).not.toBeNull();
+  });
+});
+
+/**
+ * OD-32 — why the cases above have to seed a PRO-scope entitlement, stated as a fact rather than
+ * a comment. OD-24 gives a signed-in HOME customer a DURABLE batch, and `startNewSession` asks
+ * the repository for it with `productionCapabilitiesFor(persona)`. Both repositories — the
+ * server one and the in-memory one — refuse outright when `canUseProductionMode` is false.
+ *
+ * So as the matrix stands, a customer on the HOME plan cannot start the batch OD-24 describes;
+ * they get „Nie udało się bezpiecznie rozpocząć partii." This test exists to fail the moment the
+ * owner answers OD-32 by widening the plan, so nobody has to rediscover why the seed is here.
+ */
+describe('OD-32 — the capability that decides whether HOME can run its own batch', () => {
+  it('OD32-CAPABILITY-A today only the PRO plan carries Production Mode', () => {
+    expect(productionCapabilitiesFor('pro').canUseProductionMode).toBe(true);
+    expect(productionCapabilitiesFor('home').canUseProductionMode).toBe(false);
+    expect(productionCapabilitiesFor('demo').canUseProductionMode).toBe(false);
   });
 });
