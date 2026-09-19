@@ -51,9 +51,11 @@ vi.mock('@/features/constraint-studio/constraintStudioStore', () => ({
   useConstraintStudioStore: (selector: (state: { history: unknown[] }) => unknown) =>
     selector({ history: [] }),
 }));
+/* Version 10 §H1b: the button says „Reset" now. The door behind it and the question it asks
+   first are the ones „Nowa receptura" always used — the rename changed the word, not the act. */
 vi.mock('@/pages/destinations/startNewProRecipe', () => ({
   hasUnsavedProRecipeChanges: mocks.hasUnsaved,
-  startNewProRecipe: mocks.start,
+  resetWorkspaceToFreshStart: mocks.start,
 }));
 
 import { ProWorkbar } from './ProWorkbar';
@@ -95,7 +97,7 @@ describe('ProWorkbar new-recipe confirmation', () => {
   it('starts immediately when no unsaved material state exists', async () => {
     mocks.hasUnsaved.mockReturnValue(false);
 
-    await click(host.querySelector('[data-testid="pro-workbar-new-recipe"]'));
+    await click(host.querySelector('[data-testid="pro-workspace-reset"]'));
 
     expect(mocks.start).toHaveBeenCalledTimes(1);
     expect(mocks.start).toHaveBeenCalledWith('gelato');
@@ -105,11 +107,16 @@ describe('ProWorkbar new-recipe confirmation', () => {
   it('shows the exact confirmation copy and cancels or confirms an unsaved draft', async () => {
     mocks.hasUnsaved.mockReturnValue(true);
 
-    await click(host.querySelector('[data-testid="pro-workbar-new-recipe"]'));
+    await click(host.querySelector('[data-testid="pro-workspace-reset"]'));
     expect(mocks.start).not.toHaveBeenCalled();
+    // Unchanged by the rename: the same question, about the same recipe.
     expect(document.body.textContent).toContain('Rozpocząć nową recepturę?');
     expect(document.body.textContent).toContain(
       'Niezapisane zmiany w bieżącej recepturze zostaną usunięte.',
+    );
+    // „Reset" is only the word on the button that confirms it.
+    expect(document.body.querySelector('[data-testid="confirm-new-recipe"]')?.textContent).toBe(
+      'Reset',
     );
 
     await click(
@@ -120,7 +127,7 @@ describe('ProWorkbar new-recipe confirmation', () => {
     expect(document.body.querySelector('[role="dialog"]')).toBeNull();
     expect(mocks.start).not.toHaveBeenCalled();
 
-    await click(host.querySelector('[data-testid="pro-workbar-new-recipe"]'));
+    await click(host.querySelector('[data-testid="pro-workspace-reset"]'));
     await click(document.body.querySelector('[data-testid="confirm-new-recipe"]'));
     expect(mocks.start).toHaveBeenCalledTimes(1);
   });

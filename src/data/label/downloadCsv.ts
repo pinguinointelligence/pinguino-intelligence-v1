@@ -69,6 +69,10 @@ export async function printLabelHtml(html: string, documentName?: string): Promi
           }),
     ),
   );
+  /* Which title the browser puts in the save dialog depends on the engine: Chrome takes
+     the TOP document's, WebKit and the macOS print panel take the PRINTED frame's. A
+     label is saved under its batch either way, so both are set to the same name. */
+  if (documentName) targetDocument.title = documentName;
   const hostTitle = document.title;
   const restoreTitle = () => {
     if (documentName) document.title = hostTitle;

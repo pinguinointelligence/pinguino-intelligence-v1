@@ -90,8 +90,9 @@ describe('the recipe screen actions use the existing doors', () => {
       page.indexOf('const resetToEmptyStart = () => {'),
       page.indexOf('/** §35'),
     );
-    expect(reset).toContain('startNewProRecipe(');
-    expect(reset).toContain('useHomeDraftStore.getState().startNew();');
+    /* Version 10 §H1b: HOME and PRO go through ONE clean start, so HOME no longer spells
+       the two store calls out here — and a reset in either presentation now clears both. */
+    expect(reset).toContain('resetWorkspaceToFreshStart(');
     expect(page).toContain('onReset={resetToEmptyStart}');
   });
 

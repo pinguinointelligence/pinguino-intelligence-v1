@@ -1,5 +1,4 @@
 import { Navigate, useSearchParams } from 'react-router';
-import { Link } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 import { buttonClasses } from '@/components/ui/buttonStyles';
@@ -7,9 +6,9 @@ import { cn } from '@/lib/cn';
 import { shopCopy } from '@/copy/shop';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { HomeInviteRedemption } from '@/features/account/HomeInviteRedemption';
+import { PlanAndBillingPanel } from '@/features/account/PlanAndBillingPanel';
 import { ReferralPanel } from '@/features/referral/ReferralPanel';
 import { AccountRecipeDefaults } from '@/features/pro-workbench/AccountRecipeDefaults';
-import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -41,7 +40,7 @@ import { useAuthStore } from '@/stores/authStore';
 
 const SECTIONS = [
   { id: 'account', label: 'Konto' },
-  { id: 'billing', label: 'Plan i płatności' },
+  { id: 'billing', label: 'Plan i rozliczenia' },
   { id: 'orders', label: 'Zamówienia' },
   { id: 'recipe', label: 'Ustawienia receptury' },
   // K01: the referral programme had a live backend and no surface at all, so
@@ -61,15 +60,11 @@ export function AccountWorkspacePage() {
   const [params, setParams] = useSearchParams();
   const user = useAuthStore((state) => state.user);
   const status = useAuthStore((state) => state.status);
-  const persona = useProCorePersona();
 
   const requested = params.get('section');
   const active: SectionId = isSection(requested) ? requested : 'account';
   const focusOrderId = params.get('order');
   const justCreated = params.get('created') === '1';
-
-  const plan =
-    persona === 'pro' ? 'Plan Pro' : persona === 'home' ? 'Plan Home' : 'Brak aktywnego planu';
 
   // Moved to Produkcja → Produkty (package §4): old links land on the same components there.
   const productRequest = params.get('request');
@@ -173,19 +168,10 @@ export function AccountWorkspacePage() {
           </div>
         ) : null}
 
-        {active === 'billing' ? (
-          <div className={PANEL}>
-            <p className="text-xs text-[var(--g-text-secondary)]">Plan i płatności</p>
-            <strong className="mt-1 block font-medium">{plan}</strong>
-            <Link
-              to="/subscription"
-              className={cn(buttonClasses('ghost', 'sm'), 'mt-4 inline-flex')}
-              data-testid="account-billing-link"
-            >
-              Zarządzaj subskrypcją
-            </Link>
-          </div>
-        ) : null}
+        {/* DESIGN V3.0 §P2: the plan panel reads the billing authority itself, so the
+            section no longer shows a plan word derived from the persona. The
+            link to the plans page stays for the states that need a new Checkout. */}
+        {active === 'billing' ? <PlanAndBillingPanel /> : null}
         {active === 'billing' ? (
           <div className={cn(PANEL, 'mt-3')} data-testid="account-home-invite">
             <HomeInviteRedemption />
