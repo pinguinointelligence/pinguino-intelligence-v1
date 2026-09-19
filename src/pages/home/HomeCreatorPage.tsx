@@ -1274,7 +1274,6 @@ export function HomeCreatorPage() {
   return (
     <AppShell
       navigationPosition="trailing"
-      stickyHeader
       // The start screen's pinned action — and production's dock — is the end of the page:
       // no empty band under it.
       contentClassName={atStart || productionScreen ? undefined : 'pb-24'}

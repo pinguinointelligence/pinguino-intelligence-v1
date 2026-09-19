@@ -64,6 +64,9 @@ const plan: PreparationPlan = {
       details: ['Wlej mieszankę', 'Uruchom'],
       timing: null,
       sourceMachineId: 'bowl',
+      // H4-3: this fixture's machine has no confirmed program label.
+      programName: null,
+      programStatus: 'data_needed' as const,
       illustration: null,
       sourceIds: [],
     },

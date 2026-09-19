@@ -47,6 +47,16 @@ body[data-gellatti-scale-mode='desktop'] .gellatti-application {
   margin-inline: 0;
 }
 
+/* DESIGN V3.0 — correction VII: „nagłówek zawsze u góry … nie odjeżdża z treścią".
+   OWNER 2026-09-18: every screen wearing this header is pinned by default, so
+   `AppShell` puts Tailwind's `sticky` on this row unless a page opts out. Both are
+   single classes, so the rule that happened to come later — this one, with
+   `position: relative` — silently won and the header scrolled away. Two classes
+   settle it, and the opt-out (Admin) still gets the plain `relative` row. */
+.app-shell-header-row.sticky {
+  position: sticky;
+}
+
 .pro-workbench-header-section-nav,
 .pro-workbench-desktop-only {
   display: none;

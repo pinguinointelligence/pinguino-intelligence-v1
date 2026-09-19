@@ -47,7 +47,7 @@ import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace'
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { WorkbenchRecipeActionDock } from '@/features/pro-workbench/WorkbenchRecipeActionDock';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
-import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
+import { useProductionHost } from '@/features/production-workspace/ProductionProcessHost';
 import { ProductionWorkspaceHeader } from '@/features/production-workspace/ProductionWorkspaceHeader';
 import {
   collapsedMobileCockpitRoute,
@@ -191,7 +191,7 @@ export function StudioEngineSurface({
   const temperatureC = useRecipeStore((state) => state.target_temperature_c);
   const batchGrams = useRecipeStore((state) => state.target_batch_grams);
   const planning = useStudioResult('planning');
-  const production = useProductionWorkspace(activeTab === 'production');
+  const production = useProductionHost(activeTab === 'production');
   const productionActive =
     activeTab === 'production' &&
     production.practicalReady !== false &&
@@ -566,6 +566,12 @@ export function StudioEngineSurface({
     if (!geometry) return;
     event.preventDefault();
     const grip = event.currentTarget;
+    /* Served 2026-09-18 (staging a1e1d729, 375 x 812): the grip could never be focused by
+       touching it, so „tap the grip, then use the arrows” did nothing — `preventDefault`
+       above stops the browser's own focus along with the text selection and scroll it is
+       there to stop. §12 gives the grip arrow keys, so the pointer must hand it the focus
+       those keys need. `preventScroll` keeps the page exactly where the finger left it. */
+    grip.focus({ preventScroll: true });
     const startY = event.clientY;
     const startHeight = geometry.current;
     let moved = false;
