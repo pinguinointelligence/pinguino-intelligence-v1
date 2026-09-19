@@ -20,7 +20,7 @@
 import Stripe from 'npm:stripe@18';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { isAllowedRedirectUrl, parseUrlAllowlist } from '../_shared/urlAllowlist.ts';
-import { decidePortalEligibility } from './logic.ts';
+import { decidePortalEligibility, decidePortalFlow } from './logic.ts';
 
 // Browser-invoked → answer the cross-origin preflight (same CORS contract as
 // create-accepted-correction / create-checkout-session).
@@ -54,7 +54,7 @@ Deno.serve(async (req) => {
   if (userError || !userData?.user) return json(401, { error: 'unauthorized' });
 
   // 2. Validate the return URL against the origin allowlist.
-  let body: { returnUrl?: string };
+  let body: { returnUrl?: string; flow?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -64,6 +64,8 @@ Deno.serve(async (req) => {
   if (!isAllowedRedirectUrl(body.returnUrl, allowlist)) {
     return json(400, { error: 'redirect_url_not_allowed' });
   }
+  const flow = decidePortalFlow(body.flow);
+  if (!flow.ok) return json(400, { error: flow.reason });
 
   // 3. The customer id comes ONLY from the server-side mapping.
   const admin = createClient(
@@ -90,6 +92,9 @@ Deno.serve(async (req) => {
       customer: eligibility.customerId,
       return_url: body.returnUrl!,
       ...(portalConfiguration ? { configuration: portalConfiguration } : {}),
+      // „Zaktualizuj metodę płatności” after a failed renewal: Stripe's own
+      // payment-method flow — no card data ever touches Pinguino.
+      ...(flow.flow ? { flow_data: { type: flow.flow } } : {}),
     });
     console.log('create-portal-session: session created');
     return json(200, { url: session.url });

@@ -36,15 +36,15 @@ applying effects (out-of-order tolerance, `decideEventApplication`).
 | `customer.subscription.updated` | subscription_state_sync | `objv:{subscription.id}:{event.created}` | subscriptions (cache upsert) | stripeWebhook.test.ts "routing table" | refetch; single source of subscription-status truth |
 | `customer.subscription.deleted` | subscription_state_sync | `objv:{subscription.id}:{event.created}` | subscriptions (cache upsert, status canceled) | stripeWebhook.test.ts "routing table" | refetch |
 
-## Subscription schedules (15-month benefit)
+## Subscription schedules (period-end plan change + 15-month benefit)
 
 | Event | Handler intent | Idempotency key | Local effects | Test reference | Notes |
 |---|---|---|---|---|---|
-| `subscription_schedule.created` | schedule_state_sync | `objv:{schedule.id}:{event.created}` | partner_benefit_uses (schedule linkage) | stripeWebhook.test.ts "routing table" | echo of our own idempotent creation |
-| `subscription_schedule.updated` | schedule_state_sync | `objv:{schedule.id}:{event.created}` | partner_benefit_uses (schedule linkage) | stripeWebhook.test.ts "routing table" | refetch |
-| `subscription_schedule.released` | schedule_state_sync | `objv:{schedule.id}:{event.created}` | partner_benefit_uses (schedule linkage) | stripeWebhook.test.ts "routing table" | normal end: phase 2 continues as plain subscription |
-| `subscription_schedule.canceled` | schedule_state_sync | `objv:{schedule.id}:{event.created}` | partner_benefit_uses (schedule linkage) | stripeWebhook.test.ts "routing table" | phase-1 cancellation semantics (benefit stays consumed) |
-| `subscription_schedule.completed` | schedule_state_sync | `objv:{schedule.id}:{event.created}` | partner_benefit_uses (schedule linkage) | stripeWebhook.test.ts "routing table" | refetch |
+| `subscription_schedule.created` | schedule_state_sync | `objv:{schedule.id}:{event.created}` | customer_subscriptions (`scheduled_offer_key` / `scheduled_change_at` mirror via the subscription sync); entitlements | stripeWebhookDispatch.test.ts "scheduled plan change" | echo of our own idempotent creation; refetch → the schedule's subscription re-runs `subscription_state_sync` |
+| `subscription_schedule.updated` | schedule_state_sync | `objv:{schedule.id}:{event.created}` | customer_subscriptions (`scheduled_offer_key` / `scheduled_change_at` mirror via the subscription sync); entitlements | stripeWebhookDispatch.test.ts "scheduled plan change" | refetch; a period-end downgrade (PRO → HOME, yearly → monthly) lives in the next phase |
+| `subscription_schedule.released` | schedule_state_sync | `objv:{schedule.id}:{event.created}` | customer_subscriptions (`scheduled_offer_key` / `scheduled_change_at` mirror via the subscription sync); entitlements | stripeWebhookDispatch.test.ts "scheduled plan change" | the pending change was cancelled („Anuluj zmianę planu”) or the 15m phase ended: mirror clears to NULL |
+| `subscription_schedule.canceled` | schedule_state_sync | `objv:{schedule.id}:{event.created}` | customer_subscriptions (`scheduled_offer_key` / `scheduled_change_at` mirror via the subscription sync); entitlements | stripeWebhookDispatch.test.ts "scheduled plan change" | phase-1 cancellation semantics (benefit stays consumed); mirror clears |
+| `subscription_schedule.completed` | schedule_state_sync | `objv:{schedule.id}:{event.created}` | customer_subscriptions (`scheduled_offer_key` / `scheduled_change_at` mirror via the subscription sync); entitlements | stripeWebhookDispatch.test.ts "scheduled plan change" | refetch; the scheduled phase became the live price — `customer.subscription.updated` carries the new offer |
 
 ## Invoices (the money truth)
 

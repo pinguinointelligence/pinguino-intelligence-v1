@@ -12,7 +12,7 @@ vi.mock('@/services/auth', () => ({ getCurrentUser: vi.fn(async () => ({ id: 'u1
 
 import { __resetUnconfiguredReadWarnings } from './backendGuard';
 import { listMyAcceptedCorrections } from './acceptedCorrections';
-import { getMySubscription } from './billing';
+import { getMyCustomerSubscriptions, getMySubscription } from './billing';
 import {
   getIngredientById,
   listActiveIngredients,
@@ -103,6 +103,7 @@ describe('unconfigured backend reads are explicit (logged empty in DEV, never si
     expect(await listProductSnapshots('p1')).toEqual([]);
     expect(await getLatestSnapshot('p1')).toBeNull();
     expect(await getMySubscription()).toBeNull();
+    expect(await getMyCustomerSubscriptions()).toEqual([]);
     const logs = loggedSurfaces().join('\n');
     expect(logs).toContain('recipes.listMine');
     expect(logs).toContain('recipes.get');
@@ -110,5 +111,6 @@ describe('unconfigured backend reads are explicit (logged empty in DEV, never si
     expect(logs).toContain('productSnapshots.listProductSnapshots');
     expect(logs).toContain('productSnapshots.getLatestSnapshot');
     expect(logs).toContain('billing.getMySubscription');
+    expect(logs).toContain('billing.getMyCustomerSubscriptions');
   });
 });
