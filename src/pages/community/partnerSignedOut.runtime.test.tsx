@@ -125,3 +125,18 @@ describe('an authenticated visitor keeps the existing lifecycle', () => {
     expect(getPartnerWorkspace).toHaveBeenCalled();
   });
 });
+
+describe('the first action of the funnel states the visitor’s intent', () => {
+  it('never labels the application CTA as a login', async () => {
+    // V11 §6: „Zaloguj się" is OUR internal step. Putting it on the button made
+    // the first action of the recruitment funnel look like a login wall.
+    const { cooperationCopy } = await import('@/copy/cooperation');
+    expect(cooperationCopy.form.signInCta).toBe('Zgłoś się');
+    expect(cooperationCopy.form.signInCta).not.toMatch(/zaloguj/i);
+  });
+
+  it('names the two-step shape so the auth modal is expected', async () => {
+    const { cooperationCopy } = await import('@/copy/cooperation');
+    expect(cooperationCopy.form.signInStep).toMatch(/Krok 1 z 2/);
+  });
+});
