@@ -421,7 +421,9 @@ describe('Produkcja → Historia produkcji → Etykieta → powrót (§8 test 2)
         '63 zakończone partie',
       );
     });
-    expect(byRole('button', 'Wróć do partii')).toBeDefined();
+    // Etap 2 split the row's two actions: the batch, and the batch's recipe.
+    expect(byRole('button', 'Kontynuuj partię')).toBeDefined();
+    expect(byRole('button', 'Otwórz recepturę partii')).toBeDefined();
 
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="production-history-jump"]')!.click();

@@ -5,7 +5,6 @@ import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { PartnerApplicationPanel } from '@/features/partner-application/PartnerApplicationPanel';
 import { Button } from '@/components/ui/Button';
-import { applicationCompactClasses } from '@/components/ui/applicationControlStyles';
 import { customerErrorMessage } from '@/copy/customerError';
 import { CopyValueButton } from '@/features/affiliate/CopyValueButton';
 import {
@@ -61,9 +60,11 @@ const money = (value: unknown, currency = 'EUR') =>
 
 function Heading({ title, detail }: { title: string; detail: string }) {
   return (
-    <header className="border-b border-ink/10 pb-5">
-      <h2 className="text-2xl font-semibold tracking-[-0.035em] text-ink">{title}</h2>
-      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-stone-600">{detail}</p>
+    <header className="border-b border-ink/10 pb-4">
+      <h2 className="text-[24px] leading-[1.15] font-semibold tracking-[-0.02em] text-[var(--g-ink)]">
+        {title}
+      </h2>
+      <p className="mt-1.5 max-w-3xl text-[13px] leading-[1.45] text-[#6f6b64]">{detail}</p>
     </header>
   );
 }
@@ -95,8 +96,12 @@ function Overview({ data }: { data: PartnerWorkspace }) {
       <PartnerFirstSteps data={data} />
       {/* H-DASH-02: money first — earned this month, still in the refund window,
           ready for the next settlement. Labels are the ledger's own copy. */}
+      {/* DESIGN A1 (owner 2026-09-18): the same numbers from the same ledger,
+          at the panel's compact scale — a hairline grid of small tiles with the
+          figure in monospace, not four big empty cards. Money first, then
+          traffic, in that order. */}
       <dl
-        className="mt-7 grid gap-px border border-ink/10 bg-ink/10 sm:grid-cols-3"
+        className="mt-5 grid gap-px overflow-hidden rounded-[12px] bg-ink/10 p-px sm:grid-cols-3"
         data-testid="earnings-summary"
       >
         {[
@@ -116,26 +121,30 @@ function Overview({ data }: { data: PartnerWorkspace }) {
             commissionStatusCopy('eligible').help,
           ],
         ].map(([label, value, help]) => (
-          <div key={label} className="bg-white p-5" title={help}>
-            <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+          <div key={label} className="bg-white px-3 py-3.5" title={help}>
+            <dt className="font-mono text-[9.5px] leading-[1.2] font-semibold tracking-[0.1em] text-[#8a857d] uppercase">
               {label}
             </dt>
-            <dd className="mt-3 text-3xl font-medium tabular-nums text-ink">{value}</dd>
+            <dd className="mt-1.5 font-mono text-[22px] leading-none font-semibold tracking-[-0.02em] tabular-nums text-[var(--g-ink)]">
+              {value}
+            </dd>
           </div>
         ))}
       </dl>
-      <dl className="mt-7 grid gap-px border border-ink/10 bg-ink/10 sm:grid-cols-2 xl:grid-cols-4">
+      <dl className="mt-3.5 grid grid-cols-2 gap-px overflow-hidden rounded-[12px] bg-ink/10 p-px xl:grid-cols-4">
         {[
           ['Aktywne kody', `${activeCodes.length} / 3`],
           ['Kliknięcia', totals.clicks],
           ['Płatni klienci', totals.paid],
           ['Prowizja łącznie', money(totals.commission)],
         ].map(([label, value]) => (
-          <div key={label} className="bg-white p-5">
-            <dt className="text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+          <div key={label} className="bg-white px-3 py-3.5">
+            <dt className="font-mono text-[9.5px] leading-[1.2] font-semibold tracking-[0.1em] text-[#8a857d] uppercase">
               {label}
             </dt>
-            <dd className="mt-3 text-3xl font-medium tabular-nums text-ink">{value}</dd>
+            <dd className="mt-1.5 font-mono text-[22px] leading-none font-semibold tracking-[-0.02em] tabular-nums text-[var(--g-ink)]">
+              {value}
+            </dd>
           </div>
         ))}
       </dl>
@@ -805,9 +814,13 @@ export function PartnerPage() {
   return (
     <DestinationSurface eyebrow="GELLATTI" title="Partner">
       <div className="grid gap-8 xl:grid-cols-[220px_minmax(0,1fr)]">
+        {/* DESIGN A1 (owner 2026-09-18): the panel's own row of pills — a
+            partner's dashboard, not an enterprise sidebar. Every section stays;
+            only the scale changes. The row scrolls sideways on a phone instead
+            of stacking eight full-width rows above the content. */}
         <nav
           aria-label="Nawigacja Partnera"
-          className="border-y border-ink/10 xl:border-y-0 xl:border-r xl:pr-5"
+          className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none] xl:mx-0 xl:flex-col xl:overflow-visible xl:px-0"
         >
           {sections.map(([id, label]) => (
             <button
@@ -815,13 +828,11 @@ export function PartnerPage() {
               type="button"
               onClick={() => setParams({ section: id })}
               aria-current={section === id ? 'page' : undefined}
-              className={applicationCompactClasses(
-                cn(
-                  'w-full justify-start border-x-0 border-t-0 px-3 text-left xl:border-x xl:border-t',
-                  section === id
-                    ? '!border-ink !bg-ink !text-white hover:!border-ink'
-                    : 'text-stone-600',
-                ),
+              className={cn(
+                'pro-focus-ring h-[34px] shrink-0 rounded-full px-3.5 text-[12.5px] font-semibold whitespace-nowrap transition-colors xl:w-full xl:text-left',
+                section === id
+                  ? 'bg-[#101113] text-white'
+                  : 'bg-white text-[#65635f] shadow-[inset_0_0_0_1px_#ded9d0] hover:text-[var(--g-ink)]',
               )}
             >
               {label}
