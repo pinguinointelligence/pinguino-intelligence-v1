@@ -228,8 +228,14 @@ export const affiliateCopyPl: AffiliateCopy = {
     title: 'Polecasz Gellatti. Twoi odbiorcy korzystają. Ty zarabiasz.',
     body: 'Wynagrodzenie nie kończy się na pierwszej płatności. Dopóki polecona osoba korzysta z Gellatti, każde opłacone odnowienie liczy się dla Ciebie.',
     steps: [
-      { title: 'Ktoś korzysta z polecenia', body: 'Przychodzi przez Twój link albo podaje Twój kod.' },
-      { title: 'Zostaje z Gellatti', body: 'Od pierwszej opłaconej płatności jest przypisany do Twojego polecenia.' },
+      {
+        title: 'Ktoś korzysta z polecenia',
+        body: 'Przychodzi przez Twój link albo podaje Twój kod.',
+      },
+      {
+        title: 'Zostaje z Gellatti',
+        body: 'Od pierwszej opłaconej płatności jest przypisany do Twojego polecenia.',
+      },
       { title: 'Odnawia plan', body: 'Przedłuża subskrypcję na kolejny okres.' },
       { title: 'Ty znów otrzymujesz wynagrodzenie', body: 'Za to odnowienie i za każde następne.' },
     ],
@@ -298,12 +304,12 @@ export const affiliateCopyPl: AffiliateCopy = {
         body: 'Pokazujesz rozwiązania, które inspirują, ułatwiają pracę albo pomagają tworzyć lepsze lody.',
       },
       {
-        title: 'Profesjonaliści i edukatorzy',
-        body: 'Pracujesz w branży lub uczysz innych? Polecaj narzędzie, które rozwiązuje realne problemy w codziennej pracy.',
-      },
-      {
         title: 'Media i społeczności',
         body: 'Prowadzisz grupę, newsletter, podcast lub portal? Dziel się Gellatti tam, gdzie Twoi odbiorcy szukają praktycznych odpowiedzi.',
+      },
+      {
+        title: 'Profesjonaliści i edukatorzy',
+        body: 'Pracujesz w branży lub uczysz innych? Polecaj narzędzie, które rozwiązuje realne problemy w codziennej pracy.',
       },
     ],
   },
@@ -416,9 +422,11 @@ export const affiliateCopyEn: AffiliateCopy = {
     figureUnit: 'months',
     badge: 'BONUS!',
     title: 'The customer gains too.',
-    bodyTemplate: 'Anyone who buys an annual plan through your link or code gets {emphasis}. The price does not change.',
+    bodyTemplate:
+      'Anyone who buys an annual plan through your link or code gets {emphasis}. The price does not change.',
     emphasis: '15 months for the price of 12',
-    shortBody: 'That is what anyone choosing an annual Gellatti plan through your link or code receives.',
+    shortBody:
+      'That is what anyone choosing an annual Gellatti plan through your link or code receives.',
     monthlyNote: 'Monthly plans do not carry the bonus.',
   },
   rates: {
@@ -473,12 +481,12 @@ export const affiliateCopyEn: AffiliateCopy = {
         body: 'You run a channel, a profile or a newsletter about food, ice cream or cooking.',
       },
       {
-        title: 'Professionals',
-        body: 'You teach, advise, or work with gelaterias and patisseries.',
-      },
-      {
         title: 'Communities and media',
         body: 'You have a group, a forum or a publication that trusts your recommendations.',
+      },
+      {
+        title: 'Professionals',
+        body: 'You teach, advise, or work with gelaterias and patisseries.',
       },
     ],
   },
