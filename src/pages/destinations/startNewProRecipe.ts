@@ -1,5 +1,4 @@
 import { useRecipeStore } from '@/stores/recipeStore';
-import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
@@ -60,33 +59,20 @@ export function startNewProRecipe(requestedVisible?: VisibleProductType): void {
 }
 
 /**
- * DESIGN V3.0 Version 10 §H1b — „Reset": ONE clean start for the whole workspace.
+ * DESIGN V3.0 Version 10 §H1b — „Reset".
  *
- * „Reset" is not a new function. It is the action HOME and PRO both already had — PRO
- * called it „Nowa receptura", HOME called it „Reset" — and Version 10 gives it one name
- * and one place. What it must leave behind is the state a NEW recipe would be built from:
- * nothing of the previous idea, the chosen source, the draft, the machine, the profile,
- * Direction, the staged calculation or the batch.
+ * OWNER CORRECTION 19.09.2026: this is a RENAME, not a new function. PRO's „+ Nowa receptura"
+ * confused test users who were already inside recipe creation and could not tell what it meant;
+ * „Reset" they understood at once — discard what I am doing and start again. The BEHAVIOUR is
+ * the old behaviour, unchanged: the same door `startNewProRecipe` has always opened.
  *
- * The reason it clears HOME and PRO together rather than „whichever one I am in": the two
- * are presentations of the SAME live recipe (`recipeStore`), so a reset in PRO that left
- * HOME's idea, chips and profile answers standing would walk straight back into the next
- * recipe the moment the customer switched. The single live recipe has a single clean start.
- *
- * Saved recipes, the library and Community are untouched — this discards work in progress,
- * never anything the customer has put away.
+ * It exists as its own name so HOME and PRO can be seen to call ONE implementation. It must
+ * never grow past what „Nowa receptura" did — in particular it does not touch HOME's idea,
+ * chips or profile answers. A surface that has its own state (HOME's draft, HOME's open
+ * questions) clears that itself, after this, exactly as it did before the rename.
  */
 export function resetWorkspaceToFreshStart(requestedVisible?: VisibleProductType): void {
   startNewProRecipe(requestedVisible);
-  useHomeDraftStore.getState().startNew();
-}
-
-/**
- * Is there anything for „Reset" to clear? An empty workspace offers it quietly rather than
- * promising an action that would do nothing (§H1b: empty HOME → Reset disabled/subtle).
- */
-export function workspaceHasResettableState(nameChanged = false): boolean {
-  return hasUnsavedProRecipeChanges(nameChanged) || useHomeDraftStore.getState().hasDraft();
 }
 
 /**

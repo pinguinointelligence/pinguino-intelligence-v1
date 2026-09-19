@@ -51,10 +51,10 @@ vi.mock('@/features/constraint-studio/constraintStudioStore', () => ({
   useConstraintStudioStore: (selector: (state: { history: unknown[] }) => unknown) =>
     selector({ history: [] }),
 }));
-/* Version 10 §H1b: the action is „Reset" now, and the door behind it is the shared clean
-   start — the same two questions, asked of the whole workspace rather than of PRO alone. */
+/* Version 10 §H1b: the button says „Reset" now. The door behind it and the question it asks
+   first are the ones „Nowa receptura" always used — the rename changed the word, not the act. */
 vi.mock('@/pages/destinations/startNewProRecipe', () => ({
-  workspaceHasResettableState: mocks.hasUnsaved,
+  hasUnsavedProRecipeChanges: mocks.hasUnsaved,
   resetWorkspaceToFreshStart: mocks.start,
 }));
 
@@ -109,14 +109,14 @@ describe('ProWorkbar new-recipe confirmation', () => {
 
     await click(host.querySelector('[data-testid="pro-workspace-reset"]'));
     expect(mocks.start).not.toHaveBeenCalled();
-    /* Version 10 §H1b: the question names what actually goes. Since Reset is one clean
-       start for HOME and PRO, „Twój pomysł" goes with it and the sentence says so. */
-    expect(document.body.textContent).toContain('Zacząć od nowa?');
+    // Unchanged by the rename: the same question, about the same recipe.
+    expect(document.body.textContent).toContain('Rozpocząć nową recepturę?');
     expect(document.body.textContent).toContain(
-      'Twój pomysł i niezapisane zmiany w bieżącej recepturze zostaną usunięte.',
+      'Niezapisane zmiany w bieżącej recepturze zostaną usunięte.',
     );
-    expect(document.body.textContent).toContain(
-      'Zapisane receptury i Community zostają bez zmian.',
+    // „Reset" is only the word on the button that confirms it.
+    expect(document.body.querySelector('[data-testid="confirm-new-recipe"]')?.textContent).toBe(
+      'Reset',
     );
 
     await click(

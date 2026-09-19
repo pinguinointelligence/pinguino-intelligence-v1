@@ -558,17 +558,10 @@ export const copy = {
   },
   /** Gellatti Pro sticky top workbar — primary actions always visible. */
   proWorkbar: {
-    /* DESIGN V3.0 Version 10 §H1b — the ONE name for the one clean start. PRO called this
-       „Nowa receptura" and HOME called it „Reset"; it is the same action, so it has one
-       label and one place in both. */
+    /* DESIGN V3.0 Version 10 §H1b — the ONE name for the action PRO called „+ Nowa receptura".
+       A RENAME: test users inside recipe creation could not tell what „Nowa receptura" meant,
+       and „Reset" they read correctly at once. The behaviour behind it is unchanged. */
     reset: 'Reset',
-    /* The question before it. HOME asks the same one in its own words
-       (`homeCreatorCopy.recipeScreen.resetTitle/resetBody`); what both have to state is
-       what actually goes — since Version 10 that includes HOME's idea, because the two
-       presentations share one live recipe and one clean start. */
-    resetTitle: 'Zacząć od nowa?',
-    resetBody:
-      'Twój pomysł i niezapisane zmiany w bieżącej recepturze zostaną usunięte. Zapisane receptury i Community zostają bez zmian.',
     nameLabel: 'Nazwa receptury',
     namePlaceholder: 'Np. Pistachio Dream',
     saveNew: 'Zapisz recepturę',

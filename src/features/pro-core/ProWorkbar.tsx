@@ -17,8 +17,8 @@ import { useCanonicalRecipeSave } from '@/features/recipes/useCanonicalRecipeSav
 import { resolveSaveBlocker } from '@/features/recipes/saveBlocker';
 import { ReviewDecisionLabel } from '@/features/design-review/ReviewBadge';
 import {
+  hasUnsavedProRecipeChanges,
   resetWorkspaceToFreshStart,
-  workspaceHasResettableState,
 } from '@/pages/destinations/startNewProRecipe';
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
@@ -392,7 +392,7 @@ export function ProWorkbar({
 
   const requestNewDraft = () => {
     const nameChanged = nameDraft !== null && nameDraft.trim() !== (savedRecipeName ?? '');
-    if (workspaceHasResettableState(nameChanged)) {
+    if (hasUnsavedProRecipeChanges(nameChanged)) {
       setNewRecipeConfirmOpen(true);
       return;
     }
@@ -788,8 +788,6 @@ export function ProWorkbar({
           open={newRecipeConfirmOpen}
           onCancel={() => setNewRecipeConfirmOpen(false)}
           onConfirm={createNewDraft}
-          title={w.resetTitle}
-          description={w.resetBody}
           confirmLabel={w.reset}
         />
       </section>
@@ -929,8 +927,6 @@ export function ProWorkbar({
         open={newRecipeConfirmOpen}
         onCancel={() => setNewRecipeConfirmOpen(false)}
         onConfirm={createNewDraft}
-        title={w.resetTitle}
-        description={w.resetBody}
         confirmLabel={w.reset}
       />
     </section>

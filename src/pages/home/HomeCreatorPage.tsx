@@ -1062,10 +1062,11 @@ export function HomeCreatorPage() {
    * not touched.
    */
   const resetToEmptyStart = () => {
-    /* §H1b: the ONE reset HOME and PRO share. Everything below it is this page's own
-       screen state — open questions, notices, a half-answered prompt — which belongs to
-       the page and could not be cleared from anywhere else. */
+    /* §H1b: the ONE door PRO's „Nowa receptura" always opened, under its new name. What
+       follows is HOME's OWN state — its draft idea, its open questions, its notices — which
+       HOME has always cleared here and which PRO has no business touching. */
     resetWorkspaceToFreshStart(useRecipeStore.getState().visibleProductType ?? undefined);
+    useHomeDraftStore.getState().startNew();
     setStartResetAsk(false);
     setMachine(null);
     setAmount(null);
