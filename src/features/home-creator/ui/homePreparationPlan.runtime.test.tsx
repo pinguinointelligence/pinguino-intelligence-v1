@@ -9,6 +9,7 @@
  * „Co się stało?” has no „Chcę zmienić smak tej partii”; „Wróć” / „Zapisz” keep the batch
  * in its step. A missing numeric time never holds the flow.
  */
+import { readFileSync } from 'node:fs';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router';
@@ -22,7 +23,13 @@ import type { ProductBehaviorSnapshot } from '@/features/product-intelligence';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { resetDurableProductionRecipeForTests } from '@/features/production-workspace/ensureDurableProductionRecipe';
 import { productionTestComposition } from '@/features/production-workspace/productionTestComposition.fixture';
-import { buildProductionForecastInput } from '@/features/production-workspace/productionSession';
+import {
+  buildProductionForecastInput,
+  productionLotCodeForRun,
+} from '@/features/production-workspace/productionSession';
+import { productionSourceForRecipe } from '@/features/production-workspace/useProductionWorkspace';
+import { recipeCompositionFromState } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import {
   attachPracticalRecipeAudit,
@@ -211,6 +218,8 @@ function fixture(): { plannedInput: RecipeInput; plannedComposition: RecipeCompo
 let host: HTMLDivElement;
 let root: Root;
 let production: ProductionRepository;
+/** The save door HOME's technical snapshot goes through, recorded so its payload can be read. */
+let createRecipe: ReturnType<typeof vi.fn>;
 
 /**
  * The real production service, in memory — the reference implementation the repository
@@ -284,17 +293,21 @@ beforeEach(() => {
     isLocalDev: false,
     unavailable: false,
   });
+  /* A RECORDING spy, not a counter. What OD-24 promises is not merely „a version exists" but
+     that the version written for a HOME batch is the TECHNICAL, hidden one — `origin:
+     'production_snapshot'`, `source: 'starter_draft'`. Nothing on screen shows that, so
+     without the payload here, deleting those two fields would break the promise and leave
+     every case in this file green. */
   let snapshots = 0;
+  createRecipe = vi.fn(async (args: { title?: string }) => {
+    snapshots += 1;
+    return {
+      recipe: { recipeId: `snapshot-recipe-${snapshots}`, title: args.title },
+      version: { versionId: `snapshot-version-${snapshots}`, versionNumber: 1 },
+    };
+  });
   mocks.resolveRecipesRepository.mockReturnValue({
-    repository: {
-      createRecipe: async () => {
-        snapshots += 1;
-        return {
-          recipe: { recipeId: `snapshot-recipe-${snapshots}` },
-          version: { versionId: `snapshot-version-${snapshots}`, versionNumber: 1 },
-        };
-      },
-    },
+    repository: { createRecipe },
     mode: 'backend',
     isLocalDev: false,
     unavailable: false,
@@ -799,5 +812,228 @@ describe('OD-32 — a signed-in HOME plan may run its own batch', () => {
       canHome: true,
       canPro: false,
     });
+  });
+});
+
+/**
+ * OD-24 D/E/F/I/J/K — the durable batch, proved where it actually lives.
+ *
+ * These are the hardened versions. An adversarial pass over the first designs found the same
+ * hole in every one of them: they watched the SCREEN, and OD-24's central promise — that the
+ * version a HOME batch points at is the technical, hidden snapshot — is invisible there.
+ * Deleting `origin: 'production_snapshot'` and `source: 'starter_draft'` from
+ * `ensureDurableProductionRecipe` would have broken the feature and left them all green.
+ * So each case asserts BOTH: the payload that was really persisted, and the state or screen
+ * outcome it claims to protect.
+ */
+describe('OD-24 — the durable batch survives leaving, logging out and editing', () => {
+  /** The one technical snapshot a HOME batch is written from. */
+  const expectSnapshotWrittenOnce = () => {
+    expect(createRecipe).toHaveBeenCalledTimes(1);
+    expect(createRecipe.mock.calls[0]![0]).toMatchObject({
+      ownerUserId: 'owner',
+      origin: 'production_snapshot',
+      source: 'starter_draft',
+    });
+  };
+
+  const liveSession = () => useProductionSessionStore.getState().session;
+
+  it('OD24-D refresh comes back to the SAME run and the SAME version', async () => {
+    const plannedInput = await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+    // Two heated rows confirmed, then the heat step — which leaves no production record.
+    for (let index = 1; index < plannedInput.items.length; index += 1) await click('process-next');
+    expect(stepKind()).toBe('heat');
+    await click('process-next');
+
+    const before = liveSession()!;
+    const durable = (await production.getRun(before.sessionId, 'owner'))!;
+    expectSnapshotWrittenOnce();
+
+    /* The COLD half, which is what makes this mean anything: the browser's own copy of the
+       batch is REMOVED (never injected), so the page can only get one back by asking the
+       repository. A warm re-mount alone would pass with the whole durable feature deleted,
+       because zustand is module state that never left. */
+    await act(async () => root.unmount());
+    useProductionSessionStore.setState({
+      session: null,
+      activeAddressKey: null,
+      sessionsById: {},
+      selectedSessionIdByAddress: {},
+    } as never);
+    root = createRoot(host);
+    await render();
+
+    const after = liveSession();
+    expect(after, 'the batch did not come back from the repository').not.toBeNull();
+    expect(after!.sessionId).toBe(before.sessionId);
+    expect(after!.source).toMatchObject({
+      recipeId: 'snapshot-recipe-1',
+      recipeVersionId: 'snapshot-version-1',
+      recipeVersionNumber: 1,
+    });
+    // The server's own CAS basis, not a local guess.
+    expect(after!.durableActualRevision).toBe(durable.actual!.revision);
+    expect(
+      after!.lines.filter((line) => line.confirmed).map((l) => [l.lineId, l.physicalAddedGrams]),
+    ).toEqual(before.lines.filter((l) => l.confirmed).map((l) => [l.lineId, l.physicalAddedGrams]));
+    // Same step, because the run id came back identical and HOME's step memory is keyed on it.
+    expect(byTestId('process-eyebrow')?.textContent).toBe('Produkcja · krok 3 z 5');
+    // No second snapshot and no second run.
+    expect(createRecipe).toHaveBeenCalledTimes(1);
+    expect((await production.listRuns('owner', {})).total).toBe(1);
+  });
+
+  it('OD24-E the batch is still the owner’s after a sign-out and sign-in', async () => {
+    await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+    await click('process-next');
+    const runId = liveSession()!.sessionId;
+    expectSnapshotWrittenOnce();
+
+    // Sign out: the account-scoped client state goes, the durable run does not.
+    await act(async () => root.unmount());
+    useAuthStore.setState({ user: null, status: 'anon' } as never);
+    useProductionSessionStore.setState({
+      session: null,
+      activeAddressKey: null,
+      sessionsById: {},
+      selectedSessionIdByAddress: {},
+    } as never);
+
+    // Another account must not be handed this batch.
+    useAuthStore.setState({ user: { id: 'intruder' } as never, status: 'authed' } as never);
+    const forIntruder = await production.listRuns('intruder', {});
+    expect(forIntruder.items.map((run) => run.runId)).not.toContain(runId);
+
+    // The owner returns and finds it.
+    useAuthStore.setState({ user: { id: 'owner' } as never, status: 'authed' } as never);
+    root = createRoot(host);
+    await render();
+    expect(liveSession()?.sessionId).toBe(runId);
+    expect(createRecipe).toHaveBeenCalledTimes(1);
+  });
+
+  it('OD24-F editing the recipe afterwards leaves the run’s historical version alone', async () => {
+    const plannedInput = await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+    await click('process-next');
+    const runId = liveSession()!.sessionId;
+    const frozen = structuredClone(await production.getRun(runId, 'owner'));
+    expectSnapshotWrittenOnce();
+
+    // The customer changes the recipe on the bench, keeping it executable.
+    const milk = plannedInput.items[1]!;
+    await act(async () => {
+      useRecipeStore.getState().setPlannedGrams(milk.id, milk.planned_grams + 25);
+    });
+    const edited = buildRecipeInput(useRecipeStore.getState(), 'planning');
+    await act(async () => {
+      useRecipeStore
+        .getState()
+        .acknowledgePracticalRecipeAudit(
+          readPracticalRecipeAudit(
+            attachPracticalRecipeAudit(edited, edited, '2026-09-19T11:00:00.000Z'),
+          )!,
+        );
+    });
+    await settle();
+
+    const now = await production.getRun(runId, 'owner');
+    expect(now).toEqual(frozen);
+    expect(now!.recipeVersionId).toBe('snapshot-version-1');
+    /* A fresh snapshot for the NEXT batch is correct and expected — the recipe changed. What
+       must never happen is the running batch being re-pointed at it: the run keeps the version
+       it was made from, and every snapshot written is still the technical, hidden kind. */
+    expect(liveSession()?.source.recipeVersionId ?? 'snapshot-version-1').toBe(
+      'snapshot-version-1',
+    );
+    for (const call of createRecipe.mock.calls) {
+      expect(call[0]).toMatchObject({
+        origin: 'production_snapshot',
+        source: 'starter_draft',
+      });
+    }
+  });
+
+  it('OD24-I the finished batch carries its own snapshot — LOT, final mass, confirmed order', async () => {
+    await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+    await driveToTheEnd();
+    expect(byTestId('home-production-complete')).not.toBeNull();
+    expectSnapshotWrittenOnce();
+
+    const done = liveSession()!;
+    const snapshot = done.completionSnapshot!;
+    expect(snapshot, 'a finished batch must keep the snapshot the server froze').toBeTruthy();
+    expect(snapshot.lotCode).toBe(
+      productionLotCodeForRun(done.sessionId, snapshot.productionCompletedAt),
+    );
+    expect(snapshot.actualFinalMassG).toBeGreaterThan(0);
+    /* The topping is IN the finished record. If the topping were dropped on load this would
+       be the assertion that notices — the „NIE MIKSUJ" step case above would simply never
+       have run its topping step. */
+    expect(snapshot.confirmedOrder.map((entry) => entry.lineId)).toContain('strawberry-topping');
+    /* A later change of the recipe cannot rewrite what was made. The finished run is the
+       record; editing the bench moves the recipe to a new identity and the run stays exactly
+       where it was — which is why a label built from it cannot drift either. */
+    const frozenRun = structuredClone(await production.getRun(done.sessionId, 'owner'));
+    await act(async () => {
+      useRecipeStore.getState().setPlannedGrams(done.lines[0]!.lineId, 999);
+    });
+    await settle();
+    expect(await production.getRun(done.sessionId, 'owner')).toEqual(frozenRun);
+    expect(frozenRun!.recipeVersionId).toBe('snapshot-version-1');
+  });
+
+  it('OD24-J the run resolves through the shared source authority, never the draft id', async () => {
+    await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+    await click('process-next');
+    const session = liveSession()!;
+    expectSnapshotWrittenOnce();
+
+    /* The regression this guards: HOME's batch used to be addressed by `home-draft:<uuid>`.
+       It is now addressed by the recipe VERSION, and the shared authority is what says so. */
+    expect(session.source.recipeId).not.toBe(useHomeDraftStore.getState().draftId);
+    expect(session.source.recipeId).toBe('snapshot-recipe-1');
+
+    const live = useRecipeStore.getState();
+    const resolved = productionSourceForRecipe(
+      live,
+      true,
+      productionVersionFingerprint(
+        buildRecipeInput(live, 'planning'),
+        recipeCompositionFromState(live),
+      ),
+    );
+    expect(resolved.recipeId).toBe(session.source.recipeId);
+    expect(resolved.recipeVersionId).toBe(session.source.recipeVersionId);
+    // And the run really is on record under that identity.
+    const run = await production.getRun(session.sessionId, 'owner');
+    expect(run!.recipeVersionId).toBe(resolved.recipeVersionId);
+  });
+
+  it('OD24-K HOME’s batch is the shared durable one, with no second HOME system behind it', async () => {
+    await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+    await click('process-next');
+    const runId = liveSession()!.sessionId;
+    expectSnapshotWrittenOnce();
+
+    // ONE run on the server, written through the shared repository.
+    const all = await production.listRuns('owner', {});
+    expect(all.total).toBe(1);
+    expect(all.items[0]!.runId).toBe(runId);
+    // The canonical store holds it — the same one PRO's workspace reads.
+    expect(Object.keys(useProductionSessionStore.getState().sessionsById)).toEqual([runId]);
+
+    // And structurally: no second HOME production system exists to drift from it.
+    const home = readFileSync('src/features/home-creator/ui/HomePreparation.tsx', 'utf8');
+    expect(home).toContain('<ProductionProcessHost');
+    expect(home).not.toContain('useLocalProductionProcess(');
+    for (const forbidden of [
+      'useHomeProductionProcess',
+      'homeProductionStore',
+      'homeRunHistory',
+      'assessProductionRescue',
+    ]) {
+      expect(home, forbidden).not.toContain(forbidden);
+    }
   });
 });
