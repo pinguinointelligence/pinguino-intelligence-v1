@@ -382,6 +382,8 @@ export interface DraftSweepArgs {
   allowMaterialDeviation?: boolean;
   /** Extra caller gate every candidate must pass before it may be accepted. */
   accept?: (candidate: RecipeInput) => boolean;
+  /** Build WHOLE-GRAM candidates (see the note at the rounding site). */
+  wholeGrams?: boolean;
   /**
    * How the exact-target stage picks between candidates.
    *
@@ -999,9 +1001,31 @@ function sweepExactDirectionTarget(
       for (const fraction of scale === 1 ? [1, 0.5, 0.25] : [scale, scale / 2, scale / 4]) {
         if (evaluations >= EXACT_DIRECTION_EVALUATION_BUDGET) break;
         const moves: DraftAdjustmentMove[] = [];
-        for (const [lineId, delta] of deltas) {
+        // WHOLE GRAMS (caller's choice): a caller that is choosing what to SHOW
+        // is choosing a vector that whole-gram practicalization will round, so
+        // optimizing the fractional vector optimizes something the customer
+        // never receives — decisive on an exact-POINT target, where rounding
+        // dominates the distance. Rounding the movers first and letting the
+        // reference line absorb exactly their rounded sum keeps the batch exact.
+        const scaled = new Map<string, number>();
+        if (args.wholeGrams === true) {
+          let moverDrift = 0;
+          for (const [lineId, delta] of deltas) {
+            if (lineId === reference.candidate.lineId) continue;
+            const entry = boundsById.get(lineId)!;
+            const rounded =
+              Math.round(entry.candidate.currentGrams + delta * fraction) -
+              entry.candidate.currentGrams;
+            scaled.set(lineId, rounded);
+            moverDrift += rounded;
+          }
+          scaled.set(reference.candidate.lineId, -moverDrift);
+        } else {
+          for (const [lineId, delta] of deltas) scaled.set(lineId, delta * fraction);
+        }
+        for (const [lineId, scaledDelta] of scaled) {
           const entry = boundsById.get(lineId)!;
-          const toGrams = entry.candidate.currentGrams + delta * fraction;
+          const toGrams = entry.candidate.currentGrams + scaledDelta;
           if (Math.abs(toGrams - entry.candidate.currentGrams) < MIN_MOVE_GRAMS) continue;
           if (toGrams < 0) { moves.length = 0; break; }
           const actions = draftAdjustmentActions(entry.candidate, toGrams);

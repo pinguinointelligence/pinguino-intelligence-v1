@@ -3155,6 +3155,7 @@ function aimDirectionVariants(
         allowMaterialDeviation,
         accept: admissible,
         acceptanceRule: rule,
+        wholeGrams: candidate.items.every((item) => Number.isInteger(item.planned_grams)),
       });
       if (step === null || !admissible(step.input)) break;
       state = step.input;
