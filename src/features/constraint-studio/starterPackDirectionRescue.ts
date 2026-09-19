@@ -11,6 +11,7 @@ import {
 } from '@/features/recipe-direction/directionBandDistance';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { verifyMainIngredientIdentity } from '@/features/formulation/mainIngredientContract';
+import { rescueProteinGate } from '@/features/rescue-toolbox/rescueProteinGate';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import {
   buildStarterPackRescueCandidatePreview,
@@ -104,7 +105,15 @@ export function shouldRunStarterPackDirectionRescue(
   normalResult: NormalDirectionResult,
 ): boolean {
   if (!hasActiveExactDirectionObjective(input)) return false;
-  if (input.category === 'protein_gelato') return false;
+  // PROTEIN IS NOT GLOBALLY DISABLED (Owner, NAPRAWA 5). This used to be
+  // `if (input.category === 'protein_gelato') return false;`, which refused the
+  // whole stage before any Protein authority was consulted — a Protein customer
+  // got no Rescue at all, not because a candidate failed a Protein gate but
+  // because nobody asked. Candidates are now admitted per candidate by
+  // `rescueAdmissibility` and each simulated result must pass `rescueProteinGate`,
+  // which preserves the exact dairy/plant route, qualification, the minimum
+  // required protein, the structural score and every Protein hard gate.
+
   const plan = buildRecipeDirectionPlan(input);
   if (!plan.axes.some((axis) => axis.status === 'working')) return false;
   const currentDirection = assessRecipeDirection(input, calculateRecipe(input));
@@ -302,11 +311,16 @@ export function buildStarterPackDirectionRescue(
         output,
         request.set.byLineId,
       ).ok;
+      // THE REAL PROTEIN AUTHORITY, per candidate. Outside a Protein draft this
+      // is `not_applicable` and changes nothing; inside one it refuses a
+      // candidate that improves Direction by spending the product's identity.
+      const proteinGate = rescueProteinGate(request.input, output, recipeResult);
       const hardValid =
         preview.diagnosticOnly !== true &&
         detectViolations(recipeResult).length === 0 &&
         constraintsPreserved &&
-        mainPreserved;
+        mainPreserved &&
+        proteinGate.preserved;
       timing.finalVerificationMs += nowMs() - verificationStarted;
       const candidateLine = output.items.find(
         (item) => item.id === starterPackRescueLineId(mapperId),

@@ -389,9 +389,16 @@ export function rescueAdmissibility(
   const presence = rescuePresence(entry, input, set);
   const base = { presence, baseRoute, conditional: false } as const;
 
-  if (ingredient === null) {
-    return { ...base, admissible: false, reason: 'authority_unavailable' };
-  }
+  // ORDER MATTERS, and this order is the informative one.
+  //
+  // Policy first, identity payload last. A line ALREADY IN THE RECIPE is
+  // adjusted, never hydrated and never duplicated, so whether a fresh canonical
+  // payload could be built is irrelevant to it — and answering
+  // `authority_unavailable` for a row the customer is already using would hide
+  // the only fact that matters about it. The legacy palette contract says the
+  // same thing in its own words: „an already-present FINAL row remains
+  // already_present even when its Estimated authority correctly prevents
+  // materializing a new rescue payload".
   if (entry.allowedProfiles !== 'all' && !entry.allowedProfiles.includes(input.category)) {
     return { ...base, admissible: false, reason: 'profile_incompatible' };
   }
@@ -404,25 +411,37 @@ export function rescueAdmissibility(
       reason: baseRoute === 'unknown' ? 'base_route_unresolved' : 'base_route_incompatible',
     };
   }
-  // THE VEGAN GATE, asked of the exact payload and of the ONE vegan authority.
-  // There is no second vegan list here: a candidate is vegan-admissible when
-  // `assessEngineIngredientVeganEligibility` says VEGAN_VERIFIED, and not when
-  // this file says so.
-  if (input.category === 'vegan_gelato') {
-    if (assessEngineIngredientVeganEligibility(ingredient).status !== 'VEGAN_VERIFIED') {
-      return { ...base, admissible: false, reason: 'vegan_not_verified' };
-    }
-    const effect = entry.profileIdentityEffects;
-    if (effect.introducesDairy || effect.introducesEgg || effect.introducesAnimalOrigin) {
-      return { ...base, admissible: false, reason: 'identity_would_change' };
-    }
+  // IDENTITY EFFECTS, decided from the entry alone so they bind whether or not a
+  // payload can be built: a Vegan draft and a water-base Sorbet never receive
+  // dairy, egg or anything animal-origin, however good the physics would be.
+  const effect = entry.profileIdentityEffects;
+  if (
+    (input.category === 'vegan_gelato' || baseRoute === 'water') &&
+    (effect.introducesDairy || effect.introducesEgg || effect.introducesAnimalOrigin)
+  ) {
+    return { ...base, admissible: false, reason: 'identity_would_change' };
   }
-  // A water-base Sorbet never receives dairy or egg, however good the physics.
-  if (baseRoute === 'water') {
-    const effect = entry.profileIdentityEffects;
-    if (effect.introducesDairy || effect.introducesEgg || effect.introducesAnimalOrigin) {
-      return { ...base, admissible: false, reason: 'identity_would_change' };
-    }
+  // An existing line is ADJUSTED. Presence is a routing signal, and the caller
+  // reads it from `presence`; nothing below applies to a row already in use.
+  if (presence !== 'absent') {
+    return {
+      ...base,
+      admissible: true,
+      reason: 'admissible',
+      conditional: entry.hardConditions.includes('requires_technological_justification'),
+    };
+  }
+  // Only an ADDITION needs a canonical payload, and only an addition can be
+  // asked the vegan question — of the exact object that would enter the recipe,
+  // through the ONE vegan authority. There is no second vegan list here.
+  if (ingredient === null) {
+    return { ...base, admissible: false, reason: 'authority_unavailable' };
+  }
+  if (
+    input.category === 'vegan_gelato' &&
+    assessEngineIngredientVeganEligibility(ingredient).status !== 'VEGAN_VERIFIED'
+  ) {
+    return { ...base, admissible: false, reason: 'vegan_not_verified' };
   }
   return {
     ...base,
