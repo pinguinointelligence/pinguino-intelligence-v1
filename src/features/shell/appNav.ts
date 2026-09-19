@@ -58,6 +58,15 @@ const recipeDestination = (loc: NavLocation) =>
   address: it marks „Pro”, like every other `/pro/*` workbench tab.
 */
 const productionAreaDestination = (loc: NavLocation) => isProductionAreaLocation(loc);
+/**
+ * WHICH WORKSPACE IS THIS, not what is this customer entitled to.
+ *
+ * The drawer's first row names the workspace the customer is IN — „Home" on the
+ * HOME routes, „Pro" inside the Pro workspace. That is a different question from
+ * `navigationAudience`, which answers what they may SEE and still gates every
+ * other row. Deriving the row from `canUseProductionMode` made a Pro subscriber
+ * read „Pro" while they were working in HOME, and left no row current there.
+ */
 const proWorkspaceDestination = (loc: NavLocation) =>
   loc.pathname === '/pro' ||
   [
@@ -126,9 +135,12 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     to: '/home',
     group: 'product',
     order: 0,
-    audiences: ['home'],
+    // A Pro subscriber works in HOME too, so this row is visible to both. WHICH of
+    // the two workspace rows renders is decided by the LOCATION in visibleNavItems,
+    // never by the plan.
+    audiences: ['home', 'pro'],
     workspaceHome: true,
-    isActive: anyOf('/home'),
+    isActive: anyOf('/home', '/'),
   },
   {
     id: 'proWorkspace',
@@ -221,16 +233,33 @@ export function navigationAudience(capabilities: NavigationCapabilities): Naviga
   return 'guest';
 }
 
-export function visibleNavItems(audience: NavigationAudience): AppNavItem[] {
-  return APP_NAV_ITEMS.filter((item) => item.audiences.includes(audience)).sort(
-    (left, right) =>
-      NAV_GROUP_ORDER.indexOf(left.group) - NAV_GROUP_ORDER.indexOf(right.group) ||
-      left.order - right.order,
-  );
+export function isProWorkspaceLocation(loc: NavLocation): boolean {
+  return proWorkspaceDestination(loc);
+}
+
+/**
+ * `loc` decides ONLY which of the two workspace rows is shown; every other row is
+ * still chosen by `audience` alone. Called without a location — as the entitlement
+ * contracts do — a Pro customer keeps the Pro row, so that story is unchanged.
+ */
+export function visibleNavItems(audience: NavigationAudience, loc?: NavLocation): AppNavItem[] {
+  const entitled = APP_NAV_ITEMS.filter((item) => item.audiences.includes(audience));
+  const workspaces = entitled.filter((item) => item.workspaceHome);
+  const keep =
+    workspaces.length > 1
+      ? (loc === undefined || isProWorkspaceLocation(loc) ? 'proWorkspace' : 'homeWorkspace')
+      : null;
+  return entitled
+    .filter((item) => !item.workspaceHome || keep === null || item.id === keep)
+    .sort(
+      (left, right) =>
+        NAV_GROUP_ORDER.indexOf(left.group) - NAV_GROUP_ORDER.indexOf(right.group) ||
+        left.order - right.order,
+    );
 }
 
 export function activeNavId(loc: NavLocation, audience: NavigationAudience): string | null {
-  const active = visibleNavItems(audience).filter((item) => item.isActive(loc));
+  const active = visibleNavItems(audience, loc).filter((item) => item.isActive(loc));
   if (active.length === 0) return null;
   return active.reduce((best, item) => (item.to.length > best.to.length ? item : best)).id;
 }
@@ -240,5 +269,5 @@ export function isGroupActive(
   loc: NavLocation,
   audience: NavigationAudience,
 ): boolean {
-  return visibleNavItems(audience).some((item) => item.group === group && item.isActive(loc));
+  return visibleNavItems(audience, loc).some((item) => item.group === group && item.isActive(loc));
 }
