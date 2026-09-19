@@ -157,10 +157,10 @@ describe('Partie → W toku', () => {
     host.remove();
   });
 
-  const render = async () => {
+  const render = async (entry = '/production') => {
     await act(async () => {
       root.render(
-        <MemoryRouter initialEntries={['/production']}>
+        <MemoryRouter initialEntries={[entry]}>
           <LocationProbe />
           <Routes>
             <Route path="/production" element={<ProductionHubPage />} />
@@ -257,6 +257,21 @@ describe('Partie → W toku', () => {
         'Nie udało się otworzyć tej partii',
       ),
     );
+  });
+
+  it('returns to the list when the opened batch is no longer in progress', async () => {
+    /* Finishing a batch from „Partie" is the usual way its run leaves „W toku". Waiting
+       for it to come back stranded „Wczytujemy partię…" on screen after a completion. */
+    mocks.openDurableRun.mockResolvedValue({ ok: false, reason: 'run-missing' });
+    await render('/production?run=run-gone');
+    await vi.waitFor(() =>
+      expect(
+        host.querySelector<HTMLElement>('[data-testid="location"]')?.dataset.search ?? '',
+      ).not.toContain('run='),
+    );
+    expect(mocks.openDurableRun).not.toHaveBeenCalled();
+    expect(host.querySelector('[data-testid="production-opened-run"]')).toBeNull();
+    expect(rows()).toEqual(['run-r2', 'run-r1']);
   });
 
   it('keeps the list from the server after a local clear („+ Nowa receptura”)', async () => {
