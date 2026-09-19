@@ -165,10 +165,14 @@ export function useDurableProductionProcess(
   }
   const selectedId = production.selectedRescueOptionId;
   const selectedView = correctionOptions.find((option) => option.id === selectedId) ?? null;
+  /* An empty option list has three very different meanings, and the operator is holding a
+     vessel while we decide which: the authority is still answering, it refused every
+     option, or the request failed. Silence is the one answer that is never acceptable. */
+  const evaluations = Object.values(production.rescueOptionStates ?? {});
   const unavailableReason =
-    Object.values(production.rescueOptionStates ?? {}).find(
-      (evaluation) => evaluation?.status === 'unavailable',
-    ) ?? null;
+    evaluations.find((evaluation) => evaluation?.status === 'unavailable') ?? null;
+  const evaluationFailed = evaluations.some((evaluation) => evaluation?.status === 'error');
+  const calculating = production.rescueOptionsCalculating === true;
 
   const reopenLine = (line: ProductionLineState) =>
     run(() => production.reopenRecord(line.lineId), copy.errors.reopen);
@@ -190,10 +194,14 @@ export function useDurableProductionProcess(
               }
             : null,
           options: correctionOptions,
+          pendingReason:
+            correctionOptions.length === 0 && calculating ? copy.correctionCalculating : null,
           impossibleReason:
-            correctionOptions.length === 0 && unavailableReason?.status === 'unavailable'
-              ? unavailableReason.reason
-              : null,
+            correctionOptions.length > 0 || calculating
+              ? null
+              : unavailableReason?.status === 'unavailable'
+                ? unavailableReason.reason
+                : copy.correctionUnavailable,
           recommendedId: production.recommendedRescueOptionId,
           selectedId,
           applyLabel:
@@ -254,6 +262,11 @@ export function useDurableProductionProcess(
       reopenLine(deviatingLine);
       return deviatingLine.lineId;
     },
+    // Asking again is only honest when the request itself failed; a refusal is an answer.
+    retryDecision:
+      evaluationFailed && production.retryRescueOptions
+        ? () => production.retryRescueOptions?.()
+        : null,
   };
 }
 

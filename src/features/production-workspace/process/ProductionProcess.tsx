@@ -519,6 +519,7 @@ export function ProductionProcess({
             const reopened = controller.backFromCorrection();
             if (reopened) setOpenLineId(reopened);
           }}
+          onRetry={controller.retryDecision}
         />
       ) : null}
 

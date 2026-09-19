@@ -18,11 +18,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ConfirmedScan } from '@/scan-contract/confirmedScan';
 import {
   continueDiscovery,
+  canAttemptScannerRequest,
   createIndexedDbStore,
   createMemoryStore,
   createOfflineCache,
   fileToLabelImage,
   identifyCode,
+  isScannerTransportError,
   runScanImportV2,
   type CustomerFamily,
   type DiscoverySession,
@@ -70,6 +72,8 @@ import {
   humanVerificationMessage,
   missingDataPromptForFields,
   missingDataPromptForGaps,
+  scannerConnectionMessage,
+  scannerServiceErrorMessage,
 } from './scannerStatusCopy';
 
 /** the dedicated exact-identity authority once its migration is deployed (staging: yes); otherwise the interim path */
@@ -115,6 +119,8 @@ export interface ScanFlowProps {
   intro?: string;
 }
 
+type RetryOperation = { run: ScanRunAuthority; work: () => Promise<void> };
+
 type Phase =
   | { kind: 'camera'; status: CaptureStatus; error: string | null }
   | { kind: 'resolving'; code: string }
@@ -149,7 +155,7 @@ type Phase =
       engineReady: boolean;
     }
   | { kind: 'requested' }
-  | { kind: 'error'; message: string };
+  | { kind: 'error'; message: string; retry?: RetryOperation | null };
 
 const STATUS_TEXT: Record<CaptureStatus, string> = {
   starting: 'Uruchamiam aparat…',
@@ -243,6 +249,8 @@ export function ScanFlow({
     useState<RecognitionNamePresentation | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const currentRunRef = useRef<ScanRunAuthority | null>(null);
+  const retryOperationRef = useRef<RetryOperation | null>(null);
+  const retryInFlightRef = useRef(false);
   const runSequenceRef = useRef(0);
   /** the customer answered "Tak" for THIS scan: the question is asked once, never again mid-scan */
   const addConfirmedRef = useRef(false);
@@ -295,12 +303,24 @@ export function ScanFlow({
     accountId,
     productCountry: null,
     online: typeof navigator === 'undefined' ? true : navigator.onLine,
+    allowNetworkRequest: true,
     surface: 'PRO',
     now: Date.now(),
     scanRun,
   });
 
   const fail = (message: string) => setPhase({ kind: 'error', message });
+  const failRequest = useCallback(
+    (error: unknown) =>
+      setPhase({
+        kind: 'error',
+        message: isScannerTransportError(error)
+          ? scannerConnectionMessage
+          : scannerServiceErrorMessage(error instanceof Error ? error.message : ''),
+        retry: retryOperationRef.current,
+      }),
+    [],
+  );
 
   const updateRecognitionPresentation = useCallback(
     (
@@ -524,13 +544,20 @@ export function ScanFlow({
         case 'offline':
           setPhase({ kind: 'offline' });
           return;
+        case 'failed':
+          failRequest(
+            Object.assign(new Error(r.detail ?? ''), {
+              kind: r.code === 'connection' ? 'network' : 'service',
+            }),
+          );
+          return;
         default:
           fail('Nie udało się sprawdzić produktu. Spróbuj ponownie.');
       }
     },
     // finalize is a per-render closure over the same ports/ctx; listing it would only re-create this callback
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [updateRecognitionPresentation],
+    [updateRecognitionPresentation, failRequest],
   );
 
   async function finalize(
@@ -547,21 +574,23 @@ export function ScanFlow({
     if (!run.isCurrent()) return;
     const port = ports?.discovery;
     if (!port) return fail('Backend nie jest skonfigurowany.');
-    const r = await continueDiscovery(
-      session,
-      {
-        type: unverified ? 'finalize_unverified' : 'finalize',
-        // binding only while the customer has typed nothing since the assessment was shown
-        input: {
-          ...input,
-          expectedAssessmentHash: bindingAssessmentHash(),
-        },
+    const action = {
+      type: unverified ? 'finalize_unverified' : 'finalize',
+      // binding only while the customer has typed nothing since the assessment was shown
+      input: {
+        ...input,
+        expectedAssessmentHash: bindingAssessmentHash(),
       },
-      ctx,
-      port,
-    );
-    if (!run.isCurrent()) return;
-    await handleResult(r, run, ctx, session);
+    } as const;
+    // Retry this exact assessment/session, not the preceding research or photo operation.
+    const work = async () => {
+      if (!run.isCurrent()) return;
+      const r = await continueDiscovery(session, action, ctx, port);
+      if (!run.isCurrent()) return;
+      await handleResult(r, run, ctx, session);
+    };
+    retryOperationRef.current = { run, work };
+    await work();
   }
 
   /**
@@ -612,16 +641,23 @@ export function ScanFlow({
       setRecognized(null);
       setRecognitionPresentation(null);
       setPhase({ kind: 'resolving', code: scan.value });
-      try {
+      let attempt = 0;
+      const work = async () => {
         const accountId = await getScanImportV2AccountId();
         if (!run.isCurrent()) return;
         const ctx = contextFor(accountId, run);
+        ctx.requestAttempt = attempt++;
         // Start the SAME server exact-EAN lookup the pipeline will consume, so Recognition keeps
         // its latency advantage without creating a browser-owned OFF truth beside the session.
         const identity = identifyCode(scan);
         // a guest is never researched: they may FIND a product, and nothing is spent on one they
         // cannot create (owner, 2026-09-06)
-        if (identity.ok && ports.discovery && ctx.online && entry !== 'guest_demo') {
+        if (
+          identity.ok &&
+          ports.discovery &&
+          canAttemptScannerRequest(ctx) &&
+          entry !== 'guest_demo'
+        ) {
           void ports.discovery
             .research(identity.identity, ctx)
             .then((outcome) => {
@@ -646,13 +682,17 @@ export function ScanFlow({
         );
         if (!run.isCurrent()) return;
         await handleResult(r, run, ctx);
-      } catch {
-        if (run.isCurrent()) fail('Nie udało się sprawdzić produktu. Spróbuj ponownie.');
+      };
+      retryOperationRef.current = { run, work };
+      try {
+        await work();
+      } catch (error) {
+        if (run.isCurrent()) failRequest(error);
       } finally {
         if (run.isCurrent()) setBusy(false);
       }
     },
-    [beginScanRun, ports, handleResult, entry, updateRecognitionPresentation],
+    [beginScanRun, ports, handleResult, entry, updateRecognitionPresentation, failRequest],
   );
   const resolveRef = useRef(resolve);
   // Intentional latest-render callback mirror read only by effects and UI handlers.
@@ -779,13 +819,25 @@ export function ScanFlow({
     work: () => Promise<void>,
     operationRun: ScanRunAuthority | null = currentRunRef.current,
   ) => {
+    if (operationRun) retryOperationRef.current = { run: operationRun, work };
     setBusy(true);
     try {
       await work();
-    } catch {
-      if (operationRun?.isCurrent()) fail('Coś poszło nie tak. Spróbuj ponownie.');
+    } catch (error) {
+      if (operationRun?.isCurrent()) failRequest(error);
     } finally {
       if (operationRun?.isCurrent()) setBusy(false);
+    }
+  };
+
+  const retryRequest = async (operation: RetryOperation) => {
+    if (retryInFlightRef.current || !operation.run.isCurrent()) return;
+    retryInFlightRef.current = true;
+    setPhase({ kind: 'resolving', code: operation.run.barcode });
+    try {
+      await withBusy(operation.work, operation.run);
+    } finally {
+      retryInFlightRef.current = false;
     }
   };
 
@@ -1510,7 +1562,12 @@ export function ScanFlow({
       {phase.kind === 'error' ? (
         <div className="space-y-3">
           <p className="text-sm text-red-700">{phase.message}</p>
-          <button type="button" className={btnSecondary} onClick={restart}>
+          <button
+            type="button"
+            className={btnSecondary}
+            disabled={busy}
+            onClick={() => (phase.retry ? void retryRequest(phase.retry) : restart())}
+          >
             Spróbuj ponownie
           </button>
         </div>
