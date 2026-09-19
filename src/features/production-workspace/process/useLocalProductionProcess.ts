@@ -196,6 +196,8 @@ export function useLocalProductionProcess({
               }
             : null,
           options: correctionOptions,
+          // The browser authority answers synchronously: it never keeps the operator waiting.
+          pendingReason: null,
           impossibleReason: assessment?.state === 'impossible' ? assessment.reason : null,
           recommendedId,
           selectedId,
@@ -299,5 +301,6 @@ export function useLocalProductionProcess({
       reopenLine(deviatingLine);
       return deviatingLine.lineId;
     },
+    retryDecision: null,
   };
 }
