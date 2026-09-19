@@ -1,0 +1,834 @@
+{
+ "OD-28 (HOME gelato + 507 g strawberries, sweetness −1)": {
+  "stuckDiagnosticOnly": true,
+  "stuckReached": false,
+  "stuck": {
+   "pod": 16.050462686567162,
+   "npac": 39.08263718822228,
+   "sum": 1340,
+   "violations": [
+    "fat:low:3.462"
+   ],
+   "distance": 4.540413646055432,
+   "reached": false,
+   "items": [
+    [
+     "MILK · 3.5% FAT · Ch",
+     453
+    ],
+    [
+     "CREAM 30% · Mlekovit",
+     94
+    ],
+    [
+     "SKIMMED MILK POWDER ",
+     99
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     128
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     55
+    ],
+    [
+     "TARA GUM · Stabilize",
+     4
+    ],
+    [
+     "STRAWBERRIES · Fresh",
+     507
+    ]
+   ]
+  },
+  "steps": [
+   {
+    "round": 0,
+    "probes": 20,
+    "candidates": 30,
+    "verified": 51,
+    "clean": 9,
+    "legal": 0,
+    "beforeDistance": 4.540413646055432,
+    "afterDistance": 3.0160059701492514,
+    "afterPod": 15.508002985074626,
+    "afterNpac": 39.24592800912525,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 1,
+    "probes": 20,
+    "candidates": 30,
+    "verified": 45,
+    "clean": 24,
+    "legal": 6,
+    "beforeDistance": 3.0160059701492514,
+    "afterDistance": 0,
+    "afterPod": 13.508026865671644,
+    "afterNpac": 40.01098911474989,
+    "afterReached": true,
+    "afterViolations": []
+   }
+  ],
+  "final": {
+   "pod": 13.508026865671644,
+   "npac": 40.01098911474989,
+   "sum": 1340,
+   "violations": [],
+   "distance": 0,
+   "reached": true,
+   "items": [
+    [
+     "MILK · 3.5% FAT · Ch",
+     342
+    ],
+    [
+     "CREAM 30% · Mlekovit",
+     228
+    ],
+    [
+     "SKIMMED MILK POWDER ",
+     99
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     65
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     95
+    ],
+    [
+     "TARA GUM · Stabilize",
+     4
+    ],
+    [
+     "STRAWBERRIES · Fresh",
+     507
+    ]
+   ]
+  }
+ },
+ "LOCK-01 butter-pecan lock 80 g sweet +1": {
+  "stuckDiagnosticOnly": false,
+  "stuckReached": false,
+  "stuck": {
+   "pod": 14.842061999999997,
+   "npac": 40.99994551506384,
+   "sum": 1000,
+   "violations": [],
+   "distance": 0.3158760000000065,
+   "reached": false,
+   "items": [
+    [
+     "MILK · 3.5% FAT · Ch",
+     673
+    ],
+    [
+     "CREAM 30% · Mlekovit",
+     95
+    ],
+    [
+     "SKIMMED MILK POWDER ",
+     22
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     80
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     79
+    ],
+    [
+     "INULIN · Fibre · Pow",
+     43
+    ],
+    [
+     "BUTTER UNSALTED · Ml",
+     1
+    ],
+    [
+     "PECANS · Dry Roasted",
+     5
+    ],
+    [
+     "TARA GUM · Stabilize",
+     2
+    ]
+   ]
+  },
+  "steps": [
+   {
+    "round": 0,
+    "probes": 42,
+    "candidates": 105,
+    "verified": 138,
+    "clean": 57,
+    "legal": 0,
+    "beforeDistance": 0.3158760000000065,
+    "afterDistance": 0.07861199999999613,
+    "afterPod": 14.960694000000002,
+    "afterNpac": 40.88047755096579,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 1,
+    "probes": 42,
+    "candidates": 105,
+    "verified": 126,
+    "clean": 54,
+    "legal": 6,
+    "beforeDistance": 0.07861199999999613,
+    "afterDistance": 0,
+    "afterPod": 15.0190624,
+    "afterNpac": 40.77387684500342,
+    "afterReached": true,
+    "afterViolations": []
+   }
+  ],
+  "final": {
+   "pod": 15.0190624,
+   "npac": 40.77387684500342,
+   "sum": 1000,
+   "violations": [],
+   "distance": 0,
+   "reached": true,
+   "items": [
+    [
+     "MILK · 3.5% FAT · Ch",
+     723
+    ],
+    [
+     "CREAM 30% · Mlekovit",
+     68
+    ],
+    [
+     "SKIMMED MILK POWDER ",
+     22
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     80
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     85
+    ],
+    [
+     "INULIN · Fibre · Pow",
+     1
+    ],
+    [
+     "BUTTER UNSALTED · Ml",
+     1
+    ],
+    [
+     "PECANS · Dry Roasted",
+     18
+    ],
+    [
+     "TARA GUM · Stabilize",
+     2
+    ]
+   ]
+  }
+ },
+ "LOCK-02a sorbet A sweet -1": {
+  "stuckDiagnosticOnly": false,
+  "stuckReached": false,
+  "stuck": {
+   "pod": 19.062758,
+   "npac": 37.45176455430178,
+   "sum": 1000,
+   "violations": [],
+   "distance": 1.1109934456982167,
+   "reached": false,
+   "items": [
+    [
+     "BLOOD ORANGE · Campi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     194
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     79
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     70
+    ],
+    [
+     "INULIN · Fibre · Pow",
+     55
+    ],
+    [
+     "TARA GUM · Stabilize",
+     4
+    ]
+   ]
+  },
+  "steps": [
+   {
+    "round": 0,
+    "probes": 20,
+    "candidates": 30,
+    "verified": 42,
+    "clean": 30,
+    "legal": 0,
+    "beforeDistance": 1.1109934456982167,
+    "afterDistance": 0.02322910600286065,
+    "afterPod": 17.998181,
+    "afterNpac": 37.48677089399714,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 1,
+    "probes": 20,
+    "candidates": 30,
+    "verified": 30,
+    "clean": 30,
+    "legal": 0,
+    "beforeDistance": 0.02322910600286065,
+    "afterDistance": 0.02322910600286065,
+    "afterPod": 17.998181,
+    "afterNpac": 37.48677089399714,
+    "afterReached": false,
+    "afterViolations": []
+   }
+  ],
+  "final": {
+   "pod": 17.998181,
+   "npac": 37.48677089399714,
+   "sum": 1000,
+   "violations": [],
+   "distance": 0.02322910600286065,
+   "reached": false,
+   "items": [
+    [
+     "BLOOD ORANGE · Campi",
+     561
+    ],
+    [
+     "WATER · Liquid",
+     194
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     68
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     70
+    ],
+    [
+     "INULIN · Fibre · Pow",
+     103
+    ],
+    [
+     "TARA GUM · Stabilize",
+     4
+    ]
+   ]
+  }
+ },
+ "LOCK-02b sorbet A sweet -2": {
+  "stuckDiagnosticOnly": false,
+  "stuckReached": false,
+  "stuck": {
+   "pod": 19.062758,
+   "npac": 37.45176455430178,
+   "sum": 1000,
+   "violations": [],
+   "distance": 3.1109934456982167,
+   "reached": false,
+   "items": [
+    [
+     "BLOOD ORANGE · Campi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     194
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     79
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     70
+    ],
+    [
+     "INULIN · Fibre · Pow",
+     55
+    ],
+    [
+     "TARA GUM · Stabilize",
+     4
+    ]
+   ]
+  },
+  "steps": [
+   {
+    "round": 0,
+    "probes": 20,
+    "candidates": 30,
+    "verified": 51,
+    "clean": 36,
+    "legal": 0,
+    "beforeDistance": 3.1109934456982167,
+    "afterDistance": 0.6727580000000002,
+    "afterPod": 16.662758,
+    "afterNpac": 37.502064565498614,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 1,
+    "probes": 20,
+    "candidates": 30,
+    "verified": 36,
+    "clean": 21,
+    "legal": 0,
+    "beforeDistance": 0.6727580000000002,
+    "afterDistance": 0.04206525072137168,
+    "afterPod": 16.011658000000004,
+    "afterNpac": 37.53040725072137,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 2,
+    "probes": 20,
+    "candidates": 30,
+    "verified": 30,
+    "clean": 30,
+    "legal": 0,
+    "beforeDistance": 0.04206525072137168,
+    "afterDistance": 0.02,
+    "afterPod": 16.002237,
+    "afterNpac": 37.507058134056386,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 3,
+    "probes": 20,
+    "candidates": 30,
+    "verified": 30,
+    "clean": 30,
+    "legal": 0,
+    "beforeDistance": 0.02,
+    "afterDistance": 0.02,
+    "afterPod": 16.002237,
+    "afterNpac": 37.507058134056386,
+    "afterReached": false,
+    "afterViolations": []
+   }
+  ],
+  "final": {
+   "pod": 16.002237,
+   "npac": 37.507058134056386,
+   "sum": 1000,
+   "violations": [],
+   "distance": 0.02,
+   "reached": false,
+   "items": [
+    [
+     "BLOOD ORANGE · Campi",
+     597
+    ],
+    [
+     "WATER · Liquid",
+     127
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     35
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     77
+    ],
+    [
+     "INULIN · Fibre · Pow",
+     160
+    ],
+    [
+     "TARA GUM · Stabilize",
+     4
+    ]
+   ]
+  }
+ },
+ "LOCK-02c sorbet B sweet -1": {
+  "stuckDiagnosticOnly": false,
+  "stuckReached": false,
+  "stuck": {
+   "pod": 20.326858,
+   "npac": 37.34569502425785,
+   "sum": 1000,
+   "violations": [],
+   "distance": 2.4811629757421514,
+   "reached": false,
+   "items": [
+    [
+     "BLOOD ORANGE · Campi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     186
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     104
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     53
+    ],
+    [
+     "INULIN · Fibre · Pow",
+     55
+    ],
+    [
+     "TARA GUM · Stabilize",
+     4
+    ]
+   ]
+  },
+  "steps": [
+   {
+    "round": 0,
+    "probes": 12,
+    "candidates": 12,
+    "verified": 24,
+    "clean": 18,
+    "legal": 0,
+    "beforeDistance": 2.4811629757421514,
+    "afterDistance": 1.3934765004215777,
+    "afterPod": 19.30234,
+    "afterNpac": 37.40886349957842,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 1,
+    "probes": 12,
+    "candidates": 12,
+    "verified": 24,
+    "clean": 9,
+    "legal": 0,
+    "beforeDistance": 1.3934765004215777,
+    "afterDistance": 0.8466524202744772,
+    "afterPod": 18.790080999999997,
+    "afterNpac": 37.44342857972552,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 2,
+    "probes": 12,
+    "candidates": 12,
+    "verified": 18,
+    "clean": 6,
+    "legal": 0,
+    "beforeDistance": 0.8466524202744772,
+    "afterDistance": 0.5146251877271197,
+    "afterPod": 18.354213,
+    "afterNpac": 37.33958781227288,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 3,
+    "probes": 12,
+    "candidates": 12,
+    "verified": 12,
+    "clean": 3,
+    "legal": 0,
+    "beforeDistance": 0.5146251877271197,
+    "afterDistance": 0.14775423891812522,
+    "afterPod": 17.974871,
+    "afterNpac": 37.377374761081875,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 4,
+    "probes": 12,
+    "candidates": 12,
+    "verified": 12,
+    "clean": 12,
+    "legal": 0,
+    "beforeDistance": 0.14775423891812522,
+    "afterDistance": 0.020206361614898187,
+    "afterPod": 18.001713,
+    "afterNpac": 37.4897936383851,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 5,
+    "probes": 12,
+    "candidates": 12,
+    "verified": 12,
+    "clean": 12,
+    "legal": 0,
+    "beforeDistance": 0.020206361614898187,
+    "afterDistance": 0.020206361614898187,
+    "afterPod": 18.001713,
+    "afterNpac": 37.4897936383851,
+    "afterReached": false,
+    "afterViolations": []
+   }
+  ],
+  "final": {
+   "pod": 18.001713,
+   "npac": 37.4897936383851,
+   "sum": 1000,
+   "violations": [],
+   "distance": 0.020206361614898187,
+   "reached": false,
+   "items": [
+    [
+     "BLOOD ORANGE · Campi",
+     153
+    ],
+    [
+     "WATER · Liquid",
+     527
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     104
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     69
+    ],
+    [
+     "INULIN · Fibre · Pow",
+     143
+    ],
+    [
+     "TARA GUM · Stabilize",
+     4
+    ]
+   ]
+  }
+ },
+ "LOCK-02d sorbet B hard -1": {
+  "stuckDiagnosticOnly": false,
+  "stuckReached": false,
+  "stuck": {
+   "pod": 20.617658000000002,
+   "npac": 38.47028808797032,
+   "sum": 1000,
+   "violations": [],
+   "distance": 0.647369912029685,
+   "reached": false,
+   "items": [
+    [
+     "BLOOD ORANGE · Campi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     182
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     104
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     57
+    ],
+    [
+     "INULIN · Fibre · Pow",
+     55
+    ],
+    [
+     "TARA GUM · Stabilize",
+     4
+    ]
+   ]
+  },
+  "steps": [
+   {
+    "round": 0,
+    "probes": 12,
+    "candidates": 12,
+    "verified": 15,
+    "clean": 15,
+    "legal": 0,
+    "beforeDistance": 0.647369912029685,
+    "afterDistance": 0.024824189869919737,
+    "afterPod": 20.004084,
+    "afterNpac": 38.51482418986992,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 1,
+    "probes": 12,
+    "candidates": 12,
+    "verified": 12,
+    "clean": 12,
+    "legal": 0,
+    "beforeDistance": 0.024824189869919737,
+    "afterDistance": 0.024824189869919737,
+    "afterPod": 20.004084,
+    "afterNpac": 38.51482418986992,
+    "afterReached": false,
+    "afterViolations": []
+   }
+  ],
+  "final": {
+   "pod": 20.004084,
+   "npac": 38.51482418986992,
+   "sum": 1000,
+   "violations": [],
+   "distance": 0.024824189869919737,
+   "reached": false,
+   "items": [
+    [
+     "BLOOD ORANGE · Campi",
+     504
+    ],
+    [
+     "WATER · Liquid",
+     242
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     104
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     57
+    ],
+    [
+     "INULIN · Fibre · Pow",
+     89
+    ],
+    [
+     "TARA GUM · Stabilize",
+     4
+    ]
+   ]
+  }
+ },
+ "LOCK-02e sorbet B hard -2": {
+  "stuckDiagnosticOnly": false,
+  "stuckReached": false,
+  "stuck": {
+   "pod": 20.908458000000003,
+   "npac": 39.606062876584886,
+   "sum": 1000,
+   "violations": [],
+   "distance": 1.0145208765848892,
+   "reached": false,
+   "items": [
+    [
+     "BLOOD ORANGE · Campi",
+     598
+    ],
+    [
+     "WATER · Liquid",
+     178
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     104
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     61
+    ],
+    [
+     "INULIN · Fibre · Pow",
+     55
+    ],
+    [
+     "TARA GUM · Stabilize",
+     4
+    ]
+   ]
+  },
+  "steps": [
+   {
+    "round": 0,
+    "probes": 12,
+    "candidates": 12,
+    "verified": 18,
+    "clean": 12,
+    "legal": 0,
+    "beforeDistance": 1.0145208765848892,
+    "afterDistance": 0.035361212995761664,
+    "afterPod": 19.996623,
+    "afterNpac": 39.47463878700424,
+    "afterReached": false,
+    "afterViolations": []
+   },
+   {
+    "round": 1,
+    "probes": 12,
+    "candidates": 12,
+    "verified": 12,
+    "clean": 12,
+    "legal": 0,
+    "beforeDistance": 0.035361212995761664,
+    "afterDistance": 0.035361212995761664,
+    "afterPod": 19.996623,
+    "afterNpac": 39.47463878700424,
+    "afterReached": false,
+    "afterViolations": []
+   }
+  ],
+  "final": {
+   "pod": 19.996623,
+   "npac": 39.47463878700424,
+   "sum": 1000,
+   "violations": [],
+   "distance": 0.035361212995761664,
+   "reached": false,
+   "items": [
+    [
+     "BLOOD ORANGE · Campi",
+     463
+    ],
+    [
+     "WATER · Liquid",
+     268
+    ],
+    [
+     "SUCROSE SUGAR · Swee",
+     104
+    ],
+    [
+     "DEXTROSE MONOHYDRATE",
+     61
+    ],
+    [
+     "INULIN · Fibre · Pow",
+     100
+    ],
+    [
+     "TARA GUM · Stabilize",
+     4
+    ]
+   ]
+  }
+ }
+}
