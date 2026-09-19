@@ -302,6 +302,8 @@ describe.skipIf(!RUN)('Scan Import 2.0 — real label proof, phase 2 (finalize +
             recordedAt: Date.now(),
           };
           const current = await discovery.research(idr.identity, c());
+          if (current.kind === 'ambiguous')
+            throw new Error('EXACT_CONFLICT: cannot submit a request for conflicting products');
           const session = current.kind === 'existing_product' ? seed : current.session;
           const req = await continueDiscovery(session, { type: 'request' }, c(), discovery);
           rec['step5_request'] = summary(req);
