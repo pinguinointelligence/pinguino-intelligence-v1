@@ -1778,16 +1778,12 @@ export function useProductionWorkspace(
           plannedInput,
           plannedComposition,
         );
-        /* The run carries its frozen plan and actuals back, but not the completion
-           snapshot — the server stores that separately, and history reads it from there.
-           The batch that has JUST finished keeps the very snapshot that was frozen a line
-           above, so the finished screen and its label state the LOT, the final mass and
-           the confirmed order of this run instead of nothing at all. Nothing is
-           recomputed here: this is the object `completeRun` was given. */
-        replaceSession({
-          ...completedSession,
-          completionSnapshot: completionCandidate.completionSnapshot,
-        });
+        /* `hydrateProductionSessionFromRun` already rebuilds the completion snapshot for a
+           finished run, from the run's OWN actuals and the server's `completedAt`. Carrying
+           the local candidate over it looked like belt and braces and was worse: the LOT is
+           derived from that timestamp, so a local clock would have been allowed to name the
+           batch instead of the server. */
+        replaceSession(completedSession);
         announceFriendlyLabMoment(
           'production-complete',
           `production:${completedSession.sessionId}:${completedSession.completedAt ?? 'completed'}`,
