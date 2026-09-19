@@ -403,23 +403,19 @@ async function startPreparation(
 ) {
   const { plannedInput, plannedComposition } = fixture();
   useAuthStore.setState({ user: { id: 'owner' } as never, status: 'authed' } as never);
-  /* The entitlement a signed-in customer who may run production actually carries, produced by
-     the REAL account-access resolver and written to the store the app writes it to — no mocked
-     persona, no DEV-only `devPersona` override, so the capability path keeps its teeth.
-
-     OD-32 (pending): today this has to be a PRO-scope entitlement, because
-     `PRO_CORE_CAPABILITIES.home.canUseProductionMode` is false and BOTH production repositories
-     refuse `startRun` without it — so a HOME-plan customer cannot start the durable batch OD-24
-     gives them. `od32CapabilityBlocker` below pins that fact; when the owner rules that HOME's
-     plan includes making ice cream, that test fails first and this seed becomes `hasPro: false`.
-     Nothing else in this file changes either way. */
+  /* The entitlement a signed-in HOME customer actually carries — `hasHome`, NOT `hasPro` —
+     produced by the REAL account-access resolver and written to the store the app writes it to.
+     No mocked persona, no DEV-only `devPersona` override, so the capability path keeps its
+     teeth: this resolves to the `home` persona, and the batches below start only because OD-32
+     says a HOME plan may run its own production.
+  */
   useProCoreAccessStore.getState().setEffectiveAccess(
     resolveEffectiveAccess({
       identity: { userId: 'owner', email: null, emailVerified: true },
       accountState: 'active',
       entitlements: {
         hasHome: true,
-        hasPro: true,
+        hasPro: false,
         hasPartnerMode: false,
         sourcesByScope: { home: ['paid_subscription'], pro: ['paid_subscription'] },
         explanation: [],
@@ -778,19 +774,30 @@ describe('an official recipe keeps its Professional machine in HOME (served 2026
 });
 
 /**
- * OD-32 — why the cases above have to seed a PRO-scope entitlement, stated as a fact rather than
- * a comment. OD-24 gives a signed-in HOME customer a DURABLE batch, and `startNewSession` asks
- * the repository for it with `productionCapabilitiesFor(persona)`. Both repositories — the
- * server one and the in-memory one — refuse outright when `canUseProductionMode` is false.
+ * OD-32 (Owner, 19.09.2026 — RESOLVED, Option A). Making ice cream is what the HOME plan is
+ * FOR, and keeping the batch durably is storage rather than a professional tool, so a signed-in
+ * HOME customer runs the same real production chain PRO runs.
  *
- * So as the matrix stands, a customer on the HOME plan cannot start the batch OD-24 describes;
- * they get „Nie udało się bezpiecznie rozpocząć partii." This test exists to fail the moment the
- * owner answers OD-32 by widening the plan, so nobody has to rediscover why the seed is here.
+ * Every case above proves that end to end: the entitlement `startPreparation` seeds is a HOME
+ * one, the persona is `home`, and the batch still starts. These two pin the capability truth
+ * that makes it possible, and the line that keeps it from reaching anyone not signed in.
  */
-describe('OD-32 — the capability that decides whether HOME can run its own batch', () => {
-  it('OD32-CAPABILITY-A today only the PRO plan carries Production Mode', () => {
+describe('OD-32 — a signed-in HOME plan may run its own batch', () => {
+  it('OD32-CAPABILITY-A the HOME plan carries Production Mode; DEMO does not', () => {
+    expect(productionCapabilitiesFor('home').canUseProductionMode).toBe(true);
     expect(productionCapabilitiesFor('pro').canUseProductionMode).toBe(true);
-    expect(productionCapabilitiesFor('home').canUseProductionMode).toBe(false);
+    // The persona an unauthenticated visitor resolves to. It stays out.
     expect(productionCapabilitiesFor('demo').canUseProductionMode).toBe(false);
+  });
+
+  it('OD32-CAPABILITY-B the batches above really did run as the HOME persona', async () => {
+    /* Without this the file could drift back to a PRO seed unnoticed: every assertion above
+       would still pass, and OD-24's claim — that HOME runs this batch — would quietly stop
+       being tested. */
+    await startPreparation('ninja-creami-deluxe-nc502eu-eu-es', null);
+    expect(useProCoreAccessStore.getState().effectiveAccess).toMatchObject({
+      canHome: true,
+      canPro: false,
+    });
   });
 });

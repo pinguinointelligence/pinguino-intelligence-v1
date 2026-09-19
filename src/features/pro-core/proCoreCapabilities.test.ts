@@ -8,6 +8,7 @@ import {
   recipeCapabilitiesFor,
 } from './proCoreCapabilities';
 import { canCreateNewRecipe } from './recipeVersioning';
+import { resolveProCorePersona } from './persona';
 
 /**
  * Pins the OWNER DECISION (2026-07-12) as canonical:
@@ -28,10 +29,40 @@ describe('canonical PRO CORE capability rule', () => {
     expect(home.canViewExactGrams).toBe(true);
   });
 
-  it('Production Mode is Pro-only — Demo and Home cannot use it, Pro can', () => {
+  it('Production Mode belongs to a signed-in plan — HOME and PRO can use it, Demo cannot', () => {
+    /* OD-32 (Owner, 19.09.2026) — HOME may run a real production batch: making ice cream is
+       what the plan is for, and storing the batch durably is an implementation detail rather
+       than a professional feature. Demo stays out: it is the persona an unauthenticated
+       visitor resolves to, and this line is the only thing standing between them and a
+       server-side production run. */
     expect(productionCapabilitiesFor('demo').canUseProductionMode).toBe(false);
-    expect(productionCapabilitiesFor('home').canUseProductionMode).toBe(false);
+    expect(productionCapabilitiesFor('home').canUseProductionMode).toBe(true);
     expect(productionCapabilitiesFor('pro').canUseProductionMode).toBe(true);
+  });
+
+  it('Production Mode belongs to a signed-in plan — HOME and PRO can use it, Demo cannot', () => {
+    /* OD-32 (Owner, 19.09.2026) — HOME may run a real production batch: making ice cream is
+       what the plan is for, and storing the batch durably is an implementation detail rather
+       than a professional feature. Demo stays out: it is the persona an unauthenticated
+       visitor resolves to, and this line is the only thing standing between them and a
+       server-side production run. */
+    expect(productionCapabilitiesFor('demo').canUseProductionMode).toBe(false);
+    expect(productionCapabilitiesFor('home').canUseProductionMode).toBe(true);
+    expect(productionCapabilitiesFor('pro').canUseProductionMode).toBe(true);
+  });
+
+  it('OD-32 cannot reach an unauthenticated visitor — they are not the HOME persona', () => {
+    /* The capability is only ever read through a persona, and a visitor with no resolved
+       entitlement is `demo`. This is the link that keeps „HOME may run production" from
+       meaning „anyone may run production". */
+    expect(resolveProCorePersona({ effectiveAccess: null, devPersona: null, isDev: false })).toBe(
+      'demo',
+    );
+    expect(
+      productionCapabilitiesFor(
+        resolveProCorePersona({ effectiveAccess: null, devPersona: null, isDev: false }),
+      ).canUseProductionMode,
+    ).toBe(false);
   });
 
   it('Demo cannot save recipes, view exact grams, use Production Mode, or export', () => {
@@ -73,18 +104,41 @@ describe('canonical PRO CORE capability rule', () => {
 describe('S1 — full canonical Pro capability set', () => {
   /** Every boolean capability the Pro product gates on (maxSavedRecipes is number|null). */
   const ALL_BOOL_CAPS = [
-    'canSaveRecipe', 'canViewRecipeVersions', 'canRestoreRecipeVersion', 'canViewExactGrams',
-    'canUseProductionMode', 'canExport', 'canCompareRecipeVersions', 'canUseProfessionalFlow',
-    'canChooseProfessionalServingMode', 'canUseProfessionalMonitor', 'canEditIngredientGrams',
-    'canLockIngredientGrams', 'canSetIngredientRange', 'canRepairRecipe',
-    'canRepairProductionBatch', 'canScaleRecipe', 'canViewProductionHistory', 'canUseCosts',
+    'canSaveRecipe',
+    'canViewRecipeVersions',
+    'canRestoreRecipeVersion',
+    'canViewExactGrams',
+    'canUseProductionMode',
+    'canExport',
+    'canCompareRecipeVersions',
+    'canUseProfessionalFlow',
+    'canChooseProfessionalServingMode',
+    'canUseProfessionalMonitor',
+    'canEditIngredientGrams',
+    'canLockIngredientGrams',
+    'canSetIngredientRange',
+    'canRepairRecipe',
+    'canRepairProductionBatch',
+    'canScaleRecipe',
+    'canViewProductionHistory',
+    'canUseCosts',
   ] as const;
 
   /** Pro-ONLY capabilities — Home and Demo must never receive these. */
   const PRO_ONLY = [
-    'canUseProfessionalFlow', 'canChooseProfessionalServingMode', 'canUseProfessionalMonitor',
-    'canEditIngredientGrams', 'canLockIngredientGrams', 'canSetIngredientRange', 'canRepairRecipe',
-    'canRepairProductionBatch', 'canScaleRecipe', 'canUseProductionMode', 'canViewProductionHistory',
+    'canUseProfessionalFlow',
+    'canChooseProfessionalServingMode',
+    'canUseProfessionalMonitor',
+    'canEditIngredientGrams',
+    'canLockIngredientGrams',
+    'canSetIngredientRange',
+    'canRepairRecipe',
+    'canRepairProductionBatch',
+    'canScaleRecipe',
+    'canViewProductionHistory',
+    /* OD-32 (Owner, 19.09.2026): `canUseProductionMode` LEFT this list. Making ice cream is
+       what the HOME plan is for; keeping the batch durably is storage, not a professional
+       tool. It is still refused to `demo` — see the DEMO cases below. */
     'canUseCosts',
   ] as const;
 
@@ -94,13 +148,39 @@ describe('S1 — full canonical Pro capability set', () => {
     expect(pro.maxSavedRecipes).toBeNull();
   });
 
-  it('Home receives NO Pro-only capability, but keeps its paid basics (unchanged this slice)', () => {
+  it('Home receives NO Pro-only capability, but keeps its paid basics', () => {
     const home = proCoreCapabilitiesFor('home');
     for (const cap of PRO_ONLY) expect(home[cap], cap).toBe(false);
     expect(home.canViewExactGrams).toBe(true);
     expect(home.canSaveRecipe).toBe(true);
     expect(home.canExport).toBe(true);
     expect(home.canCompareRecipeVersions).toBe(true); // Home may compare its one recipe
+  });
+
+  it('OD-32 widened Production Mode for HOME and NOTHING else', () => {
+    /* The whole risk of this change is collateral — one `true` in a frozen matrix quietly
+       handing HOME something professional. `PRO_ONLY` no longer contains production mode, so
+       this loop now proves exactly the remainder: nothing else came with it. */
+    const home = proCoreCapabilitiesFor('home');
+    for (const cap of PRO_ONLY) expect(home[cap], cap).toBe(false);
+    expect(home.canUseProductionMode).toBe(true);
+    expect(home).toMatchObject({
+      canSaveRecipe: true,
+      canViewRecipeVersions: true,
+      canRestoreRecipeVersion: true,
+      canViewExactGrams: true,
+      canExport: true,
+      canCompareRecipeVersions: true,
+      maxSavedRecipes: HOME_MAX_SAVED_RECIPES,
+    });
+  });
+
+  it('OD-32 left the DEMO plan exactly where it was', () => {
+    // An unauthenticated visitor is this persona; every paid flag stays refused.
+    const demo = proCoreCapabilitiesFor('demo');
+    for (const cap of ALL_BOOL_CAPS) expect(demo[cap], cap).toBe(false);
+    expect(demo.canUseProductionMode).toBe(false);
+    expect(demo.maxSavedRecipes).toBe(0);
   });
 
   it('Demo receives NONE of the paid capabilities', () => {
@@ -114,7 +194,9 @@ describe('S1 — full canonical Pro capability set', () => {
     // persona/capability can alter a canonical Engine result (calculateRecipe takes no persona).
     for (const persona of ['demo', 'home', 'pro'] as const) {
       for (const value of Object.values(proCoreCapabilitiesFor(persona))) {
-        expect(typeof value === 'boolean' || typeof value === 'number' || value === null).toBe(true);
+        expect(typeof value === 'boolean' || typeof value === 'number' || value === null).toBe(
+          true,
+        );
       }
     }
   });

@@ -55,7 +55,11 @@ export function ProductionAreaSurface({
   const ownerUserId = useAuthStore((state) => state.user?.id ?? null);
   const persona = useProCorePersona();
   const capabilities = proCoreCapabilitiesFor(persona);
-  const gated = productionAreaSection(section).proOnly && !capabilities.canUseProductionMode;
+  /* OD-32: the section says which capability opens it. Labelling product for sale is not the
+     same right as making a batch, and reading `canUseProductionMode` here would have handed a
+     signed-in HOME customer the whole label toolset the moment they could run one. */
+  const area = productionAreaSection(section);
+  const gated = area.proOnly && !capabilities[area.requires ?? 'canPrintProductionLabels'];
   const address = `${location.pathname}${location.search}`;
 
   useEffect(() => {

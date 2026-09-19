@@ -17,7 +17,12 @@ export type NavGroupId = 'product' | 'ecosystem';
 export interface NavigationCapabilities {
   authenticated: boolean;
   canSaveRecipes: boolean;
-  canUseProductionMode: boolean;
+  /* What makes the navigation PRO is the professional workbench, not the right to run a
+     batch. OD-32 gave a signed-in HOME customer their own production batch; reading
+     `canUseProductionMode` here would also have swapped their „Gellatti Home" workspace row
+     for „Gellatti Pro", flipped the plan badge and pointed the wordmark at /pro/recipe —
+     where `HomeSubscriberProRedirect` bounces them straight back out. */
+  canUseProfessionalFlow: boolean;
 }
 
 export interface NavLocation {
@@ -214,7 +219,7 @@ export const NAV_GROUP_ORDER: readonly NavGroupId[] = ['product', 'ecosystem'];
 
 export function navigationAudience(capabilities: NavigationCapabilities): NavigationAudience {
   if (!capabilities.authenticated) return 'guest';
-  if (capabilities.canUseProductionMode) return 'pro';
+  if (capabilities.canUseProfessionalFlow) return 'pro';
   if (capabilities.canSaveRecipes) return 'home';
   return 'guest';
 }

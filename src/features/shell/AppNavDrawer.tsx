@@ -52,7 +52,7 @@ export function AppNavDrawer() {
   const audience = navigationAudience({
     authenticated: authStatus === 'authed' || devMemberPreview,
     canSaveRecipes: capabilities.canSaveRecipe,
-    canUseProductionMode: capabilities.canUseProductionMode,
+    canUseProfessionalFlow: capabilities.canUseProfessionalFlow,
   });
   const items = visibleNavItems(audience);
   const workspaceItem = items.find((item) => item.workspaceHome);

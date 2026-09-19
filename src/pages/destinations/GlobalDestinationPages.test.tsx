@@ -96,14 +96,29 @@ describe('canonical global destination hubs', () => {
     );
   });
 
-  it('shows HOME its Partie without production tools, history or a created batch', () => {
+  it('shows HOME the real batches surface, but no production history and no labels', () => {
+    /* OD-32 (Owner, 19.09.2026): a signed-in HOME customer runs real durable batches, so they
+       get „W toku" and „Kontynuuj partię" — it is the only way back to a run started on
+       another device. What must NOT arrive with it is the PRO history: lot codes, masses and
+       label versions are `canViewProductionHistory`, which HOME does not have. */
     persona = 'home';
     const html = render(<ProductionHubPage />, '/production');
+    expect(html).toContain('data-testid="production-batches"');
     expect(html).toContain('data-testid="production-current"');
-    expect(html).toContain('Nie masz teraz partii w toku.');
-    expect(html).toContain('href="/recipes"');
+    // The durable in-progress surface, not HOME's old device-local card.
     expect(html).not.toContain('data-testid="production-history"');
+    expect(html).not.toContain('data-testid="production-history-jump"');
     expect(html).not.toContain('Otwórz etykietę');
+    // Arriving here never creates a batch.
+    expect(html).not.toContain('data-testid="production-process"');
+  });
+
+  it('gives PRO the production history HOME does not get', () => {
+    // The other half of the same rule: without this, gating history proves nothing.
+    persona = 'pro';
+    const html = render(<ProductionHubPage />, '/production');
+    expect(html).toContain('data-testid="production-batches"');
+    expect(html).toContain('data-testid="production-history"');
   });
 
   it('keeps Production gated without a plan', () => {
