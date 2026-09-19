@@ -96,7 +96,12 @@ const draft = (
     cost_priority: 'balanced' as const,
     formulation_strategy: 'optimal' as const,
     direction_targets_active: true,
-    direction_targets: { sweetness, softness: 0, creaminess: 0, flavor: 0 },
+    direction_targets: {
+      sweetness,
+      softness: 0 as RecipeDirectionTarget,
+      creaminess: 0 as RecipeDirectionTarget,
+      flavor: 0 as RecipeDirectionTarget,
+    },
   };
   if (product === 'sorbet') {
     const base = sorbetMultiMainBase(temperatureC);

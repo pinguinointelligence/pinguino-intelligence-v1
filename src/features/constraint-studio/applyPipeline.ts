@@ -7255,9 +7255,15 @@ function requestedDirectionAxes(
   return axes;
 }
 
-const metricValueOf = (candidate: RecipeInput, metric: 'pod' | 'npac'): number => {
+/**
+ * The engine's own reading of one axis, or NULL when it has none. A recipe the
+ * engine cannot price on an axis has no measurable response on it, so the
+ * callers below stand down rather than treat „no reading" as a number.
+ */
+const metricValueOf = (candidate: RecipeInput, metric: 'pod' | 'npac'): number | null => {
   const result = calculateRecipe(candidate);
-  return metric === 'pod' ? result.pod_points : result.npac_points;
+  const value = metric === 'pod' ? result.pod_points : result.npac_points;
+  return value === null || !Number.isFinite(value) ? null : value;
 };
 
 /**
@@ -7312,6 +7318,8 @@ function directionChallengerVectors(
   if (bounded.length < 2) return [];
 
   const base = axes.map((axis) => metricValueOf(incumbent, axis.metric));
+  // No reading on an axis means no measurable response to solve against.
+  if (base.some((value) => value === null)) return [];
   const need = axes.map((axis, index) => axis.target - base[index]!);
   const byId = new Map(bounded.map((entry) => [entry.lineId, entry]));
   const out: RecipeInput[] = [];
@@ -7460,9 +7468,11 @@ function directionChallengerVectors(
               : item,
         ),
       };
+      const probedValues = axes.map((axis) => metricValueOf(probed, axis.metric));
+      if (probedValues.some((value) => value === null)) continue;
       response.set(
         mover.lineId,
-        axes.map((axis, index) => metricValueOf(probed, axis.metric) - base[index]!),
+        probedValues.map((value, index) => value! - base[index]!),
       );
     }
 
