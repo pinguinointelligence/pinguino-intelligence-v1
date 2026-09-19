@@ -18,6 +18,7 @@ import {
 } from '@/features/rescue-toolbox/rescueToolboxAuthority';
 import { screenRescueDoses } from '@/features/rescue-toolbox/rescueDoseSearch';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
+import { relaxedOwnerRanges } from '@/features/recipe-direction/relaxableRangePolicy';
 import {
   buildStarterPackRescueCandidatePreview,
   starterPackRescueConstraintsPreserved,
@@ -122,7 +123,27 @@ export function shouldRunStarterPackDirectionRescue(
   const plan = buildRecipeDirectionPlan(input);
   if (!plan.axes.some((axis) => axis.status === 'working')) return false;
   const currentDirection = assessRecipeDirection(input, calculateRecipe(input));
-  if (currentDirection.active && currentDirection.reached) return false;
+  if (currentDirection.active && currentDirection.reached) {
+    // A REACHED TARGET IS NOT ALWAYS A FINISHED RECIPE (Owner, NAPRAWA 5).
+    //
+    // This used to return false the moment the target was reached, so a valid
+    // 9/10 recipe never saw a candidate that would make it 10/10 — and a recipe
+    // that reached its target only by spending the approved controlled envelope
+    // never saw a candidate that reaches the same target inside normal ranges.
+    // Both are cases the Owner named explicitly:
+    //   „Aktualny wynik: 9/10. Dodaj 4 g fruktozy, aby osiągnąć 10/10."
+    //   „Cel został osiągnięty przy użyciu rozszerzonego zakresu. Dodanie 6 g
+    //    fruktozy pozwala osiągnąć ten sam cel w standardowym zakresie."
+    //
+    // Nothing is recommended for a recipe that needs nothing: a 10/10 that
+    // reached its target inside normal ranges still stops here, which is the
+    // Owner's own „do not recommend anything when" rule. Everything past this
+    // point is still gated by the one-gram SCREEN, so a draft with no improving
+    // dose costs `calculateRecipe` calls and not a single Preview.
+    const score = recipeFitForInput(input).score;
+    const usesControlledRelaxation = relaxedOwnerRanges(input).length > 0;
+    if (score === 10 && !usesControlledRelaxation) return false;
+  }
   if (normalResult.ok) {
     const direction = normalResult.preview?.directionAssessment;
     return (
@@ -282,10 +303,37 @@ export function buildStarterPackDirectionRescue(
             window: dosageWindow,
             bands,
           });
+    // THE SCREEN IS THE GATE. When a canonical dosage window exists and the
+    // one-gram scan found nothing worth proving, the candidate is finished here
+    // — no Preview is priced at all. That is what makes running this stage on a
+    // valid-but-improvable recipe affordable: the common case (nothing helps)
+    // costs a few hundred `calculateRecipe` calls, not four Previews per
+    // candidate. The old fixed grid remains the fallback ONLY where no window
+    // exists, so a candidate never silently stops being evaluated.
     const probeGramsList =
-      screen !== null && screen.finalists.length > 0
-        ? screen.finalists
-        : starterPackRescueProbeGrams(mapperId, request.input);
+      screen === null
+        ? starterPackRescueProbeGrams(mapperId, request.input)
+        : screen.finalists;
+    if (probeGramsList.length === 0) {
+      records.push({
+        mapperId,
+        namePl: ingredient.name,
+        eligible: true,
+        reason: 'no_material_improvement',
+        bestGramsTested: null,
+        targetReached: false,
+        npac: null,
+        pod: null,
+        score: null,
+        bandDistance: null,
+        totalRecipeMovement: null,
+        hardGates: 'SKIPPED',
+        mainPreserved: null,
+        runtimeMs: nowMs() - candidateStarted,
+        preview: null,
+      });
+      continue;
+    }
     for (const probeGrams of probeGramsList) {
       const probePreparationStarted = nowMs();
       const simulatedInput = withStarterPackRescueCandidate(request.input, mapperId, probeGrams)!;

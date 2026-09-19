@@ -38,7 +38,13 @@
  * window at one-gram resolution — a bounded-space statement, not a proof of
  * global optimality.
  */
-import { calculateRecipe, detectViolations, type EngineIngredient, type RecipeInput } from '@/engine';
+import { calculateRecipe, type EngineIngredient, type RecipeInput } from '@/engine';
+import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
+import {
+  introducesNewViolation,
+  isMaterialRescueGain,
+  rescueMaterialMeasure,
+} from './rescueMaterialImprovement';
 import {
   compareDirectionDistance,
   directionDistance,
@@ -75,6 +81,10 @@ export interface RescueDoseScreenOutcome {
   readonly smallestImprovingGrams: number | null;
   /** The nearest dose the screen found, improving or not. */
   readonly nearestGrams: number | null;
+  /** The canonical score of the draft as it stands, for the material test. */
+  readonly currentScore: number | null;
+  /** The best canonical score any screened dose reached. */
+  readonly bestScore: number | null;
   /** Whole grams actually priced. The performance contract reads this. */
   readonly evaluations: number;
   /** True when the chosen finalists include a dose in the controlled range. */
@@ -85,6 +95,8 @@ const EMPTY: RescueDoseScreenOutcome = Object.freeze({
   finalists: Object.freeze([]),
   smallestImprovingGrams: null,
   nearestGrams: null,
+  currentScore: null,
+  bestScore: null,
   evaluations: 0,
   usesControlledRange: false,
 });
@@ -168,6 +180,8 @@ export function screenRescueDoses(args: RescueDoseScreenArgs): RescueDoseScreenO
         finalists: Object.freeze([exact]),
         smallestImprovingGrams: null,
         nearestGrams: exact,
+        currentScore: null,
+        bestScore: null,
         evaluations: 0,
         usesControlledRange: false,
       };
@@ -176,6 +190,13 @@ export function screenRescueDoses(args: RescueDoseScreenArgs): RescueDoseScreenO
   }
 
   const currentDistance = directionDistance(input, bands);
+  // MATERIAL IMPROVEMENT IS NOT ONLY DISTANCE (Owner, NAPRAWA 5). A recipe can
+  // REACH its target and still be 9/10, and „Aktualny wynik: 9/10. Dodaj 4 g
+  // fruktozy, aby osiągnąć 10/10." is exactly the case the Owner asked for. So a
+  // dose is improving when it is strictly nearer OR strictly better on the ONE
+  // canonical score — never on a second score invented here.
+  const currentScore = recipeFitForInput(input).score;
+  const currentMeasure = rescueMaterialMeasure(input);
   // One-gram resolution wherever the window fits the budget; a wider window is
   // scanned on an even stride so the scan still SPANS it rather than stopping
   // half way and pretending the upper half does not exist.
@@ -185,6 +206,7 @@ export function screenRescueDoses(args: RescueDoseScreenArgs): RescueDoseScreenO
   let smallestImprovingGrams: number | null = null;
   let nearestGrams: number | null = null;
   let nearest: DirectionDistanceMeasure | null = null;
+  let bestScore: number | null = null;
   let evaluations = 0;
 
   for (let grams = floorGrams; grams <= ceiling; grams += stride) {
@@ -193,13 +215,21 @@ export function screenRescueDoses(args: RescueDoseScreenArgs): RescueDoseScreenO
     evaluations += 1;
     const result = calculateRecipe(candidate);
     const distance = directionDistance(candidate, bands, result);
-    const violations = detectViolations(result).length;
+
     if (nearest === null || (compareDirectionDistance(distance, nearest) ?? 0) < 0) {
       nearest = distance;
       nearestGrams = grams;
     }
+    const score = recipeFitForInput(candidate, result).score;
+    if (score !== null && (bestScore === null || score > bestScore)) bestScore = score;
+    // THE ONE MATERIAL TEST, shared with every other NAPRAWA 5 stage. Requiring
+    // zero violations here would make a dose unable to help a draft that is
+    // ALREADY out of band — which is the main case Rescue exists for — so what
+    // is refused is a NEW violated metric, not a pre-existing one.
+    const nearerNow = (compareDirectionDistance(distance, currentDistance) ?? 0) < 0;
     const improving =
-      violations === 0 && (compareDirectionDistance(distance, currentDistance) ?? 0) < 0;
+      (nearerNow || isMaterialRescueGain(input, candidate, currentMeasure, rescueMaterialMeasure(candidate, result))) &&
+      !introducesNewViolation(currentMeasure, rescueMaterialMeasure(candidate, result));
     if (improving && smallestImprovingGrams === null) smallestImprovingGrams = grams;
   }
 
@@ -221,6 +251,8 @@ export function screenRescueDoses(args: RescueDoseScreenArgs): RescueDoseScreenO
     finalists,
     smallestImprovingGrams,
     nearestGrams,
+    currentScore,
+    bestScore,
     evaluations,
     usesControlledRange: finalists.some(
       (grams) => grams > window.normal.maxGrams + 1e-9,
