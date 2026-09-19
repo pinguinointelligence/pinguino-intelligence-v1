@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseCsv } from '@/lib/csv';
+import { isMapperHomeVerifiedStatus } from './mapperVerificationStatus';
 import {
   VERIFIED_VEGAN_FORMULATION_CANDIDATES,
   findVerifiedVeganFormulationCandidate,
@@ -23,7 +24,9 @@ describe('verified Vegan formulation toolbox', () => {
       expect(row, candidate.id).toBeDefined();
       if (!row) continue;
       expect(at(row, 'approved_for_engines').toLowerCase()).toBe('true');
-      expect(at(row, 'verification_status')).toMatch(/^Verified/);
+      expect(candidate.is_verified).toBe(
+        isMapperHomeVerifiedStatus(at(row, 'verification_status')),
+      );
       expect(at(row, 'vegan').toLowerCase()).toBe('true');
       expect(candidate.name).toBe(at(row, 'ingredient_name_display'));
       expect(candidate.composition.water_percent).toBe(numeric(row, 'water_percent'));
@@ -44,7 +47,7 @@ describe('verified Vegan formulation toolbox', () => {
     }
   });
 
-  it('exposes only the four exact verified, engine-approved Mapper 2088 soy products', () => {
+  it('keeps FINAL engine-approved soy products without falsely promoting provenance', () => {
     const productionSoyDrinks = rows.filter((row) => {
       const identity = `${at(row, 'ingredient_name_internal')} ${at(row, 'ingredient_name_display')} ${at(row, 'ingredient_subcategory')}`.toLowerCase();
       return (
@@ -55,11 +58,7 @@ describe('verified Vegan formulation toolbox', () => {
         at(row, 'vegan').toLowerCase() === 'true'
       );
     });
-    expect(productionSoyDrinks.map((row) => at(row, 'ingredient_id'))).toEqual([
-      'PI-ING-002109',
-      'PI-ING-002110',
-      'PI-ING-002112',
-    ]);
+    expect(productionSoyDrinks.map((row) => at(row, 'ingredient_id'))).toEqual([]);
     expect(findVerifiedVeganFormulationCandidate('soya_sauce')).toBeNull();
     expect(
       VERIFIED_VEGAN_FORMULATION_CANDIDATES.filter((candidate) => /soy|soya/i.test(candidate.name))

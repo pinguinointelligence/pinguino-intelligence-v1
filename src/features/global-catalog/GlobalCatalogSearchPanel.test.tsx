@@ -75,15 +75,63 @@ describe('GlobalCatalogSearchPanel status projection', () => {
         usableAsTopping: true,
         missingFields: ['allergens_text'],
       }),
-      hit('PR-ING-007144', {
+      hit('haribo-product-id', {
         entityKind: 'commercial_product',
+        productCode: 'PR-ING-007205',
         status: 'verified',
         provenance: 'human_verified',
         mappedIngredientId: null,
         verificationMethod: 'human',
-        displayName: 'HARIBO Quaxi',
+        displayName: 'HARIBO Żelki owocowe arbuz',
+        brand: 'Haribo',
+        eans: ['8426617014254'],
         usableInBase: false,
         usableAsTopping: true,
+        semanticBinding: {
+          authority: 'PR_ING_SEMANTIC_BINDING_V1',
+          source: 'scanner',
+          state: 'RESOLVED',
+          exactIdentity: {
+            productId: 'haribo-product-id',
+            articleCode: 'PR-ING-007205',
+            productVersionId: 'haribo-version-2',
+            ean: '8426617014254',
+            brand: 'Haribo',
+            productName: 'HARIBO Żelki owocowe arbuz',
+            variant: 'Sandía',
+            pack: '90 g',
+          },
+          searchAuthority: {
+            releaseId: 'GELLATTI-SA10-2026-09-10-FINAL',
+            concepts: [
+              { id: 'SC-ING-000184', key: 'watermelon', targetType: 'INGREDIENT_CONCEPT' },
+            ],
+            roleKeys: ['INCLUSION'],
+          },
+          classification: {
+            family: 'confectionery',
+            form: 'SOLID',
+            role: 'TOPPING_ONLY',
+            archetype: 'CONFECTIONERY',
+            flavorDomain: 'FRUIT',
+            compatibleMapperCategories: ['confectionery_inclusion'],
+          },
+          behavior: {
+            familyId: 'inclusion',
+            subfamilyId: null,
+            formId: 'solid',
+            behaviorRole: 'TOPPING_ONLY',
+            behaviorFingerprint: 'product-behavior-v1-haribo',
+            referenceMapperIngredientId: null,
+            runtimeMapperIngredientId: null,
+          },
+          readiness: {
+            privateRecipe: { base: false, topping: true },
+            publicCatalogue: false,
+          },
+          marketCountries: [],
+          reasonCodes: [],
+        },
         publicData: {
           productAccuracy: 93,
           technicalComposition: { sugars: 53, protein: 5.8 },
@@ -118,7 +166,7 @@ describe('GlobalCatalogSearchPanel status projection', () => {
     mocks.usePicker.mockReset();
   });
 
-  it('renders module-neutral catalogue truth without projecting every product through TOPPING', async () => {
+  it('PRING-CATALOG-01 renders module truth and exact Haribo pack/variant identity', async () => {
     await act(async () => {
       root.render(
         <MemoryRouter>
@@ -147,7 +195,15 @@ describe('GlobalCatalogSearchPanel status projection', () => {
     ).toContain('bg-amber-100');
     expect(statuses.filter((status) => status === 'GELLATTI — SPRAWDZONY')).toHaveLength(3);
     expect(host.querySelectorAll('button[aria-label*="do Ulubionych"]')).toHaveLength(7);
-    expect(host.textContent).toContain('HARIBO Quaxi');
+    expect(host.textContent).toContain('HARIBO Żelki owocowe arbuz');
+    const haribo = [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) =>
+      button.textContent?.includes('HARIBO Żelki owocowe arbuz'),
+    );
+    await act(async () => haribo?.click());
+    expect(host.textContent).toContain('Opakowanie');
+    expect(host.textContent).toContain('90 g');
+    expect(host.textContent).toContain('Wariant');
+    expect(host.textContent).toContain('Sandía');
     expect(host.textContent).not.toContain('PR-ING-007144 · ID');
   });
 });

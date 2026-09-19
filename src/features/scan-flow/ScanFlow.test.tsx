@@ -14,8 +14,66 @@ import type { FakeDiscovery } from '@/scan-import-v2/__tests__/fakeDiscovery';
 vi.mock('@/services/scanImportV2', async () => {
   const fakes = await import('@/scan-import-v2/__tests__/fakes');
   const { FakeDiscovery } = await import('@/scan-import-v2/__tests__/fakeDiscovery');
+  const { identityFromEvidence } = await import('@/scan-import-v2/adapters/openFoodFactsEvidence');
   const discovery = new FakeDiscovery();
-  const registry = new Map<string, unknown>();
+  const registry = new (class extends Map<string, unknown> {
+    override set(code: string, evidence: unknown) {
+      super.set(code, evidence);
+      const web = identityFromEvidence(evidence as never);
+      if (!web) return this;
+      const provider = discovery.provider.get(code);
+      const root = web.productFields as Record<string, unknown>;
+      const sourceIdentity = (root['identity'] ?? {}) as Record<string, unknown>;
+      const sourcePackage = (root['package'] ?? {}) as Record<string, unknown>;
+      const sourceNutrition = (root['nutrition'] ?? {}) as Record<string, unknown>;
+      const facts = (evidence as { facts?: { field?: string; value?: string }[] }).facts ?? [];
+      const category = facts.find((fact) => fact.field === 'category.tags')?.value ?? null;
+      const fieldsUsed = [
+        'identity.displayName',
+        ...(sourceIdentity['brand'] ? ['identity.brand'] : []),
+        ...(category ? ['identity.category'] : []),
+        ...(sourcePackage['netQuantity'] ? ['package.netQuantity'] : []),
+        ...Object.keys(sourceNutrition).map((key) => `nutrition.${key}`),
+        ...(typeof root['ingredientsText'] === 'string' ? ['ingredientsText'] : []),
+        ...(typeof root['allergensText'] === 'string' ? ['allergensText'] : []),
+      ];
+      discovery.serverResult.set(code, {
+        identity: {
+          displayName: provider?.displayName ?? web.displayName,
+          originalName: provider?.displayName ?? web.displayName,
+          brand: provider?.brand ?? web.brand,
+          category,
+        },
+        package: sourcePackage,
+        nutrition: sourceNutrition,
+        ingredientsText:
+          typeof root['ingredientsText'] === 'string' ? root['ingredientsText'] : null,
+        allergensText: typeof root['allergensText'] === 'string' ? root['allergensText'] : null,
+        externalSources: [
+          {
+            sourceType: 'barcode_registry',
+            url: `https://world.openfoodfacts.org/api/v2/product/${code}.json`,
+            title: null,
+            fieldsUsed,
+            sourceAuthorityClass: 'STRUCTURED_PRODUCT_DATABASE',
+            sourceStatedEan: code,
+            sourceEanConfirmationMethod: 'url',
+            sourceEanConfirmedAt: '2026-09-13T08:00:00.000Z',
+            receiptId: `off:${code}:2026-09-13T08:00:00.000Z`,
+            evidenceAuthority: 'AUTOMATIC_REGISTRY',
+            confidence:
+              typeof (evidence as { confidence?: unknown }).confidence === 'number'
+                ? (evidence as { confidence: number }).confidence
+                : null,
+          },
+        ],
+        evidence: [],
+        conflicts: [],
+      });
+      if (web.family) discovery.automaticFamily.set(code, web.family);
+      return this;
+    }
+  })();
   const p = fakes.ports({
     discovery,
     external: { research: async (identity) => registry.get(identity.canonicalGtin13) ?? null },
@@ -53,6 +111,26 @@ function setValue(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
   const setter = Object.getOwnPropertyDescriptor(proto.prototype, 'value')!.set!;
   setter.call(el, value);
   el.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function touch(el: HTMLElement, type: 'touchstart' | 'touchmove' | 'touchend' | 'touchcancel') {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  const point = { clientX: 24, clientY: type === 'touchmove' ? 80 : 24, identifier: 1 };
+  Object.defineProperty(
+    event,
+    type === 'touchend' || type === 'touchcancel' ? 'changedTouches' : 'touches',
+    {
+      value: [point],
+    },
+  );
+  el.dispatchEvent(event);
+}
+
+function mobileTap(el: HTMLElement) {
+  touch(el, 'touchstart');
+  touch(el, 'touchend');
+  // A real browser synthesizes click only after a completed stationary touch gesture.
+  el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
 }
 
 describe('ScanFlow (jsdom, fake ports)', () => {
@@ -95,7 +173,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     host.remove();
   });
 
-  it('recipe mode: a known code hands the exact product to the recipe', async () => {
+  it('PRING-EAN-PRES-09: a known code hands the exact product to the recipe', async () => {
     const onResolved = vi.fn();
     await act(async () => {
       root.render(
@@ -106,6 +184,10 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await typeCode('8402001047251');
     expect(text()).toContain('Znaleziono produkt');
     expect(text()).toContain('Hacendado');
+    expect(text()).toContain('Gellattissimo! Gotowe.');
+    expect(
+      host.querySelector('[data-testid="scanner-status-story"]')?.getAttribute('data-gelato-level'),
+    ).toBe('100');
     await act(async () => {
       button('Dodaj do receptury')!.click();
     });
@@ -118,13 +200,282 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).not.toMatch(/\b(PAC|POD|NPAC|Mapper|ProductBehavior)\b/);
   });
 
-  it('catalogue mode: a known code is shown as already existing, never duplicated', async () => {
+  it('PRING-EAN-PRES-10: catalogue known code is shown as existing, never duplicated', async () => {
     await act(async () => {
       root.render(<ScanFlow mode="catalog" />);
     });
     await typeCode('8402001047251');
     expect(text()).toContain('nie tworzymy duplikatu');
     expect(button('Dodaj do receptury')).toBeNull();
+  });
+
+  it('PRING-EAN-PRES-05: Haribo Recognition shows the reconciled exact identity, never OFF junk', async () => {
+    const { discovery, registry } = fakes();
+    const code = '4001686322840';
+    discovery.provider.set(code, {
+      displayName: 'Haribo Goldbären 175g',
+      brand: 'Haribo',
+      sourceType: 'manufacturer',
+    });
+    discovery.authorityEngineUsable.set(code, true);
+    discovery.confidence.set(code, 90);
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'ghgh',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Haribo',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.quantity',
+          value: '175g',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'category.tags',
+          value: 'en:candies',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '343',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'glucose syrup, sugar, gelatine',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+
+    await act(async () => {
+      root.render(<ScanFlow mode="recipe" onResolved={vi.fn()} />);
+    });
+    await typeCode(code);
+
+    expect(text()).toContain('Nie mamy jeszcze tego produktu. Czy chcesz go dodać?');
+    expect(text()).toContain('Haribo Goldbären 175g');
+    expect(text()).not.toContain('ghgh');
+
+    await answerAddYes();
+    expect(text()).toContain('Haribo Goldbären 175g');
+    expect(text()).not.toContain('ghgh');
+    expect(discovery.sessions.get(code)?.result?.identity?.displayName).toBe(
+      'Haribo Goldbären 175g',
+    );
+    expect(discovery.created.get(code)).toMatchObject({ route: 'PR', engineUsable: true });
+    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toBeUndefined();
+    expect(discovery.finalizeInputs.at(-1)?.customerFamily).toBeUndefined();
+  });
+
+  it('PRING-EAN-PRES-06: Dr Pepper Recognition suppresses the seller SEO title', async () => {
+    const { discovery, registry } = fakes();
+    const code = '4000140702501';
+    const sellerTitle = 'Dr. Pepper CLASSI 330ml 0.75€ plus Pfand 0.25€ 1l 2.27€';
+    discovery.provider.set(code, {
+      displayName: 'DR PEPPER - CLASSIC',
+      brand: 'Dr Pepper',
+      sourceType: 'manufacturer',
+    });
+    discovery.authorityEngineUsable.set(code, true);
+    discovery.confidence.set(code, 90);
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: sellerTitle,
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Dr Pepper',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.quantity',
+          value: '330ml',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'category.tags',
+          value: 'en:beverages',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '42',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'carbonated water, sugar, flavourings',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+
+    await act(async () => {
+      root.render(<ScanFlow mode="recipe" onResolved={vi.fn()} />);
+    });
+    await typeCode(code);
+
+    expect(text()).toContain('DR PEPPER - CLASSIC');
+    expect(text()).not.toContain('0.75€');
+    expect(text()).not.toContain('Pfand');
+
+    await answerAddYes();
+    expect(text()).toContain('DR PEPPER - CLASSIC');
+    expect(text()).toContain('330ml');
+    expect(text()).not.toContain('0.75€');
+    expect(discovery.sessions.get(code)?.result?.identity?.displayName).toBe('DR PEPPER - CLASSIC');
+    expect(discovery.created.get(code)).toMatchObject({ route: 'PR', engineUsable: true });
+    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toBeUndefined();
+    expect(discovery.finalizeInputs.at(-1)?.customerFamily).toBeUndefined();
+  });
+
+  it('PRING-EAN-PRES-07: a plausible but low-confidence name uses the neutral fallback', async () => {
+    const { discovery, registry } = fakes();
+    const code = '8480000804884';
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.3,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Premium Vanilla Paste',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+
+    await act(async () => {
+      root.render(<ScanFlow mode="recipe" onResolved={vi.fn()} />);
+    });
+    await typeCode(code);
+
+    expect(text()).toContain('Rozpoznano po kodzie: Rozpoznany produkt');
+    expect(text()).not.toContain('Premium Vanilla Paste');
+    expect(discovery.created.has(code)).toBe(false);
+
+    await answerAddYes();
+    expect(text()).toContain('Co to za produkt? (Rozpoznany produkt)');
+    expect(text()).not.toContain('Premium Vanilla Paste');
+    expect(discovery.created.has(code)).toBe(false);
+  });
+
+  it('PRING-EAN-PRES-08: a no-product EAN asks for the exact missing package view', async () => {
+    const { discovery } = fakes();
+    const code = '8480000213587';
+
+    await act(async () => {
+      root.render(<ScanFlow mode="catalog" />);
+    });
+    await typeCode(code);
+
+    expect(text()).toContain('Pokaż nam jeszcze przód opakowania z nazwą produktu');
+    expect(host.querySelector('[data-testid="scanner-missing-data"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="scanner-status-story"]')).toBeNull();
+    expect(host.querySelector('[data-testid="scan-flow-recognized"]')).toBeNull();
+    expect(discovery.created.has(code)).toBe(false);
+  });
+
+  it('PRING-EAN-PRES-11: stronger label identity replaces only the temporary presentation', async () => {
+    const { discovery, registry } = fakes();
+    const code = '5901234123457';
+    discovery.provider.set(code, {
+      displayName: 'Vanilla paste',
+      brand: 'Acme',
+      sourceType: 'retailer',
+    });
+    discovery.label.set(code, {
+      displayName: 'Acme Vanilla Bean Paste',
+      brand: 'Acme',
+      ingredientsText: 'vanilla extract, sugar',
+    });
+    discovery.authorityEngineUsable.set(code, true);
+    discovery.confidence.set(code, 90);
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Vanilla paste',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Acme',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'category.tags',
+          value: 'en:additives',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '250',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+
+    await act(async () => root.render(<ScanFlow mode="catalog" />));
+    await typeCode(code);
+    expect(text()).toContain('Vanilla paste');
+    expect(text()).toContain('Zrób zdjęcie');
+
+    const capture = host.querySelector<HTMLInputElement>('input[type="file"][capture]')!;
+    const file = new File([new Uint8Array([1, 2, 3])], 'label.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(capture, 'files', { value: [file] });
+    await act(async () => {
+      capture.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await flush();
+    await flush();
+
+    expect(text()).toContain('Acme Vanilla Bean Paste');
+    expect(text()).not.toContain('Rozpoznano po kodzie: Vanilla paste');
+    expect(discovery.sessions.get(code)?.result?.identity?.displayName).toBe(
+      'Acme Vanilla Bean Paste',
+    );
+    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toBeUndefined();
   });
 
   it('recipe mode: unknown → internet → label → plain fields → private product → recipe', async () => {
@@ -136,6 +487,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     discovery.label.set(UNKNOWN, { energyKcal: 300 }); // the label gives energy but no ingredients
     discovery.authorityEngineUsable.set(UNKNOWN, true);
+    discovery.confidence.set(UNKNOWN, 85); // ready, but not above the shared-PR threshold
     const onResolved = vi.fn();
     await act(async () => {
       root.render(
@@ -145,7 +497,9 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await typeCode(UNKNOWN);
     await answerAddYes();
     // internet evidence collected, the label is still needed
-    expect(text()).toContain('Zrób zdjęcie etykiety');
+    expect(text()).toContain('Pokaż nam jeszcze skład i alergeny');
+    expect(host.querySelector('[data-testid="scanner-missing-data"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="scanner-status-story"]')).toBeNull();
     expect(discovery.calls).toContain(`research:${UNKNOWN}`);
     // label photograph
     const capture = host.querySelector<HTMLInputElement>('input[type="file"][capture]')!;
@@ -164,7 +518,7 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await flush();
     // still missing: only the plain field the label did not give (ingredients)
-    expect(text()).toContain('Uzupełnij brakujące dane z etykiety');
+    expect(text()).toContain('Podaj nam jeszcze Skład (z etykiety)');
     expect(text()).toContain('Skład (z etykiety)');
     expect(text()).not.toContain('Energia'); // the label already gave it
     expect(text()).not.toMatch(/\b(PAC|POD|NPAC|Mapper|ProductBehavior)\b/);
@@ -176,19 +530,23 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     await flush();
     // saved as the customer's private product, then handed to the recipe
     expect(text()).toContain('Zapisano jako Twój produkt');
-    expect(discovery.created.get(UNKNOWN)).toMatchObject({ productId: `PR-${UNKNOWN}` });
+    expect(text()).toContain('Gellattissimo! Gotowe.');
+    expect(discovery.created.get(UNKNOWN)).toMatchObject({
+      productId: `PM-${UNKNOWN}`,
+      route: 'PM_READY',
+    });
     await act(async () => {
       button('Dodaj do receptury')!.click();
     });
     expect(onResolved).toHaveBeenCalledTimes(1);
     expect(onResolved.mock.calls[0]![0]).toMatchObject({
-      id: `PR-${UNKNOWN}`,
+      id: `PM-${UNKNOWN}`,
       barcode: UNKNOWN,
       engineReady: true,
     });
   });
 
-  it('owner case: an unknown code the registry identifies is saved without a label or a category question', async () => {
+  it('SCN-REAL-A: complete internet facts + accepted Rescue finish without photo', async () => {
     const { discovery, registry } = fakes();
     const MILKA = '7622210669315';
     registry.set(MILKA, {
@@ -246,9 +604,13 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).toContain('Milka');
     expect(text()).not.toContain('Co to za produkt?');
     expect(text()).not.toContain('Zrób zdjęcie etykiety ze składem');
-    expect(text()).toContain('Zapisano jako Twój produkt');
+    expect(text()).toContain('Zapisano w katalogu produktów');
+    expect(text()).not.toContain('widoczny tylko na Twoim koncie');
     expect(discovery.calls.filter((c) => c.startsWith(`analyze:${MILKA}`))).toHaveLength(0);
-    expect(discovery.created.get(MILKA)).toMatchObject({ productId: `PR-${MILKA}` });
+    expect(discovery.created.get(MILKA)).toMatchObject({
+      productId: `PR-${MILKA}`,
+      route: 'PR',
+    });
     await act(async () => {
       button('Dodaj do receptury')!.click();
     });
@@ -308,6 +670,144 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     expect(text()).toContain('Zapisano jako Twój produkt');
   });
 
+  it('SCN-REAL-B / SOL-052: a real missing label fact requests only that photo evidence', async () => {
+    const { discovery, registry } = fakes();
+    const code = '7350042718481';
+    const finalizeCount = discovery.finalizeInputs.length;
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Vitamin well',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Vitamin Well AB',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '17',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'category.tags',
+          value: 'en:beverages',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    await act(async () => {
+      root.render(<ScanFlow mode="catalog" />);
+    });
+    await typeCode(code);
+    await flush();
+    expect(text()).toContain('Pokaż nam jeszcze skład i alergeny');
+    expect(text()).not.toContain('Brakuje dokładnej nazwy wariantu');
+    expect(text()).not.toContain('Nazwa produktu (z etykiety)');
+    expect(text()).not.toContain('Energia (kcal)');
+    expect(text()).not.toContain('Wartości podane na');
+    expect(discovery.finalizeInputs).toHaveLength(finalizeCount + 1);
+    expect(discovery.finalizeInputs.at(-1)?.customerFamily).toBeUndefined();
+    expect(discovery.finalizeInputs.at(-1)?.automaticEvidence).toBeUndefined();
+    expect(discovery.finalizeInputs.at(-1)?.confirmations).toBeUndefined();
+    expect(discovery.created.has(code)).toBe(false);
+  });
+
+  it('SCN-REAL-C/G / SCN-MVP-01: technical-only gaps name and render the exact editable value, then save it', async () => {
+    const { discovery, registry } = fakes();
+    const code = '8480000510716';
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Queso fresco batido desnatado',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Hacendado',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.quantity',
+          value: '500 g',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'category.tags',
+          value: 'en:dairy;en:cheeses',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.basis',
+          value: 'per_100g',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '46',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'Leche desnatada pasteurizada y fermentos lácticos',
+          sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    discovery.notReadyMissing.set(code, ['MISSING_TOTAL_SOLIDS_PERCENT', 'MISSING_WATER_PERCENT']);
+    discovery.notReadyReasons.set(code, ['UNRESOLVED_SWEETENING_FREEZING_PATH']);
+    discovery.authorityEngineUsable.set(code, true);
+    discovery.confidence.set(code, 90);
+
+    await act(async () => root.render(<ScanFlow mode="catalog" />));
+    await typeCode(code);
+    await flush();
+
+    expect(text()).toContain('Queso fresco batido desnatado');
+    expect(text()).toContain('Podaj nam jeszcze Sucha masa produktu (%) i lecimy dalej.');
+    expect(host.querySelector('[data-testid="scanner-missing-data"]')).not.toBeNull();
+    expect(host.querySelector('[data-testid="scanner-status-story"]')).toBeNull();
+    expect(text()).toContain('Sucha masa produktu');
+    expect(text()).not.toContain('Zrób zdjęcie etykiety');
+    expect(host.querySelectorAll('input[type="file"]')).toHaveLength(0);
+
+    const answer = host.querySelector<HTMLInputElement>('input[inputmode="decimal"]')!;
+    await act(async () => setValue(answer, '12,4'));
+    await act(async () => button('Zapisz jako mój produkt')!.click());
+    await flush();
+
+    const last = discovery.finalizeInputs.at(-1);
+    expect(last?.confirmations).toMatchObject({
+      evidenceOrigin: 'customer_action',
+      productFields: { productionDeclarations: { totalSolidsPercent: 12.4 } },
+    });
+    expect(text()).toContain('Zapisano');
+    expect(discovery.created.get(code)?.productionReady).toBe(true);
+    expect(discovery.calls.filter((call) => call.startsWith(`analyze:${code}`))).toHaveLength(0);
+  });
+
   it('a registry identity whose family nobody can tell asks it once, with the product name shown', async () => {
     const { registry } = fakes();
     const CODE = '5449000000996';
@@ -349,5 +849,92 @@ describe('ScanFlow (jsdom, fake ports)', () => {
     });
     await flush();
     expect(text()).toContain('Zapisano jako Twój produkt');
+  });
+
+  it('SCN-MOBILE-FAMILY-01: Hanuta exact product category touch persists once without scroll selection', async () => {
+    const { discovery, registry } = fakes();
+    const code = '8000500272480';
+    registry.set(code, {
+      provider: 'openfoodfacts',
+      queriedAt: 1,
+      query: code,
+      confidence: 0.9,
+      facts: [
+        {
+          field: 'identity.displayName',
+          value: 'Hanuta Minis',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.brand',
+          value: 'Ferrero Hanuta',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'identity.quantity',
+          value: '242 g',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'nutrition.energyKcal',
+          value: '542',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+        {
+          field: 'ingredientsText',
+          value: 'hazelnuts, cocoa, wafer',
+          sourceUrl: 'u',
+          authority: 'barcode_registry',
+        },
+      ],
+    });
+    const originalFinalize = discovery.finalize.bind(discovery);
+    let releaseSelectedFinalize!: () => void;
+    const selectedFinalizeGate = new Promise<void>((resolve) => {
+      releaseSelectedFinalize = resolve;
+    });
+    const finalizeSpy = vi
+      .spyOn(discovery, 'finalize')
+      .mockImplementation(async (session, input, ctx, saveUnverified) => {
+        if (input.customerFamily === 'nut_paste') await selectedFinalizeGate;
+        return originalFinalize(session, input, ctx, saveUnverified);
+      });
+
+    await act(async () => root.render(<ScanFlow mode="catalog" />));
+    await typeCode(code);
+    await flush();
+
+    const option = button('Orzechy / pasty')!;
+    expect(host.querySelector('[data-testid="scanner-status-story"]')).toBeNull();
+    const callsBeforeGesture = finalizeSpy.mock.calls.length;
+    await act(async () => {
+      touch(option, 'touchstart');
+      touch(option, 'touchmove');
+      touch(option, 'touchcancel');
+    });
+    expect(option.getAttribute('aria-pressed')).toBe('false');
+    expect(finalizeSpy).toHaveBeenCalledTimes(callsBeforeGesture);
+
+    await act(async () => {
+      mobileTap(option);
+      mobileTap(option);
+      await Promise.resolve();
+    });
+
+    expect(option.getAttribute('aria-pressed')).toBe('true');
+    expect(option.className).toContain('bg-ink');
+    expect(
+      finalizeSpy.mock.calls.filter(([, input]) => input.customerFamily === 'nut_paste'),
+    ).toHaveLength(1);
+
+    releaseSelectedFinalize();
+    await flush();
+    expect(text()).toContain('Zapisano jako Twój produkt');
+    expect(text()).not.toContain('Co to za produkt?');
+    expect(discovery.finalizeInputs.at(-1)?.customerFamily).toBe('nut_paste');
   });
 });

@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   calculateRecipe,
@@ -8,11 +6,13 @@ import {
   type RecipeInput,
 } from '@/engine';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
-import { ingredientRowToEngineIngredient } from '@/data/ingredients/ingredientMapper';
-import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { buildCanonicalNewRecipeStarter } from '@/features/recipes/newRecipeStarter';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
-import { parseCsv } from '@/lib/csv';
+import {
+  mapperIngredientForHistoricalVersion,
+  PRE_FINAL_2089_COMPOSITION_VERSION,
+  recipeInputForHistoricalVersion,
+} from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
 import {
   applyVerifiedRescueInput,
   confirmProductionLine,
@@ -59,7 +59,7 @@ const ownerScenario = (formulationStrategy: 'optimal' | 'eco' = 'optimal'): Reci
     targetBatchGrams: 1_000,
   });
   const grams = [480, 318, 48, 105, 46, 3] as const;
-  return {
+  const currentShape: RecipeInput = {
     items: starter.items.map((item, index) => ({
       ...item,
       id: ['milk', 'cream', 'smp', 'sucrose', 'dextrose', 'tara'][index]!,
@@ -73,6 +73,7 @@ const ownerScenario = (formulationStrategy: 'optimal' | 'eco' = 'optimal'): Reci
     machine_capacity_grams: null,
     goals: { formulation_strategy: starter.formulationStrategy },
   };
+  return recipeInputForHistoricalVersion(PRE_FINAL_2089_COMPOSITION_VERSION, currentShape);
 };
 
 const makeOwnerScenario = (formulationStrategy: 'optimal' | 'eco' = 'optimal') =>
@@ -90,50 +91,6 @@ const makeOwnerScenario = (formulationStrategy: 'optimal' | 'eco' = 'optimal') =
     startedAt: '2026-08-25T10:00:00.000Z',
   });
 
-const [mapperHeader = [], ...mapperRecords] = parseCsv(
-  readFileSync(resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'), 'utf8'),
-);
-const mapperIndex = new Map(mapperHeader.map((name, position) => [name, position]));
-const mapperRecordsById = new Map(
-  mapperRecords.map((record) => [record[mapperIndex.get('ingredient_id')!]!, record]),
-);
-const mapperTriStateFields = new Set(['vegan', 'dairy_free', 'gluten_free', 'contains_alcohol']);
-const mapperNumericFields = new Set(
-  mapperHeader.filter((field) =>
-    /_percent$|_value$|_factor$|brix|kcal|cost_per_kg|shelf_life_days|stabilizer_activity/.test(
-      field,
-    ),
-  ),
-);
-
-/**
- * Read the immutable Mapper source of truth instead of approximating the owner
- * recipe with demo ingredients. PI-ING-000270 is skimmed-milk powder, not milk.
- */
-const verifiedMapperIngredient = (ingredientId: string) => {
-  const record = mapperRecordsById.get(ingredientId);
-  if (!record) throw new Error(`Missing immutable Mapper row ${ingredientId}`);
-  const row = Object.fromEntries(
-    mapperHeader.map((field, position) => {
-      const raw = record[position]?.trim() ?? '';
-      if (mapperTriStateFields.has(field)) return [field, raw.toLocaleLowerCase('en')];
-      if (mapperNumericFields.has(field)) return [field, raw === '' ? null : Number(raw)];
-      if (
-        field === 'approved_for_base' ||
-        field === 'approved_for_engines' ||
-        field === 'is_active'
-      ) {
-        return [field, raw.toLocaleLowerCase('en') === 'true'];
-      }
-      if (field === 'verification_date' || field === 'last_reviewed_at') {
-        return [field, raw || null];
-      }
-      return [field, raw];
-    }),
-  ) as unknown as IngredientRow;
-  return ingredientRowToEngineIngredient(row);
-};
-
 const exactOwnerEightLineInput = (): RecipeInput => {
   const rows = [
     ['milk', 'PI-ING-000236', 584],
@@ -148,7 +105,10 @@ const exactOwnerEightLineInput = (): RecipeInput => {
   return {
     items: rows.map(([id, ingredientId, grams]) => ({
       id,
-      ingredient: verifiedMapperIngredient(ingredientId),
+      ingredient: mapperIngredientForHistoricalVersion(
+        PRE_FINAL_2089_COMPOSITION_VERSION,
+        ingredientId,
+      ),
       planned_grams: grams,
       actual_grams: null,
       lock_type: id === 'banana' ? ('main' as const) : ('unlocked' as const),
@@ -217,7 +177,10 @@ const exactP0DeviationInput = (): RecipeInput => {
   return {
     items: rows.map(([id, ingredientId, grams]) => ({
       id,
-      ingredient: verifiedMapperIngredient(ingredientId),
+      ingredient: mapperIngredientForHistoricalVersion(
+        PRE_FINAL_2089_COMPOSITION_VERSION,
+        ingredientId,
+      ),
       planned_grams: grams,
       actual_grams: null,
       lock_type: 'unlocked' as const,

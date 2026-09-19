@@ -135,6 +135,7 @@ export class FakeImporter {
 
 export class FakeOfflineCache {
   entries = new Map<string, OfflineCacheEntry>();
+  invalidations: string[] = [];
   async get(accountId: string | null, gtin13: string) {
     return this.entries.get(`${accountId}:${gtin13}`) ?? null;
   }
@@ -146,6 +147,31 @@ export class FakeOfflineCache {
     // also index by the canonical GTIN-13 of UPC-A rows
     if (entry.candidate.ean.length === 12)
       this.entries.set(`${accountId}:0${entry.candidate.ean}`, entry);
+  }
+  async invalidate(accountId: string | null, gtin13: string) {
+    const key = `${accountId}:${gtin13}`;
+    this.invalidations.push(key);
+    return this.entries.delete(key);
+  }
+  async invalidateIfStale(
+    accountId: string | null,
+    gtin13: string,
+    currentVersionId: string | null,
+  ) {
+    const key = `${accountId}:${gtin13}`;
+    const hit = this.entries.get(key);
+    if (
+      hit &&
+      currentVersionId !== null &&
+      hit.candidate.currentVersionId !== null &&
+      hit.candidate.currentVersionId !== undefined &&
+      hit.candidate.currentVersionId !== currentVersionId
+    ) {
+      this.invalidations.push(key);
+      this.entries.delete(key);
+      return true;
+    }
+    return false;
   }
 }
 

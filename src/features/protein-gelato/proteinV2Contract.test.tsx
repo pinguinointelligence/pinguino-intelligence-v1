@@ -362,15 +362,15 @@ describe('the overrun proxy reproduces the measured AFR 2022 series', () => {
   });
 });
 
-describe('§40.14 — the Mapper base matches owner authority', () => {
-  it('holds exactly 2089 rows at the recorded hash', () => {
+describe('§40.14 — the FINAL Mapper base matches owner authority', () => {
+  it('holds exactly 2541 rows at the recorded hash', () => {
     const raw = readFileSync(
       resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
     );
     const rows = raw.toString('utf8').trim().split('\n').length - 1;
-    expect(rows).toBe(2089);
+    expect(rows).toBe(2541);
     expect(createHash('sha256').update(raw).digest('hex')).toBe(
-      '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7',
+      'a6a849a596acef75e0760992353bddf5cbca24ff37744e36414da18ca45556f6',
     );
   });
 });

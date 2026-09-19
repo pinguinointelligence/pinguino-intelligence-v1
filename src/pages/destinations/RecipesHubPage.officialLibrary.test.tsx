@@ -1,0 +1,573 @@
+// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { OFFICIAL_RECIPES } from '@/data/recipes/official/officialRecipeLibrary';
+import { officialRecipeReadiness } from '@/data/recipes/official/officialRecipeReadiness';
+import { useAuthModalStore } from '@/features/auth/authModalStore';
+import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
+import { useRecipeStore } from '@/stores/recipeStore';
+
+vi.mock('@/features/design-review/useReviewMode', () => ({ useReviewMode: () => false }));
+vi.mock('@/features/design-review/useOwnerReviewAccess', () => ({
+  useOwnerReviewAccess: () => false,
+}));
+const runtime = vi.hoisted(() => ({ persona: 'pro' as 'demo' | 'home' | 'pro' }));
+vi.mock('@/features/pro-core/useProCorePersona', () => ({
+  useProCorePersona: () => runtime.persona,
+}));
+
+/** Current FINAL Mapper display names (mapper_basement.csv, sha a6a849a5…). */
+const FINAL_NAMES: Record<string, string> = {
+  'PI-ING-000236': 'MILK · 3.5% FAT · Chilled',
+  'PI-ING-000270': 'SKIMMED MILK POWDER · 0.8% FAT · Dairy · Dry',
+  'PI-ING-000494': 'DEXTROSE MONOHYDRATE · Sweetener · Dry',
+  'PI-ING-000456': 'INULIN · Fibre · Powder',
+  'PI-ING-001579': 'ALKALIZED COCOA POWDER · 11% FAT · Unsweetened',
+};
+const HISTORICAL_NAMES = [
+  'MILK 3.5% · Milk · Chilled',
+  'SKIMMED MILK · Milk',
+  'DEXTROSE · Sweetener · Dry',
+  'INULIN · Specialty',
+  'DEFATTED COCOA 12% · Cocoa Powder',
+];
+const services = vi.hoisted(() => ({
+  listIngredientsByIds: vi.fn(),
+  getCatalogMarketPreferences: vi.fn(),
+  resolveCountryProductsForSlots: vi.fn(),
+}));
+vi.mock('@/services/ingredients', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/ingredients')>()),
+  listIngredientsByIds: services.listIngredientsByIds,
+}));
+vi.mock('@/services/globalCatalog', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/globalCatalog')>()),
+  getCatalogMarketPreferences: services.getCatalogMarketPreferences,
+  resolveCountryProductsForSlots: services.resolveCountryProductsForSlots,
+}));
+
+const { RecipesHubPage } = await import('./RecipesHubPage');
+
+function LocationProbe() {
+  const location = useLocation();
+  return (
+    <output data-testid="location">
+      {location.pathname}
+      {location.search}
+    </output>
+  );
+}
+
+describe('Recipes hub — official Gellatti library', () => {
+  let host: HTMLDivElement;
+  let root: ReturnType<typeof createRoot>;
+
+  beforeEach(() => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    runtime.persona = 'pro';
+    useRecipeStore.getState().resetToDemo();
+    useConstraintStudioStore.getState().resetDraftSession();
+    services.listIngredientsByIds.mockReset().mockImplementation(async (ids: string[]) =>
+      ids.map((id) => ({
+        ingredient_id: id,
+        ingredient_name_display: FINAL_NAMES[id] ?? `CURRENT ${id}`,
+      })),
+    );
+    services.getCatalogMarketPreferences.mockReset().mockResolvedValue({
+      primaryMarket: 'PL',
+      additionalMarkets: [],
+      preferredRetailers: [],
+      defaultScope: 'my_markets',
+    });
+    services.resolveCountryProductsForSlots
+      .mockReset()
+      .mockImplementation(async ({ mapperIngredientIds }: { mapperIngredientIds: string[] }) =>
+        mapperIngredientIds.includes('PI-ING-000236')
+          ? [
+              {
+                mapperIngredientId: 'PI-ING-000236',
+                source: 'COUNTRY_PRIMARY_DEFAULT',
+                country: 'PL',
+                product: {
+                  id: 'prod-laciate',
+                  mappedIngredientId: 'PI-ING-000236',
+                  displayName: 'Mleko płynne Łaciate 3,5%',
+                  brand: 'Łaciate',
+                },
+              },
+            ]
+          : [],
+      );
+    host = document.createElement('div');
+    document.body.append(host);
+    root = createRoot(host);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    host.remove();
+  });
+
+  const renderAt = async (path: string) => {
+    await act(async () => {
+      root.render(
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route
+              path="*"
+              element={
+                <>
+                  <LocationProbe />
+                  <RecipesHubPage />
+                </>
+              }
+            />
+          </Routes>
+        </MemoryRouter>,
+      );
+    });
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  };
+  const location = () => host.querySelector('[data-testid="location"]')?.textContent;
+  const all = (selector: string) => Array.from(host.querySelectorAll<HTMLElement>(selector));
+
+  it('orders the strip Gellatti · Moje · Udostępnione · Community, with no Top 100 or Inspiracje', async () => {
+    await renderAt('/recipes');
+    expect(
+      all('[data-testid^="recipes-tab-"], [data-testid^="recipes-link-"]').map((entry) =>
+        entry.textContent?.trim(),
+      ),
+    ).toEqual(['Gellatti', 'Moje', 'Udostępnione', 'Community']);
+    expect(host.textContent).not.toContain('Inspiracje');
+    expect(host.textContent).not.toContain('Udostępnione mi');
+    expect(host.querySelector('#recipes-tab-pinguino')?.getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('retires the old Inspiracje address into the Gellatti library', async () => {
+    await renderAt('/recipes?tab=inspiration');
+    expect(host.querySelector('[data-testid="official-collections"]')).not.toBeNull();
+    expect(host.querySelector('#recipes-panel-inspiration')).toBeNull();
+    expect(location()).toBe('/recipes');
+  });
+
+  it('presents the five official collections and Community in the sixth grid slot', async () => {
+    await renderAt('/recipes');
+    const cards = all('[data-testid^="official-collection-card-"]');
+    expect(cards.map((card) => card.dataset.testid)).toEqual([
+      'official-collection-card-classics',
+      'official-collection-card-icons',
+      'official-collection-card-cocktails_spirits',
+      'official-collection-card-lost_legendary',
+      'official-collection-card-technical_bases',
+      'official-collection-card-community',
+    ]);
+    expect(cards.map((card) => card.querySelector('img')?.getAttribute('src'))).toEqual([
+      '/recipes/official/collections/classics-960.webp',
+      '/recipes/official/collections/icons-960.webp',
+      '/recipes/official/collections/cocktails_spirits-960.webp',
+      '/recipes/official/collections/lost_legendary-960.webp',
+      '/recipes/official/collections/technical_bases-960.webp',
+      '/recipes/official/collections/community.png',
+    ]);
+    expect(cards.at(-1)?.getAttribute('href')).toBe('/community');
+  });
+
+  it.each([
+    ['classics', 76, 'GEL-001', 'GEL-076'],
+    ['icons', 28, 'GEL-078', 'GEL-184'],
+    ['cocktails_spirits', 52, 'GEL-103', 'GEL-190'],
+    ['lost_legendary', 16, 'GEL-151', 'GEL-181'],
+    ['technical_bases', 12, 'GEL-166', 'GEL-177'],
+  ])(
+    '[GRP03-UI-COUNT-%s] opens with %i recipes and preserves delivered numbered images',
+    async (id, count, first, last) => {
+      await renderAt(`/recipes?collection=${id}`);
+      const cards = all('[data-testid^="official-recipe-card-"]');
+      expect(cards).toHaveLength(count);
+      const images = cards.flatMap((card) => {
+        const src = card.querySelector('img')?.getAttribute('src');
+        return src ? [src] : [];
+      });
+      expect(images[0]).toBe(`/recipes/official/${first}-480.webp`);
+      expect(images).toContain(`/recipes/official/${last}-480.webp`);
+      for (const card of cards) {
+        const number = String(card.dataset.recipeNumber).padStart(3, '0');
+        const image = card.querySelector('img');
+        if (image)
+          expect(image.getAttribute('src')).toBe(`/recipes/official/GEL-${number}-480.webp`);
+        else
+          expect(card.querySelector('[data-testid="official-recipe-placeholder"]')).not.toBeNull();
+      }
+    },
+  );
+
+  it.each([
+    [39, 'classics', 'classic-crema-di-buontalenti', 'Crema di Buontalenti', true],
+    [178, 'lost_legendary', 'classic-plombir', 'Plombir', true],
+    [179, 'cocktails_spirits', 'classic-porter-ice-cream', 'Porter Ice Cream', true],
+    [181, 'lost_legendary', 'classic-spaghettieis', 'Spaghettieis', true],
+    [
+      182,
+      'icons',
+      'icon-pistachio-white-chocolate-praline',
+      'Pistachio White Chocolate Praline',
+      true,
+    ],
+    [183, 'icons', 'icon-red-velvet-cheesecake-chunk', 'Red Velvet Cheesecake Chunk', true],
+    [184, 'icons', 'icon-milky-hazelnut-chocolate-crunch', 'Milky Hazelnut Chocolate Crunch', true],
+    [185, 'lost_legendary', 'heritage-parmesan-ice-cream', 'Parmesan Ice Cream', true],
+    [164, 'cocktails_spirits', 'lost-it-zabaione', 'Zabaione al Marsala', true],
+    [189, 'cocktails_spirits', 'spirit-baileys-eiskaffee', 'Baileys Eiskaffee', true],
+    [190, 'cocktails_spirits', 'spirit-amaretto-eiskaffee', 'Amaretto Eiskaffee', true],
+  ] as const)(
+    '[GRP-CARD-%i] opens the package card through its standard library link',
+    async (number, collection, recipeId, name, hasImage) => {
+      await renderAt(`/recipes?collection=${collection}`);
+      const card = all('[data-testid^="official-recipe-card-"]').find(
+        (entry) => entry.dataset.recipeNumber === String(number),
+      );
+      expect(card?.dataset.testid).toBe(`official-recipe-card-${recipeId}`);
+      await act(async () => card!.click());
+      expect(location()).toBe(`/recipes?recipe=${recipeId}`);
+      expect(host.querySelector('#official-recipe-heading')?.textContent).toBe(name);
+      if (hasImage) {
+        expect(
+          host.querySelector('[data-testid="official-recipe-image"]')?.getAttribute('src'),
+        ).toBe(`/recipes/official/GEL-${String(number).padStart(3, '0')}-960.webp`);
+        expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).toBeNull();
+      } else {
+        expect(host.querySelector('[data-testid="official-recipe-image"]')).toBeNull();
+        expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).not.toBeNull();
+      }
+    },
+  );
+
+  it('[GRP-CARD-180] keeps unavailable Eiskaffee out of the runtime library', async () => {
+    expect(OFFICIAL_RECIPES.some((recipe) => recipe.number === 180)).toBe(false);
+    await renderAt('/recipes?collection=classics');
+    expect(
+      all('[data-testid^="official-recipe-card-"]').some(
+        (entry) => entry.dataset.recipeNumber === '180',
+      ),
+    ).toBe(false);
+  });
+
+  it.each([
+    [186, 'heritage-irish-stout-brown-bread', 'Irish Stout & Brown Bread'],
+    [187, 'heritage-cafayate-cabernet-sauvignon', 'Cafayate Cabernet Sauvignon'],
+    [188, 'heritage-vin-santo-cantucci', 'Vin Santo & Cantucci'],
+  ] as const)(
+    '[GRP-CARD-%i] keeps the canonical pending recipe out of collection membership',
+    async (number, recipeId, name) => {
+      const recipe = OFFICIAL_RECIPES.find((candidate) => candidate.number === number)!;
+      expect(recipe).toMatchObject({
+        recipeId,
+        name,
+        collection: 'lost_legendary',
+        photoStatus: 'pending',
+      });
+      expect(officialRecipeReadiness(recipe).state).toBe('PRODUCT_BLOCKED');
+      await renderAt('/recipes?collection=lost_legendary');
+      expect(
+        all('[data-testid^="official-recipe-card-"]').some(
+          (entry) => entry.dataset.recipeNumber === String(number),
+        ),
+      ).toBe(false);
+    },
+  );
+
+  it('[GRP-UI-01] replaces #039 completely and uses its delivered photograph', async () => {
+    await renderAt('/recipes?recipe=classic-crema-di-buontalenti');
+    expect(host.textContent).toContain('Crema di Buontalenti');
+    expect(host.textContent).not.toContain('Neapolitan');
+    expect(host.querySelector('[data-testid="official-recipe-image"]')?.getAttribute('src')).toBe(
+      '/recipes/official/GEL-039-960.webp',
+    );
+    expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).toBeNull();
+    expect(all('[data-line-scope="MAIN"]')).toHaveLength(6);
+    expect(all('[data-line-scope="TOPPING"]')).toHaveLength(0);
+  });
+
+  it('[GRP-UI-02] keeps the exact product blocker while showing delivered artwork', async () => {
+    await renderAt('/recipes?recipe=icon-red-velvet-cheesecake-chunk');
+    expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).toBeNull();
+    expect(host.querySelector('[data-testid="official-recipe-image"]')?.getAttribute('src')).toBe(
+      '/recipes/official/GEL-183-960.webp',
+    );
+    const missing = all('[data-line-scope="TOPPING"][data-line-kind="unresolved"]');
+    expect(missing).toHaveLength(1);
+    expect(missing[0]?.textContent).toContain('150 g');
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(true);
+  });
+
+  it.each([
+    [
+      'classics',
+      ['74', '75', '76'],
+      ['77', '164', '178', '179', '180', '181', '185', '186', '187', '188', '189', '190'],
+    ],
+    ['cocktails_spirits', ['179', '164', '189', '190'], ['178', '181', '185', '186', '187', '188']],
+    [
+      'lost_legendary',
+      ['165', '178', '185', '181'],
+      ['163', '164', '179', '180', '186', '187', '188', '189', '190'],
+    ],
+  ] as const)(
+    '[GRP03-COLLECTION-%s] renders the exact owner tail without cross-collection duplicates',
+    async (collection, tail, absent) => {
+      await renderAt(`/recipes?collection=${collection}`);
+      const numbers = all('[data-testid^="official-recipe-card-"]').map(
+        (card) => card.dataset.recipeNumber,
+      );
+      expect(numbers.slice(-tail.length)).toEqual([...tail]);
+      for (const number of absent) expect(numbers).not.toContain(number);
+    },
+  );
+
+  it.each([
+    ['heritage-irish-stout-brown-bread', 2],
+    ['heritage-cafayate-cabernet-sauvignon', 1],
+    ['heritage-vin-santo-cantucci', 2],
+  ] as const)(
+    '[GRP03-UI-PENDING-%s] stays browsable, pending and blocked on exact products',
+    async (recipeId, missingCount) => {
+      await renderAt(`/recipes?recipe=${recipeId}`);
+      expect(host.querySelector('[data-testid="official-recipe-placeholder"]')).not.toBeNull();
+      expect(host.querySelector('[data-testid="official-recipe-image"]')).toBeNull();
+      expect(all('[data-line-kind="unresolved"]')).toHaveLength(missingCount);
+      expect(
+        host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+      ).toBe(true);
+      expect(
+        host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')?.dataset
+          .useState,
+      ).toBe('PRODUCT_BLOCKED');
+    },
+  );
+
+  it.each([
+    ['spirit-baileys-eiskaffee', 189, 'Irish cream / coffee cream liqueur'],
+    ['spirit-amaretto-eiskaffee', 190, 'Disaronno Originale / Amaretto liqueur'],
+  ] as const)(
+    '[GRP03-UI-BLOCKED-%s] serves its exact artwork and full blocked detail',
+    async (recipeId, number, expectedLabel) => {
+      await renderAt(`/recipes?recipe=${recipeId}`);
+      expect(host.querySelector('[data-testid="official-recipe-image"]')?.getAttribute('src')).toBe(
+        `/recipes/official/GEL-${number}-960.webp`,
+      );
+      expect(all('[data-testid="official-recipe-line"]')).toHaveLength(10);
+      expect(host.textContent).toContain(expectedLabel);
+      expect(
+        host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+      ).toBe(true);
+      expect(
+        host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')?.dataset
+          .useState,
+      ).toBe('OTHER_EXPLICIT_BLOCKER');
+      expect(
+        host.querySelector('[data-testid="official-recipe-use-state"]')?.textContent,
+      ).toContain('Pasta waniliowa');
+    },
+  );
+
+  it('[GRP-UI-03] shows dessert phases, vanilla reference and mandatory Spaghettieis tool notice', async () => {
+    await renderAt('/recipes?recipe=classic-spaghettieis');
+    expect(all('[data-line-scope="MAIN"]')).toHaveLength(8);
+    expect(all('[data-line-scope="TOPPING"]')).toHaveLength(4);
+    expect(host.querySelector('[data-testid="official-base-reference"]')?.textContent).toContain(
+      'classic-vanilla, wersja 1',
+    );
+    expect(
+      host.querySelector('[data-testid="official-recipe-tool-notice"]')?.textContent,
+    ).toContain('Spätzlepresse');
+    expect(host.textContent).toContain('Łączna masa zadana');
+    expect(host.textContent).toContain('246 g');
+  });
+
+  it('shows recipe #001 with its image, grams, current Mapper names and the market product', async () => {
+    await renderAt('/recipes?recipe=classic-dark-chocolate');
+    expect(host.querySelector('[data-testid="official-recipe-image"]')?.getAttribute('src')).toBe(
+      '/recipes/official/GEL-001-960.webp',
+    );
+    const lines = all('[data-testid="official-recipe-line"]');
+    expect(lines).toHaveLength(9);
+    expect(all('[data-testid="official-line-grams"]').map((cell) => cell.textContent)).toEqual([
+      '490 g',
+      '80 g',
+      '25 g',
+      '80 g',
+      '65 g',
+      '53 g',
+      '150 g',
+      '55 g',
+      '2 g',
+    ]);
+    const names = all('[data-testid="official-line-canonical-name"]').map(
+      (cell) => cell.textContent,
+    );
+    for (const current of Object.values(FINAL_NAMES)) expect(names).toContain(current);
+    for (const historical of HISTORICAL_NAMES) expect(host.textContent).not.toContain(historical);
+    expect(all('[data-testid="official-line-pi"]').map((cell) => cell.textContent)).toContain(
+      'PI-ING-000236',
+    );
+    expect(
+      host.querySelector('[data-testid="official-line-market-product"]')?.textContent,
+    ).toContain('Łaciate · Mleko płynne Łaciate 3,5%');
+    expect(
+      host.querySelector('[data-testid="official-recipe-market-summary"]')?.textContent,
+    ).toContain('PL');
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(false);
+  });
+
+  it('shows recipe #177 with image 177', async () => {
+    await renderAt('/recipes?recipe=tech-vegan-13');
+    expect(host.querySelector('[data-testid="official-recipe-image"]')?.getAttribute('src')).toBe(
+      '/recipes/official/GEL-177-960.webp',
+    );
+  });
+
+  it('keeps a BRAK line visible, unresolved and blocking the use (#020)', async () => {
+    await renderAt('/recipes?collection=classics');
+    const card20 = all('[data-testid^="official-recipe-card-"]').find(
+      (card) => card.dataset.recipeNumber === '20',
+    )!;
+    await act(async () => card20.click());
+    const unresolved = all('[data-line-kind="unresolved"]');
+    expect(unresolved).toHaveLength(1);
+    expect(unresolved[0]!.textContent).toContain('Birthday cake pieces');
+    expect(unresolved[0]!.textContent).toContain('75 g');
+    expect(unresolved[0]!.querySelector('[data-testid="official-line-pi"]')).toBeNull();
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(true);
+    // #020 also carries a PI the FINAL Mapper does not approve — the worst line decides.
+    const state = host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')!;
+    expect(state.dataset.useState).toBe('OTHER_EXPLICIT_BLOCKER');
+    const recipe20 = OFFICIAL_RECIPES.find((recipe) => recipe.number === 20)!;
+    const worst = officialRecipeReadiness(recipe20).blockingLines.filter(
+      (entry) => entry.state === 'OTHER_EXPLICIT_BLOCKER',
+    );
+    expect(worst.length).toBeGreaterThan(0);
+    for (const entry of worst) expect(state.textContent).toContain(entry.line.label);
+  });
+
+  it('names the exact product a PRODUCT_BLOCKED recipe waits for, and never substitutes it', async () => {
+    const recipe = OFFICIAL_RECIPES.find(
+      (candidate) => officialRecipeReadiness(candidate).state === 'PRODUCT_BLOCKED',
+    )!;
+    await renderAt(`/recipes?recipe=${recipe.recipeId}`);
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(true);
+    const state = host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')!;
+    expect(state.dataset.useState).toBe('PRODUCT_BLOCKED');
+    for (const entry of officialRecipeReadiness(recipe).blockingLines.filter(
+      (line) => line.state === 'PRODUCT_BLOCKED',
+    )) {
+      expect(state.textContent).toContain(entry.line.label);
+    }
+    expect(state.textContent).toContain('Nie zastępujemy go podobnym produktem');
+  });
+
+  it('keeps the Sorbet scaffold Main dynamic (#169)', async () => {
+    await renderAt('/recipes?recipe=tech-sorbet-11');
+    expect(all('[data-line-kind="dynamic_main"]')).toHaveLength(1);
+    expect(host.querySelector('[data-testid="official-line-unresolved"]')).toBeNull();
+    expect(
+      host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')?.dataset
+        .useState,
+    ).toBe('DYNAMIC_MAIN');
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(true);
+  });
+
+  it('blocks the use up front when the Mapper runtime does not serve a PI (#015 vanilla paste)', async () => {
+    const recipe = OFFICIAL_RECIPES.find((candidate) => candidate.number === 15)!;
+    const vanilla = recipe.lines.find(
+      (line) =>
+        line.identity.kind === 'mapped' && line.identity.mapperIngredientId === 'PI-ING-001705',
+    )!;
+    services.listIngredientsByIds.mockImplementation(async (ids: string[]) =>
+      ids
+        .filter((id) => id !== 'PI-ING-001705')
+        .map((id) => ({
+          ingredient_id: id,
+          ingredient_name_display: FINAL_NAMES[id] ?? `CURRENT ${id}`,
+        })),
+    );
+    await renderAt(`/recipes?recipe=${recipe.recipeId}`);
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(true);
+    const state = host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')!;
+    expect(state.dataset.useState).toBe('OTHER_EXPLICIT_BLOCKER');
+    expect(state.textContent).toContain(vanilla.label);
+    expect(
+      host.querySelectorAll('[data-testid="official-line-canonical-unavailable"]'),
+    ).toHaveLength(1);
+  });
+
+  it('treats an empty Mapper answer as unverifiable, never as every ingredient unavailable', async () => {
+    services.listIngredientsByIds.mockResolvedValue([]);
+    await renderAt('/recipes?recipe=classic-dark-chocolate');
+    expect(
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')?.disabled,
+    ).toBe(false);
+    expect(
+      host.querySelector<HTMLElement>('[data-testid="official-recipe-use-state"]')?.dataset
+        .useState,
+    ).toBe('READY');
+    // Each line says its current data cannot be shown right now — honestly, not silently.
+    expect(
+      host.querySelectorAll('[data-testid="official-line-canonical-unavailable"]'),
+    ).toHaveLength(9);
+  });
+
+  it('hides every gram from Demo, asks Demo to sign in and does not query product data', async () => {
+    runtime.persona = 'demo';
+    useAuthModalStore.setState({ isOpen: false });
+    await renderAt('/recipes?recipe=classic-dark-chocolate');
+    expect(host.querySelector('[data-testid="official-line-grams"]')).toBeNull();
+    expect(host.textContent).not.toContain('490 g');
+    expect(services.listIngredientsByIds).not.toHaveBeenCalled();
+    expect(services.resolveCountryProductsForSlots).not.toHaveBeenCalled();
+    const use = host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')!;
+    expect(use.textContent).toBe('Zrób te lody');
+    await act(async () => use.click());
+    expect(useAuthModalStore.getState().isOpen).toBe(true);
+    expect(location()).toBe('/recipes?recipe=classic-dark-chocolate');
+  });
+
+  it('opens a Home working copy in the HOME creator through the one-shot handoff URL', async () => {
+    runtime.persona = 'home';
+    await renderAt('/recipes?recipe=classic-dark-chocolate');
+    expect(all('[data-testid="official-line-grams"]')).toHaveLength(9);
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')!.click(),
+    );
+    expect(location()).toBe('/home?source=official_recipe&officialRecipe=classic-dark-chocolate');
+  });
+
+  it('opens a Pro working copy through the one-shot handoff URL', async () => {
+    await renderAt('/recipes?recipe=classic-dark-chocolate');
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>('[data-testid="official-recipe-use"]')!.click(),
+    );
+    const params = new URLSearchParams(location()!.split('?')[1]);
+    expect(location()!.startsWith('/pro/recipe?')).toBe(true);
+    expect(params.get('source')).toBe('official_recipe');
+    expect(params.get('officialRecipe')).toBe('classic-dark-chocolate');
+  });
+});

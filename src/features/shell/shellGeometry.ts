@@ -29,7 +29,7 @@ export const APP_HEADER_CANVAS = `pro-workbench-header-canvas ${PRO_WORKBENCH_FR
  * The one header row. Identical geometry with and without `viewportLock`, so
  * the hamburger, the wordmark and the page origin land on the same pixels on
  * every screen. The semantic CSS class on the row resolves the shared desktop
- * frame from 960 px while these utility classes preserve older page contracts.
+ * frame from the workbench breakpoint while these utility classes preserve older page contracts.
  */
 export const APP_HEADER_ROW =
   'mx-auto flex w-full shrink-0 items-center justify-between gap-4 border-b border-ink/8 bg-white ' +
@@ -40,10 +40,18 @@ export const APP_HEADER_ROW =
  * The one page workspace: same origin and same gutters as the workbench.
  * Text-first sections stay LEFT-aligned inside it (see `APP_PAGE_MEASURE`) so a
  * narrower reading measure never moves the page origin.
+ *
+ * OWNER 2026-09-12 — from the workbench breakpoint up it IS the workbench
+ * frame (`.pro-workbench-frame`: min(1280 px, viewport − 57.6 px), centred),
+ * the same box the global header row resolves to, so a page's content and the
+ * header share one rigid width system. It used to follow the page gutter to a
+ * 1776 px ceiling: at 1602 px /pro/versions opened at x = 32 under a header
+ * that opens at 161. Destinations already nest the 1280 `APP_PAGE_CANVAS`
+ * inside it, so they do not move. Touch widths keep their 16 / 24 px gutters.
  */
 export const APP_PAGE_WORKSPACE =
-  'mx-auto w-full max-w-[1776px] px-[var(--pro-mobile-gutter)] sm:px-6 ' +
-  'xl:w-[calc(100%-var(--pro-page-gutter))] xl:px-0';
+  `${PRO_WORKBENCH_FRAME_CLASS} mx-auto w-full px-[var(--pro-mobile-gutter)] sm:px-6 ` +
+  'min-[68.5rem]:px-0';
 
 /** Reading measure for text-first content, anchored to the workspace origin. */
 export const APP_PAGE_MEASURE = 'w-full max-w-[var(--pro-content-measure)]';

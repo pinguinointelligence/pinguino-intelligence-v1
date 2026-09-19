@@ -9,7 +9,8 @@
  * stays intact. Preview rows render through the same pure ConstraintPreviewCard; failures render
  * the same honest Polish messages; a verify-failed apply renders the same BlockedApplyNotice.
  */
-import { useMemo, useState } from 'react';
+import { useContext, useMemo, useState } from 'react';
+import { UNSAFE_NavigationContext } from 'react-router';
 import { copy } from '@/copy/en';
 import { calculateRecipe } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
@@ -28,12 +29,18 @@ import {
   openDirectionFallbackPreviewWithServerAuthority,
   openStarterPackRescuePreviewWithServerAuthority,
   requestStarterPackRescueWithServerAuthority,
+  runInteractiveRecalculationWithTerminal,
   runPiRecalculationWithTerminal,
   unlockConstraintAndRecalculate,
   useConstraintStudioStore,
   type PreviewIssue,
   type RecalculationTerminalState,
 } from '@/features/constraint-studio/constraintStudioStore';
+import {
+  isPreviewEditableLine,
+  type PreviewLineInstruction,
+} from '@/features/constraint-studio/previewInstructions';
+import { LockConflictPanel } from '@/features/constraint-studio/ui/LockConflictPanel';
 import { cn } from '@/lib/cn';
 import { GellattiNotice } from '@/components/ui/GellattiNotice';
 import { DialogShell } from '@/components/ui/DialogShell';
@@ -592,6 +599,25 @@ export function DirectionFallbackDecision({
   const requested = fallbackReport.requestedTargets;
   const fallback = fallbackReport.best?.targets ?? null;
   const axes = ['sweetness', 'softness', 'creaminess', 'flavor'] as const;
+  const axisLabels = {
+    sweetness: 'Słodycz',
+    softness: 'Twardość',
+    creaminess: 'Kremowość',
+    flavor: 'Smak',
+  } as const;
+  const changedAxes = axes.filter(
+    (axis) => fallback?.[axis] !== undefined && fallback[axis] !== requested[axis],
+  );
+  const changedAxesDisclosure = fallback
+    ? changedAxes
+        .map(
+          (axis) =>
+            `${axisLabels[axis]} ${formatDirectionLevel(requested[axis])} → ${formatDirectionLevel(fallback[axis])}`,
+        )
+        .join('; ')
+    : null;
+  const veganSearchFailed =
+    fallbackReport.profile === 'vegan_gelato' && fallbackReport.failureKind === 'SEARCH_FAILED';
   const changedAxis =
     axes.find((axis) => fallback?.[axis] !== undefined && fallback[axis] !== requested[axis]) ??
     axes.find((axis) => requested[axis] !== 0);
@@ -613,7 +639,7 @@ export function DirectionFallbackDecision({
         <div className="flex flex-wrap gap-2">
           {fallbackLevel ? (
             <button type="button" className={secondary} onClick={onUseFallback}>
-              Zostań przy {fallbackLevel}
+              {veganSearchFailed ? 'Użyj proponowanego profilu' : `Zostań przy ${fallbackLevel}`}
             </button>
           ) : null}
           <button type="button" className={secondary} onClick={onBack}>
@@ -631,18 +657,22 @@ export function DirectionFallbackDecision({
         <div className={surface} data-testid="direction-fallback-final">
           <div>
             <p className="text-sm font-medium text-ivory">
-              Poziomu {requestedLevel} nie da się osiągnąć dla tej receptury
+              {veganSearchFailed
+                ? 'Wyszukiwanie nie znalazło dokładnego profilu'
+                : `Poziomu ${requestedLevel} nie da się osiągnąć dla tej receptury`}
             </p>
             <p className="mt-1 text-xs text-ivory/70">
-              {fallbackLevel
-                ? `Najbliższy bezpieczny poziom to ${fallbackLevel}.`
-                : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
+              {veganSearchFailed && changedAxesDisclosure
+                ? `Proponowana korekta zmienia: ${changedAxesDisclosure}.`
+                : fallbackLevel
+                  ? `Najbliższy bezpieczny poziom to ${fallbackLevel}.`
+                  : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             {fallbackLevel ? (
               <button type="button" className={primary} onClick={onUseFallback}>
-                Ustaw {fallbackLevel}
+                {veganSearchFailed ? 'Ustaw proponowany profil' : `Ustaw ${fallbackLevel}`}
               </button>
             ) : null}
             <button type="button" className={secondary} onClick={onBack}>
@@ -656,9 +686,13 @@ export function DirectionFallbackDecision({
       <div className={surface} data-testid="direction-fallback-alternative">
         <div>
           <p className="text-sm font-medium text-ivory">
-            {alternative.targetReached
-              ? `Można osiągnąć poziom ${requestedLevel}`
-              : `Można zbliżyć się bardziej do poziomu ${requestedLevel}`}
+            {veganSearchFailed && alternative.targetReached
+              ? 'Można osiągnąć wybrany profil'
+              : veganSearchFailed
+                ? 'Można zbliżyć się do wybranego profilu'
+                : alternative.targetReached
+                  ? `Można osiągnąć poziom ${requestedLevel}`
+                  : `Można zbliżyć się bardziej do poziomu ${requestedLevel}`}
           </p>
           <p className="mt-1 text-xs text-ivory/70">Wymaga to zmiany receptury.</p>
         </div>
@@ -668,7 +702,7 @@ export function DirectionFallbackDecision({
           </button>
           {fallbackLevel ? (
             <button type="button" className={secondary} onClick={onUseFallback}>
-              Zostań przy {fallbackLevel}
+              {veganSearchFailed ? 'Użyj proponowanego profilu' : `Zostań przy ${fallbackLevel}`}
             </button>
           ) : null}
           <button type="button" className={secondary} onClick={onBack}>
@@ -683,14 +717,18 @@ export function DirectionFallbackDecision({
     <div className={surface} data-testid="direction-fallback-decision">
       <div>
         <p className="text-sm font-medium text-ivory">
-          {fallbackLevel
-            ? `Nie da się osiągnąć poziomu ${requestedLevel}`
-            : 'Nie udało się osiągnąć wybranego poziomu'}
+          {veganSearchFailed
+            ? 'Nie udało się osiągnąć wybranego profilu w tym przebiegu wyszukiwania'
+            : fallbackLevel
+              ? `Nie da się osiągnąć poziomu ${requestedLevel}`
+              : 'Nie udało się osiągnąć wybranego poziomu'}
         </p>
         <p className="mt-1 text-xs text-ivory/70">
-          {fallbackLevel
-            ? `Najbliższy możliwy poziom to ${fallbackLevel}.`
-            : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
+          {veganSearchFailed && changedAxesDisclosure
+            ? `Proponowana korekta zmienia: ${changedAxesDisclosure}.`
+            : fallbackLevel
+              ? `Najbliższy możliwy poziom to ${fallbackLevel}.`
+              : 'Z obecną recepturą nie ma bezpiecznego wariantu.'}
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -701,7 +739,7 @@ export function DirectionFallbackDecision({
             data-testid="direction-fallback-use"
             onClick={onUseFallback}
           >
-            Ustaw {fallbackLevel}
+            {veganSearchFailed ? 'Ustaw proponowany profil' : `Ustaw ${fallbackLevel}`}
           </button>
         ) : null}
         <button
@@ -858,6 +896,10 @@ export function ProRecalcPanel({
    * request-generation + timeout wrapper. */
   retryRunner?: () => Promise<void>;
 }) {
+  // The router's navigator when mounted inside one (always, in the app); null in isolated renders.
+  const routerNavigator =
+    (useContext(UNSAFE_NavigationContext) as { navigator?: { push: (to: string) => void } } | null)
+      ?.navigator ?? null;
   const [refreshingProductBehavior, setRefreshingProductBehavior] = useState(false);
   const [productBehaviorRefreshError, setProductBehaviorRefreshError] = useState<string | null>(
     null,
@@ -878,6 +920,11 @@ export function ProRecalcPanel({
   const history = useConstraintStudioStore((s) => s.history);
   const recalculationTerminal = useConstraintStudioStore((s) => s.recalculationTerminal);
   const constraints = useConstraintStudioStore((s) => s.constraints);
+  const lockConflict = useConstraintStudioStore((s) => s.lockConflict);
+  const pendingInstructionCommit = useConstraintStudioStore((s) => s.pendingInstructionCommit);
+  const previewInstructionAuthorization = useConstraintStudioStore(
+    (s) => s.previewInstructionAuthorization,
+  );
   const canViewTechnicalDetails = useProCoreAccessStore(
     (s) => s.effectiveAccess?.canAdmin === true,
   );
@@ -927,6 +974,25 @@ export function ProRecalcPanel({
 
   const undoAvailable = isUndoAvailable(history[history.length - 1], currentInput, constraints);
 
+  // INTERACTIVE PREVIEW (owner 2026-09-11): the customer's own recipe lines
+  // are editable inside the proposal; a line the solver added, poured material
+  // and engine-held lines keep their static value.
+  const editableLineIds = useMemo(
+    () => new Set(items.filter(isPreviewEditableLine).map((item) => item.id)),
+    [items],
+  );
+  const recalculateInPreview = (instructions: PreviewLineInstruction[]) => {
+    void runInteractiveRecalculationWithTerminal(instructions);
+  };
+  // Anything provisional in this session (edited instructions, a conflict
+  // correction, instructions waiting to be written) is discarded by X/Escape
+  // exactly like „Wróć": the recipe was never written, so nothing to restore.
+  const provisionalSession =
+    preview?.previewInstructions !== undefined ||
+    previewInstructionAuthorization !== null ||
+    lockConflict !== null ||
+    pendingInstructionCommit !== null;
+
   const returnToProductDose = (lineId: string | null) => {
     onClose();
     if (!lineId) return;
@@ -949,8 +1015,12 @@ export function ProRecalcPanel({
     });
   };
 
+  /* Produkcja v3 §4: an in-app move, not a page reload — the recipe draft, the Pro workspace
+     state and the session stay in memory. Outside a router (isolated renders) it falls back to
+     the full-page assignment it always was. */
   const goToProductData = () => {
-    window.location.assign('/products/scan');
+    if (routerNavigator) routerNavigator.push('/products/scan');
+    else window.location.assign('/products/scan');
   };
 
   const goToSettings = () => {
@@ -1001,6 +1071,7 @@ export function ProRecalcPanel({
 
   const closeOrCancel = () => {
     if (recalculationTerminal?.state === 'WORKING') cancelPiRecalculation();
+    if (provisionalSession) store.cancelPreview();
     onClose();
   };
 
@@ -1076,12 +1147,29 @@ export function ProRecalcPanel({
   const suppressIntermediate = correctionInFlight;
   const customerPreviewOpen =
     !suppressIntermediate && preview !== null && recalculationTerminal?.state === 'PREVIEW_READY';
-  const dialogLabel = customerPreviewOpen ? 'Sprawdź proponowaną korektę.' : r.title;
+  // The lock-conflict correction is the same modal's content, never a new one.
+  const conflictOpen =
+    !suppressIntermediate &&
+    lockConflict !== null &&
+    preview === null &&
+    recalculationTerminal !== null &&
+    recalculationTerminal.state !== 'WORKING';
+  const fullContentOpen = customerPreviewOpen || conflictOpen;
+  const dialogLabel = customerPreviewOpen
+    ? 'Sprawdź proponowaną korektę.'
+    : conflictOpen
+      ? constraintStudioCopy.lockConflict.proTitle
+      : r.title;
   const previewCard = preview ? (
     <ConstraintPreviewCard
       preview={preview}
       applyPending={applyPending}
       showTechnicalDetails={canViewTechnicalDetails}
+      interactive={{
+        instructions: preview.previewInstructions?.lines ?? [],
+        editableLineIds,
+        onRecalculate: recalculateInPreview,
+      }}
       onApply={() => {
         void (async () => {
           await applyPreviewWithServerAuthority();
@@ -1121,7 +1209,7 @@ export function ProRecalcPanel({
       // one piece of content here with columns. In the automatic-correction
       // flow the change list never shows, so that flow now opens and closes at
       // one single width instead of stepping 680 -> 520.
-      size={customerPreviewOpen ? 'wide' : 'default'}
+      size={fullContentOpen ? 'wide' : 'default'}
       onClose={closeOrCancel}
       showCloseControl
       closeLabel={
@@ -1153,12 +1241,12 @@ export function ProRecalcPanel({
         // Only PADDING and height differ between the two states now; the width
         // is the canonical `size="wide"` in both, so the panel no longer
         // changes dimension as the recalculation moves between them.
-        customerPreviewOpen
+        fullContentOpen
           ? 'max-h-[92dvh] px-3 py-3 sm:max-h-[88vh] sm:px-4 sm:py-4'
           : 'max-h-[88vh] px-4 py-4 sm:px-5 sm:py-5',
       )}
     >
-      {!customerPreviewOpen ? (
+      {!fullContentOpen ? (
         <div className="flex min-h-10 items-center pr-12">
           <p className="text-xs font-medium tracking-label text-ivory/60 uppercase">
             {dialogLabel}
@@ -1166,7 +1254,7 @@ export function ProRecalcPanel({
         </div>
       ) : null}
 
-      <div className={customerPreviewOpen ? 'space-y-3' : 'mt-3 space-y-3'}>
+      <div className={fullContentOpen ? 'space-y-3' : 'mt-3 space-y-3'}>
         {recalculationTerminal?.state === 'WORKING' || suppressIntermediate ? (
           <FriendlyLabMessageMotion
             timing="progress"
@@ -1268,7 +1356,54 @@ export function ProRecalcPanel({
           />
         ) : null}
 
-        {!directionFallbackReport && previewIssue && recalculationTerminal ? (
+        {conflictOpen && lockConflict ? (
+          <LockConflictPanel
+            conflict={lockConflict}
+            surface="pro"
+            onRecalculate={recalculateInPreview}
+            onBack={() => {
+              store.cancelPreview();
+              onClose();
+            }}
+          />
+        ) : null}
+
+        {!suppressIntermediate && pendingInstructionCommit && !preview ? (
+          <div className="space-y-3" data-testid="pro-recalc-instructions-only">
+            <p className="text-sm leading-relaxed text-ivory/85">
+              {constraintStudioCopy.interactive.instructionsOnly}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  store.commitPendingInstructions();
+                  onClose();
+                }}
+                className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ivory px-4 py-2 text-sm font-semibold text-shell"
+                data-testid="pro-recalc-commit-instructions"
+              >
+                {constraintStudioCopy.interactive.apply}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  store.cancelPreview();
+                  onClose();
+                }}
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-ivory/20 px-4 py-2 text-sm font-medium text-ivory"
+              >
+                {constraintStudioCopy.interactive.back}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {!directionFallbackReport &&
+        !lockConflict &&
+        !pendingInstructionCommit &&
+        previewIssue &&
+        recalculationTerminal ? (
           <RecalcDiagnosisView
             issue={previewIssue}
             input={currentInput}

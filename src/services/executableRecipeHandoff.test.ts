@@ -4,7 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { calculateRecipe, detectViolations } from '@/engine';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import {
+  EXECUTABLE_RECIPE_TEMPLATES,
   executableRecipeTemplateById,
+  executableTemplateOpenState,
   type ExecutableRecipeTemplate,
 } from '@/data/recipes/executableRecipeLibrary';
 import {
@@ -118,6 +120,31 @@ ServerResolvedProductBehavior => ({
   blockReasons: [],
 });
 
+/**
+ * SYNTHETIC CONTRACT FIXTURE — not an official recipe; never registered or served.
+ * Under the FINAL 2541 Mapper no registered Owner Review template passes the current Engine
+ * gate (pinned by the fail-closed test below), so the materialization contract runs on Oreyo's
+ * registered vector with its FINAL-blocked vanilla line (PI-ING-001705, 5 g) removed and those
+ * 5 g returned to milk: a 1000 g Base with no violations and only approved PIs.
+ */
+const ownerReviewContractFixture = (): ExecutableRecipeTemplate => {
+  const oreyo = executableRecipeTemplateById('fantasy-oreyo-v1')!;
+  const id = 'synthetic-owner-review-contract';
+  return {
+    ...oreyo,
+    id,
+    displayName: 'Synthetic Owner Review contract',
+    base: oreyo.base
+      .filter((line) => line.mapperIngredientId !== 'PI-ING-001705')
+      .map((line, index) => ({
+        ...line,
+        lineId: `${id}-base-${index + 1}`,
+        grams: line.mapperIngredientId === 'PI-ING-000236' ? line.grams! + 5 : line.grams,
+      })),
+    toppings: [],
+  };
+};
+
 describe('executable Recipe Library handoff', () => {
   beforeEach(() => {
     useRecipeStore.getState().resetToDemo();
@@ -169,8 +196,7 @@ describe('executable Recipe Library handoff', () => {
   });
 
   it('materializes exact Base for Owner Review without granting Production/Label or silently loading Toppings', async () => {
-    const editable = (await import('@/data/recipes/executableRecipeLibrary'))
-      .executableRecipeTemplateById('fantasy-rocero-v1')!;
+    const editable = ownerReviewContractFixture();
     const definition: ExecutableRecipeTemplate = {
       ...editable,
       toppings: [{
@@ -256,15 +282,41 @@ describe('executable Recipe Library handoff', () => {
     )).toBe(true);
   });
 
-  it('keeps all five real Owner Review Main seeds technical-only through Preview and terminal Apply', async () => {
-    for (const templateId of [
-      'fantasy-rocero-v1',
-      'fantasy-raphaello-v1',
-      'fantasy-kidi-bueno-v1',
-      'fantasy-oreyo-v1',
-      'fantasy-knickers-v1',
-    ]) {
-      const definition = executableRecipeTemplateById(templateId)!;
+  it('fails closed for every registered Owner Review template the FINAL Mapper no longer lets the current Engine run', async () => {
+    const editable = EXECUTABLE_RECIPE_TEMPLATES.filter(
+      (template) => template.status === 'OWNER_REVIEW_EDITABLE',
+    );
+    expect(editable).toHaveLength(5);
+    for (const template of editable) {
+      const evaluation = template.currentEngineEvaluation!;
+      expect(executableTemplateOpenState(template), template.id).toBe('blocked_current_engine');
+      const attempt = materializeExecutableRecipeDefinition(template, 'owner-a', {
+        getIngredient: async (id) => mapperRows.get(id) ?? null,
+        resolveBehavior: async ({ entity, context }) =>
+          eligible(entity.entityId, context.processScope),
+      });
+      if (evaluation.unapprovedIngredientIds.length > 0) {
+        const blockedPi = evaluation.unapprovedIngredientIds[0]!;
+        const line = template.base.find((candidate) => candidate.mapperIngredientId === blockedPi)!;
+        await expect(attempt, template.id).rejects.toMatchObject({
+          code: 'behavior_blocked',
+          lineId: line.lineId,
+          message: expect.stringContaining(`${blockedPi} (${line.note}) nie jest zatwierdzony`),
+        });
+      } else {
+        await expect(attempt, template.id).rejects.toMatchObject({
+          code: 'engine_gate_failed',
+          message: expect.stringMatching(
+            new RegExp(evaluation.violations.map((code) => code.replace(':', '_')).join('.*')),
+          ),
+        });
+      }
+    }
+  });
+
+  it('keeps the technical-only Main seed through Preview and terminal Apply (synthetic contract fixture)', async () => {
+    for (const definition of [ownerReviewContractFixture()]) {
+      const templateId = definition.id;
       const materialized = await materializeExecutableRecipeDefinition(
         definition,
         'owner-a',
@@ -279,11 +331,6 @@ describe('executable Recipe Library handoff', () => {
       const snapshots = materialized.composition.behaviorSnapshots!;
       const technicalOnlyMainLineIds =
         materialized.composition.ownerReviewGate!.technicalOnlyMainLineIds;
-      if (templateId === 'fantasy-raphaello-v1') {
-        expect(materialized.input.items.filter((item) => item.lock_type === 'main').map(
-          (item) => item.main_ratio_weight,
-        )).toEqual([2, 1]);
-      }
       const preview = bindProductBehaviorToPreview(
         buildBatchRescalePreview(
           materialized.input,
@@ -338,8 +385,7 @@ describe('executable Recipe Library handoff', () => {
   });
 
   it('keeps Estimated Mapper provenance informational for a technically complete Owner Review Base', async () => {
-    const definition = (await import('@/data/recipes/executableRecipeLibrary'))
-      .executableRecipeTemplateById('fantasy-rocero-v1')!;
+    const definition = ownerReviewContractFixture();
     const estimatedId = definition.base[0]!.mapperIngredientId!;
     const materialized = await materializeExecutableRecipeDefinition(definition, 'owner-a', {
       getIngredient: async (id) => {
@@ -402,8 +448,7 @@ describe('executable Recipe Library handoff', () => {
   });
 
   it('keeps missing process/allergen facts fail-closed in snapshots while Owner Review Base opens', async () => {
-    const definition = (await import('@/data/recipes/executableRecipeLibrary'))
-      .executableRecipeTemplateById('fantasy-rocero-v1')!;
+    const definition = ownerReviewContractFixture();
     const materialized = await materializeExecutableRecipeDefinition(definition, 'owner-a', {
       getIngredient: async (id) => mapperRows.get(id) ?? null,
       resolveBehavior: async ({ entity, context }) => {

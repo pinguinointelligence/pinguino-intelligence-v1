@@ -52,7 +52,9 @@ describe('contextual education runtime surface', () => {
     expect(html).toContain('grid-rows-[auto_minmax(0,1fr)]');
     expect(html).toContain('data-tour-host-slot="back-entry"');
     expect(html).toContain('w-full');
-    expect(html).toContain('bottom-[4.75rem]');
+    // PRO MOBILE UX v2 · A2: 4.75rem stays the fallback; the mobile cockpit
+    // sheet no longer runs under the bottom stack and sets the overlap to 0.
+    expect(html).toContain('bottom-[var(--pro-bottom-chrome-overlap,4.75rem)]');
     expect(html).toContain('min-[70rem]:grid-rows-[auto_auto]');
   });
 

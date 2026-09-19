@@ -10,6 +10,10 @@ const MATERIAL_SURFACES = [
   ['components', 'shared', 'friendlyLabMoment.ts'],
   ['features', 'customer-shell', 'customerShellCopy.ts'],
   ['features', 'scan-flow', 'ScanFlow.tsx'],
+  // The scanner's customer sentences moved here when they stopped being one fixed string:
+  // `savedProductNotice` and `labelPhotoRequest` both answer from what actually happened, so this
+  // file is now a material surface and its copy is held to the same standard.
+  ['features', 'scan-flow', 'scanFlowLogic.ts'],
   ['features', 'product-scanner', 'scannerErrors.ts'],
   ['features', 'ingredient-builder', 'IngredientPicker.tsx'],
   ['features', 'ingredient-builder', 'ServerIngredientPicker.tsx'],
@@ -71,7 +75,12 @@ describe('Gellatti Friendly Lab — material runtime copy', () => {
       'Jeszcze nie widzę smaku. Dodaj go poniżej i ruszamy dalej.',
       // ONE Canonical Scanner: the second scanner said „Produkt dodany do Twojego katalogu.";
       // the canonical flow says the same outcome more precisely, and it is the one that ships.
+      //
+      // Since 2026-09-08 there are TWO outcomes, because there always were: a scan that takes the
+      // PR route writes a SHARED registry row, and telling that customer their product is
+      // "widoczny tylko na Twoim koncie" was simply untrue. Both sentences are held here.
       'Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).',
+      'Zapisano w katalogu produktów. Twoje ceny, dostawcy, notatki i stan magazynowy pozostają prywatne.',
       'Jeszcze jeden krok. Potwierdź ustawienia, a potem przeliczymy recepturę.',
       'Liczymy balans receptury…',
       'Sprawdź proponowaną korektę.',

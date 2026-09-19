@@ -1,6 +1,16 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import type { ShopProduct } from '@/services/shop';
+import { ShopProductCard } from './ShopProductCard';
+import {
+  SHOP_SINGLE_OWN_PHOTOS,
+  SHOP_SINGLE_PLACEHOLDER_SKUS,
+  SHOP_SINGLE_PLACEHOLDER_SRC,
+  SHOP_STARTER_SHOTS,
+} from './shopStarterShots';
 
 /**
  * SHOP — reconciled to the owner-approved C3 screen (approved 2026-08-31;
@@ -18,6 +28,36 @@ import { describe, expect, it } from 'vitest';
  */
 const SRC = join(process.cwd(), 'src');
 const read = (...parts: string[]) => readFileSync(join(SRC, ...parts), 'utf8');
+
+/** One single article as the catalogue delivers it; tests vary `sku` and `imageUrl`. */
+const SINGLE: ShopProduct = {
+  id: 'contract-single',
+  sku: 'GEL-CONTRACT-SINGLE',
+  slug: 'contract-single',
+  kind: 'single',
+  title: 'Dekstroza',
+  description: null,
+  canonicalIngredientId: null,
+  packSizeG: 500,
+  priceCents: 990,
+  currency: 'eur',
+  imageUrl: null,
+  availability: 'in_stock',
+  leadTimeWeeks: null,
+  contents: [],
+  contentsTotalG: null,
+  allergens: [],
+};
+
+/** One „Kup osobno" row, rendered as the customer receives it. */
+const row = (product: Partial<ShopProduct>) =>
+  renderToStaticMarkup(
+    createElement(ShopProductCard, {
+      product: { ...SINGLE, ...product },
+      inCart: false,
+      onAdd: () => undefined,
+    }),
+  );
 
 describe('shop C3 · one product, no duplicate', () => {
   it('has no hero and no second Starter Pack block', () => {
@@ -81,23 +121,92 @@ describe('shop C3 · the product carries the emphasis, never the money', () => {
     expect(cta).toBeGreaterThan(price);
   });
 
-  it('uses the real product photography, and never invents any', () => {
-    const shots = read('features', 'shop', 'shopStarterShots.ts');
-    for (const shot of [
-      '/shop/starter-front.jpg',
-      '/shop/starter-angle.jpg',
-      '/shop/starter-side.jpg',
-    ]) {
-      expect(shots).toContain(shot);
-    }
-    const packaging = read('features', 'shop', 'ShopPackaging.tsx');
+  it('keeps the real Starter Pack photography, and never swaps in the placeholder', () => {
+    // The approved shots exactly: the same views, files and order.
+    expect(SHOP_STARTER_SHOTS.map(({ id, src, thumb }) => ({ id, src, thumb }))).toEqual([
+      { id: 'front', src: '/shop/starter-front.jpg', thumb: '/shop/starter-front-thumb.jpg' },
+      { id: 'angle', src: '/shop/starter-angle.jpg', thumb: '/shop/starter-angle-thumb.jpg' },
+      { id: 'side', src: '/shop/starter-side.jpg', thumb: '/shop/starter-side-thumb.jpg' },
+    ]);
     // The strip offers only what is NOT on display.
     const offer = read('features', 'shop', 'ShopStarterOffer.tsx');
     expect(offer).toContain('SHOP_STARTER_SHOTS.filter((s) => s.id !== primary.id)');
-    // No single-ingredient photography exists: the frame stays reserved.
-    expect(packaging).toContain('ShopReservedFrame');
-    expect(packaging).toContain('bg-[var(--g-ivory)]');
-    expect(read('features', 'shop', 'ShopProductCard.tsx')).toContain('<ShopReservedFrame />');
+    // The offer never reaches for the singles' placeholder or their photos.
+    expect(offer).not.toContain('SHOP_SINGLE_PLACEHOLDER');
+    expect(offer).not.toContain('single-placeholder');
+    expect(offer).not.toContain('SHOP_SINGLE_OWN_PHOTOS');
+    expect(offer).not.toContain('/shop/singles/');
+  });
+
+  /* OWNER DECISIONS: 2026-09-12 a shared placeholder photo, scoped to exactly
+     these seven articles on 2026-09-17; later on 2026-09-17 each of the seven
+     gets its own photo, with the placeholder kept behind it as the fallback.
+     Both supersede C3's „the reserved frame is never filled with invented
+     imagery" for these seven ONLY. The list is repeated here on purpose, so
+     that extending it is a decision and never a side effect. */
+  const SEVEN = [
+    'GEL-DEX-500',
+    'GEL-FRU-500',
+    'GEL-INU-500',
+    'GEL-STB-500',
+    'GEL-YOL-500',
+    'GEL-SMP-500',
+    'GEL-CRP-500',
+  ];
+
+  it('gives each of the seven physical singles its own photo, and no other article', () => {
+    expect([...SHOP_SINGLE_OWN_PHOTOS.keys()].sort()).toEqual([...SEVEN].sort());
+    const files = [...SHOP_SINGLE_OWN_PHOTOS.values()];
+    // One file per article, never shared between two.
+    expect(new Set(files).size).toBe(SEVEN.length);
+    for (const src of files) {
+      expect(src).toMatch(/^\/shop\/singles\/[a-z0-9-]+\.png$/);
+      const path = join(process.cwd(), 'public', src);
+      expect(existsSync(path)).toBe(true);
+      // The approved placeholder format: a transparent (RGBA) 512 px square PNG.
+      const png = readFileSync(path);
+      expect(png.subarray(1, 4).toString('latin1')).toBe('PNG');
+      expect(png.readUInt32BE(16)).toBe(512);
+      expect(png.readUInt32BE(20)).toBe(512);
+      expect(png[25]).toBe(6);
+    }
+    for (const sku of SEVEN) {
+      const markup = row({ sku, imageUrl: null });
+      expect(markup).toContain(`src="${SHOP_SINGLE_OWN_PHOTOS.get(sku)}"`);
+      expect(markup).not.toContain(SHOP_SINGLE_PLACEHOLDER_SRC);
+      // Decorative: the name beside it names the article, so the picture is
+      // never announced a second time.
+      expect(markup).toMatch(/<img[^>]*\salt=""/);
+      // Same slot as before: the frame opens the row, before the name.
+      expect(markup.indexOf('shop-reserved-frame')).toBeGreaterThan(-1);
+      expect(markup.indexOf('shop-reserved-frame')).toBeLessThan(markup.indexOf('<h3'));
+    }
+    // A single the owner has not named keeps today's empty reserved frame.
+    const unnamed = row({ sku: 'GEL-NEW-500', imageUrl: null });
+    expect(unnamed).toContain('shop-reserved-frame');
+    expect(unnamed).not.toContain('<img');
+    // The frame keeps the ivory ground C3 pinned before these decisions.
+    expect(read('features', 'shop', 'ShopPackaging.tsx')).toMatch(/bg-\[var\(--g-ivory\)\]/);
+  });
+
+  it('keeps the shared placeholder behind the own photos of the same seven', () => {
+    expect([...SHOP_SINGLE_PLACEHOLDER_SKUS].sort()).toEqual([...SEVEN].sort());
+    // ONE shared file, and it ships.
+    expect(SHOP_SINGLE_PLACEHOLDER_SRC).toBe('/shop/single-placeholder.png');
+    expect(existsSync(join(process.cwd(), 'public', SHOP_SINGLE_PLACEHOLDER_SRC))).toBe(true);
+    // The order a failed picture gives way in (walked event by event in
+    // ShopPackaging.runtime.test.tsx): imageUrl, own photo, placeholder, outline.
+    expect(read('features', 'shop', 'ShopPackaging.tsx')).toContain(
+      '[imageUrl, ownPhoto, placeholder].find(',
+    );
+  });
+
+  it("lets an article's imageUrl win over its own photo and the placeholder", () => {
+    const own = row({ sku: 'GEL-DEX-500', imageUrl: '/shop/own-photo.jpg' });
+    expect(own).toContain('src="/shop/own-photo.jpg"');
+    expect(own).not.toContain('/shop/singles/dextrose.png');
+    expect(own).not.toContain(SHOP_SINGLE_PLACEHOLDER_SRC);
+    expect(own).toMatch(/<img[^>]*\salt=""/);
   });
 });
 
@@ -191,6 +300,8 @@ describe('shop C3 · the Shop declares no header of its own', () => {
     expect(page).not.toContain('<HomeProSwitch');
     // The basket is a Shop utility BELOW that row, never a header control.
     expect(page).toContain('shop-cart-link');
+    // …and a 44 px touch target.
+    expect(page).toMatch(/className="[^"]*\bmin-h-11\b[^"]*"\s*data-testid="shop-cart-link"/);
     const surface = read('components', 'shared', 'DestinationSurface.tsx');
     expect(surface).toContain('<AppShell');
     const shell = read('features', 'shell', 'AppShell.tsx');

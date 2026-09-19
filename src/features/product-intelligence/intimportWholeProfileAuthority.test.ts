@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ProfileMatchInput } from './mapperValueInference';
 import {
+  buildIntimportProductProfileKnowledge,
   validateIntimportProductProfileProposal,
   validateIntimportWholeProfileProposal,
   type IntimportMapperAuthorityRow,
@@ -217,6 +218,31 @@ describe('INTIMPORT trusted product-owned profile', () => {
     expect(authority?.articleIdentity).toBe('PRODUCT_OWNED');
   });
 
+  it('reuses request-scoped Mapper indexes while recomputing changed product evidence', () => {
+    const rows = [baseRow()];
+    const mapperKnowledge = buildIntimportProductProfileKnowledge(rows);
+    const withoutReuse = validateIntimportProductProfileProposal({
+      proposedMapperIngredientId: null,
+      matchInput: input(),
+      declared: {},
+      evidence: completeEvidence,
+      rows,
+    });
+    const withReuse = validateIntimportProductProfileProposal({
+      proposedMapperIngredientId: null,
+      matchInput: input(),
+      declared: { fat_percent: 11 },
+      evidence: completeEvidence,
+      rows,
+      mapperKnowledge,
+    });
+
+    expect(withReuse).not.toBeNull();
+    expect(withReuse?.mapperFingerprint).toBe(mapperKnowledge.mapperFingerprint);
+    expect(withReuse?.technicalComposition.fat).toBe(11);
+    expect(withoutReuse?.technicalComposition.water).toBe(5);
+  });
+
   it('uses server-rebuilt enrichment source-card values as VERIFIED product-owned facts', () => {
     const sourceField = (value: number) =>
       knownField({
@@ -416,7 +442,7 @@ describe('INTIMPORT trusted product-owned profile', () => {
     expect(authority?.articleIdentity).toBe('PRODUCT_OWNED');
   });
 
-  it('never estimates from a Mapper row that is not eligible for Engine use', () => {
+  it('RSC-AUTH-03 keeps hard facts immutable while legacy approval metadata does not exclude a Rescue donor', () => {
     const authority = validateIntimportProductProfileProposal({
       proposedMapperIngredientId: 'PI-ING-TEST-001',
       matchInput: input(),
@@ -427,7 +453,8 @@ describe('INTIMPORT trusted product-owned profile', () => {
 
     expect(authority).not.toBeNull();
     expect(authority?.technicalComposition.fat).toBe(11);
-    expect(authority?.estimatedFromMapperIds).toEqual([]);
+    expect(authority?.estimatedFromMapperIds).toEqual(['PI-ING-TEST-001']);
+    expect(authority?.profileReferenceMapperIngredientId).toBeNull();
   });
 
   it('persists PM user values with USER_CONFIRMED provenance and recalculates accuracy', () => {

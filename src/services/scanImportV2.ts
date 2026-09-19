@@ -9,7 +9,6 @@
  */
 import { supabase } from '@/lib/supabase/client';
 import {
-  createOpenFoodFactsEvidencePort,
   createSupabaseDiscoveryPort,
   createSupabaseV2Ports,
   type OfflineCachePort,
@@ -32,8 +31,13 @@ export function createScanImportV2AppPorts(opts: {
   const client = supabase as never;
   return {
     ...createSupabaseV2Ports(client, { exactAuthority: opts.exactAuthority }),
-    // exact-GTIN registry evidence (Open Food Facts, by code only) — the first source for an unknown code
-    external: createOpenFoodFactsEvidencePort(),
+    /*
+      The authenticated app has one external-evidence authority: product-scan-analyze. ScanFlow
+      starts that same server request early for Recognition and the pipeline reuses it through the
+      discovery port. A browser-side OFF adapter would create a second, unverifiable evidence
+      object beside the persisted server receipt, so it is deliberately not wired here.
+    */
+    external: null,
     offlineCache: opts.offlineCache,
     externalTimeoutMs: opts.externalTimeoutMs ?? 8_000,
     discovery: createSupabaseDiscoveryPort(client),

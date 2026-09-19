@@ -1,4 +1,4 @@
-import { useSearchParams } from 'react-router';
+import { Navigate, useSearchParams } from 'react-router';
 import { Link } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
@@ -6,9 +6,8 @@ import { buttonClasses } from '@/components/ui/buttonStyles';
 import { cn } from '@/lib/cn';
 import { shopCopy } from '@/copy/shop';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
-import { AccountProductMarkets } from '@/features/global-catalog/AccountProductMarkets';
 import { HomeInviteRedemption } from '@/features/account/HomeInviteRedemption';
-import { ProductRequestAccountSections } from '@/features/product-requests/ProductRequestAccountSections';
+import { ReferralPanel } from '@/features/referral/ReferralPanel';
 import { AccountRecipeDefaults } from '@/features/pro-workbench/AccountRecipeDefaults';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { ShopOrdersPanel } from '@/features/shop/ShopOrdersPanel';
@@ -31,14 +30,23 @@ import { useAuthStore } from '@/stores/authStore';
  *
  * Nothing was deleted here. Every capability the old page had is inside one of
  * these five sections.
+ *
+ * PRODUKCJA V3 §4 (owner decision 2026-09-17): the product settings — „Produkty w
+ * wyszukiwarce” (AccountProductMarkets) and „Zgłoszenia produktów”
+ * (ProductRequestAccountSections) — moved to Produkcja → Produkty, the place the products
+ * are. The old addresses keep working: `?section=products` opens `/products?panel=markets`
+ * and `?request=<id>` opens `/products?panel=requests&request=<id>`. „Kod zaproszenia Home”
+ * is a plan matter, so it now sits in „Plan i płatności”.
  */
 
 const SECTIONS = [
   { id: 'account', label: 'Konto' },
   { id: 'billing', label: 'Plan i płatności' },
   { id: 'orders', label: 'Zamówienia' },
-  { id: 'products', label: 'Produkty i zgłoszenia' },
   { id: 'recipe', label: 'Ustawienia receptury' },
+  // K01: the referral programme had a live backend and no surface at all, so
+  // the days a user earned were invisible and nobody could start a referral.
+  { id: 'referral', label: 'Poleć Gellatti' },
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]['id'];
@@ -62,6 +70,18 @@ export function AccountWorkspacePage() {
 
   const plan =
     persona === 'pro' ? 'Plan Pro' : persona === 'home' ? 'Plan Home' : 'Brak aktywnego planu';
+
+  // Moved to Produkcja → Produkty (package §4): old links land on the same components there.
+  const productRequest = params.get('request');
+  if (productRequest) {
+    return (
+      <Navigate
+        to={`/products?panel=requests&request=${encodeURIComponent(productRequest)}`}
+        replace
+      />
+    );
+  }
+  if (requested === 'products') return <Navigate to="/products?panel=markets" replace />;
 
   const select = (id: SectionId) => {
     const next = new URLSearchParams(params);
@@ -166,6 +186,11 @@ export function AccountWorkspacePage() {
             </Link>
           </div>
         ) : null}
+        {active === 'billing' ? (
+          <div className={cn(PANEL, 'mt-3')} data-testid="account-home-invite">
+            <HomeInviteRedemption />
+          </div>
+        ) : null}
 
         {active === 'orders' ? (
           <section aria-labelledby="account-orders">
@@ -184,17 +209,9 @@ export function AccountWorkspacePage() {
           </section>
         ) : null}
 
-        {active === 'products' ? (
-          <div className="space-y-3">
-            <div className={PANEL}>
-              <AccountProductMarkets />
-            </div>
-            <div className={PANEL}>
-              <HomeInviteRedemption />
-            </div>
-            <div className={PANEL}>
-              <ProductRequestAccountSections />
-            </div>
+        {active === 'referral' ? (
+          <div className={PANEL}>
+            <ReferralPanel />
           </div>
         ) : null}
 

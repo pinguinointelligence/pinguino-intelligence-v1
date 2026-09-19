@@ -4,10 +4,13 @@
  * product-request lifecycle (`gellatti_submit_product_request_v1`, `gellatti_my_product_requests_v1`).
  * Request/response shapes mirror `src/services/productScanner.ts` exactly; nothing legacy is modified.
  */
-import type { CodeIdentity, ExactCandidate } from '../contracts';
+import type { CodeIdentity, ExactCandidate, RequestContext } from '../contracts';
 import { NetworkError } from '../contracts';
+import { withProductScanFinalizeV2Contract } from '../../features/product-scanner/productScanFinalizeContract';
+import { assertScanRunCurrent } from '../runAuthority';
 import type {
   AnalyzeOutcome,
+  ClientReadinessState,
   DiscoveryPort,
   DiscoverySession,
   FactLedger,
@@ -41,19 +44,79 @@ const LEGACY_FORMAT: Record<CodeIdentity['symbology'], 'EAN_13' | 'EAN_8' | 'UPC
   'UPC-E': 'UPC_E',
 };
 
-/** legacy ValidBarcode for the scan-session functions (value + format + lookupValue) */
+/** Scan-session barcode payload: canonical identity is authoritative; raw/format are evidence only. */
 export function legacyBarcode(identity: CodeIdentity): {
   value: string;
   format: string;
   lookupValue: string;
+  canonicalValue: string;
+  rawValue: string;
 } {
-  const lookupValue =
-    identity.symbology === 'UPC-E' ? (identity.lookupKeys[1] ?? identity.value) : identity.value;
-  return { value: identity.value, format: LEGACY_FORMAT[identity.symbology], lookupValue };
+  const canonicalValue = identity.canonicalGtin13;
+  return {
+    value: canonicalValue,
+    format: LEGACY_FORMAT[identity.symbology],
+    lookupValue: canonicalValue,
+    canonicalValue,
+    rawValue: identity.rawValue ?? identity.value,
+  };
 }
 
 function obj(v: unknown): Record<string, unknown> {
   return v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
+}
+
+function stringOrNull(v: unknown): string | null {
+  return typeof v === 'string' && v.trim() ? v : null;
+}
+
+function boolOrNull(v: unknown): boolean | null {
+  return typeof v === 'boolean' ? v : null;
+}
+
+function stringList(v: unknown): string[] | null {
+  return Array.isArray(v)
+    ? (v.filter((entry): entry is string => typeof entry === 'string') as string[])
+    : null;
+}
+
+/**
+ * Normalize the current finalize assessment once. The server remains the only readiness authority;
+ * the fallbacks cover the preview/saved response shapes and do not rebuild gaps from local fields.
+ */
+function readinessFromServer(
+  d: Record<string, unknown>,
+  fallbackMissing: readonly string[] = [],
+): ClientReadinessState {
+  const assessment = obj(d['assessment']);
+  const productAccuracyAssessment = obj(
+    obj(d['profile'])['productAccuracyAssessment'] ?? d['productAccuracyAssessment'],
+  );
+  const directCriticalGaps = stringList(d['criticalGaps']);
+  const assessmentCriticalGaps = stringList(assessment['criticalGaps']);
+  const productAccuracyCriticalBlockers = stringList(productAccuracyAssessment['criticalBlockers']);
+  const criticalGaps = directCriticalGaps ??
+    assessmentCriticalGaps ??
+    productAccuracyCriticalBlockers ?? [...fallbackMissing];
+  const productionReady =
+    boolOrNull(d['productionReady']) ?? boolOrNull(assessment['productionReady']);
+  return {
+    ready: boolOrNull(d['ready']) ?? productionReady,
+    productionReady,
+    missingCritical: criticalGaps,
+    criticalGapsKnown:
+      directCriticalGaps !== null ||
+      assessmentCriticalGaps !== null ||
+      productAccuracyCriticalBlockers !== null ||
+      fallbackMissing.length > 0,
+    roleReadiness:
+      stringOrNull(productAccuracyAssessment['roleReadiness']) ??
+      stringOrNull(assessment['roleReadiness']),
+    assessmentVersion:
+      stringOrNull(d['assessmentVersion']) ?? stringOrNull(assessment['assessmentVersion']),
+    assessmentHash: stringOrNull(d['assessmentHash']) ?? stringOrNull(assessment['assessmentHash']),
+    assessmentSessionId: stringOrNull(d['sessionId']) ?? stringOrNull(assessment['sessionId']),
+  };
 }
 
 function exactFromServer(p: Record<string, unknown>, identity: CodeIdentity): ExactCandidate {
@@ -68,7 +131,8 @@ function exactFromServer(p: Record<string, unknown>, identity: CodeIdentity): Ex
     engineReady: p['engineReady'] === true,
     mapperSlotId: null,
     country: null,
-    currentVersionId: null,
+    currentVersionId:
+      typeof p['currentVersionId'] === 'string' ? (p['currentVersionId'] as string) : null,
     evidence: { status: p['status'] ?? null, source: 'scan_session_exact' },
   };
 }
@@ -88,7 +152,15 @@ export function ledgerToLegacyResult(
       brand: ledger.identity.brand,
       countryOfOrigin: value('identity.countryOfOrigin'),
     },
-    barcodes: [{ kind: LEGACY_FORMAT[identity.symbology], value: identity.value }],
+    barcodes: [
+      {
+        kind: LEGACY_FORMAT[identity.symbology],
+        value: identity.canonicalGtin13,
+        format: 'EAN_13',
+        capturedFormat: LEGACY_FORMAT[identity.symbology],
+        rawValue: identity.rawValue ?? identity.value,
+      },
+    ],
     ingredientsText: value('ingredientsText'),
     allergensText: value('allergensText'),
     nutrition,
@@ -100,15 +172,23 @@ export function createSupabaseDiscoveryPort(
   options: { newSessionId?: () => string } = {},
 ): DiscoveryPort {
   const newId = options.newSessionId ?? (() => globalThis.crypto.randomUUID());
-  const sessions = new Map<string, DiscoverySession>();
-  const adopt = (session: DiscoverySession): DiscoverySession => {
-    const s = sessions.get(session.identity.canonicalGtin13);
-    if (s) return s;
-    sessions.set(session.identity.canonicalGtin13, session);
+  const sessionsByRun = new Map<string, DiscoverySession>();
+  const sessionsById = new Map<string, DiscoverySession>();
+  /*
+    Recognition prefetch and startDiscovery intentionally race the same logical lookup. The
+    explicit scan-run id identifies one scanner run, so both readers share one promise while a
+    later rescan (including a retry after provider failure) gets a fresh request and receipt.
+  */
+  const researchByRun = new Map<string, Promise<ResearchOutcome>>();
+  const remember = (session: DiscoverySession): DiscoverySession => {
+    sessionsById.set(session.sessionId, session);
     return session;
   };
-  const sessionFor = (identity: CodeIdentity): DiscoverySession => {
-    let s = sessions.get(identity.canonicalGtin13);
+  const adopt = (session: DiscoverySession): DiscoverySession =>
+    sessionsById.get(session.sessionId) ?? remember(session);
+  const sessionFor = (identity: CodeIdentity, ctx: RequestContext): DiscoverySession => {
+    const runKey = `${ctx.accountId ?? 'guest'}:${ctx.scanRun?.id ?? ctx.now}:${identity.canonicalGtin13}`;
+    let s = sessionsByRun.get(runKey);
     if (!s) {
       s = {
         sessionId: newId(),
@@ -118,7 +198,8 @@ export function createSupabaseDiscoveryPort(
         missingCritical: [],
         usage: { visionCalls: 0, webCalls: 0 },
       };
-      sessions.set(identity.canonicalGtin13, s);
+      sessionsByRun.set(runKey, s);
+      remember(s);
     }
     return s;
   };
@@ -179,55 +260,81 @@ export function createSupabaseDiscoveryPort(
   };
 
   return {
-    async research(identity): Promise<ResearchOutcome> {
-      const s = sessionFor(identity);
-      const d = await invoke('product-scan-analyze', {
-        sessionId: s.sessionId,
-        mode: 'ean_lookup',
-        images: [],
-        barcode: legacyBarcode(identity),
-      });
-      if (d['kind'] === 'existing_product')
-        return { kind: 'existing_product', product: exactFromServer(obj(d['product']), identity) };
-      applySession(s, d);
-      if (typeof d['skipped'] === 'string')
-        return { kind: 'skipped', session: s, reason: d['skipped'] as string };
-      return {
-        kind: 'researched',
-        session: s,
-        evidenceError: d['providerUnavailable'] === true ? 'provider_unavailable' : null,
-      };
+    research(identity, ctx): Promise<ResearchOutcome> {
+      assertScanRunCurrent(ctx);
+      const runKey = `${ctx.accountId ?? 'guest'}:${ctx.scanRun?.id ?? ctx.now}:${identity.canonicalGtin13}`;
+      const current = researchByRun.get(runKey);
+      if (current) return current;
+      const request = (async (): Promise<ResearchOutcome> => {
+        assertScanRunCurrent(ctx);
+        const s = sessionFor(identity, ctx);
+        const d = await invoke('product-scan-analyze', {
+          sessionId: s.sessionId,
+          mode: 'ean_lookup',
+          images: [],
+          barcode: legacyBarcode(identity),
+        });
+        assertScanRunCurrent(ctx);
+        if (d['kind'] === 'existing_product')
+          return {
+            kind: 'existing_product',
+            product: exactFromServer(obj(d['product']), identity),
+          };
+        applySession(s, d);
+        // The server composes the sentence, because only the server knows whether the sources were
+        // asked and answered nothing or were never reached at all.
+        const notice =
+          typeof d['notice'] === 'string' && d['notice'] ? (d['notice'] as string) : null;
+        if (typeof d['skipped'] === 'string')
+          return { kind: 'skipped', session: s, reason: d['skipped'] as string, notice };
+        return {
+          kind: 'researched',
+          session: s,
+          evidenceError: d['providerUnavailable'] === true ? 'provider_unavailable' : null,
+          notice,
+        };
+      })();
+      researchByRun.set(runKey, request);
+      // Bound the mount-lifetime cache without invalidating the active run's shared promise.
+      if (researchByRun.size > 32) researchByRun.delete(researchByRun.keys().next().value!);
+      return request;
     },
-    async analyzeLabel(session, images): Promise<AnalyzeOutcome> {
+    async analyzeLabel(session, images, ctx): Promise<AnalyzeOutcome> {
+      // The session itself is adopted by id, never by canonical barcode.
+      assertScanRunCurrent(ctx);
       const s = adopt(session);
       const d = await invoke('product-scan-analyze', {
         sessionId: s.sessionId,
         images: [...images],
-        barcode: legacyBarcode(session.identity),
+        barcode: legacyBarcode(s.identity),
         accurateRetry: false,
         missingFields: [...s.missingCritical],
       });
-      if (d['kind'] === 'existing_product')
-        return {
-          kind: 'existing_product',
-          product: exactFromServer(obj(d['product']), session.identity),
-        };
-      return { kind: 'analyzed', session: applySession(s, d) };
+      assertScanRunCurrent(ctx);
+      return d['kind'] === 'existing_product'
+        ? {
+            kind: 'existing_product',
+            product: exactFromServer(obj(d['product']), s.identity),
+          }
+        : { kind: 'analyzed', session: applySession(s, d) };
     },
     async finalize(session, input, ctx, saveUnverified): Promise<FinalizeOutcome> {
+      assertScanRunCurrent(ctx);
       const s = adopt(session);
       let d: Record<string, unknown>;
       try {
-        d = await invoke('product-scan-finalize', {
+        const finalizeBody = withProductScanFinalizeV2Contract({
           action: saveUnverified === true ? 'save_unverified' : 'finalize',
           sessionId: s.sessionId,
-          idempotencyKey: `scan-import-v2:${ctx.accountId}:${session.identity.canonicalGtin13}:finalize`,
+          idempotencyKey: `scan-import-v2:${ctx.accountId}:${s.sessionId}:finalize`,
           customerFamily: input.customerFamily ?? null,
+          automaticEvidence: input.automaticEvidence ?? null,
           confirmations: input.confirmations ?? {},
           privateOverlay: input.privateOverlay ?? {},
           // binding when present: the save may persist only the verdict the customer was shown
           expectedAssessmentHash: input.expectedAssessmentHash ?? null,
         });
+        d = await invoke('product-scan-finalize', finalizeBody);
       } catch (error) {
         const m = error instanceof Error ? error.message : '';
         if (/customer_product_profile_rejected|customer_product_profile_unavailable/.test(m))
@@ -235,6 +342,7 @@ export function createSupabaseDiscoveryPort(
         if (/customer_product_identity_required/.test(m)) return { kind: 'identity_required' };
         throw error;
       }
+      assertScanRunCurrent(ctx);
       switch (d['kind']) {
         case 'family_confirmation_required':
           return {
@@ -253,7 +361,7 @@ export function createSupabaseDiscoveryPort(
           };
         case 'scan_assessment_stale':
           // the verdict moved between the screen and the save; the customer repeats, nothing is written
-          return { kind: 'assessment_stale' };
+          return { kind: 'assessment_stale', readiness: readinessFromServer(d) };
         case 'customer_product_not_ready': {
           // the profile/ProductBehaviour authorities refused an Engine product; carry WHY (never invent readiness)
           const assessment = obj(
@@ -274,29 +382,26 @@ export function createSupabaseDiscoveryPort(
                 ]
               : []),
           ];
+          const readiness = readinessFromServer(d);
           return {
             kind: 'not_ready',
-            missingCritical: Array.isArray(d['missingCriticalFields'])
-              ? (d['missingCriticalFields'] as string[])
-              : Array.isArray(assessment['missingCritical'])
-                ? (assessment['missingCritical'] as string[])
-                : [],
+            missingCritical: readiness.missingCritical,
             // DIAGNOSTIC ONLY — never rendered to a customer (see FinalizeOutcome)
             reasons: reasons.length > 0 ? reasons : ['customer_product_not_ready'],
-            assessmentHash:
-              typeof d['assessmentHash'] === 'string' ? (d['assessmentHash'] as string) : null,
+            assessmentHash: readiness.assessmentHash,
+            readiness,
           };
         }
-        case 'profile_preview':
+        case 'profile_preview': {
+          const readiness = readinessFromServer(d);
           return {
             kind: 'not_ready',
-            missingCritical: Array.isArray(d['criticalGaps'])
-              ? (d['criticalGaps'] as string[])
-              : [],
+            missingCritical: readiness.missingCritical,
             reasons: ['profile_preview'],
-            assessmentHash:
-              typeof d['assessmentHash'] === 'string' ? (d['assessmentHash'] as string) : null,
+            assessmentHash: readiness.assessmentHash,
+            readiness,
           };
+        }
         default: {
           // the RPC decided the route from the canonical profile; never re-derive it here
           const code = typeof d['productCode'] === 'string' ? (d['productCode'] as string) : null;
@@ -309,6 +414,16 @@ export function createSupabaseDiscoveryPort(
                 : d['engineUsable'] === true
                   ? 'PM_READY'
                   : 'PM_UNVERIFIED';
+          const rawReadiness = readinessFromServer(d);
+          const productionReady =
+            typeof d['productionReady'] === 'boolean'
+              ? (d['productionReady'] as boolean)
+              : (rawReadiness.productionReady ?? false);
+          const readiness: ClientReadinessState = {
+            ...rawReadiness,
+            ready: rawReadiness.ready ?? productionReady,
+            productionReady,
+          };
           return {
             kind: 'created',
             productId: String(d['productId'] ?? ''),
@@ -318,16 +433,18 @@ export function createSupabaseDiscoveryPort(
             route,
             finalConfidence:
               typeof d['finalConfidence'] === 'number' ? (d['finalConfidence'] as number) : null,
-            productionReady: d['productionReady'] === true,
+            productionReady,
+            readiness,
           };
         }
       }
     },
     async submitRequest(identity, ledger, session, ctx): Promise<RequestOutcome> {
+      assertScanRunCurrent(ctx);
       const { data, error } = await client.rpc('gellatti_submit_product_request_v1', {
         p_scan_session_id: session?.sessionId ?? null,
         p_market_country_code: ctx.productCountry,
-        p_idempotency_key: `scan-import-v2:${ctx.accountId}:${identity.canonicalGtin13}:request`,
+        p_idempotency_key: `scan-import-v2:${ctx.accountId}:${session?.sessionId ?? ctx.scanRun?.id ?? identity.canonicalGtin13}:request`,
         p_payload: {
           result: ledgerToLegacyResult(identity, ledger),
           provenance: {
@@ -338,6 +455,7 @@ export function createSupabaseDiscoveryPort(
           },
         },
       });
+      assertScanRunCurrent(ctx);
       if (error) {
         if (NETWORK.test(error.message)) throw new NetworkError(error.message);
         throw new Error(`submit_product_request: ${error.message}`);

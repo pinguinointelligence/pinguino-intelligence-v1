@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   candidateMatches,
   decideMatch,
+  type ConceptLineMatcher,
   extraIngredientsOf,
   highestRankedCommunityMatch,
   matchRecipes,
@@ -24,7 +25,11 @@ const candidate = (
   id: string,
   source: 'official' | 'community',
   profile: IntentProfile,
-  ingredients: readonly { productId: string; role: 'ingredient' | 'topping'; displayName: string }[],
+  ingredients: readonly {
+    productId: string;
+    role: 'ingredient' | 'topping';
+    displayName: string;
+  }[],
   extra: Partial<RecipeCandidate> = {},
 ): RecipeCandidate => ({
   id,
@@ -36,7 +41,10 @@ const candidate = (
   ...extra,
 });
 
-const want = (productId: string, statedRole: 'ingredient' | 'topping' | null = null): RequestedIngredient => ({
+const want = (
+  productId: string,
+  statedRole: 'ingredient' | 'topping' | null = null,
+): RequestedIngredient => ({
   productId,
   statedRole,
   displayName: productId,
@@ -122,9 +130,18 @@ describe('§40 — the profile filters both libraries', () => {
 describe('§34 — Community contributes at most one candidate', () => {
   it('takes the highest-ranked exact match', () => {
     const best = highestRankedCommunityMatch([
-      { candidate: candidate('c7', 'community', 'gelato', [ing('X')], { rank: 7 }), alsoIncludes: [] },
-      { candidate: candidate('c2', 'community', 'gelato', [ing('X')], { rank: 2 }), alsoIncludes: [] },
-      { candidate: candidate('c9', 'community', 'gelato', [ing('X')], { rank: 9 }), alsoIncludes: [] },
+      {
+        candidate: candidate('c7', 'community', 'gelato', [ing('X')], { rank: 7 }),
+        alsoIncludes: [],
+      },
+      {
+        candidate: candidate('c2', 'community', 'gelato', [ing('X')], { rank: 2 }),
+        alsoIncludes: [],
+      },
+      {
+        candidate: candidate('c9', 'community', 'gelato', [ing('X')], { rank: 9 }),
+        alsoIncludes: [],
+      },
     ]);
     expect(best?.candidate.id).toBe('c2');
   });
@@ -199,5 +216,68 @@ describe('an empty intent matches nothing', () => {
         profile: null,
       }),
     ).toEqual([]);
+  });
+});
+
+describe('Owner 2026-09-17 (B) — a GENERIC idea matches its concept, by canonical id only', () => {
+  // Stands in for the central PI→concept links: STRAW-FRESH and STRAW-PUREE are strawberry.
+  const links: Record<string, string> = {
+    'STRAW-FRESH': 'strawberry',
+    'STRAW-PUREE': 'strawberry',
+  };
+  const conceptMatcher: ConceptLineMatcher = (line, conceptKey) =>
+    links[line.productId] === conceptKey;
+  const generic = (productId: string, statedRole: 'ingredient' | 'topping' | null = null) => ({
+    ...want(productId, statedRole),
+    conceptKey: 'strawberry',
+  });
+  const puree = candidate('p', 'official', 'sorbet', [ing('STRAW-PUREE'), ing('SUGAR')]);
+
+  it('offers a recipe whose line is another product of the same concept', () => {
+    expect(candidateMatches(puree, [generic('STRAW-FRESH')], conceptMatcher)).toBe(true);
+    const [match] = matchRecipes([puree], {
+      requested: [generic('STRAW-FRESH')],
+      profile: null,
+      conceptMatcher,
+    });
+    // The concept line is what the customer asked for, not an extra.
+    expect(match?.alsoIncludes).toEqual(['SUGAR']);
+  });
+
+  it('keeps an EXACT product (scan, choice, brand) on identity, even with the matcher present', () => {
+    expect(candidateMatches(puree, [want('STRAW-FRESH')], conceptMatcher)).toBe(false);
+  });
+
+  it('matches nothing by concept without the central membership', () => {
+    expect(candidateMatches(puree, [generic('STRAW-FRESH')])).toBe(false);
+  });
+
+  it('never matches by a line NAME: an unlinked product called „Puree truskawkowe” stays outside', () => {
+    const named = candidate('n', 'official', 'sorbet', [
+      { productId: 'UNLINKED', role: 'ingredient', displayName: 'Puree truskawkowe' },
+    ]);
+    expect(candidateMatches(named, [generic('STRAW-FRESH')], conceptMatcher)).toBe(false);
+  });
+
+  it('names the form the recipe actually uses, instead of calling it an extra flavour', () => {
+    const [match] = matchRecipes([puree], {
+      requested: [generic('STRAW-FRESH')],
+      profile: null,
+      conceptMatcher,
+    });
+    expect(match?.usedForms).toEqual(['STRAW-PUREE']);
+    // An exact request that the recipe carries itself uses no other form.
+    const [exact] = matchRecipes([puree], {
+      requested: [{ ...want('STRAW-PUREE'), conceptKey: 'strawberry' }],
+      profile: null,
+      conceptMatcher,
+    });
+    expect(exact?.usedForms).toEqual([]);
+  });
+
+  it('still honours a stated role (§33)', () => {
+    expect(candidateMatches(puree, [generic('STRAW-FRESH', 'topping')], conceptMatcher)).toBe(
+      false,
+    );
   });
 });

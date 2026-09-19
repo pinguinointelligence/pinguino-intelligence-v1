@@ -96,6 +96,11 @@ interface MachineOnboardingProps {
   submitLabel?: string;
   /** Recipe selectors may enter directly through the existing custom-machine path. */
   startWithCustom?: boolean;
+  /**
+   * Produkcja v3 §1.5: while a picked machine waits on „Dopasuj ilość” (chosen, not yet
+   * saved), the step's own submit is handed upward; null when nothing is pending.
+   */
+  onPendingSaveChange?: (submit: (() => boolean) | null) => void;
 }
 
 /** Reverse of the §8.3 mapping — only for the three custom-supported technologies. */
@@ -129,6 +134,7 @@ export function MachineOnboarding({
   catalog = MACHINE_CATALOG,
   submitLabel = copy.settings.saveAndContinue,
   startWithCustom = false,
+  onPendingSaveChange,
 }: MachineOnboardingProps) {
   const [screen, setScreen] = useState<Screen>(() => {
     if (editCustomProfile !== null) {
@@ -239,6 +245,7 @@ export function MachineOnboarding({
         submitLabel={submitLabel}
         customBatchRequired={screen.isCustom}
         onSubmit={(grams) => finishAdjust(screen.profile, screen.record, grams)}
+        {...(onPendingSaveChange ? { onRegisterSubmit: onPendingSaveChange } : {})}
       />
     );
   }

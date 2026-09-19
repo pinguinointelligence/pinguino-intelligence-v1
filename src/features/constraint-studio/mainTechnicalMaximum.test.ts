@@ -287,14 +287,14 @@ describe(
       });
       expect(bound).toMatchObject({
         status: 'certified',
-        wholeGramUpperBound: 639,
+        wholeGramUpperBound: 646,
         integerSolutionCertified: true,
       });
       expect(bound.integerSearchNodes).toBeGreaterThan(0);
       expect(bound.integerSearchNodes).toBeLessThanOrEqual(MAIN_TECHNICAL_INTEGER_NODE_BUDGET);
       expect(bound.certificate).not.toContain('alcohol_min');
       expect(bound.certificate.some((rule) => /_(?:min|max)$/.test(rule))).toBe(true);
-      expect(bound.continuousUpperBoundGrams).toBeGreaterThan(639);
+      expect(bound.continuousUpperBoundGrams).toBeGreaterThan(646);
       const certifiedInput: RecipeInput = {
         ...input,
         items: input.items.map((item, index) => ({
@@ -331,15 +331,13 @@ describe(
           'exact_batch',
           'exact_lock:tara',
           'pod_max',
-          'npac_min',
-          'lactose_min',
           'fat_min',
           'total_solids_min',
         ]);
         return watermelon.planned_grams;
       });
       expect(new Set(outcomes).size).toBe(1);
-      expect(outcomes[0]).toBe(639);
+      expect(outcomes[0]).toBe(646);
       expect(outcomes[0]).toBeGreaterThan(0);
     });
 
@@ -365,11 +363,12 @@ describe(
         };
       });
       expect(new Set(proofs.map((proof) => proof.grams)).size).toBe(1);
-      expect(proofs[0]!.grams).toBe(706);
+      expect(proofs[0]!.grams).toBe(713);
       expect(proofs[0]!.rules).toEqual([
         'integer_linear_relaxation',
         'exact_batch',
         'exact_lock:tara',
+        'npac_min',
         'lactose_min',
         'fat_min',
         'total_solids_min',
@@ -386,20 +385,20 @@ describe(
       expect(result.ok, JSON.stringify(result)).toBe(true);
       if (!result.ok) throw new Error(JSON.stringify(result));
       const kiwi = result.preview.proposedInput.items.find((item) => item.id === 'single-main')!;
-      expect(kiwi.planned_grams).toBe(706);
+      expect(kiwi.planned_grams).toBe(713);
       expect(
         result.preview.proposedInput.items.reduce((sum, item) => sum + item.planned_grams, 0),
       ).toBe(1000);
       expect(result.preview.mainObjective).toMatchObject({
         status: 'maximized',
-        executableMainGrams: 706,
-        firstHigherRejectedGrams: 707,
+        executableMainGrams: 713,
+        firstHigherRejectedGrams: 714,
         provenMaximum: true,
       });
       expect(result.preview.mainObjective).toMatchObject({
         attempts: 1,
-        searchUpperBoundGrams: 706,
-        certifiedUpperBoundGrams: 706,
+        searchUpperBoundGrams: 713,
+        certifiedUpperBoundGrams: 713,
         proofKind: 'linear_relaxation',
       });
       expect(result.preview.mainObjective?.attempts).toBeLessThanOrEqual(
@@ -417,7 +416,7 @@ describe(
     // GEL-P0-027: Crown is an explicit MAX objective, so BOTH strategies search
     // to the approved hard safety limit. `optimalCeilingPercent` is the OPTIMAL
     // preference target and no longer caps a maximisation, so OPTIMAL now
-    // reaches the same 370 g as ECO and is limited by the same real technical
+    // reaches the same 377 g as ECO and is limited by the same real technical
     // rule (the approved liquid dairy carrier minimum), not by `main_policy_ceiling`.
     it('caps normal Preview at the approved HARD limit in both strategies', () => {
       const evaluate = (strategy: 'eco' | 'optimal') => {
@@ -442,13 +441,13 @@ describe(
       const optimal = evaluate('optimal');
       const eco = evaluate('eco');
       expect(optimal.mainObjective).toMatchObject({
-        executableMainGrams: 370,
-        certifiedUpperBoundGrams: 370,
+        executableMainGrams: 377,
+        certifiedUpperBoundGrams: 378,
         provenMaximum: true,
       });
       expect(eco.mainObjective).toMatchObject({
-        executableMainGrams: 370,
-        certifiedUpperBoundGrams: 370,
+        executableMainGrams: 377,
+        certifiedUpperBoundGrams: 378,
         provenMaximum: true,
       });
       // The preference target is no longer a limiting rule; the real technical
@@ -805,7 +804,7 @@ describe(
         },
       });
       if (result.code === 'impossible_under_constraints') {
-        expect(result.nearestFeasibleGrams).toBe(639);
+        expect(result.nearestFeasibleGrams).toBe(646);
         expect(
           [...result.hardViolatedMetrics, ...result.residualViolatedMetrics].length,
         ).toBeGreaterThan(0);
@@ -928,10 +927,10 @@ describe(
       const increased = build(watermelonFixture(80, 'optimal'));
       const reduced = build(watermelonFixture(900, 'optimal'));
       expect(mainObjectiveSummaryPl(increased)).toBe(
-        'Maksymalizacja składnika głównego: Gellatti zmienia grupę główną z 80 g na 639 g i ponownie bilansuje całą recepturę.',
+        'Maksymalizacja składnika głównego: Gellatti zmienia grupę główną z 80 g na 646 g i ponownie bilansuje całą recepturę.',
       );
       expect(mainObjectiveSummaryPl(reduced)).toBe(
-        'Automatyczna korekta składnika głównego: Gellatti zmienia grupę główną z 900 g na 639 g, czyli najwyższą wykonalną ilość, i ponownie bilansuje całą recepturę.',
+        'Automatyczna korekta składnika głównego: Gellatti zmienia grupę główną z 900 g na 646 g, czyli najwyższą wykonalną ilość, i ponownie bilansuje całą recepturę.',
       );
       expect(`${mainObjectiveSummaryPl(increased)} ${mainObjectiveSummaryPl(reduced)}`).not.toMatch(
         /flavour|limit procent/i,
@@ -944,10 +943,10 @@ describe(
         provenMaximum: false,
         executableMainGrams: 600,
         exactAcceptedMainGrams: 600,
-        certifiedUpperBoundGrams: 639,
+        certifiedUpperBoundGrams: 646,
       };
       expect(mainObjectiveSummaryPl(boundedBest)).toBe(
-        'Najlepszy osiągalny wynik: Gellatti zmienia grupę główną z 80 g na 600 g i ponownie bilansuje całą recepturę. To nie jest udowodnione maksimum. Certyfikowana górna granica: 639 g.',
+        'Najlepszy osiągalny wynik: Gellatti zmienia grupę główną z 80 g na 600 g i ponownie bilansuje całą recepturę. To nie jest udowodnione maksimum. Certyfikowana górna granica: 646 g.',
       );
     });
 
@@ -994,11 +993,11 @@ describe(
     });
 
     it('requires the rebuilt maximum proof even when Main already starts at X', () => {
-      const input = watermelonFixture(639, 'optimal');
+      const input = watermelonFixture(646, 'optimal');
       const preview = build(input);
       expect(preview.mainObjective).toMatchObject({
         status: 'maximized',
-        executableMainGrams: 639,
+        executableMainGrams: 646,
         provenMaximum: true,
       });
       const forged = structuredClone(preview);
@@ -1207,12 +1206,12 @@ describe('Multi-Main ratio contract', { timeout: SOLVER_PROOF_TIMEOUT_MS }, () =
     const thirds = build(fixture([10, 100, 300], [IDS.strawberry, IDS.banana, IDS.kiwi]));
     const grams = mainLines(thirds.proposedInput).map((item) => item.planned_grams);
     expect(Math.max(...grams) - Math.min(...grams)).toBeLessThanOrEqual(1);
-    expect(grams).toEqual([237, 236, 236]);
+    expect(grams).toEqual([239, 239, 238]);
     expect(thirds.mainObjective).toMatchObject({
       status: 'maximized',
-      executableMainGrams: 709,
-      certifiedUpperBoundGrams: 709,
-      firstHigherRejectedGrams: 710,
+      executableMainGrams: 716,
+      certifiedUpperBoundGrams: 716,
+      firstHigherRejectedGrams: 717,
       provenMaximum: true,
     });
   });
@@ -1224,16 +1223,16 @@ describe('Multi-Main ratio contract', { timeout: SOLVER_PROOF_TIMEOUT_MS }, () =
       200,
     );
     expect(preview.proposedInput.items.find((item) => item.id === 'main-1')!.planned_grams).toBe(
-      541,
+      549,
     );
     expect(preview.mainObjective).toMatchObject({
       status: 'maximized',
-      executableMainGrams: 741,
-      certifiedUpperBoundGrams: 741,
+      executableMainGrams: 749,
+      certifiedUpperBoundGrams: 749,
       provenMaximum: true,
     });
     expect(mainObjectiveSummaryPl(preview)).toContain('Blokada Main zmienia proporcję grupy:');
-    expect(mainObjectiveSummaryPl(preview)).toContain('200 g / 541 g');
+    expect(mainObjectiveSummaryPl(preview)).toContain('200 g / 549 g');
     expect(mainObjectiveSummaryPl(preview)).toContain('proporcji 1:1');
   });
 

@@ -3,6 +3,7 @@
 @import './theme-pro-dark.css';
 @import './theme-pro-light.css';
 @import './gellatti-v2-1.css';
+@import './home-composer.css';
 
 @layer base {
   html {
@@ -128,14 +129,14 @@
   0%,
   100% {
     box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--color-attention) 18%, transparent),
-      0 2px 8px color-mix(in srgb, var(--color-attention) 10%, transparent);
+      0 0 0 1px color-mix(in srgb, var(--g-attention-line) 18%, transparent),
+      0 2px 8px color-mix(in srgb, var(--g-attention-line) 10%, transparent);
   }
 
   50% {
     box-shadow:
-      0 0 0 2px color-mix(in srgb, var(--color-attention) 34%, transparent),
-      0 4px 14px color-mix(in srgb, var(--color-attention) 18%, transparent);
+      0 0 0 2px color-mix(in srgb, var(--g-attention-line) 34%, transparent),
+      0 4px 14px color-mix(in srgb, var(--g-attention-line) 18%, transparent);
   }
 }
 
@@ -144,12 +145,12 @@
 }
 
 .production-line-active {
-  background-color: color-mix(in srgb, var(--color-attention) 5%, white);
-  box-shadow: inset 2px 0 0 var(--color-attention);
+  background-color: color-mix(in srgb, var(--g-attention-line) 5%, white);
+  box-shadow: inset 2px 0 0 var(--g-attention-line);
 }
 
 .production-line-active:focus-within {
-  background-color: color-mix(in srgb, var(--color-attention) 8%, white);
+  background-color: color-mix(in srgb, var(--g-attention-line) 8%, white);
 }
 
 .ingredient-control-soft-danger {
@@ -174,7 +175,7 @@
   }
 
   .gellatti-next-action-attention {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-attention) 28%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--g-attention-line) 28%, transparent);
   }
 }
 
@@ -218,5 +219,5 @@
 }
 
 .gellatti-destination [role='tab'][aria-selected='true'] {
-  border-bottom-color: #ef8708 !important;
+  border-bottom-color: var(--g-orange) !important;
 }

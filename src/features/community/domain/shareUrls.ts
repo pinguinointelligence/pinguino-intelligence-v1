@@ -16,7 +16,7 @@ export const creatorPath = (handle: string): string => `/@${handle}`;
 export const sharePath = (token: string): string => `/share/${token}`;
 
 /**
- * Reopening a share from „Udostępnione mi": /received/<share_link_id>.
+ * Reopening a share from „Udostępnione": /received/<share_link_id>.
  * A share id is NOT a credential — this route is gated by the recipient row
  * the first token open created, not by the id being hard to guess.
  */

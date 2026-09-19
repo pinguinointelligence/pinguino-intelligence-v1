@@ -17,6 +17,7 @@ import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { CONFIG_VERSION, ENGINE_VERSION, type RecipeInput } from '@/engine';
 import { buildRecipeInput } from '@/features/studio/buildRecipeInput';
+import { withSavedPriorityMode } from '@/features/recipe-priority';
 import { recipeCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
@@ -49,6 +50,39 @@ import { validateRecipeBehaviorOnServer } from '@/services/productIntelligence';
 import { productionVersionFingerprint } from '@/features/production-workspace/productionReadinessState';
 import { SAVE_BLOCKER_MESSAGE_PL, type PracticalBlock } from '@/features/recipes/saveBlocker';
 import { attachRecipeLabelDraft } from '@/features/master-label/labelDraftPersistence';
+import { recordDerivation } from '@/services/community';
+import {
+  attachRecipeProvenance,
+  readRecipeProvenance,
+  type RecipeProvenance,
+} from './recipeProvenance';
+
+const LINEAGE_NOT_RECORDED =
+  'Receptura została zapisana, ale nie udało się zachować informacji o źródle. ' +
+  'Sama receptura jest bezpieczna.';
+
+/**
+ * A Community working copy becomes the customer's recipe at its FIRST save, and the lineage row
+ * is stamped then (`gellatti_record_derivation_v1`, idempotent per derived recipe). A failed
+ * stamp never costs the customer the saved recipe — it is reported, not rolled back.
+ */
+async function stampCommunityLineage(
+  recipeId: string,
+  provenance: RecipeProvenance | null,
+): Promise<boolean> {
+  if (provenance?.kind !== 'community') return true;
+  try {
+    await recordDerivation({
+      derivedRecipeId: recipeId,
+      relation: provenance.relation,
+      publicationId: provenance.publicationId,
+      shareLinkId: provenance.shareLinkId,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const TRACE = {
   engineVersion: ENGINE_VERSION,
@@ -98,9 +132,14 @@ const buildRecipeInputFromStore = (): RecipeInput => {
     ),
   );
   const withLabelDraft = attachRecipeLabelDraft(withProfile, state.labelDraft);
-  return practicalRecipeAuditMatchesInput(input, state.practicalRecipeAudit)
-    ? attachSavedPracticalRecipeAudit(withLabelDraft, state.practicalRecipeAudit!)
-    : withLabelDraft;
+  // The working copy's origin (official Gellatti / Community) travels with every version.
+  const withProvenance = attachRecipeProvenance(withLabelDraft, state.provenance);
+  const saved = practicalRecipeAuditMatchesInput(input, state.practicalRecipeAudit)
+    ? attachSavedPracticalRecipeAudit(withProvenance, state.practicalRecipeAudit!)
+    : withProvenance;
+  // PACKAGE 2A: a draft still in HOME's AUTO carries that mode into the saved
+  // recipe, so it reopens AUTO; a MANUAL draft carries no marker at all.
+  return withSavedPriorityMode(saved, state.priority_mode);
 };
 
 export type SaveBlockedReason = 'signin' | 'unavailable' | 'plan' | null;
@@ -401,6 +440,7 @@ export function useCanonicalRecipeSave(
             : null;
         await validateCurrentBehavior(recipeInput, productComposition);
         traceOwnerSave('create:behavior-validated', { ready: true });
+        const provenance = readRecipeProvenance(recipeInput);
         const { recipe, version } = await repository!.createRecipe({
           ownerUserId: ownerId,
           title: title.trim(),
@@ -408,7 +448,8 @@ export function useCanonicalRecipeSave(
           recipeInput,
           productComposition,
           trace: TRACE,
-          source: 'manual',
+          // A copy of an official or Community recipe is honestly labelled as imported.
+          source: provenance ? 'imported' : 'manual',
           by: ownerId,
           capabilities: caps,
         });
@@ -429,6 +470,9 @@ export function useCanonicalRecipeSave(
               ? productionVersionFingerprint(recipeInput, productComposition)
               : null,
           );
+        }
+        if (!(await stampCommunityLineage(recipe.recipeId, provenance))) {
+          setError(LINEAGE_NOT_RECORDED);
         }
         return recipe.recipeId;
       }, true),

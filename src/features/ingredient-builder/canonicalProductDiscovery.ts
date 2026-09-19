@@ -5,6 +5,7 @@ import {
   type CanonicalSearchConcept,
 } from './ingredientSearch';
 import { ingredientCategorySymbolFor } from './ingredientCategorySymbols';
+import type { ProductSemanticBinding } from '@/features/product-intelligence/productSemanticBinding';
 
 export const PRODUCT_DISCOVERY_TOP_FILTERS = [
   'favorites',
@@ -37,6 +38,7 @@ export interface ProductDiscoveryMetadata {
   productForm?: string | null;
   aliases?: readonly string[];
   favorite?: boolean;
+  semanticBinding?: ProductSemanticBinding;
 }
 
 const normalizedProductText = (hit: ProductDiscoveryMetadata): string =>
@@ -57,6 +59,32 @@ const categoryKey = (hit: ProductDiscoveryMetadata): string =>
   normalizeSearchText(hit.category ?? '').replaceAll(' ', '_');
 
 function technologicalFamilyFor(hit: ProductDiscoveryMetadata): TechnologicalFamily {
+  if (hit.semanticBinding) {
+    if (hit.semanticBinding.state !== 'RESOLVED') return null;
+    const semanticKeys = [
+      hit.semanticBinding.classification.family,
+      hit.semanticBinding.classification.flavorDomain,
+      hit.semanticBinding.behavior.familyId,
+      hit.semanticBinding.behavior.subfamilyId,
+      hit.semanticBinding.behavior.formId,
+      ...hit.semanticBinding.classification.compatibleMapperCategories,
+      ...hit.semanticBinding.searchAuthority.concepts.map((concept) => concept.key),
+    ]
+      .filter((value): value is string => Boolean(value))
+      .map((value) => normalizeSearchText(value).replaceAll(' ', '_'));
+    const has = (...values: string[]) =>
+      semanticKeys.some((key) => values.some((value) => key === value || key.includes(value)));
+    if (has('inulin')) return 'inulin';
+    if (has('stabilizer')) return 'stabilizer';
+    if (has('sweetener', 'sugar', 'sucrose', 'dextrose', 'fructose', 'glucose')) return 'sugar';
+    if (has('cream')) return 'cream';
+    if (has('milk')) return 'milk';
+    if (has('dairy')) return 'dairy';
+    if (has('fruit')) return 'fruit';
+    if (has('nut', 'hazelnut', 'pistachio', 'almond')) return 'nuts';
+    if (has('chocolate', 'cocoa')) return 'chocolate';
+    return null;
+  }
   const category = categoryKey(hit);
   const form = normalizeSearchText(hit.productForm ?? '');
   const family = normalizeSearchText(hit.canonicalFamily ?? '');
@@ -232,6 +260,60 @@ export interface CanonicalProductDiscoveryItem {
   variantPercent: number | null;
 }
 
+function exactIdentityDetails(hit: CatalogProductSearchHit): {
+  variant: string | null;
+  pack: string | null;
+} {
+  const persisted = hit.semanticBinding?.exactIdentity;
+  const identity =
+    hit.publicData.identity &&
+    typeof hit.publicData.identity === 'object' &&
+    !Array.isArray(hit.publicData.identity)
+      ? (hit.publicData.identity as Record<string, unknown>)
+      : {};
+  const packageValue =
+    hit.publicData.package &&
+    typeof hit.publicData.package === 'object' &&
+    !Array.isArray(hit.publicData.package)
+      ? (hit.publicData.package as Record<string, unknown>)
+      : {};
+  const numericPack =
+    typeof packageValue.netQuantity === 'number' && typeof packageValue.unit === 'string'
+      ? `${packageValue.netQuantity} ${packageValue.unit}`
+      : null;
+  return {
+    variant: persisted?.variant ?? (typeof identity.variant === 'string' ? identity.variant : null),
+    pack:
+      persisted?.pack ??
+      (typeof packageValue.netQuantityText === 'string'
+        ? packageValue.netQuantityText
+        : numericPack),
+  };
+}
+
+function exactProductSecondaryText(
+  hit: CatalogProductSearchHit,
+  productFact: string | null = null,
+): string | null {
+  const details = exactIdentityDetails(hit);
+  const normalizedName = normalizeSearchText(hit.displayName);
+  const variant =
+    details.variant && !normalizedName.includes(normalizeSearchText(details.variant))
+      ? details.variant
+      : null;
+  return [hit.brand, variant, details.pack, productFact].filter(Boolean).join(' · ') || null;
+}
+
+function resolvedExactProductSecondaryText(hit: CatalogProductSearchHit): string {
+  const details = exactIdentityDetails(hit);
+  const normalizedName = normalizeSearchText(hit.displayName);
+  const variant =
+    details.variant && !normalizedName.includes(normalizeSearchText(details.variant))
+      ? details.variant
+      : null;
+  return [hit.brand, hit.displayName, variant, details.pack].filter(Boolean).join(' · ');
+}
+
 const exactProductProjection = (hit: CatalogProductSearchHit): CanonicalProductDiscoveryItem => {
   const family = technologicalFamilyFor(hit);
   const productOwnedFat =
@@ -246,7 +328,7 @@ const exactProductProjection = (hit: CatalogProductSearchHit): CanonicalProductD
     hit,
     slotKey: `${hit.entityKind}:${hit.id}`,
     primaryName: hit.displayName,
-    secondaryText: [hit.brand, productFact].filter(Boolean).join(' · ') || null,
+    secondaryText: exactProductSecondaryText(hit, productFact),
     family,
     variantPercent: technologicalPercent(hit),
   };
@@ -295,11 +377,9 @@ export function projectCatalogHitsForDiscovery(input: {
           slotKey,
           primaryName: canonicalPrimaryName(chosen.hit, chosen.family, percent),
           secondaryText: resolvedExact
-            ? resolvedExact.brand
-              ? `${resolvedExact.brand} · ${resolvedExact.displayName}`
-              : resolvedExact.displayName
+            ? resolvedExactProductSecondaryText(resolvedExact)
             : chosen.hit.entityKind === 'commercial_product'
-              ? chosen.hit.brand
+              ? exactProductSecondaryText(chosen.hit)
               : null,
           family: chosen.family,
           variantPercent: percent,

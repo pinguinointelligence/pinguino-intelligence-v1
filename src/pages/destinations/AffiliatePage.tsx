@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { DestinationTop } from '@/components/shared/destinationEditorial';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { cn } from '@/lib/cn';
 import { affiliateCopy, fillTemplate } from '@/copy/affiliate';
@@ -58,68 +60,49 @@ function SectionHead({ eyebrow, title, body }: { eyebrow: string; title: string;
   );
 }
 
-/* ── 1. HERO — the only full black anchor on the page ─────────────────────── */
+/* ── 1. HERO — THE shared destination top ─────────────────────────────────── */
 
+/**
+ * Sklep, Affiliate and Franchise share ONE top (owner, 2026-09-18), so this page
+ * no longer carries a hero of its own: same body, same radius, same 6 px
+ * Gellatti bar down the left edge, same way the photograph meets the ground.
+ *
+ * What it brings to that component is its own: the owner's photograph, the two
+ * calls to action and the honest note under them. Both CTAs, both targets and
+ * the copy behind them are unchanged.
+ */
 function Hero() {
   return (
-    <section className="overflow-hidden rounded-[20px] bg-[var(--g-ink)] text-white sm:rounded-[24px]">
-      <div className="grid lg:grid-cols-2">
-        <div className="px-7 py-9 sm:px-10 sm:py-12 lg:px-12 lg:py-14">
-          <span className="text-[10px] leading-[1.25] font-bold tracking-[0.08em] text-[#a9a49b] uppercase">
-            {c.hero.eyebrow}
-          </span>
-          <h1 className="mt-3.5 text-[34px] leading-[1.06] font-bold tracking-[-0.035em] text-balance sm:text-[46px] lg:text-[52px]">
-            {c.hero.titleLine1}
-            <br />
-            {c.hero.titleLine2}
-          </h1>
-          <p className="mt-4 max-w-[46ch] text-[14.5px] leading-relaxed text-[#c9c5bd]">
-            {c.hero.lede}
-          </p>
-          <div className="mt-7 flex flex-wrap items-center gap-2.5">
-            {/* GELLATTI V2.1 §5: on a graphite/ink surface `primary` is bg-ink —
-                near-black on near-black. The authority's CTA here is the orange
-                fill, which is also the page's one action colour. */}
-            <a href="#affiliate-application" className={buttonClasses('orange', 'md')}>
-              {c.cta.signedOut}
-            </a>
-            <a
-              href="#affiliate-how"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-white/35 px-6 text-[14px] font-semibold text-white transition-colors hover:border-white/60"
-            >
-              {c.cta.secondary}
-            </a>
-          </div>
-          <p className="mt-7 border-t border-white/12 pt-5 text-[12px] leading-[1.5] text-[#9d988f]">
-            {c.hero.note}
-          </p>
-        </div>
-
-        {/* The photograph IS the right half — clipped by the hero's own radius,
-            no card, no border, no overlay across the image itself.
-            THE SEAM: the panel is --g-ink and the photograph's own black is
-            #0b0c0d, so where they met there was a visible line. The image is
-            not darkened; only its leading edge is faded into the panel colour,
-            and the edge that needs fading changes with the layout — the photo
-            sits BELOW the copy when stacked and BESIDE it from lg up. */}
-        <div className="relative min-h-[280px] bg-[var(--g-ink)] sm:min-h-[360px] lg:min-h-[520px]">
-          <img
-            src="/images/affiliate/hero.jpg"
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover object-center"
-          />
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 top-0 h-[76px] bg-gradient-to-b from-[var(--g-ink)] to-transparent lg:hidden"
-          />
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 left-0 hidden w-[96px] bg-gradient-to-r from-[var(--g-ink)] to-transparent lg:block"
-          />
-        </div>
-      </div>
-    </section>
+    <DestinationTop
+      eyebrow={c.hero.eyebrow}
+      title={`${c.hero.titleLine1} ${c.hero.titleLine2}`}
+      lede={c.hero.lede}
+      note={c.hero.note}
+      visual={
+        <img
+          src="/images/affiliate/hero.jpg"
+          alt=""
+          aria-hidden="true"
+          className="h-full w-full object-cover object-center"
+        />
+      }
+      actions={
+        <>
+          {/* GELLATTI V2.1 §5: on a graphite surface `primary` is bg-ink —
+              near-black on near-black. The authority's CTA here is the orange
+              fill, which is also the page's one action colour. */}
+          <a href="#affiliate-application" className={buttonClasses('orange', 'md')}>
+            {c.cta.signedOut}
+          </a>
+          <a
+            href="#affiliate-how"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/35 px-6 text-[14px] font-semibold text-white transition-colors hover:border-white/60"
+          >
+            {c.cta.secondary}
+          </a>
+        </>
+      }
+    />
   );
 }
 
@@ -128,7 +111,11 @@ function Hero() {
 function RecurringFlow() {
   return (
     <section id="affiliate-how" className="mt-[58px] scroll-mt-[110px]">
-      <SectionHead eyebrow={c.recurring.eyebrow} title={c.recurring.title} body={c.recurring.body} />
+      <SectionHead
+        eyebrow={c.recurring.eyebrow}
+        title={c.recurring.title}
+        body={c.recurring.body}
+      />
 
       <ol className="mt-7 flex flex-col gap-6 sm:flex-row sm:gap-0">
         {c.recurring.steps.map((step, index) => {
@@ -140,7 +127,7 @@ function RecurringFlow() {
                   className={cn(
                     'block h-[11px] w-[11px] rounded-full border',
                     last
-                      ? 'border-[var(--g-orange)] bg-[var(--g-orange)] shadow-[0_0_0_5px_rgba(245,138,7,0.14)]'
+                      ? 'border-[var(--g-orange)] bg-[var(--g-orange)] shadow-[0_0_0_5px_color-mix(in_srgb,var(--g-orange)_14%,transparent)]'
                       : 'border-[var(--g-line)] bg-[var(--g-line-strong,#cfcac1)]',
                   )}
                 />
@@ -222,7 +209,7 @@ function TierCard({ tier }: { tier: PublicAffiliateTier }) {
     <article
       className={cn(
         'flex flex-col rounded-[16px] border bg-white px-6 py-7 sm:px-7',
-        gold ? 'border-[rgba(245,138,7,0.4)]' : 'border-[var(--g-line-quiet,#e6e2db)]',
+        gold ? 'border-[var(--g-orange)]/40' : 'border-[var(--g-line-quiet,#e6e2db)]',
       )}
     >
       <span className={EYEBROW}>{gold ? c.rates.goldName : c.rates.standardName}</span>
@@ -235,7 +222,7 @@ function TierCard({ tier }: { tier: PublicAffiliateTier }) {
           : c.rates.standardBlurb}
       </p>
       {gold ? (
-        <span className="mt-3 self-start rounded-full border border-[rgba(245,138,7,0.34)] bg-[rgba(245,138,7,0.1)] px-3 py-1.5 text-[11.5px] font-semibold text-[#8a5300]">
+        <span className="mt-3 self-start rounded-full border border-[var(--g-orange)]/34 bg-[var(--g-orange)]/10 px-3 py-1.5 text-[11.5px] font-semibold text-[var(--g-orange-ink)]">
           {fillTemplate(c.rates.goldBadgeTemplate, { threshold: PUBLIC_GOLD_THRESHOLD })}
         </span>
       ) : null}
@@ -361,7 +348,7 @@ function CountField({
       <span className="block text-[11.5px] font-semibold tracking-[0.05em] text-[var(--g-text-muted)] uppercase">
         {label}
       </span>
-      <div className="mt-2 flex h-[46px] items-center justify-between gap-1 rounded-full border border-[var(--g-line)] bg-white pr-1.5 pl-2 focus-within:border-[var(--g-orange)]">
+      <div className="mt-2 flex h-[46px] items-center justify-between gap-1 rounded-full border border-[var(--g-line)] bg-white pr-1.5 pl-2 focus-within:border-[var(--g-orange-line)]">
         <button
           type="button"
           onClick={() => step(-1)}
@@ -568,11 +555,12 @@ function Calculator() {
 /* ── 5. AUDIENCE · 6. THREE STEPS · 7. CTA ───────────────────────────────── */
 
 /* Card order matches the copy order, so the image belongs to the group rather
-   than to an index that could silently drift. */
+   than to an index that could silently drift. The order itself is the owner's
+   (2026-09-18): creators, then communities and media, then professionals. */
 const AUDIENCE_IMAGES: readonly string[] = [
   '/images/affiliate/creators.jpg',
-  '/images/affiliate/professionals.jpg',
   '/images/affiliate/communities.jpg',
+  '/images/affiliate/professionals.jpg',
 ];
 
 function Audience() {
@@ -655,6 +643,33 @@ function ApplyBand() {
             {c.apply.signInCta}
           </a>
         </div>
+      </div>
+
+      {/* The bridge to the OTHER programme (B-LAND-07's live remnant).
+          Affiliate pays money; "Poleć Gellatti" pays PRO days. A visitor who is
+          not a creator reached the end of this page and had nowhere to go — the
+          programme that actually fits them was unreachable from here.
+
+          Deliberately quiet and BELOW the application: it must not compete with
+          the CTA above it, and the two programmes must never read as one. */}
+      <div
+        className="mt-4 flex flex-col gap-3 rounded-[20px] border border-[var(--g-line)] px-7 py-6 sm:px-10 lg:flex-row lg:items-center lg:gap-8"
+        data-testid="affiliate-referral-bridge"
+      >
+        <div>
+          <h3 className="text-[16px] leading-[1.25] font-bold tracking-[-0.02em] text-[var(--g-ink)]">
+            {c.referralBridge.title}
+          </h3>
+          <p className="mt-1.5 max-w-[58ch] text-[13.5px] leading-relaxed text-[var(--g-text-secondary)]">
+            {c.referralBridge.body}
+          </p>
+        </div>
+        <Link
+          to="/account?section=referral"
+          className={cn(buttonClasses('ghost', 'sm'), 'flex-none lg:ml-auto')}
+        >
+          {c.referralBridge.cta}
+        </Link>
       </div>
     </section>
   );

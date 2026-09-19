@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { iconButtonClasses } from '@/components/ui/buttonStyles';
 import type { RecipeToppingItem } from '@/features/recipe-composition/recipeCompositionPersistence';
@@ -22,6 +22,8 @@ import type {
   ProductBehaviorContext,
   ProductBehaviorSnapshot,
 } from '@/features/product-intelligence';
+import { canonicalReplaceContext } from './canonicalProductDiscovery';
+import { createReplacementSearchLineContext } from './replacementSearchContext';
 
 export function ToppingRow({
   item,
@@ -36,6 +38,7 @@ export function ToppingRow({
   onDragStart,
   onDrop,
   behaviorContext,
+  behaviorSnapshot,
   compact = false,
 }: {
   item: RecipeToppingItem;
@@ -47,6 +50,7 @@ export function ToppingRow({
   onReplace: (ingredient: RecipeToppingIngredient, behavior?: ProductBehaviorSnapshot) => void;
   library: IngredientLibrary;
   behaviorContext: Omit<ProductBehaviorContext, 'processScope' | 'requestedRole' | 'module'>;
+  behaviorSnapshot?: ProductBehaviorSnapshot;
   onMove: (direction: -1 | 1) => void;
   onDragStart: () => void;
   onDrop: () => void;
@@ -54,7 +58,34 @@ export function ToppingRow({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  /** ONE way into the topping options: the ••• and, on a touch device, the whole row (A8). */
+  const openToppingMenu = () => setMenuOpen(true);
   const catalogLabel = isCatalogLabelToppingIngredient(item.ingredient) ? item.ingredient : null;
+  const replaceFilters = canonicalReplaceContext(
+    isCatalogLabelToppingIngredient(item.ingredient)
+      ? { displayName: item.ingredient.name, category: 'other', productForm: 'topping' }
+      : {
+          displayName: item.ingredient.name,
+          category: item.ingredient.category,
+          productForm: item.ingredient.source_subcategory,
+        },
+  );
+  const replacementContext = createReplacementSearchLineContext({
+    usageMode: 'PRO_REPLACE',
+    lineId: item.id,
+    ingredient: item.ingredient,
+    snapshot: behaviorSnapshot,
+    recipeProfile: behaviorContext.productProfile,
+    currentRole: 'TOPPING',
+    processScope: 'POST_PROCESS_ADDON',
+    temperatureC: behaviorContext.temperatureC,
+    formulationMode: behaviorContext.mode,
+    userFilters: replaceFilters,
+    plannedGrams: item.planned_grams,
+    actualGrams: item.actual_grams,
+    lockType: null,
+  });
   return (
     <div
       className="border-b border-ink/[0.075] px-[var(--pro-mobile-gutter)] py-1 transition-colors hover:bg-[var(--g-ivory)] lg:px-3 lg:py-1.5"
@@ -74,7 +105,7 @@ export function ToppingRow({
           onClick={() => setMobileSheetOpen(true)}
           data-testid={`topping-mobile-line-${item.id}`}
           aria-label={`${item.ingredient.name} — otwórz edycję toppingu`}
-          className="pro-focus-ring grid min-h-14 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-left transition-colors active:bg-[var(--g-ivory)]"
+          className="gellatti-touch-control pro-focus-ring grid min-h-14 w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-left transition-colors active:bg-[var(--g-ivory)]"
         >
           <span className="flex min-w-0 items-center gap-2">
             <span
@@ -103,8 +134,19 @@ export function ToppingRow({
         </button>
       </div>
 
-      <div className="hidden lg:block">
-        <div className={compact ? COMPACT_ROW_GRID : ROW_GRID}>
+      <div className="gellatti-row-touch-surface hidden lg:block">
+        {/* A8 — on a touch device the whole topping row opens its options, like
+            the recipe rows; a mouse never sees this surface and ••• stays the
+            keyboard path. */}
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={openToppingMenu}
+          className="gellatti-row-touch-target transition-colors active:bg-[var(--g-ivory)]"
+          data-testid={`topping-touch-target-${item.id}`}
+        />
+        <div className={cn('gellatti-row-touch-content', compact ? COMPACT_ROW_GRID : ROW_GRID)}>
           {/* Same six-track row as the base list (V2.1): the drag handle owns the
               leading track so toppings and ingredients share one column axis. */}
           <span
@@ -174,7 +216,8 @@ export function ToppingRow({
               aria-label={`Opcje toppingu ${item.ingredient.name}`}
               aria-haspopup="dialog"
               aria-expanded={menuOpen}
-              onClick={() => setMenuOpen(true)}
+              ref={menuTriggerRef}
+              onClick={openToppingMenu}
             >
               •••
             </button>
@@ -186,6 +229,7 @@ export function ToppingRow({
         <DialogShell
           label={`Opcje toppingu ${item.ingredient.name}`}
           testId={`topping-menu-${item.id}`}
+          returnFocus={() => menuTriggerRef.current}
           onClose={() => setMenuOpen(false)}
         >
           <div className="flex items-center justify-between gap-3">
@@ -221,13 +265,13 @@ export function ToppingRow({
                   <div className="flex items-start justify-between gap-3">
                     <dt className="text-stone-600">Skład z etykiety</dt>
                     <dd className="text-right font-medium text-ink">
-                      {catalogLabel.ingredients_text}
+                      {catalogLabel.ingredients_text || 'Brak danych — wymagane przed publikacją'}
                     </dd>
                   </div>
                   <div className="flex items-start justify-between gap-3">
                     <dt className="text-stone-600">Alergeny z etykiety</dt>
                     <dd className="text-right font-medium text-ink">
-                      {catalogLabel.allergens_text}
+                      {catalogLabel.allergens_text || 'Brak danych — wymagane przed publikacją'}
                     </dd>
                   </div>
                 </>
@@ -250,6 +294,7 @@ export function ToppingRow({
               library={library}
               scope="POST_PROCESS_ADDON"
               intent="REPLACE"
+              replacementContext={replacementContext}
               behaviorContext={behaviorContext}
               triggerLabel="Zamień topping"
               onAdd={(ingredient, behavior) => {

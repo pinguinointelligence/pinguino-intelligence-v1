@@ -19,6 +19,7 @@ import { mapDatasetCategory } from '@/data/ingredients/categoryMapping';
 import { conceptsFromName, rankCandidatesByName } from '@/data/products/productNameTiebreak';
 import { milkBandCandidateIds } from '@/data/products/productMilkFatBand';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
+import { isMapperHomeVerifiedStatus } from '@/data/ingredients/mapperVerificationStatus';
 import type { ProductRow } from '@/data/products/productRow';
 
 export type MapperStatus = 'unmatched' | 'matched' | 'ambiguous' | 'needs_review' | 'rejected';
@@ -153,8 +154,7 @@ const confidenceForLevel = (method: MatchMethod, matched: IngredientRow | null):
     case 'exact_ean':
       return 'exact';
     case 'exact_normalized_name':
-      // v1.0 vocabulary: the whole 'Verified*' status family counts as verified
-      return matched?.verification_status.startsWith('Verified') ? 'exact' : 'high';
+      return isMapperHomeVerifiedStatus(matched?.verification_status) ? 'exact' : 'high';
     case 'brand_name':
       return 'high';
     case 'category_composition_similarity':

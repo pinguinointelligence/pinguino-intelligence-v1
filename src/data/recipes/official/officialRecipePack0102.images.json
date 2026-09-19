@@ -1,0 +1,222 @@
+{
+  "schemaVersion": 1,
+  "sourcePackage": "GELLATTI_RECIPE_PACK_01_02",
+  "mappingRule": "NNN.png -> recipe #NNN / GEL-NNN (number is the only authority)",
+  "encoder": {
+    "tool": "cwebp",
+    "version": "1.6.0",
+    "quality": 80,
+    "method": 6,
+    "metadata": "none"
+  },
+  "images": [
+    {
+      "number": 39,
+      "photoId": "GEL-039",
+      "recipeId": "classic-crema-di-buontalenti",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/039.png",
+        "sha256": "370ab034b44fa175f4ca4ba4972e3f27a0ae152f5eded29a84bea9724fd8538f",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-039-480.webp",
+          "sha256": "9f61b6cd8fb5d2d429437731a5d536c15b199ab6657d86de7c75aae231907a1e",
+          "bytes": 38646
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-039-960.webp",
+          "sha256": "0d5917c05e5b13f96747696afe7b5ef55bc30012567d85201a0d80b0fb5f4a01",
+          "bytes": 100674
+        }
+      ]
+    },
+    {
+      "number": 178,
+      "photoId": "GEL-178",
+      "recipeId": "classic-plombir",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/178.png",
+        "sha256": "eddbb7ae95562df5aab52a2069920697d89cc3799f9db3d75580bd42bf25f699",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-178-480.webp",
+          "sha256": "72905fff498d45beac1ba2a39a30d93781ab92114648975e53727295ad8d32d4",
+          "bytes": 34090
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-178-960.webp",
+          "sha256": "feed6833894a53a526a651e8a08ff5d7ab7b96f55c71f07d70306e62962acef4",
+          "bytes": 88952
+        }
+      ]
+    },
+    {
+      "number": 179,
+      "photoId": "GEL-179",
+      "recipeId": "classic-porter-ice-cream",
+      "collection": "cocktails_spirits",
+      "source": {
+        "file": "Cocktails & Spirits/179.png",
+        "sha256": "370d0367786292924071ebd879cf9a3bd92b3d7e6622326fb35d3765a846d2e8",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-179-480.webp",
+          "sha256": "cc52f751a1217cce9509ade3e13577fac468bd09036a2792b331682335bfaf18",
+          "bytes": 57060
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-179-960.webp",
+          "sha256": "52d93b3d63e6e217aab9922c6e44bd0c5fcb52b6104ed197fc80e999728d3a82",
+          "bytes": 154780
+        }
+      ]
+    },
+    {
+      "number": 181,
+      "photoId": "GEL-181",
+      "recipeId": "classic-spaghettieis",
+      "collection": "classics",
+      "source": {
+        "file": "Classics/181.png",
+        "sha256": "e75bc26b843035f344bf3579bed0dbe8e1858dfd753b79cd967a2aaaaf3e212f",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-181-480.webp",
+          "sha256": "173d95a5d8a1b738ec187d0fc0e278b022b75d063677e7b3c59d0927ff26e15f",
+          "bytes": 49170
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-181-960.webp",
+          "sha256": "ae6a6ad862a555a6689f85d209f06b3665d666ea4a0817a73d4a8baaffeb79d9",
+          "bytes": 129786
+        }
+      ]
+    },
+    {
+      "number": 182,
+      "photoId": "GEL-182",
+      "recipeId": "icon-pistachio-white-chocolate-praline",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/182.png",
+        "sha256": "f11eaa89d1c628c0c13836272d8bf5c3d382fac070cbed5ef0ad7d3e81b2232e",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-182-480.webp",
+          "sha256": "6b40e7da10deea3f1c0b3a723a05dd999e60d735e8c28cdd3a37a0a277210207",
+          "bytes": 50384
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-182-960.webp",
+          "sha256": "8d092d016195e55dff8ed44a7abbf4a8bd6d2a6ea7fe0c2c9fb32c818ce723e4",
+          "bytes": 126414
+        }
+      ]
+    },
+    {
+      "number": 183,
+      "photoId": "GEL-183",
+      "recipeId": "icon-red-velvet-cheesecake-chunk",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/183.png",
+        "sha256": "48d4dfab4cd7eabcf0c3c1755325da56721963b6ce268433a38d9aa5ad6bd44e",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-183-480.webp",
+          "sha256": "0e430b12e96d04c5e51413f80fc939b3803ea314a39f8100ed43265404de7479",
+          "bytes": 57688
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-183-960.webp",
+          "sha256": "e829f4bb9a86dbe8ce009415bcb68c78b839264e8f90662c1d46aa65e0da875a",
+          "bytes": 154272
+        }
+      ]
+    },
+    {
+      "number": 184,
+      "photoId": "GEL-184",
+      "recipeId": "icon-milky-hazelnut-chocolate-crunch",
+      "collection": "icons",
+      "source": {
+        "file": "Icons/184.png",
+        "sha256": "e238452b9c77a97da0f54410defd8296974026abec9e9f3742d8e03ad9c00206",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-184-480.webp",
+          "sha256": "bf4b38de1857b3359a34bcc8ea1cb262a7f058482c993ac7e4bd90160f2152a2",
+          "bytes": 57692
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-184-960.webp",
+          "sha256": "9688b2a8897c8f49f6ffa3fe1c39f83ec4cb19712443265a116135d4e6da3fb8",
+          "bytes": 150228
+        }
+      ]
+    },
+    {
+      "number": 185,
+      "photoId": "GEL-185",
+      "recipeId": "heritage-parmesan-ice-cream",
+      "collection": "lost_legendary",
+      "source": {
+        "file": "Lost & Legendary/185.png",
+        "sha256": "df08176d1e31e42f525620eb3af085117738aa659f154e7de312c147c1d3abc2",
+        "width": 1254,
+        "height": 1254
+      },
+      "outputs": [
+        {
+          "width": 480,
+          "path": "public/recipes/official/GEL-185-480.webp",
+          "sha256": "691bbada12cb49539f942a81c23e0fc17af62624b5d418f1df6390c42ef78f62",
+          "bytes": 46502
+        },
+        {
+          "width": 960,
+          "path": "public/recipes/official/GEL-185-960.webp",
+          "sha256": "495c67f0528859bdeba704f09a3d2ddef8ac7df1beb273a77ba05c985ab2f92a",
+          "bytes": 126630
+        }
+      ]
+    }
+  ]
+}

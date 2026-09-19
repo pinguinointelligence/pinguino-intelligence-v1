@@ -83,7 +83,7 @@ describe('Direction readability — the reported value', () => {
   it('never prints the value inside the orange thumb again', () => {
     // The 2.46:1 exception existed only because the numeral lived in the fill.
     // That half of the contract is permanent and unchanged.
-    expect(axes).not.toMatch(/bg-\[#f58a07\][^"']*text-white/);
+    expect(axes).not.toMatch(/bg-\[(?:#f58a07|var\(--g-orange\))\][^"']*text-white/);
   });
 
   /* OWNER AUTHORITY 2026-09-03 supersedes the VISIBLE readout, not the
@@ -138,25 +138,27 @@ describe('Direction readability — the reported value', () => {
      matched as a class string, so retuning the token fails this test. */
   it('keeps a blocked position findable without a numeral', () => {
     const outline = colour('var(--g-attention-ink)');
-    for (const ground of [...GROUNDS, 'var(--g-rail-track)', '#fcd6a8']) {
+    for (const ground of [...GROUNDS, 'var(--g-rail-track)', 'var(--g-orange-soft)']) {
       expect(
         contrast(outline, colour(ground)),
         `blocked outline ${outline} on ${ground}`,
       ).toBeGreaterThanOrEqual(3);
     }
-    expect(axes).toContain("border-[1.5px] border-[var(--g-attention-ink)] bg-[#fcd6a8]");
+    expect(axes).toContain(
+      'border-[1.5px] border-[var(--g-attention-ink)] bg-[var(--g-orange-soft)]',
+    );
   });
 
   it('still marks the chosen position when the axis is blocked', () => {
     // The thumb keeps the muted orange the old opacity used to produce, so an
     // unavailable axis reads as before — it just no longer carries the numeral.
-    expect(axes).toContain("disabled ? 'bg-[#fcd6a8]' : 'bg-[#f58a07]'");
+    expect(axes).toContain("disabled ? 'bg-[var(--g-orange-soft)]' : 'bg-[var(--g-orange)]'");
   });
 
   it('offers no hover affordance that could imply a blocked axis is live', () => {
     // The frozen track has one mark, positioned by state — there is no per-
     // detent surface left to tint, so no hover treatment exists to leak.
-    expect(axes).not.toMatch(/hover:bg-\[#f58a07\]/);
-    expect(axes).not.toMatch(/hover:border-\[#f58a07\]/);
+    expect(axes).not.toMatch(/hover:bg-\[(?:#f58a07|var\(--g-orange[a-z-]*\))\]/);
+    expect(axes).not.toMatch(/hover:border-\[(?:#f58a07|var\(--g-orange[a-z-]*\))\]/);
   });
 });

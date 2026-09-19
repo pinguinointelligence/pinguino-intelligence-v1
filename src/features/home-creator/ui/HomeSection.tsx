@@ -20,6 +20,7 @@ export function HomeSection({
   className,
   fill = true,
   productPickerWidthAnchor = false,
+  bare = false,
   'data-testid': testId,
 }: {
   id: string;
@@ -29,6 +30,11 @@ export function HomeSection({
   className?: string;
   /** Give the section a comfortable minimum height; long content still grows. */
   fill?: boolean;
+  /**
+   * DESIGN V3.0 VI: the idea section lives inside the start screen, whose column sets
+   * the width and whose content starts at the top — so it brings no frame of its own.
+   */
+  bare?: boolean;
   /**
    * The recipe section is the HOME picker's horizontal layout authority. The
    * picker is portalled to `body`, so it cannot inherit this width through CSS;
@@ -43,9 +49,13 @@ export function HomeSection({
       data-testid={testId ?? `home-section-${id}`}
       data-product-picker-width-anchor={productPickerWidthAnchor ? 'home-content' : undefined}
       className={cn(
-        'mx-auto w-full max-w-[560px] scroll-mt-20 px-5 py-10 sm:px-6 lg:max-w-[720px] lg:py-16',
-        fill && 'min-h-[calc(100svh-var(--home-header-height,64px))]',
-        'flex flex-col justify-center',
+        bare
+          ? 'w-full scroll-mt-20'
+          : cn(
+              'mx-auto w-full max-w-[560px] scroll-mt-20 px-5 py-10 sm:px-6 lg:max-w-[720px] lg:py-16',
+              fill && 'min-h-[calc(100svh-var(--home-header-height,64px))]',
+              'flex flex-col justify-center',
+            ),
         className,
       )}
     >

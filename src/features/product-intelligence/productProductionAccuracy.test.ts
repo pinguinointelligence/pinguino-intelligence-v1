@@ -7,6 +7,8 @@ import {
 } from './productProductionAccuracy';
 import { classifyProductSemantics } from './productRecognition';
 import type { WorkingNumericField } from './productFieldTruth';
+import { MAPPER_FIELD_RESCUE_ALGORITHM_VERSION } from './mapperValueInference';
+import { MAPPER_WHOLE_PROFILE_ALGORITHM_VERSION } from './productWorkingValues';
 
 const recognition = {
   ...classifyProductSemantics({
@@ -172,19 +174,23 @@ describe('one production-oriented Product Accuracy authority', () => {
     expect(result.metadataCompleteness.score).toBeCloseTo(33.33, 2);
   });
 
-  it('keeps a high-accuracy product NOT READY when a genuinely critical fact is missing', () => {
+  it('does not make optional or Engine-derived nutrition values source-required blockers', () => {
     const fields = completeFieldTruth();
     delete fields.salt_percent;
+    delete fields.kcal_per_100g;
     const result = assessProductProductionAccuracy(
       baseInput({
         fieldTruth: fields,
-        engineUsable: false,
-        criticalPhysicsBlockers: ['MISSING_SALT_PERCENT'],
+        engineUsable: true,
       }),
     );
 
-    expect(result.gellattiReadiness.ready).toBe(false);
-    expect(result.gellattiReadiness.blockers).toContain('MISSING_SALT_PERCENT');
+    expect(result.gellattiReadiness.ready).toBe(true);
+    expect(result.gellattiReadiness.blockers).not.toContain('MISSING_SALT_PERCENT');
+    expect(result.gellattiReadiness.blockers).not.toContain('NUTRITION_FACT_REQUIRED:salt_percent');
+    expect(result.gellattiReadiness.blockers).not.toContain(
+      'NUTRITION_FACT_REQUIRED:kcal_per_100g',
+    );
     expect(result.productAccuracy).toBe(result.rawProductAccuracy);
     expect(result.criticalCapApplied).toBe(false);
   });
@@ -225,6 +231,59 @@ describe('one production-oriented Product Accuracy authority', () => {
       baseInput({ fieldTruth: fields, mapperWholeProfileSimilarity: 0.8499 }),
     );
     expect(result.fields.fat_percent).toMatchObject({ creditFactor: 0 });
+  });
+
+  it('credits a backtest-calibrated field Rescue without borrowing whole-profile confidence', () => {
+    const fields = completeFieldTruth();
+    fields.water_percent = {
+      value: 3,
+      state: 'ESTIMATED',
+      basis: 'mapper_similar_profile',
+      confidence: 0.9,
+      algorithmVersion: MAPPER_FIELD_RESCUE_ALGORITHM_VERSION,
+    };
+    fields.total_solids_percent = {
+      value: 97,
+      state: 'ESTIMATED',
+      basis: 'derived',
+      confidence: 0.9,
+      algorithmVersion: MAPPER_FIELD_RESCUE_ALGORITHM_VERSION,
+    };
+    const result = assessProductProductionAccuracy(
+      baseInput({ fieldTruth: fields, mapperWholeProfileSimilarity: 0.7785 }),
+    );
+    expect(result.fields.water_percent).toMatchObject({ creditFactor: 0.8 });
+  });
+
+  it('withholds Engine credit from an uncalibrated core cohort even at its maximum tier', () => {
+    const fields = completeFieldTruth();
+    fields.fat_percent = {
+      value: 3.5,
+      state: 'ESTIMATED',
+      basis: 'mapper_simple_profile',
+      confidence: 0.95,
+      algorithmVersion: 'mapper-first-v1',
+      cohort: { size: 3, spread: 0, band: 4, tightness: 1, ceiling: 0.95 },
+    };
+    const result = assessProductProductionAccuracy(
+      baseInput({ fieldTruth: fields, mapperWholeProfileSimilarity: 0.95 }),
+    );
+    expect(result.fields.fat_percent).toMatchObject({ creditFactor: 0 });
+  });
+
+  it('retains 80% credit for an accepted whole-profile authority', () => {
+    const fields = completeFieldTruth();
+    fields.fat_percent = {
+      value: 3.5,
+      state: 'ESTIMATED',
+      basis: 'mapper_similar_profile',
+      confidence: 0.85,
+      algorithmVersion: MAPPER_WHOLE_PROFILE_ALGORITHM_VERSION,
+    };
+    const result = assessProductProductionAccuracy(
+      baseInput({ fieldTruth: fields, mapperWholeProfileSimilarity: 0.85 }),
+    );
+    expect(result.fields.fat_percent).toMatchObject({ creditFactor: 0.8 });
   });
 
   it('also gates Mapper-family evidence credit on the same whole-profile floor', () => {
@@ -360,5 +419,43 @@ describe('one production-oriented Product Accuracy authority', () => {
       }),
     );
     expect(withUnrelatedWebReceipt.productAccuracy).toBe(withoutWeb.productAccuracy);
+  });
+
+  it.each([
+    ['unknown_requires_review', ['UNKNOWN_REQUIRES_EVIDENCE']],
+    ['classified', ['family_and_form_evidence_missing']],
+    ['classified', ['MAIN_BLOCKED_POLICY', 'BLOCKED_DATA']],
+  ] as const)(
+    'SOL-052: %s / %s cannot receive full ProductBehavior publication credit',
+    (classificationOutcome, classificationReasonCodes) => {
+      const result = assessProductProductionAccuracy(
+        baseInput({
+          behavior: {
+            ...baseInput().behavior,
+            classificationOutcome,
+            classificationReasonCodes,
+          },
+        }),
+      );
+      expect(result.components.productBehavior.earnedPoints).toBeLessThan(
+        result.components.productBehavior.availablePoints,
+      );
+    },
+  );
+
+  it('SOL-052: BLOCKED_DATA cannot regain full behavior credit through the physics exception', () => {
+    const result = assessProductProductionAccuracy(
+      baseInput({
+        behavior: {
+          ...baseInput().behavior,
+          classificationOutcome: 'unknown_requires_review',
+          classificationReasonCodes: ['BLOCKED_DATA'],
+        },
+        criticalPhysicsBlockers: ['BLOCKED_DATA'],
+      }),
+    );
+    expect(result.components.productBehavior.earnedPoints).toBeLessThan(
+      result.components.productBehavior.availablePoints,
+    );
   });
 });

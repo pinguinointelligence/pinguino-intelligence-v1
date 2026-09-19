@@ -7,6 +7,7 @@ import {
   visibleNavItems,
   type NavigationAudience,
 } from './appNav';
+import { PRODUCTION_AREA_SECTIONS } from '@/features/production-area/productionAreaSections';
 
 const loc = (pathname: string, search = '') => ({ pathname, search });
 const ids = (audience: NavigationAudience) => visibleNavItems(audience).map((item) => item.id);
@@ -39,6 +40,7 @@ describe('plan-aware global navigation', () => {
   it('returns the exact shallow Guest menu', () => {
     expect(ids('guest')).toEqual([
       'tryPinguino',
+      'guestRecipes',
       'howItWorks',
       'guestShop',
       'plans',
@@ -48,13 +50,36 @@ describe('plan-aware global navigation', () => {
     ]);
   });
 
-  it('returns the exact shallow Home menu', () => {
+  it('sends a guest to the canonical HOME creator, never the legacy /start shell', () => {
+    const entry = APP_NAV_ITEMS.find((item) => item.id === 'tryPinguino');
+    expect(entry?.to).toBe('/home');
+    expect(APP_NAV_ITEMS.some((item) => item.to === '/start')).toBe(false);
+    expect(activeNavId(loc('/home'), 'guest')).toBe('tryPinguino');
+    expect(activeNavId(loc('/'), 'guest')).toBe('tryPinguino');
+    expect(activeNavId(loc('/start'), 'guest')).toBeNull();
+  });
+
+  it('gives a guest the Recipes library without changing the signed-in entry', () => {
+    const guest = APP_NAV_ITEMS.find((item) => item.id === 'guestRecipes');
+    expect(guest?.to).toBe('/recipes');
+    expect(guest?.audiences).toEqual(['guest']);
+    expect(activeNavId(loc('/recipes'), 'guest')).toBe('guestRecipes');
+    const member = APP_NAV_ITEMS.find((item) => item.id === 'recipes');
+    expect(member?.to).toBe('/recipes?tab=mine');
+    expect(member?.audiences).toEqual(['home', 'pro']);
+    expect(ids('home')).not.toContain('guestRecipes');
+    expect(ids('pro')).not.toContain('guestRecipes');
+  });
+
+  /* OWNER DECISION 2026-09-17 (Produkcja area; GEL-P0-033 navigation clause approved for
+     staging 2026-09-18): ONE „Produkcja” entry replaces Produkcja, Produkty, Maszyna and
+     Ustawienia etykiety. HOME and PRO now read the same product group. */
+  it('returns the exact shallow Home menu with the one Produkcja entry', () => {
     expect(ids('home')).toEqual([
       'homeWorkspace',
       'recipes',
       'howItWorks',
-      'products',
-      'machine',
+      'production',
       'community',
       'memberShop',
       'affiliate',
@@ -62,34 +87,28 @@ describe('plan-aware global navigation', () => {
     ]);
   });
 
-  it('returns the exact shallow Pro menu with Production', () => {
+  it('returns the exact shallow Pro menu with the one Produkcja entry', () => {
     expect(ids('pro')).toEqual([
       'proWorkspace',
       'recipes',
       'howItWorks',
       'production',
-      'labels',
-      'products',
-      'machine',
       'community',
       'memberShop',
       'affiliate',
       'franchise',
     ]);
-    expect(ids('pro').filter((id) => !ids('home').includes(id))).toEqual([
-      'proWorkspace',
-      'production',
-      'labels',
-    ]);
+    expect(ids('pro').filter((id) => !ids('home').includes(id))).toEqual(['proWorkspace']);
   });
 
   it('maps contextual and legacy deep links to their canonical destination', () => {
     expect(activeNavId(loc('/my-recipes'), 'home')).toBe('recipes');
-    expect(activeNavId(loc('/create-ingredient'), 'home')).toBe('products');
-    expect(activeNavId(loc('/products/import'), 'pro')).toBe('products');
-    expect(activeNavId(loc('/profile/machine'), 'home')).toBe('machine');
-    expect(activeNavId(loc('/pro/machine'), 'pro')).toBe('machine');
-    expect(activeNavId(loc('/pro/production'), 'pro')).toBe('production');
+    expect(activeNavId(loc('/create-ingredient'), 'home')).toBe('production');
+    expect(activeNavId(loc('/products/import'), 'pro')).toBe('production');
+    expect(activeNavId(loc('/profile/machine'), 'home')).toBe('production');
+    expect(activeNavId(loc('/pro/machine'), 'pro')).toBe('production');
+    // The recipe's own Produkcja tab belongs to the Pro workspace, not to the area.
+    expect(activeNavId(loc('/pro/production'), 'pro')).toBe('proWorkspace');
     expect(activeNavId(loc('/pro/history'), 'pro')).toBe('production');
     expect(activeNavId(loc('/community'), 'pro')).toBe('community');
     expect(activeNavId(loc('/top100'), 'pro')).toBe('community');
@@ -97,16 +116,50 @@ describe('plan-aware global navigation', () => {
     expect(isGroupActive('product', loc('/pro/versions'), 'pro')).toBe(true);
   });
 
-  /* OWNER DECISION (2026-09-06): `/labels` is the one canonical settings
-     destination and returns to the exact origin; only Pro exposes it. */
-  it('carries one canonical Pro label-settings navigation entry', () => {
-    const labels = APP_NAV_ITEMS.filter((item) => item.id === 'labels');
-    expect(labels).toHaveLength(1);
-    expect(labels[0]?.to).toBe('/labels');
-    expect(labels[0]?.audiences).toEqual(['pro']);
-    expect(ids('guest')).not.toContain('labels');
-    expect(ids('home')).not.toContain('labels');
-    expect(ids('pro')).toContain('labels');
+  it('keeps Produkty, Maszyna and Etykiety as sections of Produkcja, not drawer entries', () => {
+    const production = APP_NAV_ITEMS.filter((item) => item.id === 'production');
+    expect(production).toHaveLength(1);
+    expect(production[0]?.to).toBe('/production');
+    expect(production[0]?.audiences).toEqual(['home', 'pro']);
+    for (const audience of ['guest', 'home', 'pro'] as const) {
+      for (const retired of ['products', 'machine', 'labels']) {
+        expect(ids(audience)).not.toContain(retired);
+      }
+    }
+    expect(ids('guest')).not.toContain('production');
+    expect(PRODUCTION_AREA_SECTIONS.map((section) => [section.id, section.to])).toEqual([
+      ['batches', '/production'],
+      ['products', '/products'],
+      ['machine', '/machine'],
+      ['labels', '/labels'],
+    ]);
+  });
+
+  it('marks Produkcja current on every address of the area, for HOME and PRO', () => {
+    const areaRoutes = [
+      loc('/production'),
+      loc('/production', '?tab=history'),
+      loc('/pro/history'),
+      loc('/products'),
+      loc('/products', '?panel=markets'),
+      loc('/products/scan'),
+      loc('/products/import'),
+      loc('/create-ingredient'),
+      loc('/machine'),
+      loc('/profile/machine'),
+      loc('/pro/machine'),
+      loc('/labels'),
+      loc('/labels', '?run=r1&labelView=settings'),
+      loc('/label'),
+    ];
+    for (const audience of ['home', 'pro'] as const) {
+      for (const route of areaRoutes) {
+        expect(activeNavId(route, audience), `${audience} ${route.pathname}${route.search}`).toBe(
+          'production',
+        );
+      }
+    }
+    expect(activeNavId(loc('/recipes'), 'pro')).toBe('recipes');
   });
 
   it('reaches Community and Top 100 from one Community destination', () => {

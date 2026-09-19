@@ -1,0 +1,17 @@
+{
+  "authority": "HOME_CONCEPT_DISCOVERY_LINKS_OWNER_APPROVED_V1",
+  "usage": "RECIPE_DISCOVERY_ONLY",
+  "approvedOn": "2026-09-17",
+  "approvedBy": "owner",
+  "note": "Owner-approved links used ONLY to FIND existing recipes. They never make a product eligible as a concept default, never change identity, composition, grams or replacement rules, and the frozen Search source is not edited.",
+  "links": [
+    {
+      "linkId": "HCD-0001",
+      "conceptId": "SC-ING-000167",
+      "conceptKey": "strawberry",
+      "piId": "PI-ING-001435",
+      "form": "sweetened_fruit_puree",
+      "note": "STRAWBERRY PUR KERRY · Ravifruit Puree · Frozen · 20374231 — the strawberry line of the official strawberry recipes; owner approval 2026-09-17."
+    }
+  ]
+}

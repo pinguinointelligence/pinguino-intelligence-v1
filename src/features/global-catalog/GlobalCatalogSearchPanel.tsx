@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router';
 import { cn } from '@/lib/cn';
 import { productCatalogOverviewVerificationView } from '@/features/ingredient-builder/productPickerModel';
 import { preserveServerProductRank } from './ranking';
@@ -15,6 +15,14 @@ import {
   applicationQuietClasses,
 } from '@/components/ui/applicationControlStyles';
 import type { CatalogProductSearchHit } from './contracts';
+import { productionAreaCopy } from '@/copy/productionArea';
+
+const areaCopy = productionAreaCopy();
+
+/** Where the product-market settings live since the Produkcja area (package §4). */
+export const PRODUCT_MARKETS_PATH = '/products?panel=markets';
+/** `?market=` value of „Cały świat” — a readable token, never the internal sentinel. */
+const WORLD_MARKET_PARAM = 'world';
 
 /** The approved „Moja cena" cell — the stored value or an explicit dash. */
 const catalogPrice = (hit: CatalogProductSearchHit): string =>
@@ -37,6 +45,10 @@ const catalogHitKey = (hit: CatalogProductSearchHit): string =>
 const CATALOG_COLUMNS =
   'grid grid-cols-[minmax(0,1fr)_92px_28px] items-center gap-x-3 ' +
   'lg:grid-cols-[minmax(0,1fr)_157px_92px_100px_28px]';
+/** HOME has no „Moja cena” (a PRO price), so its table has no price column (package §4). */
+const CATALOG_COLUMNS_WITHOUT_PRICE =
+  'grid grid-cols-[minmax(0,1fr)_92px_28px] items-center gap-x-3 ' +
+  'lg:grid-cols-[minmax(0,1fr)_157px_92px_28px]';
 
 function CatalogRow({
   name,
@@ -45,6 +57,7 @@ function CatalogRow({
   status,
   blocked,
   price,
+  showPrice,
   active,
   favorite,
   onSelect,
@@ -58,6 +71,7 @@ function CatalogRow({
   status: string;
   blocked: boolean;
   price: string;
+  showPrice: boolean;
   active: boolean;
   favorite: boolean;
   onSelect: () => void;
@@ -68,7 +82,7 @@ function CatalogRow({
   return (
     <div
       className={cn(
-        CATALOG_COLUMNS,
+        showPrice ? CATALOG_COLUMNS : CATALOG_COLUMNS_WITHOUT_PRICE,
         'min-h-[60px] border-t border-[var(--g-line-quiet)] px-3',
         active && 'bg-[var(--g-ivory)]',
       )}
@@ -118,9 +132,11 @@ function CatalogRow({
           {blocked ? 'Sprawdź' : status === 'WYMAGA SPRAWDZENIA ETYKIETY' ? 'Etykieta' : 'Gotowy'}
         </span>
       </span>
-      <span className="hidden truncate font-mono text-[11px] text-[var(--g-text-muted)] lg:block">
-        {price}
-      </span>
+      {showPrice ? (
+        <span className="hidden truncate font-mono text-[11px] text-[var(--g-text-muted)] lg:block">
+          {price}
+        </span>
+      ) : null}
       <button
         type="button"
         aria-pressed={favorite}
@@ -134,13 +150,84 @@ function CatalogRow({
   );
 }
 
-export function GlobalCatalogSearchPanel() {
-  const [query, setQuery] = useState('');
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [market, setMarket] = useState<string | null>(null);
-  const [retailer, setRetailer] = useState<string | null>(null);
+/**
+ * Produkcja v3 §4 — the catalogue's state lives in the ADDRESS: `q`, `fav`, `market`,
+ * `retailer` and `product` (with `filter` and `panel` on the page). A refresh, a shared link or a
+ * return from another section restores the same search, filters and product. On a phone the
+ * product details are their own view with „‹ Produkty”; on a wide screen they stay beside the
+ * list. Choosing a product adds one history entry, so the browser's Back returns to the list —
+ * at the place it was left.
+ */
+export function GlobalCatalogSearchPanel({
+  showPrivatePrice = true,
+}: {
+  /** „Moja cena” is a PRO price: HOME's catalogue shows neither the column nor the row. */
+  showPrivatePrice?: boolean;
+} = {}) {
+  const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const query = params.get('q') ?? '';
+  const favoritesOnly = params.get('fav') === '1';
+  const marketParam = params.get('market');
+  const market = marketParam === WORLD_MARKET_PARAM ? '__GLOBAL__' : marketParam;
+  const retailer = params.get('retailer');
+  const selectedKey = params.get('product');
   const [visibleLimit, setVisibleLimit] = useState(20);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+
+  /** Write catalogue state into the address. Filters replace; opening a product pushes. */
+  const updateParams = (patch: Record<string, string | null>, push = false) => {
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        for (const [key, value] of Object.entries(patch)) {
+          if (value === null || value === '') next.delete(key);
+          else next.set(key, value);
+        }
+        return next;
+      },
+      { replace: !push, ...(push ? { state: { productsListScroll: window.scrollY } } : {}) },
+    );
+  };
+  // A new search or filter is a new list — the product chosen from the old one is released.
+  const setQuery = (value: string) => updateParams({ q: value, product: null });
+  const setFavoritesOnly = (value: boolean) =>
+    updateParams({ fav: value ? '1' : null, product: null });
+  const setMarket = (value: string | null) =>
+    updateParams({
+      market: value === '__GLOBAL__' ? WORLD_MARKET_PARAM : value,
+      product: null,
+    });
+  const setRetailer = (value: string | null) => updateParams({ retailer: value, product: null });
+  // List → product is one history step; moving between products replaces it, so Back always
+  // lands on the list.
+  const openProduct = (key: string) => {
+    if (key === selectedKey) return;
+    updateParams({ product: key }, selectedKey === null);
+  };
+
+  /* The list keeps its place: back from a product (the phone's „‹ Produkty” or the browser's
+     Back) returns to the scroll position the product was opened from. */
+  const listScroll = useRef<number | null>(null);
+  const previousProduct = useRef(selectedKey);
+  useEffect(() => {
+    const was = previousProduct.current;
+    previousProduct.current = selectedKey;
+    if (was === null && selectedKey !== null) {
+      const state = location.state as { productsListScroll?: number } | null;
+      listScroll.current = state?.productsListScroll ?? window.scrollY;
+      if (!window.matchMedia?.('(min-width: 1024px)').matches) window.scrollTo(0, 0);
+    } else if (was !== null && selectedKey === null && listScroll.current !== null) {
+      const top = listScroll.current;
+      listScroll.current = null;
+      requestAnimationFrame(() => window.scrollTo(0, top));
+    }
+  }, [location.state, selectedKey]);
+  const backToList = () => {
+    const state = location.state as { productsListScroll?: number } | null;
+    if (typeof state?.productsListScroll === 'number') navigate(-1);
+    else updateParams({ product: null });
+  };
   const catalog = useGlobalCatalogPicker({
     enabled: true,
     query,
@@ -165,7 +252,11 @@ export function GlobalCatalogSearchPanel() {
   const baseHits = hits.filter((hit) => hit.entityKind === 'pi_base');
   const commercialHits = hits.filter((hit) => hit.entityKind === 'commercial_product');
   const resultCount = hits.length;
-  const selectedHit = hits.find((hit) => catalogHitKey(hit) === selectedKey) ?? hits[0] ?? null;
+  // A product named by the address wins; without one the wide layout previews the first hit.
+  const selectedHit = selectedKey
+    ? (hits.find((hit) => catalogHitKey(hit) === selectedKey) ?? null)
+    : (hits[0] ?? null);
+  const productOpen = selectedKey !== null;
   const selectedVerification = selectedHit
     ? productCatalogOverviewVerificationView(selectedHit)
     : null;
@@ -174,6 +265,7 @@ export function GlobalCatalogSearchPanel() {
       ? catalog.favorites.has(`pi_base:${selectedHit.mappedIngredientId ?? selectedHit.id}`)
       : selectedHit.favorite
     : false;
+  const selectedExactIdentity = selectedHit?.semanticBinding?.exactIdentity ?? null;
   const toggleSelectedFavorite = () => {
     if (!selectedHit) return;
     if (selectedHit.entityKind === 'pi_base') {
@@ -188,8 +280,17 @@ export function GlobalCatalogSearchPanel() {
   };
 
   return (
-    <section className="mt-2" aria-label="Katalog Gellatti">
-      <div className="rounded-[12px] border border-[var(--g-line)] bg-white p-3 shadow-pro-e0">
+    <section
+      className="mt-2"
+      aria-label="Katalog Gellatti"
+      data-product-open={productOpen || undefined}
+    >
+      <div
+        className={cn(
+          'rounded-[12px] border border-[var(--g-line)] bg-white p-3 shadow-pro-e0',
+          productOpen && 'max-lg:hidden',
+        )}
+      >
         <div className="flex flex-wrap items-center gap-2">
           <label className="min-w-[260px] flex-1">
             <span className="sr-only">Szukaj w katalogu produktów</span>
@@ -201,7 +302,7 @@ export function GlobalCatalogSearchPanel() {
               className={applicationFieldClasses('bg-white text-sm')}
             />
           </label>
-          <Link to="/account#product-markets-heading" className={applicationQuietClasses()}>
+          <Link to={PRODUCT_MARKETS_PATH} className={applicationQuietClasses()}>
             Rynki produktów
           </Link>
         </div>
@@ -212,7 +313,7 @@ export function GlobalCatalogSearchPanel() {
           <button
             type="button"
             aria-pressed={favoritesOnly}
-            onClick={() => setFavoritesOnly((value) => !value)}
+            onClick={() => setFavoritesOnly(!favoritesOnly)}
             className={cn(
               applicationCompactClasses('shrink-0'),
               favoritesOnly ? 'border-gold bg-gold/12 text-ink' : 'border-[var(--g-line)] text-[var(--g-text-secondary)]',
@@ -225,7 +326,7 @@ export function GlobalCatalogSearchPanel() {
               key={value}
               type="button"
               aria-pressed={market === value}
-              onClick={() => setMarket((current) => (current === value ? null : value))}
+              onClick={() => setMarket(market === value ? null : value)}
               className={cn(
                 applicationCompactClasses('shrink-0'),
                 market === value
@@ -269,13 +370,17 @@ export function GlobalCatalogSearchPanel() {
       </div>
       <div className="mt-3 grid min-w-0 gap-3 lg:grid-cols-[minmax(340px,1.22fr)_minmax(420px,1fr)]">
         <div
-          className="min-w-0 overflow-hidden rounded-[12px] border border-[var(--g-line)] bg-white shadow-pro-e0"
+          className={cn(
+            'min-w-0 overflow-hidden rounded-[12px] border border-[var(--g-line)] bg-white shadow-pro-e0',
+            productOpen && 'max-lg:hidden',
+          )}
           data-gellatti-panel
+          data-testid="catalog-list"
         >
           {/* The approved head band names the four columns once. */}
           <div
             className={cn(
-              CATALOG_COLUMNS,
+              showPrivatePrice ? CATALOG_COLUMNS : CATALOG_COLUMNS_WITHOUT_PRICE,
               'bg-[var(--g-ivory-deep)] px-3 py-2.5 text-[9px] text-[var(--g-text-field-label)]',
             )}
             aria-hidden
@@ -283,7 +388,7 @@ export function GlobalCatalogSearchPanel() {
             <span>Produkt</span>
             <span className="hidden lg:block">EAN</span>
             <span>Status</span>
-            <span className="hidden lg:block">Moja cena</span>
+            {showPrivatePrice ? <span className="hidden lg:block">Moja cena</span> : null}
             <span />
           </div>
           {baseHits.length > 0 ? (
@@ -308,10 +413,11 @@ export function GlobalCatalogSearchPanel() {
                 blocked={technicallyBlocked}
                 blockReason={verification.reason}
                 price={catalogPrice(hit)}
+                showPrice={showPrivatePrice}
                 active={selectedHit ? catalogHitKey(selectedHit) === catalogHitKey(hit) : false}
                 favorite={favorite}
                 carbonation={hit.carbonationStatus}
-                onSelect={() => setSelectedKey(catalogHitKey(hit))}
+                onSelect={() => openProduct(catalogHitKey(hit))}
                 onToggleFavorite={() => catalog.toggleFavorite('pi_base', mapperId, !favorite)}
               />
             );
@@ -336,10 +442,11 @@ export function GlobalCatalogSearchPanel() {
                 blocked={technicallyBlocked}
                 blockReason={verification.reason}
                 price={catalogPrice(hit)}
+                showPrice={showPrivatePrice}
                 active={selectedHit ? catalogHitKey(selectedHit) === catalogHitKey(hit) : false}
                 favorite={hit.favorite}
                 carbonation={hit.carbonationStatus}
-                onSelect={() => setSelectedKey(catalogHitKey(hit))}
+                onSelect={() => openProduct(catalogHitKey(hit))}
                 onToggleFavorite={() =>
                   catalog.toggleFavorite('commercial_product', hit.id, !hit.favorite)
                 }
@@ -378,9 +485,22 @@ export function GlobalCatalogSearchPanel() {
             note, then the action row. Every destination and callback below is
             the one that was already here. */}
         <aside
-          className="order-first min-w-0 rounded-[12px] border border-[var(--g-line)] bg-white p-4 shadow-pro-e0 lg:order-none lg:sticky lg:top-4 lg:h-max"
+          className={cn(
+            'min-w-0 rounded-[12px] border border-[var(--g-line)] bg-white p-4 shadow-pro-e0 lg:sticky lg:top-4 lg:h-max',
+            !productOpen && 'max-lg:hidden',
+          )}
           data-gellatti-panel
+          data-testid="catalog-product-detail"
         >
+          {/* Phone: the details are their own view — one way back to the same list. */}
+          <button
+            type="button"
+            onClick={backToList}
+            className="pro-focus-ring -ml-1 mb-3 inline-flex min-h-11 items-center gap-1 rounded-[9px] px-1 text-[14px] font-semibold text-[var(--g-ink)] lg:hidden"
+            data-testid="catalog-product-back"
+          >
+            <span aria-hidden>‹</span> {areaCopy.products.back}
+          </button>
           {selectedHit && selectedVerification ? (
             <>
               <div className="flex flex-wrap items-start gap-3">
@@ -417,14 +537,24 @@ export function GlobalCatalogSearchPanel() {
                 {(
                   [
                     ['EAN', selectedHit.eans[0] ?? selectedHit.productCode ?? '—', true],
+                    ...(selectedExactIdentity?.pack
+                      ? ([['Opakowanie', selectedExactIdentity.pack, true]] as const)
+                      : []),
+                    ...(selectedExactIdentity?.variant
+                      ? ([['Wariant', selectedExactIdentity.variant, false]] as const)
+                      : []),
                     ['Rynek', selectedHit.markets.join(', ') || 'Globalny', false],
-                    [
-                      'Moja cena',
-                      catalogPrice(selectedHit) === '—'
-                        ? 'Nie ustawiono'
-                        : catalogPrice(selectedHit),
-                      false,
-                    ],
+                    ...(showPrivatePrice
+                      ? ([
+                          [
+                            'Moja cena',
+                            catalogPrice(selectedHit) === '—'
+                              ? 'Nie ustawiono'
+                              : catalogPrice(selectedHit),
+                            false,
+                          ],
+                        ] as const)
+                      : []),
                     ['Status kanoniczny', selectedVerification.status, false],
                   ] as const
                 ).map(([label, value, mono]) => (
@@ -471,7 +601,10 @@ export function GlobalCatalogSearchPanel() {
                 <Link to="/pro/recipe" className={applicationPrimaryClasses()}>
                   Użyj w recepturze
                 </Link>
-                <Link to="/account" className={applicationCompactClasses('min-h-10 px-3')}>
+                <Link
+                  to={PRODUCT_MARKETS_PATH}
+                  className={applicationCompactClasses('min-h-10 px-3')}
+                >
                   Ustawienia produktów
                 </Link>
                 <button

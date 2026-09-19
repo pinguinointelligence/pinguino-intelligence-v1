@@ -1,4 +1,5 @@
 import type { EngineIngredient, IngredientComponentProfile } from '@/engine';
+import { canonicalMapperComposition } from './canonicalToolboxCompositions';
 
 /**
  * Small role-filtered Vegan formulation pool mirrored from the canonical
@@ -56,7 +57,7 @@ const verified = (
   },
 });
 
-export const VERIFIED_VEGAN_FORMULATION_CANDIDATES: readonly EngineIngredient[] = [
+const VEGAN_FORMULATION_CANDIDATE_SEEDS: readonly EngineIngredient[] = [
   verified(
     'PI-ING-001565',
     'OAT DRINK · Beverage · Chilled · BIO',
@@ -240,6 +241,24 @@ export const VERIFIED_VEGAN_FORMULATION_CANDIDATES: readonly EngineIngredient[] 
     12,
   ),
 ];
+
+export const VERIFIED_VEGAN_FORMULATION_CANDIDATES: readonly EngineIngredient[] =
+  VEGAN_FORMULATION_CANDIDATE_SEEDS.map((candidate) => {
+    const canonical = canonicalMapperComposition(candidate.id);
+    if (!canonical) return candidate;
+    return {
+      ...candidate,
+      name: canonical.displayName,
+      composition: canonical.composition,
+      pod_value: canonical.pod_value,
+      pac_value: canonical.pac_value,
+      de_value: canonical.de_value,
+      cost_per_kg: canonical.cost_per_kg,
+      confidence_score: canonical.confidence_score,
+      source_type: canonical.verified ? 'verified_db' : 'ai_estimated',
+      is_verified: canonical.verified,
+    };
+  });
 
 export const VEGAN_VERIFIED_CANONICAL_IDS: ReadonlySet<string> = new Set([
   'PI-ING-000163',

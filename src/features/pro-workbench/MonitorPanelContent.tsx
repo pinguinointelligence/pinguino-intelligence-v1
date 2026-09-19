@@ -98,6 +98,7 @@ export function MonitorPanelContent({
   corrections,
   input,
   onOpenProfile,
+  onOpenSettings,
   production,
 }: {
   result: RecipeResult;
@@ -105,6 +106,9 @@ export function MonitorPanelContent({
   corrections: CorrectionResult;
   input: RecipeInput;
   onOpenProfile?: () => void;
+  /** PRO MOBILE UX v2 · A3 — „Sprawdź ustawienia receptury" lands ON the
+   *  settings. Falls back to `onOpenProfile` where no settings route exists. */
+  onOpenSettings?: () => void;
   production?: ProductionWorkspaceView;
 }) {
   const { technicalView } = useAccess();
@@ -291,7 +295,7 @@ export function MonitorPanelContent({
           input={monitorInput}
           previewResult={previewProjection?.result}
           previewInput={previewProjection?.input}
-          onOpenProfile={onOpenProfile}
+          onOpenProfile={onOpenSettings ?? onOpenProfile}
         >
           <ProfessionalMonitorModules
             modules={modules}

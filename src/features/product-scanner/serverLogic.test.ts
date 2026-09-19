@@ -260,6 +260,30 @@ describe('server Product Scanner result authority', () => {
     );
   });
 
+  it.each([
+    ['EAN-8', '0000096385074', '96385074'],
+    ['UPC-A', '0036000291452', '036000291452'],
+    ['UPC-E', '0042100005264', '01234565'],
+  ] as const)(
+    'persists canonical %s with raw and capture-format evidence',
+    (format, canonical, raw) => {
+      const merged = mergeProductScanResults(null, result(), {
+        canonicalValue: canonical,
+        capturedFormat: format.replace('-', '_') as 'EAN_8' | 'UPC_A' | 'UPC_E',
+        rawValue: raw,
+      });
+      expect(merged.barcodes).toEqual([
+        {
+          value: canonical,
+          format: 'EAN_13',
+          capturedFormat: format.replace('-', '_'),
+          rawValue: raw,
+        },
+      ]);
+      expect(validateServerResult(merged, ['asset-1'])).toMatchObject({ ok: true });
+    },
+  );
+
   it.each(['nutrition.protein', 'nutrition.salt'])(
     'keeps equal-authority %s disagreement as an unresolved conflict',
     (field) => {

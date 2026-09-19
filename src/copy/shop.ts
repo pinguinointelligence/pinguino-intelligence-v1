@@ -45,6 +45,10 @@ export interface ShopCopy {
     readonly localHere: string;
     readonly noneHere: string;
     readonly noneHelper: string;
+    /** No parcel here, but the free per-country PDF exists. */
+    readonly noneHelperDocument: string;
+    readonly loadError: string;
+    readonly retry: string;
   };
   readonly localPack: {
     readonly name: string;
@@ -139,6 +143,13 @@ export interface ShopCopy {
     readonly finalAmountNote: string;
     readonly testMode: string;
     readonly error: string;
+    readonly chooseCountry: string;
+    readonly blocked: {
+      readonly countriesUnavailable: string;
+      readonly countryRequired: string;
+      readonly countryNotShipped: string;
+      readonly rateUnavailable: string;
+    };
   };
   readonly admin: {
     readonly sessionReference: string;
@@ -160,6 +171,57 @@ export interface ShopCopy {
     readonly trackingNumber: string;
     readonly markShipped: string;
     readonly filterAll: string;
+  };
+  /** The free PDF shopping guide, ordered for 0 € (a document, never a parcel). */
+  /**
+   * Ordering anything in the shop (the 0 € PDF included) needs an active HOME or PRO plan (owner, 2026-09-18).
+   * The shop itself stays open to everyone. The server decides; this is only what the customer reads.
+   */
+  readonly orderGate: {
+    readonly planRequired: string;
+    /** The existing way to choose a plan (/subscription). */
+    readonly plansCta: string;
+  };
+  readonly infopak: {
+    readonly kicker: string;
+    readonly name: string;
+    readonly subtitle: string;
+    readonly formatPrice: string;
+    readonly cta: string;
+    readonly ctaBusy: string;
+    readonly lede: string;
+    readonly description: readonly string[];
+    readonly detailsTitle: string;
+    readonly details: readonly string[];
+    readonly smallPrint: string;
+    readonly ready: string;
+    readonly download: string;
+    readonly downloadBusy: string;
+    readonly signInFirst: string;
+    readonly notAvailable: string;
+    readonly fileMissing: string;
+    readonly failed: string;
+    readonly downloadFailed: string;
+    readonly imageAlt: string;
+    readonly orderRow: string;
+    readonly language: string;
+    readonly accountHint: string;
+    /** No country chosen yet: the PDF is made per country. */
+    readonly chooseCountry: string;
+    readonly chooseCountryLink: string;
+    /** `{country}` is replaced with the chosen country's name. */
+    readonly notReady: string;
+    readonly changeCountry: string;
+    readonly countryLabel: string;
+    readonly languageLabel: string;
+    readonly adminMarket: string;
+    /** Locale used to name countries and languages in this copy (Intl.DisplayNames). */
+    readonly displayLocale: string;
+    readonly adminTitle: string;
+    readonly adminEmpty: string;
+    readonly adminQa: string;
+    readonly adminVersion: string;
+    readonly adminMail: string;
   };
   readonly orders: {
     readonly createdNotice: string;
@@ -242,6 +304,10 @@ export const shopCopyPl: ShopCopy = {
     noneHelper:
       'Nie wysyłamy tu jeszcze zestawu i nie mamy kompletnej listy lokalnych zamienników. ' +
       'Pracujemy nad tym.',
+    noneHelperDocument:
+      'Nie wysyłamy tu jeszcze zestawu. Niżej zamówisz za 0 € PDF z lokalnymi odpowiednikami jego siedmiu składników.',
+    loadError: 'Nie udało się wczytać listy krajów.',
+    retry: 'Spróbuj ponownie',
   },
   localPack: {
     name: 'Lokalny Zestaw Startowy',
@@ -353,6 +419,14 @@ export const shopCopyPl: ShopCopy = {
     finalAmountNote: 'Kwota końcowa. Płatność kartą.',
     testMode: 'Staging: płatność w trybie testowym Stripe. Karta nie zostanie obciążona.',
     error: 'Nie udało się rozpocząć płatności. Spróbuj ponownie.',
+    chooseCountry: 'Wybierz kraj',
+    blocked: {
+      countriesUnavailable:
+        'Nie udało się wczytać listy krajów. Spróbuj ponownie przy wyborze kraju.',
+      countryRequired: 'Wybierz kraj dostawy, aby przejść do płatności.',
+      countryNotShipped: 'Do tego kraju nie wysyłamy jeszcze paczek.',
+      rateUnavailable: 'Nie mamy teraz stawki wysyłki do tego kraju.',
+    },
   },
   admin: {
     sessionReference: 'Sesja płatności (Stripe)',
@@ -374,6 +448,64 @@ export const shopCopyPl: ShopCopy = {
     trackingNumber: 'Numer przesyłki',
     markShipped: 'Oznacz jako wysłane',
     filterAll: 'Wszystkie',
+  },
+  orderGate: {
+    planRequired: 'Zamawianie w sklepie jest dostępne z aktywnym planem Gellatti HOME lub PRO.',
+    plansCta: 'Wybierz plan',
+  },
+  infopak: {
+    kicker: 'Darmowy infopak',
+    name: 'Gellatti — Składniki bazy lodów',
+    subtitle: 'Infopak zakupowy: co kupić i gdzie znaleźć składniki w Twoim kraju.',
+    formatPrice: 'PDF · 0 €',
+    cta: 'Zamów za 0 €',
+    ctaBusy: 'Zamawiam…',
+    lede: 'Darmowy infopak PDF dla Twojego kraju: gdzie kupić siedem składników Starter Packu.',
+    description: [
+      'To infopak w formacie PDF z informacjami o zakupach. Nie jest to paczka składników ani zbiór receptur z gramaturami.',
+      'Infopak obejmuje siedem składników Starter Packu: dekstrozę, mleko odtłuszczone w proszku, śmietankę w proszku, fruktozę, inulinę, suszone żółtko jaja i stabilizator. ' +
+        'Dla każdego podaje lokalny odpowiednik w wybranym kraju: markę, nazwę, opakowanie, kod kreskowy (jeśli produkt go ma) i miejsca, gdzie produkt znaleziono.',
+      'Stabilizator Gellatti zastępuje lokalna guma roślinna, opisana jako alternatywa, a nie ta sama mieszanka. ' +
+        'Część produktów sprzedają sklepy za granicą albo dystrybutorzy dla firm; infopak wyraźnie to oznacza. ' +
+        'Dostępność, ceny i dostawa mogą się zmieniać i nie są gwarantowane.',
+    ],
+    detailsTitle: 'Szczegóły',
+    details: [
+      'Format: PDF.',
+      'Kraj: ten, który wybierasz powyżej.',
+      'Język: język wybranego kraju; w krajach z kilkoma językami wybierasz wersję.',
+      'Dostawa: pobranie po złożeniu zamówienia za 0 €, bez karty i bez kosztów wysyłki.',
+      'Plik znajdziesz też w: Konto → Zamówienia.',
+    ],
+    smallPrint:
+      'Informacje zebrano ze stron producentów i sprzedawców (wrzesień 2026). Dostępność, ceny i dostawa nie są gwarantowane; ' +
+      'przed zakupem sprawdź etykietę. Wskazanie produktu w infopaku nie oznacza, że jest on już dostępny w aplikacji Gellatti.',
+    ready: 'Zamówienie przyjęte. Twój infopak jest gotowy.',
+    download: 'Pobierz PDF',
+    downloadBusy: 'Przygotowuję plik…',
+    signInFirst: 'Zaloguj się, aby zamówić infopak za 0 €.',
+    notAvailable: 'Ten infopak nie jest jeszcze dostępny dla Twojego konta.',
+    fileMissing:
+      'Plik jest chwilowo niedostępny. Spróbuj ponownie za chwilę; zamówienie jest w Konto → Zamówienia.',
+    failed: 'Nie udało się złożyć zamówienia. Spróbuj ponownie.',
+    downloadFailed: 'Nie udało się przygotować pliku. Spróbuj ponownie.',
+    imageAlt: 'Okładka infopaku Gellatti — Składniki bazy lodów',
+    orderRow: 'Składniki bazy lodów · PDF · 0 €',
+    language: 'PDF po angielsku',
+    accountHint: 'Plik możesz pobrać ponownie w każdej chwili.',
+    chooseCountry: 'Wybierz kraj, a zamówisz PDF przygotowany dla Twojego kraju.',
+    chooseCountryLink: 'Wybierz kraj',
+    notReady: 'PDF dla kraju: {country} jeszcze przygotowujemy.',
+    changeCountry: 'Zmień kraj',
+    countryLabel: 'Kraj',
+    languageLabel: 'Język PDF',
+    adminMarket: 'Kraj · język',
+    displayLocale: 'pl',
+    adminTitle: 'Dokumenty cyfrowe · 0 €',
+    adminEmpty: 'Nie ma jeszcze zamówień dokumentów.',
+    adminQa: 'Konto QA',
+    adminVersion: 'Wersja',
+    adminMail: 'Powiadomienie',
   },
   orders: {
     createdNotice: 'Zamówienie utworzone. Poniżej znajdziesz swoje zamówienie.',
@@ -454,6 +586,10 @@ export const shopCopyEn: ShopCopy = {
     noneHelper:
       'We do not ship the pack here yet, and we do not have a complete list of local ' +
       'alternatives. We are working on it.',
+    noneHelperDocument:
+      "We don't ship the pack here yet. Below you can order, for €0, a PDF with local equivalents of its seven ingredients.",
+    loadError: 'We could not load the list of countries.',
+    retry: 'Try again',
   },
   localPack: {
     name: 'Local Starter Pack',
@@ -559,6 +695,14 @@ export const shopCopyEn: ShopCopy = {
     finalAmountNote: 'Final amount. Card payment.',
     testMode: 'Staging: Stripe test mode. No card is charged.',
     error: 'Payment could not be started. Please try again.',
+    chooseCountry: 'Choose your country',
+    blocked: {
+      countriesUnavailable:
+        'We could not load the list of countries. Try again in the country picker.',
+      countryRequired: 'Choose the delivery country to go to payment.',
+      countryNotShipped: 'We do not ship parcels to this country yet.',
+      rateUnavailable: 'We do not have a shipping rate for this country right now.',
+    },
   },
   admin: {
     sessionReference: 'Payment session (Stripe)',
@@ -580,6 +724,64 @@ export const shopCopyEn: ShopCopy = {
     trackingNumber: 'Tracking number',
     markShipped: 'Mark as shipped',
     filterAll: 'All',
+  },
+  orderGate: {
+    planRequired: 'Ordering in the shop is available with an active Gellatti HOME or PRO plan.',
+    plansCta: 'Choose a plan',
+  },
+  infopak: {
+    kicker: 'Free guide',
+    name: 'Gellatti — Gelato Base Ingredients',
+    subtitle: 'Shopping guide: what to buy and where to find ingredients in your country.',
+    formatPrice: 'PDF · €0',
+    cta: 'Get it for €0',
+    ctaBusy: 'Ordering…',
+    lede: 'Free PDF shopping guide for your country: where to buy the seven Starter Pack ingredients.',
+    description: [
+      'This is a PDF shopping guide. It is information, not a parcel of ingredients and not a recipe collection with gram amounts.',
+      'It covers the seven Starter Pack ingredients: dextrose, skim milk powder, cream powder, fructose, inulin, dried egg yolk and a stabilizer. ' +
+        'For each one it lists a local equivalent in the country you choose: brand, name, pack size, the barcode where the product has one, and where the product was found.',
+      'The Gellatti Stabilizer is replaced by a local plant gum, described as an alternative rather than the same blend. ' +
+        'Some products are sold by shops abroad or by distributors to businesses, and the guide marks them clearly. ' +
+        'Availability, prices and delivery can change and are not guaranteed.',
+    ],
+    detailsTitle: 'Details',
+    details: [
+      'Format: PDF.',
+      'Country: the one you choose above.',
+      'Language: the language of the chosen country; where a country has several, you pick the version.',
+      'Delivery: download after placing the €0 order, with no card and no shipping costs.',
+      'Also in: Account → Orders.',
+    ],
+    smallPrint:
+      'Compiled from manufacturer and retailer pages, September 2026. Availability, prices and delivery are not guaranteed; ' +
+      'check the label before you buy. A product in this guide is not necessarily available in the Gellatti app yet.',
+    ready: 'Order received. Your guide is ready.',
+    download: 'Download PDF',
+    downloadBusy: 'Preparing the file…',
+    signInFirst: 'Sign in to get the guide for €0.',
+    notAvailable: 'This guide is not available for your account yet.',
+    fileMissing:
+      'The file is temporarily unavailable. Try again shortly; your order is in Account → Orders.',
+    failed: 'The order could not be placed. Please try again.',
+    downloadFailed: 'The file could not be prepared. Please try again.',
+    imageAlt: 'Cover of the Gellatti — Gelato Base Ingredients guide',
+    orderRow: 'Gelato Base Ingredients · PDF · €0',
+    language: 'PDF in English',
+    accountHint: 'You can download the file again at any time.',
+    chooseCountry: 'Choose your country to order the PDF made for it.',
+    chooseCountryLink: 'Choose country',
+    notReady: 'The PDF for {country} is still being prepared.',
+    changeCountry: 'Change country',
+    countryLabel: 'Country',
+    languageLabel: 'PDF language',
+    adminMarket: 'Country · language',
+    displayLocale: 'en',
+    adminTitle: 'Digital documents · €0',
+    adminEmpty: 'No document orders yet.',
+    adminQa: 'QA account',
+    adminVersion: 'Version',
+    adminMail: 'Notification',
   },
   orders: {
     createdNotice: 'Order created. You will find it below.',

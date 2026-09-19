@@ -47,6 +47,10 @@ import {
   markCrownAutoSeeded,
 } from '@/features/ingredient-builder/crownAutoSeed';
 import {
+  withCrownBootstrap,
+  withoutCrownBootstrap,
+} from '@/features/formulation/crownBootstrapProvenance';
+import {
   DEFAULT_DIRECTION_TARGETS,
   savedRecipeProfileDraftIdentity,
   type ProfileSettingsSnapshot,
@@ -109,6 +113,7 @@ import {
   readRecipeLabelDraft,
   type RecipeLabelDraft,
 } from '@/features/master-label/labelDraftPersistence';
+import { readRecipeProvenance, type RecipeProvenance } from '@/features/recipes/recipeProvenance';
 import {
   MACHINE_CATALOG,
   HOME_ENGINE_TEMPERATURE_C,
@@ -116,11 +121,43 @@ import {
   type HomeFormulationModuleId,
   type MachineTechnology,
 } from '@/features/machine-catalog';
+import {
+  DEFAULT_PRIORITY_MODE,
+  savedPriorityMode,
+  type PriorityMode,
+} from '@/features/recipe-priority';
 
 type FlavorIntensity = NonNullable<RecipeGoals['flavor_intensity']>;
 
 const OWNER_REVIEW_GATE_REASON = 'owner_review_production_label_gate';
 const OWNER_REVIEW_GATE_WARNING = 'owner_review_only';
+
+/** Product facts only. Identity may change without invalidating a calculation
+ * when both exact products prove the same immutable behavior facts. */
+const replacementFactsFingerprint = (
+  ingredient: RecipeToppingIngredient,
+  behavior?: ProductBehaviorSnapshot,
+): string => {
+  if (isCatalogLabelToppingIngredient(ingredient)) {
+    return JSON.stringify({
+      factsFingerprint: behavior?.factsFingerprint ?? null,
+      nutrition: ingredient.label_nutrition_per_100g,
+      ingredientsText: ingredient.ingredients_text,
+      allergensText: ingredient.allergens_text,
+      carbonationStatus: ingredient.carbonation_status ?? null,
+    });
+  }
+  return JSON.stringify({
+    factsFingerprint: behavior?.factsFingerprint ?? null,
+    composition: ingredient.composition,
+    pod: ingredient.pod_value,
+    pac: ingredient.pac_value,
+    de: ingredient.de_value,
+    flags: ingredient.flags ?? null,
+    subtype: ingredient.source_subcategory ?? null,
+    carbonationStatus: ingredient.carbonation_status ?? null,
+  });
+};
 
 /** Server re-resolution may refresh product truth, but it must never erase a
  * recipe-level Owner Review boundary. That boundary belongs to the opened
@@ -178,6 +215,12 @@ type CostPriority = NonNullable<RecipeGoals['cost_priority']>;
 export type AddIngredientResult =
   | { status: 'added'; lineId: string; canonicalId: string }
   | { status: 'duplicate'; lineId: string; canonicalId: string };
+
+export interface AddIngredientOptions {
+  /** The customer supplied this exact amount in the Add flow. Source/system
+   * amounts deliberately omit this marker and remain solver-mutable. */
+  amountIntent?: 'user_exact';
+}
 
 export type ReplaceIngredientResult =
   | { status: 'replaced'; lineId: string; canonicalId: string }
@@ -296,6 +339,14 @@ export interface RecipeState {
    * `recipePersistPartialize` and from every saved payload.
    */
   crownAutoSeededLineIds: string[];
+  /**
+   * PACKAGE 2A — HOME priority mode (draft material, persisted locally).
+   * `AUTO`: a HOME draft is born here; every BASE line the customer adds holds
+   * the Main role invisibly. `MANUAL`: PRO, every loaded recipe, and HOME from
+   * the customer's first crown — the priorities are exactly the crowns they set.
+   * One-way: nothing returns a draft to AUTO except starting a new HOME draft.
+   */
+  priority_mode: PriorityMode;
   /** Last loaded demo preset (drives the selector highlight); null after a manual reset to none. */
   activePresetId: PresetId | null;
   /** Approved neutral scaffold attached only to an untouched explicit new draft. */
@@ -338,6 +389,8 @@ export interface RecipeState {
   currentVersionDate: string | null;
   /** Current recipe's label working copy: stable LOT/date plus editable label data. */
   labelDraft: RecipeLabelDraft | null;
+  /** Where this working copy came from (official Gellatti / Community); null for an own recipe. */
+  provenance: RecipeProvenance | null;
   /**
    * Pro machine/serving selection context (S4). Drives the workbar context line + which visible
    * serving mode routes the recipe. It NEVER changes Engine math — the temperature it carries is
@@ -455,7 +508,11 @@ export interface RecipeState {
    * the same canonical identity. A duplicate is a strict no-op: it must not
    * dirty the draft, refresh product data or invalidate Preview/Undo state.
    */
-  addIngredient: (ingredient: EngineIngredient, grams?: number) => AddIngredientResult;
+  addIngredient: (
+    ingredient: EngineIngredient,
+    grams?: number,
+    options?: AddIngredientOptions,
+  ) => AddIngredientResult;
   /** Replace one Base row in place. The line id, amount and explicit locks are
    * retained; selecting a canonical identity already present elsewhere is a
    * strict no-op rather than a duplicate-producing add. */
@@ -468,7 +525,11 @@ export interface RecipeState {
   removeTopping: (lineId: string) => void;
   setToppingGrams: (lineId: string, grams: number) => void;
   setToppingActualGrams: (lineId: string, grams: number | null) => void;
-  replaceToppingIngredient: (lineId: string, ingredient: RecipeToppingIngredient) => void;
+  replaceToppingIngredient: (
+    lineId: string,
+    ingredient: RecipeToppingIngredient,
+    behavior?: ProductBehaviorSnapshot,
+  ) => void;
   setIngredientPrivateCost: (
     lineId: string,
     pricePerKg: number | null,
@@ -508,11 +569,18 @@ export interface RecipeState {
   setIngredientUnavailable: (lineId: string, unavailable: boolean) => void;
   /** Owner P0 repair: fold plannable duplicate-ingredient lines into one (explicit action). */
   mergeDuplicateIngredientLines: () => void;
+  /** One atomic USER_SET_EXACT_GRAMS transaction: validates and commits a real
+   * manual amount change together with its exact-grams constraint. Crown/Main
+   * remains an independent Engine role and may coexist with the sidecar. */
+  setExactGrams: (lineId: string, grams: number) => void;
+  /** Lower-level amount write for non-interactive/internal callers. User-facing
+   * HOME and PRO grams controls must use `setExactGrams`. */
   setPlannedGrams: (lineId: string, grams: number) => void;
   /** One atomic direct-manipulation write for a coherent full recipe vector. */
   setPlannedGramsVector: (gramsByLineId: Readonly<Record<string, number>>) => void;
   setActualGrams: (lineId: string, grams: number | null) => void;
-  setLockType: (lineId: string, lockType: LockType) => void;
+  /** `surface` defaults to `'pro'`; only HOME's own controls pass `'home'`. */
+  setLockType: (lineId: string, lockType: LockType, surface?: CrownSurface) => void;
   /** Persist/remove the product-layer percent sidecar while retaining a
    * stronger Main/Required/already-added Engine role when present. */
   setPercentLock: (lineId: string, percent: number | null) => void;
@@ -521,11 +589,17 @@ export interface RecipeState {
   setGramLock: (lineId: string, grams: number | null) => void;
   setRangeLock: (lineId: string, minGrams: number, maxGrams: number) => void;
   clearRangeLock: (lineId: string) => void;
-  /** Adds one line to the Main ingredient set; existing Main lines stay Main. */
-  setMainIngredient: (lineId: string) => void;
+  /** Adds one line to the Main ingredient set; existing Main lines stay Main.
+   * `surface` defaults to `'pro'` (0 g seeds 1 g for every profile); only HOME's
+   * own call sites pass `'home'`. */
+  setMainIngredient: (lineId: string, surface?: CrownSurface) => void;
   /** Removes only the Main crown. Independent gram/percent/range constraints
    * remain exact and become the line's visible lock type. */
   setStandardIngredient: (lineId: string) => void;
+  /** PACKAGE 2A — set by HOME when it starts a new draft; every load path resets to MANUAL. */
+  setPriorityMode: (mode: PriorityMode) => void;
+  /** PACKAGE 2A — HOME's AUTOMATIC door: a priority only while the draft is AUTO. */
+  grantAutomaticPriority: (lineId: string) => void;
   /** Persist an explicit positive Main-group ratio weight. `null` restores the
    * deterministic equal-share default and never derives a ratio from grams. */
   setMainRatioWeight: (lineId: string, weight: number | null) => void;
@@ -654,6 +728,76 @@ const moveWithin = <T extends { id: string }>(
 };
 
 const ENGINE_KEPT_LOCKS: ReadonlySet<LockType> = new Set(['main', 'already_added', 'required']);
+
+/**
+ * WHICH PRODUCT SURFACE IS CROWNING (owner regression brief 2026-09-11).
+ *
+ * `'pro'` is the default and the accepted PRO contract for EVERY profile:
+ * Crown ON at 0 g seeds exactly 1 g (GEL-P0-002, GEL-P0-037), so the crowned
+ * line becomes a ProductBehavior-required line and Przelicz can continue.
+ *
+ * `'home'` is HOME's own layer. HOME keeps the Protein mass-neutral Crown from
+ * 6e9a99bc: crowning a zero-gram Protein line must not grow a complete
+ * machine-sized batch by the 1 g role seed. That rule was scoped by PROFILE
+ * inside this shared store, which is how it reached PRO and turned
+ * `0 g + Crown -> 1 g` into `0 g + Crown -> 0 g` there. It is scoped by
+ * SURFACE now, and only HOME's own call sites pass `'home'`.
+ *
+ * OWNER OD-1 (2026-09-11, Package 2A closure): HOME's Crown and priority are
+ * mass-neutral for EVERY profile — 0 g stays 0 g. HOME's „Przelicz i popraw"
+ * hands a 0 g HOME priority line to the solver as the Crown bootstrap on its
+ * provisional copy instead. PRO keeps `0 g + Crown -> 1 g` for every profile.
+ */
+export type CrownSurface = 'pro' | 'home';
+
+const crownAutoSeedAllowed = (surface: CrownSurface): boolean => surface === 'pro';
+
+/**
+ * PACKAGE 2A (closed 2026-09-11) — HOME's first conscious crown in AUTO.
+ *
+ * In AUTO every BASE line holds the Main role invisibly. The customer's first
+ * press means "THIS is my priority", so every OTHER automatic priority is
+ * released in the same write and the draft becomes MANUAL for good.
+ *
+ * Mass-neutral by construction: every line keeps exactly its grams, a released
+ * line gets back the lock its own constraints describe (grams/percent/unlocked,
+ * the same mapping `setStandardIngredient` uses), and no amount is written as
+ * user intent — the Crown is a priority, not a quantity and not a lock. The
+ * seed provenance ends here too, so a later HOME uncrown keeps every gram (HOME's
+ * own Crown never seeds since owner OD-1), and a released line also ends any
+ * Crown-bootstrap provenance (#290: any other role ends it).
+ *
+ * Like HOME's own Crown door (`setLockType` with `'home'`) it never touches
+ * ProductBehavior snapshots: a released line keeps its product and its grams,
+ * and HOME's own amount edits must keep working right after the press.
+ */
+const firstManualHomeCrown = (state: RecipeState, pressedLineId: string): Partial<RecipeState> => {
+  const automatic = new Set(
+    state.items.filter((item) => item.lock_type === 'main').map((item) => item.id),
+  );
+  const items = state.items.map((item) => {
+    if (!automatic.has(item.id) || item.id === pressedLineId) return item;
+    const next = { ...item };
+    delete next.main_ratio_weight;
+    delete next.amount_provenance;
+    return {
+      ...next,
+      lock_type:
+        item.range_constraint || item.grams_constraint
+          ? ('grams' as const)
+          : item.percent_constraint
+            ? ('percent' as const)
+            : ('unlocked' as const),
+    };
+  });
+  return {
+    items: equalCrownSeedWeights(items),
+    priority_mode: 'MANUAL',
+    crownAutoSeededLineIds: state.crownAutoSeededLineIds.filter((id) => !automatic.has(id)),
+    dirty: true,
+    draftRevision: state.draftRevision + 1,
+  };
+};
 
 /**
  * Has the required Main role been RESOLVED?
@@ -930,6 +1074,110 @@ export const resizeRecipeBatch = (
 };
 
 /**
+ * Final HOME-machine presentation allocation. The batch resize above remains
+ * the authority for proportions and every Lock contract; this pass only puts
+ * the mass it was allowed to move onto the customer's whole-gram grid.
+ *
+ * Fixed grams / actual amounts and exact percentage shares are never rounded.
+ * If one of those authorities is fractional, whole-gram output is not
+ * representable without changing the Lock, so the accepted decimal result is
+ * retained. Positive scalable lines have a 1 g lower bound, while an explicit
+ * 0 g line remains 0 g. Range bounds are applied on the same integer grid.
+ *
+ * Allocation is deterministic bounded largest-remainder: start at each exact
+ * share's floor (clamped to its semantic bounds), then assign or remove the
+ * residual gram by the smallest rounding error, with source order as the tie
+ * breaker. The returned sum is the exact integer line target.
+ */
+const wholeGramHomeMachineResize = (resized: RecipeItem[]): RecipeItem[] => {
+  const exactLineTarget = resized.reduce((total, item) => total + item.planned_grams, 0);
+  const wholeLineTarget = Math.round(exactLineTarget);
+  if (
+    !Number.isFinite(exactLineTarget) ||
+    Math.abs(exactLineTarget - wholeLineTarget) > BATCH_RESIZE_TOLERANCE_GRAMS
+  ) {
+    return resized;
+  }
+
+  const isExactAuthority = (item: RecipeItem): boolean =>
+    isBatchFixedLine(item) || item.percent_constraint !== undefined || item.lock_type === 'percent';
+  const exactAuthorityIndexes = resized
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => isExactAuthority(item));
+
+  // A fractional exact authority and an all-integer recipe cannot both be
+  // true. Preserve Lock authority rather than silently weakening it.
+  if (exactAuthorityIndexes.some(({ item }) => !Number.isInteger(item.planned_grams))) {
+    return resized;
+  }
+
+  const exactAuthorityTotal = exactAuthorityIndexes.reduce(
+    (total, { item }) => total + item.planned_grams,
+    0,
+  );
+  const scalableTarget = wholeLineTarget - exactAuthorityTotal;
+  const scalable = resized
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => !isExactAuthority(item))
+    .map(({ item, index }) => {
+      const explicitlyZero = item.planned_grams === 0;
+      const lower = explicitlyZero
+        ? 0
+        : Math.max(1, item.range_constraint ? Math.ceil(item.range_constraint.min_grams) : 1);
+      const upper = explicitlyZero
+        ? 0
+        : item.range_constraint
+          ? Math.floor(item.range_constraint.max_grams)
+          : scalableTarget;
+      return {
+        index,
+        raw: item.planned_grams,
+        lower,
+        upper,
+        units: Math.min(upper, Math.max(lower, Math.floor(item.planned_grams))),
+      };
+    });
+
+  if (
+    !Number.isInteger(scalableTarget) ||
+    scalableTarget < 0 ||
+    scalable.some(({ raw, lower, upper }) => !Number.isFinite(raw) || raw < 0 || lower > upper)
+  ) {
+    return resized;
+  }
+
+  const lowerTotal = scalable.reduce((total, line) => total + line.lower, 0);
+  const upperTotal = scalable.reduce((total, line) => total + line.upper, 0);
+  if (scalableTarget < lowerTotal || scalableTarget > upperTotal) return resized;
+
+  let assigned = scalable.reduce((total, line) => total + line.units, 0);
+  while (assigned < scalableTarget) {
+    const recipient = scalable
+      .filter((line) => line.units < line.upper)
+      .sort((a, b) => b.raw - b.units - (a.raw - a.units) || a.index - b.index)[0];
+    if (!recipient) return resized;
+    recipient.units += 1;
+    assigned += 1;
+  }
+  while (assigned > scalableTarget) {
+    const donor = scalable
+      .filter((line) => line.units > line.lower)
+      .sort((a, b) => b.units - b.raw - (a.units - a.raw) || a.index - b.index)[0];
+    if (!donor) return resized;
+    donor.units -= 1;
+    assigned -= 1;
+  }
+
+  const wholeByIndex = new Map(scalable.map((line) => [line.index, line.units]));
+  const allocated = resized.map((item, index) => {
+    const planned_grams = wholeByIndex.get(index);
+    return planned_grams === undefined ? item : { ...item, planned_grams };
+  });
+  const allocatedTotal = allocated.reduce((total, item) => total + item.planned_grams, 0);
+  return allocatedTotal === wholeLineTarget ? allocated : resized;
+};
+
+/**
  * PC-02 / SOL-041 — project the existing stabilizer system through the
  * authority of the selected formulation family, then let this same resize
  * authority reconcile everything else around it. Gelato and Sorbet keep their
@@ -1022,6 +1270,7 @@ const fromPreset = (preset: DemoPreset) => ({
   excludedIngredientIds: [] as string[],
   unavailableMainIngredientIds: [] as string[],
   crownAutoSeededLineIds: [] as string[],
+  priority_mode: DEFAULT_PRIORITY_MODE as PriorityMode,
   activePresetId: preset.id,
   newRecipeStarterTemplateId: null,
   newRecipeStarterKey: null,
@@ -1034,6 +1283,7 @@ const fromPreset = (preset: DemoPreset) => ({
   currentVersionId: null,
   currentVersionDate: null,
   labelDraft: null,
+  provenance: null,
   machineKind: null,
   servingModeId: null,
   machineId: null,
@@ -1279,6 +1529,9 @@ export function recipePersistPartialize(state: RecipeState) {
     newRecipeStarterTemplateId: state.newRecipeStarterTemplateId,
     newRecipeStarterKey: state.newRecipeStarterKey,
     newRecipeStarterMaterialFingerprint: state.newRecipeStarterMaterialFingerprint,
+    // PACKAGE 2A: draft material — a HOME draft keeps AUTO/MANUAL across a
+    // refresh and a HOME↔PRO switch; every load path resets it to MANUAL.
+    priority_mode: state.priority_mode,
     // Draft material, not provenance: it is the part of the batch the unchosen
     // Main already owns. Dropping it on reload leaves an incomplete starter
     // looking merely off-batch, and the next batch change spends the
@@ -1293,6 +1546,7 @@ export function recipePersistPartialize(state: RecipeState) {
     currentVersionId: state.currentVersionId,
     currentVersionDate: state.currentVersionDate,
     labelDraft: state.labelDraft,
+    provenance: state.provenance,
     machineKind: state.machineKind,
     servingModeId: state.servingModeId,
     machineId: state.machineId,
@@ -1645,8 +1899,16 @@ export const useRecipeStore = create<RecipeState>()(
         const priorBatch = prior.target_batch_grams;
         const priorDirectionTargets = prior.direction_targets;
         const priorDirectionActive = prior.direction_targets_active;
+        // PRO Crown bootstrap provenance: once the written amount differs from
+        // the draft's, the bootstrap has been sized and no longer carries.
+        const priorPlanned = new Map(priorItems.map((item) => [item.id, item.planned_grams]));
         const nextItems = sortedBaseItems(
-          input.items.map((item) => normalizeRecipeItemIdentity({ ...item })),
+          input.items.map((item) => {
+            const normalized = normalizeRecipeItemIdentity({ ...item });
+            return priorPlanned.get(item.id) === item.planned_grams
+              ? normalized
+              : withoutCrownBootstrap(normalized);
+          }),
         );
         const nextToppings = priorToppings;
         const nextBaseOrder = orderedBaseItems(nextItems, priorBaseOrder).map((item) => item.id);
@@ -1741,7 +2003,7 @@ export const useRecipeStore = create<RecipeState>()(
         return { ok: true };
       },
 
-      addIngredient: (ingredient, grams = 100) => {
+      addIngredient: (ingredient, grams = 100, options) => {
         const canonicalId = canonicalIngredientId(ingredient);
         const current = get();
         const existing = firstCanonicalBaseItem(current.items, current.baseOrder, ingredient);
@@ -1756,14 +2018,20 @@ export const useRecipeStore = create<RecipeState>()(
           candidate.id,
           grams,
         );
+        const engineRole = current.unavailableMainIngredientIds.some(
+          (id) => canonicalIngredientIdFromSourceId(id) === canonicalId,
+        )
+          ? ('main' as const)
+          : ('unlocked' as const);
+        const userExactAmount =
+          options?.amountIntent === 'user_exact' && Number.isFinite(grams) && grams >= 0;
         const added = {
           ...candidate,
           planned_grams: aggregate.grams,
-          lock_type: current.unavailableMainIngredientIds.some(
-            (id) => canonicalIngredientIdFromSourceId(id) === canonicalId,
-          )
-            ? ('main' as const)
-            : ('unlocked' as const),
+          lock_type:
+            userExactAmount && !ENGINE_KEPT_LOCKS.has(engineRole) ? ('grams' as const) : engineRole,
+          ...(userExactAmount ? { grams_constraint: { grams: aggregate.grams } } : {}),
+          ...(userExactAmount ? { user_target_grams: aggregate.grams } : {}),
           ...(aggregate.grams > 0 ? { user_intent_anchor_grams: aggregate.grams } : {}),
         };
         set((state) => {
@@ -1818,6 +2086,11 @@ export const useRecipeStore = create<RecipeState>()(
         }
 
         const normalized = normalizeIngredientIdentity(ingredient);
+        const factsChanged =
+          replacementFactsFingerprint(
+            target.ingredient,
+            current.productBehaviorSnapshots[lineId],
+          ) !== replacementFactsFingerprint(normalized, behavior);
         set((state) => {
           const items = state.items.map((item) =>
             item.id === lineId ? { ...item, ingredient: normalized } : item,
@@ -1857,6 +2130,9 @@ export const useRecipeStore = create<RecipeState>()(
             draftRevision: state.draftRevision + 1,
           };
         });
+        if (factsChanged) {
+          useRecipeProfileStore.getState().markRecalculationRequired();
+        }
         return { status: 'replaced', lineId, canonicalId };
       },
 
@@ -1922,20 +2198,34 @@ export const useRecipeStore = create<RecipeState>()(
           dirty: true,
           draftRevision: state.draftRevision + 1,
         })),
-      replaceToppingIngredient: (lineId, ingredient) =>
-        set((state) => {
-          const current = state.toppings.find((item) => item.id === lineId);
-          if (!current) return {};
+      replaceToppingIngredient: (lineId, ingredient, behavior) => {
+        const state = get();
+        const current = state.toppings.find((item) => item.id === lineId);
+        if (!current) return;
+        if (behavior && behavior.processScope !== 'POST_PROCESS_ADDON') return;
+        const sameExactIdentity =
+          toppingIngredientIdentity(current.ingredient) === toppingIngredientIdentity(ingredient) &&
+          current.ingredient.id === ingredient.id &&
+          (current.ingredient.private_product_id ?? null) ===
+            (ingredient.private_product_id ?? null);
+        const preservedBehavior =
+          !behavior && sameExactIdentity ? state.productBehaviorSnapshots[lineId] : undefined;
+        const factsChanged =
+          replacementFactsFingerprint(
+            current.ingredient,
+            state.productBehaviorSnapshots[lineId],
+          ) !== replacementFactsFingerprint(ingredient, behavior ?? preservedBehavior);
+        set((currentState) => {
           const canonicalId = toppingIngredientIdentity(ingredient);
           const normalized = isCatalogLabelToppingIngredient(ingredient)
             ? cloneToppingIngredient(ingredient)
             : normalizeIngredientIdentity(ingredient);
-          const duplicate = state.toppings.find(
+          const duplicate = currentState.toppings.find(
             (item) =>
               item.id !== lineId && toppingIngredientIdentity(item.ingredient) === canonicalId,
           );
           const toppings = duplicate
-            ? state.toppings
+            ? currentState.toppings
                 .filter((item) => item.id !== duplicate.id)
                 .map((item) =>
                   item.id === lineId
@@ -1951,20 +2241,36 @@ export const useRecipeStore = create<RecipeState>()(
                       }
                     : item,
                 )
-            : state.toppings.map((item) =>
+            : currentState.toppings.map((item) =>
                 item.id === lineId ? { ...item, ingredient: normalized } : item,
               );
+          const productBehaviorSnapshots = Object.fromEntries(
+            Object.entries(currentState.productBehaviorSnapshots).filter(
+              ([snapshotLineId]) =>
+                (snapshotLineId !== lineId || Boolean(preservedBehavior)) &&
+                snapshotLineId !== duplicate?.id,
+            ),
+          );
+          if (behavior) {
+            productBehaviorSnapshots[lineId] = preserveOwnerReviewGate(
+              currentState.ownerReviewGate,
+              {
+                ...behavior,
+                lineId,
+              },
+            );
+          }
           return {
             toppings: sortedToppings(toppings),
-            productBehaviorSnapshots: Object.fromEntries(
-              Object.entries(state.productBehaviorSnapshots).filter(
-                ([snapshotLineId]) => snapshotLineId !== lineId && snapshotLineId !== duplicate?.id,
-              ),
-            ),
+            productBehaviorSnapshots,
             dirty: true,
-            draftRevision: state.draftRevision + 1,
+            draftRevision: currentState.draftRevision + 1,
           };
-        }),
+        });
+        if (factsChanged) {
+          useRecipeProfileStore.getState().markRecalculationRequired();
+        }
+      },
       setIngredientPrivateCost: (lineId, pricePerKg, currency, source) =>
         set((state) => ({
           items: state.items.map((item) =>
@@ -2217,6 +2523,55 @@ export const useRecipeStore = create<RecipeState>()(
             : {};
         }),
 
+      setExactGrams: (lineId, grams) => {
+        if (!Number.isFinite(grams)) return;
+        set((state) => {
+          const line = state.items.find((item) => item.id === lineId);
+          if (!line) return {};
+          const requestedGrams = Math.max(0, grams);
+          const required = productBehaviorRequiredLineIds({
+            items: [{ ...line, planned_grams: requestedGrams }],
+          });
+          if (
+            productBehaviorIsManaged(state.productBehaviorSnapshots) &&
+            required.length > 0 &&
+            !productBehaviorModuleGate(state.productBehaviorSnapshots, 'BASE_RECIPE', required)
+              .ready
+          )
+            return {};
+          const aggregate = clampOwnerStabilizerComponentGrams(
+            buildRecipeInput(state),
+            lineId,
+            requestedGrams,
+          );
+          const targetGrams = aggregate.grams;
+          // A boundary click, unchanged typed value or clamped request is not a
+          // new exact decision. It must not manufacture a lock or revision.
+          if (Object.is(line.planned_grams, targetGrams)) return {};
+          const items = state.items.map((item) => {
+            const next = { ...item };
+            delete next.user_target_grams;
+            if (item.id !== lineId) return next;
+            next.planned_grams = targetGrams;
+            next.user_target_grams = targetGrams;
+            delete next.range_constraint;
+            delete next.percent_constraint;
+            delete next.amount_provenance;
+            next.grams_constraint = { grams: targetGrams };
+            next.lock_type = ENGINE_KEPT_LOCKS.has(item.lock_type) ? item.lock_type : 'grams';
+            if (targetGrams > 0) next.user_intent_anchor_grams = targetGrams;
+            else delete next.user_intent_anchor_grams;
+            return next;
+          });
+          return {
+            items: line.lock_type === 'main' ? equalCrownSeedWeights(items) : items,
+            crownAutoSeededLineIds: clearCrownAutoSeeded(state.crownAutoSeededLineIds, lineId),
+            dirty: true,
+            draftRevision: state.draftRevision + 1,
+          };
+        });
+      },
+
       setPlannedGrams: (lineId, grams) =>
         set((state) => {
           const line = state.items.find((item) => item.id === lineId);
@@ -2247,6 +2602,8 @@ export const useRecipeStore = create<RecipeState>()(
             if (item.id !== lineId) return next;
             next.planned_grams = targetGrams;
             next.user_target_grams = targetGrams;
+            // An explicit amount is the user's, whatever its value.
+            delete next.amount_provenance;
             if (targetGrams > 0) next.user_intent_anchor_grams = targetGrams;
             else delete next.user_intent_anchor_grams;
             return next;
@@ -2300,7 +2657,7 @@ export const useRecipeStore = create<RecipeState>()(
                 ? clampOwnerStabilizerComponentGrams(buildRecipeInput(state), item.id, requested)
                     .grams
                 : requested;
-            return { ...item, planned_grams: planned };
+            return withoutCrownBootstrap({ ...item, planned_grams: planned });
           });
           const proposed = buildRecipeInput({ ...state, items: proposedItems });
           const required = productBehaviorRequiredLineIds({ items: proposed.items });
@@ -2346,23 +2703,44 @@ export const useRecipeStore = create<RecipeState>()(
           draftRevision: state.draftRevision + 1,
         })),
 
-      setLockType: (lineId, lockType) =>
+      setLockType: (lineId, lockType, surface = 'pro') => {
+        // PACKAGE 2A — only HOME's own Crown control passes `'home'`, so this branch
+        // is HOME's first conscious crown and nothing in PRO can reach it.
+        if (surface === 'home' && lockType === 'main' && get().priority_mode === 'AUTO') {
+          set((state) => firstManualHomeCrown(state, lineId));
+          // The pressed line normally already holds the automatic priority. If it
+          // does not, it is crowned below through the ordinary HOME path.
+          if (get().items.find((item) => item.id === lineId)?.lock_type === 'main') return;
+        }
         set((state) => {
           const current = state.items.find((item) => item.id === lineId);
           // OWNER P0 — the crown contract belongs to the role transition, not
           // to one button. This lower-level write reaches the same Main role,
-          // so it seeds and restores exactly like the Crown toggle.
+          // so it seeds and restores exactly like the Crown toggle — with
+          // HOME's mass-neutral Crown (owner OD-1) only when HOME is the caller.
           const wasAutoSeeded = state.crownAutoSeededLineIds.includes(lineId);
           const crownedNow = lockType === 'main' && current?.lock_type !== 'main';
           const uncrownedNow = lockType !== 'main' && current?.lock_type === 'main';
-          const seed = crownedNow ? crownOnPlannedGrams(current?.planned_grams ?? 0) : null;
+          // HOME's Crown is an independent role control. An exact amount may live
+          // beside Main as a sidecar, so crowning or uncrowning must preserve the
+          // amount constraint and merely expose its own lock type again on uncrown.
+          // Other setLockType callers retain the established mutually-exclusive
+          // lock transition below.
+          const preserveAmountConstraint =
+            surface === 'home' && (lockType === 'main' || current?.lock_type === 'main');
+          const seed =
+            crownedNow && crownAutoSeedAllowed(surface)
+              ? crownOnPlannedGrams(current?.planned_grams ?? 0)
+              : null;
           const items = state.items.map((item) =>
             item.id === lineId
               ? (() => {
                   const withoutRange = { ...item };
-                  delete withoutRange.range_constraint;
-                  delete withoutRange.percent_constraint;
-                  delete withoutRange.grams_constraint;
+                  if (!preserveAmountConstraint) {
+                    delete withoutRange.range_constraint;
+                    delete withoutRange.percent_constraint;
+                    delete withoutRange.grams_constraint;
+                  }
                   if (lockType !== 'main') delete withoutRange.main_ratio_weight;
                   const planned_grams = seed
                     ? seed.plannedGrams
@@ -2370,7 +2748,23 @@ export const useRecipeStore = create<RecipeState>()(
                       ? crownOffPlannedGrams(item.planned_grams, wasAutoSeeded)
                       : item.planned_grams;
                   if (planned_grams === 0) delete withoutRange.user_intent_anchor_grams;
-                  return { ...withoutRange, lock_type: lockType, planned_grams };
+                  // Only PRO's own 0 g seed is a bootstrap; re-asserting an
+                  // existing crown keeps it, and any other role or lock ends it.
+                  const provenanced =
+                    seed?.autoSeeded && surface === 'pro'
+                      ? withCrownBootstrap(withoutRange)
+                      : lockType === 'main' && !crownedNow
+                        ? withoutRange
+                        : withoutCrownBootstrap(withoutRange);
+                  const nextLockType =
+                    preserveAmountConstraint && lockType !== 'main'
+                      ? provenanced.range_constraint || provenanced.grams_constraint
+                        ? ('grams' as const)
+                        : provenanced.percent_constraint
+                          ? ('percent' as const)
+                          : lockType
+                      : lockType;
+                  return { ...provenanced, lock_type: nextLockType, planned_grams };
                 })()
               : item,
           );
@@ -2381,10 +2775,16 @@ export const useRecipeStore = create<RecipeState>()(
               : crownedNow || uncrownedNow
                 ? clearCrownAutoSeeded(state.crownAutoSeededLineIds, lineId)
                 : state.crownAutoSeededLineIds,
+            // PACKAGE 2A: a PRO role change on a draft still in HOME's AUTO is a
+            // conscious choice and ends AUTO; PRO's own semantics are unchanged.
+            ...(surface === 'pro' && (crownedNow || uncrownedNow) && state.priority_mode === 'AUTO'
+              ? { priority_mode: 'MANUAL' as const }
+              : {}),
             dirty: true,
             draftRevision: state.draftRevision + 1,
           };
-        }),
+        });
+      },
 
       setPercentLock: (lineId, percent) => {
         if (percent !== null && (!Number.isFinite(percent) || percent < 0 || percent > 100)) return;
@@ -2394,6 +2794,7 @@ export const useRecipeStore = create<RecipeState>()(
             const next = { ...item };
             delete next.range_constraint;
             delete next.grams_constraint;
+            delete next.amount_provenance;
             if (percent === null) {
               delete next.percent_constraint;
               return {
@@ -2422,6 +2823,7 @@ export const useRecipeStore = create<RecipeState>()(
             const next = { ...item };
             delete next.range_constraint;
             delete next.percent_constraint;
+            delete next.amount_provenance;
             if (grams === null) {
               delete next.grams_constraint;
               return {
@@ -2450,6 +2852,7 @@ export const useRecipeStore = create<RecipeState>()(
                   const withoutPercent = { ...item };
                   delete withoutPercent.percent_constraint;
                   delete withoutPercent.grams_constraint;
+                  delete withoutPercent.amount_provenance;
                   return {
                     ...withoutPercent,
                     lock_type: ENGINE_KEPT_LOCKS.has(item.lock_type)
@@ -2479,7 +2882,7 @@ export const useRecipeStore = create<RecipeState>()(
           draftRevision: state.draftRevision + 1,
         })),
 
-      setMainIngredient: (lineId) =>
+      setMainIngredient: (lineId, surface = 'pro') =>
         set((state) => {
           const current = state.items.find((item) => item.id === lineId);
           if (!current) return {};
@@ -2492,9 +2895,13 @@ export const useRecipeStore = create<RecipeState>()(
           // OWNER P0 — Crown at 0 g. The crown is a role, not an amount, but a
           // crowned line must hold a real positive mass: a 0 g line is not a
           // ProductBehavior required line, so nothing ever revalidates the
-          // role transition and every later grams edit is refused. Seed one
-          // ordinary gram and remember that WE seeded it.
-          const seed = roleChanged ? crownOnPlannedGrams(current.planned_grams) : null;
+          // role transition and every later grams edit is refused. PRO seeds
+          // one ordinary gram for EVERY profile and remembers that WE seeded
+          // it. HOME's Crown is mass-neutral for every profile (`crownAutoSeedAllowed`).
+          const seed =
+            roleChanged && crownAutoSeedAllowed(surface)
+              ? crownOnPlannedGrams(current.planned_grams)
+              : null;
           const items = state.items.map((item) => {
             if (item.id !== lineId) return item;
             const next = {
@@ -2503,11 +2910,23 @@ export const useRecipeStore = create<RecipeState>()(
               ...(seed ? { planned_grams: seed.plannedGrams } : {}),
             };
             delete next.user_intent_anchor_grams;
-            return next;
+            // PRO Crown bootstrap provenance (owner 2026-09-11): the gram PRO
+            // seeds onto an empty line is a bootstrap the Main search sizes,
+            // never an exact amount. Positive grams, HOME's Crown and a
+            // re-asserted crown claim nothing new.
+            if (!seed) return next;
+            return seed.autoSeeded && surface === 'pro'
+              ? withCrownBootstrap(next)
+              : withoutCrownBootstrap(next);
           });
           const crowned = equalCrownSeedWeights(items);
           return {
             items: crowned,
+            // PACKAGE 2A: a crown pressed in PRO is a conscious choice. On a draft
+            // still in HOME's AUTO it ends AUTO — PRO's own crown semantics unchanged.
+            ...(surface === 'pro' && roleChanged && state.priority_mode === 'AUTO'
+              ? { priority_mode: 'MANUAL' as const }
+              : {}),
             starterReservedMainGrams: reservationAfterMainCheck({
               items: crowned,
               productBehaviorSnapshots: state.productBehaviorSnapshots,
@@ -2522,10 +2941,17 @@ export const useRecipeStore = create<RecipeState>()(
                 : clearCrownAutoSeeded(state.crownAutoSeededLineIds, lineId),
             ...(roleChanged
               ? {
-                  productBehaviorSnapshots: requireProductBehaviorLineRevalidation(
-                    state.productBehaviorSnapshots,
-                    lineId,
-                  ),
+                  // A zero-gram HOME Protein Crown changes priority only.
+                  // Keeping the current Base snapshot lets the customer enter
+                  // the first real amount; the normal current-recipe authority
+                  // then resolves that positive Main line in its Main context.
+                  productBehaviorSnapshots:
+                    current.planned_grams > 0 || seed !== null
+                      ? requireProductBehaviorLineRevalidation(
+                          state.productBehaviorSnapshots,
+                          lineId,
+                        )
+                      : state.productBehaviorSnapshots,
                   practicalRecipeAudit: null,
                   savedProductionFingerprint: null,
                 }
@@ -2534,6 +2960,17 @@ export const useRecipeStore = create<RecipeState>()(
             draftRevision: state.draftRevision + 1,
           };
         }),
+
+      setPriorityMode: (mode) => set({ priority_mode: mode === 'AUTO' ? 'AUTO' : 'MANUAL' }),
+
+      grantAutomaticPriority: (lineId) => {
+        // PACKAGE 2A — the AUTOMATIC door, used only by HOME's add paths. It asks the
+        // same canonical Main authority with HOME's surface, so an ineligible product
+        // is still refused and HOME's own seed rule applies, and it never changes the
+        // mode. After the customer's first crown it does nothing at all.
+        if (get().priority_mode !== 'AUTO') return;
+        get().setMainIngredient(lineId, 'home');
+      },
 
       setStandardIngredient: (lineId) =>
         set((state) => {
@@ -2545,33 +2982,30 @@ export const useRecipeStore = create<RecipeState>()(
           // typed after the seed, or an amount that existed before the crown,
           // is preserved exactly. No gram stack, no history.
           const autoSeeded = state.crownAutoSeededLineIds.includes(lineId);
-          const returnedAutoSeedToZero =
-            roleChanged &&
-            autoSeeded &&
-            state.items.some(
-              (item) =>
-                item.id === lineId &&
-                item.lock_type === 'main' &&
-                crownOffPlannedGrams(item.planned_grams, autoSeeded) === 0,
-            );
-          const productBehaviorSnapshots = requireProductBehaviorLineRevalidation(
-            state.productBehaviorSnapshots,
-            lineId,
+          // A role transition that leaves the line WITHOUT mass keeps its
+          // current Base snapshot — the rule `setMainIngredient` already applies
+          // to a zero-gram crown. A 0 g line is outside the ProductBehavior
+          // required set, so marking its snapshot stale (and, since 3696d2bc,
+          // deleting it) stranded the line: every grams write that gave it mass
+          // was refused by the BASE_RECIPE gate, so + and − did nothing and
+          // Przelicz then asked for "≥ 1 g" (owner brief 2026-09-11). The kept
+          // snapshot also keeps the Crown re-armable. A line that keeps
+          // positive mass is still marked, and the managed pass resolves it.
+          const endsWithoutMass = state.items.some(
+            (item) =>
+              item.id === lineId &&
+              item.lock_type === 'main' &&
+              crownOffPlannedGrams(item.planned_grams, autoSeeded) === 0,
           );
-          if (returnedAutoSeedToZero) {
-            // A zero-gram Standard line is deliberately outside the PB-required
-            // set. Leaving its role-transition snapshot as REVALIDATION_REQUIRED
-            // creates a deadlock: PI cannot validate a zero line and the stale
-            // snapshot hides the Crown trigger. Forget only this now-inapplicable
-            // Main-context snapshot. Re-crowning seeds 1 g, makes the line PB
-            // required again, and the normal managed pass resolves fresh facts.
-            delete productBehaviorSnapshots[lineId];
-          }
+          const productBehaviorSnapshots = endsWithoutMass
+            ? state.productBehaviorSnapshots
+            : requireProductBehaviorLineRevalidation(state.productBehaviorSnapshots, lineId);
           return {
             items: state.items.map((item) => {
               if (item.id !== lineId || item.lock_type !== 'main') return item;
               const next = { ...item };
               delete next.main_ratio_weight;
+              delete next.amount_provenance;
               const planned_grams = crownOffPlannedGrams(item.planned_grams, autoSeeded);
               if (planned_grams === 0) delete next.user_intent_anchor_grams;
               return {
@@ -2587,6 +3021,11 @@ export const useRecipeStore = create<RecipeState>()(
               };
             }),
             crownAutoSeededLineIds: clearCrownAutoSeeded(state.crownAutoSeededLineIds, lineId),
+            // PACKAGE 2A: an uncrown is a conscious choice — it ends AUTO and the
+            // remaining crowns become the customer's own set.
+            ...(roleChanged && state.priority_mode === 'AUTO'
+              ? { priority_mode: 'MANUAL' as const }
+              : {}),
             ...(roleChanged
               ? {
                   productBehaviorSnapshots,
@@ -2813,6 +3252,9 @@ export const useRecipeStore = create<RecipeState>()(
           // provenance is draft-transient and must never be reconstructed from
           // a saved payload.
           crownAutoSeededLineIds: [],
+          // PACKAGE 2A: a recipe saved while still AUTO reopens AUTO; every other
+          // load (every PRO save, every MANUAL save) is MANUAL — its crowns are real.
+          priority_mode: savedPriorityMode(input),
           activePresetId: null,
           newRecipeStarterTemplateId: null,
           newRecipeStarterKey: null,
@@ -2825,6 +3267,7 @@ export const useRecipeStore = create<RecipeState>()(
           currentVersionId: link.versionId ?? null,
           currentVersionDate: link.versionDate ?? null,
           labelDraft: readRecipeLabelDraft(input),
+          provenance: readRecipeProvenance(input),
           dirty: false,
           practicalRecipeAudit,
           savedProductionFingerprint: null,
@@ -3146,6 +3589,10 @@ export const useRecipeStore = create<RecipeState>()(
                 targetBatchGrams,
                 undefined,
               );
+        const allocatedItems =
+          sel.kind === 'home' && sel.batchGrams != null
+            ? wholeGramHomeMachineResize(projectedItems)
+            : projectedItems;
         const batchSource =
           sel.batchGrams == null
             ? sel.kind === 'professional'
@@ -3180,10 +3627,10 @@ export const useRecipeStore = create<RecipeState>()(
           // Route to the existing supported cell — no Engine change, just the temperature input.
           target_temperature_c: sel.kind === 'home' ? HOME_ENGINE_TEMPERATURE_C : sel.temperatureC,
           target_batch_grams: targetBatchGrams,
-          items: projectedItems,
+          items: allocatedItems,
           starterReservedMainGrams: nextStarterReservation(
             reservedMainGrams,
-            projectedItems.reduce((total, item) => total + item.planned_grams, 0),
+            allocatedItems.reduce((total, item) => total + item.planned_grams, 0),
             targetBatchGrams,
           ),
           batch_source: batchSource,
@@ -3191,9 +3638,12 @@ export const useRecipeStore = create<RecipeState>()(
           machine_capacity_grams: sel.kind === 'home' ? (sel.hardCapacityGrams ?? null) : null,
           machine_capacity_source:
             sel.kind === 'home' && sel.hardCapacityGrams != null ? 'machine' : null,
-          productBehaviorSnapshots: requireProductBehaviorRevalidation(
-            current.productBehaviorSnapshots,
-          ),
+          // A machine transition changes recipe context, not the selected
+          // products. Keep their immutable PI/PR identity current here. The
+          // recalculation boundary below remains responsible for refreshing a
+          // snapshot whose resolutionContext no longer matches the routed
+          // temperature; eagerly invalidating it here falsely classifies the
+          // current recipe as historical/unresolved.
           dirty: true,
           draftRevision: current.draftRevision + 1,
         }));

@@ -1,7 +1,32 @@
 import type { SourceAuthorityClass } from '../../../src/features/product-intelligence/sourceAuthority.ts';
+import {
+  isEanConfirmationMethod,
+  isServerEanConfirmation,
+  gtinDigitsMatch,
+  type EanConfirmationMethod,
+} from '../../../src/features/product-intelligence/pageEanConfirmation.ts';
 import type { ProductSemanticEvidence } from '../../../src/features/product-intelligence/productRecognition.ts';
+export {
+  scannerCaptureFormatForSymbology,
+  verifyScannerBarcodePayload,
+} from '../../../src/scan-import-v2/barcodeIdentityContract.ts';
 
 export const PRODUCT_SCAN_SCHEMA_VERSION = 'gellatti_product_scan_v1';
+
+export type ProductScanBarcodeFormat = 'EAN_8' | 'EAN_13' | 'UPC_A' | 'UPC_E';
+
+export interface AuthoritativeBarcodeIdentity {
+  /** canonical GTIN-13 identity; the only value allowed to reach session/result authority */
+  canonicalValue: string;
+  /** original decoder-declared format, retained as evidence only */
+  capturedFormat: ProductScanBarcodeFormat | null;
+  /** original captured/entered text, retained as evidence only */
+  rawValue: string | null;
+}
+
+export function isProductScanBarcodeFormat(value: unknown): value is ProductScanBarcodeFormat {
+  return value === 'EAN_8' || value === 'EAN_13' || value === 'UPC_A' || value === 'UPC_E';
+}
 
 const nullableNumber = { type: ['number', 'null'] };
 const nullableString = { type: ['string', 'null'] };
@@ -73,6 +98,8 @@ export const PRODUCT_SCAN_RESPONSE_SCHEMA = {
         properties: {
           value: { type: 'string' },
           format: { enum: ['EAN_8', 'EAN_13', 'UPC_A', 'UPC_E'] },
+          capturedFormat: { enum: ['EAN_8', 'EAN_13', 'UPC_A', 'UPC_E'] },
+          rawValue: { type: ['string', 'null'] },
         },
       },
     },
@@ -113,6 +140,8 @@ export const PRODUCT_SCAN_RESPONSE_SCHEMA = {
         'cocoaSolidsPercent',
         'fruitContentPercent',
         'brix',
+        'waterPercent',
+        'totalSolidsPercent',
         'concentrationText',
         'dosageText',
         'technicalParametersText',
@@ -124,6 +153,8 @@ export const PRODUCT_SCAN_RESPONSE_SCHEMA = {
         cocoaSolidsPercent: nullableNumber,
         fruitContentPercent: nullableNumber,
         brix: nullableNumber,
+        waterPercent: nullableNumber,
+        totalSolidsPercent: nullableNumber,
         concentrationText: nullableString,
         dosageText: nullableString,
         technicalParametersText: nullableString,
@@ -208,13 +239,15 @@ Return only evidence observed in the assets supplied for THIS call, using the st
 	The user message names the requested missing fields. Extract only those fields from these new assets;
 	leave every unrequested schema fact null/empty so an already-found session fact is never re-read.
 	Missing/illegible values in this call are null and listed in missingFields;
-never convert UNKNOWN to zero. Copy ingredient and allergen wording faithfully. Label evidence wins
-over web or registry data. When web is available, use only manufacturer pages first, then an
+never convert UNKNOWN to zero. Copy ingredient and allergen wording faithfully. A photographed label
+may fill missing facts, but must not silently replace server-confirmed exact-GTIN facts. When web is
+available, use only manufacturer pages first, then an
 authoritative barcode registry, then an authoritative retailer; do not use forums, social posts,
 or user-generated product descriptions. Use external data only to fill missing fields. Return each
-used URL/title/field in externalSources. Keep every disagreement in conflicts with retainedSource=label.
+used URL/title/field in externalSources. Keep every material disagreement in conflicts for server review.
 Read explicit production declarations when visible: ABV, cocoa/cocoa-butter percentage, fruit content,
-Brix/concentration, dosage, technical parameters and the declared physical form. Never derive them.
+Brix/concentration, water/total-solids percentage, dosage, technical parameters and the declared
+physical form. Never derive them.
 Every non-null fact needs an evidence entry including its asset, visible region, and whether it was
 directly readable. Do not infer dosage, formulation behavior, readiness,
 Mapper identity, or Engine permission from marketing language.`;
@@ -433,29 +466,130 @@ interface SemanticNetQuantity {
   unit: 'g' | 'ml';
 }
 
-function semanticNetQuantity(value: unknown, pairedUnit?: unknown): SemanticNetQuantity | null {
-  let amount: number | null = null;
-  let unit: string | null = null;
-  if (typeof value === 'string') {
-    const matches = [...value.matchAll(/((?:\d+(?:[.,]\d+)?)|(?:[.,]\d+))\s*(kg|g|ml|l)\b/gi)];
-    const match = matches.at(-1);
-    if (match?.[1] && match[2]) {
-      amount = Number(match[1].replace(',', '.'));
-      unit = match[2].toLowerCase();
-    }
-  } else if (
-    typeof value === 'number' &&
-    Number.isFinite(value) &&
-    typeof pairedUnit === 'string'
-  ) {
-    amount = value;
-    unit = pairedUnit.trim().toLowerCase();
+interface ParsedVisiblePackageQuantity {
+  explicitTotal: SemanticNetQuantity | null;
+  multipack: {
+    count: number;
+    perUnit: SemanticNetQuantity;
+    derivedTotal: SemanticNetQuantity;
+  } | null;
+  canonical: SemanticNetQuantity | null;
+  conflict: { explicitTotal: SemanticNetQuantity; derivedTotal: SemanticNetQuantity } | null;
+  dimensionNotComparable: boolean;
+  provenance: 'DIRECT' | 'DERIVED' | 'UNKNOWN';
+}
+
+const semanticQuantity = (amount: number, unit: string): SemanticNetQuantity | null => {
+  if (!Number.isFinite(amount) || amount <= 0 || amount > 100_000) return null;
+  const normalizedUnit = unit.trim().toLowerCase();
+  if (normalizedUnit === 'kg') return { value: amount * 1000, unit: 'g' };
+  if (normalizedUnit === 'g') return { value: amount, unit: 'g' };
+  if (normalizedUnit === 'l') return { value: amount * 1000, unit: 'ml' };
+  if (normalizedUnit === 'ml') return { value: amount, unit: 'ml' };
+  return null;
+};
+
+const sameSemanticQuantity = (left: SemanticNetQuantity, right: SemanticNetQuantity): boolean =>
+  left.unit === right.unit && Math.abs(left.value - right.value) <= 0.001;
+
+/**
+ * Parse roles before choosing a package total. A multiplier's quantity is a per-unit value,
+ * never a competing candidate in a positional "first/last number wins" rule.
+ */
+function parseVisiblePackageQuantity(value: string): ParsedVisiblePackageQuantity {
+  const text = value.replace(/\s+/g, ' ').trim();
+  const quantityPattern = /((?:\d+(?:[.,]\d+)?)|(?:[.,]\d+))\s*(kg|g|ml|l)\b/gi;
+  const multipackPattern =
+    /(\d+)\s*(?:x|×|\*)\s*((?:\d+(?:[.,]\d+)?)|(?:[.,]\d+))\s*(kg|g|ml|l)\b/gi;
+  const multipacks = [...text.matchAll(multipackPattern)].flatMap((match) => {
+    const count = Number(match[1]);
+    const perUnit = semanticQuantity(Number(match[2]?.replace(',', '.')), match[3] ?? '');
+    if (!Number.isInteger(count) || count <= 0 || count > 10_000 || !perUnit) return [];
+    const derivedTotal = semanticQuantity(perUnit.value * count, perUnit.unit);
+    if (!derivedTotal || match.index === undefined) return [];
+    return [
+      { count, perUnit, derivedTotal, start: match.index, end: match.index + match[0].length },
+    ];
+  });
+  const explicitQuantities = [...text.matchAll(quantityPattern)].flatMap((match) => {
+    if (match.index === undefined) return [];
+    const insideMultipack = multipacks.some(
+      (multipack) => match.index! >= multipack.start && match.index! < multipack.end,
+    );
+    if (insideMultipack) return [];
+    const quantity = semanticQuantity(Number(match[1]?.replace(',', '.')), match[2] ?? '');
+    return quantity ? [quantity] : [];
+  });
+  const explicitTotal = explicitQuantities[0] ?? null;
+  const multipack = multipacks.length === 1 ? multipacks[0]! : null;
+
+  if (explicitQuantities.length > 1 || multipacks.length > 1) {
+    return {
+      explicitTotal,
+      multipack,
+      canonical: null,
+      conflict: null,
+      dimensionNotComparable: false,
+      provenance: 'UNKNOWN',
+    };
   }
-  if (amount === null || !Number.isFinite(amount) || amount <= 0 || amount > 100_000) return null;
-  if (unit === 'kg') return { value: amount * 1000, unit: 'g' };
-  if (unit === 'g') return { value: amount, unit: 'g' };
-  if (unit === 'l') return { value: amount * 1000, unit: 'ml' };
-  if (unit === 'ml') return { value: amount, unit: 'ml' };
+  if (!multipack) {
+    return {
+      explicitTotal,
+      multipack: null,
+      canonical: explicitTotal,
+      conflict: null,
+      dimensionNotComparable: false,
+      provenance: explicitTotal ? 'DIRECT' : 'UNKNOWN',
+    };
+  }
+  if (!explicitTotal) {
+    return {
+      explicitTotal: null,
+      multipack,
+      canonical: multipack.derivedTotal,
+      conflict: null,
+      dimensionNotComparable: false,
+      provenance: 'DERIVED',
+    };
+  }
+  if (explicitTotal.unit !== multipack.derivedTotal.unit) {
+    return {
+      explicitTotal,
+      multipack,
+      canonical: explicitTotal,
+      conflict: null,
+      dimensionNotComparable: true,
+      provenance: 'DIRECT',
+    };
+  }
+  if (!sameSemanticQuantity(explicitTotal, multipack.derivedTotal)) {
+    return {
+      explicitTotal,
+      multipack,
+      canonical: null,
+      conflict: { explicitTotal, derivedTotal: multipack.derivedTotal },
+      dimensionNotComparable: false,
+      provenance: 'UNKNOWN',
+    };
+  }
+  return {
+    explicitTotal,
+    multipack,
+    canonical: explicitTotal,
+    conflict: null,
+    dimensionNotComparable: false,
+    provenance: 'DIRECT',
+  };
+}
+
+function semanticNetQuantity(value: unknown, pairedUnit?: unknown): SemanticNetQuantity | null {
+  if (typeof value === 'string') {
+    return parseVisiblePackageQuantity(value).canonical;
+  }
+  if (typeof value === 'number' && Number.isFinite(value) && typeof pairedUnit === 'string') {
+    return semanticQuantity(value, pairedUnit);
+  }
   return null;
 }
 
@@ -476,7 +610,65 @@ function materiallyEqual(field: string, prior: unknown, incoming: unknown): bool
       : 0.000001;
     return Math.abs(prior - incoming) <= tolerance;
   }
+  if (typeof prior === 'string' && typeof incoming === 'string') {
+    // Case, accents and punctuation are presentation differences, not two product facts.
+    // Keeping the first spelling makes cumulative knowledge stable across OCR passes.
+    return normalizedWords(prior) === normalizedWords(incoming);
+  }
   return stableJson(normalizedComparable(prior)) === stableJson(normalizedComparable(incoming));
+}
+
+const EXACT_EAN_HARD_AUTHORITIES = new Set<SourceAuthorityClass>([
+  'OFFICIAL_MANUFACTURER',
+  'OFFICIAL_BRAND',
+  'OFFICIAL_PRIVATE_LABEL',
+  'OFFICIAL_TECHNICAL_PDF',
+  'STRUCTURED_PRODUCT_DATABASE',
+  'AUTHORITATIVE_RETAILER',
+]);
+
+const exactSourceFieldsFor = (field: string): readonly string[] => {
+  if (field === 'identity.originalName') return ['identity.originalName', 'identity.displayName'];
+  if (field === 'package.unit' || field === 'package.netQuantityText')
+    return [field, 'package.netQuantity'];
+  return [field];
+};
+
+/**
+ * External lookup rows are created by the server, not accepted from the vision model. A row is a
+ * hard exact-product fact only when the source authority is trusted, the server itself confirmed
+ * the GTIN, and the row explicitly says it supplied this field. Coarse `sourceType` alone is never
+ * enough to earn this protection.
+ */
+function exactEanHardSource(
+  value: unknown,
+  field: string,
+  authoritativeBarcode: string | null,
+): ProductScanSource | null {
+  const barcode = normalizeValidatedBarcode(authoritativeBarcode);
+  if (!barcode) return null;
+  const root = objectValue(value);
+  const sources = Array.isArray(root.externalSources) ? root.externalSources : [];
+  for (const sourceValue of sources) {
+    const source = objectValue(sourceValue);
+    const authority = source.sourceAuthorityClass as SourceAuthorityClass;
+    const stated =
+      typeof source.sourceStatedEan === 'string' ? source.sourceStatedEan.replace(/\D/g, '') : '';
+    const fields = Array.isArray(source.fieldsUsed) ? source.fieldsUsed.map(String) : [];
+    if (
+      !EXACT_EAN_HARD_AUTHORITIES.has(authority) ||
+      !isServerEanConfirmation(source.sourceEanConfirmationMethod) ||
+      !gtinDigitsMatch(stated, barcode) ||
+      !exactSourceFieldsFor(field).some((candidate) => fields.includes(candidate))
+    )
+      continue;
+    return ['manufacturer', 'barcode_registry', 'retailer'].includes(String(source.sourceType))
+      ? (source.sourceType as ProductScanSource)
+      : authority === 'AUTHORITATIVE_RETAILER' || authority === 'OFFICIAL_PRIVATE_LABEL'
+        ? 'retailer'
+        : 'manufacturer';
+  }
+  return null;
 }
 
 function getPath(root: Record<string, unknown>, path: string): unknown {
@@ -549,6 +741,20 @@ function appendConflict(
 const barcodeFormat = (digits: string): 'EAN_8' | 'EAN_13' | 'UPC_A' =>
   digits.length === 8 ? 'EAN_8' : digits.length === 12 ? 'UPC_A' : 'EAN_13';
 
+type BarcodeMetadata = {
+  capturedFormat: ProductScanBarcodeFormat | null;
+  rawValue: string | null;
+};
+
+function barcodeMetadata(value: unknown): BarcodeMetadata {
+  const root = objectValue(value);
+  const first = Array.isArray(root.barcodes) ? objectValue(root.barcodes[0]) : {};
+  return {
+    capturedFormat: isProductScanBarcodeFormat(first.capturedFormat) ? first.capturedFormat : null,
+    rawValue: typeof first.rawValue === 'string' ? first.rawValue : null,
+  };
+}
+
 function validatedResultBarcodes(value: unknown): { accepted: string[]; rejected: boolean } {
   const root = objectValue(value);
   let rejected = false;
@@ -562,6 +768,21 @@ function validatedResultBarcodes(value: unknown): { accepted: string[]; rejected
         }
         const expected = barcodeFormat(normalized);
         if (candidate.format !== expected) {
+          rejected = true;
+          return [];
+        }
+        if (
+          candidate.capturedFormat !== undefined &&
+          !isProductScanBarcodeFormat(candidate.capturedFormat)
+        ) {
+          rejected = true;
+          return [];
+        }
+        if (
+          candidate.rawValue !== undefined &&
+          candidate.rawValue !== null &&
+          (typeof candidate.rawValue !== 'string' || candidate.rawValue.length > 64)
+        ) {
           rejected = true;
           return [];
         }
@@ -580,27 +801,160 @@ const mergeUnique = (left: unknown, right: unknown): unknown[] => [
   ).values(),
 ];
 
+const externalSourceUrl = (value: unknown): string | null =>
+  typeof value === 'string' && /^https:\/\//i.test(value) ? value : null;
+
+const externalSourceEan = (source: Record<string, unknown>): string | null => {
+  const stated = normalizeValidatedBarcode(source.sourceStatedEan);
+  if (stated) return stated;
+  const url = externalSourceUrl(source.url);
+  if (!url) return null;
+  try {
+    const match = /^\/(?:api\/v2\/)?product\/(\d{8,14})(?:\.json)?$/.exec(new URL(url).pathname);
+    return match ? normalizeValidatedBarcode(match[1]) : null;
+  } catch {
+    return null;
+  }
+};
+
+const externalSourceKey = (source: Record<string, unknown>): string => {
+  const sourceType = String(source.sourceType ?? '');
+  const url = externalSourceUrl(source.url) ?? '';
+  const ean = externalSourceEan(source);
+  try {
+    if (ean && new URL(url).hostname === 'world.openfoodfacts.org')
+      return `barcode_registry:world.openfoodfacts.org:${ean}`;
+  } catch {
+    // Non-URL sources retain the ordinary sourceType + URL identity below.
+  }
+  if (url) return `${sourceType}:${url}`;
+  const receipt = typeof source.receiptId === 'string' ? source.receiptId : '';
+  return receipt
+    ? `${sourceType}:receipt:${receipt}`
+    : `${sourceType}:opaque:${stableJson(source)}`;
+};
+
+const externalSourceStrength = (source: Record<string, unknown>): number => {
+  const url = externalSourceUrl(source.url) ?? '';
+  return (
+    (/world\.openfoodfacts\.org\/api\/v2\/product\//.test(url) ? 4 : 0) +
+    (source.sourceAuthorityClass === 'STRUCTURED_PRODUCT_DATABASE' ? 2 : 0) +
+    (externalSourceEan(source) ? 1 : 0)
+  );
+};
+
+/**
+ * One logical source row per provider receipt. Repeated finalize/research may add newly used fields
+ * but may not append another client/server OFF copy for the same exact GTIN.
+ */
+export function mergeProductScanExternalSources(left: unknown, right: unknown): unknown[] {
+  const merged = new Map<string, Record<string, unknown>>();
+  for (const candidate of [
+    ...(Array.isArray(left) ? left : []),
+    ...(Array.isArray(right) ? right : []),
+  ]) {
+    const incoming = objectValue(candidate);
+    if (!incoming.sourceType) continue;
+    const key = externalSourceKey(incoming);
+    const prior = merged.get(key);
+    if (!prior) {
+      merged.set(key, structuredClone(incoming));
+      continue;
+    }
+    const preferred =
+      externalSourceStrength(incoming) > externalSourceStrength(prior) ? incoming : prior;
+    const alternate = preferred === prior ? incoming : prior;
+    merged.set(key, {
+      ...alternate,
+      ...preferred,
+      fieldsUsed: [
+        ...new Set(
+          [
+            ...(Array.isArray(prior.fieldsUsed) ? prior.fieldsUsed : []),
+            ...(Array.isArray(incoming.fieldsUsed) ? incoming.fieldsUsed : []),
+          ].filter((field): field is string => typeof field === 'string' && field.length > 0),
+        ),
+      ],
+    });
+  }
+  return [...merged.values()];
+}
+
 /**
  * Reconcile the structured package quantity with the same directly visible label
  * text. This catches the real mobile regression where `330 ml` lost its trailing zero
  * and became `33 ml`. The label text is never extrapolated: only an explicit number +
  * unit already returned in `netQuantityText` may repair the paired structured value.
  */
-function normalizeVisiblePackageQuantity(root: Record<string, unknown>): void {
+function normalizeVisiblePackageQuantity(
+  root: Record<string, unknown>,
+  accumulatedConflicts?: ProductScanConflict[],
+): void {
   const packageValue = objectValue(root.package);
   const raw = typeof packageValue.netQuantityText === 'string' ? packageValue.netQuantityText : '';
+  const parsed = raw ? parseVisiblePackageQuantity(raw) : null;
+  const conflicts =
+    accumulatedConflicts ??
+    (Array.isArray(root.conflicts)
+      ? root.conflicts.map((item) => ({ ...(item as ProductScanConflict) }))
+      : []);
+  if (parsed?.conflict) {
+    packageValue.netQuantity = null;
+    packageValue.unit = null;
+    root.package = packageValue;
+    appendConflict(
+      conflicts,
+      'package.netQuantity',
+      parsed.conflict.explicitTotal.value,
+      parsed.conflict.derivedTotal.value,
+      null,
+    );
+    root.conflicts = conflicts;
+    root.warnings = mergeUnique(root.warnings, ['package_quantity_conflict_unresolved']);
+    return;
+  }
+  if (parsed && !parsed.canonical && (parsed.explicitTotal || parsed.multipack)) {
+    packageValue.netQuantity = null;
+    packageValue.unit = null;
+    root.package = packageValue;
+    root.warnings = mergeUnique(root.warnings, ['package_quantity_ambiguous_unresolved']);
+    return;
+  }
   const quantity =
-    semanticNetQuantity(raw) ?? semanticNetQuantity(packageValue.netQuantity, packageValue.unit);
+    parsed?.canonical ?? semanticNetQuantity(packageValue.netQuantity, packageValue.unit);
   if (!quantity) return;
+  if (parsed?.provenance === 'DERIVED') {
+    root.warnings = mergeUnique(root.warnings, ['package_quantity_derived_from_multipack']);
+  }
+  if (parsed?.dimensionNotComparable) {
+    root.warnings = mergeUnique(root.warnings, [
+      'package_quantity_multipack_dimension_not_comparable',
+    ]);
+  }
   const structuredUnit =
     typeof packageValue.unit === 'string' ? packageValue.unit.toLowerCase() : null;
-  if (packageValue.netQuantity === quantity.value && structuredUnit === quantity.unit) return;
+  if (packageValue.netQuantity === quantity.value && structuredUnit === quantity.unit) {
+    if (!accumulatedConflicts) root.conflicts = conflicts;
+    return;
+  }
   packageValue.netQuantity = quantity.value;
   packageValue.unit = quantity.unit;
   root.package = packageValue;
+  if (!accumulatedConflicts) root.conflicts = conflicts;
   root.warnings = mergeUnique(root.warnings, [
     'package_quantity_normalized_from_visible_label_text',
   ]);
+}
+
+/** One idempotent package-safety boundary shared by analyze and finalize. */
+export function normalizeProductScanResult(value: unknown): Record<string, unknown> {
+  const result = structuredClone(objectValue(value));
+  const conflicts = Array.isArray(result.conflicts)
+    ? result.conflicts.map((item) => ({ ...(item as ProductScanConflict) }))
+    : [];
+  normalizeVisiblePackageQuantity(result, conflicts);
+  result.conflicts = conflicts;
+  return result;
 }
 
 const satisfiedMissingField = (root: Record<string, unknown>, missing: string): boolean => {
@@ -627,7 +981,7 @@ const satisfiedMissingField = (root: Record<string, unknown>, missing: string): 
 export function mergeProductScanResults(
   priorValue: unknown,
   incomingValue: unknown,
-  authoritativeBarcode: string | null = null,
+  authoritativeBarcode: string | AuthoritativeBarcodeIdentity | null = null,
 ): Record<string, unknown> {
   const prior = structuredClone(objectValue(priorValue));
   const incoming = structuredClone(objectValue(incomingValue));
@@ -665,6 +1019,8 @@ export function mergeProductScanResults(
     'productionDeclarations.cocoaSolidsPercent',
     'productionDeclarations.fruitContentPercent',
     'productionDeclarations.brix',
+    'productionDeclarations.waterPercent',
+    'productionDeclarations.totalSolidsPercent',
     'productionDeclarations.concentrationText',
     'productionDeclarations.dosageText',
     'productionDeclarations.technicalParametersText',
@@ -688,6 +1044,20 @@ export function mergeProductScanResults(
     }
     if (materiallyEqual(field, priorFact, incomingFact)) {
       setPath(merged, field, priorFact);
+      continue;
+    }
+    const authoritativeValue =
+      typeof authoritativeBarcode === 'string'
+        ? authoritativeBarcode
+        : (authoritativeBarcode?.canonicalValue ?? null);
+    const priorExactSource = exactEanHardSource(prior, field, authoritativeValue);
+    const incomingExactSource = exactEanHardSource(incoming, field, authoritativeValue);
+    if (priorExactSource || incomingExactSource) {
+      // A material hard-vs-hard disagreement is reviewable evidence, never permission for an OCR
+      // pass to erase a server-confirmed exact-product fact. If the exact fact arrived in this pass,
+      // take it; otherwise preserve the accumulated value.
+      setPath(merged, field, incomingExactSource && !priorExactSource ? incomingFact : priorFact);
+      appendConflict(conflicts, field, priorFact, incomingFact, null);
       continue;
     }
     const priorEvidence = bestEvidence(prior, field);
@@ -719,13 +1089,20 @@ export function mergeProductScanResults(
   for (const field of ['mayContainAllergens', 'claims'])
     setPath(merged, field, mergeUnique(getPath(prior, field), getPath(incoming, field)));
   merged.evidence = mergeUnique(prior.evidence, incoming.evidence);
-  merged.externalSources = mergeUnique(prior.externalSources, incoming.externalSources);
+  merged.externalSources = mergeProductScanExternalSources(
+    prior.externalSources,
+    incoming.externalSources,
+  );
   merged.warnings = mergeUnique(prior.warnings, incoming.warnings);
-  normalizeVisiblePackageQuantity(merged);
+  normalizeVisiblePackageQuantity(merged, conflicts);
 
   const priorBarcodes = validatedResultBarcodes(prior);
   const incomingBarcodes = validatedResultBarcodes(incoming);
-  const authoritative = normalizeValidatedBarcode(authoritativeBarcode);
+  const authoritativeValue =
+    typeof authoritativeBarcode === 'string'
+      ? authoritativeBarcode
+      : (authoritativeBarcode?.canonicalValue ?? null);
+  const authoritative = normalizeValidatedBarcode(authoritativeValue);
   const established = authoritative ?? priorBarcodes.accepted[0] ?? null;
   const incomingBarcode = incomingBarcodes.accepted[0] ?? null;
   if (incomingBarcodes.rejected) {
@@ -741,9 +1118,29 @@ export function mergeProductScanResults(
     }
   }
   const selectedBarcode = established ?? incomingBarcode;
-  merged.barcodes = selectedBarcode
-    ? [{ value: selectedBarcode, format: barcodeFormat(selectedBarcode) }]
-    : [];
+  const priorMetadata = barcodeMetadata(prior);
+  const incomingMetadata = barcodeMetadata(incoming);
+  const authorityMetadata =
+    authoritative && typeof authoritativeBarcode === 'object' ? authoritativeBarcode : null;
+  const selectedMetadata = authorityMetadata
+    ? {
+        capturedFormat: authorityMetadata.capturedFormat,
+        rawValue: authorityMetadata.rawValue,
+      }
+    : established === priorBarcodes.accepted[0]
+      ? priorMetadata
+      : incomingMetadata;
+  const selectedEntry = selectedBarcode
+    ? {
+        value: selectedBarcode,
+        format: barcodeFormat(selectedBarcode),
+        ...(selectedMetadata.capturedFormat
+          ? { capturedFormat: selectedMetadata.capturedFormat }
+          : {}),
+        ...(selectedMetadata.rawValue !== null ? { rawValue: selectedMetadata.rawValue } : {}),
+      }
+    : null;
+  merged.barcodes = selectedEntry ? [selectedEntry] : [];
 
   const directMayContainEvidence = bestEvidence(merged, 'mayContainAllergens');
   const mayContain = Array.isArray(merged.mayContainAllergens)
@@ -1102,6 +1499,12 @@ export function productSemanticEvidenceFromScanResult(value: unknown): ProductSe
         typeof productionDeclarations.alcoholAbv === 'number'
           ? `ABV: ${productionDeclarations.alcoholAbv}%`
           : null,
+        typeof productionDeclarations.waterPercent === 'number'
+          ? `water: ${productionDeclarations.waterPercent}%`
+          : null,
+        typeof productionDeclarations.totalSolidsPercent === 'number'
+          ? `total solids: ${productionDeclarations.totalSolidsPercent}%`
+          : null,
       ]
         .filter((entry): entry is string => Boolean(entry))
         .join(' | ') || null,
@@ -1111,11 +1514,12 @@ export function productSemanticEvidenceFromScanResult(value: unknown): ProductSe
 
 /**
  * The exact-GTIN lookup, expressed as the fields the SCANNER can actually use.
- * `manufacturer` and `countryOfOrigin` are researched too because they cost nothing
- * extra once the call is made and they carry identity, but nothing here can invent a
- * product name: a new product's identity is read from its own front label.
+ * Identity and technical facts share the same exact-EAN research pass. They may fill the
+ * customer's private product automatically; the stricter shared-publication gate stays separate.
  */
 export const EAN_LOOKUP_FIELDS = [
+  'productName',
+  'brand',
   'productCategory',
   'productDescription',
   'ingredients',
@@ -1136,6 +1540,8 @@ export const EAN_LOOKUP_FIELDS = [
   'dosage',
   'technicalParameters',
   'technicalSource',
+  'waterPercent',
+  'totalSolidsPercent',
 ] as const;
 
 /** „0,3 g" / „330 ml" → 0.3 / 330. A value that is not a plain number is refused. */
@@ -1146,13 +1552,13 @@ const numericFact = (value: string): number | null => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 };
 
-const netQuantityFact = (value: string): { netQuantity: number; unit: string } | null => {
-  const match = /(-?\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)\b/i.exec(value.replace(/\s+/g, ' '));
-  if (!match) return null;
-  const amount = Number(match[1]!.replace(',', '.'));
-  return Number.isFinite(amount) && amount > 0
-    ? { netQuantity: amount, unit: match[2]!.toLowerCase() }
-    : null;
+const netQuantityFact = (
+  value: string,
+): { netQuantity: number | null; unit: string | null } | null => {
+  const parsed = parseVisiblePackageQuantity(value);
+  const quantity = parsed.canonical;
+  if (parsed.conflict) return { netQuantity: null, unit: null };
+  return quantity ? { netQuantity: quantity.value, unit: quantity.unit } : null;
 };
 
 const nutritionBasisFact = (value: string): 'per_100g' | 'per_100ml' | null => {
@@ -1183,11 +1589,9 @@ const SOURCE_TYPE_BY_AUTHORITY: Readonly<Record<SourceAuthorityClass, string>> =
 /**
  * Turn provider facts into a partial scan result.
  *
- * These facts carry NO `evidence` rows on purpose. Evidence rank decides who wins a
- * disagreement, and a label read from the package must always outrank a page found on
- * the internet — leaving external facts unranked is what guarantees it. Provenance is
- * not lost: every field is listed in `externalSources[].fieldsUsed`, which is what the
- * session's external-source rows and the „skąd to jest" detail are built from.
+ * These facts carry NO model/asset `evidence` rows on purpose. Their server-owned provenance lives
+ * in `externalSources[]`: exact-GTIN confirmation plus trusted authority protects a hard internet
+ * fact from silent OCR replacement, while an unconfirmed page remains ordinary fill-only evidence.
  */
 export function scanResultFromLookupFacts(
   facts: readonly Record<string, unknown>[],
@@ -1212,14 +1616,36 @@ export function scanResultFromLookupFacts(
         photographed label still outranks any page.
       */
       sourceAuthorityClass: string | null;
+      /** The barcode printed on that page, as the page stated it. Judged by the server, not here. */
+      sourceStatedEan: string | null;
+      /*
+        HOW that barcode was established: `json_ld` / `microdata` / `page_text` / `url` mean the
+        SERVER opened the page and read it, `model_reported` means only the research model said so.
+        Without this the two are indistinguishable downstream, which is precisely the confusion the
+        server-side confirmation exists to end — the model returned the printed code on ONE of the
+        owner's eight external sources on 2026-09-07.
+      */
+      sourceEanConfirmationMethod: EanConfirmationMethod | null;
+      /** When that confirmation was established. */
+      sourceEanConfirmedAt: string | null;
+      /** Stable identity of the canonical acquisition used by later persistence/readback. */
+      receiptId: string | null;
+      /** External-source facts are automatic evidence, never customer-confirmed input. */
+      evidenceAuthority: 'AUTOMATIC_REGISTRY' | 'AUTOMATIC_EXTERNAL';
+      /** Presentation confidence produced by the source adapter; never customer authority. */
+      confidence: number | null;
     }
   >();
   let ingredientsText: string | null = null;
   let allergensText: string | null = null;
+  let productName: string | null = null;
+  let brand: string | null = null;
   let manufacturer: string | null = null;
   let productDescription: string | null = null;
   let dosageText: string | null = null;
   let technicalParametersText: string | null = null;
+  let waterPercent: number | null = null;
+  let totalSolidsPercent: number | null = null;
 
   const remember = (fact: Record<string, unknown>, field: string) => {
     const url = typeof fact.sourceUrl === 'string' ? fact.sourceUrl : null;
@@ -1235,6 +1661,32 @@ export function scanResultFromLookupFacts(
         title: typeof fact.sourceTitle === 'string' ? fact.sourceTitle : null,
         fieldsUsed: [field],
         sourceAuthorityClass: authority.length > 0 ? authority : null,
+        sourceStatedEan:
+          typeof fact.sourceStatedEan === 'string' && fact.sourceStatedEan.trim() !== ''
+            ? fact.sourceStatedEan.replace(/\D/g, '')
+            : null,
+        // Only a method the server can actually issue survives; anything else is dropped rather
+        // than carried as an unrecognized string that a later reader might treat as proof.
+        sourceEanConfirmationMethod: isEanConfirmationMethod(fact.sourceEanConfirmationMethod)
+          ? fact.sourceEanConfirmationMethod
+          : null,
+        sourceEanConfirmedAt:
+          typeof fact.sourceEanConfirmedAt === 'string' && fact.sourceEanConfirmedAt.trim() !== ''
+            ? fact.sourceEanConfirmedAt
+            : null,
+        receiptId:
+          typeof fact.sourceReceiptId === 'string' && fact.sourceReceiptId.trim() !== ''
+            ? fact.sourceReceiptId
+            : null,
+        evidenceAuthority:
+          authority === 'STRUCTURED_PRODUCT_DATABASE' ? 'AUTOMATIC_REGISTRY' : 'AUTOMATIC_EXTERNAL',
+        confidence:
+          typeof fact.sourceConfidence === 'number' &&
+          Number.isFinite(fact.sourceConfidence) &&
+          fact.sourceConfidence >= 0 &&
+          fact.sourceConfidence <= 1
+            ? fact.sourceConfidence
+            : null,
       });
   };
 
@@ -1242,7 +1694,16 @@ export function scanResultFromLookupFacts(
     const field = String(fact.field ?? '');
     const raw = typeof fact.value === 'string' ? fact.value.trim() : '';
     if (!raw) continue;
-    if (field === 'ingredients' && !ingredientsText) {
+    if (field === 'productName' && !productName) {
+      productName = raw;
+      identity.displayName = raw;
+      identity.originalName = raw;
+      remember(fact, 'identity.displayName');
+    } else if (field === 'brand' && !brand) {
+      brand = raw;
+      identity.brand = raw;
+      remember(fact, 'identity.brand');
+    } else if (field === 'ingredients' && !ingredientsText) {
       ingredientsText = raw;
       remember(fact, 'ingredientsText');
     } else if (field === 'allergens' && !allergensText) {
@@ -1269,6 +1730,18 @@ export function scanResultFromLookupFacts(
     ) {
       technicalParametersText = raw;
       remember(fact, 'productionDeclarations.technicalParametersText');
+    } else if (field === 'waterPercent' && waterPercent === null) {
+      const parsed = numericFact(raw);
+      if (parsed !== null && parsed <= 100) {
+        waterPercent = parsed;
+        remember(fact, 'productionDeclarations.waterPercent');
+      }
+    } else if (field === 'totalSolidsPercent' && totalSolidsPercent === null) {
+      const parsed = numericFact(raw);
+      if (parsed !== null && parsed <= 100) {
+        totalSolidsPercent = parsed;
+        remember(fact, 'productionDeclarations.totalSolidsPercent');
+      }
     } else if (field === 'nutritionBasis' && !nutrition.basis) {
       const basis = nutritionBasisFact(raw);
       if (basis) {
@@ -1324,7 +1797,7 @@ export function scanResultFromLookupFacts(
     ])
       delete nutrition[field];
   }
-  return {
+  return normalizeProductScanResult({
     schemaVersion: PRODUCT_SCAN_SCHEMA_VERSION,
     identity: {
       displayName: null,
@@ -1357,6 +1830,8 @@ export function scanResultFromLookupFacts(
       cocoaSolidsPercent: null,
       fruitContentPercent: null,
       brix: null,
+      waterPercent,
+      totalSolidsPercent,
       concentrationText: null,
       dosageText,
       technicalParametersText,
@@ -1374,5 +1849,5 @@ export function scanResultFromLookupFacts(
     conflicts: [],
     warnings: [],
     missingFields: [],
-  };
+  });
 }

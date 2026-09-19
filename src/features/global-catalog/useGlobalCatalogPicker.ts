@@ -1,4 +1,5 @@
 import { queryTokenTerms } from '@/features/ingredient-builder/ingredientSearch';
+import { planMapperCatalogSearch } from '@/features/mapper-search-runtime';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDebouncedValue } from '@/features/ingredient-builder/useIngredientSearch';
 import {
@@ -19,6 +20,7 @@ import {
   filterCurrentMapperCatalogRelations,
 } from '@/features/ingredient-builder/mapperOnlyCatalog';
 import type { CatalogMarketPreferences, CatalogProductSearchHit } from './contracts';
+import { attachCatalogProductSemanticBindingFromFinalSearch } from './catalogSemanticBinding';
 
 export function resolveCatalogMarketScope(input: {
   forceGlobal: boolean;
@@ -140,6 +142,12 @@ export function useGlobalCatalogPicker(input: {
     queryKey: ['product-search-v1', pageSignature],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
+      const mapperPlan = await planMapperCatalogSearch(settledQuery, {
+        marketScope: effectiveMarkets[0] ?? 'GLOBAL',
+      });
+      if (input.mapperOnly && mapperPlan.blocked) {
+        return { hits: [], nextCursor: null } satisfies CatalogSearchPage;
+      }
       const batch = await searchProducts({
         query: settledQuery,
         context: input.context,
@@ -148,12 +156,26 @@ export function useGlobalCatalogPicker(input: {
         favoritesOnly: input.favoritesOnly,
         productProfile: input.productProfile,
         entityKind: input.mapperOnly ? 'pi_base' : null,
-        tokenGroups: queryTokenTerms(settledQuery),
+        // Keep the raw query above for exact EAN/SKU/product precedence. The
+        // central Mapper plan only supplies semantic alias groups; an exact
+        // commercial identifier that is outside the frozen Mapper release must
+        // still reach the downstream product catalogue unchanged.
+        tokenGroups:
+          mapperPlan.tokenGroups.length > 0
+            ? mapperPlan.tokenGroups
+            : queryTokenTerms(settledQuery),
         limit: pageSize,
         cursor: pageParam,
       });
+      const contextBoundBatch = await Promise.all(
+        batch.map((hit) =>
+          attachCatalogProductSemanticBindingFromFinalSearch(hit).catch(() => hit),
+        ),
+      );
       return {
-        hits: input.mapperOnly ? filterCurrentMapperCatalogHits(batch, input.context) : batch,
+        hits: input.mapperOnly
+          ? filterCurrentMapperCatalogHits(contextBoundBatch, input.context)
+          : contextBoundBatch,
         nextCursor: batch.length === pageSize ? pageParam + batch.length : null,
       } satisfies CatalogSearchPage;
     },

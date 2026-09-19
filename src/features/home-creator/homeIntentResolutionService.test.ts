@@ -40,8 +40,22 @@ describe('HOME identity resolution uses the canonical catalogue paths', () => {
     expect(SOURCE).toContain("kind: 'unresolved'");
   });
 
-  it('delegates the choice between candidates to the pure ranking module', () => {
+  it('consumes the frozen concept default before any literal catalogue search', () => {
+    expect(SOURCE).toContain('selectApprovedConceptDefault');
+    expect(SOURCE.indexOf('selectApprovedConceptDefault({')).toBeLessThan(
+      SOURCE.indexOf('searchCanonicalMapperIngredients({'),
+    );
+  });
+
+  it('auto-selects only an exact identity and otherwise preserves a real ambiguity', () => {
     expect(SOURCE).toContain("from './homeIdentityResolution'");
-    expect(SOURCE).toContain('resolveIdentity');
+    expect(SOURCE).toContain('resolveIdentity(outcome.rows, term)');
+    expect(SOURCE).toContain("resolution.kind === 'resolved' && resolution.exact");
+    expect(SOURCE).toContain("kind: 'ambiguous', candidates: firstAmbiguity");
+  });
+
+  it('tries the literal HOME label before broader canonical concept terms', () => {
+    expect(SOURCE).toContain('const terms = catalogueSearchTerms(chip)');
+    expect(SOURCE).toContain('[chip.label.trim(), ...terms]');
   });
 });

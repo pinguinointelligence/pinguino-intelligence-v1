@@ -946,11 +946,13 @@ function certifiedMinimumLargerBatchCandidate(
       );
     }
     if (!sorbetStabilizerSystemApplies(forecastInput.category)) {
-      const minimum = solveIntegerLinearMaximum(
+      const minimum = solveProductionRescueIntegerMaximum(
         intervalRows,
         intervalBounds,
         totalRow.map((value) => -value),
         PRODUCTION_RESCUE_INTEGER_NODE_BUDGET,
+        integerBranchOrder,
+        integerVariableSteps,
       );
       if (minimum.status !== 'optimal' || !minimum.solution) {
         if (minimum.exhausted) return null;

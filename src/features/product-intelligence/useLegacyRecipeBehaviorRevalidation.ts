@@ -52,12 +52,43 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
   useEffect(() => {
     if (!enabled || !userId) return;
     const state = useRecipeStore.getState();
-    const required = productBehaviorRequiredLineIds({
+    const persistenceRequired = productBehaviorRequiredLineIds({
       items: state.items,
       toppings: state.toppings,
-    })
-      .filter((lineId) => state.productBehaviorSnapshots[lineId]?.resolutionState !== 'RESOLVED')
-      .sort();
+    });
+    // A 0 g Base placeholder is outside the persistence-required set, yet the
+    // picker resolved authority for it and every grams write that gives it
+    // mass is gated on that authority. When a role or context change left that
+    // authority stale, this pass is the only thing that can refresh it —
+    // otherwise the line's grams control stays refused for ever.
+    const staleZeroGramBase = state.items
+      .filter(
+        (item) =>
+          !persistenceRequired.includes(item.id) &&
+          state.productBehaviorSnapshots[item.id] !== undefined &&
+          state.productBehaviorSnapshots[item.id]?.resolutionState !== 'RESOLVED',
+      )
+      .map((item) => item.id);
+    // OWNER OD-1 (Package 2A): a 0 g priority line is legitimate — „Przelicz i
+    // popraw" sizes it — so it needs product authority before it has mass, exactly
+    // as it would with mass (the canonical required rule, asked for one gram).
+    // Authority only: nothing here writes an amount.
+    const zeroGramPriority = state.items
+      .filter(
+        (item) =>
+          item.lock_type === 'main' &&
+          item.planned_grams === 0 &&
+          state.productBehaviorSnapshots[item.id] === undefined &&
+          productBehaviorRequiredLineIds({ items: [{ ...item, planned_grams: 1 }] }).length > 0,
+      )
+      .map((item) => item.id);
+    const required = [
+      ...persistenceRequired.filter(
+        (lineId) => state.productBehaviorSnapshots[lineId]?.resolutionState !== 'RESOLVED',
+      ),
+      ...staleZeroGramBase,
+      ...zeroGramPriority,
+    ].sort();
     if (required.length === 0) return;
     const key = `${draftContextSeq}:${draftRevision}:${required.join(',')}`;
     if (inFlightKey.current === key) return;
@@ -173,12 +204,25 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
             ...currentSnapshot,
             resolutionState: 'RESOLVED' as const,
           };
+      // The server re-answered for the SAME product version and the SAME
+      // frozen facts the line already carries — a Crown role change or a
+      // context change, never a product change — so there is no upgraded
+      // ingredient to write for this line.
+      const authorityOnly =
+        !preserveFrozen &&
+        storedSnapshot !== undefined &&
+        storedSnapshot.processScope === currentSnapshot.processScope &&
+        storedSnapshot.productId === currentSnapshot.productId &&
+        storedSnapshot.productVersionId === currentSnapshot.productVersionId &&
+        storedSnapshot.factsFingerprint === currentSnapshot.factsFingerprint &&
+        storedSnapshot.mapperIngredientId === currentSnapshot.mapperIngredientId;
       return {
         lineId,
         lineName,
         row,
         snapshot,
         preserveFrozen,
+        authorityOnly,
       };
     })).then((resolvedLines) => {
       if (cancelled) return;
@@ -227,7 +271,7 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
       // map: running the general verified-write door would unnecessarily
       // re-judge or project the historical recipe before the customer asks to
       // recalculate it.
-      if (complete.every((line) => line.preserveFrozen)) {
+      const commitAuthorityOnly = (): void => {
         useRecipeStore.setState((current) => {
           if (
             current.draftContextSeq !== draftContextSeq ||
@@ -243,6 +287,9 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
           };
         });
         useRecipeProfileStore.getState().markRecalculationRequired();
+      };
+      if (complete.every((line) => line.preserveFrozen)) {
+        commitAuthorityOnly();
         return;
       }
       let upgraded = buildRecipeInput(latest);
@@ -324,6 +371,16 @@ export function useLegacyRecipeBehaviorRevalidation(enabled = true): void {
         if (starterWasUntouched) {
           useRecipeProfileStore.getState().acknowledgeRecalculation();
         }
+        return;
+      }
+      // An authority-only refresh changes no recipe material, so it is written
+      // like the historical identity-only repair above. Pushing the unchanged
+      // draft through the terminal verified-write door re-judged a recipe the
+      // user is still building (Crown seeds at 1 g, a 0 g placeholder, an
+      // off-batch vector), refused the whole refresh, and left every crowned
+      // line REVALIDATION_REQUIRED with its grams control closed.
+      if (complete.every((line) => line.preserveFrozen || line.authorityOnly)) {
+        commitAuthorityOnly();
         return;
       }
       const committed = useRecipeStore.getState().applyVerifiedRecipeInput(

@@ -80,19 +80,18 @@ describe('Family Mapper direct proof — generic defatted cocoa powder', () => {
     expect(profileMatch).toMatchObject({
       family: 'chocolate',
       basis: 'neighbour_set',
-      confidence: 0.94,
+      confidence: 0.9167,
       rejected: null,
     });
-    expect(profileMatch.references).toEqual(['PI-ING-001579', 'PI-ING-001670', 'PI-ING-001313']);
+    expect(profileMatch.references).toEqual(['PI-ING-001670', 'PI-ING-001313']);
     expect(profileMatch.reasons).toContain('podobienstwo makro 0.7753');
     expect(profileMatch.rows.map((row) => row.ingredient_subcategory)).toEqual([
-      'cocoa_powder',
       'low_fat_cocoa_powder',
       'cocoa_powder',
     ]);
     expect(profileMatch.rows[0]).toMatchObject({
-      ingredient_id: 'PI-ING-001579',
-      ingredient_name_display: 'DEFATTED COCOA 12% · Cocoa Powder',
+      ingredient_id: 'PI-ING-001670',
+      ingredient_name_display: 'KAKAO MAGNETIC · Biedronka Cocoa · 12%',
     });
     expect(resolved.mapperTiersUsed).toContain('mapper_similar_profile');
     expect(resolved.mapperTiersUsed).not.toContain('mapper_exact');
@@ -103,9 +102,9 @@ describe('Family Mapper direct proof — generic defatted cocoa powder', () => {
       value: 0,
       provenance: {
         state: 'ESTIMATED',
-        confidence: 0.94,
+        confidence: 0.9167,
         basis: 'mapper_similar_profile',
-        mapperReferences: ['PI-ING-001579'],
+        mapperReferences: ['PI-ING-001670'],
         algorithmVersion: 'mapper-first-v1',
         mapperFingerprint: mapper.fingerprint,
       },
@@ -116,9 +115,9 @@ describe('Family Mapper direct proof — generic defatted cocoa powder', () => {
       value: 100,
       provenance: {
         state: 'ESTIMATED',
-        confidence: 0.94,
+        confidence: 0.9167,
         basis: 'derived',
-        mapperReferences: ['PI-ING-001579'],
+        mapperReferences: ['PI-ING-001670'],
         algorithmVersion: 'mapper-first-v1',
         mapperFingerprint: mapper.fingerprint,
         note: '100 − water_percent',

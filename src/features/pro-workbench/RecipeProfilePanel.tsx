@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/Button';
 import { WorkflowNotice } from '@/components/shared/WorkflowNotice';
 import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
@@ -13,6 +13,10 @@ import {
   type RecipeResult,
 } from '@/engine';
 import { ContextualEducationView } from '@/features/education/ContextualEducationView';
+import type { EducationLessonId } from '@/features/education/contextualEducation';
+import { educationCopy } from '@/copy/education.pl';
+import { useTutorialStore } from '@/features/tutorial/tutorialState';
+import { cn } from '@/lib/cn';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { WorkbenchSettingsLine } from './WorkbenchSettingsLine';
 import { ProfileDirectionAxes } from './ProfileDirectionAxes';
@@ -41,6 +45,8 @@ import { proWorkbenchCopy } from '@/copy/pro.pl';
 import { currentRecipeCompletionSnapshot } from './currentRecipeLabelSnapshot';
 import { copy } from '@/copy/en';
 import { missingCostIngredientNames } from './missingCostIngredientNames';
+
+const knowledgeCopy = copy.proWorkbench.settingsPanel.knowledge;
 
 export type ProContextTab = 'recipe' | 'monitor' | 'production';
 export type CockpitTab = WorkbenchModuleTab;
@@ -261,15 +267,23 @@ export function NutritionCostProfileGrid({
   );
 }
 
+/** Which existing education view the panel shows in place of the profile. */
+type EducationDestination = 'tour' | Extract<EducationLessonId, 'ingredients' | 'process'>;
+
 function ProfileContent({
   result,
   input,
   onOpenEducation,
+  knowledgeOpen,
+  onKnowledgeToggle,
   recipeBar,
 }: {
   result: RecipeResult;
   input: RecipeInput;
-  onOpenEducation: () => void;
+  onOpenEducation: (destination: EducationDestination) => void;
+  /** Wiedza unfolded — kept by the panel, so a lesson returns to it open. */
+  knowledgeOpen: boolean;
+  onKnowledgeToggle: () => void;
   recipeBar?: ReactNode;
 }) {
   const snapshots = useRecipeStore((state) => state.productBehaviorSnapshots);
@@ -476,8 +490,11 @@ function ProfileContent({
           behind it. RECEPTURA used to sit fourth of five — the user read the
           numbers before knowing whose numbers they were. The cards are gone, so
           the rhythm between bands, not a border, is what separates them. */}
+      {/* OWNER 2026-09-12 — desktop density: the 26 px step was set under the
+          0.8889 workbench zoom (it painted 23 px); at 1:1 it spread the column.
+          22 px restores the painted rhythm the owner approved. */}
       <div
-        className="grid min-w-0 items-start gap-[26px]"
+        className="grid min-w-0 items-start gap-[26px] min-[68.5rem]:gap-[22px]"
         data-testid="profile-desktop-grid"
         data-profile-layout="stacked"
         data-profile-band-order="recipe,result,direction,settings"
@@ -492,7 +509,11 @@ function ProfileContent({
           costMissingNames={costMissingNames}
         />
         <ProfileDirectionAxes result={frozenNutritionResult} className="min-w-0" />
-        <WorkbenchSettingsLine className="min-w-0" compact />
+        <WorkbenchSettingsLine
+          className="min-w-0"
+          compact
+          currentTotalGrams={result.total_batch_g}
+        />
       </div>
       {/* OWNER AUTHORITY 2026-09-03 (approved desktop reference): WIEDZA is the
           third BOX of the same make as DOSTOSUJ RECEPTURĘ and USTAWIENIA — a
@@ -501,8 +522,18 @@ function ProfileContent({
           same kind of thing: a way in, not a reading.
 
           The explanatory second line is gone. The reference carries one line,
-          and the row's own words already say what is behind it. */}
-      <section className="pro-legend-box mt-[26px] px-5 py-7">
+          and the row's own words already say what is behind it.
+
+          DESIGN V3.0 correction I: the row now unfolds LIGHTLY inside its own
+          frame, like Ustawienia, instead of replacing the panel. Inside are the
+          existing entries from `education.pl.ts` and „Uruchom samouczek" (the
+          one tutorial, started exactly as the ☰ menu starts it). */}
+      {/* Same make as USTAWIENIA, so the same desktop insets (see
+          WorkbenchSettingsLine): 36 px above the ring row, 20 px below it. */}
+      <section
+        className="pro-legend-box mt-[26px] px-5 py-7 min-[68.5rem]:mt-[22px] min-[68.5rem]:pt-9 min-[68.5rem]:pb-5"
+        data-testid="profile-knowledge-box"
+      >
         <h3
           data-band-legend
           className="text-[10px] leading-[14px] font-semibold tracking-[0.16em] text-[var(--g-text-muted)] uppercase"
@@ -511,7 +542,9 @@ function ProfileContent({
         </h3>
         <button
           type="button"
-          onClick={onOpenEducation}
+          onClick={onKnowledgeToggle}
+          aria-expanded={knowledgeOpen}
+          aria-controls="profile-knowledge-entries"
           className="pro-focus-ring flex w-full min-w-0 items-center gap-4 bg-transparent text-left"
           data-testid="profile-learning-entry"
         >
@@ -537,7 +570,10 @@ function ProfileContent({
             height="15"
             viewBox="0 0 24 24"
             fill="none"
-            className="ml-auto shrink-0 text-[var(--g-text-muted)]"
+            className={cn(
+              'ml-auto shrink-0 text-[var(--g-text-muted)] transition-transform',
+              knowledgeOpen && 'rotate-90',
+            )}
           >
             <path
               d="M9 6l6 6-6 6"
@@ -548,8 +584,88 @@ function ProfileContent({
             />
           </svg>
         </button>
+        <div
+          id="profile-knowledge-entries"
+          hidden={!knowledgeOpen}
+          className="mt-3.5 border-t border-[#efebe4]"
+          data-testid="profile-knowledge-entries"
+        >
+          {KNOWLEDGE_ENTRIES.map((entry) => (
+            <KnowledgeEntryRow
+              key={entry}
+              title={educationCopy.entries[entry].title}
+              note={educationCopy.entries[entry].note}
+              testid={`profile-learning-topic-${entry}`}
+              onClick={() => onOpenEducation(KNOWLEDGE_DESTINATION[entry])}
+            />
+          ))}
+          <KnowledgeEntryRow
+            title={knowledgeCopy.tutorial}
+            note={null}
+            testid="profile-learning-tutorial"
+            onClick={() => useTutorialStore.getState().start()}
+          />
+        </div>
       </section>
     </div>
+  );
+}
+
+/** The three existing education entries, in the design's order, and what each
+ *  one opens: the recipe's own ingredients, the illustrated Guide (the view
+ *  „Dlaczego to działa?" has always opened) and the process of this recipe on
+ *  the chosen machine. Every destination is an existing education view. */
+const KNOWLEDGE_ENTRIES = ['ingredients', 'behavior', 'process'] as const;
+type KnowledgeEntry = (typeof KNOWLEDGE_ENTRIES)[number];
+const KNOWLEDGE_DESTINATION: Record<KnowledgeEntry, EducationDestination> = {
+  ingredients: 'ingredients',
+  behavior: 'tour',
+  process: 'process',
+};
+
+function KnowledgeEntryRow({
+  title,
+  note,
+  testid,
+  onClick,
+}: {
+  title: string;
+  note: string | null;
+  testid: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="pro-focus-ring flex min-h-[52px] w-full items-center justify-between gap-2.5 border-b border-[#f1ede7] py-2.5 text-left last:border-b-0"
+      data-testid={testid}
+    >
+      <span className="min-w-0">
+        <b className="block text-[14px] leading-[1.3] font-semibold text-[var(--g-ink)]">{title}</b>
+        {note ? (
+          <small className="mt-0.5 block text-[12.5px] leading-[1.35] text-[var(--g-text-secondary)]">
+            {note}
+          </small>
+        ) : null}
+      </span>
+      <svg
+        aria-hidden
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        className="shrink-0 text-[var(--g-text-muted)]"
+      >
+        <path
+          d="M9 6l6 6-6 6"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
   );
 }
 
@@ -704,7 +820,13 @@ export function RecipeProfilePanel({
   onOpenLabelSettings?: (runId: string, scrollTop: number) => void;
   labelSettingsRestoreScrollTop?: number;
 }) {
-  const [educationOpen, setEducationOpen] = useState(false);
+  /* Which existing education view replaces the profile: the Guide (the
+     „pinguino:open-learning" request and „Dlaczego lody zachowują się tak?")
+     or one of the recipe's own lessons from the Wiedza box. */
+  const [education, setEducation] = useState<EducationDestination | null>(null);
+  const educationOpen = education !== null;
+  const setEducationOpen = useCallback((open: boolean) => setEducation(open ? 'tour' : null), []);
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false);
   const tabPanelRef = useRef<HTMLDivElement>(null);
   const savedRecipeName = useRecipeStore((state) => state.savedRecipeName);
   const machineId = useRecipeStore((state) => state.machineId);
@@ -723,7 +845,7 @@ export function RecipeProfilePanel({
     };
     window.addEventListener('pinguino:open-learning', openLearning);
     return () => window.removeEventListener('pinguino:open-learning', openLearning);
-  }, [onTabChange]);
+  }, [onTabChange, setEducationOpen]);
   return (
     <div
       data-testid="pro-profile-panel"
@@ -780,6 +902,7 @@ export function RecipeProfilePanel({
             machineId={machineId}
             machineLabel={machineLabel}
             audience="pro"
+            initialLesson={education === 'tour' ? undefined : education}
             onBack={() => setEducationOpen(false)}
           />
         ) : null}
@@ -787,7 +910,9 @@ export function RecipeProfilePanel({
           <ProfileContent
             result={result}
             input={input}
-            onOpenEducation={() => setEducationOpen(true)}
+            onOpenEducation={setEducation}
+            knowledgeOpen={knowledgeOpen}
+            onKnowledgeToggle={() => setKnowledgeOpen((wasOpen) => !wasOpen)}
             recipeBar={recipeBar}
           />
         ) : null}
@@ -799,6 +924,11 @@ export function RecipeProfilePanel({
               corrections={corrections}
               input={input}
               onOpenProfile={() => onTabChange('profile')}
+              // A3: the SAME request „Otwórz ustawienia" sends — it opens the
+              // recipe module and lands on its settings, on a phone included.
+              onOpenSettings={() =>
+                window.dispatchEvent(new CustomEvent('pinguino:profile-settings-required'))
+              }
               production={production}
             />
           </div>

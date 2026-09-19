@@ -224,7 +224,6 @@ describe('owner matrix A–F: base mutations preserve settings and publish the l
               isMain={first.lock_type === 'main'}
               required={false}
               unavailable={false}
-              estimated={false}
               changed
               missingAmount={false}
               onSetMain={() => undefined}

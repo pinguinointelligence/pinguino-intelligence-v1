@@ -170,15 +170,6 @@ export async function syncEffectiveAccess(
 ): Promise<EffectiveAccess | null> {
   if (userId === null || supabase === null) return null;
   try {
-    // Invitation acceptance is email-bound, idempotent and server-authorized.
-    // A missing/expired invitation returns accepted:false; an older backend may
-    // reject the RPC and must not prevent the normal entitlement read.
-    try {
-      await supabase.rpc('gellatti_accept_my_partner_invitation_v1');
-    } catch {
-      // Invitation activation is additive; access resolution still fail-closes
-      // using the already persisted authorities when the optional call is offline.
-    }
     const [rows, authority] = await Promise.all([
       fetchActiveEntitlementRows(supabase, userId),
       fetchAccountAuthorityContext(supabase, userId),

@@ -76,6 +76,12 @@ import {
   ExecutableRecipeHandoffError,
   openExecutableRecipeTemplate,
 } from '@/services/executableRecipeHandoff';
+import { officialRecipeCopy } from '@/copy/officialRecipeLibrary';
+import {
+  OfficialRecipeHandoffError,
+  officialRecipeHandoffNotices,
+  openOfficialRecipe,
+} from '@/services/officialRecipeHandoff';
 
 const w = copy.proWorkspace;
 
@@ -164,14 +170,14 @@ function ProWorkbenchHeaderChrome({
       /* OWNER OVERRIDE §8 — the strip belongs to the RIGHT display column, not
          to the viewport. `DESKTOP_TAB_STRIP` pins its box to that column, so
          switching Receptura → Monitor → Produkcja → Etykieta moves it 0 px. */
-      className={`pro-workbench-header-section-nav min-w-0 ${DESKTOP_TAB_STRIP}`}
+      className={`pro-workbench-header-section-nav ${DESKTOP_TAB_STRIP}`}
       data-testid="pro-global-workbench-chrome"
     >
       <WorkbenchModuleTabs
         activeTab={activeTab}
         onTabChange={onTabChange}
         idPrefix="pro-context"
-        className="w-full border-b-0"
+        className="border-b-0"
       />
     </div>
   );
@@ -203,6 +209,31 @@ function RecipeWorkbench({
 }) {
   const draftContextSeq = useRecipeStore((state) => state.draftContextSeq);
   const [recipeSaveAttention, setRecipeSaveAttention] = useState(false);
+  /* PRO MOBILE UX v2 · B8 — a recalculation refused ONLY because the settings
+     were unconfirmed resumes by itself the moment they are confirmed: the
+     customer already asked for it, so „Otwórz ustawienia" → „Potwierdź zmiany"
+     must not end in a second press of Przelicz. Every real gate still runs
+     inside the resumed recalculation; a new recipe context drops the request. */
+  const settingsConfirmed = useRecipeProfileStore((state) => state.settingsConfirmed);
+  const refusedForSettings = useConstraintStudioStore(
+    (state) => state.recalculationTerminal?.state === 'SETTINGS_CONFIRMATION_REQUIRED',
+  );
+  const resumeRecalculationRef = useRef(onRecalculate);
+  const resumePendingRef = useRef(false);
+  useEffect(() => {
+    resumeRecalculationRef.current = onRecalculate;
+  });
+  useEffect(() => {
+    resumePendingRef.current = false;
+  }, [draftContextSeq]);
+  useEffect(() => {
+    if (refusedForSettings) resumePendingRef.current = true;
+  }, [refusedForSettings]);
+  useEffect(() => {
+    if (settingsConfirmed !== true || !resumePendingRef.current) return;
+    resumePendingRef.current = false;
+    resumeRecalculationRef.current();
+  }, [refusedForSettings, settingsConfirmed]);
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="pro-viewport-region">
       <SurfaceToneContext.Provider value="paper">
@@ -419,6 +450,57 @@ export function ProWorkspacePage() {
     };
   }, [isPro, libraryIntent, libraryTemplateId, navigate, userId]);
 
+  /* Official Gellatti Recipe Library: the same one-shot URL lifecycle, but the
+     recipe opens as a NEW working copy for every Pro — the official source is
+     never edited, and a blocked recipe never replaces the current draft. */
+  const officialRecipeId =
+    searchParams.get('source') === 'official_recipe'
+      ? searchParams.get('officialRecipe')?.trim() || null
+      : null;
+  const [officialHandoff, setOfficialHandoff] = useState<
+    | { state: 'idle' }
+    | { state: 'loading'; recipeId: string }
+    | { state: 'ready'; recipeId: string; message: string; notices: readonly string[] }
+    | { state: 'blocked'; recipeId: string; message: string }
+  >({ state: 'idle' });
+  const lastOfficialHandoff = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isPro || !officialRecipeId || !userId) return;
+    const handoffKey = `${userId}:${officialRecipeId}`;
+    if (lastOfficialHandoff.current === handoffKey) return;
+    lastOfficialHandoff.current = handoffKey;
+    let cancelled = false;
+    setOfficialHandoff({ state: 'loading', recipeId: officialRecipeId });
+    void openOfficialRecipe(officialRecipeId, userId)
+      .then((materialized) => {
+        if (cancelled) return;
+        setOfficialHandoff({
+          state: 'ready',
+          recipeId: officialRecipeId,
+          message: officialRecipeCopy.handoffReady(materialized.recipe.name),
+          notices: officialRecipeHandoffNotices(materialized),
+        });
+        // Consume the one-shot URL: a reload must never rematerialize the
+        // pristine official recipe over the user's working copy.
+        navigate('/pro/recipe', { replace: true });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        lastOfficialHandoff.current = null;
+        setOfficialHandoff({
+          state: 'blocked',
+          recipeId: officialRecipeId,
+          message:
+            error instanceof OfficialRecipeHandoffError
+              ? error.message
+              : officialRecipeCopy.errors.generic,
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isPro, navigate, officialRecipeId, userId]);
+
   // Legacy `/pro?tab=<id>` deep-links → the stable `/pro/<id>` path (replace keeps history clean).
   const legacyTab = searchParams.get('tab');
   if (section === undefined && legacyTab !== null && isTabId(legacyTab)) {
@@ -546,10 +628,12 @@ export function ProWorkspacePage() {
             className={`${PRO_WORKBENCH_FRAME_CLASS} pro-workbench-body-frame`}
             data-testid={`pro-panel-${activeTab}`}
           >
-            {activeLibraryHandoff.state === 'loading' ? (
+            {activeLibraryHandoff.state === 'loading' || officialHandoff.state === 'loading' ? (
               <div className="flex min-h-0 flex-1 items-center justify-center bg-paper px-6 py-12">
                 <p className="text-sm text-stone-600" role="status">
-                  Otwieramy dokładną wersję receptury…
+                  {officialHandoff.state === 'loading'
+                    ? officialRecipeCopy.handoffLoading
+                    : 'Otwieramy dokładną wersję receptury…'}
                 </p>
               </div>
             ) : (
@@ -562,6 +646,29 @@ export function ProWorkspacePage() {
                   >
                     {activeLibraryHandoff.message}
                   </p>
+                ) : null}
+                {officialHandoff.state === 'blocked' ? (
+                  <p
+                    className="shrink-0 border-b border-nonprod/25 bg-nonprod/[0.06] px-4 py-2 text-xs font-medium text-nonprod"
+                    role="alert"
+                    data-testid="pro-official-handoff-blocked"
+                  >
+                    {officialHandoff.message}
+                  </p>
+                ) : null}
+                {officialHandoff.state === 'ready' ? (
+                  <div
+                    className="shrink-0 border-b border-ink/10 bg-[var(--g-ivory)] px-4 py-2 text-xs text-ink"
+                    role="status"
+                    data-testid="pro-official-handoff-ready"
+                  >
+                    <p className="font-medium">{officialHandoff.message}</p>
+                    {officialHandoff.notices.map((notice) => (
+                      <p key={notice} className="mt-1 text-stone-600">
+                        {notice}
+                      </p>
+                    ))}
+                  </div>
                 ) : null}
                 {ownerReviewGate ? (
                   <p

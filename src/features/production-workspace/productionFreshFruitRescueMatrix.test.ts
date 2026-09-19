@@ -8,6 +8,10 @@ import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import { parseCsv } from '@/lib/csv';
 import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
 import {
+  PRE_FINAL_2089_COMPOSITION_VERSION,
+  recipeInputForHistoricalVersion,
+} from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
+import {
   practicalizeRecipeCandidate,
   practicalRecipeInputFingerprint,
 } from '@/features/practical-recipe/practicalRecipe';
@@ -379,10 +383,24 @@ const diagnostic = (fruit: FreshFruitAuthority, session: ProductionSession): str
 
 describe('Production Rescue canonical fresh-fruit matrix', () => {
   it('discovers the complete current active and Engine-approved canonical Mapper set', () => {
-    expect(FRESH_FRUITS).toHaveLength(55);
-    expect(new Set(FRESH_FRUITS.map((fruit) => fruit.ingredientId))).toHaveLength(55);
-    expect(FRESH_FRUITS.filter((fruit) => fruit.verification === 'Verified')).toHaveLength(12);
-    expect(FRESH_FRUITS.filter((fruit) => fruit.verification === 'Estimated')).toHaveLength(43);
+    expect(FRESH_FRUITS).toHaveLength(75);
+    expect(new Set(FRESH_FRUITS.map((fruit) => fruit.ingredientId))).toHaveLength(75);
+    expect(
+      Object.fromEntries(
+        [...new Set(FRESH_FRUITS.map((fruit) => fruit.verification))]
+          .sort()
+          .map((status) => [
+            status,
+            FRESH_FRUITS.filter((fruit) => fruit.verification === status).length,
+          ]),
+      ),
+    ).toEqual({
+      Estimated: 39,
+      'Estimated / PI Calculated': 19,
+      'Estimated / Source-based global reference': 6,
+      Verified: 10,
+      'Verified / Official Food Composition': 1,
+    });
   });
 
   const references = new Map(
@@ -489,7 +507,10 @@ describe('Production Rescue canonical fresh-fruit matrix', () => {
 
   it('replays the exact served Strawberry 217 g → 206 g facts as a one-line +11 g restore', () => {
     const strawberry = FRESH_FRUITS.find((fruit) => fruit.ingredientId === 'PI-ING-001553')!;
-    const plannedInput = inputFor(strawberry, 217, -13, 670, [201, 85, 41, 54, 54, 16, 2]);
+    const plannedInput = recipeInputForHistoricalVersion(
+      PRE_FINAL_2089_COMPOSITION_VERSION,
+      inputFor(strawberry, 217, -13, 670, [201, 85, 41, 54, 54, 16, 2]),
+    );
     const session = sessionWithFruitDeviation(strawberry, plannedInput, -11);
     expect(assessProductionHardSafety(plannedInput, calculateRecipe(plannedInput)).safe).toBe(true);
     expect(productionRescueTerminalAuthority(plannedInput, session).valid).toBe(true);

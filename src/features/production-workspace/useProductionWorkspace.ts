@@ -28,7 +28,12 @@ import {
   PRODUCTION_GRAMS_EPSILON,
   type ProductionSession,
 } from './productionSession';
-import { useProductionSessionStore } from './productionSessionStore';
+import {
+  productionSessionAddressKey,
+  productionSessionForAddress,
+  useProductionSessionStore,
+  type ProductionSessionAddress,
+} from './productionSessionStore';
 import { useConstraintStudioStore } from '@/features/constraint-studio/constraintStudioStore';
 import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import {
@@ -78,8 +83,13 @@ import {
   productionRecipeLifecycleState,
   productionVersionFingerprint,
 } from './productionReadinessState';
-import { machineEducationForSelection } from '@/features/education';
+import { productionMachineGuide } from '@/features/education';
+import type { MachineEducationGuide } from '@/features/education/machineEducation';
 import { carbonatedProductsForRecipe } from './productionDegassing';
+import {
+  PRODUCTION_DECISION_ORDER,
+  recommendedProductionDecision,
+} from './productionDecisionOptions';
 import { announceFriendlyLabMoment } from '@/components/shared/friendlyLabMoment';
 
 export type ProductionRescueAuthorizationInvalidation = 'expired' | 'revision_mismatch' | null;
@@ -327,6 +337,20 @@ export const shouldHydrateDurableProductionRecovery = (
   relation: DurableProductionRecoveryRelation,
 ): boolean => relation !== 'missing_remote';
 
+/**
+ * When historical data contains more than one in-progress run for one exact
+ * recipe version, recovery is explicit and stable: newest creation wins, then
+ * the lexicographically greater UUID breaks an equal-timestamp tie. No sibling
+ * run is transitioned, archived, completed, or otherwise mutated.
+ */
+export const selectProductionRunForRecipeVersion = (
+  runs: readonly ProductionRun[],
+): ProductionRun | null =>
+  [...runs].sort((left, right) => {
+    const created = right.createdAt.localeCompare(left.createdAt);
+    return created !== 0 ? created : right.runId.localeCompare(left.runId);
+  })[0] ?? null;
+
 export const productionSourceForRecipe = (
   recipe: Pick<
     RecipeState,
@@ -421,18 +445,43 @@ const prerequisite = (
   actionLabel,
 });
 
-export function useProductionWorkspace(enabled: boolean) {
+/**
+ * A batch opened from the durable run itself — Produkcja v3, Etap 2.
+ *
+ * Production is RUN-CENTRIC, not EDITOR-CENTRIC. „Partie" opens a batch from the run and
+ * its immutable recipe VERSION, so continuing a batch never rewrites the recipe the user
+ * has open and never discards their draft. The authority is unchanged: the same workspace,
+ * the same session store, the same preparation plan, the same Rescue. Only the SOURCE of
+ * the planned recipe moves from the editor to the run's own frozen snapshot.
+ */
+export interface DurableRunContext {
+  runId: string;
+  /** The run's own recipe identity — its address in the session store. */
+  source: import('./productionSession').ProductionSource;
+  /** The run's immutable planned recipe, from its recipe VERSION. */
+  plannedInput: RecipeInput;
+  plannedComposition: ReturnType<typeof recipeCompositionFromState>;
+  /** The machine recorded in that version, never the editor's current one. */
+  machineGuide: MachineEducationGuide | null;
+}
+
+export function useProductionWorkspace(
+  enabled: boolean,
+  /** When given, the batch is read from THIS run instead of the open recipe. */
+  runContext?: DurableRunContext | null,
+) {
   const recipe = useRecipeStore();
   const persona = useProCorePersona();
   const repositoryState = useMemo(() => resolveProductionRepository(), []);
   const ownerUserId = useAuthStore((state) =>
     state.status === 'authed' ? (state.user?.id ?? null) : null,
   );
-  const session = useProductionSessionStore((state) => state.session);
-  const setDraftActual = useProductionSessionStore((state) => state.setDraftActual);
-  const archiveCurrentSession = useProductionSessionStore((state) => state.archiveCurrentSession);
-  const replaceSession = useProductionSessionStore((state) => state.replaceSession);
-  const restoreDurableSession = useProductionSessionStore((state) => state.restoreDurableSession);
+  const productionSessionState = useProductionSessionStore();
+  const setDraftActual = productionSessionState.setDraftActual;
+  const archiveCurrentSession = productionSessionState.archiveCurrentSession;
+  const activateSessionForAddress = productionSessionState.activateSessionForAddress;
+  const replaceSession = productionSessionState.replaceSession;
+  const restoreDurableSession = productionSessionState.restoreDurableSession;
   const constraints = useConstraintStudioStore((state) => state.constraints);
   const preview = useConstraintStudioStore((state) => state.preview);
   const recalculationTerminal = useConstraintStudioStore((state) => state.recalculationTerminal);
@@ -453,6 +502,7 @@ export function useProductionWorkspace(enabled: boolean) {
     busy: boolean;
     error: string | null;
   }>({ busy: false, error: null });
+  const sessionStartInFlightRef = useRef(false);
   const [persistence, setPersistence] = useState<{
     busy: boolean;
     error: string | null;
@@ -487,17 +537,9 @@ export function useProductionWorkspace(enabled: boolean) {
   }>({ basisKey: null, optionId: null });
   const [rescueOptionsRetryRevision, setRescueOptionsRetryRevision] = useState(0);
   const [reconcileRevision, setReconcileRevision] = useState(0);
-  const [preStartHeatAcknowledgementKey, setPreStartHeatAcknowledgementKey] = useState<
-    string | null
-  >(null);
   const [preStartDegassingAcknowledgementKey, setPreStartDegassingAcknowledgementKey] = useState<
     string | null
   >(null);
-  const sessionRef = useRef(session);
-  useEffect(() => {
-    sessionRef.current = session;
-  }, [session]);
-
   useEffect(() => {
     if (rescueAuthorization.status !== 'preview') return;
     const expiresAtMs = Date.parse(rescueAuthorization.authorization.expiresAt);
@@ -510,11 +552,11 @@ export function useProductionWorkspace(enabled: boolean) {
     return () => globalThis.clearTimeout(timeout);
   }, [rescueAuthorization]);
 
-  const plannedInput = useMemo(
+  const editorPlannedInput = useMemo(
     () => applyEffectiveCustomerPrices(buildRecipeInput(recipe, 'planning'), customerPrices),
     [customerPrices, recipe],
   );
-  const plannedComposition = useMemo(
+  const editorPlannedComposition = useMemo(
     () =>
       recipeCompositionFromState({
         ...recipe,
@@ -522,6 +564,10 @@ export function useProductionWorkspace(enabled: boolean) {
       }),
     [customerPrices, recipe],
   );
+  // A run context replaces the EDITOR as the source of the planned recipe — and nothing
+  // else. Every gram below still comes from this one planned input; none is recomputed.
+  const plannedInput = runContext?.plannedInput ?? editorPlannedInput;
+  const plannedComposition = runContext?.plannedComposition ?? editorPlannedComposition;
   const currentProductionVersionFingerprint = useMemo(
     () => productionVersionFingerprint(plannedInput, plannedComposition),
     [plannedComposition, plannedInput],
@@ -598,11 +644,32 @@ export function useProductionWorkspace(enabled: boolean) {
         };
   }, [constraints, plannedInput, preview, recalculationTerminal, recipeLifecycle]);
 
-  const source = useMemo(
+  const editorSource = useMemo(
     () => productionSourceForRecipe(recipe, recipeLifecycle === 'READY'),
     [recipe, recipeLifecycle],
   );
-  const recoveryKey = `${ownerUserId ?? 'anon'}:${source.recipeVersionId ?? 'unsaved'}`;
+  const source = runContext?.source ?? editorSource;
+  const sessionAddress = useMemo<ProductionSessionAddress>(
+    () => ({
+      ownerUserId,
+      recipeId: source.recipeId,
+      recipeVersionId: source.recipeVersionId,
+    }),
+    [ownerUserId, source.recipeId, source.recipeVersionId],
+  );
+  const sessionAddressKey = useMemo(
+    () => productionSessionAddressKey(sessionAddress),
+    [sessionAddress],
+  );
+  const session = productionSessionForAddress(productionSessionState, sessionAddress);
+  const sessionRef = useRef(session);
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+  useEffect(() => {
+    activateSessionForAddress(sessionAddress);
+  }, [activateSessionForAddress, sessionAddress, sessionAddressKey]);
+  const recoveryKey = sessionAddressKey;
   const currentSourceFingerprint = useMemo(
     () => productionSourceFingerprint(plannedInput, plannedComposition),
     [plannedComposition, plannedInput],
@@ -661,7 +728,10 @@ export function useProductionWorkspace(enabled: boolean) {
     const reconcile = async () => {
       setRecovery({ key: recoveryKey, busy: true, error: null, orphanedLocal: false });
       try {
-        const localSession = sessionRef.current;
+        const localSession = productionSessionForAddress(
+          useProductionSessionStore.getState(),
+          sessionAddress,
+        );
         let remote = localSession
           ? await repositoryState.repository!.getRun(localSession.sessionId, ownerUserId)
           : null;
@@ -675,22 +745,24 @@ export function useProductionWorkspace(enabled: boolean) {
             sort: 'newest',
             limit: 2,
           });
-          if (active.items.length > 1) {
-            throw new Error('Multiple active Production runs require owner review.');
-          }
-          remote = active.items[0] ?? null;
+          remote = selectProductionRunForRecipeVersion(active.items);
         }
-        if (cancelled || !remote) return;
+        if (
+          cancelled ||
+          !remote ||
+          useProductionSessionStore.getState().activeAddressKey !== sessionAddressKey
+        )
+          return;
         if (remote.status === 'cancelled') {
           if (localSession?.sessionId === remote.runId) archiveCurrentSession();
           return;
         }
-        if (remote.recipeVersionId !== source.recipeVersionId) {
-          // A local session may still be attached to the version that created
-          // it while the operator is viewing a newer saved version. Keep that
-          // frozen session intact so stale-source handling can offer the
-          // explicit archive flow. Hydrating it with the current input would
-          // silently relabel historical Production as the newer recipe.
+        if (
+          remote.recipeId !== source.recipeId ||
+          remote.recipeVersionId !== source.recipeVersionId
+        ) {
+          // A server response for another recipe can arrive after navigation.
+          // It stays untouched and cannot replace the active tab projection.
           return;
         }
         const recoveryRelation = durableProductionRecoveryRelation(localSession, remote);
@@ -705,6 +777,7 @@ export function useProductionWorkspace(enabled: boolean) {
             localSession && remote.status !== 'completed'
               ? mergePendingProductionDrafts(hydrated, localSession)
               : hydrated,
+            sessionAddress,
           );
         }
       } catch (caught) {
@@ -737,6 +810,8 @@ export function useProductionWorkspace(enabled: boolean) {
     reconcileRevision,
     repositoryState.repository,
     restoreDurableSession,
+    sessionAddress,
+    sessionAddressKey,
     session?.sessionId,
     session?.status,
     session?.rescueAddedItems.length,
@@ -910,10 +985,10 @@ export function useProductionWorkspace(enabled: boolean) {
     [plannedInput, session, sessionOwnerMismatch, staleSource],
   );
   const forecastResult = useMemo(() => calculateRecipe(forecastInput), [forecastInput]);
-  const machineGuide =
-    recipe.machineKind === 'home'
-      ? machineEducationForSelection(recipe.machineId, recipe.machineTechnology)
-      : null;
+  // ONE machine hand-off authority, shared with HOME (`productionMachineGuide`).
+  const machineGuide = runContext
+    ? runContext.machineGuide
+    : productionMachineGuide(recipe);
   const rescue = useMemo(() => browserProductionRescueDecision(session), [session]);
   const rescueAuthorizationRunId =
     rescueAuthorization.status === 'preview'
@@ -1066,22 +1141,22 @@ export function useProductionWorkspace(enabled: boolean) {
   const rescueOptionsCalculating = Object.values(currentRescueOptionsEvaluation).some(
     (option) => option?.status === 'loading',
   );
-  const unchangedEvaluation = currentRescueOptionsEvaluation.leave_as_is;
-  const unchangedIsSafeTen =
-    unchangedEvaluation?.status === 'available' &&
-    unchangedEvaluation.authorization.preview.scoreDisplay === '10/10';
+  // The one recommendation rule PRO and HOME share (`productionDecisionOptions.ts`).
   const recommendedRescueOptionId = rescueOptionsCalculating
     ? undefined
-    : unchangedIsSafeTen
-      ? ('leave_as_is' as const)
-      : (
-          [
-            'keep_original_batch',
-            'enlarge_batch',
-            'restore_original_recipe',
-            'leave_as_is',
-          ] as const
-        ).find((optionId) => currentRescueOptionsEvaluation[optionId]?.status === 'available');
+    : recommendedProductionDecision(
+        Object.fromEntries(
+          PRODUCTION_DECISION_ORDER.map((optionId) => {
+            const evaluation = currentRescueOptionsEvaluation[optionId];
+            return [
+              optionId,
+              evaluation?.status === 'available'
+                ? { scoreDisplay: evaluation.authorization.preview.scoreDisplay }
+                : null,
+            ];
+          }),
+        ),
+      );
   const effectiveSelectedRescueOptionId =
     (selectedRescueOption.basisKey === rescueOptionsEvaluationKey
       ? selectedRescueOption.optionId
@@ -1124,11 +1199,6 @@ export function useProductionWorkspace(enabled: boolean) {
   const heatAdvisories = processReadiness.advisories.filter(
     (advisory) => advisory.code === 'HEAT_TREATMENT_INDICATED',
   );
-  const heatInformationAcknowledged =
-    heatAdvisories.length === 0 ||
-    (session
-      ? session.heatInformationAcknowledgedAt !== null
-      : preStartHeatAcknowledgementKey === behaviorValidationKey);
   const carbonatedProducts = useMemo(
     () => carbonatedProductsForRecipe(plannedInput, plannedComposition),
     [plannedComposition, plannedInput],
@@ -1147,8 +1217,9 @@ export function useProductionWorkspace(enabled: boolean) {
     (session
       ? session.degassingAcknowledged && session.degassingAcknowledgedAt !== null
       : preStartDegassingAcknowledgementKey === degassingAcknowledgementKey);
-  const canStartProduction =
-    productionPrerequisite === null && heatInformationAcknowledged && degassingAcknowledged;
+  // Owner addendum 2026-09-17: heat treatment is one step of the preparation plan,
+  // not a separate reminder to acknowledge — it never gates Start.
+  const canStartProduction = productionPrerequisite === null && degassingAcknowledged;
   const corrections = useMemo(
     () =>
       proposeCorrections({
@@ -1368,6 +1439,8 @@ export function useProductionWorkspace(enabled: boolean) {
     session,
     source,
     plannedInput,
+    /** Same composition Production starts from; read by the shared preparation plan. */
+    plannedComposition,
     forecastInput,
     forecastResult,
     rescue,
@@ -1392,7 +1465,6 @@ export function useProductionWorkspace(enabled: boolean) {
      * event: it stays under the product `?` and renders nothing here.
      */
     heatInformation: heatAdvisories,
-    heatInformationAcknowledged,
     carbonatedProducts,
     degassingRequired,
     degassingAcknowledged,
@@ -1403,37 +1475,6 @@ export function useProductionWorkspace(enabled: boolean) {
     persistenceBusy: persistence.busy,
     persistenceError: persistence.error,
     currentSourceFingerprint,
-    acknowledgeHeatInformation: async () => {
-      if (!session) {
-        if (heatAdvisories.length > 0) {
-          setPreStartHeatAcknowledgementKey(behaviorValidationKey);
-        }
-        return;
-      }
-      if (!repositoryState.repository || persistence.busy) return;
-      if (session.heatInformationAcknowledgedAt) return;
-      setPersistence({ busy: true, error: null });
-      try {
-        const durableRun = await repositoryState.repository.acknowledgeHeatInformation(
-          session.sessionId,
-        );
-        replaceSession(
-          mergePendingProductionDrafts(
-            hydrateProductionSessionFromRun(durableRun, source, plannedInput, plannedComposition),
-            session,
-          ),
-        );
-      } catch {
-        setPersistence({
-          busy: false,
-          error: 'Nie zapisano potwierdzenia informacji o obróbce. Partia pozostaje bez zmian.',
-        });
-        setReconcileRevision((current) => current + 1);
-        return;
-      } finally {
-        setPersistence((current) => ({ ...current, busy: false }));
-      }
-    },
     acknowledgeDegassing: async () => {
       if (!degassingRequired) return;
       if (!session) {
@@ -1712,7 +1753,17 @@ export function useProductionWorkspace(enabled: boolean) {
       }
     },
     startNewSession: async () => {
-      if (!canStartProduction || sessionStart.busy) return;
+      if (!canStartProduction || sessionStart.busy || sessionStartInFlightRef.current) return;
+      sessionStartInFlightRef.current = true;
+      const requestedAddressKey = sessionAddressKey;
+      const requestStillOwnsProjection = () => {
+        const auth = useAuthStore.getState();
+        const currentOwner = auth.status === 'authed' ? (auth.user?.id ?? null) : null;
+        return (
+          currentOwner === ownerUserId &&
+          useProductionSessionStore.getState().activeAddressKey === requestedAddressKey
+        );
+      };
       setSessionStart({ busy: true, error: null });
       try {
         const localAuthority = evaluateRecipeConstraintAuthority({
@@ -1758,6 +1809,10 @@ export function useProductionWorkspace(enabled: boolean) {
             return;
           }
         }
+        // Validation belongs to the recipe/account that initiated START. A
+        // navigation or account switch while it was in flight must not start
+        // or later project a run for the previous context.
+        if (!requestStillOwnsProjection()) return;
         if (
           !repositoryState.repository ||
           !source.recipeId ||
@@ -1795,14 +1850,11 @@ export function useProductionWorkspace(enabled: boolean) {
           capabilities: productionCapabilitiesFor(persona),
           by: ownerUserId,
         });
-        const heatAcknowledgedRun =
-          heatAdvisories.length > 0
-            ? await repositoryState.repository.acknowledgeHeatInformation(activeRun.runId)
-            : activeRun;
         const acknowledgedRun =
           carbonatedProducts.length > 0
-            ? await repositoryState.repository.acknowledgeDegassing(heatAcknowledgedRun.runId)
-            : heatAcknowledgedRun;
+            ? await repositoryState.repository.acknowledgeDegassing(activeRun.runId)
+            : activeRun;
+        if (!requestStillOwnsProjection()) return;
         restoreDurableSession(
           hydrateProductionSessionFromRun(
             acknowledgedRun,
@@ -1810,8 +1862,8 @@ export function useProductionWorkspace(enabled: boolean) {
             plannedInput,
             plannedComposition,
           ),
+          sessionAddress,
         );
-        setPreStartHeatAcknowledgementKey(null);
         setPreStartDegassingAcknowledgementKey(null);
       } catch {
         setSessionStart({
@@ -1821,6 +1873,7 @@ export function useProductionWorkspace(enabled: boolean) {
         setReconcileRevision((current) => current + 1);
         return;
       } finally {
+        sessionStartInFlightRef.current = false;
         setSessionStart((current) => ({ ...current, busy: false }));
       }
     },

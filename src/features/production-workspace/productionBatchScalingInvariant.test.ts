@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { calculateRecipe, detectViolations, type RecipeInput, type RecipeResult } from '@/engine';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import { productBehaviorTestSnapshots } from '@/features/product-intelligence/productBehaviorTestFixture';
-import { sorbetMapperIngredient } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
+import {
+  mapperIngredientForHistoricalVersion,
+  PRE_FINAL_2089_COMPOSITION_VERSION,
+} from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
+import {
+  P0_RESCUE_SCORE_VERSION,
+  p0RescueScoreVersionInput,
+} from './productionHistoricalRecipeVersions.fixture';
 import {
   applyVerifiedRescueInput,
   buildFinalActualInput,
@@ -27,15 +34,6 @@ const OWNER_PLAN = [
   ['apple', 'PI-ING-000342', 40],
 ] as const;
 
-const P0_RESCUE_SCORE_PLAN = [
-  ['milk', 'PI-ING-000236', 613],
-  ['cream', 'PI-ING-000180', 176],
-  ['smp', 'PI-ING-000270', 48],
-  ['sucrose', 'PI-ING-000514', 95],
-  ['dextrose', 'PI-ING-000494', 64],
-  ['tara', 'PI-ING-000492', 4],
-] as const;
-
 const ownerInput = (): RecipeInput => ({
   mode: 'classic',
   category: 'milk_gelato',
@@ -53,7 +51,10 @@ const ownerInput = (): RecipeInput => ({
   },
   items: OWNER_PLAN.map(([id, mapperId, plannedGrams]) => ({
     id,
-    ingredient: sorbetMapperIngredient(mapperId),
+    ingredient: mapperIngredientForHistoricalVersion(
+      PRE_FINAL_2089_COMPOSITION_VERSION,
+      mapperId,
+    ),
     planned_grams: plannedGrams,
     actual_grams: null,
     lock_type: 'unlocked' as const,
@@ -87,41 +88,12 @@ const ownerSession = (): ProductionSession => {
   });
 };
 
-const p0RescueScoreInput = (): RecipeInput => ({
-  mode: 'classic',
-  category: 'milk_gelato',
-  target_temperature_c: -11,
-  target_batch_grams: 1_000,
-  machine_capacity_grams: null,
-  goals: {
-    formulation_strategy: 'optimal',
-    cost_priority: 'balanced',
-    flavor_intensity: 'balanced',
-    direction_targets_active: true,
-    direction_targets: { sweetness: 0, softness: 0, creaminess: 0, flavor: 0 },
-    excluded_ingredient_ids: [],
-    unavailable_main_ingredient_ids: [],
-  },
-  items: P0_RESCUE_SCORE_PLAN.map(([id, mapperId, plannedGrams]) => ({
-    id,
-    ingredient: sorbetMapperIngredient(mapperId),
-    planned_grams: plannedGrams,
-    actual_grams: null,
-    lock_type: 'unlocked' as const,
-  })),
-});
-
 const p0RescueScoreSession = (): ProductionSession => {
-  const plannedInput = p0RescueScoreInput();
+  const plannedInput = p0RescueScoreVersionInput();
   return createProductionSession({
     sessionId: 'p0-production-rescue-score-authority',
     ownerUserId: 'owner',
-    source: {
-      recipeId: 'p0-production-rescue-score-authority',
-      recipeVersionId: 'p0-production-rescue-score-authority-v1',
-      recipeVersionNumber: 1,
-      recipeName: 'P0 Production Rescue score authority',
-    },
+    source: P0_RESCUE_SCORE_VERSION,
     plannedInput,
     plannedComposition: {
       schemaVersion: 1,
@@ -212,7 +184,7 @@ const expectRatioMetricsEquivalent = (actual: RecipeResult, expected: RecipeResu
 
 describe('Production batch scaling mathematical truth', () => {
   it('proves the served 1017 g vector scores 8/10 in canonical Recipe because of Direction, not Engine physics', () => {
-    const plannedInput = p0RescueScoreInput();
+    const plannedInput = p0RescueScoreVersionInput();
     const plannedResult = calculateRecipe(plannedInput);
     const roundedGrams = [623, 179, 49, 97, 65, 4] as const;
     const roundedInput: RecipeInput = {
@@ -252,7 +224,7 @@ describe('Production batch scaling mathematical truth', () => {
   });
 
   it('uses the exact P0 Dextrose 64 → 65 g Restore candidate for score, apply, forecast, and completion', () => {
-    const plannedInput = p0RescueScoreInput();
+    const plannedInput = p0RescueScoreVersionInput();
     const plannedResult = calculateRecipe(plannedInput);
     let session = p0RescueScoreDeviation('dextrose', 65);
     const assessment = assessProductionRescue(session);
@@ -510,7 +482,7 @@ describe('Production batch scaling mathematical truth', () => {
       instructions: [
         {
           lineId: 'milk',
-          ingredientName: 'MILK 3.5% · Milk · Chilled',
+          ingredientName: 'MILK · 3.5% FAT · Chilled',
           kind: 'add',
           grams: expect.closeTo(7.7, 9),
           finalTargetGrams: expect.closeTo(664.7, 9),

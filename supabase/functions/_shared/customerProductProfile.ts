@@ -9,6 +9,7 @@ import type {
   ProductSemanticEvidence,
 } from '../../../src/features/product-intelligence/productRecognition.ts';
 import type { ProfileMatchInput } from '../../../src/features/product-intelligence/mapperValueInference.ts';
+import type { ProductMaterialConflictContext } from '../../../src/features/product-intelligence/productWorkingValues.ts';
 
 type JsonObject = Record<string, unknown>;
 
@@ -26,6 +27,12 @@ const evidenceRows = (root: JsonObject): JsonObject[] =>
 
 const externalRows = (root: JsonObject): JsonObject[] =>
   Array.isArray(root.externalSources) ? root.externalSources.map(objectValue) : [];
+
+const TECHNICAL_PARAMETER_PATHS = [
+  'productionDeclarations.technicalParametersText',
+  'productionDeclarations.waterPercent',
+  'productionDeclarations.totalSolidsPercent',
+];
 
 const SCAN_FIELD_PATHS: Readonly<Partial<Record<ProductEvidenceField, string[]>>> = {
   identity: ['identity.displayName', 'identity.originalName'],
@@ -46,8 +53,7 @@ const SCAN_FIELD_PATHS: Readonly<Partial<Record<ProductEvidenceField, string[]>>
   barcode: ['barcodes'],
   countryOfOrigin: ['identity.countryOfOrigin'],
   dosage: ['productionDeclarations.dosageText'],
-  technicalParameters: ['productionDeclarations.technicalParametersText'],
-  technicalSource: ['productionDeclarations.technicalParametersText'],
+  technicalParameters: TECHNICAL_PARAMETER_PATHS,
 };
 
 const sourceForExternalType = (value: unknown): EvidenceSource => {
@@ -118,14 +124,76 @@ function exactEanBackedAuthority(
   if (!row) return null;
   const authority = typeof row.sourceAuthorityClass === 'string' ? row.sourceAuthorityClass : '';
   if (!SERVER_TRUSTED_AUTHORITY.has(authority)) return null;
-  const url = typeof row.url === 'string' ? row.url.replace(/\D/g, '') : '';
+  /*
+    Two ways a page can be shown to describe the scanned article, both compared HERE, on the
+    server, never asserted by the caller:
+      - the GTIN appears in the page's own URL (how a registry record is addressed), or
+      - the page printed that GTIN and the enrichment reported it verbatim.
+    A retailer page addressed by an internal article number — El Corte Inglés, La Tienda en Casa
+    and most grocers — can only ever pass the second way, which is why it exists.
+  */
   const gtins = scannedGtins(root);
-  if (gtins.length === 0 || !gtins.some((gtin) => url.includes(gtin))) return null;
+  if (gtins.length === 0) return null;
+  const url = typeof row.url === 'string' ? row.url.replace(/\D/g, '') : '';
+  const statedEan =
+    typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '';
+  const namesTheScannedArticle = gtins.some(
+    (gtin) => url.includes(gtin) || (statedEan.length >= 8 && statedEan === gtin),
+  );
+  if (!namesTheScannedArticle) return null;
   return { authority, row };
+}
+
+/**
+ * A technical value is not proof that a technical document exists. Scanner may expose
+ * `technicalSource` only for the one existing authority class that explicitly means a product
+ * specification, tied to the scanned article by the same server-owned exact-EAN evidence used by
+ * the rest of this bridge.
+ */
+function exactEanBackedTechnicalSource(
+  root: JsonObject,
+): { authority: 'OFFICIAL_TECHNICAL_PDF'; row: JsonObject } | null {
+  const gtins = scannedGtins(root);
+  if (gtins.length === 0) return null;
+  for (const row of externalRows(root)) {
+    if (row.sourceAuthorityClass !== 'OFFICIAL_TECHNICAL_PDF') continue;
+    const url = typeof row.url === 'string' ? row.url.replace(/\D/g, '') : '';
+    const statedEan =
+      typeof row.sourceStatedEan === 'string' ? row.sourceStatedEan.replace(/\D/g, '') : '';
+    if (gtins.some((gtin) => url.includes(gtin) || (statedEan.length >= 8 && statedEan === gtin)))
+      return { authority: 'OFFICIAL_TECHNICAL_PDF', row };
+  }
+  return null;
 }
 
 const pathValue = (root: JsonObject, path: string): unknown =>
   path.split('.').reduce<unknown>((value, key) => objectValue(value)[key], root);
+
+const canonicalConflictValue = (value: unknown): string | number | null =>
+  typeof value === 'string' || (typeof value === 'number' && Number.isFinite(value)) ? value : null;
+
+const materialConflictDetailsFrom = (root: JsonObject): ProductMaterialConflictContext[] =>
+  Array.isArray(root.conflicts)
+    ? root.conflicts.flatMap((value) => {
+        const conflict = objectValue(value);
+        if (typeof conflict.field !== 'string') return [];
+        const retainedSource =
+          typeof conflict.retainedSource === 'string' ? conflict.retainedSource : null;
+        return [
+          {
+            field: conflict.field,
+            labelValue: canonicalConflictValue(conflict.labelValue),
+            externalValue: canonicalConflictValue(conflict.externalValue),
+            retainedSource,
+            state: retainedSource === null ? ('UNRESOLVED' as const) : ('RESOLVED' as const),
+            canonicalValue:
+              retainedSource === null
+                ? null
+                : canonicalConflictValue(pathValue(root, conflict.field)),
+          },
+        ];
+      })
+    : [];
 
 function presentForField(root: JsonObject, field: ProductEvidenceField): boolean {
   const paths = SCAN_FIELD_PATHS[field] ?? [];
@@ -169,6 +237,49 @@ const DECLARATION_SOURCES = new Set<EvidenceSource>([
   'mapper_exact',
 ]);
 
+/*
+  SINGLE CALORIC SUGAR SOURCE CLOSURE.
+
+  An exact nutrition table says how much sugar a product contains; the Engine needs to know WHICH
+  sugars, because POD and PAC come from the spectrum and an unknown spectrum contributes zero.
+  When the table is exact and the ingredient list names exactly ONE caloric sugar, the spectrum is
+  not a guess — it is arithmetic: that one sugar accounts for all of it.
+
+  The rule refuses far more often than it fires. Two candidate sugars, an ambiguous word, a
+  negation ("sin azúcar"), a source conflict, or provenance that is not declaration-grade for
+  BOTH the table and the list — any of these and it declines, leaving the existing unresolved
+  path and the rescue that follows it untouched. Declaration-grade means direct label evidence,
+  an explicit customer confirmation for this scan, or a server-proven exact-EAN source. It never
+  invents a quantity: it only names the sugar the product already declares, and the computed
+  spectrum stays `derived`, never `user_confirmed`.
+*/
+const SUCROSE_TERMS =
+  /\b(sugar|sucrose|saccharose|azucar|sacarosa|zucker|saccarosio|zucchero|cukier|sucre|sucr[eo]s)\b/;
+
+/** Any OTHER caloric sugar. One of these present and the closure is not entitled to fire. */
+const OTHER_CALORIC_SUGARS =
+  /\b(glucose|glukoz\w*|dextrose|dekstroz\w*|fructose|fruktoz\w*|lactose|laktoz\w*|maltose|maltoz\w*|maltodextrin\w*|maltodekstryn\w*|invert\w*|honey|miel|mi[oó]d|molasses|melas\w*|agave|jarabe|syrup|syrop|treacle|corn\s*syrup|juice|zumo|sok\b|concentrate|concentrado|koncentrat)\b/;
+
+/** A sugar-free claim contradicts the whole premise; never read the word inside it as a sugar. */
+const SUGAR_NEGATED =
+  /\b(sin\s+azucar|sugar[\s-]*free|zero\s+sugar|bez\s+cukru|ohne\s+zucker|senza\s+zuccheri)\b/;
+
+function singleCaloricSugarClosure(
+  ingredientsText: string | null,
+  totalSugars: number | null,
+): number | null {
+  if (totalSugars === null || totalSugars <= 0) return null;
+  const text = ingredientsText
+    ?.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (!text) return null;
+  if (SUGAR_NEGATED.test(text)) return null;
+  if (OTHER_CALORIC_SUGARS.test(text)) return null;
+  if (!SUCROSE_TERMS.test(text)) return null;
+  return totalSugars;
+}
+
 export interface CustomerEvidenceProvenance {
   source: EvidenceSource;
   sourceUrl: string | null;
@@ -182,12 +293,15 @@ export interface CustomerEvidenceProvenance {
 export interface CustomerProductProfileProposal {
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number>>;
-  declaredBasis: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
+  declaredBasis: Partial<
+    Record<WorkingNumericField, 'product_declared' | 'user_confirmed' | 'derived'>
+  >;
   /** The manufacturer's own basis, preserved beside the normalised values. */
   declaredNutritionBasis: 'per_100g' | 'per_100ml' | null;
   /** How `declared` was produced from it. */
   normalizationBasis: 'SOURCE_PER_100G' | 'GELLATTI_1ML_1G_NORMALIZATION' | null;
   evidence: ProductEvidenceInput;
+  materialConflictDetails: ProductMaterialConflictContext[];
   /** Server-assigned source authority per field, for pages that name the scanned GTIN. */
   evidenceProvenance: Partial<Record<ProductEvidenceField, CustomerEvidenceProvenance>>;
   recognitionEvidence: ProductSemanticEvidence;
@@ -259,10 +373,62 @@ export function customerProductProfileProposal(input: {
         : 'product_declared';
     }
   }
+  /*
+    The spectrum closes only when BOTH the table and the ingredient list are declaration-grade
+    evidence for this scan. A direct label or explicit customer confirmation is product-owned
+    evidence just like a server-matched exact-EAN page; excluding those two paths let a weaker
+    Mapper cohort overwrite an already confirmed one-sugar declaration. Anything lower-authority,
+    or any genuine unresolved conflict, keeps the unresolved path.
+  */
+  const sugarsAreExact = declaredBasis.total_sugars_percent !== undefined;
+  const declarationGradeForClosure = (field: ProductEvidenceField): boolean => {
+    const source = evidenceSource(root, field, userConfirmed);
+    return (
+      source === 'label' ||
+      source === 'user_confirmed' ||
+      exactEanBackedAuthority(root, SCAN_FIELD_PATHS[field] ?? []) !== null
+    );
+  };
+  const tableConfirmed = declarationGradeForClosure('sugars');
+  const listConfirmed = declarationGradeForClosure('ingredients');
+  const materialConflictDetails = materialConflictDetailsFrom(root);
+  const unresolvedConflicts = materialConflictDetails
+    .filter((conflict) => conflict.state === 'UNRESOLVED')
+    .map((conflict) => conflict.field);
+  const sugarClosureConflict = unresolvedConflicts.some(
+    (field) =>
+      field === 'ingredientsText' ||
+      field === 'nutrition.sugars' ||
+      field === 'nutrition.carbohydrate',
+  );
+  if (sugarsAreExact && tableConfirmed && listConfirmed && !sugarClosureConflict) {
+    const sucrose = singleCaloricSugarClosure(
+      text(root.ingredientsText),
+      declared.total_sugars_percent ?? null,
+    );
+    if (sucrose !== null) {
+      declared.sucrose_percent = sucrose;
+      // Computed from this product's own declaration. Not the customer's word, not a Mapper guess.
+      declaredBasis.sucrose_percent = 'derived';
+    }
+  }
+
   const abv = finiteNumber(declarations.alcoholAbv);
   if (abv !== null && abv <= 100) {
     declared.alcohol_percent = abv;
     declaredBasis.alcohol_percent = userConfirmed.has('technicalParameters')
+      ? 'user_confirmed'
+      : 'product_declared';
+  }
+
+  for (const [key, field] of [
+    ['waterPercent', 'water_percent'],
+    ['totalSolidsPercent', 'total_solids_percent'],
+  ] as const) {
+    const value = finiteNumber(declarations[key]);
+    if (value === null || value > 100) continue;
+    declared[field] = value;
+    declaredBasis[field] = userConfirmed.has('technicalParameters')
       ? 'user_confirmed'
       : 'product_declared';
   }
@@ -291,18 +457,23 @@ export function customerProductProfileProposal(input: {
         evidenceReceipt: null,
       };
   }
+  const technicalSource = exactEanBackedTechnicalSource(root);
+  if (technicalSource) {
+    fields.technicalSource = 'manufacturer';
+    evidenceProvenance.technicalSource = {
+      source: 'manufacturer',
+      sourceUrl: typeof technicalSource.row.url === 'string' ? technicalSource.row.url : null,
+      sourceDomain: null,
+      sourceTitle: typeof technicalSource.row.title === 'string' ? technicalSource.row.title : null,
+      sourceAuthorityClass: technicalSource.authority,
+      retrievedAt: null,
+      evidenceReceipt: null,
+    };
+  }
   // A locally checksum-validated GTIN is exact package evidence even when the
   // barcode decoder did not emit a Vision evidence rectangle.
   fields.barcode = fields.barcode ?? 'label';
 
-  const unresolvedConflicts = Array.isArray(root.conflicts)
-    ? root.conflicts.flatMap((value) => {
-        const conflict = objectValue(value);
-        return conflict.retainedSource === null && typeof conflict.field === 'string'
-          ? [conflict.field]
-          : [];
-      })
-    : [];
   const knownMacros: ProfileMatchInput['knownMacros'] = {};
   for (const field of [
     'fat_percent',
@@ -344,6 +515,7 @@ export function customerProductProfileProposal(input: {
       mapperFamilyMatch: input.recognition.ingredientFamily !== 'unknown',
       materialConflicts: unresolvedConflicts,
     },
+    materialConflictDetails,
     evidenceProvenance,
     recognitionEvidence: input.recognitionEvidence,
     trustedRecognition: input.recognition,

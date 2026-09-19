@@ -68,11 +68,6 @@ describe('recipe discovery product review', () => {
     expect(source).toContain('reviewModeEnabled && ownerReviewAccess && persona');
     expect(source).toContain('<OwnerReviewFrame enabled={ownerReviewMode}>');
   });
-
-  it('presents Proteinowe as a product-type filter, not a flavour-family heading', () => {
-    expect(source).toContain('Typ produktu');
-    expect(source).toContain('<option value="protein">Proteinowe</option>');
-  });
 });
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';

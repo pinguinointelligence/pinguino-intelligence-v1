@@ -4,6 +4,7 @@
  * missing (`ambiguous`, `invalid_code`, `offline`) are first-class here.
  */
 import type { ConfirmedScan, ConfirmedSymbology } from '@/scan-contract/confirmedScan';
+import type { ScanRunAuthority } from './runAuthority';
 
 export type InvalidCodeReason =
   | 'not_confirmed'
@@ -11,7 +12,8 @@ export type InvalidCodeReason =
   | 'charset'
   | 'length'
   | 'symbology_mismatch'
-  | 'checksum';
+  | 'checksum'
+  | 'canonical_mismatch';
 
 export interface CodeIdentity {
   symbology: ConfirmedSymbology;
@@ -55,6 +57,8 @@ export interface RequestContext {
   online: boolean;
   surface: 'HOME' | 'PRO' | 'TEST';
   now: number;
+  /** The unique user scan invocation; barcode identity alone is not a run authority. */
+  scanRun?: ScanRunAuthority;
   /** Mapper slot hint from label recognition, used only when the code itself is unknown */
   slotHint?: string | null;
 }
@@ -64,7 +68,12 @@ export class NetworkError extends Error {
 }
 
 export interface CatalogPort {
-  /** exact-by-EAN candidates for any of the keys; provisional rows not linked to the account must not be returned */
+  /** Exact resolution from the already-authoritative identity. */
+  exactByIdentity?: (
+    identity: CodeIdentity,
+    ctx: RequestContext,
+  ) => Promise<readonly ExactCandidate[]>;
+  /** Compatibility seam for in-memory/legacy ports; active V2 adapters use exactByIdentity. */
   exactByKeys(keys: readonly string[], ctx: RequestContext): Promise<readonly ExactCandidate[]>;
 }
 export interface PreferencePort {
@@ -111,6 +120,14 @@ export interface OfflineCacheEntry {
 export interface OfflineCachePort {
   get(accountId: string | null, canonicalGtin13: string): Promise<OfflineCacheEntry | null>;
   put(accountId: string | null, entry: OfflineCacheEntry): Promise<void>;
+  /** Drop an authority-rejected/quarantined identity immediately. */
+  invalidate(accountId: string | null, canonicalGtin13: string): Promise<boolean>;
+  /** Drop an older immutable version before replacing it with the authority's current result. */
+  invalidateIfStale(
+    accountId: string | null,
+    canonicalGtin13: string,
+    currentVersionId: string | null,
+  ): Promise<boolean>;
 }
 export interface PricePort {
   /** the per-user overlay price; missing is a costing state, never a failure (audit §12) */
@@ -190,13 +207,20 @@ export type ScanImportV2Result =
       diagnostics?: readonly string[];
       /** the assessment this pending verdict belongs to, so a later save cannot persist a different one */
       assessmentHash?: string | null;
+      /** normalized readiness from the final authority; diagnostics are not its source */
+      readiness?: import('./discovery/contracts').ClientReadinessState;
+      /**
+       * Canonical server session result behind this ledger. Recognition/prefill may read it, but
+       * the client never sends it back as a second evidence authority.
+       */
+      canonicalResult?: import('./discovery/contracts').ScanResultLike | null;
       engineReady: false;
       canonical: false;
       /** exact-GTIN registry evidence gathered alongside discovery (null = none / provider unavailable) */
       externalEvidence?: ExternalEvidence | null;
     }
   | {
-      /** a NEW exact SKU created through the finalize/profile/ProductBehaviour authorities (customer-provisional) */
+      /** an exact SKU persisted by the final authority as either shared PR or private PM */
       kind: 'discovered_exact';
       identity: CodeIdentity;
       sessionId: string;
@@ -205,8 +229,11 @@ export type ScanImportV2Result =
       ledger: import('./discovery/contracts').FactLedger;
       engineReady: boolean;
       behaviour: { outcome: BehaviourOutcome; bindingId: string | null };
-      canonical: false;
-      readiness: { engineReady: boolean; missingCritical: readonly string[]; note: string | null };
+      canonical: boolean;
+      readiness: import('./discovery/contracts').ClientReadinessState & {
+        engineReady: boolean;
+        note: string | null;
+      };
     }
   | {
       /** durable discovery candidate (product request) awaiting verification; canonical = false, engine usable = false */
@@ -228,7 +255,13 @@ export type ScanImportV2Result =
       evidenceError: 'provider_timeout' | 'provider_malformed' | 'provider_failed' | null;
     }
   | { kind: 'invalid_code'; reason: InvalidCodeReason; input: ConfirmedScan }
-  | { kind: 'offline'; identity: CodeIdentity; knownLocally: false }
+  | {
+      /** Offline has no live product authority. A cache hit is an explicitly non-authoritative hint. */
+      kind: 'offline';
+      identity: CodeIdentity;
+      knownLocally: boolean;
+      cachedProduct?: ExactCandidate;
+    }
   | {
       kind: 'failed';
       code: 'connection' | 'lookup_failed' | 'import_failed';

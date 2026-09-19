@@ -1,4 +1,4 @@
-import { useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { buttonClasses } from '@/components/ui/buttonStyles';
@@ -13,27 +13,25 @@ import {
   type CuratedCollection,
   type CuratedRecipeCandidate,
 } from '@/data/recipes/curatedCollections';
-import {
-  customerFacingInspirationFamilies,
-  initialDiscoveryFamilies,
-  searchInspirationFamilies,
-  type InspirationFamily,
-  type InspirationProductFilter,
-} from '@/data/recipes/inspirationClustering';
-import {
-  flavorInspirationStartIntent,
-  inspirationStartHref,
-} from '@/data/recipes/inspirationHandoff';
+import { inspirationStartHref } from '@/data/recipes/inspirationHandoff';
 import {
   EXECUTABLE_RECIPE_TEMPLATES,
   executableRecipeCard,
   executableRecipeStartHref,
-  executableTemplateIdForInspiration,
   type ExecutableRecipeLibrary,
 } from '@/data/recipes/executableRecipeLibrary';
+import {
+  isOfficialCollectionId,
+  officialLibraryHref,
+  officialRecipeById,
+  officialRecipeHomeHref,
+  officialRecipeUseHref,
+} from '@/data/recipes/official/officialRecipeLibrary';
+import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { NonProductionMarker } from '@/features/design-review/NonProductionMarker';
 import { useReviewMode } from '@/features/design-review/useReviewMode';
 import { useOwnerReviewAccess } from '@/features/design-review/useOwnerReviewAccess';
+import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { cn } from '@/lib/cn';
 import { MyRecipesContent } from '@/pages/recipes/MyRecipesPage';
@@ -41,14 +39,24 @@ import { hasUnsavedProRecipeChanges, startNewProRecipe } from './startNewProReci
 import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
 import { SharedWithMePanel } from '@/features/community/ui/SharedWithMePanel';
 import { RecipeLibraryNav } from '@/features/recipes/RecipeLibraryNav';
-import { RECIPE_LIBRARY_TABS, type RecipeLibraryTab } from '@/features/recipes/recipeLibrary';
+import {
+  OfficialCollectionView,
+  OfficialCollectionsGrid,
+  OfficialRecipeDetail,
+} from '@/features/recipes/official/OfficialRecipeLibraryView';
+import {
+  RECIPE_LIBRARY_TABS,
+  isRecipeLibraryTab,
+  type RecipeLibraryTab,
+} from '@/features/recipes/recipeLibrary';
+import { useAuthStore } from '@/stores/authStore';
 import { useRecipeStore } from '@/stores/recipeStore';
 
 const r = copy.nav.recipes;
 const d = r.discovery;
 const MAX_FEATURED = 6;
 
-type DiscoveryView = 'home' | 'lost' | 'natural' | 'fantasy' | 'inspiration' | 'countries';
+type DiscoveryView = 'home' | 'lost' | 'natural' | 'fantasy' | 'countries';
 type IconName = 'left' | 'right' | 'book' | 'globe' | 'leaf' | 'search' | 'sparkles';
 
 function Icon({ name, className = 'h-4 w-4' }: { name: IconName; className?: string }) {
@@ -142,11 +150,13 @@ function ActionCard({
   title,
   body,
   onClick,
+  testId,
 }: {
   icon: ReactNode;
   title: string;
   body: string;
   onClick: () => void;
+  testId?: string;
 }) {
   return (
     /* This was a card in name only: a single `border-t` with no radius and no
@@ -156,6 +166,7 @@ function ActionCard({
     <button
       type="button"
       onClick={onClick}
+      data-testid={testId}
       className="group flex min-h-40 w-full flex-col rounded-[12px] border border-[var(--g-line)] bg-white p-[18px] text-left transition-colors hover:border-[var(--g-line-strong)] hover:bg-[var(--g-ivory)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--g-ink)]"
     >
       <div className="flex items-start justify-between gap-4">
@@ -305,143 +316,17 @@ function CuratedCollectionView({
   );
 }
 
-function FamilyCard({ family, onClick }: { family: InspirationFamily; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group flex min-h-32 flex-col justify-between rounded-md border border-ink/10 bg-paper p-5 text-left hover:border-ink/30"
-    >
-      <span className="text-xs tracking-[0.12em] text-stone-400 uppercase">
-        {family.count} kierunków
-      </span>
-      <span className="flex items-end justify-between gap-3 text-xl font-semibold tracking-[-0.025em] text-ink">
-        {family.label}
-        <Icon
-          name="right"
-          className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1"
-        />
-      </span>
-    </button>
-  );
-}
-
-function InspirationView({ persona }: { persona: RecipePersona }) {
-  const [productType, setProductType] = useState<InspirationProductFilter>('all');
-  const allFamilies = useMemo(() => customerFacingInspirationFamilies(productType), [productType]);
-  const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<InspirationFamily | null>(null);
-  const [showMore, setShowMore] = useState(false);
-  const matches =
-    query.trim() === ''
-      ? initialDiscoveryFamilies(allFamilies)
-      : searchInspirationFamilies(query, allFamilies).slice(0, MAX_FEATURED);
-
-  if (selected !== null) {
-    const directions = selected.directions.slice(0, showMore ? 10 : 6);
-    return (
-      <section>
-        <button
-          type="button"
-          onClick={() => {
-            setSelected(null);
-            setShowMore(false);
-          }}
-          className="inline-flex items-center gap-2 text-sm text-stone-500 hover:text-ink"
-        >
-          <Icon name="left" /> {d.families}
-        </button>
-        <h2 className="mt-6 text-3xl font-semibold tracking-[-0.04em]">{selected.label}</h2>
-        <p className="mt-2 text-sm text-stone-500">
-          {d.directions} · {selected.count} pozycji w źródle
-        </p>
-        <div className="mt-8">
-          <NonProductionMarker itemId="recipes-hub-tiles" title="Dane inspiracyjne — bez gramów">
-            <div className="grid gap-3 sm:grid-cols-2">
-              {directions.map((direction) => {
-                const entry = direction.featuredEntry;
-                return (
-                  <Link
-                    key={direction.id}
-                    to={inspirationStartHref(flavorInspirationStartIntent(entry), {
-                      persona,
-                      executableTemplateId: executableTemplateIdForInspiration(entry.flavorCode),
-                      returnTo: '/recipes?tab=inspiration',
-                    })}
-                    className="group rounded-md border border-ink/10 bg-paper p-5 hover:border-ink/30"
-                  >
-                    <span className="text-xs text-stone-400">{direction.count} pomysłów</span>
-                    <h3 className="mt-4 text-lg font-semibold text-ink">{direction.label}</h3>
-                    <p className="mt-1 line-clamp-1 text-sm text-stone-500">{entry.flavorName}</p>
-                    <span className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-ink">
-                      {d.use}
-                      <Icon
-                        name="right"
-                        className="h-4 w-4 transition-transform group-hover:translate-x-1"
-                      />
-                    </span>
-                  </Link>
-                );
-              })}
-            </div>
-            {selected.directions.length > 6 ? (
-              <button
-                type="button"
-                onClick={() => setShowMore((value) => !value)}
-                className={cn(buttonClasses('ghost', 'sm'), 'mt-4 w-full')}
-              >
-                {showMore ? d.showLess : d.showMore}
-              </button>
-            ) : null}
-          </NonProductionMarker>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section>
-      <p className="text-xs font-semibold tracking-[0.14em] text-stone-500 uppercase">
-        2 500 danych · {allFamilies.length} rodzin
-      </p>
-      <h2 className="mt-3 text-3xl font-semibold tracking-[-0.04em]">{d.inspirationTitle}</h2>
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-600">{d.inspirationBody}</p>
-      <label className="mt-6 block max-w-xs text-xs font-semibold tracking-[0.1em] text-stone-500 uppercase">
-        Typ produktu
-        <select
-          value={productType}
-          onChange={(event) => {
-            setProductType(event.target.value as InspirationProductFilter);
-            setSelected(null);
-            setShowMore(false);
-          }}
-          className="mt-2 min-h-11 w-full rounded-md border border-ink/15 bg-paper px-3 text-sm font-medium tracking-normal text-ink normal-case"
-        >
-          <option value="all">Wszystkie typy</option>
-          <option value="gelato">Gelato</option>
-          <option value="sorbet">Sorbet</option>
-          <option value="vegan">Wegańskiej</option>
-          <option value="protein">Proteinowe</option>
-        </select>
-      </label>
-      <label className="mt-8 flex items-center gap-3 rounded-md border border-ink/15 bg-paper px-4 py-3 focus-within:border-ink/40">
-        <Icon name="search" className="h-4 w-4 text-stone-400" />
-        <span className="sr-only">{d.search}</span>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder={d.search}
-          className="w-full bg-transparent text-base outline-none placeholder:text-stone-400"
-        />
-      </label>
-      <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-3">
-        {matches.map((family) => (
-          <FamilyCard key={family.id} family={family} onClick={() => setSelected(family)} />
-        ))}
-      </div>
-    </section>
-  );
-}
+const CURRENT_ENGINE_VIOLATION_LABELS: Readonly<Record<string, string>> = {
+  'water:low': 'woda poniżej zakresu',
+  'water:high': 'woda powyżej zakresu',
+  'ice_fraction:low': 'udział lodu poniżej zakresu',
+  'ice_fraction:high': 'udział lodu powyżej zakresu',
+  'npac:low': 'NPAC poniżej zakresu',
+  'npac:high': 'NPAC powyżej zakresu',
+};
+const currentEngineViolationLabel = (code: string) =>
+  CURRENT_ENGINE_VIOLATION_LABELS[code] ??
+  `${code.split(':')[0]} ${code.endsWith(':low') ? 'poniżej' : 'powyżej'} zakresu`;
 
 function ExecutableOwnerReviewView({
   library,
@@ -505,13 +390,26 @@ function ExecutableOwnerReviewView({
                       </dd>
                     </div>
                   </dl>
-                  <p className="mt-4 text-xs text-stone-500">
-                    Wynik techniczny:{' '}
+                  <p
+                    className="mt-4 text-xs text-stone-500"
+                    data-testid={`${template.id}-current-engine`}
+                  >
+                    Wynik bieżący (aktualne dane składników):{' '}
                     <span className="font-mono">
-                      {card.technicalScore === null
+                      {card.currentEngineEvaluation === null
                         ? 'oczekuje na dokładny produkt'
-                        : card.technicalScore.toFixed(2)}
+                        : `${card.currentEngineEvaluation.technicalScore.toFixed(2)} · ${
+                            card.currentEngineEvaluation.executable ? 'wykonalna' : 'niewykonalna'
+                          }`}
                     </span>
+                    {card.historicalTechnicalScore === null ? null : (
+                      <>
+                        {' · '}Wynik historyczny (poprzednie dane składników):{' '}
+                        <span className="font-mono">
+                          {card.historicalTechnicalScore.toFixed(2)}
+                        </span>
+                      </>
+                    )}
                     {' · '}Proces: {card.processId ?? 'brak zatwierdzonej wersji'}
                     {' · '}Znane alergeny: {card.knownAllergens.join(', ')}
                     {card.finalAllergensComplete ? '' : ' · lista finalna niepełna'}
@@ -543,6 +441,24 @@ function ExecutableOwnerReviewView({
                       <dd className="font-mono text-right text-stone-600">{card.labelStatus}</dd>
                     </div>
                   </dl>
+                  {card.openState === 'blocked_current_engine' && card.currentEngineEvaluation ? (
+                    <p
+                      className="mt-5 text-xs leading-relaxed text-nonprod"
+                      data-testid={`${template.id}-current-engine-blocker`}
+                    >
+                      Aktualne dane blokują otwarcie:{' '}
+                      {[
+                        ...card.currentEngineEvaluation.violations.map(currentEngineViolationLabel),
+                        ...card.currentEngineEvaluation.unapprovedIngredientIds.map((id) => {
+                          const note = template.base.find(
+                            (line) => line.mapperIngredientId === id,
+                          )?.note;
+                          return `składnik ${note ?? id} (${id}) nie jest zatwierdzony do bazy`;
+                        }),
+                      ].join(', ')}
+                      . Receptura źródłowa pozostaje bez zmian.
+                    </p>
+                  ) : null}
                   <p className="mt-5 text-xs leading-relaxed text-nonprod">
                     {card.blockers[0] ??
                       card.productionBlockers[0] ??
@@ -557,7 +473,7 @@ function ExecutableOwnerReviewView({
                       pominięte do czasu uzupełnienia danych produkcji i etykiety.
                     </p>
                   ) : null}
-                  {template.status === 'OWNER_REVIEW_EDITABLE' ? (
+                  {card.openState === 'open' ? (
                     <button
                       type="button"
                       className={cn(buttonClasses('primary', 'sm'), 'mt-5 w-full')}
@@ -566,6 +482,15 @@ function ExecutableOwnerReviewView({
                       }
                     >
                       Otwórz w Pro
+                    </button>
+                  ) : card.openState === 'blocked_current_engine' ? (
+                    <button
+                      type="button"
+                      disabled
+                      className={cn(buttonClasses('ghost', 'sm'), 'mt-5 w-full opacity-55')}
+                      data-testid={`${template.id}-current-engine-blocked`}
+                    >
+                      Niewykonalna przy aktualnych danych
                     </button>
                   ) : (
                     <button
@@ -698,21 +623,50 @@ export function RecipesHubPage() {
   const reviewModeEnabled = useReviewMode();
   const ownerReviewAccess = useOwnerReviewAccess();
   const persona = useProCorePersona();
+  const openAuthModal = useAuthModalStore((state) => state.open);
+  const authAvailable = useAuthStore((state) => state.available);
+  const authed = useAuthStore((state) => state.status === 'authed');
   const currentVisibleProductType = useRecipeStore((state) => state.visibleProductType);
   // Defence in depth: the review hook already requires Pro, but the page also
   // refuses to mount executable Owner Review cards for Demo/Home personas.
   const ownerReviewMode = reviewModeEnabled && ownerReviewAccess && persona === 'pro';
   const requestedTab = params.get('tab');
-  const activeTab: RecipeLibraryTab =
-    requestedTab === 'mine' ||
-    requestedTab === 'shared' ||
-    requestedTab === 'inspiration' ||
-    requestedTab === 'pinguino'
-      ? requestedTab
-      : 'pinguino';
-  const newRecipeHref = persona === 'pro' ? '/pro/recipe' : persona === 'home' ? '/home' : '/start';
+  const activeTab: RecipeLibraryTab = isRecipeLibraryTab(requestedTab) ? requestedTab : 'pinguino';
+  const officialRecipe = activeTab === 'pinguino' ? officialRecipeById(params.get('recipe')) : null;
+  const requestedCollection = params.get('collection');
+  const officialCollection =
+    activeTab === 'pinguino' &&
+    officialRecipe === null &&
+    isOfficialCollectionId(requestedCollection)
+      ? requestedCollection
+      : null;
+  /* A retired or unknown address — the former `?tab=inspiration`, a stale
+     collection or recipe id — is normalised to the canonical library URL, so
+     no second address keeps a retired destination alive. */
+  const staleTab = requestedTab !== null && !isRecipeLibraryTab(requestedTab);
+  const staleRecipe = params.has('recipe') && officialRecipe === null;
+  const staleCollection =
+    params.has('collection') && (officialCollection === null || officialRecipe !== null);
+  useEffect(() => {
+    if (!staleTab && !staleRecipe && !staleCollection) return;
+    const next = new URLSearchParams(params);
+    if (staleTab) next.delete('tab');
+    if (staleRecipe) next.delete('recipe');
+    if (staleCollection) next.delete('collection');
+    setParams(next, { replace: true });
+  }, [params, setParams, staleCollection, staleRecipe, staleTab]);
+  // A guest starts in the canonical HOME creator too — never the legacy `/start` shell.
+  const newRecipeHref = persona === 'pro' ? '/pro/recipe' : '/home';
   const openNewRecipe = () => {
-    if (persona === 'pro') startNewProRecipe(currentVisibleProductType);
+    // HOME owns a persisted orchestration draft in addition to the shared recipe working copy.
+    // A confirmed new-recipe action must clear both, otherwise the old `recipeReady` state turns
+    // the next exact intent into a live edit instead of a clean first generation.
+    if (persona === 'home') {
+      startNewProRecipe(currentVisibleProductType);
+      useHomeDraftStore.getState().startNew();
+    } else if (persona === 'pro' || pendingExecutableHref !== null) {
+      startNewProRecipe(currentVisibleProductType);
+    }
     const destination = pendingExecutableHref ?? newRecipeHref;
     setPendingExecutableHref(null);
     setNewRecipeConfirmOpen(false);
@@ -720,7 +674,10 @@ export function RecipesHubPage() {
   };
   const requestNewRecipe = () => {
     setPendingExecutableHref(null);
-    if (persona === 'pro' && hasUnsavedProRecipeChanges()) {
+    if (
+      (persona === 'pro' && hasUnsavedProRecipeChanges()) ||
+      (persona === 'home' && useHomeDraftStore.getState().hasDraft())
+    ) {
       setNewRecipeConfirmOpen(true);
       return;
     }
@@ -734,10 +691,29 @@ export function RecipesHubPage() {
     }
     navigate(href);
   };
+  /** „Zrób te lody": the official recipe opens as a working copy where this customer works. */
+  const requestOfficialUse = (recipeId: string) => {
+    if (persona === 'demo') {
+      openAuthModal();
+      return;
+    }
+    const href =
+      persona === 'home'
+        ? officialRecipeHomeHref(recipeId)
+        : officialRecipeUseHref(recipeId, officialLibraryHref({ recipeId }));
+    if (hasUnsavedProRecipeChanges()) {
+      setPendingExecutableHref(href);
+      setNewRecipeConfirmOpen(true);
+      return;
+    }
+    navigate(href);
+  };
   const selectTab = (tab: RecipeLibraryTab) => {
     const next = new URLSearchParams(params);
     if (tab === 'pinguino') next.delete('tab');
     else next.set('tab', tab);
+    next.delete('collection');
+    next.delete('recipe');
     setParams(next);
     setView('home');
   };
@@ -764,7 +740,7 @@ export function RecipesHubPage() {
     <DestinationSurface
       eyebrow={d.eyebrow}
       title="Receptury"
-      blurb="Twoje receptury, kolekcje Gellatti i inspiracje smakowe — w jednej bibliotece."
+      blurb="Oficjalne kolekcje Gellatti, Twoje receptury i receptury udostępnione — w jednej bibliotece."
       contextLabel="Receptury"
       actions={
         <button type="button" onClick={requestNewRecipe} className={buttonClasses('primary', 'sm')}>
@@ -795,109 +771,133 @@ export function RecipesHubPage() {
       ) : null}
       {activeTab === 'shared' ? (
         <div id="recipes-panel-shared" role="tabpanel" aria-labelledby="recipes-tab-shared">
-          <SharedWithMePanel />
-        </div>
-      ) : null}
-      {activeTab === 'inspiration' ? (
-        <div
-          id="recipes-panel-inspiration"
-          role="tabpanel"
-          aria-labelledby="recipes-tab-inspiration"
-        >
-          <InspirationView persona={persona} />
+          {/* Received shares belong to an account. Without a session the panel's read fails,
+              and that failure must not read as „nothing was shared with you" — a guest gets
+              the same signed-out state as „Moje". */}
+          {authed ? (
+            <SharedWithMePanel />
+          ) : !authAvailable ? (
+            <p className="text-sm leading-relaxed text-stone-500">{copy.recipes.unavailable}</p>
+          ) : (
+            <div className="flex items-center gap-4" data-testid="recipes-shared-signed-out">
+              <p className="text-sm leading-relaxed text-stone-600">{copy.recipes.signInToView}</p>
+              <button
+                type="button"
+                className={buttonClasses('primary', 'sm')}
+                onClick={openAuthModal}
+              >
+                {copy.recipes.signInCta}
+              </button>
+            </div>
+          )}
         </div>
       ) : null}
       {activeTab === 'pinguino' ? (
         <div id="recipes-panel-pinguino" role="tabpanel" aria-labelledby="recipes-tab-pinguino">
-          {view !== 'home' ? <BackButton onClick={() => setView('home')} /> : null}
-          <div className={view !== 'home' ? 'mt-10' : undefined}>
-            {view === 'home' ? (
-              <>
-                <OwnerReviewFrame enabled={ownerReviewMode}>
-                  <div
-                    className={cn(
-                      'grid gap-3 md:grid-cols-2',
-                      ownerReviewMode && 'xl:grid-cols-3',
-                    )}
-                  >
-                    <ActionCard
-                      icon={<Icon name="book" className="h-5 w-5" />}
-                      title={d.lostTitle}
-                      body={d.lostBody}
-                      onClick={() => setView('lost')}
-                    />
-                    <ActionCard
-                      icon={<Icon name="leaf" className="h-5 w-5" />}
-                      title={d.naturalTitle}
-                      body={d.naturalBody}
-                      onClick={() => setView('natural')}
-                    />
+          {officialRecipe ? (
+            <OfficialRecipeDetail
+              recipe={officialRecipe}
+              persona={persona}
+              onUse={requestOfficialUse}
+            />
+          ) : officialCollection ? (
+            <OfficialCollectionView collectionId={officialCollection} />
+          ) : (
+            <>
+              {view !== 'home' ? <BackButton onClick={() => setView('home')} /> : null}
+              <div className={view !== 'home' ? 'mt-10' : undefined}>
+                {view === 'home' ? (
+                  <>
+                    <OfficialCollectionsGrid />
                     {ownerReviewMode ? (
-                      <ActionCard
-                        icon={<Icon name="sparkles" className="h-5 w-5" />}
-                        title="Fantasy"
-                        body="Pięć wersjonowanych kierunków pierwszej partii do przeglądu właściciela."
-                        onClick={() => setView('fantasy')}
-                      />
+                      <div className="mt-12">
+                        <OwnerReviewFrame enabled={ownerReviewMode}>
+                          <div
+                            className={cn(
+                              'grid gap-3 md:grid-cols-2',
+                              ownerReviewMode && 'xl:grid-cols-3',
+                            )}
+                          >
+                            <ActionCard
+                              icon={<Icon name="book" className="h-5 w-5" />}
+                              title={d.lostTitle}
+                              body={d.lostBody}
+                              onClick={() => setView('lost')}
+                              testId="recipes-owner-tile-lost"
+                            />
+                            <ActionCard
+                              icon={<Icon name="leaf" className="h-5 w-5" />}
+                              title={d.naturalTitle}
+                              body={d.naturalBody}
+                              onClick={() => setView('natural')}
+                              testId="recipes-owner-tile-natural"
+                            />
+                            <ActionCard
+                              icon={<Icon name="sparkles" className="h-5 w-5" />}
+                              title="Fantasy"
+                              body="Pięć wersjonowanych kierunków pierwszej partii do przeglądu właściciela."
+                              onClick={() => setView('fantasy')}
+                              testId="recipes-owner-tile-fantasy"
+                            />
+                          </div>
+                        </OwnerReviewFrame>
+                        <div className="mt-10 grid gap-3 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => setView('countries')}
+                            className={buttonClasses('ghost', 'sm')}
+                          >
+                            <Icon name="globe" className="mr-2 h-4 w-4" />
+                            {d.countries}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setView('natural')}
+                            className={buttonClasses('ghost', 'sm')}
+                          >
+                            <Icon name="sparkles" className="mr-2 h-4 w-4" />
+                            {d.recommended}
+                          </button>
+                        </div>
+                      </div>
                     ) : null}
-                  </div>
-                </OwnerReviewFrame>
-                <div className="mt-10 grid gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => setView('countries')}
-                    className={buttonClasses('ghost', 'sm')}
-                  >
-                    <Icon name="globe" className="mr-2 h-4 w-4" />
-                    {d.countries}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setView('natural')}
-                    className={buttonClasses('ghost', 'sm')}
-                  >
-                    <Icon name="sparkles" className="mr-2 h-4 w-4" />
-                    {d.recommended}
-                  </button>
-                </div>
-                <p className="mt-12 border-t border-ink/10 pt-6 text-xs text-stone-400">
-                  {r.gelato} · {r.sorbet} · {r.vegan} · {r.protein}
-                </p>
-              </>
-            ) : null}
-            {view === 'lost' ? (
-              ownerReviewMode ? (
-                <ExecutableOwnerReviewView
-                  library="lost_legendary"
-                  persona={persona}
-                  onOpenTemplate={requestExecutableOpen}
-                />
-              ) : (
-                <CuratedCollectionView
-                  collection="lost_legendary"
-                  ownerReviewMode={ownerReviewMode}
-                  persona={persona}
-                />
-              )
-            ) : null}
-            {view === 'natural' ? (
-              <CuratedCollectionView
-                collection="natural_icon"
-                ownerReviewMode={ownerReviewMode}
-                persona={persona}
-              />
-            ) : null}
-            {view === 'fantasy' && ownerReviewMode ? (
-              <ExecutableOwnerReviewView
-                library="fantasy"
-                persona={persona}
-                onOpenTemplate={requestExecutableOpen}
-              />
-            ) : null}
-            {view === 'countries' ? (
-              <CountriesView ownerReviewMode={ownerReviewMode} persona={persona} />
-            ) : null}
-          </div>
+                  </>
+                ) : null}
+                {view === 'lost' ? (
+                  ownerReviewMode ? (
+                    <ExecutableOwnerReviewView
+                      library="lost_legendary"
+                      persona={persona}
+                      onOpenTemplate={requestExecutableOpen}
+                    />
+                  ) : (
+                    <CuratedCollectionView
+                      collection="lost_legendary"
+                      ownerReviewMode={ownerReviewMode}
+                      persona={persona}
+                    />
+                  )
+                ) : null}
+                {view === 'natural' ? (
+                  <CuratedCollectionView
+                    collection="natural_icon"
+                    ownerReviewMode={ownerReviewMode}
+                    persona={persona}
+                  />
+                ) : null}
+                {view === 'fantasy' && ownerReviewMode ? (
+                  <ExecutableOwnerReviewView
+                    library="fantasy"
+                    persona={persona}
+                    onOpenTemplate={requestExecutableOpen}
+                  />
+                ) : null}
+                {view === 'countries' ? (
+                  <CountriesView ownerReviewMode={ownerReviewMode} persona={persona} />
+                ) : null}
+              </div>
+            </>
+          )}
         </div>
       ) : null}
     </DestinationSurface>

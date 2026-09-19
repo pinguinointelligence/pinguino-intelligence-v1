@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
+import { Link, useLocation, useNavigate, type LinkProps } from 'react-router';
 import { cn } from '@/lib/cn';
+import { lockBodyScroll } from '@/components/ui/bodyScrollLock';
 import { copy } from '@/copy/en';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -16,7 +17,8 @@ import {
   type NavGroupId,
 } from './appNav';
 import { AccountModeSwitcher } from './AccountModeSwitcher';
-import { labelSettingsReturn } from '@/features/master-label/labelSettingsNavigation';
+import { useTutorialStore } from '@/features/tutorial/tutorialState';
+import { hasUnsavedChanges, requestLeave } from '@/features/production-area/unsavedGuard';
 
 const s = copy.shell;
 const FOCUSABLE =
@@ -63,12 +65,31 @@ export function AppNavDrawer() {
   // authenticated. The account block must follow auth, not consumer-plan UX.
   const memberAccount = authStatus === 'authed' || devMemberPreview;
   const close = () => setOpen(false);
+  const navigate = useNavigate();
+  /* Produkcja v3 §1.5 — leaving through ☰ asks first when an area form (machine settings,
+     product markets, label settings) holds unsaved changes. Everywhere else nothing is
+     registered, so the link behaves exactly as before. */
+  const leaveTo = (to: LinkProps['to']) => (event: MouseEvent<HTMLAnchorElement>) => {
+    close();
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey ||
+      !hasUnsavedChanges()
+    ) {
+      return;
+    }
+    event.preventDefault();
+    requestLeave(() => navigate(to));
+  };
 
   useEffect(() => {
     if (!open) return;
     const body = document.body;
-    const prevOverflow = body.style.overflow;
-    body.style.overflow = 'hidden';
+    // One shared, counted page lock (PRO MOBILE UX v2 · A1).
+    const releaseScroll = lockBodyScroll();
     /* One flag on the body, read by ONE css rule, so the page's own bottom
        chrome steps aside instead of showing through a 60% scrim. Raising the
        drawer above it stopped the click-through, but the strip stayed legible
@@ -103,7 +124,7 @@ export function AppNavDrawer() {
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
-      body.style.overflow = prevOverflow;
+      releaseScroll();
       delete body.dataset.appDrawer;
       trigger?.focus();
     };
@@ -183,7 +204,7 @@ export function AppNavDrawer() {
               {workspaceItem ? (
                 <Link
                   to={workspaceItem.to}
-                  onClick={close}
+                  onClick={leaveTo(workspaceItem.to)}
                   aria-current={workspaceItem.isActive(loc) ? 'page' : undefined}
                   data-testid={`app-nav-item-${workspaceItem.id}`}
                   className="text-sm font-medium tracking-[0.08em] text-ink"
@@ -235,19 +256,7 @@ export function AppNavDrawer() {
                           <Link
                             key={item.id}
                             to={item.to}
-                            state={
-                              item.id === 'labels'
-                                ? {
-                                    labelSettingsReturn: labelSettingsReturn(
-                                      location.pathname,
-                                      location.search,
-                                      document.querySelector<HTMLElement>('[role="tabpanel"]')
-                                        ?.scrollTop ?? window.scrollY,
-                                    ),
-                                  }
-                                : undefined
-                            }
-                            onClick={close}
+                            onClick={leaveTo(item.to)}
                             aria-current={active ? 'page' : undefined}
                             data-testid={`app-nav-item-${item.id}`}
                             className={cn(
@@ -264,6 +273,23 @@ export function AppNavDrawer() {
                 );
               })}
               <MobileDesignReviewEntry />
+              {/* §29 — „Uruchom samouczek ponownie" lives beside „Jak to
+                  działa?", because they answer the same need from two
+                  directions: one explains, the other shows. It is a plain menu
+                  row, not a settings toggle: it starts the tutorial and closes
+                  the drawer so the first spotlight lands on the real screen
+                  underneath. */}
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  useTutorialStore.getState().start();
+                }}
+                className="block min-h-12 w-full rounded-sm px-4 text-left text-[15px] text-ink hover:bg-ink/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+                data-testid="app-nav-restart-tutorial"
+              >
+                Uruchom samouczek ponownie
+              </button>
             </nav>
 
             <div
@@ -275,7 +301,7 @@ export function AppNavDrawer() {
                 <div className="flex items-center gap-2">
                   <Link
                     to="/account"
-                    onClick={close}
+                    onClick={leaveTo('/account')}
                     className="min-w-0 flex-1 rounded-sm px-4 py-2 hover:bg-ink/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
                     data-testid="app-nav-account-link"
                   >
@@ -297,7 +323,9 @@ export function AppNavDrawer() {
                     type="button"
                     onClick={() => {
                       close();
-                      if (authStatus === 'authed') void signOut();
+                      requestLeave(() => {
+                        if (authStatus === 'authed') void signOut();
+                      });
                     }}
                     className="min-h-11 shrink-0 rounded-sm px-3 text-xs font-medium text-ink hover:bg-ink/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
                     data-testid="app-nav-signout"

@@ -13,6 +13,10 @@ import type {
   RequestContext,
 } from '../contracts';
 import type { CustomerFamily } from '../discovery/contracts';
+import {
+  assessProductPublicationIdentity,
+  type ProductPublicationIdentityEligibility,
+} from '@/features/product-scanner/productPublicationEligibility';
 
 export const OPEN_FOOD_FACTS_PROVIDER = 'openfoodfacts';
 
@@ -28,6 +32,7 @@ const FIELDS = [
   'brands',
   'quantity',
   'serving_size',
+  'nutrition_data_per',
   'product_quantity_unit',
   'categories_tags',
   'pnns_groups_1',
@@ -95,6 +100,9 @@ export function evidenceFromProduct(
   add('identity.quantity', str(product['quantity']));
   add('identity.servingSize', str(product['serving_size']));
   add('identity.quantityUnit', str(product['product_quantity_unit']));
+  const nutritionBasis = str(product['nutrition_data_per']);
+  if (/100\s*ml/i.test(nutritionBasis ?? '')) add('nutrition.basis', 'per_100ml');
+  else if (/100\s*g/i.test(nutritionBasis ?? '')) add('nutrition.basis', 'per_100g');
   const tags = Array.isArray(product['categories_tags'])
     ? (product['categories_tags'] as unknown[]).filter((t): t is string => typeof t === 'string')
     : [];
@@ -171,8 +179,16 @@ export interface ExactWebIdentity {
   quantity: string | null;
   family: CustomerFamily | null;
   sourceUrl: string | null;
-  /** finalize `confirmations.productFields` prefilled from the registry (identity, nutrition, ingredients, allergens) */
+  /** Prefill only. It is automatic registry data and must never be sent as a customer confirmation. */
   productFields: Record<string, unknown>;
+  automaticEvidence: {
+    source: 'barcode_registry';
+    exactGtin: string;
+    sourceUrl: string | null;
+    queriedAt: number;
+    productFields: Record<string, unknown>;
+  };
+  publicationEligibility: ProductPublicationIdentityEligibility;
   hasNutrition: boolean;
   hasIngredients: boolean;
 }
@@ -228,33 +244,69 @@ export function identityFromEvidence(
   const displayName = get('identity.displayName');
   if (!displayName) return null;
   const brand = get('identity.brand');
+  const quantity = get('identity.quantity');
   const identity: Record<string, unknown> = { displayName };
   if (brand) identity['brand'] = brand;
   const productFields: Record<string, unknown> = { identity };
+  const parsedQuantity = /(-?\d+(?:[.,]\d+)?)\s*(kg|g|ml|l)\b/i.exec(quantity ?? '');
+  if (parsedQuantity) {
+    const netQuantity = Number(parsedQuantity[1]!.replace(',', '.'));
+    if (Number.isFinite(netQuantity) && netQuantity > 0) {
+      productFields['package'] = {
+        netQuantity,
+        unit: parsedQuantity[2]!.toLowerCase(),
+        netQuantityText: quantity,
+      };
+    }
+  }
   const nutrition: Record<string, unknown> = {};
   for (const { field } of NUTRIMENTS) {
     const v = get(field);
     if (v !== null && Number.isFinite(Number(v)))
       nutrition[field.replace('nutrition.', '')] = Number(v);
   }
-  const perMl = /\b(ml|cl|l)\b/.test(
-    `${get('identity.quantityUnit')} ${get('identity.quantity')}`.toLowerCase(),
-  );
+  const basis = get('nutrition.basis');
   if (Object.keys(nutrition).length > 0) {
-    nutrition['basis'] = perMl ? 'per_100ml' : 'per_100g';
+    // OFF's normalised `_100g` keys do not prove what the package declared. Only the registry's
+    // explicit `nutrition_data_per` field may establish the basis.
+    if (basis === 'per_100g' || basis === 'per_100ml') nutrition['basis'] = basis;
     productFields['nutrition'] = nutrition;
   }
   const ingredientsText = get('ingredientsText');
   if (ingredientsText) productFields['ingredientsText'] = ingredientsText;
   const allergensText = get('allergensText');
   if (allergensText) productFields['allergensText'] = allergensText;
+  const sourceUrl = ev.facts[0]?.sourceUrl ?? null;
+  const publicationEligibility = assessProductPublicationIdentity({
+    displayName,
+    brand,
+    manufacturer: null,
+    variant: null,
+    productType: get('category.pnns') ?? get('category.tags'),
+    fieldProvenance: {
+      displayName: {
+        source: 'barcode_registry',
+        exactGtinMatch: true,
+        sourceUrl,
+      },
+      brand: brand ? { source: 'barcode_registry', exactGtinMatch: true, sourceUrl } : undefined,
+    },
+  });
   return {
     displayName,
     brand,
-    quantity: get('identity.quantity'),
+    quantity,
     family: familyFromEvidence(ev),
-    sourceUrl: ev.facts[0]?.sourceUrl ?? null,
+    sourceUrl,
     productFields,
+    automaticEvidence: {
+      source: 'barcode_registry',
+      exactGtin: ev.query,
+      sourceUrl,
+      queriedAt: ev.queriedAt,
+      productFields,
+    },
+    publicationEligibility,
     hasNutrition:
       typeof nutrition['energyKcal'] === 'number' || typeof nutrition['fat'] === 'number',
     hasIngredients: Boolean(ingredientsText),

@@ -7,26 +7,166 @@
  *     technical parameter — and the customer's answers become the finalize confirmations.
  */
 import type { ConfirmedScan } from '@/scan-contract/confirmedScan';
-import type { ExactCandidate, ExactWebIdentity, FinalizeInput } from '@/scan-import-v2';
+import type {
+  ExactCandidate,
+  ExactWebIdentity,
+  FinalizeInput,
+  ScanResultLike,
+} from '@/scan-import-v2';
 import type { ScanExactProduct } from '@/services/productScanner';
 
 export type ResolvedScanProductLike = ScanExactProduct & { barcode: string | null };
 
+/**
+ * Presentation/prefill view of the server-owned exact-registry receipt. It intentionally has no
+ * `automaticEvidence` or family answer: the scan session already owns those facts, and only a real
+ * customer action may populate the `customerFamily` channel.
+ */
+export type CanonicalRegistryIdentity = Pick<
+  ExactWebIdentity,
+  'displayName' | 'brand' | 'quantity' | 'productFields' | 'hasNutrition' | 'hasIngredients'
+> & { confidence: number | null };
+
+const scanObject = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
+const scanDigits = (value: unknown): string =>
+  typeof value === 'string' || typeof value === 'number' ? String(value).replace(/\D/g, '') : '';
+
+const exactOffUrl = (value: unknown, ean: string): boolean => {
+  if (typeof value !== 'string') return false;
+  try {
+    const url = new URL(value);
+    return (
+      url.protocol === 'https:' &&
+      url.hostname === 'world.openfoodfacts.org' &&
+      (url.pathname === `/product/${ean}` || url.pathname === `/api/v2/product/${ean}.json`)
+    );
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Read Recognition/prefill only from the canonical OFF row already verified and persisted by the
+ * server. `fieldsUsed` is the allowlist: a neighboring retailer value or an unreferenced default
+ * can never silently become part of this registry view.
+ */
+export function canonicalRegistryIdentityFromScanResult(
+  result: ScanResultLike | null | undefined,
+  expectedEan: string,
+): CanonicalRegistryIdentity | null {
+  const ean = scanDigits(expectedEan);
+  const root = scanObject(result);
+  const sources = Array.isArray(result?.externalSources) ? result.externalSources : [];
+  const receipt = sources.find(
+    (source) =>
+      source.sourceType === 'barcode_registry' &&
+      source.sourceAuthorityClass === 'STRUCTURED_PRODUCT_DATABASE' &&
+      scanDigits(source.sourceStatedEan) === ean &&
+      source.sourceEanConfirmationMethod === 'url' &&
+      exactOffUrl(source.url, ean),
+  );
+  if (!receipt) return null;
+  const used = new Set(receipt.fieldsUsed);
+  const identity = scanObject(root['identity']);
+  const displayName = used.has('identity.displayName')
+    ? typeof identity['displayName'] === 'string'
+      ? identity['displayName']
+      : typeof identity['originalName'] === 'string'
+        ? identity['originalName']
+        : null
+    : null;
+  if (!displayName) return null;
+  const brand =
+    used.has('identity.brand') && typeof identity['brand'] === 'string' ? identity['brand'] : null;
+  const productFields: Record<string, unknown> = {
+    identity: { displayName, ...(brand ? { brand } : {}) },
+  };
+  const packageValue = scanObject(root['package']);
+  const unresolvedPackageConflict = (result?.conflicts ?? []).some(
+    (conflict) => conflict.retainedSource === null && String(conflict.field).startsWith('package.'),
+  );
+  const quantity =
+    !unresolvedPackageConflict &&
+    used.has('package.netQuantity') &&
+    typeof packageValue['netQuantityText'] === 'string'
+      ? packageValue['netQuantityText']
+      : null;
+  if (
+    !unresolvedPackageConflict &&
+    used.has('package.netQuantity') &&
+    typeof packageValue['netQuantity'] === 'number' &&
+    typeof packageValue['unit'] === 'string'
+  ) {
+    productFields['package'] = {
+      netQuantity: packageValue['netQuantity'],
+      unit: packageValue['unit'],
+      netQuantityText: quantity,
+    };
+  }
+  const sourceNutrition = scanObject(root['nutrition']);
+  const nutrition: Record<string, unknown> = {};
+  for (const key of [
+    'basis',
+    'energyKj',
+    'energyKcal',
+    'fat',
+    'saturatedFat',
+    'carbohydrate',
+    'sugars',
+    'protein',
+    'salt',
+    'fibre',
+  ]) {
+    if (used.has(`nutrition.${key}`) && sourceNutrition[key] !== null)
+      nutrition[key] = sourceNutrition[key];
+  }
+  if (Object.keys(nutrition).length > 0) productFields['nutrition'] = nutrition;
+  const ingredientsText =
+    used.has('ingredientsText') && typeof root['ingredientsText'] === 'string'
+      ? root['ingredientsText']
+      : null;
+  const allergensText =
+    used.has('allergensText') && typeof root['allergensText'] === 'string'
+      ? root['allergensText']
+      : null;
+  if (ingredientsText) productFields['ingredientsText'] = ingredientsText;
+  if (allergensText) productFields['allergensText'] = allergensText;
+  return {
+    displayName,
+    brand,
+    quantity,
+    productFields,
+    hasNutrition:
+      typeof nutrition['energyKcal'] === 'number' || typeof nutrition['fat'] === 'number',
+    hasIngredients: Boolean(ingredientsText),
+    confidence:
+      typeof receipt.confidence === 'number' &&
+      Number.isFinite(receipt.confidence) &&
+      receipt.confidence >= 0 &&
+      receipt.confidence <= 1
+        ? receipt.confidence
+        : null,
+  };
+}
+
 export function manualConfirmedScan(input: string, now = Date.now()): ConfirmedScan | null {
-  const digits = input.replace(/\D/g, '');
-  const symbology =
-    digits.length === 13
-      ? 'EAN-13'
-      : digits.length === 12
-        ? 'UPC-A'
-        : digits.length === 8
-          ? 'EAN-8'
-          : null;
+  const trimmed = input.trim();
+  if (!/^[0-9]+$/.test(trimmed)) return null;
+  const digits = trimmed;
+  // Eight digits are ambiguous between EAN-8 and UPC-E without decoder evidence. Do not invent a
+  // symbology for manual input; the input remains in the field so the customer can use the camera
+  // or provide a format-bearing code instead.
+  if (digits.length === 8) return null;
+  const symbology = digits.length === 13 ? 'EAN-13' : digits.length === 12 ? 'UPC-A' : null;
   if (!symbology) return null;
   return {
     symbology,
     value: digits,
-    rawValue: input.trim(),
+    rawValue: trimmed,
     // a code typed by the customer is a confirmed value, not a single unverified read: the identity
     // contract requires two agreeing reads, and the QA harness records a typed code the same way
     confirmation: { lane: 'consensus', agreeingFrames: 2, sources: ['manual'] },
@@ -60,6 +200,209 @@ export function toResolvedScanProduct(
   };
 }
 
+/**
+ * Customer-facing identity for the short Recognition line only.
+ *
+ * This is deliberately separate from the server's canonical registry receipt. Recognition first
+ * uses the name the server has already reconciled for this exact EAN, then a clean structured
+ * registry name, then the brand, and only then a conservatively trimmed seller title. When none of
+ * those is safe, a neutral label is better than displaying model noise or an internal identifier.
+ */
+export interface RecognitionNamePresentationInput {
+  reconciledName?: string | null;
+  reconciledBrand?: string | null;
+  registryName?: string | null;
+  registryBrand?: string | null;
+  registryQuantity?: string | null;
+  registryConfidence?: number | null;
+}
+
+export interface RecognitionNamePresentation {
+  displayName: string;
+  brand: string | null;
+  quantity: string | null;
+}
+
+export const RECOGNITION_NAME_FALLBACK = 'Rozpoznany produkt';
+
+const SELLER_NAME_NOISE =
+  /(?:https?:\/\/|www\.|[€$£]|\b(?:best\s+price|buy\s+now|kup\s+online|najlepsza\s+cena|pfand|deposit|versand|shipping|delivery|angebot|oferta)\b)/i;
+const INTERNAL_NAME_TOKEN = /\b(?:pr|pm|pi)[-_ ]?ing[-_ ]?\d+\b/i;
+const LABELED_CODE_TOKEN = /\b(?:ean|gtin|sku|id|kod|code)\b(?:\s*[:#-]\s*|\s+)[a-z0-9-]{4,}\b/i;
+const UUID_NAME_TOKEN =
+  /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/i;
+const LONG_NUMERIC_TOKEN = /(?:^|\D)\d{8,14}(?:\D|$)/;
+const PLACEHOLDER_NAMES = new Set([
+  'n a',
+  'na',
+  'none',
+  'null',
+  'placeholder',
+  'product',
+  'produkt',
+  'test',
+  'undefined',
+  'unknown',
+  'unbekannt',
+  'desconocido',
+  'nieznany',
+]);
+
+const compactRecognitionText = (value: string | null | undefined): string | null => {
+  if (typeof value !== 'string') return null;
+  const compact = value
+    .normalize('NFKC')
+    .replace(/\p{Cc}/gu, ' ')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return compact || null;
+};
+
+const normalizedRecognitionText = (value: string): string =>
+  value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLocaleLowerCase('en-US')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+
+const unsafeRecognitionIdentity = (value: string): boolean => {
+  const normalized = normalizedRecognitionText(value);
+  if (!normalized || PLACEHOLDER_NAMES.has(normalized)) return true;
+  if (
+    UUID_NAME_TOKEN.test(value) ||
+    INTERNAL_NAME_TOKEN.test(value) ||
+    LABELED_CODE_TOKEN.test(value) ||
+    LONG_NUMERIC_TOKEN.test(value)
+  )
+    return true;
+  return false;
+};
+
+const looksLikeRegistryJunk = (value: string): boolean => {
+  const compact = normalizedRecognitionText(value).replace(/\s+/g, '');
+  // The observed `ghgh` is a repeated consonant pair. Keep the narrow rule so short real brands
+  // such as BBQ or M&M's, and names written in non-Latin scripts, remain valid.
+  return /^([bcdfghjklmnpqrstvwxz]{2})\1$/i.test(compact) || /^([a-z0-9])\1{3,}$/i.test(compact);
+};
+
+const reconciledRecognitionName = (value: string | null | undefined): string | null => {
+  const compact = compactRecognitionText(value);
+  if (
+    !compact ||
+    compact.length > 96 ||
+    SELLER_NAME_NOISE.test(compact) ||
+    unsafeRecognitionIdentity(compact)
+  )
+    return null;
+  return compact;
+};
+
+const structuredRegistryName = (value: string | null | undefined): string | null => {
+  const compact = reconciledRecognitionName(value);
+  return compact && !looksLikeRegistryJunk(compact) ? compact : null;
+};
+
+/** Conservative last-resort cleanup for a title whose marketplace tail is visibly separable. */
+export function sanitizeRecognitionSellerTitle(value: string | null | undefined): string | null {
+  const compact = compactRecognitionText(value);
+  if (!compact) return null;
+  const withoutTail = compact
+    .replace(/\s+(?:https?:\/\/|www\.)\S.*$/i, '')
+    .split(/\s+[|•]\s+|\s+·\s+(?=(?:buy|kup|best|najlepsza|oferta|angebot)\b)/i)[0]!
+    .replace(/\s+\d+(?:[.,]\d{1,2})?\s*(?:€|eur\b|usd\b|gbp\b|\$|£)[\s\S]*$/i, '')
+    .replace(/\s+(?:plus|zzgl\.?|inkl\.?)\s+(?:pfand|deposit|versand|shipping)[\s\S]*$/i, '')
+    .replace(/[\s|·,:;\-–—]+$/g, '')
+    .trim();
+  if (
+    !withoutTail ||
+    withoutTail.length > 96 ||
+    unsafeRecognitionIdentity(withoutTail) ||
+    looksLikeRegistryJunk(withoutTail)
+  )
+    return null;
+  if (SELLER_NAME_NOISE.test(withoutTail)) return null;
+  return withoutTail;
+}
+
+const safeRecognitionQuantity = (value: string | null | undefined): string | null => {
+  const compact = compactRecognitionText(value);
+  if (!compact || compact.length > 48 || SELLER_NAME_NOISE.test(compact)) return null;
+  return /\d\s*(?:kg|g|ml|cl|l|oz|lb)\b/i.test(compact) ? compact : null;
+};
+
+const includesRecognitionQuantity = (value: string): boolean =>
+  /\d(?:[.,]\d+)?\s*(?:kg|g|ml|cl|l|oz|lb)\b/i.test(value);
+
+const alreadyNamed = (displayName: string, detail: string | null): boolean => {
+  if (!detail) return false;
+  const name = normalizedRecognitionText(displayName).replace(/\s+/g, '');
+  const candidate = normalizedRecognitionText(detail).replace(/\s+/g, '');
+  return candidate.length > 0 && name.includes(candidate);
+};
+
+/** Keep trusted pack detail across later server/label name reconciliation without duplicating it. */
+export function carryRecognitionPresentationDetails(
+  current: RecognitionNamePresentation,
+  proposed: RecognitionNamePresentation,
+  options: { reconciledBrandProvided: boolean },
+): RecognitionNamePresentation {
+  return {
+    ...proposed,
+    brand:
+      proposed.brand ??
+      (!options.reconciledBrandProvided && !alreadyNamed(proposed.displayName, current.brand)
+        ? current.brand
+        : null),
+    quantity:
+      proposed.quantity ??
+      (!includesRecognitionQuantity(proposed.displayName) &&
+      !alreadyNamed(proposed.displayName, current.quantity)
+        ? current.quantity
+        : null),
+  };
+}
+
+export function recognitionNamePresentation(
+  input: RecognitionNamePresentationInput,
+): RecognitionNamePresentation | null {
+  const hasAnyIdentity = [
+    input.reconciledName,
+    input.reconciledBrand,
+    input.registryName,
+    input.registryBrand,
+  ].some((value) => compactRecognitionText(value) !== null);
+  if (!hasAnyIdentity) return null;
+
+  const reconciledCandidate = reconciledRecognitionName(input.reconciledName);
+  const reconciled =
+    reconciledCandidate && !looksLikeRegistryJunk(reconciledCandidate) ? reconciledCandidate : null;
+  const registryConfidenceSufficient =
+    typeof input.registryConfidence === 'number' && input.registryConfidence >= 0.6;
+  const registry = registryConfidenceSufficient ? structuredRegistryName(input.registryName) : null;
+  const brand =
+    reconciledRecognitionName(input.reconciledBrand) ??
+    (registryConfidenceSufficient ? structuredRegistryName(input.registryBrand) : null);
+  const displayName =
+    reconciled ??
+    registry ??
+    brand ??
+    sanitizeRecognitionSellerTitle(input.reconciledName) ??
+    (registryConfidenceSufficient ? sanitizeRecognitionSellerTitle(input.registryName) : null) ??
+    RECOGNITION_NAME_FALLBACK;
+  const quantity = registryConfidenceSufficient
+    ? safeRecognitionQuantity(input.registryQuantity)
+    : null;
+
+  return {
+    displayName,
+    brand: brand && !alreadyNamed(displayName, brand) ? brand : null,
+    quantity: quantity && !alreadyNamed(displayName, quantity) ? quantity : null,
+  };
+}
+
 export interface PlainField {
   key: string;
   label: string;
@@ -88,6 +431,40 @@ const DECLARATIONS: readonly { test: RegExp; key: string; label: string }[] = [
   { test: /fruit/i, key: 'fruitContentPercent', label: 'Zawartość owoców' },
   { test: /brix/i, key: 'brix', label: 'Brix' },
 ];
+
+const MANUAL_TECHNICAL: readonly { test: RegExp; key: string; label: string }[] = [
+  {
+    test: /missing_total_solids_percent/i,
+    key: 'totalSolidsPercent',
+    label: 'Sucha masa produktu',
+  },
+  { test: /missing_water_percent/i, key: 'waterPercent', label: 'Zawartość wody' },
+];
+
+/**
+ * A photo is evidence acquisition, never a generic retry button. These are the only gap families
+ * a retail label can realistically answer. Product-physics and Mapper/Behavior codes remain in
+ * `photoCannotSolve` so the caller can continue to Rescue, review or a precise question.
+ */
+export function classifyRemainingGaps(missingCritical: readonly string[]): {
+  photoSolvable: string[];
+  photoCannotSolve: string[];
+} {
+  const photoSolvable: string[] = [];
+  const photoCannotSolve: string[] = [];
+  for (const original of missingCritical) {
+    const code = original.toLowerCase();
+    const canReadFromLabel =
+      /ingredients|allergen|nutrition|product_identity|display_?name|(^|[._-])name$|brand/.test(
+        code,
+      ) ||
+      /net_?quantity|package[._-](netquantity|unit)|alcohol|abv|cocoa|fruit|brix|dosage|form_?declaration/.test(
+        code,
+      );
+    (canReadFromLabel ? photoSolvable : photoCannotSolve).push(original);
+  }
+  return { photoSolvable, photoCannotSolve };
+}
 
 /**
  * Only what the authority still misses, expressed as plain label fields. Codes it does not know how
@@ -153,6 +530,25 @@ export function plainFieldsFor(
   return [...out.values()];
 }
 
+/** Exact questions for facts the customer may know even though a generic label photo cannot. */
+export function manualFieldsFor(
+  missingCritical: readonly string[],
+  options: { needIdentity?: boolean } = {},
+): PlainField[] {
+  const out = new Map(plainFieldsFor(missingCritical, options).map((field) => [field.key, field]));
+  const codes = missingCritical.map((code) => code.toLowerCase());
+  // Water and total solids are complements. Asking for both would ask the customer for the same
+  // physical fact twice, so the server derives water from a supplied solids declaration.
+  if (codes.some((code) => /missing_total_solids_percent/.test(code))) {
+    const field = MANUAL_TECHNICAL[0]!;
+    out.set(field.key, { ...field, kind: 'number', required: true, unit: '%' });
+  } else if (codes.some((code) => /missing_water_percent/.test(code))) {
+    const field = MANUAL_TECHNICAL[1]!;
+    out.set(field.key, { ...field, kind: 'number', required: true, unit: '%' });
+  }
+  return [...out.values()];
+}
+
 function num(value: unknown): number | null {
   if (typeof value !== 'string' || value.trim() === '') return null;
   const n = Number(value.replace(',', '.'));
@@ -162,23 +558,31 @@ function num(value: unknown): number | null {
 /** The customer's answers → finalize confirmations (only the keys that were actually answered). */
 export function confirmationsFromFields(
   values: Record<string, string | boolean | undefined>,
+  requestedKeys?: readonly string[],
 ): NonNullable<FinalizeInput['confirmations']> {
+  const allowed = requestedKeys ? new Set(requestedKeys) : null;
+  const include = (key: string) => allowed === null || allowed.has(key);
   const productFields: Record<string, unknown> = {};
   const identity: Record<string, unknown> = {};
-  const name = typeof values['displayName'] === 'string' ? values['displayName'].trim() : '';
+  const name =
+    include('displayName') && typeof values['displayName'] === 'string'
+      ? values['displayName'].trim()
+      : '';
   if (name) identity['displayName'] = name;
-  if (values['unbranded'] === true) {
+  if (include('unbranded') && values['unbranded'] === true) {
     identity['explicitlyUnbranded'] = true;
-  } else if (typeof values['brand'] === 'string' && values['brand'].trim()) {
+  } else if (include('brand') && typeof values['brand'] === 'string' && values['brand'].trim()) {
     identity['brand'] = values['brand'].trim();
   }
   if (Object.keys(identity).length > 0) productFields['identity'] = identity;
   for (const key of ['ingredientsText', 'allergensText']) {
+    if (!include(key)) continue;
     const v = values[key];
     if (typeof v === 'string' && v.trim()) productFields[key] = v.trim();
   }
   const nutrition: Record<string, unknown> = {};
   for (const { key } of Object.values(NUTRITION)) {
+    if (!include(key)) continue;
     const n = num(values[key]);
     if (n !== null) nutrition[key] = n;
   }
@@ -188,11 +592,17 @@ export function confirmationsFromFields(
   }
   const declarations: Record<string, unknown> = {};
   for (const { key } of DECLARATIONS) {
+    if (!include(key)) continue;
+    const n = num(values[key]);
+    if (n !== null) declarations[key] = n;
+  }
+  for (const { key } of MANUAL_TECHNICAL) {
+    if (!include(key)) continue;
     const n = num(values[key]);
     if (n !== null) declarations[key] = n;
   }
   if (Object.keys(declarations).length > 0) productFields['productionDeclarations'] = declarations;
-  return { productFields };
+  return { evidenceOrigin: 'customer_action', productFields };
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -296,7 +706,9 @@ export function scanFeedbackText(frame: {
 }
 
 /** the registry's facts as the prefilled answers of the plain fields */
-export function prefillFromIdentity(web: ExactWebIdentity): Record<string, string | boolean> {
+export function prefillFromIdentity(
+  web: CanonicalRegistryIdentity | ExactWebIdentity,
+): Record<string, string | boolean> {
   const out: Record<string, string | boolean> = { displayName: web.displayName };
   if (web.brand) out['brand'] = web.brand;
   const pf = web.productFields;
@@ -375,4 +787,69 @@ export function takeGuestCode(): string | null {
   } catch {
     return null;
   }
+}
+
+/*
+  WHAT THE PHOTOGRAPH IS ACTUALLY FOR.
+
+  The label screen used to say the same sentence whatever was missing: "Zrób zdjęcie składu i
+  tabeli wartości odżywczych". The owner scanned a Queso fresco whose only outstanding field was
+  the BRAND — everything else had been read — and was told to photograph the ingredients and the
+  nutrition table. Asking for data the app already holds is how a customer concludes the scanner
+  did not work.
+
+  This turns the same `missingCritical` the form already uses into the sentence, so the request
+  matches the gap. It never invents a field: with nothing named it falls back to the general ask.
+*/
+export function labelPhotoRequest(missingCritical: readonly string[]): string {
+  const codes = classifyRemainingGaps(missingCritical).photoSolvable.map((c) => c.toLowerCase());
+  const wants = {
+    ingredients: codes.some((c) => /ingredients/.test(c)),
+    nutrition: codes.some((c) => /^nutrition[._-]/.test(c)),
+    allergens: codes.some((c) => /allergen/.test(c)),
+    // `evidence_identity.brand` carries the word "identity" and is NOT a name gap, so the name
+    // patterns are anchored to the name itself rather than to the container they sit in.
+    identity: codes.some((c) => /product_identity|display_?name|(^|[._-])name$/.test(c)),
+    brand: codes.some((c) => /brand/.test(c)),
+  };
+  const parts: string[] = [];
+  if (wants.ingredients) parts.push('składu');
+  if (wants.nutrition) parts.push('tabeli wartości odżywczych');
+  if (wants.allergens) parts.push('oznaczenia alergenów');
+  if (parts.length === 0 && (wants.identity || wants.brand)) {
+    // The front of the pack carries the name and the maker; the ingredient panel does not.
+    return wants.identity && wants.brand
+      ? 'Brakuje nazwy produktu i marki. Zrób zdjęcie przodu opakowania.'
+      : wants.identity
+        ? 'Brakuje nazwy produktu. Zrób zdjęcie przodu opakowania.'
+        : 'Brakuje marki. Zrób zdjęcie przodu opakowania.';
+  }
+  if (parts.length === 0) return 'Tego braku nie da się potwierdzić zdjęciem etykiety.';
+  const list =
+    parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(', ')} i ${parts[parts.length - 1]}`;
+  return `Brakuje ${list}. Zrób zdjęcie tej części etykiety.`;
+}
+
+/*
+  WHAT THE CUSTOMER IS TOLD THEY JUST SAVED.
+
+  The saved screen said "Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie)"
+  for every outcome. That sentence was false for the common one. A scan that reaches the PR route
+  writes a SHARED registry row — `product_kind: commercial_product`, `visibility: shared`,
+  `owner_user_id: null` — and the customer was told it was visible to nobody but them. Owner scan
+  of 2026-09-07 21:16 produced exactly that: PR-ING-007196, shared, and the private sentence.
+
+  The article code is NOT the signal to read. On the live catalogue 15 `PM-` products are
+  `commercial_product` / `shared` and only ONE is `account_private`, so keying the promise on the
+  prefix would restate the same lie with extra steps. `entityKind` is what actually distinguishes
+  them: `customer_provisional` is the customer's own private row, and nothing else is.
+*/
+export function savedProductNotice(product: {
+  entityKind?: string | null;
+  productCode?: string | null;
+}): string {
+  if (product.entityKind === 'customer_provisional') {
+    return 'Zapisano jako Twój produkt (prywatny, widoczny tylko na Twoim koncie).';
+  }
+  return 'Zapisano w katalogu produktów. Twoje ceny, dostawcy, notatki i stan magazynowy pozostają prywatne.';
 }

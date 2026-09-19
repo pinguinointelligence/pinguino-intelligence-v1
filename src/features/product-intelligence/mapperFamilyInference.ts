@@ -209,7 +209,19 @@ const CATEGORY_RULES: readonly CategoryRule[] = [
   { family: 'chocolate', technical: false, category: /chocolate|cocoa|cacao/ },
   { family: 'nut_paste', technical: false, category: /\bnut/ },
   { family: 'fruit', technical: false, category: /\bfruit\b/ },
-  { family: 'plant_beverage', technical: false, category: /beverage/ },
+  /*
+    The category vocabulary a real source uses for a drink is almost never the word "beverage".
+    Open Food Facts said "sports drink" for one of the owner's two products and
+    "beverages and beverages preparations / beverages" for the other, so one matched and its
+    sibling did not — the same shelf, classified two different ways, purely on wording. These are
+    the ordinary words for a drink in the languages the scanner meets; none of them names a brand
+    or a product.
+  */
+  {
+    family: 'plant_beverage',
+    technical: false,
+    category: /beverage|\bdrinks?\b|bebida|refresco|boisson|getr(a|ä)nk|napoj|napój/,
+  },
   { family: 'dairy_liquid', technical: false, category: /\bdairy\b/ },
   { family: 'sugar_sucrose', technical: false, category: /sweetener/ },
   { family: 'alcohol', technical: false, category: /alcohol/ },
@@ -275,6 +287,7 @@ export function inferMapperFamily(input: FamilyInferenceInput): ProductFamilyMat
   const category = normalize(input.sourceCategory);
   const subcategory = normalize(input.sourceSubcategory);
 
+  let strongestNameMatch: ProductFamilyMatch | null = null;
   for (const rule of FAMILY_RULES) {
     if (!rule.pattern.test(identity)) continue;
     const evidence = [`nazwa pasuje do rodziny ${rule.family}`];
@@ -287,13 +300,22 @@ export function inferMapperFamily(input: FamilyInferenceInput): ProductFamilyMat
       strength += 0.2;
       evidence.push('kategoria źródłowa zgodna z rodziną');
     }
-    return {
+    const match: ProductFamilyMatch = {
       family: rule.family,
       strength: Math.min(1, Math.round(strength * 100) / 100),
       evidence,
       technical: rule.technical,
     };
+    // Several legitimate product names contain more than one family word
+    // (for example milk chocolate). The source taxonomy is the deterministic
+    // discriminator; a later category-corroborated match must beat an earlier
+    // uncorroborated token match. Equal evidence keeps the established rule
+    // order and therefore preserves existing ambiguous-name behaviour.
+    if (!strongestNameMatch || match.strength > strongestNameMatch.strength) {
+      strongestNameMatch = match;
+    }
   }
+  if (strongestNameMatch) return strongestNameMatch;
 
   // No name signal: fall back to the source category/subcategory. Weaker by
   // design — a category alone (0.6) stays below the inference threshold; it

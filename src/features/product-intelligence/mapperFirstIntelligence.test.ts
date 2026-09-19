@@ -39,11 +39,7 @@ import {
   runIntimportLocalIntelligence,
   summarizeIntimportReadiness,
 } from './intimportIntelligence';
-import {
-  ENGINE_REQUIRED_WORKING_FIELDS,
-  ESTIMATED_READY_FLOOR,
-  resolveProductWorkingValues,
-} from './productWorkingValues';
+import { ESTIMATED_READY_FLOOR, resolveProductWorkingValues } from './productWorkingValues';
 import { classifyProductSemantics } from './productRecognition';
 
 const FINGERPRINT = 'b13f5db4affd9c3be5ccbe59b40920053197a3697a3fa1bd4a859406e8baed38';
@@ -143,6 +139,34 @@ describe('field truth state', () => {
     // Confidence is irrelevant across states: a measurement outranks any guess.
     expect(preferStronger(estimated, verified).value).toBe(9);
     expect(preferStronger(verified, estimated).value).toBe(9);
+  });
+
+  it('keeps direct VERIFIED product truth above exact Mapper evidence', () => {
+    const mapperExact = knownField({
+      value: 42,
+      state: 'VERIFIED',
+      confidence: 0.97,
+      basis: 'mapper_exact',
+    });
+    const directBases = [
+      'retailer_card',
+      'product_declared',
+      'user_confirmed',
+      'private_label_card',
+      'official_manufacturer',
+    ] as const;
+
+    for (const [index, basis] of directBases.entries()) {
+      const direct = knownField({
+        value: 10 + index,
+        state: 'VERIFIED',
+        confidence: 0.5,
+        basis,
+      });
+      expect(preferStronger(direct, mapperExact)).toBe(direct);
+      expect(preferStronger(mapperExact, direct)).toBe(direct);
+    }
+    expect(preferStronger(unknownField(), mapperExact)).toBe(mapperExact);
   });
 
   it('treats UNKNOWN as replaceable by anything, and never carries a number', () => {
@@ -293,15 +317,44 @@ describe('mapper inference', () => {
 
 describe('working values and readiness', () => {
   const knowledge = buildMapperKnowledge(COCOA_BUTTER, FINGERPRINT);
+  const cocoaButterSemantic = {
+    ...classifyProductSemantics({
+      name: 'Masło kakaowe',
+      brand: null,
+      manufacturer: null,
+      manufacturerCode: null,
+      gtin: null,
+      productType: 'food ingredient',
+      category: 'cocoa',
+      subcategory: 'cocoa butter',
+      variant: null,
+      ingredients: 'Masło kakaowe',
+      nutrition: 'fat:100',
+      description: 'Tłuszcz kakaowy do produkcji lodów.',
+      dosage: null,
+      technicalParameters: null,
+      sourceUrls: [],
+    }),
+    productArchetype: 'CHOCOLATE' as const,
+    ingredientFamily: 'cocoa_butter' as const,
+    physicalForm: 'SOLID' as const,
+    intendedUsageRole: 'BASE_ONLY' as const,
+    modelRequired: false,
+  };
 
   const cocoaButterProduct = {
     declared: {},
     declaredConfidence: 0.95,
-    identity: { name: 'Masło kakaowe', category: 'chocolate', subcategory: 'cocoa butter' },
+    identity: {
+      name: 'Masło kakaowe',
+      category: 'chocolate',
+      subcategory: 'cocoa butter',
+      semantic: cocoaButterSemantic,
+    },
     technical: false,
   };
 
-  it('gives an unmeasured product real working numbers the Engine can use', () => {
+  it('gives an unmeasured product with resolved semantics real working numbers the Engine can use', () => {
     const resolved = resolveProductWorkingValues(cocoaButterProduct, knowledge);
     // The value lands in the canonical field, not in a side-channel.
     expect(resolved.values.fat_percent).toBeGreaterThan(99);
@@ -327,7 +380,11 @@ describe('working values and readiness', () => {
 
   it('flags a declaration the Mapper strongly disagrees with, without acting on it', () => {
     const resolved = resolveProductWorkingValues(
-      { ...cocoaButterProduct, declared: { fat_percent: 3 } },
+      {
+        ...cocoaButterProduct,
+        identity: { ...cocoaButterProduct.identity, semantic: undefined },
+        declared: { fat_percent: 3 },
+      },
       knowledge,
     );
     expect(resolved.values.fat_percent).toBe(3);
@@ -358,7 +415,8 @@ describe('working values and readiness', () => {
       knowledge,
     );
     expect(resolved.readiness).toBe('REVIEW');
-    expect(resolved.missingEngineFields.length).toBe(ENGINE_REQUIRED_WORKING_FIELDS.length);
+    expect(resolved.missingEngineFields).toEqual([]);
+    expect(resolved.criticalPhysicsBlockers).toEqual([]);
   });
 
   it('closes water and total solids against each other, and marks the result derived', () => {
@@ -708,7 +766,9 @@ describe('INTIMPORT wiring', () => {
       'Product Status': 'complete',
       'Checked At': '2026-08-25',
     };
-    return CSV_HEADER.split(',').map((header) => values[header] ?? '').join(',');
+    return CSV_HEADER.split(',')
+      .map((header) => values[header] ?? '')
+      .join(',');
   };
 
   it('attaches real working values to each product when a Mapper is supplied', () => {
@@ -719,7 +779,7 @@ describe('INTIMPORT wiring', () => {
     expect(first?.workingValues).not.toBeNull();
     expect(first?.workingValues?.values.fat_percent).toBeGreaterThan(99);
     // Composition readiness is reported on its own axis.
-    expect(summary.valueReadiness).toEqual({ READY: 0, ESTIMATED_READY: 1, REVIEW: 0 });
+    expect(summary.valueReadiness).toEqual({ READY: 1, ESTIMATED_READY: 0, REVIEW: 0 });
     expect(summary.mapperContributed).toBe(1);
   });
 
@@ -803,6 +863,99 @@ describe('engine readiness contract', () => {
     technical: false,
   };
 
+  const resolvedBeverage = {
+    ...base,
+    identity: {
+      name: 'Dr Pepper',
+      category: 'beverage',
+      subcategory: 'soft drink',
+      semantic: classifyProductSemantics({
+        name: 'Dr Pepper',
+        brand: 'Coca-Cola',
+        manufacturer: null,
+        manufacturerCode: null,
+        gtin: null,
+        productType: 'beverage',
+        category: 'beverage',
+        subcategory: 'soft drink',
+        variant: null,
+        ingredients: 'water, sugar',
+        nutrition: 'fat:0 | protein:0 | carbohydrate:4.9 | sugars:4.9',
+        description: 'carbonated soft drink',
+        dosage: null,
+        technicalParameters: null,
+        sourceUrls: [],
+      }),
+    },
+    declared: {
+      fat_percent: 0,
+      protein_percent: 0,
+      carbohydrate_percent: 4.9,
+      total_sugars_percent: 4.9,
+      sucrose_percent: 4.9,
+      alcohol_percent: 0,
+      polyol_percent: 0,
+    },
+  };
+
+  it('emits one canonical blocker when both complementary mass fields are unknown', () => {
+    const resolved = resolveProductWorkingValues(resolvedBeverage, knowledge);
+
+    expect(resolved.values.water_percent).toBeNull();
+    expect(resolved.values.total_solids_percent).toBeNull();
+    expect(resolved.criticalPhysicsBlockers).toContain('MISSING_TOTAL_SOLIDS_PERCENT');
+    expect(resolved.criticalPhysicsBlockers).not.toContain('MISSING_WATER_PERCENT');
+    expect(
+      resolved.criticalPhysicsBlockers.filter((blocker) =>
+        /^MISSING_(?:WATER|TOTAL_SOLIDS)_PERCENT$/.test(blocker),
+      ),
+    ).toEqual(['MISSING_TOTAL_SOLIDS_PERCENT']);
+  });
+
+  it('emits no mass-balance blocker when either complement is supplied and closed', () => {
+    const fromWater = resolveProductWorkingValues(
+      { ...resolvedBeverage, declared: { ...resolvedBeverage.declared, water_percent: 62 } },
+      knowledge,
+    );
+    const fromSolids = resolveProductWorkingValues(
+      { ...resolvedBeverage, declared: { ...resolvedBeverage.declared, total_solids_percent: 38 } },
+      knowledge,
+    );
+
+    expect(fromWater.values.total_solids_percent).toBe(38);
+    expect(fromSolids.values.water_percent).toBe(62);
+    expect(fromWater.criticalPhysicsBlockers).not.toContain('MISSING_TOTAL_SOLIDS_PERCENT');
+    expect(fromWater.criticalPhysicsBlockers).not.toContain('MISSING_WATER_PERCENT');
+    expect(fromSolids.criticalPhysicsBlockers).not.toContain('MISSING_TOTAL_SOLIDS_PERCENT');
+    expect(fromSolids.criticalPhysicsBlockers).not.toContain('MISSING_WATER_PERCENT');
+  });
+
+  it('preserves a mass-balance conflict without adding a generic missing alias', () => {
+    const resolved = resolveProductWorkingValues(
+      {
+        ...resolvedBeverage,
+        materialConflictDetails: [
+          {
+            field: 'productionDeclarations.waterPercent',
+            labelValue: 80,
+            externalValue: 90,
+            retainedSource: null,
+            state: 'UNRESOLVED',
+            canonicalValue: null,
+          },
+        ],
+      },
+      knowledge,
+    );
+
+    expect(resolved.criticalPhysicsBlockers).not.toContain('MISSING_TOTAL_SOLIDS_PERCENT');
+    expect(resolved.criticalPhysicsBlockers).not.toContain('MISSING_WATER_PERCENT');
+    expect(resolved.rescueOutcome.status).toBe('BLOCKED');
+    expect(resolved.rescueOutcome.reasonCodes).toContain(
+      'RESCUE_INPUT_MATERIAL_CONFLICT:productionDeclarations.waterPercent',
+    );
+  });
+
   it('derives solids from water, and water from solids, without a second penalty', () => {
     const fromWater = resolveProductWorkingValues(
       { ...base, declared: { water_percent: 62 } },
@@ -818,6 +971,26 @@ describe('engine readiness contract', () => {
     // One unknown, one confidence: the complement inherits rather than discounts.
     expect(fromWater.fields.total_solids_percent.provenance.confidence).toBe(
       fromWater.fields.water_percent.provenance.confidence,
+    );
+  });
+
+  it('keeps alcohol as a separate mass share when deriving either complement', () => {
+    const fromWater = resolveProductWorkingValues(
+      { ...base, declared: { water_percent: 55, alcohol_percent: 40 } },
+      knowledge,
+    );
+    expect(fromWater.values.total_solids_percent).toBe(5);
+    expect(fromWater.fields.total_solids_percent.provenance.note).toBe(
+      '100 − water_percent − alcohol_percent',
+    );
+
+    const fromSolids = resolveProductWorkingValues(
+      { ...base, declared: { total_solids_percent: 5, alcohol_percent: 40 } },
+      knowledge,
+    );
+    expect(fromSolids.values.water_percent).toBe(55);
+    expect(fromSolids.fields.water_percent.provenance.note).toBe(
+      '100 − total_solids_percent − alcohol_percent',
     );
   });
 
@@ -843,7 +1016,7 @@ describe('engine readiness contract', () => {
     expect(resolved.valueReadiness).toBe('READY');
   });
 
-  it('keeps genuinely unresolved water/solids as a critical composition blocker', () => {
+  it('defers water/solids requirement gaps while semantics are unresolved', () => {
     const resolved = resolveProductWorkingValues(
       {
         ...base,
@@ -863,7 +1036,7 @@ describe('engine readiness contract', () => {
 
     expect(resolved.values.water_percent).toBeNull();
     expect(resolved.values.total_solids_percent).toBeNull();
-    expect(resolved.criticalPhysicsBlockers).toContain('MISSING_WATER_PERCENT');
+    expect(resolved.criticalPhysicsBlockers).not.toContain('MISSING_WATER_PERCENT');
     expect(resolved.engineReady).toBe(false);
   });
 
@@ -1281,7 +1454,10 @@ describe('INTIMPORT import handoff', () => {
       },
       evidence: {
         kind: 'normal_food',
-        fields: productAccuracy >= 85 ? { identity: 'source_file', ingredients: 'source_file' } : { identity: 'web_search' },
+        fields:
+          productAccuracy >= 85
+            ? { identity: 'source_file', ingredients: 'source_file' }
+            : { identity: 'web_search' },
         validatedBarcode: false,
         exactCanonicalMatch: false,
         mapperFamilyMatch: true,
@@ -1417,10 +1593,11 @@ describe('INTIMPORT import handoff', () => {
   });
 
   it('hands the server declarations and evidence, never a client-authorized final profile', () => {
-    const intelligence = intelligenceOf(planIntimportImport([row('ESTIMATED_READY')]).rows[0]!) as
-      ReturnType<typeof intelligenceOf> & {
-        intimportProductProfileProposal: Record<string, unknown>;
-      };
+    const intelligence = intelligenceOf(
+      planIntimportImport([row('ESTIMATED_READY')]).rows[0]!,
+    ) as ReturnType<typeof intelligenceOf> & {
+      intimportProductProfileProposal: Record<string, unknown>;
+    };
     expect(intelligence.intimportProductProfileProposal).toMatchObject({
       proposedMapperIngredientId: null,
       declared: {},
@@ -1448,9 +1625,7 @@ describe('INTIMPORT import handoff', () => {
   });
 
   it('never flattens the two axes into one ready flag', () => {
-    const technical = intelligenceOf(
-      planIntimportImport([row('ESTIMATED_READY', true)]).rows[0]!,
-    );
+    const technical = intelligenceOf(planIntimportImport([row('ESTIMATED_READY', true)]).rows[0]!);
     // Composition is fine; only the technical authority is missing — and that
     // is recorded alongside it rather than folded into one verdict.
     expect(technical.compositionReadiness ?? 'ESTIMATED_READY').not.toBe('REVIEW');

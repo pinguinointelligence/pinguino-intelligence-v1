@@ -47,7 +47,10 @@ const buildServedCase = (mainGrams: number, options: { starveCarrier?: boolean }
   const find = (fragment: string) =>
     st().items.find((item) => item.ingredient.name.toUpperCase().includes(fragment));
   const main = find('STRAWBERR')!;
-  const milk = find('MILK 3.5')!;
+  const milk = st().items.find(
+    (item) =>
+      (item.ingredient.canonical_ingredient_id ?? item.ingredient.id) === 'PI-ING-000236',
+  )!;
 
   const probe: RecipeInput = {
     ...buildRecipeInput(st()),

@@ -193,11 +193,23 @@ export class PolicyState {
           : 'none';
       if (this.framesSinceRescue >= cadence) {
         this.framesSinceRescue = 0;
+        const desktopGuide = p.formFactor === 'desktop';
+        const roi: Roi = desktopGuide
+          ? {
+              x: Math.floor(p.sourceW * 0.12),
+              y: Math.floor(p.sourceH * 0.32),
+              w: Math.ceil(p.sourceW * 0.88) - Math.floor(p.sourceW * 0.12),
+              h: Math.ceil(p.sourceH * 0.68) - Math.floor(p.sourceH * 0.32),
+              plane: 'native',
+            }
+          : { x: 0, y: 0, w: planes.medium.w, h: planes.medium.h, plane: 'medium' };
         return {
           ...base,
           path: 'RESCUE_FULL',
-          reason: `no candidate; scheduled full-frame pass on the MEDIUM plane every ${cadence} frames`,
-          roi: { x: 0, y: 0, w: planes.medium.w, h: planes.medium.h, plane: 'medium' },
+          reason: desktopGuide
+            ? `no candidate; scheduled native-resolution pass over the visible desktop guide every ${cadence} frames`
+            : `no candidate; scheduled full-frame pass on the MEDIUM plane every ${cadence} frames`,
+          roi,
           harder: true,
           guidance,
         };

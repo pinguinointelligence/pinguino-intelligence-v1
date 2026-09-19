@@ -7,6 +7,8 @@
  * one non-blocking dialog for every renderer.
  */
 import { describe, expect, it } from 'vitest';
+import { activeNavId, visibleNavItems } from '@/features/shell/appNav';
+import { PRODUCTION_AREA_SECTIONS } from '@/features/production-area/productionAreaSections';
 import { readCode } from './sourceContract';
 
 const draftModel = readCode('features', 'master-label', 'draftLabelPreview.ts');
@@ -18,7 +20,7 @@ const printDialog = readCode('features', 'master-label', 'PrintMissingDataDialog
 const printMissingData = readCode('features', 'master-label', 'printMissingData.ts');
 const masterLabel = readCode('features', 'master-label', 'masterLabel.ts');
 const labelRepository = readCode('services', 'labels', 'labelRepository.ts');
-const nav = readCode('features', 'shell', 'appNav.ts');
+const areaNav = readCode('features', 'production-area', 'ProductionAreaNav.tsx');
 const labelsPage = readCode('pages', 'destinations', 'GlobalDestinationPages.tsx');
 
 describe('GEL-P0-033 — automatic facts and final-product authority', () => {
@@ -59,9 +61,18 @@ describe('GEL-P0-033 — actionable data, settings and print', () => {
     expect(printMissingData).not.toContain("label.market === 'WORLD'");
   });
 
-  it('restores the canonical menu entry and exact return route', () => {
-    expect(nav).toContain("id: 'labels'");
-    expect(nav).toContain("to: '/labels'");
+  it('keeps label settings reachable from ☰ Produkcja → Etykiety with the exact return route', () => {
+    /* Owner decision 2026-09-17 (Produkcja area): the separate „Ustawienia etykiety” menu entry became the
+       Etykiety section of the one „Produkcja” entry. The function must stay reachable, not merely unlisted. */
+    const production = visibleNavItems('pro').find((item) => item.id === 'production');
+    expect(production?.to).toBe('/production');
+    const labels = PRODUCTION_AREA_SECTIONS.find((section) => section.id === 'labels');
+    expect(labels?.to).toBe('/labels');
+    expect(areaNav).toContain('PRODUCTION_AREA_SECTIONS');
+    expect(activeNavId({ pathname: '/labels', search: '' }, 'pro')).toBe('production');
+    expect(activeNavId({ pathname: '/labels', search: '?run=r1&labelView=settings' }, 'pro')).toBe(
+      'production',
+    );
     expect(labelsPage).toContain('labelSettingsReturn');
     expect(labelsPage).toContain('← Wróć');
   });

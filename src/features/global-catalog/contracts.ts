@@ -1,4 +1,5 @@
 import type { CarbonationStatus } from '@/data/products/carbonation';
+import type { ProductSemanticBinding } from '@/features/product-intelligence/productSemanticBinding';
 
 export type CatalogStatus = 'verified' | 'manual_unverified' | 'blocked';
 
@@ -131,6 +132,9 @@ export interface CatalogProductSearchHit {
   resolvedExactProduct?: CatalogProductSearchHit | null;
   resolutionSource?: 'USER_PREFERRED' | 'COUNTRY_PRIMARY_DEFAULT' | 'COUNTRY_SAFE_FALLBACK' | null;
   resolutionCountry?: string | null;
+  /** Exact PR/PM/CA identity bound to the FINAL Search taxonomy and immutable
+   * ProductBehavior verdict. This is context metadata, never a PI substitution. */
+  semanticBinding?: ProductSemanticBinding;
 }
 
 export interface CatalogMarketPreferences {

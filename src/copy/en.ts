@@ -183,25 +183,16 @@ export const copy = {
           'Udokumentowane smaki regionalne i zanikające — tylko wtedy, gdy da się je odtworzyć uczciwie.',
         naturalTitle: 'Natural Icons',
         naturalBody: 'Nowoczesne smaki premium oparte na prawdziwych, jakościowych składnikach.',
-        inspirationTitle: 'Znajdź inspirację',
-        inspirationBody:
-          '2 500 Kierunków smakowych zebranych w czytelne rodziny — nie gotowe receptury.',
         countries: 'Wybierz kraj',
         ingredient: 'Zacznij od składnika',
         recommended: 'Polecane',
-        search: 'Szukaj smaku lub składnika',
         back: 'Wróć do wyboru',
-        use: 'Użyj jako inspiracji',
         openRecipe: 'Przejdź do receptury',
         original: 'Oryginał',
         adaptation: 'Adaptacja Gellatti',
-        showMore: 'Pokaż więcej inspiracji',
-        showLess: 'Pokaż mniej',
         noPublished:
           'Ta kolekcja przechodzi jeszcze weryfikację, testy kuchenne i ocenę sensoryczną. Pokażemy ją dopiero po zatwierdzeniu.',
         developmentPreview: 'Podgląd kuratorski — niezweryfikowane produkcyjnie',
-        directions: 'Wybierz kierunek',
-        families: 'Rodziny składników',
         countriesEmpty: 'Żaden kraj nie przeszedł jeszcze pełnej bramki publikacji.',
       },
     },
@@ -630,6 +621,14 @@ export const copy = {
       title: 'Profil receptury',
       axesTitle: 'Osie jakości',
       axisControlPending: 'Sterowanie kierunkiem osi pojawi się wkrótce.',
+      /** PRO MOBILE UX v2 · A7 — why a „Dostosuj recepturę" regulator is unavailable.
+       * Keyed by the Direction plan's own status; customer language only. */
+      axisUnavailable: {
+        blocked_science: 'Niedostępne dla tego rodzaju lodów: brak jeszcze zweryfikowanych danych.',
+        blocked_data: 'Niedostępne przy tej temperaturze serwowania: brak zatwierdzonego zakresu.',
+        blocked_runtime: 'Ta regulacja pojawi się wkrótce.',
+        unknown: 'Ta regulacja jest niedostępna dla tej receptury.',
+      },
       tutorialTitle: 'Jak poprawić dopasowanie',
       settingsTitle: 'Ustawienia',
       actualBatch: 'Aktualna partia',
@@ -651,6 +650,88 @@ export const copy = {
       openPreview: 'Otwórz podgląd',
       total: 'Masa partii',
       idleHint: 'Zmiany przeliczają się na bieżąco w Monitorze.',
+    },
+    /** PRO MOBILE UX v2 · B2 — the recipe bar the phone dashboard lifts into. */
+    recipeBar: {
+      unnamed: 'Nowa receptura',
+      open: 'Pokaż panel receptury',
+      settingsPending: 'Ustawienia czekają na potwierdzenie',
+    },
+    /** PRO MOBILE UX v2 · B6 — the phone strip's ONE next step. Orange states the
+     * condition; the graphite button offers the action. */
+    mobileFlow: {
+      settings: { cue: 'Najpierw ustawienia receptury', action: 'Potwierdź ustawienia' },
+      save: { cue: 'Wynik jest aktualny', action: 'Zapisz recepturę' },
+      monitor: { cue: 'Receptura zapisana', action: 'Przejdź do Monitora' },
+      production: { cue: 'Monitor gotowy', action: 'Przejdź do Produkcji' },
+    },
+    /** DESIGN V3.0 §3 (owner-LOCKED Points 1–4) — the full-screen setup of a
+     * new recipe on a phone and iPad portrait. It supersedes the B4 pager. */
+    setupFlow: {
+      eyebrow: 'Nowa receptura',
+      step: (step: number, total: number) => `Krok ${step} z ${total}`,
+      back: 'Wstecz',
+      next: 'Dalej',
+      finish: 'Receptura',
+      titles: [
+        'Jakie lody dziś robimy?',
+        'Ile lodów dziś przygotowujemy?',
+        'Maszyna, podawanie i smak',
+      ],
+      typeNotes: {
+        gelato: 'Mleczne, kremowe',
+        sorbet: 'Owocowe, bez mleka',
+        vegan: 'Na bazie roślinnej',
+        protein: 'Więcej białka',
+      },
+      modeLabel: 'Tryb',
+      modeNotes: {
+        optimal: 'Najlepsza równowaga jakości, tekstury i parametrów receptury.',
+        eco: 'Tańszy skład, nadal w bezpiecznych granicach technicznych.',
+      },
+      batchShortcut: '−10 g / +10 g to szybki skrót — stuknij liczbę, aby wpisać dokładną wartość.',
+      sections: {
+        machine: 'Maszyna',
+        serving: 'Temperatura podawania',
+        taste: 'Dostosuj recepturę',
+      },
+      asDefaultScope: 'Ilość, tryb, maszyna, podawanie, słodycz i twardość',
+      conflict: 'Tych ustawień nie da się jeszcze zatwierdzić — sprawdź maszynę i masę partii.',
+      defaultsNotice: 'Używamy Twoich domyślnych ustawień',
+      change: 'Zmień',
+      applied: 'Zastosowane',
+    },
+    /** DESIGN V3.0 correction I — the one settings panel (phone sheet and desktop column). */
+    settingsPanel: {
+      productType: 'Rodzaj lodów',
+      machine: 'Maszyna',
+      serving: 'Temperatura podawania',
+      strategyGroup: 'OPTIMAL albo ECO',
+      asDefault: 'Ustaw jako domyślne',
+      servingSegments: {
+        temp_minus_11: { name: 'Miękkie', temperature: '−11 °C' },
+        temp_minus_12: { name: 'Klasyczne', temperature: '−12 °C' },
+        temp_minus_13: { name: 'Twardsze', temperature: '−13 °C' },
+        fresh: { name: 'Świeże', temperature: null },
+      },
+      steps: {
+        five: ['−2', '−1', 'Optymalne', '+1', '+2'],
+        three: ['−1', 'Optymalne', '+1'],
+      },
+      knowledge: {
+        tutorial: 'Uruchom samouczek',
+      },
+    },
+    /** PRO MOBILE UX v2 · B5 — the target mass is a parameter of the WHOLE batch. */
+    batchTarget: {
+      label: 'Docelowa masa partii',
+      caption: 'Cała receptura bazy — nie pojedynczy składnik',
+      current: (grams: string) => `Receptura teraz: ${grams}`,
+      mismatch: 'Przelicz dopasuje recepturę do tej masy.',
+    },
+    /** PRO MOBILE UX v2 · B10 — „Moja cena" is secondary in the product panel. */
+    pricePanel: {
+      toggle: 'Moja cena i koszt',
     },
     reviewZone: {
       title: 'Dodatkowe narzędzia',
@@ -851,7 +932,6 @@ export const copy = {
       templateId: 'Wzorzec formulacji',
       missingRoles: 'Brakujące role',
       addedByPi: 'Dodane przez Gellatti',
-      excluded: 'Wykluczone składniki',
       rejectionCode: 'Kod odrzucenia',
       notRun: 'Nie uruchomiono',
       optimizer: { hasProposals: 'Są propozycje', noProposal: 'Brak propozycji' },
@@ -1098,12 +1178,6 @@ export const copy = {
       mark_main: 'Ustaw jako główny',
       main_short: 'Główny',
       remove: 'Usuń',
-      /** Owner FINAL CLOSURE C2 (ADD-only keys) — the EXPLICIT „unavailable"
-       * action: the ONLY way an ingredient becomes excluded. „Usuń" merely
-       * removes the row from the current recipe. */
-      markUnavailable: 'Niedostępny',
-      markUnavailableTitle:
-        'Oznacz jako niedostępny — Gellatti usunie składnik z receptury i nie doda go ponownie bez Twojej decyzji.',
       unit: 'g',
       batchTotal: 'Suma partii',
       target: 'Cel',
@@ -1151,16 +1225,12 @@ export const copy = {
           requiredOn: 'Składnik wymagany ✓',
           requiredOff: 'Oznacz jako wymagany',
           requiredHint: 'Składnik wymagany dla tej receptury.',
-          unavailable: 'Oznacz jako niedostępny',
-          available: 'Oznacz jako dostępny',
-          unavailableStatus: 'NIEDOSTĘPNY',
           findSubstitute: 'Znajdź zamiennik',
         },
         data: {
           heading: 'Dane',
           open: 'Dane składnika',
           myPrice: 'Moja cena · W PRZYGOTOWANIU',
-          estimatedHint: 'Część danych składnika jest szacowana.',
           missingAmountHint:
             'Brak zweryfikowanej ilości. Ustaw ilość odpowiednią dla swojej receptury.',
           source: 'Źródło',

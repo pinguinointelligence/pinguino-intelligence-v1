@@ -147,7 +147,7 @@ export function GellattiNotice({
               // would be 2.5:1 — the mistake already removed from Direction and
               // from the save tongue.
               tone === 'attention'
-                ? 'bg-[var(--g-orange)] text-[var(--g-graphite)] hover:bg-[#e07f06]'
+                ? 'bg-[var(--g-orange)] text-[var(--g-graphite)] hover:bg-[var(--g-orange-hover)]'
                 : 'bg-[var(--g-graphite)] text-white hover:bg-ink-soft',
             )}
           >

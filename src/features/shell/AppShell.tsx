@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { OfficialProLogo } from '@/components/shared/OfficialProLogo';
 import { copy } from '@/copy/en';
@@ -15,6 +15,7 @@ import { HomeProSwitch } from '@/features/home-creator/ui/HomeProSwitch';
 import { useHomeEntitlement } from '@/features/home-creator/useHomeEntitlement';
 import { useApplicationScaleAuthority } from './applicationScaleAuthority';
 import { AppHeaderAccountSlot } from './AppHeaderAccountSlot';
+import { TutorialOverlay } from '@/features/tutorial/TutorialOverlay';
 
 /**
  * THE ONE canonical application shell.
@@ -46,7 +47,7 @@ export function AppShell({
   contentClassName,
   viewportLock = false,
   navigationPosition = 'leading',
-  stickyHeader = false,
+  pinnedHeader = true,
 }: {
   actions?: ReactNode;
   /** Optional page-owned lockup. The shared Gellatti wordmark is the default. */
@@ -65,14 +66,50 @@ export function AppShell({
    * Pro workbench keeps its accepted leading geometry. */
   navigationPosition?: 'leading' | 'trailing';
   /**
-   * HOME Creator §10: "the header must remain stable while HOME progresses". HOME is
-   * one long sequential document, so its header pins to the top instead of scrolling
-   * away with the first section. OPT-IN and default `false`, so every existing page —
-   * including the frozen Pro workbench — keeps its accepted geometry untouched.
+   * DESIGN V3.0 — correction VII, OWNER 2026-09-18: „jeżeli ekran używa globalnego
+   * Gellatti headera, header jest pinned domyślnie". The pinned header is a property of
+   * THIS shell, not something each page re-decides, so it is the DEFAULT and there is
+   * one opt-out rather than a sticky hack per page. The owner's exclusions are the
+   * surfaces that do not wear this header at all (the marketing landing page, the auth
+   * modal) plus Admin, which opts out explicitly.
    */
-  stickyHeader?: boolean;
+  pinnedHeader?: boolean;
 }) {
-  useApplicationScaleAuthority();
+  const accountLaneRef = useApplicationScaleAuthority();
+
+  /* Correction VII again: content scrolls UNDER the pinned header, but „pierwszy
+     fragment strony i tytuły sekcji po przewinięciu do nich nie chowają się pod
+     nagłówkiem". HOME's only navigation is `scrollIntoView({ block: 'start' })`, which
+     would park each stage's heading behind the header. The offset is measured, not
+     assumed: the row is 65 px on a phone and `--pro-header-height` from the workbench
+     breakpoint up, and it grows with the notch inset. */
+  const headerRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const element = headerRef.current;
+    if (!element) return;
+    const root = document.documentElement;
+    const reserve = () => {
+      // The PAINTED height, not `offsetHeight`: the desktop scale authority zooms the
+      // body, and page scrolling happens in the unzoomed viewport, so the pre-zoom
+      // number over-reserved by the scale factor (82 px for a 73 px header at 1440).
+      const height = element.getBoundingClientRect().height;
+      /* Correction XIII: a HOME sheet's „maks. wysokość = miejsce pod nagłówkiem".
+         `homeLayer.css` had to guess that room as a literal 64 px, which is already
+         wrong at every breakpoint measured (65 px phone, 69 px at 1024, 73 px at 1440)
+         and wrong by the whole notch on a real phone, where `env(safe-area-inset-top)`
+         grows the row — the sheet then slid under the header it must stop below. */
+      root.style.setProperty('--home-layer-top', `${height}px`);
+      if (pinnedHeader) root.style.scrollPaddingTop = `${height}px`;
+    };
+    reserve();
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(reserve);
+    observer?.observe(element);
+    return () => {
+      observer?.disconnect();
+      root.style.removeProperty('--home-layer-top');
+      root.style.scrollPaddingTop = '';
+    };
+  }, [pinnedHeader]);
   const persona = useProCorePersona();
   const location = useLocation();
   const entitlement = useHomeEntitlement();
@@ -100,6 +137,7 @@ export function AppShell({
       )}
     >
       <header
+        ref={headerRef}
         className={cn(
           APP_HEADER_ROW,
           maxWidthClass,
@@ -117,7 +155,7 @@ export function AppShell({
              on Shop and PRO — instead of being dragged inward by whatever canvas
              the surface beneath happens to use. */
           'app-shell-header-row',
-          stickyHeader && 'sticky top-0 z-40 bg-paper',
+          pinnedHeader && 'sticky top-0 z-40 bg-paper',
         )}
         /* The notch inset stays at every width; its FLOOR is a token so the
            workbench breakpoint can drop it. An inline style outranks every
@@ -217,18 +255,36 @@ export function AppShell({
           ) : null}
         </div>
 
-        {/* OWNER 2026-09-02: the account closes the row at the same inset the
-            hamburger opens it, so the header reads as one symmetrical band on
-            every route. It sits OUTSIDE the centred band on purpose — the band is
-            absolutely positioned from `xl` up and would otherwise carry the login
-            inward with it. It reads the exact same auth identity as the drawer:
-            a live account links to Konto, anonymous opens the canonical auth
-            modal. */}
-        <AppHeaderAccountSlot />
+        {/* OWNER 2026-09-12 — RESPONSIVE TRIGGER, LOCKED. The account stands in
+            its own lane just past the end of the PRO navigation (the frame's
+            right edge), at the hard minimum clearance of 40 px. As a window
+            narrows, a long name first yields — its width budget falls from
+            208 px to 112 px, ellipsis beyond, full value in the tooltip — and
+            the one scale authority, which measures this lane's rendered width,
+            reduces the WHOLE application by exactly as much as the lane still
+            needs: header, both columns, navigation and account together.
+            Nothing wraps or overlaps, and no account moves the 1096 px handoff.
+            It reads the exact same auth identity as the drawer: a live account
+            links to Konto, anonymous opens the canonical auth modal. `contents`
+            below the workbench breakpoint, where the slot itself is hidden. */}
+        <div
+          ref={accountLaneRef}
+          className="app-header-account-lane contents"
+          data-testid="app-header-account-lane"
+        >
+          <AppHeaderAccountSlot />
+        </div>
       </header>
       <main className={cn(contentClassName, viewportLock && 'pro-workbench-main-lock')}>
         {children}
       </main>
+      {/* §29 — the first-run tutorial lives on the SHELL, not on a page.
+          It finds its anchors in the live DOM and drops any step whose element
+          is not there. It STARTS ITSELF only where at least one real anchored
+          step is on screen — in practice, HOME — so every other page stays
+          inert unless the customer asks for it from the menu. No page has to
+          know it is here, and no page can forget to mount it. */}
+      <TutorialOverlay />
     </div>
   );
 }

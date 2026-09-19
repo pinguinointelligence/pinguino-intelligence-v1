@@ -123,21 +123,23 @@ export function WorkbenchModuleTabs({
             className={cn(
               'pro-focus-ring min-w-0 px-2 text-[11px] font-semibold transition-colors',
               bottom
-                ? 'flex min-h-[var(--pro-bottom-nav-height)] flex-col items-center justify-center gap-1 border-t-2 py-1'
+                ? 'gellatti-touch-control flex min-h-[var(--pro-bottom-nav-height)] flex-col items-center justify-center gap-1 border-t-2 py-1'
                 : 'min-h-12 border-b-2 py-2',
               // The approved header tab is UNDERLINE ONLY: the preview carries no
               // filled or boxed active state, so the orange rule on the header
               // hairline is the single active marker (owner §7/§8).
               active
-                ? /* The orange is scoped to the ONE edge that carries width.
-                     `border-[#f58a07]` set all four border colours; only the
+                ? /* The accent is scoped to the ONE edge that carries width.
+                     a bare accent `border-[…]` set all four border colours; only the
                      bottom (header) or top (mobile) edge has a width, so the
                      other three were orange lines waiting for any engine or
                      zoom level that rounds a hairline into existence — which is
                      exactly the orange FRAME the owner saw around the active
                      module. Naming the edge makes that frame impossible. */
                   cn(
-                    bottom ? 'border-t-[#f58a07] bg-[var(--g-ivory)]/70' : 'border-b-[#f58a07]',
+                    bottom
+                      ? 'border-t-[var(--g-orange)] bg-[var(--g-ivory)]/70'
+                      : 'border-b-[var(--g-orange)]',
                     'text-ink',
                   )
                 : cn(

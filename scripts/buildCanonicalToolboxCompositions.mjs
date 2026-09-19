@@ -65,15 +65,26 @@ const rescueSource = readFileSync(
   resolve(process.cwd(), 'src/features/constraint-studio/starterPackRescuePalette.ts'),
   'utf8',
 );
+const verifiedToolboxSources = [
+  'src/data/ingredients/verifiedVeganToolbox.ts',
+  'src/data/ingredients/verifiedProteinToolbox.ts',
+].map((file) => readFileSync(resolve(process.cwd(), file), 'utf8'));
 const identityBound = [
   ...identitySource.matchAll(/toolboxId:\s*'([^']+)',\s*mapperId:\s*'(PI-ING-\d+)'/g),
 ].map((match) => ({ toolboxId: match[1], mapperId: match[2] }));
 const rescueBound = [
   ...rescueSource.matchAll(/mapperId:\s*'(PI-ING-\d+)',\s*toolboxId:\s*'([^']+)'/g),
 ].map((match) => ({ toolboxId: match[2], mapperId: match[1] }));
+const verifiedBound = [
+  ...new Set(
+    verifiedToolboxSources.flatMap((source) => [
+      ...source.matchAll(/PI-ING-\d{6}/g),
+    ].map((match) => match[0])),
+  ),
+].map((mapperId) => ({ toolboxId: `mapper:${mapperId}`, mapperId }));
 const bound = [
   ...new Map(
-    [...identityBound, ...rescueBound].map((entry) => [
+    [...identityBound, ...rescueBound, ...verifiedBound].map((entry) => [
       `${entry.toolboxId}:${entry.mapperId}`,
       entry,
     ]),
@@ -105,7 +116,18 @@ const entries = bound.map(({ toolboxId, mapperId }) => {
     pod_value: row.pod_value, pac_value: row.pac_value, de_value: row.de_value,
     cost_per_kg: row.cost_per_kg, cost_currency: row.currency || null,
     confidence_score: n(row.data_confidence_percent),
-    verified: String(row.verification_status || '').startsWith('Verified'),
+    verification_status: String(row.verification_status || ''),
+    verified: [
+      'Verified',
+      'Verified / Basis Check Needed',
+      'Verified / Exact Product Specification / PI Calculated',
+      'Verified / Global Reference',
+      'Verified / Official Food Composition',
+      'Verified / Official Product Label / PI Calculated',
+      'Verified / PI Calculated',
+      'Verified / Public Label',
+      'Verified / Public Label / PI Calculated',
+    ].includes(String(row.verification_status || '').trim()),
   };
 });
 
@@ -143,6 +165,7 @@ export interface CanonicalToolboxComposition {
   cost_per_kg: number | null;
   cost_currency: string | null;
   confidence_score: number;
+  verification_status: string;
   verified: boolean;
 }
 
@@ -155,12 +178,22 @@ export const CANONICAL_TOOLBOX_COMPOSITIONS: readonly CanonicalToolboxCompositio
 const BY_TOOLBOX_ID = new Map(
   CANONICAL_TOOLBOX_COMPOSITIONS.map((entry) => [entry.toolboxId, entry] as const),
 );
+const BY_MAPPER_ID = new Map(
+  CANONICAL_TOOLBOX_COMPOSITIONS.map((entry) => [entry.mapperId, entry] as const),
+);
 
 /** Canonical Mapper-backed composition for a toolbox id, or null when unbound. */
 export function canonicalToolboxComposition(
   toolboxId: string,
 ): CanonicalToolboxComposition | null {
   return BY_TOOLBOX_ID.get(toolboxId) ?? null;
+}
+
+/** Canonical Mapper-backed composition for an exact PI identity. */
+export function canonicalMapperComposition(
+  mapperId: string,
+): CanonicalToolboxComposition | null {
+  return BY_MAPPER_ID.get(mapperId) ?? null;
 }
 `;
 

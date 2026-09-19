@@ -9,6 +9,7 @@ Three equal editorial decisions follow:
 1. **Lost & Legendary** — documented, feasible historical/regional directions.
 2. **Natural Icons** — premium modern ingredient-first directions.
 3. **Znajdź inspirację** — the 2,500-row inspiration dataset as a discovery tree.
+   _SUPERSEDED 2026-09-11 (owner): the Inspiracje destination is retired; the Recipes strip is `Gellatti · Moje · Udostępnione · Community · Top 100` and the Gellatti tab is the official 177-recipe library._
 
 `Moje receptury` remains a direct link. Secondary mobile shortcuts are `Wybierz kraj`, `Zacznij od składnika`, and `Polecane`.
 

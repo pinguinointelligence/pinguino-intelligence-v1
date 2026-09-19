@@ -21,6 +21,8 @@ import { useCustomerPriceStore } from '@/stores/customerPriceStore';
 import { useProductionSessionStore } from '@/features/production-workspace/productionSessionStore';
 import { useIngredientTableUxStore } from '@/features/ingredient-builder/ingredientTableUxStore';
 import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { useHomeDraftStore } from '@/features/home-creator/homeDraftStore';
+import { clearProductionAreaMemory } from '@/features/production-area/productionAreaMemory';
 
 export const ACCOUNT_OWNER_STORAGE_KEY = 'pinguino-active-account-owner';
 export const ANONYMOUS_OWNER_MARKER = '__pinguino_anonymous__';
@@ -128,8 +130,15 @@ export function clearAccountScopedClientState(queryClient: QueryClient): void {
   useRecipeProfileStore.getState().resetForTests();
   // Reset the persisted private recipe draft + intake conversation to defaults.
   useRecipeStore.getState().resetToDemo();
+  // The HOME draft describes THAT recipe (the idea, the answers, „recipe ready”).
+  // Served 2026-09-18: after a switch it survived the recipe reset, so the next account
+  // saw the previous account's idea next to a demo recipe that HOME called ready.
+  useHomeDraftStore.getState().startNew();
   useIntakeStore.getState().reset();
   useCustomerPriceStore.getState().clear();
   useProductionSessionStore.getState().clear();
   useIngredientTableUxStore.getState().reset();
+  // Produkcja remembers the last address of each section (a search, a product, a label
+  // version) for ONE account — never offered to the next one.
+  clearProductionAreaMemory();
 }

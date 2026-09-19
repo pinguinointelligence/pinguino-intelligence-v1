@@ -32,7 +32,9 @@ describe('role-aware login and ordinary entry routing', () => {
   it('sends Admin directly to the canonical operational overview from every normal entry', () => {
     const admin = access({ canAdmin: true, canHome: true, canPro: true });
     expect(ADMIN_OVERVIEW_PATH).toBe('/admin/overview');
-    for (const entry of ['root', 'start', 'home'] as const) {
+    // `start` is no longer an entry (owner 2026-09-18 — `/start` redirects to
+    // `/home`), so the whole union is exercised by these two.
+    for (const entry of ['root', 'home'] as const) {
       expect(destination(entry, admin)).toBe(ADMIN_OVERVIEW_PATH);
     }
   });
@@ -42,9 +44,7 @@ describe('role-aware login and ordinary entry routing', () => {
     // SUPERSEDED for `home` — 2026-09-02. `home` was in this list, which meant a PRO
     // subscriber could not reach HOME by ANY route: the always-visible HOME segment
     // (owner §11B) navigates there and was bounced straight back. Confirmed served.
-    for (const entry of ['root', 'start'] as const) {
-      expect(destination(entry, pro)).toBe('/pro/recipe');
-    }
+    expect(destination('root', pro)).toBe('/pro/recipe');
   });
 
   it('lets a PRO subscriber reach HOME, because `/home` asks for it explicitly', () => {
@@ -75,7 +75,6 @@ describe('role-aware login and ordinary entry routing', () => {
   it('renders a Home subscriber in place — the root IS their product (§9)', () => {
     const home = access({ canHome: true });
     expect(destination('root', home)).toBeNull();
-    expect(destination('start', home)).toBeNull();
     expect(destination('home', home)).toBeNull();
   });
 

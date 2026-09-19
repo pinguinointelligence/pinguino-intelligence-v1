@@ -1,10 +1,32 @@
 import { describe, expect, it } from 'vitest';
 import { scan } from './codeIdentity.test';
-import { HACENDADO, ctx, ports, product } from './fakes';
+import { FakeDiscovery } from './fakeDiscovery';
+import { HACENDADO, LACIATE, ctx, ports, product } from './fakes';
 import { idempotencyKey, runScanImportV2 } from '../pipeline';
 import type { ExternalEvidence } from '../contracts';
+import type { ScanRunAuthority } from '../runAuthority';
 
 describe('Scan Import 2.0 pipeline — owner test matrix', () => {
+  it('stops a superseded run before import or offline-cache side effects', async () => {
+    let active = 'A';
+    const runA: ScanRunAuthority = {
+      id: 'A',
+      barcode: '8402001047251',
+      isCurrent: () => active === 'A',
+    };
+    const p = ports();
+    p.price.priceState = async () => {
+      active = 'B';
+      return { state: 'missing', pricePerKg: null, currency: null, source: 'missing' };
+    };
+
+    await expect(
+      runScanImportV2(scan(runA.barcode), ctx({ scanRun: runA }), p),
+    ).rejects.toMatchObject({ code: 'stale_scan_run' });
+    expect(p.importer.calls).toBe(0);
+    expect(p.offlineCache.entries.size).toBe(0);
+  });
+
   it('1/22. known exact EAN (authenticated): resolved_exact from the catalogue, imported/linked, confidence 97', async () => {
     const p = ports();
     const r = await runScanImportV2(scan('5900820012434'), ctx(), p);
@@ -17,6 +39,43 @@ describe('Scan Import 2.0 pipeline — owner test matrix', () => {
     });
     if (r.kind === 'resolved_exact')
       expect(r.import).toMatchObject({ kind: 'customer_added_product', created: true });
+  });
+  it('1b. authenticated exact PR reuses discovery to persist and return current role readiness', async () => {
+    const discovery = new FakeDiscovery();
+    discovery.serverCatalogue.set(
+      '5900820012434',
+      product({
+        productId: 'PR-LACIATE',
+        productCode: 'PR-ING-007205',
+        ean: '5900820012434',
+        engineReady: true,
+        currentVersionId: 'semantic-version-2',
+      }),
+    );
+    const p = ports({ discovery });
+    p.behaviour.outcomes.set('PR-LACIATE', 'unknown_requires_review');
+
+    const r = await runScanImportV2(scan('5900820012434'), ctx(), p);
+
+    expect(discovery.calls).toEqual(['research:5900820012434']);
+    expect(r).toMatchObject({
+      kind: 'resolved_exact',
+      product: {
+        productId: 'PR-LACIATE',
+        engineReady: true,
+        currentVersionId: 'semantic-version-2',
+      },
+      behaviour: { outcome: 'classified', bindingId: 'semantic-version-2' },
+    });
+  });
+  it('1c. guest exact resolution never starts semantic revalidation', async () => {
+    const discovery = new FakeDiscovery();
+    discovery.serverCatalogue.set('5900820012434', LACIATE);
+    const p = ports({ discovery });
+
+    await runScanImportV2(scan('5900820012434'), ctx({ accountId: null }), p);
+
+    expect(discovery.calls).toEqual([]);
   });
   it('2. known exact UPC-A resolves through its zero-padded key and keeps UPC-A identity', async () => {
     const p = ports({
@@ -49,16 +108,15 @@ describe('Scan Import 2.0 pipeline — owner test matrix', () => {
     expect(r).toMatchObject({ kind: 'unknown', next: 'analyze_label', externalEvidence: null });
     expect(p.importer.calls).toBe(0);
   });
-  it('6/7. offline: a product resolved once is known locally; an unknown one is an honest offline state', async () => {
+  it('6/7. offline: a cached product is only a local hint; an unknown one is an honest offline state', async () => {
     const p = ports();
     await runScanImportV2(scan('8402001047251'), ctx(), p);
     p.catalog.offline = true;
     const known = await runScanImportV2(scan('8402001047251'), ctx({ online: false }), p);
     expect(known).toMatchObject({
-      kind: 'resolved_exact',
-      provenance: 'local_cache',
-      importSkipped: 'offline',
-      product: { productId: 'PR-HACENDADO' },
+      kind: 'offline',
+      knownLocally: true,
+      cachedProduct: { productId: 'PR-HACENDADO' },
     });
     const unknown = await runScanImportV2(scan('3262970109108'), ctx({ online: false }), p);
     expect(unknown).toMatchObject({ kind: 'offline', knownLocally: false });

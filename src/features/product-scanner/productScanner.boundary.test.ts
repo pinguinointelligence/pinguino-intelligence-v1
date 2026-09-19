@@ -16,6 +16,7 @@ describe('Product Scanner server/client/security boundary', () => {
   const service = read('src/services/productScanner.ts');
   const analyze = read('supabase/functions/product-scan-analyze/index.ts');
   const finalize = read('supabase/functions/product-scan-finalize/index.ts');
+  const sharedOnboarding = read('supabase/functions/_shared/sharedProductOnboarding.ts');
   const migration = read('supabase/migrations/20260821120000_product_scanner_v1.sql');
 
   it('keeps the OpenAI key and model choice server-only', () => {
@@ -146,6 +147,22 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(analyze).not.toMatch(/api\.openai\.com[\s\S]{0,400}ean_lookup/);
   });
 
+  it('SCN-GTIN-DIRECT-006 asks OpenFoodFacts directly after the known-product short circuit', () => {
+    const lookupBranch = analyze.slice(
+      analyze.indexOf("if (mode === 'ean_lookup')"),
+      analyze.indexOf('// Pre-existing implicit any[]'),
+    );
+    expect(lookupBranch.indexOf('if (exact)')).toBeLessThan(
+      lookupBranch.indexOf('openFoodFactsApiUrl(barcode)'),
+    );
+    expect(lookupBranch.indexOf('openFoodFactsApiUrl(barcode)')).toBeLessThan(
+      lookupBranch.indexOf('/functions/v1/intimport-enrich'),
+    );
+    expect(lookupBranch).toContain('openFoodFactsFactsForExactEan');
+    expect(lookupBranch).toContain('unresolvedLookupFields');
+    expect(lookupBranch).toContain('fields: unresolvedLookupFields');
+  });
+
   it('keeps Scanner general web search opt-in and off the client path', () => {
     // `allowWeb: true` used to be sent on EVERY ordinary scan, held back only by a flag
     // whose default was ON. The client no longer sends it and the server no longer reads it.
@@ -172,8 +189,10 @@ describe('Product Scanner server/client/security boundary', () => {
     expect(finalize).toContain('normalizeValidatedBarcode');
     expect(finalize).toContain("usableProductCreated: savedRow.route !== 'PM_UNVERIFIED'");
     expect(finalize).not.toContain("service.rpc('ingest_product_v1'");
-    expect(finalize).toContain('validateIntimportProductProfileProposal');
-    expect(finalize).toContain('validateProductBehaviorAuthority');
+    expect(finalize).toContain('validateSharedProductOnboarding');
+    expect(sharedOnboarding).toContain('validateIntimportProductProfileProposal');
+    expect(sharedOnboarding).toContain('validateProductBehaviorAuthority');
+    expect(sharedOnboarding).toContain('finalizeProductProductionAccuracy');
     expect(service).not.toContain('validateIntimportProductProfileProposal');
   });
 
@@ -185,10 +204,10 @@ describe('Product Scanner server/client/security boundary', () => {
     // JSX wraps the sentence, so assert the two halves it is actually split into
     expect(flow).toContain('ceny, dostawcy, notatki i stan');
     expect(flow).toContain('magazynowy pozostają prywatne');
-    // every surface that can upload a photo renders the disclosure first
+    // the one photo surface renders the disclosure before either camera/gallery upload action
     const uploads = [...flow.matchAll(/void sendLabel\(/g)].length;
     expect(uploads).toBeGreaterThan(0);
-    expect([...flow.matchAll(/\{photoPrivacyNote\}/g)].length).toBe(2);
+    expect([...flow.matchAll(/\{photoPrivacyNote\}/g)].length).toBe(1);
     for (const m of flow.matchAll(/\{photoPrivacyNote\}/g))
       expect(flow.indexOf('void sendLabel(', m.index)).toBeGreaterThan(m.index);
     expect(flow).not.toContain('privacyAccepted');

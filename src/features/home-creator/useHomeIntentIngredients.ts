@@ -7,20 +7,38 @@
  * `EngineIngredient`, and added through `recipeStore.addIngredient` — the same store
  * action the Pro builder calls.
  *
- * §49 — CROWN IS NOT DECIDED HERE. After adding a flavour we simply ask
- * `setMainIngredient`, and the existing authority decides: it refuses outright when
- * `mainBehaviorBlockReason` says the product may not hold the crown, and it seeds the
- * crown's own gram when it may. So an ineligible product is never forced into Main,
- * and HOME introduces no second classification.
+ * §49 — CROWN IS NOT DECIDED HERE. After adding a flavour we ask the store's
+ * AUTOMATIC door, `grantAutomaticPriority` (PACKAGE 2A): while the draft is AUTO it
+ * asks `setMainIngredient` on HOME's surface, and the existing authority decides — it
+ * refuses outright when `mainBehaviorBlockReason` says the product may not hold the
+ * crown. So an ineligible product is never forced into Main, and HOME introduces no
+ * second classification. After the customer's first crown the door does nothing: a
+ * later BASE line is ordinary, and one with no confirmed amount is not created here at
+ * all — the caller asks the amount first (§B: never a 0 g line).
  *
  * §22 — a chip that resolves to nothing is left unresolved and visible. It is never
  * swapped for "something similar", and nothing is added on its behalf.
  */
 import { useCallback, useRef } from 'react';
+import type { EngineIngredient } from '@/engine';
+import type { ProductBehaviorSnapshot } from '@/features/product-intelligence/contracts';
+import { snapshotServerResolvedProductBehavior } from '@/features/product-intelligence';
+import { resolveProductBehaviorForSelection } from '@/services/productIntelligence';
+import { useAuthStore } from '@/stores/authStore';
+import { autoPriorityAppliesToNewLine } from '@/features/recipe-priority';
+import { toppingCreationDefaultGrams } from '@/features/recipe-composition/toppingCreationDefault';
 import { useRecipeStore } from '@/stores/recipeStore';
 import { useHomeDraftStore, type IntentChip } from './homeDraftStore';
 import type { IntentRole } from './homeIntentParsing';
-import { hydrateIngredient, resolveChipTerm } from './homeIntentResolutionService';
+import {
+  SCOPE_BY_PROFILE,
+  chipTermOf,
+  hydrateExactScannedProduct,
+  hydrateIngredient,
+  resolveChipTerm,
+  sameConceptScope,
+  type ExactScannedProductIdentity,
+} from './homeIntentResolutionService';
 
 export interface IntentIngredientOutcome {
   readonly chipId: string;
@@ -32,6 +50,18 @@ export interface IntentIngredientOutcome {
     | 'unavailable'
     | 'duplicate'
     | 'needs_amount';
+  /**
+   * PACKAGE 2A — set only with `needs_amount` when NO line was created: in MANUAL
+   * nothing sizes a new BASE line automatically, so the caller asks the amount with
+   * HOME's own question and adds it through HOME's one Base-line door.
+   */
+  readonly ingredient?: EngineIngredient;
+}
+
+export interface PreparedIntentIngredient {
+  readonly chipId: string;
+  readonly ingredient: EngineIngredient;
+  readonly behavior: ProductBehaviorSnapshot;
 }
 
 export function useHomeIntentIngredients() {
@@ -42,17 +72,49 @@ export function useHomeIntentIngredients() {
 
   /** Resolve a chip's identity and record it on the chip (§22, §23). */
   const resolveOne = useCallback(
-    async (chip: IntentChip): Promise<IntentIngredientOutcome> => {
-      // The canonical concept is tried before the raw word — the catalogue is
-      // English and §25 invites Polish/Spanish/German input.
-      const resolution = await resolveChipTerm({ label: chip.label, concept: chip.concept });
+    async (chip: IntentChip, signal?: AbortSignal): Promise<IntentIngredientOutcome> => {
+      // The chip's own utterance element goes to the central selection stage, so a
+      // generic idea consumes the frozen concept default while explicit words around
+      // it (a form, a brand) keep their meaning. A known profile narrows the frozen
+      // order by its SA-04 recipe scope.
+      const resolution = await resolveChipTerm(chipTermOf(chip), signal, {
+        profile: useHomeDraftStore.getState().profile,
+      });
+      // A cancelled resolution (the idea changed, the chip was removed) must not write a
+      // late answer onto the draft.
+      if (signal?.aborted) return { chipId: chip.id, status: 'unavailable' };
       switch (resolution.kind) {
+        case 'covered':
+          // One phrase, one product: the owning chip carries it.
+          useHomeDraftStore.getState().removeChip(chip.id);
+          return { chipId: chip.id, status: 'duplicate' };
         case 'resolved':
+          if (
+            useHomeDraftStore.getState().chips.some(
+              (other) =>
+                other.id !== chip.id &&
+                other.productId === resolution.row.ingredient_id &&
+                // Another role is another use, not a repetition (§33).
+                (other.role ?? null) === (chip.role ?? null),
+            )
+          ) {
+            // The same product the customer already named: never a second chip or line.
+            useHomeDraftStore.getState().removeChip(chip.id);
+            return { chipId: chip.id, status: 'duplicate' };
+          }
           resolveChip(chip.id, {
+            ...(resolution.label ? { label: resolution.label } : {}),
             productId: resolution.row.ingredient_id,
             productName: resolution.row.ingredient_name_display,
             ambiguous: false,
             candidates: undefined,
+            resolvedBy: resolution.provenance
+              ? {
+                  authority: resolution.provenance.authority,
+                  conceptKey: resolution.provenance.conceptKey,
+                  scope: resolution.provenance.scope ?? null,
+                }
+              : undefined,
           });
           return { chipId: chip.id, status: 'added' };
         case 'ambiguous':
@@ -71,6 +133,68 @@ export function useHomeIntentIngredients() {
         case 'unresolved':
           return { chipId: chip.id, status: 'unresolved' };
       }
+    },
+    [resolveChip],
+  );
+
+  /** Materialise and classify one exact identity before any visible recipe is built. */
+  const prepareResolvedChip = useCallback(
+    async (input: IntentChip): Promise<PreparedIntentIngredient | null> => {
+      let chip = input;
+      if (chip.productId === null || chip.ambiguous) return null;
+      // A frozen concept default chosen before the profile was known is re-chosen for the
+      // profile's SA-04 scope (e.g. Sorbet) before it can become a recipe line.
+      const profile = useHomeDraftStore.getState().profile;
+      const scopeNow = profile ? SCOPE_BY_PROFILE[profile] : null;
+      if (
+        chip.resolvedBy?.authority === 'SA03_CONCEPT_DEFAULT' &&
+        !sameConceptScope(chip.resolvedBy.scope, scopeNow)
+      ) {
+        const rescoped = await resolveChipTerm(chipTermOf(chip), undefined, { profile });
+        if (rescoped.kind !== 'resolved') {
+          resolveChip(chip.id, { productId: null, productName: null, resolvedBy: undefined });
+          return null;
+        }
+        const patch = {
+          productId: rescoped.row.ingredient_id,
+          productName: rescoped.row.ingredient_name_display,
+          resolvedBy: {
+            authority: rescoped.provenance?.authority ?? 'LITERAL_CATALOGUE',
+            conceptKey: rescoped.provenance?.conceptKey,
+            scope: rescoped.provenance?.scope ?? null,
+          },
+        } as const;
+        resolveChip(chip.id, patch);
+        chip = { ...chip, ...patch };
+      }
+      if (chip.productId === null) return null;
+      const ingredient = await hydrateIngredient(chip.productId);
+      if (!ingredient) return null;
+      const recipe = useRecipeStore.getState();
+      const processScope = chip.role === 'topping' ? 'POST_PROCESS_ADDON' : 'BASE_FORMULATION';
+      const module = chip.role === 'topping' ? 'TOPPING' : 'BASE_RECIPE';
+      const resolved = await resolveProductBehaviorForSelection({
+        entity: { entityKind: 'mapper', entityId: chip.productId },
+        context: {
+          accountId: useAuthStore.getState().user?.id ?? null,
+          productProfile: recipe.category,
+          temperatureC: recipe.target_temperature_c,
+          mode: recipe.formulation_strategy,
+          processScope,
+          requestedRole: 'STANDARD',
+          module,
+        },
+      }).catch(() => null);
+      if (!resolved || resolved.state === 'blocked') return null;
+      return {
+        chipId: chip.id,
+        ingredient,
+        behavior: snapshotServerResolvedProductBehavior({
+          lineId: '',
+          processScope,
+          resolved,
+        }),
+      };
     },
     [resolveChip],
   );
@@ -98,11 +222,13 @@ export function useHomeIntentIngredients() {
       role: IntentRole = 'ingredient',
       /** Confirmed amount. A line is never created at 0 g; see below. */
       grams = 0,
+      /** Already materialised exact identity, used by Scanner without re-resolution. */
+      exactIngredient?: EngineIngredient,
     ): Promise<IntentIngredientOutcome> => {
       if (handled.current.has(key)) return { chipId: key, status: 'duplicate' };
       handled.current.add(key);
 
-      const ingredient = await hydrateIngredient(productId);
+      const ingredient = exactIngredient ?? (await hydrateIngredient(productId));
       if (ingredient === null) return { chipId: key, status: 'unresolved' };
 
       if (role === 'topping') {
@@ -111,24 +237,49 @@ export function useHomeIntentIngredients() {
         if (already) return { chipId: key, status: 'duplicate' };
         // A topping is never crowned: the Crown is a Main concept and a topping is not
         // a Main. `addTopping` is the collection's own authority.
-        store.addTopping(ingredient as never, grams);
-        return { chipId: key, status: grams > 0 ? 'added' : 'needs_amount' };
+        // OWNER OD-3: with no confirmed amount a topping starts at 5 % of the BASE.
+        const toppingGrams = grams > 0 ? grams : toppingCreationDefaultGrams(store.items);
+        store.addTopping(ingredient as never, toppingGrams);
+        return { chipId: key, status: toppingGrams > 0 ? 'added' : 'needs_amount' };
+      }
+
+      // PACKAGE 2A: after the customer's first crown nothing sizes a new BASE line
+      // automatically, and §B never creates one at 0 g — so no line is made here.
+      // Releasing the key lets the confirmed amount come back through this door.
+      if (!(grams > 0) && !autoPriorityAppliesToNewLine(useRecipeStore.getState().priority_mode)) {
+        handled.current.delete(key);
+        return { chipId: key, status: 'needs_amount', ingredient };
       }
 
       const store = useRecipeStore.getState();
-      const added = store.addIngredient(ingredient, grams);
+      const added = store.addIngredient(
+        ingredient,
+        grams,
+        grams > 0 ? { amountIntent: 'user_exact' } : undefined,
+      );
       if (added.status === 'duplicate') return { chipId: key, status: 'duplicate' };
 
       // §49: ASK the existing authority. It refuses an ineligible product on its own.
-      useRecipeStore.getState().setMainIngredient(added.lineId);
+      // PACKAGE 2A: through the AUTOMATIC door, so the priority exists only while the
+      // draft is AUTO; it asks the same Main authority with HOME's own surface and
+      // never reaches PRO, whose default keeps 0 g + Crown -> 1 g for every profile.
+      useRecipeStore.getState().grantAutomaticPriority(added.lineId);
       const line = useRecipeStore.getState().items.find((item) => item.id === added.lineId);
-      if (line?.lock_type === 'main') {
-        return { chipId: key, status: line.planned_grams > 0 ? 'crowned' : 'needs_amount' };
+      if (line && line.planned_grams > 0) {
+        return { chipId: key, status: line.lock_type === 'main' ? 'crowned' : 'added' };
       }
-      return {
-        chipId: key,
-        status: line && line.planned_grams > 0 ? 'added' : 'needs_amount',
-      };
+      if (line) {
+        // The existing Main authority may correctly refuse this product (for
+        // example ordinary milk), and HOME's automatic Main is mass-neutral.
+        // Do not strand a hidden 0 g line: return the exact materialised identity
+        // to HOME's amount prompt, which will add it through the one confirmed-
+        // amount door.
+        useRecipeStore.getState().removeItem(line.id);
+        handled.current.delete(key);
+        return { chipId: key, status: 'needs_amount', ingredient };
+      }
+      handled.current.delete(key);
+      return { chipId: key, status: 'needs_amount', ingredient };
     },
     [],
   );
@@ -137,8 +288,12 @@ export function useHomeIntentIngredients() {
     async (chip: IntentChip, grams = 0): Promise<IntentIngredientOutcome> => {
       if (chip.productId === null) return { chipId: chip.id, status: 'unresolved' };
       // The chip's own role travels with it, so the row the customer ends up looking at
-      // says the same thing the chip said.
-      return await addByProductId(chip.id, chip.productId, chip.role ?? 'ingredient', grams);
+      // says the same thing the chip said — with the customer's §58 answer, when they gave
+      // one, outranking it. The presence check reads the SAME precedence, so the door and
+      // the check can never disagree about which collection a product belongs to.
+      const statedRole =
+        useHomeDraftStore.getState().usageAnswersByChipId[chip.id] ?? chip.role ?? 'ingredient';
+      return await addByProductId(chip.id, chip.productId, statedRole, grams);
     },
     [addByProductId],
   );
@@ -146,14 +301,16 @@ export function useHomeIntentIngredients() {
   /**
    * A product collected by the LIVE SCANNER.
    *
-   * It goes in through exactly the same door as a typed intent chip — same hydration,
-   * same `addIngredient`, same crown question — because a scanned product is not a
-   * different kind of ingredient. The scanner only supplies the identity; every rule
-   * about what that identity may do in a recipe stays where it already lives.
+   * It goes in through exactly the same add/crown door as a typed intent chip. Its
+   * hydration is exact-product hydration, because Scanner has already established a
+   * PR/PM identity and that identity must never be collapsed back to a generic PI.
    */
   const addScannedProduct = useCallback(
-    async (productId: string): Promise<IntentIngredientOutcome> =>
-      await addByProductId(`scan:${productId}`, productId),
+    async (product: ExactScannedProductIdentity): Promise<IntentIngredientOutcome> => {
+      const ingredient = await hydrateExactScannedProduct(product);
+      if (!ingredient) return { chipId: `scan:${product.id}`, status: 'unresolved' };
+      return await addByProductId(`scan:${product.id}`, product.id, 'ingredient', 0, ingredient);
+    },
     [addByProductId],
   );
 
@@ -161,5 +318,5 @@ export function useHomeIntentIngredients() {
     handled.current = new Set();
   }, []);
 
-  return { resolveOne, addResolvedChip, addScannedProduct, reset };
+  return { resolveOne, prepareResolvedChip, addResolvedChip, addScannedProduct, reset };
 }

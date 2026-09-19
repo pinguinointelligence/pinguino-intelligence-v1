@@ -1,4 +1,4 @@
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
 import { ApplicationState } from '@/components/shared/ApplicationState';
 import { EmptyState } from '@/components/shared/EmptyState';
@@ -52,31 +52,38 @@ export function TopHundredPage() {
 
   return (
     <DestinationSurface eyebrow="GELLATTI" title={copy.nav.top100} contextLabel="Receptury">
-      {/* Top 100 stays inside the Recipes experience — same strip, same way back. */}
-      <RecipeLibraryNav mode="links" activeHref="/top100" />
+      {/* Top 100 stays inside Community — same strip, same way back. */}
+      <RecipeLibraryNav mode="links" activeHref="/community" />
       <div className="flex flex-col gap-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <nav aria-label="Ranking" className="flex gap-1">
-            {(
-              [
-                ['recipes', 'Receptury'],
-                ['creators', 'Twórcy'],
-              ] as const
-            ).map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                aria-current={board === key ? 'page' : undefined}
-                onClick={() => setParams({ board: key, window: window_ })}
-                className={applicationCompactClasses(
-                  board === key
-                    ? '!border-ink !bg-ink !text-white hover:!border-ink'
-                    : 'text-stone-600',
-                )}
-              >
-                {label}
-              </button>
-            ))}
+          <nav aria-label="Widok Community" className="flex max-w-full flex-wrap gap-1">
+            <Link to="/community" className={applicationCompactClasses('text-stone-600')}>
+              Receptury
+            </Link>
+            <button
+              type="button"
+              aria-current={board === 'creators' ? 'page' : undefined}
+              onClick={() => setParams({ board: 'creators', window: window_ })}
+              className={applicationCompactClasses(
+                board === 'creators'
+                  ? '!border-ink !bg-ink !text-white hover:!border-ink'
+                  : 'text-stone-600',
+              )}
+            >
+              Twórcy
+            </button>
+            <button
+              type="button"
+              aria-current={board === 'recipes' ? 'page' : undefined}
+              onClick={() => setParams({ board: 'recipes', window: window_ })}
+              className={applicationCompactClasses(
+                board === 'recipes'
+                  ? '!border-ink !bg-ink !text-white hover:!border-ink'
+                  : 'text-stone-600',
+              )}
+            >
+              Top 100
+            </button>
           </nav>
 
           {board === 'recipes' ? (

@@ -8,6 +8,10 @@ export const PROCESS_DATASET_VERSION = '2026-08-28-process-v2';
 export const PROCESS_DATASET_SHA256 =
   '44fd5302c7a2372bb69ba5abc592edd27f41e96c5de00ac2ca45ade1903ad6d6';
 
+const EXPECTED_PROCESS_IDENTITIES = 2089;
+const EXPECTED_MAPPER_IDENTITIES = 2541;
+const DEFERRED_PROCESS_IDENTITIES = EXPECTED_MAPPER_IDENTITIES - EXPECTED_PROCESS_IDENTITIES;
+
 export const PROCESS_HEADERS = [
   'ingredient_id',
   'ingredient_name_display',
@@ -62,7 +66,9 @@ export function validateProcessMetadataDataset(processPath, mapperPath) {
   }
 
   const rows = parseCsv(processPath);
-  if (rows.length !== 2089) throw new Error(`Expected 2089 process rows, got ${rows.length}`);
+  if (rows.length !== EXPECTED_PROCESS_IDENTITIES) {
+    throw new Error(`Expected ${EXPECTED_PROCESS_IDENTITIES} process rows, got ${rows.length}`);
+  }
   const headers = Object.keys(rows[0] ?? {});
   if (!sameOrderedValues(headers, PROCESS_HEADERS)) {
     throw new Error(`Unexpected process columns: ${headers.join(',')}`);
@@ -72,7 +78,9 @@ export function validateProcessMetadataDataset(processPath, mapperPath) {
   const blankIds = ingredientIds.filter((id) => id.length === 0);
   const uniqueIds = new Set(ingredientIds);
   if (blankIds.length !== 0) throw new Error(`Blank process ingredient IDs: ${blankIds.length}`);
-  if (uniqueIds.size !== 2089) throw new Error(`Unique process ingredient IDs: ${uniqueIds.size}`);
+  if (uniqueIds.size !== EXPECTED_PROCESS_IDENTITIES) {
+    throw new Error(`Unique process ingredient IDs: ${uniqueIds.size}`);
+  }
 
   const counts = Object.fromEntries(
     Object.keys(EXPECTED_PROCESS_COUNTS).map((status) => [
@@ -91,14 +99,17 @@ export function validateProcessMetadataDataset(processPath, mapperPath) {
   const mapperSet = new Set(mapperIds);
   const processOnly = [...uniqueIds].filter((id) => !mapperSet.has(id));
   const mapperOnly = [...mapperSet].filter((id) => !uniqueIds.has(id));
-  if (mapperRows.length !== 2089 || mapperSet.size !== 2089) {
+  if (
+    mapperRows.length !== EXPECTED_MAPPER_IDENTITIES ||
+    mapperSet.size !== EXPECTED_MAPPER_IDENTITIES
+  ) {
     throw new Error(
-      `Mapper identity shape is not 2089/2089: ${mapperRows.length}/${mapperSet.size}`,
+      `Mapper identity shape is not ${EXPECTED_MAPPER_IDENTITIES}/${EXPECTED_MAPPER_IDENTITIES}: ${mapperRows.length}/${mapperSet.size}`,
     );
   }
-  if (processOnly.length > 0 || mapperOnly.length > 0) {
+  if (processOnly.length > 0 || mapperOnly.length !== DEFERRED_PROCESS_IDENTITIES) {
     throw new Error(
-      `Process/Mapper identity mismatch: process-only=${processOnly.length}, mapper-only=${mapperOnly.length}`,
+      `Process/Mapper coverage mismatch: process-only=${processOnly.length}, mapper-without-process=${mapperOnly.length}`,
     );
   }
 
@@ -114,6 +125,8 @@ export function validateProcessMetadataDataset(processPath, mapperPath) {
       mapperRowCount: mapperRows.length,
       mapperUniqueIngredientIds: mapperSet.size,
       alignmentDifferences: processOnly.length + mapperOnly.length,
+      processIdsMissingFromMapper: processOnly.length,
+      mapperIdsWithoutProcessMetadata: mapperOnly.length,
     },
   };
 }

@@ -2,8 +2,10 @@ import {
   buildMapperKnowledge,
   findProfileMatch,
   fingerprintMapperRows,
+  isCanonicalMapperRescueDonor,
   profileDonor,
   PROFILE_MATCH_FLOOR,
+  type MapperKnowledge,
   type MapperKnowledgeRow,
   type ProfileMatchBasis,
   type ProfileMatchInput,
@@ -16,12 +18,15 @@ import {
 } from '../../../src/features/product-intelligence/productEvidenceConfidence.ts';
 import {
   resolveProductWorkingValues,
+  type ProductMaterialConflictContext,
+  type MapperRescueOutcome,
   type ProductReadiness,
   type SweetnessPath,
 } from '../../../src/features/product-intelligence/productWorkingValues.ts';
 import type { CardContribution } from '../../../src/features/product-intelligence/productSourceCard.ts';
 import {
   WORKING_NUMERIC_FIELDS,
+  type CohortEvidence,
   type FieldBasis,
   type FieldTruthState,
   type WorkingNumericField,
@@ -41,7 +46,11 @@ import {
   type ProductProductionAccuracyBehavior,
   type ProductProductionAccuracyAssessment,
 } from '../../../src/features/product-intelligence/productProductionAccuracy.ts';
-import { classifyProspectiveProductBehavior } from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
+import {
+  classifyProspectiveProductBehavior,
+  supportsSemanticBehaviorReference,
+  supportsStandaloneToppingSemanticAuthority,
+} from '../../../src/features/product-intelligence/productBehaviorAuthority.ts';
 
 export const INTIMPORT_WHOLE_PROFILE_AUTHORITY = 'INTIMPORT_WHOLE_PROFILE_MATCH' as const;
 
@@ -81,6 +90,8 @@ export interface IntimportTrustedFieldTruth {
   mapperReferences: string[];
   algorithmVersion: string | null;
   mapperFingerprint: string | null;
+  note: string | null;
+  cohort: CohortEvidence | null;
 }
 
 export interface IntimportTrustedProductProfile {
@@ -95,6 +106,7 @@ export interface IntimportTrustedProductProfile {
   productAccuracyAssessment: ProductProductionAccuracyAssessment;
   /** Exact, server-validated evidence used for the deterministic score. */
   evidence: ProductEvidenceInput;
+  materialConflictDetails?: ProductMaterialConflictContext[];
   evidenceProvenance: Partial<Record<ProductEvidenceField, IntimportTrustedEvidenceProvenance>>;
   carbonation: CarbonationProfile;
   readiness: ProductReadiness;
@@ -102,6 +114,9 @@ export interface IntimportTrustedProductProfile {
   criticalReadiness: boolean;
   missingCritical: string[];
   missingEngineFields: WorkingNumericField[];
+  unresolvedEngineFieldReasons: Partial<Record<WorkingNumericField, string[]>>;
+  /** Explicit whole-run Mapper Rescue result carried with PRODUCT_PROFILE_V1. */
+  rescueOutcome: MapperRescueOutcome;
   /** Exact reason a numerically complete profile can still be withheld. */
   criticalPhysicsBlockers: string[];
   sweetnessPath: SweetnessPath;
@@ -113,6 +128,11 @@ export interface IntimportTrustedProductProfile {
   /** Exact server-selected profile used only as ProductBehavior evidence.
    * It is never written to product mapper identity or used as runtime physics. */
   profileReferenceMapperIngredientId: string | null;
+  profileReferenceAuthority?:
+    | 'WHOLE_PROFILE'
+    | 'SEMANTIC_BEHAVIOR_REFERENCE'
+    | 'RECOGNITION_SEMANTIC_AUTHORITY'
+    | null;
   mapperSimilarity: number | null;
   mapperProfileBasis: Exclude<ProfileMatchBasis, 'none'> | null;
   mapperCandidatesBeforeFilter: string[];
@@ -140,11 +160,16 @@ export interface IntimportProductProfileProposalInput {
   proposedMapperIngredientId: string | null;
   matchInput: ProfileMatchInput;
   declared: Partial<Record<WorkingNumericField, number | null>>;
-  declaredBasis?: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
+  declaredBasis?: Partial<
+    Record<WorkingNumericField, 'product_declared' | 'user_confirmed' | 'derived'>
+  >;
   /** Exact source-card facts rebuilt by the server from validated enrichment
    * ledger receipts. Never accepted directly from a browser proposal. */
   sourceCard?: CardContribution | null;
   evidence: ProductEvidenceInput;
+  /** Canonical server-normalized conflicts. Browser proposals cannot create
+   * these on the Scanner path. */
+  materialConflictDetails?: readonly ProductMaterialConflictContext[];
   /** Exact public evidence. When present the server recomputes Recognition V2;
    * no submitted semantic verdict is trusted. */
   recognitionEvidence?: ProductSemanticEvidence | null;
@@ -158,6 +183,39 @@ export interface IntimportProductProfileProposalInput {
    * browser-supplied final profile has no authority at this boundary. */
   proposedTechnicalComposition?: Record<string, unknown>;
   rows: readonly IntimportMapperAuthorityRow[];
+  /** Optional request-scoped indexes for a second authority pass over the same immutable rows. */
+  mapperKnowledge?: IntimportProductProfileKnowledge;
+}
+
+export interface IntimportProductProfileKnowledge {
+  /** Reference identity prevents reuse with a different row snapshot. */
+  sourceRows: readonly IntimportMapperAuthorityRow[];
+  mapperFingerprint: string;
+  rescueKnowledge: MapperKnowledge;
+  wholeProfileKnowledge: MapperKnowledge;
+}
+
+/**
+ * Build the two full-source indexes used by PRODUCT_PROFILE_V1 once per request.
+ * The source rows remain complete; only the existing authority filters select which
+ * index each decision consumes. This is deliberately not a module/global cache.
+ */
+export function buildIntimportProductProfileKnowledge(
+  rows: readonly IntimportMapperAuthorityRow[],
+): IntimportProductProfileKnowledge {
+  const mapperFingerprint = fingerprintMapperRows(rows);
+  return {
+    sourceRows: rows,
+    mapperFingerprint,
+    rescueKnowledge: buildMapperKnowledge(
+      rows.filter(isIntimportMapperRescueDonor),
+      mapperFingerprint,
+    ),
+    wholeProfileKnowledge: buildMapperKnowledge(
+      rows.filter(isBindableIntimportMapperTarget),
+      mapperFingerprint,
+    ),
+  };
 }
 
 const TECHNICAL_KEYS: Readonly<Record<WorkingNumericField, string>> = Object.freeze({
@@ -191,6 +249,12 @@ export function isBindableIntimportMapperTarget(row: IntimportMapperAuthorityRow
     row.approved_for_engines === true &&
     row.verification_status.trim().toLowerCase().startsWith('verified')
   );
+}
+
+/** Field Rescue reads the canonical Mapper basement. Historical row status and
+ * approval provenance remain auditable metadata, never donor admission gates. */
+export function isIntimportMapperRescueDonor(row: IntimportMapperAuthorityRow): boolean {
+  return isCanonicalMapperRescueDonor(row);
 }
 
 /**
@@ -248,7 +312,9 @@ export function validateIntimportWholeProfileProposal(
 export function validateIntimportProductProfileProposal(
   input: IntimportProductProfileProposalInput,
 ): IntimportTrustedProductProfile | null {
-  const mapperFingerprint = fingerprintMapperRows(input.rows);
+  const reusableKnowledge =
+    input.mapperKnowledge?.sourceRows === input.rows ? input.mapperKnowledge : null;
+  const mapperFingerprint = reusableKnowledge?.mapperFingerprint ?? fingerprintMapperRows(input.rows);
   const deterministicRecognition = input.recognitionEvidence
     ? classifyProductSemantics(input.recognitionEvidence)
     : null;
@@ -259,15 +325,24 @@ export function validateIntimportProductProfileProposal(
     input.trustedRecognition.evidenceFingerprint === deterministicRecognition.evidenceFingerprint
       ? input.trustedRecognition
       : deterministicRecognition;
-  // Only verified, Engine-approved Mapper rows may contribute estimates. The
-  // browser's proposed ID is deliberately ignored: the server recomputes the
-  // donor from canonical facts, and a stale/wrong hint must degrade to the
-  // server result (or REVIEW), never discard the commercial product itself.
-  const knowledge = buildMapperKnowledge(
-    input.rows.filter(isBindableIntimportMapperTarget),
-    mapperFingerprint,
-  );
+  // Field Rescue gets every active canonical PI-ING row. Whole-profile authority
+  // remains a separate, narrower decision so changing Rescue provenance policy
+  // cannot weaken publication/runtime profile binding.
+  const knowledge =
+    reusableKnowledge?.rescueKnowledge ??
+    buildMapperKnowledge(input.rows.filter(isIntimportMapperRescueDonor), mapperFingerprint);
+  const wholeProfileKnowledge =
+    reusableKnowledge?.wholeProfileKnowledge ??
+    buildMapperKnowledge(input.rows.filter(isBindableIntimportMapperTarget), mapperFingerprint);
   const evidenceAssessment = assessProductConfidence(input.evidence);
+  const exactProductIdentity =
+    (input.evidence.exactCanonicalMatch || input.evidence.validatedBarcode) &&
+    input.evidence.fields.identity !== undefined &&
+    input.evidence.fields.barcode !== undefined;
+  const ingredientOrCompositionIdentity =
+    input.evidence.fields.ingredients !== undefined &&
+    input.evidence.fields.ingredients !== 'mapper_family' &&
+    Boolean(input.recognitionEvidence?.ingredients?.trim());
   const resolved = resolveProductWorkingValues(
     {
       declared: input.declared,
@@ -285,8 +360,14 @@ export function validateIntimportProductProfileProposal(
       },
       technical: recognition?.isTechnicalProduct ?? input.matchInput.technical === true,
       technicalAuthority: false,
+      rescueTargetEvidence: {
+        exactProductIdentity,
+        ingredientOrCompositionIdentity,
+      },
+      materialConflictDetails: input.materialConflictDetails,
     },
     knowledge,
+    { wholeProfileKnowledge },
   );
 
   const acceptedMatch =
@@ -318,7 +399,37 @@ export function validateIntimportProductProfileProposal(
     toppingBehaviorMatch.basis !== 'none'
       ? toppingBehaviorMatch
       : null;
-  const referenceMatch = acceptedMatch ?? acceptedBehaviorMatch;
+  /*
+   * A behavior reference lends taxonomy/permissions, never numeric composition. Reusing
+   * `resolved.profileMatch` here accidentally limited that lookup to `wholeProfileKnowledge`
+   * (Verified + Engine-approved rows). A Rescue-first product can have a valid, hard-compatible
+   * semantic cohort in canonical knowledge while that narrower whole-profile cohort is empty.
+   * Re-run the existing matcher against the same full canonical knowledge Rescue received; the
+   * server-owned ProductBehavior binding still makes the final permission decision below.
+   */
+  const semanticBehaviorCandidate =
+    !acceptedMatch &&
+    !acceptedBehaviorMatch &&
+    resolved.engineReady &&
+    supportsSemanticBehaviorReference(recognition)
+      ? findProfileMatch({ ...input.matchInput, semantic: recognition }, knowledge)
+      : null;
+  const semanticBehaviorMatch =
+    !acceptedMatch &&
+    !acceptedBehaviorMatch &&
+    resolved.engineReady &&
+    supportsSemanticBehaviorReference(recognition) &&
+    semanticBehaviorCandidate &&
+    semanticBehaviorCandidate.rejected === null &&
+    semanticBehaviorCandidate.basis !== 'none' &&
+    semanticBehaviorCandidate.rows.length > 0
+      ? semanticBehaviorCandidate
+      : null;
+  const referenceMatch = acceptedMatch ?? acceptedBehaviorMatch ?? semanticBehaviorMatch;
+  // Preserve the accepted TOPPING reference contract for existing products.
+  // Only the new sub-threshold semantic reference is prevented from presenting
+  // itself as accepted Mapper similarity; it lends no numeric profile.
+  const acceptedReferenceMatch = acceptedMatch ?? acceptedBehaviorMatch;
   const acceptedProfileReference = referenceMatch ? profileDonor(referenceMatch) : null;
 
   const technicalComposition: Record<string, number> = {};
@@ -335,6 +446,8 @@ export function validateIntimportProductProfileProposal(
       mapperReferences: [...truth.provenance.mapperReferences],
       algorithmVersion: truth.provenance.algorithmVersion,
       mapperFingerprint: truth.provenance.mapperFingerprint,
+      note: truth.provenance.note,
+      cohort: truth.provenance.cohort ? { ...truth.provenance.cohort } : null,
     };
   }
   const criticalPhysicsBlockers = [...resolved.criticalPhysicsBlockers];
@@ -343,13 +456,24 @@ export function validateIntimportProductProfileProposal(
     engineUsable: resolved.engineReady,
     profileMatch: referenceMatch ?? resolved.profileMatch,
     recognition,
+    evidence: input.evidence,
     criticalPhysicsBlockers,
   });
+  const recognitionSemanticAuthorityAccepted =
+    acceptedProfileReference === null &&
+    prospectiveBehavior.classificationOutcome === 'classified' &&
+    prospectiveBehavior.baseRecipeEligible === false &&
+    prospectiveBehavior.toppingEligible === true &&
+    prospectiveBehavior.referenceMapperIngredientId === null &&
+    supportsStandaloneToppingSemanticAuthority({
+      recognition,
+      evidence: input.evidence,
+    });
   const productAccuracyAssessment = assessProductProductionAccuracy({
     evidence: input.evidence,
     evidenceProvenance: input.evidenceProvenance,
     fieldTruth,
-    mapperWholeProfileSimilarity: referenceMatch?.confidence ?? null,
+    mapperWholeProfileSimilarity: acceptedMatch?.confidence ?? null,
     recognition,
     engineUsable: resolved.engineReady,
     criticalPhysicsBlockers,
@@ -370,6 +494,7 @@ export function validateIntimportProductProfileProposal(
       fields: { ...input.evidence.fields },
       materialConflicts: [...input.evidence.materialConflicts],
     },
+    materialConflictDetails: resolved.materialConflictDetails.map((conflict) => ({ ...conflict })),
     evidenceProvenance: structuredClone(input.evidenceProvenance ?? {}),
     carbonation: classifyCarbonation(input.carbonationEvidence ?? []),
     readiness: resolved.readiness,
@@ -380,6 +505,8 @@ export function validateIntimportProductProfileProposal(
     criticalReadiness: evidenceAssessment.criticalReadiness,
     missingCritical: [...evidenceAssessment.missingCritical],
     missingEngineFields: [...resolved.missingEngineFields],
+    unresolvedEngineFieldReasons: structuredClone(resolved.unresolvedEngineFieldReasons),
+    rescueOutcome: structuredClone(resolved.rescueOutcome),
     criticalPhysicsBlockers,
     sweetnessPath: { ...resolved.sweetnessPath },
     allergenEvidenceStatus:
@@ -398,9 +525,18 @@ export function validateIntimportProductProfileProposal(
     fieldTruth,
     estimatedFromMapperIds: [...resolved.mapperReferences],
     profileReferenceMapperIngredientId: acceptedProfileReference?.ingredient_id ?? null,
-    mapperSimilarity: referenceMatch?.confidence ?? null,
+    profileReferenceAuthority: acceptedMatch
+      ? 'WHOLE_PROFILE'
+      : referenceMatch
+        ? 'SEMANTIC_BEHAVIOR_REFERENCE'
+        : recognitionSemanticAuthorityAccepted
+          ? 'RECOGNITION_SEMANTIC_AUTHORITY'
+          : null,
+    mapperSimilarity: acceptedReferenceMatch?.confidence ?? null,
     mapperProfileBasis:
-      referenceMatch && referenceMatch.basis !== 'none' ? referenceMatch.basis : null,
+      acceptedReferenceMatch && acceptedReferenceMatch.basis !== 'none'
+        ? acceptedReferenceMatch.basis
+        : null,
     mapperCandidatesBeforeFilter: [
       ...(referenceMatch?.candidatesBeforeFilter ??
         resolved.profileMatch?.candidatesBeforeFilter ??

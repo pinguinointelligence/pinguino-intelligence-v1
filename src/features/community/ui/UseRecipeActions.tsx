@@ -1,13 +1,22 @@
+import { useState } from 'react';
 import { buttonClasses } from '@/components/ui/buttonStyles';
 import { communityCopy } from '@/copy/community';
 import { cn } from '@/lib/cn';
+import type { LineageRelation } from '@/features/community/domain/lineage';
 import {
   useRecipeDerivation,
   type DerivationTarget,
 } from '@/features/community/useRecipeDerivation';
+import { NewRecipeConfirmationDialog } from '@/features/recipes/NewRecipeConfirmationDialog';
+import { hasUnsavedProRecipeChanges } from '@/pages/destinations/startNewProRecipe';
 
 /**
- * „Użyj tej receptury" + „Stwórz moją wersję" (§20, §21, §22).
+ * „Zrób te lody" + „Stwórz moją wersję" (§20, §21, §22).
+ *
+ * Both open the recipe as the customer's working copy — the author's version is only read.
+ * The customer's own recipe (and its lineage) is created at the first save. Opening replaces
+ * the current draft, so unsaved work is confirmed first — exactly as the official Gellatti
+ * library's „Zrób te lody" does — and never discarded silently.
  *
  * One component for both surfaces — the public Community page and a direct
  * share — because the two actions must behave identically wherever they are
@@ -18,9 +27,7 @@ import {
  * cannot produce two recipes; the hook additionally guards with a ref so the
  * second click of a fast double-click is dropped before React re-renders.
  *
- * Failure is shown, never swallowed. In particular the „recipe saved but
- * attribution failed" case says exactly that, because the user does have their
- * recipe and telling them it failed outright would be false.
+ * Failure is shown, never swallowed.
  */
 export function UseRecipeActions({
   target,
@@ -33,7 +40,23 @@ export function UseRecipeActions({
   className?: string;
 }) {
   const copy = communityCopy;
-  const { state, useThisRecipe, createMyVersion, isWorking } = useRecipeDerivation(target);
+  const {
+    state,
+    useThisRecipe: openCopy,
+    createMyVersion: openRemix,
+    isWorking,
+  } = useRecipeDerivation(target);
+  /** The action waiting for the customer to confirm discarding unsaved work. */
+  const [pending, setPending] = useState<LineageRelation | null>(null);
+
+  const open = (relation: LineageRelation) => void (relation === 'copy' ? openCopy() : openRemix());
+  const request = (relation: LineageRelation) => {
+    if (hasUnsavedProRecipeChanges()) {
+      setPending(relation);
+      return;
+    }
+    open(relation);
+  };
 
   const body = (
     <>
@@ -41,18 +64,20 @@ export function UseRecipeActions({
         <button
           type="button"
           className={buttonClasses('primary')}
-          onClick={useThisRecipe}
+          onClick={() => request('copy')}
           disabled={isWorking}
           aria-busy={isWorking}
+          data-testid="community-use-recipe"
         >
           {isWorking ? '…' : copy.actions.useThisRecipe}
         </button>
         <button
           type="button"
           className={buttonClasses('ghost')}
-          onClick={createMyVersion}
+          onClick={() => request('remix')}
           disabled={isWorking}
           aria-busy={isWorking}
+          data-testid="community-create-version"
         >
           {copy.actions.createMyVersion}
         </button>
@@ -64,9 +89,19 @@ export function UseRecipeActions({
             ? copy.demo.gramsHidden
             : state.reason === 'source_unavailable'
               ? copy.share.notFound
-              : (state.message ?? 'Nie udało się zapisać kopii.')}
+              : (state.message ?? 'Nie udało się otworzyć tej receptury.')}
         </p>
       ) : null}
+
+      <NewRecipeConfirmationDialog
+        open={pending !== null}
+        onCancel={() => setPending(null)}
+        onConfirm={() => {
+          const relation = pending;
+          setPending(null);
+          if (relation) open(relation);
+        }}
+      />
     </>
   );
 
@@ -75,8 +110,8 @@ export function UseRecipeActions({
   return (
     <div className={cn('rounded-md border border-ink/10 bg-paper p-6', className)}>
       <p className="text-sm text-stone-500">
-        Masz aktywny plan — możesz zapisać własną, niezależną kopię. Oryginał autora pozostaje bez
-        zmian.
+        Otworzymy tę recepturę jako Twoją kopię roboczą — zapiszesz ją jako własną. Oryginał autora
+        pozostaje bez zmian.
       </p>
       <div className="mt-4 flex flex-col gap-3">{body}</div>
     </div>

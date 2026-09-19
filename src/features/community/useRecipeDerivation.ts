@@ -1,30 +1,28 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { CONFIG_VERSION, ENGINE_VERSION, type RecipeInput } from '@/engine';
-import { recipeCapabilitiesFor } from '@/features/pro-core/proCoreCapabilities';
+import { CONFIG_VERSION, ENGINE_VERSION } from '@/engine';
 import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
 import { useAuthStore } from '@/stores/authStore';
 import {
   buildDerivedRecipe,
   canDerive,
-  derivationRpcArgs,
   type DerivationRefusal,
   type DerivationSource,
 } from '@/features/community/domain/recipeDerivation';
 import type { LineageRelation } from '@/features/community/domain/lineage';
-import {
-  getPublicationFull,
-  openReceivedShare,
-  openShare,
-  recordDerivation,
-} from '@/services/community';
+import { presentLoadedRecipeInHome } from '@/features/home-creator/homeLoadedRecipe';
+import { readRecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
+import { savedToRecipeInput } from '@/features/recipes/recipePayload';
+import type { CommunityRecipeProvenance } from '@/features/recipes/recipeProvenance';
+import { adoptWorkingCopy } from '@/features/recipes/workingCopy';
+import { getPublicationFull, openReceivedShare, openShare } from '@/services/community';
 import { customerErrorMessage } from '@/copy/customerError';
 
 export type DerivationState =
   | { readonly status: 'idle' }
   | { readonly status: 'working' }
-  | { readonly status: 'done'; readonly recipeId: string }
+  | { readonly status: 'done' }
   | {
       readonly status: 'failed';
       readonly reason: DerivationRefusal | 'save_failed';
@@ -40,43 +38,39 @@ export interface DerivationTarget {
 }
 
 /**
- * „Użyj tej receptury" and „Stwórz moją wersję", end to end (§20–§22, §65, §66).
+ * „Zrób te lody" and „Stwórz moją wersję" on a Community recipe, end to end.
  *
  * The whole flow in one place, in order:
  *
- *   1. RE-READ the source from the server. The page the user is looking at
- *      holds only the demo-safe projection — it has no grams by construction —
- *      so the formulation is fetched now, through the entitlement-gated RPC.
- *      A user who is not entitled gets a typed refusal here, not a broken save.
- *   2. CREATE an independent recipe through the EXISTING persistence path
- *      (`RecipesRepository.createRecipe` → `create_recipe_with_v1`), which
- *      writes the recipe, its meta and its immutable V1 in one transaction.
- *      Nothing about recipe saving or versioning was changed for this feature.
- *   3. STAMP lineage + the usage event via `gellatti_record_derivation_v1`.
- *      Idempotent per derived recipe, so a retry cannot count twice.
- *   4. OPEN the new recipe in the editor.
+ *   1. RE-READ the source from the server. The page the user is looking at holds only the
+ *      demo-safe projection — it has no grams by construction — so the formulation is fetched
+ *      now, through the entitlement-gated RPC. A customer who is not entitled gets a typed
+ *      refusal here, never a broken recipe.
+ *   2. OPEN it as the customer's WORKING COPY through `adoptWorkingCopy` — the same adoption an
+ *      official Gellatti recipe uses: an unsaved draft with no saved link, carrying the source
+ *      version's resolved ProductBehavior composition and its Community provenance.
+ *   3. SHOW it where the customer works — the PRO editor for Pro, HOME for everyone else.
  *
- * THE SOURCE IS NEVER WRITTEN TO. Step 1 is a read; steps 2–4 touch only the
- * new recipe and the append-only attribution tables.
+ * Lineage and the usage event are stamped when the working copy FIRST becomes the customer's
+ * recipe: the canonical save (`useCanonicalRecipeSave.createNew`) reads the provenance, saves
+ * with source `imported` and calls `gellatti_record_derivation_v1` (idempotent per derived
+ * recipe). Opening therefore never spends the customer's recipe allowance and never counts a
+ * "use" that was only a look.
  *
- * DOUBLE-CLICK: `inFlight` is a ref, not state, so the guard is effective on
- * the very next synchronous click rather than after a re-render.
+ * THE SOURCE IS NEVER WRITTEN TO. Step 1 is a read; steps 2–3 touch only the local draft.
  *
- * PARTIAL FAILURE IS HONEST: if step 3 fails after step 2 succeeded, the user
- * KEEPS their recipe (it is real and saved) and the failure is surfaced. We
- * never delete a saved recipe to tidy up bookkeeping, and never report a
- * success that did not happen.
+ * DOUBLE-CLICK: `inFlight` is a ref, not state, so the guard is effective on the very next
+ * synchronous click rather than after a re-render.
  */
 export interface DerivationOptions {
   /**
-   * Where the finished recipe is opened.
+   * Where the working copy is shown once it is loaded.
    *
-   * Default: navigate to the PRO editor, which is right for the Community pages.
-   * A HOME subscriber never lands there — §13 correctly bounces them — so HOME
-   * passes its own opener and the hook does NOT navigate. This is a seam, not a
-   * second derivation: steps 1–3 above are identical for every caller.
+   * Default: the customer's workspace — the PRO editor for Pro, HOME for everyone else. HOME's
+   * own match popup passes its opener, because it is already on the page that shows it. This
+   * is a seam, not a second derivation: steps 1–2 are identical for every caller.
    */
-  readonly openDerived?: (recipeId: string) => void | Promise<void>;
+  readonly openWorkingCopy?: () => void | Promise<void>;
 }
 
 export function useRecipeDerivation(target: DerivationTarget, options: DerivationOptions = {}) {
@@ -87,7 +81,7 @@ export function useRecipeDerivation(target: DerivationTarget, options: Derivatio
   const [state, setState] = useState<DerivationState>({ status: 'idle' });
   const inFlight = useRef(false);
 
-  const openDerived = options.openDerived;
+  const openWorkingCopy = options.openWorkingCopy;
   const derive = useCallback(
     // Returns the TERMINAL state it reached. Callers must branch on this value,
     // never on `state` after awaiting: `state` is React state, so a handler that
@@ -129,51 +123,36 @@ export function useRecipeDerivation(target: DerivationTarget, options: Derivatio
           configVersion: full.configVersion ?? CONFIG_VERSION,
           totalBatchG: full.totalBatchG,
         });
+        const input = savedToRecipeInput(payload.recipeInput);
 
-        // 2. The existing atomic create-with-v1 path. Independent recipe,
-        //    owned by THIS user, with its own immutable V1.
-        const { recipe } = await repoState.repository!.createRecipe({
-          ownerUserId: ownerId!,
-          title: payload.title,
-          notes: payload.notes,
-          recipeInput: payload.recipeInput as RecipeInput,
-          // Carry the source's resolved ProductBehavior snapshots. A copy keeps the
-          // lines it copied, so it keeps their product authority — inventing or
-          // nulling it is what made every ingredient-bearing recipe undecidable to
-          // the guard.
-          productComposition: full.productComposition as never,
-          trace: {
-            engineVersion: payload.engineVersion,
-            configVersion: payload.configVersion,
-            mapperDatasetVersion: null,
-          },
-          // 'imported' is the honest source label for a snapshot that came
-          // from somebody else's published or shared version.
-          source: 'imported',
-          by: ownerId!,
-          capabilities: recipeCapabilitiesFor(persona),
+        // 2. The customer's working copy. The source's resolved ProductBehavior snapshots
+        //    come with it: a copy keeps the lines it copied, so it keeps their product
+        //    authority — nulling it is what made every ingredient-bearing copy undecidable
+        //    to `assert_recipe_behavior_authority_all_lines_v1`.
+        adoptWorkingCopy({
+          input,
+          name: payload.title,
+          composition: readRecipeCompositionMetadata(
+            full.productComposition,
+            input.items.map((item) => item.id),
+            input.items.filter((item) => item.lock_type === 'main').map((item) => item.id),
+          ),
+          provenance: communityProvenance(target, relation, full.versionNumber),
         });
 
-        // 3. Attribution. A failure here must not cost the user their recipe.
-        try {
-          await recordDerivation(derivationRpcArgs(target.source, relation, recipe.recipeId));
-        } catch {
-          const refused: DerivationState = {
-            status: 'failed',
-            reason: 'save_failed',
-            message:
-              'Receptura została zapisana, ale nie udało się zachować informacji o źródle. ' +
-              'Sama receptura jest bezpieczna — spróbuj ponownie później.',
-          };
-          setState(refused);
-          return refused;
-        }
-
-        const done: DerivationState = { status: 'done', recipeId: recipe.recipeId };
+        const done: DerivationState = { status: 'done' };
         setState(done);
-        // 4. Open it — in the caller's surface when it has one, otherwise the editor.
-        if (openDerived) await openDerived(recipe.recipeId);
-        else navigate('/pro/recipe');
+        // 3. Show it where this customer works.
+        if (openWorkingCopy) await openWorkingCopy();
+        else if (persona === 'pro') navigate('/pro/recipe');
+        else {
+          presentLoadedRecipeInHome({
+            label: payload.title,
+            publicationId:
+              target.source.kind === 'publication' ? target.source.publicationId : null,
+          });
+          navigate('/home');
+        }
         return done;
       } catch (cause) {
         const refused: DerivationState = {
@@ -187,16 +166,33 @@ export function useRecipeDerivation(target: DerivationTarget, options: Derivatio
         inFlight.current = false;
       }
     },
-    [navigate, openDerived, ownerId, persona, repoState.repository, target],
+    [navigate, openWorkingCopy, ownerId, persona, repoState.repository, target],
   );
 
   return {
     state,
-    /** „Użyj tej receptury" — an independent copy. */
+    /** „Zrób te lody" — the customer's own working copy of this recipe. */
     useThisRecipe: useCallback(() => derive('copy'), [derive]),
-    /** „Stwórz moją wersję" — an independent copy declared as a remix. */
+    /** „Stwórz moją wersję" — the same working copy, declared as a remix. */
     createMyVersion: useCallback(() => derive('remix'), [derive]),
     isWorking: state.status === 'working',
+  };
+}
+
+function communityProvenance(
+  target: DerivationTarget,
+  relation: LineageRelation,
+  sourceVersionNumber: number | null,
+): CommunityRecipeProvenance {
+  return {
+    schemaVersion: 1,
+    kind: 'community',
+    relation,
+    publicationId: target.source.kind === 'publication' ? target.source.publicationId : null,
+    shareLinkId: target.source.kind === 'share' ? target.source.shareLinkId : null,
+    sourceTitle: target.sourceTitle,
+    sourceCreatorDisplayName: target.sourceCreatorDisplayName,
+    sourceVersionNumber,
   };
 }
 
@@ -206,22 +202,21 @@ type SourceRead =
       recipeInput: unknown;
       /**
        * The source version's product composition — its RESOLVED ProductBehavior
-       * snapshots, keyed by line id.
-       *
-       * Without it every copy of a recipe that HAS ingredient lines was refused by
-       * `assert_recipe_behavior_authority_all_lines_v1`, which requires a resolved
-       * snapshot per line ("no new version/run may be written until every line is
-       * reconstructed and RESOLVED"). The guard was right; the read simply never
-       * returned the composition, so `null` was passed and every line looked
-       * unresolved. `buildDerivedRecipe` passes `recipeInput` through unchanged, so
-       * the line ids still match and the snapshots apply exactly.
+       * snapshots, keyed by line id. `buildDerivedRecipe` passes `recipeInput` through
+       * unchanged, so the line ids still match and the snapshots apply exactly.
        */
       productComposition: unknown;
       engineVersion?: string;
       configVersion?: string;
       totalBatchG: number;
+      versionNumber: number | null;
     }
   | { ok: false; reason: DerivationRefusal };
+
+const versionNumberOf = (result: object): number | null =>
+  'version_number' in result && typeof result.version_number === 'number'
+    ? result.version_number
+    : null;
 
 /**
  * Fetch the source formulation. Both branches go through an RPC that checks
@@ -244,6 +239,7 @@ async function readSource(target: DerivationTarget): Promise<SourceRead> {
       engineVersion: result.engine_version,
       configVersion: result.config_version,
       totalBatchG: result.total_batch_g,
+      versionNumber: versionNumberOf(result),
     };
   }
 
@@ -259,13 +255,14 @@ async function readSource(target: DerivationTarget): Promise<SourceRead> {
     recipeInput: result.recipe_input,
     // KNOWN REMAINING GAP, stated rather than hidden: `gellatti_open_share_v1` and
     // `gellatti_open_received_share_v1` do not return `product_composition` (verified
-    // 2026-08-31), so a SHARE of a recipe with ingredient lines still hits the same
-    // authority refusal the publication path just escaped. Fixing it means changing
-    // those two RPCs and re-proving the share flow, which is a separate task — this
-    // `null` is deliberate and documented, not an oversight.
+    // 2026-08-31), so a SHARE of a recipe with ingredient lines opens without its resolved
+    // snapshots and its first save asks for the usual revalidation. Fixing it means changing
+    // those two RPCs and re-proving the share flow, which is a separate task — this `null`
+    // is deliberate and documented, not an oversight.
     productComposition: null,
     engineVersion: result.engine_version,
     configVersion: result.config_version,
     totalBatchG: result.total_batch_g ?? 0,
+    versionNumber: versionNumberOf(result),
   };
 }

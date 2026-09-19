@@ -7,6 +7,7 @@ import {
 } from '../adapters/supabaseDiscoveryAdapter';
 import { identifyCode } from '../codeIdentity';
 import { buildLedger } from '../discovery/ledger';
+import type { ScanRunAuthority } from '../runAuthority';
 import { scan } from './codeIdentity.test';
 import { ctx } from './fakes';
 
@@ -15,6 +16,12 @@ const id = (v: string, s: Parameters<typeof scan>[1] = 'EAN-13') => {
   if (!r.ok) throw new Error(r.reason);
   return r.identity;
 };
+
+const run = (id: string, barcode: string, current: () => boolean): ScanRunAuthority => ({
+  id,
+  barcode,
+  isCurrent: current,
+});
 
 function client(responses: Record<string, unknown>, rpcs: Record<string, unknown> = {}) {
   const calls: { name: string; body: unknown }[] = [];
@@ -64,7 +71,13 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
         sessionId: 'fixed-session',
         mode: 'ean_lookup',
         images: [],
-        barcode: { value: '4305615614434', format: 'EAN_13', lookupValue: '4305615614434' },
+        barcode: {
+          value: '4305615614434',
+          format: 'EAN_13',
+          lookupValue: '4305615614434',
+          canonicalValue: '4305615614434',
+          rawValue: '4305615614434',
+        },
       },
     });
     expect(r.kind).toBe('researched');
@@ -91,6 +104,7 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
           entityKind: 'commercial_product',
           status: 'verified',
           engineReady: true,
+          currentVersionId: 'V2',
         },
         usage: { visionCalls: 0, webCalls: 0, estimatedCostUsd: 0 },
       },
@@ -102,9 +116,44 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
         productId: 'P1',
         productCode: 'PR-1',
         engineReady: true,
+        currentVersionId: 'V2',
         strength: 'canonical_shared',
       },
     });
+  });
+  it('allocates a distinct server session for each scan run, even when the EAN is identical', async () => {
+    const c = client({
+      'product-scan-analyze': {
+        sessionId: 'server-session-is-not-authoritative',
+        result: { identity: { displayName: 'Same code' } },
+        overlayState: 'SCAN_DRAFT',
+        missingCriticalFields: [],
+        usage: { visionCalls: 0, webCalls: 1 },
+      },
+    });
+    let active = 'A';
+    const barcode = '4305615614434';
+    const first = run('A', barcode, () => active === 'A');
+    const second = run('B', barcode, () => active === 'B');
+    const port = createSupabaseDiscoveryPort(c, {
+      newSessionId: (() => {
+        let n = 0;
+        return () => `session-${++n}`;
+      })(),
+    });
+
+    const a = await port.research(id(barcode), ctx({ scanRun: first }));
+    active = 'B';
+    const b = await port.research(id(barcode), ctx({ scanRun: second }));
+
+    expect(a.kind).toBe('researched');
+    expect(b.kind).toBe('researched');
+    if (a.kind === 'researched' && b.kind === 'researched') {
+      expect(a.session.sessionId).toBe('session-1');
+      expect(b.session.sessionId).toBe('session-2');
+      expect(a.session).not.toBe(b.session);
+    }
+    expect(c.calls).toHaveLength(2);
   });
   it('label analysis sends images + barcode + missingFields on the same session; finalize maps every server kind', async () => {
     const c = client({
@@ -157,8 +206,9 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
     const f = await port.finalize(session, { customerFamily: 'other', privateOverlay: {} }, ctx());
     expect(c.calls[1]?.body).toMatchObject({
       action: 'finalize',
+      contractVersion: 'PRODUCT_SCAN_FINALIZE_V2',
       sessionId: 'S1',
-      idempotencyKey: 'scan-import-v2:user-1:4305615614434:finalize',
+      idempotencyKey: 'scan-import-v2:user-1:S1:finalize',
       customerFamily: 'other',
     });
     // OWNER CONTRACT 2026-09-07: the server names the route; the adapter never re-derives it.
@@ -172,6 +222,16 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
       route: 'PM_UNVERIFIED',
       finalConfidence: null,
       productionReady: false,
+      readiness: {
+        ready: false,
+        productionReady: false,
+        missingCritical: [],
+        criticalGapsKnown: false,
+        roleReadiness: null,
+        assessmentVersion: null,
+        assessmentHash: null,
+        assessmentSessionId: null,
+      },
     });
   });
   it('finalize: family_confirmation_required / not_ready / idempotent are mapped; no engine readiness is invented', async () => {
@@ -194,7 +254,7 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
     expect(
       await mk({
         kind: 'customer_product_not_ready',
-        missingCriticalFields: ['nutrition.energyKcal'],
+        criticalGaps: ['nutrition.energyKcal'],
       }).finalize(session, { customerFamily: 'other' }, ctx()),
     ).toMatchObject({ kind: 'not_ready', missingCritical: ['nutrition.energyKcal'] });
     expect(
@@ -205,6 +265,51 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
         engineUsable: true,
       }).finalize(session, { customerFamily: 'other' }, ctx()),
     ).toMatchObject({ kind: 'created', productId: 'CA-1', engineUsable: true, existing: true });
+  });
+  it('finalize V2 carries exact registry facts to both the new and deployed legacy backend shapes', async () => {
+    const c = client({
+      'product-scan-finalize': {
+        kind: 'customer_added_product',
+        productId: 'P1',
+        productCode: 'PR-ING-1',
+        route: 'PR',
+        productionReady: true,
+      },
+    });
+    const identity = id('7350042718481');
+    const session = {
+      sessionId: 'S',
+      identity,
+      result: null,
+      overlayState: null,
+      missingCritical: [],
+      usage: { visionCalls: 0, webCalls: 0 },
+    };
+    await createSupabaseDiscoveryPort(c).finalize(
+      session,
+      {
+        customerFamily: 'beverage',
+        automaticEvidence: {
+          source: 'barcode_registry',
+          exactGtin: '7350042718481',
+          sourceUrl: 'https://world.openfoodfacts.org/product/7350042718481',
+          queriedAt: 1,
+          productFields: {
+            identity: { displayName: 'Vitamin Well Refresh', brand: 'Vitamin Well' },
+          },
+        },
+      },
+      ctx(),
+    );
+    expect(c.calls[0]?.body).toMatchObject({
+      contractVersion: 'PRODUCT_SCAN_FINALIZE_V2',
+      automaticEvidence: { exactGtin: '7350042718481' },
+      confirmations: {
+        productFields: {
+          identity: { displayName: 'Vitamin Well Refresh', brand: 'Vitamin Well' },
+        },
+      },
+    });
   });
   it('product request carries the ledger as the legacy result shape with V2 provenance; own open requests are found by code', async () => {
     const c = client(
@@ -254,19 +359,47 @@ describe('Supabase discovery adapter (stub) — mirrors the legacy scan-session 
       approvedProductId: null,
     });
   });
-  it('legacy barcode mapping keeps the actual symbology; UPC-E lookups use the expanded UPC-A', () => {
+  it('canonical barcode mapping keeps raw evidence and capture format separate', () => {
     expect(legacyBarcode(id('8402001047251'))).toEqual({
       value: '8402001047251',
       format: 'EAN_13',
       lookupValue: '8402001047251',
+      canonicalValue: '8402001047251',
+      rawValue: '8402001047251',
     });
-    expect(legacyBarcode(id('01234565', 'UPC-E'))).toMatchObject({
-      value: '01234565',
+    expect(legacyBarcode(id('96385074', 'EAN-8'))).toEqual({
+      value: '0000096385074',
+      format: 'EAN_8',
+      lookupValue: '0000096385074',
+      canonicalValue: '0000096385074',
+      rawValue: '96385074',
+    });
+    expect(legacyBarcode(id('036000291452', 'UPC-A'))).toEqual({
+      value: '0036000291452',
+      format: 'UPC_A',
+      lookupValue: '0036000291452',
+      canonicalValue: '0036000291452',
+      rawValue: '036000291452',
+    });
+    const upce = id('01234565', 'UPC-E');
+    expect(legacyBarcode(upce)).toMatchObject({
+      value: upce.canonicalGtin13,
       format: 'UPC_E',
+      lookupValue: upce.canonicalGtin13,
+      canonicalValue: upce.canonicalGtin13,
+      rawValue: '01234565',
     });
     expect(
       ledgerToLegacyResult(id('96385074', 'EAN-8'), buildLedger(id('96385074', 'EAN-8'), null, []))
         .barcodes,
-    ).toEqual([{ kind: 'EAN_8', value: '96385074' }]);
+    ).toEqual([
+      {
+        kind: 'EAN_8',
+        value: '0000096385074',
+        format: 'EAN_13',
+        capturedFormat: 'EAN_8',
+        rawValue: '96385074',
+      },
+    ]);
   });
 });

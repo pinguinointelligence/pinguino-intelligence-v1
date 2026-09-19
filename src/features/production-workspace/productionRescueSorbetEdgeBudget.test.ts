@@ -1,7 +1,9 @@
 import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
 import {
+  PRE_FINAL_2089_COMPOSITION_VERSION,
   SORBET_MAIN_IDS,
+  recipeInputForHistoricalVersion,
   sorbetAuthoritySnapshots,
   sorbetMapperIngredient,
   sorbetMultiMainBase,
@@ -16,7 +18,7 @@ import { productionTestComposition } from './productionTestComposition.fixture';
 
 const servedMangoSorbet = () => {
   const canonical = sorbetMultiMainBase(-11);
-  const input = {
+  const currentShape = {
     ...canonical,
     machine_capacity_grams: null,
     machine_capacity_source: null,
@@ -31,6 +33,10 @@ const servedMangoSorbet = () => {
       },
     ],
   };
+  const input = recipeInputForHistoricalVersion(
+    PRE_FINAL_2089_COMPOSITION_VERSION,
+    currentShape,
+  );
   const composition = productionTestComposition(input);
   composition.behaviorSnapshots = sorbetAuthoritySnapshots(input);
   let session = createProductionSession({

@@ -3,8 +3,8 @@
  *
  * After Scan Core confirms a code that the exact authority does not know, the product is NOT a dead
  * end. Discovery orchestrates the EXISTING authorities — the scan-session analysis (label evidence,
- * exact-source research), the finalize/profile/ProductBehaviour authorities (customer-provisional
- * product creation) and the product-request lifecycle (durable discovery candidate pending admin
+ * exact-source research), the finalize/profile/ProductBehaviour authorities (shared PR or private
+ * PM creation) and the product-request lifecycle (durable discovery candidate pending admin
  * verification) — and keeps every fact with its provenance and every conflict visible. It never
  * invents technical values, never assigns ProductBehaviour, never creates a Mapper row.
  */
@@ -71,11 +71,22 @@ export interface ScanResultLike {
     displayName?: string | null;
     originalName?: string | null;
     brand?: string | null;
+    category?: string | null;
+    variant?: string | null;
     countryOfOrigin?: string | null;
     labelLanguages?: string[];
   } | null;
-  barcodes?: { kind?: string; value?: string }[] | null;
+  barcodes?:
+    | {
+        kind?: string;
+        value?: string;
+        format?: string;
+        capturedFormat?: string;
+        rawValue?: string | null;
+      }[]
+    | null;
   nutrition?: Record<string, unknown> | null;
+  productionDeclarations?: Record<string, unknown> | null;
   ingredientsText?: string | null;
   allergensText?: string | null;
   package?: Record<string, unknown> | null;
@@ -83,7 +94,19 @@ export interface ScanResultLike {
     | { field: string; source: string; confidence?: string | null; assetId?: string }[]
     | null;
   externalSources?:
-    | { sourceType: string; url: string | null; title: string | null; fieldsUsed: string[] }[]
+    | {
+        sourceType: string;
+        url: string | null;
+        title: string | null;
+        fieldsUsed: string[];
+        sourceAuthorityClass?: string | null;
+        sourceStatedEan?: string | null;
+        sourceEanConfirmationMethod?: string | null;
+        sourceEanConfirmedAt?: string | null;
+        receiptId?: string | null;
+        evidenceAuthority?: string | null;
+        confidence?: number | null;
+      }[]
     | null;
   conflicts?:
     | {
@@ -129,7 +152,17 @@ export type CustomerFamily =
 
 export interface FinalizeInput {
   customerFamily?: CustomerFamily | null;
+  /** Automatic exact-registry evidence. Kept outside confirmations by construction. */
+  automaticEvidence?: {
+    source: 'barcode_registry';
+    exactGtin: string;
+    sourceUrl: string | null;
+    queriedAt: number;
+    productFields: Record<string, unknown>;
+  };
   confirmations?: {
+    /** In the explicit V2 contract, only the form submitter may issue this marker. */
+    evidenceOrigin?: 'customer_action';
     packageEvidenceExhausted?: boolean;
     notOnLabelFields?: string[];
     productFields?: Record<string, unknown>;
@@ -147,14 +180,23 @@ export interface FinalizeInput {
   expectedAssessmentHash?: string | null;
 }
 
+/**
+ * `notice` is the SERVER's own plain-Polish sentence about what the lookup did — ready to show.
+ * It exists because the alternative was inventing one on the client from `evidenceError` and
+ * `reason`, both of which are internal tokens: the flow rendered „research skipped:
+ * session_lookup_already_used" and the customer-copy gate replaced it with a generic sentence, so
+ * a lookup that had a specific, knowable outcome told the customer nothing (owner defect
+ * 2026-09-07, EAN 8480000804693). `null` means there is nothing to say, and silence is preserved.
+ */
 export type ResearchOutcome =
   | { kind: 'existing_product'; product: ExactCandidate }
   | {
       kind: 'researched';
       session: DiscoverySession;
       evidenceError: 'provider_timeout' | 'provider_failed' | 'provider_unavailable' | null;
+      notice?: string | null;
     }
-  | { kind: 'skipped'; session: DiscoverySession; reason: string };
+  | { kind: 'skipped'; session: DiscoverySession; reason: string; notice?: string | null };
 
 export type AnalyzeOutcome =
   | { kind: 'existing_product'; product: ExactCandidate }
@@ -171,6 +213,22 @@ export type AnalyzeOutcome =
  */
 export type FinalRoute = 'PR' | 'PM_READY' | 'PM_UNVERIFIED';
 
+/**
+ * One normalized readiness snapshot carried across the adapter boundary. `null` means the current
+ * response shape did not expose that optional field; it is never reconstructed from diagnostics.
+ */
+export interface ClientReadinessState {
+  ready: boolean | null;
+  productionReady: boolean | null;
+  missingCritical: readonly string[];
+  /** distinguishes an authoritative empty array from an absent legacy field */
+  criticalGapsKnown: boolean;
+  roleReadiness: string | null;
+  assessmentVersion: string | null;
+  assessmentHash: string | null;
+  assessmentSessionId: string | null;
+}
+
 export type FinalizeOutcome =
   | {
       kind: 'created';
@@ -181,6 +239,8 @@ export type FinalizeOutcome =
       route: FinalRoute;
       finalConfidence: number | null;
       productionReady: boolean;
+      /** canonical server readiness, retained alongside the legacy fields above */
+      readiness?: ClientReadinessState;
     }
   | { kind: 'family_confirmation_required'; options: readonly CustomerFamily[] }
   /**
@@ -195,11 +255,13 @@ export type FinalizeOutcome =
       reasons: readonly string[];
       /** hash of the assessment this verdict belongs to; sent back on save so the two cannot differ */
       assessmentHash?: string | null;
+      /** canonical server readiness, retained separately from diagnostic `reasons` */
+      readiness?: ClientReadinessState;
     }
   | { kind: 'profile_rejected'; reason: string }
   | { kind: 'identity_required' }
   /** the save was asked to persist a verdict the customer had not been shown; ask them to repeat it */
-  | { kind: 'assessment_stale' };
+  | { kind: 'assessment_stale'; readiness?: ClientReadinessState };
 
 export type RequestOutcome =
   | { kind: 'product_request'; requestId: string; status: string }
@@ -221,7 +283,7 @@ export interface DiscoveryPort {
     images: readonly LabelImage[],
     ctx: RequestContext,
   ): Promise<AnalyzeOutcome>;
-  /** finalize: profile + ProductBehaviour authorities → customer-provisional exact SKU (never engine-ready by fiat) */
+  /** finalize: profile + ProductBehaviour authorities → explicit shared-PR or private-PM route */
   finalize(
     session: DiscoverySession,
     input: FinalizeInput,

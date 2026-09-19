@@ -87,7 +87,7 @@ describe('the page never creates an invalid line', () => {
   });
 
   it('has exactly one place that creates a Base line', () => {
-    expect(page.match(/getState\(\)\.addIngredient\(/g) ?? []).toHaveLength(1);
+    expect(page.match(/getState\(\)\s*\.addIngredient\(/g) ?? []).toHaveLength(1);
   });
 
   it('never persists a fake minimum', () => {
@@ -166,5 +166,40 @@ describe('the mainCapability state space is covered EXHAUSTIVELY, not by observa
     expect(decideAddAmount(legacy as never, dose).kind).toBe('unresolved_authority');
     // unknown_product
     expect(decideAddAmount(snapshotWith('MAIN_UNKNOWN'), dose).kind).toBe('unresolved_authority');
+  });
+});
+
+describe('PACKAGE 2A — once the customer has crowned something, nothing sizes a new line', () => {
+  it.each(['MAIN_CAPABLE', 'MAIN_CAPABLE_UNCALIBRATED'] as const)(
+    '%s asks the amount in MANUAL — no automatic priority will size it',
+    (state) => {
+      expect(decideAddAmount(snapshotWith(state), dose, { autoPriority: false }).kind).toBe(
+        'ask_amount',
+      );
+    },
+  );
+
+  it('AUTO — and the default every older caller uses — keeps Crown deciding', () => {
+    expect(decideAddAmount(snapshotWith('MAIN_CAPABLE'), dose, { autoPriority: true }).kind).toBe(
+      'crown_decides',
+    );
+    expect(decideAddAmount(snapshotWith('MAIN_CAPABLE'), dose).kind).toBe('crown_decides');
+  });
+
+  it('the refusals and the technical question do not depend on the mode', () => {
+    const manual = { autoPriority: false } as const;
+    expect(decideAddAmount(null, dose, manual).kind).toBe('unresolved_authority');
+    expect(decideAddAmount(snapshotWith('MAIN_UNKNOWN'), dose, manual).kind).toBe(
+      'unresolved_authority',
+    );
+    expect(decideAddAmount(snapshotWith('MAIN_TECHNICAL_BLOCKED'), dose, manual).kind).toBe(
+      'ask_amount',
+    );
+  });
+
+  it('asks without inventing a range', () => {
+    const decision = decideAddAmount(snapshotWith('MAIN_CAPABLE'), dose, { autoPriority: false });
+    expect(decision.kind).toBe('ask_amount');
+    if (decision.kind === 'ask_amount') expect(decision.recommendedDose).toBeNull();
   });
 });

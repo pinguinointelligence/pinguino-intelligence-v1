@@ -64,6 +64,106 @@ export function sorbetMapperIngredient(id: string): EngineIngredient {
   return ingredientRowToEngineIngredient(row);
 }
 
+/**
+ * Composition authority captured by the immutable Recipe/Production versions
+ * created before the certified FINAL-2541 projection. This is deliberately a
+ * delta over that frozen FINAL projection: these are the only technical fields
+ * that changed for the identities used by the served historical fixtures.
+ * Callers must opt into the exact version; current/new recipes always use
+ * `sorbetMapperIngredient` above.
+ */
+export const PRE_FINAL_2089_COMPOSITION_VERSION =
+  'mapper-2089@a6141618' as const;
+
+type HistoricalTechnicalOverride = {
+  composition: Partial<EngineIngredient['composition']>;
+  omitSaturatedFat?: boolean;
+  pod_value?: number | null;
+  pac_value?: number | null;
+  de_value?: number | null;
+};
+
+const PRE_FINAL_2089_TECHNICAL_OVERRIDES: Readonly<
+  Record<string, HistoricalTechnicalOverride>
+> = Object.freeze({
+  'PI-ING-000180': {
+    composition: { water_percent: 64.42, solids_percent: 35.58, saturated_fat_percent: 0 },
+  },
+  'PI-ING-000236': {
+    composition: { water_percent: 88.7, solids_percent: 11.3, saturated_fat_percent: 0 },
+  },
+  'PI-ING-000270': {
+    composition: { water_percent: 10.32, solids_percent: 89.68, saturated_fat_percent: 0 },
+  },
+  'PI-ING-000494': {
+    composition: {
+      water_percent: 8,
+      solids_percent: 92,
+      carbohydrate_percent: 92,
+      sugar_percent: 92,
+      dextrose_percent: 92,
+      kcal_per_100g: 368,
+    },
+    pod_value: 70.84,
+    pac_value: 174.8,
+  },
+  'PI-ING-001579': {
+    composition: {
+      water_percent: 0,
+      solids_percent: 100,
+      protein_percent: 24,
+      carbohydrate_percent: 13,
+      sugar_percent: 0.5,
+      sucrose_percent: 0.5,
+      fiber_percent: 31,
+      salt_percent: 0.06,
+      kcal_per_100g: 309,
+    },
+    omitSaturatedFat: true,
+    pod_value: 0.5,
+    pac_value: 0.851,
+  },
+});
+
+export function mapperIngredientForHistoricalVersion(
+  version: typeof PRE_FINAL_2089_COMPOSITION_VERSION,
+  id: string,
+): EngineIngredient {
+  if (version !== PRE_FINAL_2089_COMPOSITION_VERSION) {
+    throw new Error(`Unknown historical Mapper composition version ${version}`);
+  }
+  const current = sorbetMapperIngredient(id);
+  const override = PRE_FINAL_2089_TECHNICAL_OVERRIDES[id];
+  if (!override) return current;
+  const composition = { ...current.composition, ...override.composition };
+  if (override.omitSaturatedFat) {
+    delete composition.saturated_fat_percent;
+  }
+  return {
+    ...current,
+    composition,
+    ...(Object.hasOwn(override, 'pod_value') ? { pod_value: override.pod_value! } : {}),
+    ...(Object.hasOwn(override, 'pac_value') ? { pac_value: override.pac_value! } : {}),
+    ...(Object.hasOwn(override, 'de_value') ? { de_value: override.de_value! } : {}),
+  };
+}
+
+export function recipeInputForHistoricalVersion(
+  version: typeof PRE_FINAL_2089_COMPOSITION_VERSION,
+  input: RecipeInput,
+): RecipeInput {
+  return {
+    ...structuredClone(input),
+    items: input.items.map((item) => ({
+      ...structuredClone(item),
+      ingredient: mapperIngredientForHistoricalVersion(
+        version,
+        item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+      ),
+    })),
+  };
+}
+
 /** Line ids used by the fixture so tests can address them without guessing. */
 export const SORBET_FIXTURE_LINE = Object.freeze({
   strawberry: 'main-strawberry',

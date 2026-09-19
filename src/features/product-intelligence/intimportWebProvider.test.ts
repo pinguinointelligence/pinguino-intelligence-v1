@@ -255,9 +255,13 @@ describe('provider runs server-side only', () => {
 
   it('sends only public product identity — never recipes or account data', () => {
     expect(edgeSource).toMatch(/const identity = \{/);
+    const identityStart = edgeSource.indexOf('const identity = {');
+    const identityEnd = edgeSource.indexOf('\n  };', identityStart);
+    const identityBlock = edgeSource.slice(identityStart, identityEnd);
     for (const leak of ['recipe', 'items', 'planned_grams', 'email', 'account_profiles']) {
-      expect(edgeSource.slice(edgeSource.indexOf('const identity = {'))).not.toContain(leak);
+      expect(identityBlock).not.toContain(leak);
     }
+    expect(edgeSource).toContain('sanitizeAccumulatedScannerEvidence(body.accumulatedEvidence)');
   });
 
   it('is off unless explicitly enabled', () => {
@@ -307,12 +311,15 @@ describe('provider runs server-side only', () => {
   it('caches by product identity, not by import run', () => {
     // Including importId meant a second import re-researched everything at full
     // price — observed live as 25 fresh searches and zero cache hits.
+    const keyStart = edgeSource.lastIndexOf('const idempotencyKey');
     const keyBlock = edgeSource.slice(
-      edgeSource.indexOf('const idempotencyKey'),
-      edgeSource.indexOf('const { data: cached }'),
+      keyStart,
+      edgeSource.indexOf('const { data: cached }', keyStart),
     );
-    expect(keyBlock).toContain('stableJson({ identity, fields:');
-    expect(keyBlock).not.toMatch(/stableJson\(\{ importId/);
+    expect(keyBlock).toContain('identity,');
+    expect(keyBlock).toContain('fields: [...requestedFields].sort()');
+    expect(keyBlock).toContain('accumulatedEvidence: hasAccumulatedEvidence');
+    expect(keyBlock).not.toMatch(/\bimportId\b/);
   });
 
   it('bounds tool calls per product', () => {

@@ -10,6 +10,7 @@ import {
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import { assessProteinFormulation, recipeFitForInput } from './proteinAuthority';
 import { PROTEIN_EVIDENCE_WINDOW } from './proteinScienceAuthority';
+import { verifyMainIngredientIdentity } from '@/features/formulation/mainIngredientContract';
 
 // Whole-recipe optimiser proofs: each case runs the real Engine across many
 // candidate formulations, so single tests legitimately take tens of seconds
@@ -252,7 +253,13 @@ describe('Protein Gelato v2 — preserved profile contracts', () => {
     const banana = built.preview.proposedInput.items.find((item) => item.id === 'main-banana');
     expect(raspberry?.planned_grams).toBeGreaterThanOrEqual(120);
     expect(banana?.planned_grams).toBeGreaterThanOrEqual(60);
-    expect((raspberry?.planned_grams ?? 0) / (banana?.planned_grams ?? 1)).toBe(2);
+    expect(verifyMainIngredientIdentity(input, built.preview.proposedInput).ok).toBe(true);
+    // FINAL resolves the technical maximum at an odd 383 g Main total:
+    // 255 g / 128 g. The canonical whole-gram largest-remainder authority
+    // preserves the saved 2:1 intent within one physical gram.
+    expect(
+      Math.abs((raspberry?.planned_grams ?? 0) - 2 * (banana?.planned_grams ?? 0)),
+    ).toBeLessThanOrEqual(1);
   });
 
   it('refuses to formulate when Protein Main is unavailable', () => {

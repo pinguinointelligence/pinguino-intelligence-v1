@@ -132,7 +132,7 @@ describe.skipIf(!RUN)('owner QA codes on real staging', () => {
           type: 'finalize',
           input: {
             customerFamily: web!.family,
-            confirmations: { productFields: web!.productFields },
+            automaticEvidence: web!.automaticEvidence,
           },
         },
         ctx(),

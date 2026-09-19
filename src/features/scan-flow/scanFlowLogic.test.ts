@@ -1,24 +1,159 @@
 import { describe, expect, it } from 'vitest';
 import type { ExactCandidate } from '@/scan-import-v2';
 import {
+  classifyRemainingGaps,
+  carryRecognitionPresentationDetails,
   confirmationsFromFields,
+  manualFieldsFor,
   manualConfirmedScan,
   plainFieldsFor,
   positionHint,
   prefillFromIdentity,
+  recognitionNamePresentation,
   scanFeedbackText,
+  sanitizeRecognitionSellerTitle,
   toResolvedScanProduct,
 } from './scanFlowLogic';
 
 describe('scan flow — pure rules', () => {
+  it('PRING-EAN-PRES-01: the reconciled Recognition name outranks lower-quality registry text', () => {
+    expect(
+      recognitionNamePresentation({
+        reconciledName: 'Haribo Goldbären 175g',
+        reconciledBrand: 'Haribo',
+        registryName: 'ghgh',
+        registryBrand: 'Haribo',
+        registryQuantity: '175g',
+        registryConfidence: 0.9,
+      }),
+    ).toEqual({
+      displayName: 'Haribo Goldbären 175g',
+      brand: null,
+      quantity: null,
+    });
+
+    expect(
+      recognitionNamePresentation({
+        reconciledName: 'DR PEPPER - CLASSIC',
+        reconciledBrand: 'Dr Pepper',
+        registryName: 'Dr. Pepper CLASSI 330ml 0.75€ plus Pfand 0.25€ 1l 2.27€',
+        registryBrand: 'Dr Pepper',
+        registryQuantity: '330ml',
+        registryConfidence: 0.9,
+      }),
+    ).toEqual({
+      displayName: 'DR PEPPER - CLASSIC',
+      brand: null,
+      quantity: '330ml',
+    });
+  });
+
+  it('PRING-EAN-PRES-02: a seller title is sanitized only when no stronger identity exists', () => {
+    expect(
+      sanitizeRecognitionSellerTitle(
+        'Pasta waniliowa 100 g | kup online · najlepsza cena 8,99 €',
+      ),
+    ).toBe('Pasta waniliowa 100 g');
+    expect(
+      recognitionNamePresentation({
+        registryName: 'Dr. Pepper CLASSI 330ml 0.75€ plus Pfand 0.25€ 1l 2.27€',
+        registryBrand: 'Dr Pepper',
+        registryQuantity: '330ml',
+        registryConfidence: 0.9,
+      }),
+    ).toEqual({ displayName: 'Dr Pepper', brand: null, quantity: '330ml' });
+  });
+
+  it('PRING-EAN-PRES-03: junk, placeholders and internal identities use the neutral fallback', () => {
+    for (const registryName of [
+      'ghgh',
+      'unknown',
+      'PR-ING-007205',
+      'Haribo PR-ING-007205',
+      'd9428888-122b-11e1-b85c-61cd3cbb3210',
+      'Product d9428888-122b-11e1-b85c-61cd3cbb3210',
+      '4001686322840',
+      'EAN: 4001686322840 Haribo',
+    ]) {
+      expect(recognitionNamePresentation({ registryName, registryConfidence: 0.9 })).toEqual({
+        displayName: 'Rozpoznany produkt',
+        brand: null,
+        quantity: null,
+      });
+    }
+    expect(
+      recognitionNamePresentation({
+        registryName: 'Premium Vanilla Paste',
+        registryBrand: 'Premium Foods',
+        registryQuantity: '100 g',
+        registryConfidence: 0.3,
+      }),
+    ).toEqual({ displayName: 'Rozpoznany produkt', brand: null, quantity: null });
+    expect(recognitionNamePresentation({})).toBeNull();
+  });
+
+  it('PRING-EAN-PRES-04: a safe exact-registry name remains unchanged', () => {
+    expect(
+      recognitionNamePresentation({
+        registryName: 'Choco brownie',
+        registryBrand: 'Milka',
+        registryQuantity: '150 g',
+        registryConfidence: 0.9,
+      }),
+    ).toEqual({ displayName: 'Choco brownie', brand: 'Milka', quantity: '150 g' });
+  });
+
+  it('PRING-EAN-PRES-04A: trusted global and short brand names remain customer-visible', () => {
+    for (const reconciledName of [
+      "M&M's",
+      'BBQ',
+      'Молоко',
+      '牛乳',
+      'Idahoan Mashed Potatoes',
+    ]) {
+      expect(recognitionNamePresentation({ reconciledName })).toEqual({
+        displayName: reconciledName,
+        brand: null,
+        quantity: null,
+      });
+    }
+  });
+
+  it('PRING-EAN-PRES-04B: later reconciliation keeps non-conflicting exact-pack detail', () => {
+    expect(
+      carryRecognitionPresentationDetails(
+        { displayName: 'DR PEPPER - CLASSIC', brand: null, quantity: '330ml' },
+        { displayName: 'DR PEPPER - CLASSIC', brand: null, quantity: null },
+        { reconciledBrandProvided: true },
+      ),
+    ).toEqual({ displayName: 'DR PEPPER - CLASSIC', brand: null, quantity: '330ml' });
+    expect(
+      carryRecognitionPresentationDetails(
+        { displayName: 'Vanilla Paste', brand: 'Acme', quantity: '100 g' },
+        { displayName: 'Acme Vanilla Paste 100 g', brand: null, quantity: null },
+        { reconciledBrandProvided: true },
+      ),
+    ).toEqual({ displayName: 'Acme Vanilla Paste 100 g', brand: null, quantity: null });
+    expect(
+      carryRecognitionPresentationDetails(
+        { displayName: 'Haribo Goldbären', brand: null, quantity: '175g' },
+        { displayName: 'Haribo Goldbären 90 g', brand: null, quantity: null },
+        { reconciledBrandProvided: true },
+      ),
+    ).toEqual({ displayName: 'Haribo Goldbären 90 g', brand: null, quantity: null });
+  });
+
   it('a typed code becomes the same confirmed-scan contract, with manual provenance', () => {
-    const scan = manualConfirmedScan(' 8402 0010 47251 ', 1000);
+    const scan = manualConfirmedScan(' 8402001047251 ', 1000);
     expect(scan?.symbology).toBe('EAN-13');
     expect(scan?.value).toBe('8402001047251');
     expect(scan?.confirmation.sources).toEqual(['manual']);
     expect(scan?.provenance.trackId).toBe('manual');
     expect(manualConfirmedScan('036000291452')?.symbology).toBe('UPC-A');
-    expect(manualConfirmedScan('96385074')?.symbology).toBe('EAN-8');
+    expect(manualConfirmedScan('96385074')).toBeNull();
+    expect(manualConfirmedScan('8402 0010 47251')).toBeNull();
+    expect(manualConfirmedScan('8402001047251-')).toBeNull();
+    expect(manualConfirmedScan('8402001047251\uFF11')).toBeNull();
     expect(manualConfirmedScan('123')).toBeNull();
     expect(manualConfirmedScan('12345678901234')).toBeNull();
   });
@@ -121,6 +256,7 @@ describe('scan flow — pure rules', () => {
       salt: '',
       alcoholAbv: '',
     });
+    expect(c.evidenceOrigin).toBe('customer_action');
     expect(c.productFields).toEqual({
       identity: { displayName: 'Choco Wafers', brand: 'Milka' },
       ingredientsText: 'cukier, mąka',
@@ -134,6 +270,61 @@ describe('scan flow — pure rules', () => {
     expect(confirmationsFromFields({ fat: '1', basis: 'per_100ml' }).productFields).toEqual({
       nutrition: { fat: 1, basis: 'per_100ml' },
     });
+  });
+
+  it('never relabels registry-prefilled values as customer-confirmed when they were not requested', () => {
+    const values = {
+      displayName: 'NESTEA Mango-Piña',
+      brand: 'Nestlé',
+      ingredientsText: 'woda, cukier, sok mango i ananas',
+      basis: 'per_100ml',
+      energyKcal: '19',
+      salt: '0.01',
+    };
+    expect(confirmationsFromFields(values, ['salt']).productFields).toEqual({
+      nutrition: { salt: 0.01, basis: 'per_100ml' },
+    });
+    expect(confirmationsFromFields(values, []).productFields).toEqual({});
+  });
+
+  it('classifies technical-only gaps as impossible to solve from a label photo', () => {
+    expect(
+      classifyRemainingGaps([
+        'MISSING_TOTAL_SOLIDS_PERCENT',
+        'MISSING_WATER_PERCENT',
+        'UNRESOLVED_SWEETENING_FREEZING_PATH',
+      ]),
+    ).toEqual({
+      photoSolvable: [],
+      photoCannotSolve: [
+        'MISSING_TOTAL_SOLIDS_PERCENT',
+        'MISSING_WATER_PERCENT',
+        'UNRESOLVED_SWEETENING_FREEZING_PATH',
+      ],
+    });
+  });
+
+  it('keeps a real ingredients gap photo-solvable beside an Engine gap', () => {
+    expect(classifyRemainingGaps(['evidence_ingredients', 'MISSING_WATER_PERCENT'])).toEqual({
+      photoSolvable: ['evidence_ingredients'],
+      photoCannotSolve: ['MISSING_WATER_PERCENT'],
+    });
+  });
+
+  it('turns the mass-balance pair into one exact customer question and confirmation', () => {
+    expect(
+      manualFieldsFor(['MISSING_TOTAL_SOLIDS_PERCENT', 'MISSING_WATER_PERCENT']).map((field) => ({
+        key: field.key,
+        label: field.label,
+        required: field.required,
+      })),
+    ).toEqual([{ key: 'totalSolidsPercent', label: 'Sucha masa produktu', required: true }]);
+    expect(confirmationsFromFields({ totalSolidsPercent: '12,1' }, ['totalSolidsPercent'])).toEqual(
+      {
+        evidenceOrigin: 'customer_action',
+        productFields: { productionDeclarations: { totalSolidsPercent: 12.1 } },
+      },
+    );
   });
 
   it('the customer always reads what the scanner is doing: guidance > position > state', () => {
@@ -192,6 +383,28 @@ describe('scan flow — pure rules', () => {
         nutrition: { energyKcal: 467.5, fat: 27, basis: 'per_100g' },
         ingredientsText: 'Azúcar, HUEVO',
         allergensText: 'eggs, gluten',
+      },
+      automaticEvidence: {
+        source: 'barcode_registry',
+        exactGtin: '7622210669315',
+        sourceUrl: 'u',
+        queriedAt: 1,
+        productFields: {},
+      },
+      publicationEligibility: {
+        version: 'PRODUCT_PUBLICATION_IDENTITY_V1',
+        eligible: true,
+        exactSkuIdentity: true,
+        normalized: {
+          displayName: 'choco brownie',
+          brand: 'milka',
+          manufacturer: '',
+          variant: '',
+          productType: '',
+        },
+        distinguishingTokens: ['choco', 'brownie'],
+        reasonCodes: [],
+        fieldProvenance: {},
       },
       hasNutrition: true,
       hasIngredients: true,

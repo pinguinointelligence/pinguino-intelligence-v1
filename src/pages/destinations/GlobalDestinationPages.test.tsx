@@ -61,8 +61,37 @@ describe('canonical global destination hubs', () => {
 
   it('keeps Franchise separate from the Collaboration destination', () => {
     const html = render(<FranchisePage />, '/franchise');
-    expect(html).toContain('Zapytaj o Franchise');
+    expect(html).toContain('Franchise');
     expect(html).not.toContain('href="/work-with-us"');
+  });
+
+  /* FRANCHISE — DESIGN F1 (owner 2026-09-18): the dark top on the facade, four
+     formats in one row, ONE opened format, „Jak działa Gellatti”, and the
+     compact enquiry form last. The page used to list the four formats twice. */
+  it('opens Franchise on four formats with no detail expanded', () => {
+    const html = render(<FranchisePage />, '/franchise');
+    for (const id of ['local', 'food-truck', 'cart', 'machines']) {
+      expect(html).toContain(`data-testid="franchise-format-${id}"`);
+    }
+    // The design's start state: the row, then „Jak działa Gellatti” — no four
+    // descriptions at once, and no block opened before anything is chosen.
+    expect(html).not.toContain('data-testid="franchise-format-panel"');
+    expect(html).toContain('Jak działa Gellatti');
+    // 2 x 2 up to the design's own breakpoint, four across from it.
+    expect(html).toContain('grid-cols-2 gap-2 md:mt-[26px] md:grid-cols-4');
+    // Every closed card already carries its photograph.
+    expect(html).toContain('/images/work-with-us/F01.png');
+    expect(html).toContain('/images/work-with-us/W03.png');
+    expect(html).toContain('/images/work-with-us/W02.png');
+    expect(html).toContain('/images/work-with-us/W04.png');
+    // The form stays a form, on the page, and is the only contact here.
+    expect(html).toContain('id="franchise-inquiry"');
+    expect(html).not.toContain('data-testid="franchise-contact-open"');
+  });
+
+  it("answers a lane CTA with that lane's format", () => {
+    const html = render(<FranchisePage />, '/franchise?from=%2Ftrailer#lead');
+    expect(html).toContain('data-franchise-format="food-truck"');
   });
 
   it('consolidates customer product intake under one Products destination', () => {
@@ -77,22 +106,37 @@ describe('canonical global destination hubs', () => {
     expect(html).toContain('★ Ulubione');
   });
 
-  it('exposes one Pro Production hub with Current, History and Labels', () => {
+  /* Production v3 §6 (owner decision 2026-09-18): Partie is one page — the work in
+     progress, a quiet way to the production history, and the history itself (paged).
+     No fifth tab; the former „Etykiety” tab is the Etykiety section (`/labels`). */
+  it('exposes Partie with the work in progress and the production history on one page', () => {
     const html = render(<ProductionHubPage />, '/production');
-    expect(html).toContain('data-testid="production-tab-current"');
-    expect(html).toContain('data-testid="production-tab-history"');
-    expect(html).toContain('data-testid="production-tab-labels"');
+    expect(html).not.toContain('data-testid="production-tab-');
     expect(html).toContain('data-testid="production-current"');
+    expect(html).toContain('data-testid="production-history-jump"');
+    expect(html).toContain('id="production-history"');
+    expect(html).toContain('data-testid="production-history"');
     expect(render(<ProductionHubPage />, '/production?tab=history')).toContain(
       'data-testid="production-history"',
     );
-    expect(render(<ProductionHubPage />, '/production?tab=labels')).toContain(
+    // `?tab=labels` lands on Etykiety instead of a second label viewer.
+    expect(render(<ProductionHubPage />, '/production?tab=labels')).not.toContain(
       'data-testid="production-labels"',
     );
   });
 
-  it('keeps Production gated from Home without pretending it works', () => {
+  it('shows HOME its Partie without production tools, history or a created batch', () => {
     persona = 'home';
+    const html = render(<ProductionHubPage />, '/production');
+    expect(html).toContain('data-testid="production-current"');
+    expect(html).toContain('Nie masz teraz partii w toku.');
+    expect(html).toContain('href="/recipes"');
+    expect(html).not.toContain('data-testid="production-history"');
+    expect(html).not.toContain('Otwórz etykietę');
+  });
+
+  it('keeps Production gated without a plan', () => {
+    persona = 'demo';
     const html = render(<ProductionHubPage />, '/production');
     expect(html).toContain('Produkcja jest dostępna w planie Pro');
     expect(html).not.toContain('data-testid="production-current"');

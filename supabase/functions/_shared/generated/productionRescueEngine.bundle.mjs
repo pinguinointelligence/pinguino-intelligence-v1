@@ -3452,18 +3452,18 @@ const ALL_INGREDIENT_IDENTITIES = [
 	...PROTEIN_INGREDIENT_IDENTITIES,
 	...LEGACY_BUILTIN_INGREDIENT_IDENTITIES
 ];
-const BY_TOOLBOX_ID = new Map(ALL_INGREDIENT_IDENTITIES.map((entry) => [entry.toolboxId, entry]));
-const BY_MAPPER_ID = new Map(ALL_INGREDIENT_IDENTITIES.map((entry) => [entry.mapperId, entry]));
+const BY_TOOLBOX_ID$1 = new Map(ALL_INGREDIENT_IDENTITIES.map((entry) => [entry.toolboxId, entry]));
+const BY_MAPPER_ID$1 = new Map(ALL_INGREDIENT_IDENTITIES.map((entry) => [entry.mapperId, entry]));
 /** True only for the closed, exact Mapper/toolbox bridge above. It is used to
 * require resolver authority for accepted built-ins without inferring identity
 * from a translated display name. */
 function hasCanonicalIngredientIdentity(id) {
 	if (!id) return false;
-	return BY_TOOLBOX_ID.has(id) || BY_MAPPER_ID.has(id);
+	return BY_TOOLBOX_ID$1.has(id) || BY_MAPPER_ID$1.has(id);
 }
 /** Exact stable key. Legacy toolbox ids resolve through the closed registry. */
 function canonicalIngredientId(ingredient) {
-	const toolboxIdentity = BY_TOOLBOX_ID.get(ingredient.id);
+	const toolboxIdentity = BY_TOOLBOX_ID$1.get(ingredient.id);
 	if (toolboxIdentity) return toolboxIdentity.mapperId;
 	if (ingredient.id.startsWith("PI-ING-")) return ingredient.id;
 	const explicit = ingredient.canonical_ingredient_id?.trim();
@@ -3675,6 +3675,1581 @@ function normalizeFormulationStrategy(value) {
 }
 
 //#endregion
+//#region src/data/ingredients/canonicalToolboxCompositions.ts
+const CANONICAL_TOOLBOX_COMPOSITIONS = [
+	{
+		"toolboxId": "sucrose",
+		"mapperId": "PI-ING-000514",
+		"displayName": "SUCROSE SUGAR · Sweetener · Dry",
+		"composition": {
+			"water_percent": 0,
+			"solids_percent": 100,
+			"fat_percent": 0,
+			"protein_percent": 0,
+			"carbohydrate_percent": 100,
+			"sugar_percent": 100,
+			"sucrose_percent": 100,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 400,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 100,
+		"pac_value": 100,
+		"de_value": null,
+		"cost_per_kg": 1.2,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "dextrose",
+		"mapperId": "PI-ING-000494",
+		"displayName": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+		"composition": {
+			"water_percent": 9.1,
+			"solids_percent": 90.9,
+			"fat_percent": 0,
+			"protein_percent": 0,
+			"carbohydrate_percent": 90.9,
+			"sugar_percent": 90.9,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 90.9,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 364,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 72.7,
+		"pac_value": 172.7,
+		"de_value": null,
+		"cost_per_kg": 2.8,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified / Global Reference",
+		"verified": true
+	},
+	{
+		"toolboxId": "tara_gum",
+		"mapperId": "PI-ING-000492",
+		"displayName": "TARA GUM · Stabilizer",
+		"composition": {
+			"water_percent": 9.5,
+			"solids_percent": 90.5,
+			"fat_percent": .5,
+			"protein_percent": 2,
+			"carbohydrate_percent": 1.5,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 86.5,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 180,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 0,
+		"pac_value": 0,
+		"de_value": null,
+		"cost_per_kg": 20,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "cream_30",
+		"mapperId": "PI-ING-000180",
+		"displayName": "CREAM 30% · Mlekovita Cream · Chilled",
+		"composition": {
+			"water_percent": 63.9173,
+			"solids_percent": 36.0827,
+			"fat_percent": 30,
+			"protein_percent": 2.3,
+			"carbohydrate_percent": 3.2,
+			"sugar_percent": 3.2,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 3.2,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .08,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 292,
+			"saturated_fat_percent": 19.2
+		},
+		"pod_value": .512,
+		"pac_value": 3.668,
+		"de_value": null,
+		"cost_per_kg": 3.2,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "milk_3_5",
+		"mapperId": "PI-ING-000236",
+		"displayName": "MILK · 3.5% FAT · Chilled",
+		"composition": {
+			"water_percent": 88.1,
+			"solids_percent": 11.9,
+			"fat_percent": 3.5,
+			"protein_percent": 3,
+			"carbohydrate_percent": 4.7,
+			"sugar_percent": 4.7,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 4.7,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .1,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 60,
+			"saturated_fat_percent": 2.24
+		},
+		"pod_value": .752,
+		"pac_value": 5.285,
+		"de_value": null,
+		"cost_per_kg": 1.2,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "smp",
+		"mapperId": "PI-ING-000270",
+		"displayName": "SKIMMED MILK POWDER · 0.8% FAT · Dairy · Dry",
+		"composition": {
+			"water_percent": 3.12,
+			"solids_percent": 96.88,
+			"fat_percent": .8,
+			"protein_percent": 35.7,
+			"carbohydrate_percent": 51.98,
+			"sugar_percent": 51,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 51,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": 1.2,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 362,
+			"saturated_fat_percent": .512
+		},
+		"pod_value": 8.16,
+		"pac_value": 58.02,
+		"de_value": null,
+		"cost_per_kg": 6.5,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "inulin",
+		"mapperId": "PI-ING-000456",
+		"displayName": "INULIN · Fibre · Powder",
+		"composition": {
+			"water_percent": 3,
+			"solids_percent": 97,
+			"fat_percent": 0,
+			"protein_percent": 0,
+			"carbohydrate_percent": 8,
+			"sugar_percent": 8,
+			"sucrose_percent": 8,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 89,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 210,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 8,
+		"pac_value": 8,
+		"de_value": null,
+		"cost_per_kg": 8,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "water",
+		"mapperId": "PI-ING-001409",
+		"displayName": "WATER · Liquid",
+		"composition": {
+			"water_percent": 100,
+			"solids_percent": 0,
+			"fat_percent": 0,
+			"protein_percent": 0,
+			"carbohydrate_percent": 0,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 0
+		},
+		"pod_value": 0,
+		"pac_value": 0,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 95,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "salt",
+		"mapperId": "PI-ING-000458",
+		"displayName": "SALT · Specialty",
+		"composition": {
+			"water_percent": 0,
+			"solids_percent": 100,
+			"fat_percent": 0,
+			"protein_percent": 0,
+			"carbohydrate_percent": 0,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": 90,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 0,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 0,
+		"pac_value": 585,
+		"de_value": null,
+		"cost_per_kg": 8,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "raspberry",
+		"mapperId": "PI-ING-000394",
+		"displayName": "RASPBERRIES · Fresh Fruit",
+		"composition": {
+			"water_percent": 86.097,
+			"solids_percent": 13.903,
+			"fat_percent": .3,
+			"protein_percent": 1.3,
+			"carbohydrate_percent": 5.3,
+			"sugar_percent": 4.9,
+			"sucrose_percent": 1,
+			"glucose_percent": 1.7,
+			"dextrose_percent": 0,
+			"fructose_percent": 2.2,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 6.7,
+			"salt_percent": .303,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 43,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 6.049,
+		"pac_value": 10.183,
+		"de_value": null,
+		"cost_per_kg": 3.5,
+		"cost_currency": "EUR",
+		"confidence_score": 92,
+		"verification_status": "Estimated",
+		"verified": false
+	},
+	{
+		"toolboxId": "banana",
+		"mapperId": "PI-ING-000345",
+		"displayName": "BANANA · Fresh Fruit",
+		"composition": {
+			"water_percent": 74.4,
+			"solids_percent": 25.6,
+			"fat_percent": .3,
+			"protein_percent": .1,
+			"carbohydrate_percent": 23.5,
+			"sugar_percent": 19.3,
+			"sucrose_percent": 11.1,
+			"glucose_percent": 4.49,
+			"dextrose_percent": 0,
+			"fructose_percent": 3.8,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 1.7,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 97,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 20.948,
+		"pac_value": 26.68,
+		"de_value": null,
+		"cost_per_kg": 3.5,
+		"cost_currency": "EUR",
+		"confidence_score": 92,
+		"verification_status": "Estimated",
+		"verified": false
+	},
+	{
+		"toolboxId": "cocoa_2224",
+		"mapperId": "PI-ING-001578",
+		"displayName": "COCOA ALKALIZED 100% · Cacao Barry Cocoa Powder",
+		"composition": {
+			"water_percent": 0,
+			"solids_percent": 100,
+			"fat_percent": 23,
+			"protein_percent": 18.9,
+			"carbohydrate_percent": 8.8,
+			"sugar_percent": .4,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 29,
+			"salt_percent": .04,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 384
+		},
+		"pod_value": .4,
+		"pac_value": .634,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 95,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "dark_chocolate_70",
+		"mapperId": "PI-ING-000102",
+		"displayName": "DARK CHOCOLATE 70.5% · Callebaut Couverture · Dry",
+		"composition": {
+			"water_percent": 0,
+			"solids_percent": 100,
+			"fat_percent": 41,
+			"protein_percent": 8.2,
+			"carbohydrate_percent": 31,
+			"sugar_percent": 27,
+			"sucrose_percent": 27,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .02,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 557,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 27,
+		"pac_value": 27.117,
+		"de_value": null,
+		"cost_per_kg": 9.5,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "pistachio_paste",
+		"mapperId": "PI-ING-000614",
+		"displayName": "PISTACHIO · Aldori Paste · 100% Nut",
+		"composition": {
+			"water_percent": 8,
+			"solids_percent": 92,
+			"fat_percent": 45,
+			"protein_percent": 20,
+			"carbohydrate_percent": 17,
+			"sugar_percent": 7.7,
+			"sucrose_percent": 7.7,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 10,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 573,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 7.7,
+		"pac_value": 7.7,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 95,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "whiskey_40",
+		"mapperId": "PI-ING-000038",
+		"displayName": "WHISKY 40% · Spirit",
+		"composition": {
+			"water_percent": 68.4,
+			"solids_percent": 0,
+			"fat_percent": 0,
+			"protein_percent": 0,
+			"carbohydrate_percent": 0,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": 0,
+			"alcohol_percent": 31.6,
+			"kcal_per_100g": 250,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 0,
+		"pac_value": 233.84,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "wpc_60",
+		"mapperId": "PI-ING-000294",
+		"displayName": "WHEY PROTEIN CONCENTRATE · WPC 60 · 60% PROTEIN",
+		"composition": {
+			"water_percent": 4,
+			"solids_percent": 96,
+			"fat_percent": 6,
+			"protein_percent": 60,
+			"carbohydrate_percent": 24,
+			"sugar_percent": 24,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 24,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .3,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 390,
+			"saturated_fat_percent": 3.84
+		},
+		"pod_value": 3.84,
+		"pac_value": 25.755,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 84,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "mpc_75",
+		"mapperId": "PI-ING-000237",
+		"displayName": "MILK PROTEIN POWDER · 75% PROTEIN · Legacy MPC/WPC identity",
+		"composition": {
+			"water_percent": 14.1,
+			"solids_percent": 85.9,
+			"fat_percent": .6,
+			"protein_percent": 75,
+			"carbohydrate_percent": 10,
+			"sugar_percent": 10,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 10,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .3,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 304,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 1.6,
+		"pac_value": 11.755,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Legacy reference / Exact identity or TDS review",
+		"verified": false
+	},
+	{
+		"toolboxId": "protein_gel_wpc",
+		"mapperId": "PI-ING-000264",
+		"displayName": "PROTEIN GEL · WPC 80 CLASS · Sempre · SEMPRE230",
+		"composition": {
+			"water_percent": 3.7,
+			"solids_percent": 96.3,
+			"fat_percent": 7,
+			"protein_percent": 80,
+			"carbohydrate_percent": 9,
+			"sugar_percent": 3.3,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 3.3,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .3,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 400,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": .528,
+		"pac_value": 5.055,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Legacy reference / Exact identity or TDS review",
+		"verified": false
+	},
+	{
+		"toolboxId": "wpc_80",
+		"mapperId": "PI-ING-000295",
+		"displayName": "WHEY PROTEIN CONCENTRATE · WPC 80 · 80% PROTEIN",
+		"composition": {
+			"water_percent": 4,
+			"solids_percent": 96,
+			"fat_percent": 6,
+			"protein_percent": 80,
+			"carbohydrate_percent": 6.5,
+			"sugar_percent": 6.5,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 6.5,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .3,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 400,
+			"saturated_fat_percent": 3.84
+		},
+		"pod_value": 1.04,
+		"pac_value": 8.255,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 90,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "skyr_12",
+		"mapperId": "PI-ING-001395",
+		"displayName": "SKYR ICELANDIC YOGHURT · Piątnica Yogurt · Chilled",
+		"composition": {
+			"water_percent": 83.1,
+			"solids_percent": 16.9,
+			"fat_percent": 0,
+			"protein_percent": 12,
+			"carbohydrate_percent": 4.1,
+			"sugar_percent": 4.1,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 4.1,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .1,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 64,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": .656,
+		"pac_value": 4.685,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "skyr_11",
+		"mapperId": "PI-ING-001451",
+		"displayName": "SKYR · 0.2% FAT · 11% PROTEIN · Chilled",
+		"composition": {
+			"water_percent": 82,
+			"solids_percent": 18,
+			"fat_percent": .2,
+			"protein_percent": 11,
+			"carbohydrate_percent": 6,
+			"sugar_percent": 4,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .1,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 70,
+			"saturated_fat_percent": .128
+		},
+		"pod_value": 4,
+		"pac_value": 4.585,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "pea_protein",
+		"mapperId": "PI-ING-000451",
+		"displayName": "PEA PROTEIN · 81.7% PROTEIN · High-salt legacy profile",
+		"composition": {
+			"water_percent": 2.2,
+			"solids_percent": 97.8,
+			"fat_percent": 9,
+			"protein_percent": 81.7,
+			"carbohydrate_percent": .7,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 1.4,
+			"salt_percent": 5,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 413,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 0,
+		"pac_value": 29.25,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Legacy reference / Exact identity or TDS review",
+		"verified": false
+	},
+	{
+		"toolboxId": "rice_protein",
+		"mapperId": "PI-ING-000452",
+		"displayName": "RICE PROTEIN · 84% PROTEIN · Legacy profile",
+		"composition": {
+			"water_percent": 1,
+			"solids_percent": 99,
+			"fat_percent": 5,
+			"protein_percent": 84,
+			"carbohydrate_percent": 5,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 5,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 429,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 0,
+		"pac_value": 0,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Legacy reference / Exact identity or TDS review",
+		"verified": false
+	},
+	{
+		"toolboxId": "fructose",
+		"mapperId": "PI-ING-000496",
+		"displayName": "FRUCTOSE · Sweetener · Dry",
+		"composition": {
+			"water_percent": .197,
+			"solids_percent": 99.803,
+			"fat_percent": 0,
+			"protein_percent": 0,
+			"carbohydrate_percent": 99.8,
+			"sugar_percent": 99.8,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 99.8,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .003,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 399,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 169.66,
+		"pac_value": 189.638,
+		"de_value": null,
+		"cost_per_kg": 3.5,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "dried_egg_yolk",
+		"mapperId": "PI-ING-001645",
+		"displayName": "EGGS CHICKEN YOLK DRIED · Egg",
+		"composition": {
+			"water_percent": 6.056,
+			"solids_percent": 93.944,
+			"fat_percent": 56.5,
+			"protein_percent": 34.5,
+			"carbohydrate_percent": 2.5,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .44375,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 656
+		},
+		"pod_value": 0,
+		"pac_value": 2.596,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 95,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "cream_powder_42",
+		"mapperId": "PI-ING-000260",
+		"displayName": "CREAM POWDER · 42% FAT · Mlekovita · Dry",
+		"composition": {
+			"water_percent": 3,
+			"solids_percent": 97,
+			"fat_percent": 42,
+			"protein_percent": 20,
+			"carbohydrate_percent": 30,
+			"sugar_percent": 30,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 30,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .1,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 578,
+			"saturated_fat_percent": 27
+		},
+		"pod_value": 4.8,
+		"pac_value": 30.585,
+		"de_value": null,
+		"cost_per_kg": 8.5,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "gellatti_stabilizer",
+		"mapperId": "PI-ING-002114",
+		"displayName": "GELLATTI STABILIZER · Gellatti Stabilizer Blend · Dry",
+		"composition": {
+			"water_percent": 7.1625,
+			"solids_percent": 92.8375,
+			"fat_percent": .5375,
+			"protein_percent": 2.9985,
+			"carbohydrate_percent": 13.17,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 74.315,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 192,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 0,
+		"pac_value": 0,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": null,
+		"confidence_score": 100,
+		"verification_status": "Verified / PI Calculated",
+		"verified": true
+	},
+	{
+		"toolboxId": "mapper:PI-ING-001565",
+		"mapperId": "PI-ING-001565",
+		"displayName": "OAT DRINK · Beverage · Chilled · BIO",
+		"composition": {
+			"water_percent": 91.9,
+			"solids_percent": 8.1,
+			"fat_percent": 1.3,
+			"protein_percent": .4,
+			"carbohydrate_percent": 6,
+			"sugar_percent": 4.1,
+			"sucrose_percent": 4.1,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .12,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 37,
+			"saturated_fat_percent": .195
+		},
+		"pod_value": 4.1,
+		"pac_value": 4.802,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-001566",
+		"mapperId": "PI-ING-001566",
+		"displayName": "RICE DRINK · Beverage · Chilled",
+		"composition": {
+			"water_percent": 88.3,
+			"solids_percent": 11.7,
+			"fat_percent": .9,
+			"protein_percent": .1,
+			"carbohydrate_percent": 10.3,
+			"sugar_percent": 4.47,
+			"sucrose_percent": .03,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .1,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 50,
+			"saturated_fat_percent": .135
+		},
+		"pod_value": 4.47,
+		"pac_value": 5.055,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-002109",
+		"mapperId": "PI-ING-002109",
+		"displayName": "SOY DRINK 0% ADDED SUGAR · Carrefour · UHT",
+		"composition": {
+			"water_percent": 93.6,
+			"solids_percent": 6.4,
+			"fat_percent": 1.8,
+			"protein_percent": 3.2,
+			"carbohydrate_percent": 1,
+			"sugar_percent": .7,
+			"sucrose_percent": .7,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .06,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 33,
+			"saturated_fat_percent": .3
+		},
+		"pod_value": .7,
+		"pac_value": .7,
+		"de_value": null,
+		"cost_per_kg": 1.71,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-002110",
+		"mapperId": "PI-ING-002110",
+		"displayName": "HIGH-PROTEIN SOY DRINK · EcoCesta · BIO",
+		"composition": {
+			"water_percent": 87.8,
+			"solids_percent": 12.2,
+			"fat_percent": 2.6,
+			"protein_percent": 5.2,
+			"carbohydrate_percent": 2.7,
+			"sugar_percent": 2.4,
+			"sucrose_percent": 2.4,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 1.3,
+			"salt_percent": .1,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 58,
+			"saturated_fat_percent": .5
+		},
+		"pod_value": 2.4,
+		"pac_value": 2.4,
+		"de_value": null,
+		"cost_per_kg": 3.25,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-002111",
+		"mapperId": "PI-ING-002111",
+		"displayName": "SOY SKYR HIGH PROTEIN NATURAL · Alpro · Chilled",
+		"composition": {
+			"water_percent": 86.4,
+			"solids_percent": 13.6,
+			"fat_percent": 3.3,
+			"protein_percent": 6,
+			"carbohydrate_percent": 2.6,
+			"sugar_percent": 2.5,
+			"sucrose_percent": 2.5,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 1.3,
+			"salt_percent": .33,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 68,
+			"saturated_fat_percent": .6
+		},
+		"pod_value": 2.5,
+		"pac_value": 2.5,
+		"de_value": null,
+		"cost_per_kg": 6.97,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-002112",
+		"mapperId": "PI-ING-002112",
+		"displayName": "SOY PLUS LIGHT 0% SUGAR · Vivesoy · UHT",
+		"composition": {
+			"water_percent": 94.2,
+			"solids_percent": 5.8,
+			"fat_percent": 1.4,
+			"protein_percent": 2.7,
+			"carbohydrate_percent": .5,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": .8,
+			"salt_percent": .12,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 27,
+			"saturated_fat_percent": .2
+		},
+		"pod_value": 0,
+		"pac_value": 0,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-001587",
+		"mapperId": "PI-ING-001587",
+		"displayName": "ALMOND DRINK · Beverage · Chilled",
+		"composition": {
+			"water_percent": 90.5,
+			"solids_percent": 9.5,
+			"fat_percent": 2.2,
+			"protein_percent": .7,
+			"carbohydrate_percent": 5.9,
+			"sugar_percent": 3.28,
+			"sucrose_percent": .56,
+			"glucose_percent": .05,
+			"dextrose_percent": 0,
+			"fructose_percent": 2.6,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": .3,
+			"salt_percent": .2,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 47,
+			"saturated_fat_percent": .33
+		},
+		"pod_value": 5.089,
+		"pac_value": 6.835,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-000163",
+		"mapperId": "PI-ING-000163",
+		"displayName": "REFINED COCONUT OIL · Elstar Fats",
+		"composition": {
+			"water_percent": 0,
+			"solids_percent": 100,
+			"fat_percent": 100,
+			"protein_percent": 0,
+			"carbohydrate_percent": 0,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 900,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 0,
+		"pac_value": 0,
+		"de_value": null,
+		"cost_per_kg": 5,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "mapper:PI-ING-000305",
+		"mapperId": "PI-ING-000305",
+		"displayName": "SUNFLOWER OIL · Fat",
+		"composition": {
+			"water_percent": 0,
+			"solids_percent": 100,
+			"fat_percent": 100,
+			"protein_percent": 0,
+			"carbohydrate_percent": 0,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 900,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 0,
+		"pac_value": 0,
+		"de_value": null,
+		"cost_per_kg": 4,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "mapper:PI-ING-000451",
+		"mapperId": "PI-ING-000451",
+		"displayName": "PEA PROTEIN · 81.7% PROTEIN · High-salt legacy profile",
+		"composition": {
+			"water_percent": 2.2,
+			"solids_percent": 97.8,
+			"fat_percent": 9,
+			"protein_percent": 81.7,
+			"carbohydrate_percent": .7,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 1.4,
+			"salt_percent": 5,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 413,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 0,
+		"pac_value": 29.25,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Legacy reference / Exact identity or TDS review",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-000452",
+		"mapperId": "PI-ING-000452",
+		"displayName": "RICE PROTEIN · 84% PROTEIN · Legacy profile",
+		"composition": {
+			"water_percent": 1,
+			"solids_percent": 99,
+			"fat_percent": 5,
+			"protein_percent": 84,
+			"carbohydrate_percent": 5,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 5,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 429,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 0,
+		"pac_value": 0,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Legacy reference / Exact identity or TDS review",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-000514",
+		"mapperId": "PI-ING-000514",
+		"displayName": "SUCROSE SUGAR · Sweetener · Dry",
+		"composition": {
+			"water_percent": 0,
+			"solids_percent": 100,
+			"fat_percent": 0,
+			"protein_percent": 0,
+			"carbohydrate_percent": 100,
+			"sugar_percent": 100,
+			"sucrose_percent": 100,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 400,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 100,
+		"pac_value": 100,
+		"de_value": null,
+		"cost_per_kg": 1.2,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "mapper:PI-ING-000494",
+		"mapperId": "PI-ING-000494",
+		"displayName": "DEXTROSE MONOHYDRATE · Sweetener · Dry",
+		"composition": {
+			"water_percent": 9.1,
+			"solids_percent": 90.9,
+			"fat_percent": 0,
+			"protein_percent": 0,
+			"carbohydrate_percent": 90.9,
+			"sugar_percent": 90.9,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 90.9,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 364,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 72.7,
+		"pac_value": 172.7,
+		"de_value": null,
+		"cost_per_kg": 2.8,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified / Global Reference",
+		"verified": true
+	},
+	{
+		"toolboxId": "mapper:PI-ING-000492",
+		"mapperId": "PI-ING-000492",
+		"displayName": "TARA GUM · Stabilizer",
+		"composition": {
+			"water_percent": 9.5,
+			"solids_percent": 90.5,
+			"fat_percent": .5,
+			"protein_percent": 2,
+			"carbohydrate_percent": 1.5,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 86.5,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 180,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 0,
+		"pac_value": 0,
+		"de_value": null,
+		"cost_per_kg": 20,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "mapper:PI-ING-000456",
+		"mapperId": "PI-ING-000456",
+		"displayName": "INULIN · Fibre · Powder",
+		"composition": {
+			"water_percent": 3,
+			"solids_percent": 97,
+			"fat_percent": 0,
+			"protein_percent": 0,
+			"carbohydrate_percent": 8,
+			"sugar_percent": 8,
+			"sucrose_percent": 8,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 89,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 210,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 8,
+		"pac_value": 8,
+		"de_value": null,
+		"cost_per_kg": 8,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "mapper:PI-ING-001409",
+		"mapperId": "PI-ING-001409",
+		"displayName": "WATER · Liquid",
+		"composition": {
+			"water_percent": 100,
+			"solids_percent": 0,
+			"fat_percent": 0,
+			"protein_percent": 0,
+			"carbohydrate_percent": 0,
+			"sugar_percent": 0,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": 0,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 0
+		},
+		"pod_value": 0,
+		"pac_value": 0,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 95,
+		"verification_status": "Verified",
+		"verified": true
+	},
+	{
+		"toolboxId": "mapper:PI-ING-000237",
+		"mapperId": "PI-ING-000237",
+		"displayName": "MILK PROTEIN POWDER · 75% PROTEIN · Legacy MPC/WPC identity",
+		"composition": {
+			"water_percent": 14.1,
+			"solids_percent": 85.9,
+			"fat_percent": .6,
+			"protein_percent": 75,
+			"carbohydrate_percent": 10,
+			"sugar_percent": 10,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 10,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .3,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 304,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": 1.6,
+		"pac_value": 11.755,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Legacy reference / Exact identity or TDS review",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-000264",
+		"mapperId": "PI-ING-000264",
+		"displayName": "PROTEIN GEL · WPC 80 CLASS · Sempre · SEMPRE230",
+		"composition": {
+			"water_percent": 3.7,
+			"solids_percent": 96.3,
+			"fat_percent": 7,
+			"protein_percent": 80,
+			"carbohydrate_percent": 9,
+			"sugar_percent": 3.3,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 3.3,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .3,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 400,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": .528,
+		"pac_value": 5.055,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 98,
+		"verification_status": "Legacy reference / Exact identity or TDS review",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-000294",
+		"mapperId": "PI-ING-000294",
+		"displayName": "WHEY PROTEIN CONCENTRATE · WPC 60 · 60% PROTEIN",
+		"composition": {
+			"water_percent": 4,
+			"solids_percent": 96,
+			"fat_percent": 6,
+			"protein_percent": 60,
+			"carbohydrate_percent": 24,
+			"sugar_percent": 24,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 24,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .3,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 390,
+			"saturated_fat_percent": 3.84
+		},
+		"pod_value": 3.84,
+		"pac_value": 25.755,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 84,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-000295",
+		"mapperId": "PI-ING-000295",
+		"displayName": "WHEY PROTEIN CONCENTRATE · WPC 80 · 80% PROTEIN",
+		"composition": {
+			"water_percent": 4,
+			"solids_percent": 96,
+			"fat_percent": 6,
+			"protein_percent": 80,
+			"carbohydrate_percent": 6.5,
+			"sugar_percent": 6.5,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 6.5,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .3,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 400,
+			"saturated_fat_percent": 3.84
+		},
+		"pod_value": 1.04,
+		"pac_value": 8.255,
+		"de_value": null,
+		"cost_per_kg": 12,
+		"cost_currency": "EUR",
+		"confidence_score": 90,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-001395",
+		"mapperId": "PI-ING-001395",
+		"displayName": "SKYR ICELANDIC YOGHURT · Piątnica Yogurt · Chilled",
+		"composition": {
+			"water_percent": 83.1,
+			"solids_percent": 16.9,
+			"fat_percent": 0,
+			"protein_percent": 12,
+			"carbohydrate_percent": 4.1,
+			"sugar_percent": 4.1,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 4.1,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .1,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 64,
+			"saturated_fat_percent": 0
+		},
+		"pod_value": .656,
+		"pac_value": 4.685,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	},
+	{
+		"toolboxId": "mapper:PI-ING-001451",
+		"mapperId": "PI-ING-001451",
+		"displayName": "SKYR · 0.2% FAT · 11% PROTEIN · Chilled",
+		"composition": {
+			"water_percent": 82,
+			"solids_percent": 18,
+			"fat_percent": .2,
+			"protein_percent": 11,
+			"carbohydrate_percent": 6,
+			"sugar_percent": 4,
+			"sucrose_percent": 0,
+			"glucose_percent": 0,
+			"dextrose_percent": 0,
+			"fructose_percent": 0,
+			"lactose_percent": 0,
+			"polyol_percent": 0,
+			"fiber_percent": 0,
+			"salt_percent": .1,
+			"alcohol_percent": 0,
+			"kcal_per_100g": 70,
+			"saturated_fat_percent": .128
+		},
+		"pod_value": 4,
+		"pac_value": 4.585,
+		"de_value": null,
+		"cost_per_kg": null,
+		"cost_currency": "EUR",
+		"confidence_score": 85,
+		"verification_status": "Estimated / PI Calculated",
+		"verified": false
+	}
+];
+const BY_TOOLBOX_ID = new Map(CANONICAL_TOOLBOX_COMPOSITIONS.map((entry) => [entry.toolboxId, entry]));
+const BY_MAPPER_ID = new Map(CANONICAL_TOOLBOX_COMPOSITIONS.map((entry) => [entry.mapperId, entry]));
+/** Canonical Mapper-backed composition for an exact PI identity. */
+function canonicalMapperComposition(mapperId) {
+	return BY_MAPPER_ID.get(mapperId) ?? null;
+}
+
+//#endregion
 //#region src/data/ingredients/verifiedVeganToolbox.ts
 /**
 * Small role-filtered Vegan formulation pool mirrored from the canonical
@@ -3725,7 +5300,7 @@ const verified = (id, name, composition, pod, pac, costPerKg) => ({
 		vegan_eligibility_reasons: ["verified_mapper_vegan_true"]
 	}
 });
-const VERIFIED_VEGAN_FORMULATION_CANDIDATES = [
+const VEGAN_FORMULATION_CANDIDATE_SEEDS = [
 	verified("PI-ING-001565", "OAT DRINK · Beverage · Chilled · BIO", {
 		water_percent: 92.18,
 		solids_percent: 7.82,
@@ -3840,6 +5415,22 @@ const VERIFIED_VEGAN_FORMULATION_CANDIDATES = [
 		kcal_per_100g: 429
 	}, 0, 0, 12)
 ];
+const VERIFIED_VEGAN_FORMULATION_CANDIDATES = VEGAN_FORMULATION_CANDIDATE_SEEDS.map((candidate) => {
+	const canonical = canonicalMapperComposition(candidate.id);
+	if (!canonical) return candidate;
+	return {
+		...candidate,
+		name: canonical.displayName,
+		composition: canonical.composition,
+		pod_value: canonical.pod_value,
+		pac_value: canonical.pac_value,
+		de_value: canonical.de_value,
+		cost_per_kg: canonical.cost_per_kg,
+		confidence_score: canonical.confidence_score,
+		source_type: canonical.verified ? "verified_db" : "ai_estimated",
+		is_verified: canonical.verified
+	};
+});
 const VEGAN_VERIFIED_CANONICAL_IDS = new Set([
 	"PI-ING-000163",
 	"PI-ING-000305",
@@ -5266,6 +6857,666 @@ function recipeTechnicalFit(result) {
 		provisional,
 		violationCount: violations.length
 	};
+}
+
+//#endregion
+//#region src/features/recipe-composition/finalProduct.ts
+const toppingEffectiveGrams = (item, context) => context === "actual_batch" ? item.actual_grams ?? item.planned_grams : item.planned_grams;
+function scienceToppingItem(item, context) {
+	if (isCatalogLabelToppingIngredient(item.ingredient)) return null;
+	const grams = toppingEffectiveGrams(item, context);
+	if (grams <= 0) return null;
+	return {
+		id: item.id,
+		ingredient: item.ingredient,
+		planned_grams: grams,
+		actual_grams: context === "actual_batch" ? grams : null,
+		lock_type: context === "actual_batch" ? "already_added" : "unlocked",
+		production_step: item.production_step,
+		notes: item.notes
+	};
+}
+function labelToppingItem(item, context) {
+	if (!isCatalogLabelToppingIngredient(item.ingredient)) return null;
+	const grams = toppingEffectiveGrams(item, context);
+	if (grams <= 0) return null;
+	return {
+		id: item.id,
+		ingredient: item.ingredient,
+		planned_grams: grams,
+		actual_grams: context === "actual_batch" ? grams : null,
+		lock_type: context === "actual_batch" ? "already_added" : "unlocked",
+		production_step: item.production_step,
+		notes: item.notes,
+		effective_grams: grams,
+		difference: context === "actual_batch" ? grams - item.planned_grams : 0,
+		is_actual: context === "actual_batch"
+	};
+}
+function combineLabelNutrition(factual, factualMassG, labelItems, finalMassG) {
+	if (!factual || finalMassG <= 0) return null;
+	const total = {
+		kcal: factual.kcal * factualMassG / 100,
+		fat_g: factual.fat_g * factualMassG / 100,
+		saturated_fat_g: factual.saturated_fat_g === null ? null : factual.saturated_fat_g * factualMassG / 100,
+		carbohydrate_g: factual.carbohydrate_g * factualMassG / 100,
+		sugars_g: factual.sugars_g * factualMassG / 100,
+		protein_g: factual.protein_g * factualMassG / 100,
+		salt_g: factual.salt_g * factualMassG / 100,
+		fiber_g: factual.fiber_g * factualMassG / 100
+	};
+	for (const item of labelItems) {
+		const grams = item.effective_grams;
+		const label = item.ingredient.label_nutrition_per_100g;
+		total.kcal += label.energyKcal * grams / 100;
+		total.fat_g += label.fat * grams / 100;
+		if (label.saturatedFat === null) total.saturated_fat_g = null;
+		else if (total.saturated_fat_g !== null) total.saturated_fat_g += label.saturatedFat * grams / 100;
+		total.carbohydrate_g += label.carbohydrate * grams / 100;
+		if (label.sugars === null) total.sugars_g = null;
+		else if (total.sugars_g !== null) total.sugars_g += label.sugars * grams / 100;
+		total.protein_g += label.protein * grams / 100;
+		total.salt_g += label.salt * grams / 100;
+		if (label.fibre === null) total.fiber_g = null;
+		else if (total.fiber_g !== null) total.fiber_g += label.fibre * grams / 100;
+	}
+	const per100 = (value) => value / finalMassG * 100;
+	return {
+		kcal: per100(total.kcal),
+		fat_g: per100(total.fat_g),
+		saturated_fat_g: total.saturated_fat_g === null ? null : per100(total.saturated_fat_g),
+		carbohydrate_g: per100(total.carbohydrate_g),
+		sugars_g: total.sugars_g === null ? null : per100(total.sugars_g),
+		protein_g: per100(total.protein_g),
+		salt_g: per100(total.salt_g),
+		fiber_g: total.fiber_g === null ? null : per100(total.fiber_g),
+		alcohol_g: labelItems.length === 0 ? factual.alcohol_g : null
+	};
+}
+function combineCosts(factual, labelItems, finalMassG) {
+	if (!factual) return null;
+	const missing = [...factual.missing_cost_ingredient_ids];
+	let knownTotal = factual.known_cost ?? factual.total_cost ?? 0;
+	for (const item of labelItems) {
+		const price = item.ingredient.cost_per_kg;
+		if (price === null) missing.push(item.ingredient.id);
+		else knownTotal += item.effective_grams / 1e3 * price;
+	}
+	const complete = factual.complete && missing.length === 0;
+	const totalCost = complete ? knownTotal : null;
+	const perKg = complete && finalMassG > 0 ? knownTotal / finalMassG * 1e3 : null;
+	const serving = (grams) => perKg === null ? null : perKg * grams / 1e3;
+	return {
+		known_cost: knownTotal,
+		total_cost: totalCost,
+		cost_per_kg: perKg,
+		cost_per_serving_60g: serving(60),
+		cost_per_serving_70g: serving(70),
+		cost_per_serving_80g: serving(80),
+		complete,
+		missing_cost_ingredient_ids: [...new Set(missing)]
+	};
+}
+function calculateFinalProduct(baseInput, toppings = [], context = "planning") {
+	const baseResult = calculateRecipe(baseInput);
+	const scienceItems = toppings.flatMap((item) => {
+		const next = scienceToppingItem(item, context);
+		return next ? [next] : [];
+	});
+	const scienceInputItems = [...baseInput.items.map((item) => ({ ...item })), ...scienceItems];
+	const factualMassG = scienceInputItems.reduce((sum, item) => sum + (item.actual_grams ?? item.planned_grams), 0);
+	const factualFinalResult = calculateRecipe({
+		...baseInput,
+		items: scienceInputItems,
+		target_batch_grams: factualMassG
+	});
+	const labelItems = toppings.flatMap((item) => {
+		const next = labelToppingItem(item, context);
+		return next ? [next] : [];
+	});
+	const toppingMassG = toppings.reduce((sum, item) => sum + toppingEffectiveGrams(item, context), 0);
+	const finalMassG = factualMassG + labelItems.reduce((sum, item) => sum + item.effective_grams, 0);
+	return {
+		baseResult,
+		finalItems: [...factualFinalResult.items, ...labelItems],
+		finalNutritionPer100g: labelItems.length === 0 ? factualFinalResult.nutrition_per_100g : null,
+		finalLabelNutritionPer100g: combineLabelNutrition(factualFinalResult.nutrition_per_100g, factualMassG, labelItems, finalMassG),
+		finalCosts: combineCosts(factualFinalResult.costs, labelItems, finalMassG),
+		baseMassG: baseResult.total_batch_g,
+		toppingMassG,
+		finalMassG,
+		toppingCount: toppings.length
+	};
+}
+
+//#endregion
+//#region src/features/production-workspace/productionRescueAuthority.ts
+/**
+* The terminal authority for the exact 0.1 g vector that Production will
+* persist and later hydrate. Engine bands are necessary but not sufficient:
+* this also retains Main and stabilizer policy, frozen ProductBehavior and all
+* profile gates.
+*/
+function evaluateProductionRescueTerminalAuthority(candidate, composition) {
+	const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
+	return evaluateRecipeConstraintAuthority({
+		recipe: {
+			...candidate,
+			target_batch_grams: candidateBatchGrams
+		},
+		snapshots: composition.behaviorSnapshots ?? {},
+		module: "BATCH_RESCUE",
+		technicalOnlyMainLineIds: composition.ownerReviewGate?.technicalOnlyMainLineIds
+	});
+}
+
+//#endregion
+//#region src/features/production-workspace/productionSession.ts
+const PRODUCTION_GRAMS_EPSILON = 1e-6;
+function productionLotCodeForRun(sessionId, completedAt) {
+	return `LOT-${completedAt.slice(0, 10).replaceAll("-", "")}-${sessionId.replace(/[^a-z0-9]/gi, "").slice(0, 10).toUpperCase() || "RUN"}`;
+}
+function cloneRecipeInput(input) {
+	return {
+		...input,
+		goals: input.goals ? { ...input.goals } : void 0,
+		items: input.items.map((item) => ({
+			...item,
+			ingredient: {
+				...item.ingredient,
+				composition: { ...item.ingredient.composition },
+				flags: item.ingredient.flags ? { ...item.ingredient.flags } : void 0
+			},
+			actual_grams: null
+		}))
+	};
+}
+function productionSourceFingerprint(input, composition) {
+	return JSON.stringify({
+		category: input.category,
+		temperature: input.target_temperature_c,
+		batch: input.target_batch_grams,
+		machine: input.machine_capacity_grams,
+		machineSource: input.machine_capacity_source ?? null,
+		items: input.items.map((item) => ({
+			lineId: item.id,
+			ingredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+			grams: item.planned_grams,
+			lockType: item.lock_type,
+			productionStep: item.production_step ?? null,
+			carbonationStatus: item.ingredient.carbonation_status ?? "UNKNOWN"
+		})),
+		composition: composition ? {
+			baseOrder: composition.baseOrder,
+			behaviorSnapshots: Object.entries(composition.behaviorSnapshots ?? {}).sort(([left], [right]) => left.localeCompare(right)).map(([lineId, snapshot]) => ({
+				lineId,
+				productVersionId: snapshot.productVersionId,
+				factsFingerprint: snapshot.factsFingerprint,
+				behaviorBindingId: snapshot.behaviorBindingId,
+				behaviorBindingVersion: snapshot.behaviorBindingVersion,
+				taxonomyVersion: snapshot.taxonomyVersion,
+				resolverVersion: snapshot.resolverVersion
+			})),
+			toppings: composition.toppings.map((item) => ({
+				lineId: item.id,
+				ingredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
+				grams: item.planned_grams,
+				position: item.addon_sort_order
+			}))
+		} : null
+	});
+}
+function createProductionSession(input) {
+	const plannedInput = cloneRecipeInput(input.plannedInput);
+	const plannedComposition = input.plannedComposition ?? recipeCompositionFromState({
+		items: plannedInput.items,
+		baseOrder: plannedInput.items.map((item) => item.id)
+	});
+	const basePosition = new Map(plannedComposition.baseOrder.map((lineId, index) => [lineId, index]));
+	const orderedBaseItems = plannedInput.items.map((item, sourceIndex) => ({
+		item,
+		sourceIndex
+	})).sort((a, b) => (basePosition.get(a.item.id) ?? a.sourceIndex) - (basePosition.get(b.item.id) ?? b.sourceIndex)).map(({ item }) => item);
+	return {
+		schemaVersion: 2,
+		sessionId: input.sessionId,
+		ownerUserId: input.ownerUserId,
+		source: { ...input.source },
+		sourceFingerprint: productionSourceFingerprint(plannedInput, plannedComposition),
+		status: "in_progress",
+		startedAt: input.startedAt,
+		completedAt: null,
+		plannedInput,
+		plannedComposition,
+		thermalMode: input.thermalMode ?? null,
+		processReadiness: input.processReadiness ?? null,
+		processAdvisories: structuredClone(input.processAdvisories ?? []),
+		heatInformationAcknowledgedAt: input.heatInformationAcknowledgedAt ?? null,
+		degassingRequired: input.degassingRequired ?? false,
+		degassingAcknowledged: input.degassingAcknowledged ?? false,
+		degassingAcknowledgedAt: input.degassingAcknowledgedAt ?? null,
+		carbonatedProductIds: [...input.carbonatedProductIds ?? []],
+		durableRescueAcceptedAt: null,
+		durableRescueRevision: 0,
+		supersededRescue: null,
+		durableActualRevision: 0,
+		lastDeviationDecision: null,
+		invalidDurableRescue: null,
+		rescueAddedItems: [],
+		topUpTasks: [],
+		lines: orderedBaseItems.map((item) => ({
+			lineId: item.id,
+			canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
+			name: item.ingredient.name,
+			plannedGrams: item.planned_grams,
+			targetGrams: item.planned_grams,
+			draftActualGrams: item.planned_grams,
+			draftActualEdited: false,
+			physicalAddedGrams: 0,
+			confirmed: false,
+			confirmedAt: null,
+			confirmationOrder: null,
+			recordCorrectionCount: 0
+		})),
+		addonLines: plannedComposition.toppings.map((item) => ({
+			lineId: item.id,
+			canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
+			name: item.ingredient.name,
+			plannedGrams: item.planned_grams,
+			targetGrams: item.planned_grams,
+			draftActualGrams: item.planned_grams,
+			draftActualEdited: false,
+			physicalAddedGrams: 0,
+			confirmed: false,
+			confirmedAt: null,
+			confirmationOrder: null,
+			recordCorrectionCount: 0
+		})),
+		stage: "base",
+		substitutions: [],
+		customerLabelNote: "",
+		internalProductionNote: "",
+		completionSnapshot: null
+	};
+}
+function requireActive(session) {
+	if (session.status !== "in_progress") throw new Error("Completed production is immutable.");
+}
+function pendingProductionTopUpTasks(session) {
+	return session.topUpTasks.filter((task) => task.status === "pending");
+}
+/** Confirmed actuals + pending target grams: the predicted finished batch. */
+function buildProductionForecastInput(session) {
+	const byId = new Map(session.lines.map((line) => [line.lineId, line]));
+	const pendingTopUpLineIds = new Set(pendingProductionTopUpTasks(session).map((task) => task.sourceRecipeLineId));
+	const items = [...session.plannedInput.items, ...session.rescueAddedItems].map((item) => {
+		const line = byId.get(item.id);
+		if (!line) throw new Error(`Production line missing for ${item.id}.`);
+		const hasPendingTopUp = pendingTopUpLineIds.has(line.lineId);
+		return {
+			...item,
+			planned_grams: line.targetGrams,
+			actual_grams: line.confirmed && !hasPendingTopUp ? line.physicalAddedGrams : null,
+			lock_type: line.confirmed && !hasPendingTopUp ? "already_added" : item.lock_type
+		};
+	});
+	const targetBatchGrams = session.durableRescueRevision > 0 ? session.lines.reduce((sum, line) => sum + line.targetGrams, 0) : session.plannedInput.target_batch_grams;
+	return {
+		...session.plannedInput,
+		target_batch_grams: targetBatchGrams,
+		items
+	};
+}
+/** Every line uses its actual confirmed mass; intended only at completion. */
+function buildFinalActualInput(session) {
+	if (pendingProductionTopUpTasks(session).length > 0) throw new Error("Every authorized Production top-up task must be confirmed before completion.");
+	if (session.lines.some((line) => !line.confirmed)) throw new Error("Every ingredient must be confirmed before production completion.");
+	const byId = new Map(session.lines.map((line) => [line.lineId, line]));
+	const items = [...session.plannedInput.items, ...session.rescueAddedItems].map((item) => {
+		const line = byId.get(item.id);
+		return {
+			...item,
+			planned_grams: line.plannedGrams,
+			actual_grams: line.physicalAddedGrams,
+			lock_type: "already_added"
+		};
+	});
+	const actualTotal = items.reduce((sum, item) => sum + (item.actual_grams ?? 0), 0);
+	return {
+		...session.plannedInput,
+		target_batch_grams: actualTotal,
+		items
+	};
+}
+const productionTopUpTaskId = (revisionId, lineId) => `production-top-up:${revisionId}:${encodeURIComponent(lineId)}`;
+function materializeAuthorizedProductionTopUps(session, rescueRevision, sourceActualRevision, executedAfterAuthorizationLineIds = /* @__PURE__ */ new Set()) {
+	if (session.lines.some((line) => {
+		if (!executedAfterAuthorizationLineIds.has(line.lineId)) return false;
+		return Math.abs(line.physicalAddedGrams - line.targetGrams) > 1e-6;
+	})) return {
+		...session,
+		topUpTasks: session.topUpTasks.map((task) => task.status === "pending" ? {
+			...task,
+			status: "invalidated"
+		} : task)
+	};
+	const existingByKey = new Map(session.topUpTasks.map((task) => [`${task.revisionId}:${task.sourceRecipeLineId}`, task]));
+	const materialized = [];
+	const lines = session.lines.map((line) => {
+		const confirmedBeforeAuthorization = line.confirmedAt !== null && !executedAfterAuthorizationLineIds.has(line.lineId);
+		const authorizedDeltaG = line.targetGrams - line.physicalAddedGrams;
+		if (!confirmedBeforeAuthorization || authorizedDeltaG <= 1e-6) return line;
+		const existing = existingByKey.get(`${rescueRevision}:${line.lineId}`);
+		materialized.push(existing?.status === "pending" && Math.abs(existing.physicalBaselineG - line.physicalAddedGrams) <= 1e-6 && Math.abs(existing.cumulativeTargetG - line.targetGrams) <= 1e-6 ? existing : {
+			taskId: productionTopUpTaskId(rescueRevision, line.lineId),
+			sourceIngredientId: line.canonicalIngredientId,
+			sourceRecipeLineId: line.lineId,
+			ingredientName: line.name,
+			physicalBaselineG: line.physicalAddedGrams,
+			authorizedDeltaG,
+			draftDeltaG: authorizedDeltaG,
+			cumulativeTargetG: line.targetGrams,
+			revisionId: rescueRevision,
+			sourceActualRevision,
+			status: "pending",
+			completedAt: null
+		});
+		return {
+			...line,
+			confirmed: true,
+			draftActualGrams: line.physicalAddedGrams,
+			draftActualEdited: false
+		};
+	});
+	const materializedIds = new Set(materialized.map((task) => task.taskId));
+	const history = session.topUpTasks.map((task) => task.status === "pending" && !materializedIds.has(task.taskId) ? {
+		...task,
+		status: "invalidated"
+	} : task);
+	const historyIds = new Set(history.map((task) => task.taskId));
+	return {
+		...session,
+		lines,
+		topUpTasks: [...history, ...materialized.filter((task) => !historyIds.has(task.taskId))]
+	};
+}
+function productionLineIdsExecutedAfterRescue(run, rescueRevision) {
+	let decisionIndex = -1;
+	for (let index = 0; index < run.events.length; index += 1) {
+		const event = run.events[index];
+		if (event.type === "deviation_decision_accepted" && event.amendment?.rescueRevision === rescueRevision) decisionIndex = index;
+	}
+	if (decisionIndex < 0) return /* @__PURE__ */ new Set();
+	return new Set(run.events.slice(decisionIndex + 1).flatMap((event) => {
+		if (event.type !== "ingredient_actual_confirmed" && event.type !== "actual_entry_corrected") return [];
+		const lineId = event.amendment?.lineId;
+		return typeof lineId === "string" && lineId.length > 0 ? [lineId] : [];
+	}));
+}
+function applyVerifiedRescueInput(session, candidate, rescueRevision = session.durableRescueRevision + 1) {
+	requireActive(session);
+	const authority = evaluateProductionRescueTerminalAuthority(candidate, session.plannedComposition);
+	if (!authority.valid) throw new Error(authority.issues[0]?.messagePl ?? "Production Rescue requires a fully verified recipe candidate.");
+	const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
+	const lines = session.lines.map((line) => {
+		const item = candidateById.get(line.lineId);
+		if (!item) throw new Error(`Verified rescue removed production line ${line.lineId}.`);
+		const candidateFinalGrams = item.actual_grams ?? item.planned_grams;
+		if (candidateFinalGrams + 1e-6 < line.physicalAddedGrams) throw new Error(`Verified rescue attempted to reduce physically added ${line.name}.`);
+		const hasConfirmedPhysicalFact = line.confirmed || line.confirmedAt !== null && line.physicalAddedGrams > 1e-6;
+		return {
+			...line,
+			targetGrams: candidateFinalGrams,
+			draftActualGrams: hasConfirmedPhysicalFact ? line.physicalAddedGrams : candidateFinalGrams,
+			draftActualEdited: false,
+			confirmed: hasConfirmedPhysicalFact,
+			confirmedAt: hasConfirmedPhysicalFact ? line.confirmedAt : null,
+			confirmationOrder: hasConfirmedPhysicalFact ? line.confirmationOrder : null
+		};
+	});
+	const originalIds = new Set(session.plannedInput.items.map((item) => item.id));
+	const existingLineIds = new Set(session.lines.map((line) => line.lineId));
+	const rescueAddedItems = candidate.items.filter((item) => !originalIds.has(item.id)).map((item) => ({
+		...item,
+		actual_grams: null
+	}));
+	const requiredRescueIds = productBehaviorRequiredLineIds({ items: rescueAddedItems });
+	const rescueGate = productBehaviorModuleGate(session.plannedComposition.behaviorSnapshots ?? {}, "PRODUCTION", requiredRescueIds);
+	if (!rescueGate.ready) throw new Error(rescueGate.reason ?? "Production rescue requires verified product behavior.");
+	const addedLines = rescueAddedItems.filter((item) => !existingLineIds.has(item.id)).map((item) => ({
+		lineId: item.id,
+		canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
+		name: item.ingredient.name,
+		plannedGrams: 0,
+		targetGrams: item.planned_grams,
+		draftActualGrams: item.planned_grams,
+		draftActualEdited: false,
+		physicalAddedGrams: 0,
+		confirmed: false,
+		confirmedAt: null,
+		confirmationOrder: null,
+		recordCorrectionCount: 0
+	}));
+	return materializeAuthorizedProductionTopUps({
+		...session,
+		durableRescueRevision: rescueRevision,
+		supersededRescue: null,
+		invalidDurableRescue: null,
+		rescueAddedItems,
+		lines: [...lines, ...addedLines]
+	}, rescueRevision, session.durableActualRevision);
+}
+function completeProductionSession(session, _finalResult, completedAt, operatorUserId) {
+	requireActive(session);
+	const finalActualInput = buildFinalActualInput(session);
+	if (session.addonLines.some((line) => !line.confirmed)) throw new Error("Every topping must be confirmed before production completion.");
+	const addonById = new Map(session.addonLines.map((line) => [line.lineId, line]));
+	const actualToppings = session.plannedComposition.toppings.map((item) => ({
+		...item,
+		actual_grams: addonById.get(item.id)?.physicalAddedGrams ?? null
+	}));
+	const authority = buildRecipeBehaviorAuthority({
+		items: finalActualInput.items,
+		toppings: actualToppings,
+		snapshots: session.plannedComposition.behaviorSnapshots ?? {}
+	});
+	const productionGate = recipeBehaviorModuleGate(authority, "PRODUCTION");
+	const nutritionGate = recipeBehaviorModuleGate(authority, "NUTRITION");
+	if (!productionGate.ready || !nutritionGate.ready) throw new Error(productionGate.reason ?? nutritionGate.reason ?? "Production facts require revalidation.");
+	const authoritativeInput = recipeInputFromFrozenBehavior(finalActualInput, authority, "nutrition");
+	const authoritativeToppings = recipeToppingsFromFrozenBehavior(actualToppings, authority, "nutrition");
+	const authoritativeResult = calculateRecipe(authoritativeInput);
+	const finalProduct = calculateFinalProduct(authoritativeInput, authoritativeToppings, "actual_batch");
+	const actualFinalMassG = finalProduct.finalMassG;
+	const frozenComposition = {
+		...session.plannedComposition,
+		toppings: authoritativeToppings
+	};
+	const snapshot = {
+		sessionId: session.sessionId,
+		ownerUserId: session.ownerUserId,
+		source: { ...session.source },
+		plannedInput: cloneRecipeInput(session.plannedInput),
+		finalActualInput: authoritativeInput,
+		finalResult: authoritativeResult,
+		finalProduct: {
+			items: finalProduct.finalItems,
+			nutritionPer100g: finalProduct.finalNutritionPer100g,
+			labelNutritionPer100g: finalProduct.finalLabelNutritionPer100g,
+			costs: finalProduct.finalCosts,
+			baseMassG: finalProduct.baseMassG,
+			toppingMassG: finalProduct.toppingMassG,
+			finalMassG: finalProduct.finalMassG
+		},
+		productComposition: frozenComposition,
+		confirmedOrder: [...session.lines, ...session.addonLines].filter((line) => line.confirmedAt !== null && line.confirmationOrder !== null).sort((a, b) => a.confirmationOrder - b.confirmationOrder).map((line) => ({
+			lineId: line.lineId,
+			canonicalIngredientId: line.canonicalIngredientId,
+			actualGrams: line.physicalAddedGrams,
+			confirmedAt: line.confirmedAt,
+			order: line.confirmationOrder
+		})),
+		originalBatchTargetG: session.plannedInput.target_batch_grams,
+		actualFinalMassG,
+		machineCapacityG: effectiveMachineCapacityGrams(session.plannedInput),
+		machineCapacitySource: session.plannedInput.machine_capacity_source ?? null,
+		servingTemperatureC: session.plannedInput.target_temperature_c,
+		productionCompletedAt: completedAt,
+		lotCode: productionLotCodeForRun(session.sessionId, completedAt),
+		operatorUserId,
+		substitutions: session.substitutions.map((substitution) => ({ ...substitution })),
+		customerLabelNote: session.customerLabelNote,
+		internalProductionNote: session.internalProductionNote
+	};
+	return {
+		...session,
+		status: "completed",
+		completedAt,
+		completionSnapshot: snapshot
+	};
+}
+/**
+* Rebuild the physical workspace from the server-authoritative run. The exact
+* immutable recipe version remains the source of ingredient facts; the run
+* contributes only its frozen scaled plan, validated Rescue snapshot and
+* recorded actuals. Any mismatch fails closed instead of guessing.
+*/
+function hydrateProductionSessionFromRun(run, source, plannedInput, plannedComposition) {
+	if (run.status === "draft" || run.status === "planned" || run.status === "cancelled") throw new Error(`Cannot hydrate a non-active Production run (${run.status}).`);
+	if (source.recipeId !== run.recipeId || source.recipeVersionId !== run.recipeVersionId || source.recipeVersionNumber !== run.recipeVersionNumber) throw new Error("Durable Production run does not match the exact recipe version.");
+	const expectedIds = [...plannedComposition.baseOrder, ...plannedComposition.toppings.slice().sort((a, b) => a.addon_sort_order - b.addon_sort_order).map((item) => item.id)];
+	if (run.plannedItems.length !== expectedIds.length || run.plannedItems.some((line, index) => line.id !== expectedIds[index] || Math.abs(line.plannedGrams - (plannedInput.items.find((item) => item.id === line.id)?.planned_grams ?? plannedComposition.toppings.find((item) => item.id === line.id)?.planned_grams ?? NaN)) > 1e-6)) throw new Error("Durable Production plan differs from the exact local recipe version.");
+	let session = createProductionSession({
+		sessionId: run.runId,
+		ownerUserId: run.ownerUserId,
+		source,
+		plannedInput,
+		plannedComposition,
+		thermalMode: run.thermalMode ?? null,
+		processReadiness: run.processReadiness ?? null,
+		processAdvisories: run.processAdvisories ?? [],
+		heatInformationAcknowledgedAt: run.heatInformationAcknowledgedAt ?? null,
+		degassingRequired: run.degassingRequired === true,
+		degassingAcknowledged: run.degassingAcknowledged === true,
+		degassingAcknowledgedAt: run.degassingAcknowledgedAt ?? null,
+		carbonatedProductIds: [...run.carbonatedProductIds ?? []],
+		startedAt: run.events.find((event) => event.type === "started")?.at ?? run.createdAt
+	});
+	if (run.rescue) {
+		const rescueBaseSnapshots = Object.fromEntries(run.rescue.recipeInput.items.flatMap((item) => {
+			const snapshot = run.rescue?.productComposition.behaviorSnapshots?.[item.id];
+			return snapshot ? [[item.id, snapshot]] : [];
+		}));
+		session = {
+			...session,
+			plannedComposition: {
+				...session.plannedComposition,
+				behaviorSnapshots: {
+					...session.plannedComposition.behaviorSnapshots ?? {},
+					...rescueBaseSnapshots
+				}
+			}
+		};
+		const durableAuthority = evaluateProductionRescueTerminalAuthority(run.rescue.recipeInput, session.plannedComposition);
+		if (durableAuthority.valid) {
+			session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision);
+			session = {
+				...session,
+				durableRescueAcceptedAt: run.rescue.acceptedAt,
+				durableRescueRevision: run.rescue.revision
+			};
+		} else {
+			const actualById = new Map(run.actual?.items.map((item) => [item.id, item.actualGrams]) ?? []);
+			const originalIds = new Set(session.plannedInput.items.map((item) => item.id));
+			const physicallyPresentRescueItems = run.rescue.recipeInput.items.filter((item) => !originalIds.has(item.id) && (actualById.get(item.id) ?? 0) > 1e-6).map((item) => ({
+				...item,
+				planned_grams: actualById.get(item.id) ?? 0,
+				actual_grams: null
+			}));
+			session = {
+				...session,
+				durableRescueAcceptedAt: run.rescue.acceptedAt,
+				durableRescueRevision: run.rescue.revision,
+				supersededRescue: {
+					revision: run.rescue.revision,
+					acceptedAt: run.rescue.acceptedAt,
+					reasonPl: durableAuthority.issues[0]?.messagePl ?? "Zapisana korekta partii nie spełnia już aktualnych reguł bezpieczeństwa."
+				},
+				invalidDurableRescue: {
+					revision: run.rescue.revision,
+					acceptedAt: run.rescue.acceptedAt,
+					issueCodes: [...new Set(durableAuthority.issues.map((issue) => issue.code))]
+				},
+				rescueAddedItems: physicallyPresentRescueItems,
+				lines: [...session.lines, ...physicallyPresentRescueItems.map((item) => ({
+					lineId: item.id,
+					canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
+					name: item.ingredient.name,
+					plannedGrams: 0,
+					targetGrams: item.planned_grams,
+					draftActualGrams: item.planned_grams,
+					draftActualEdited: false,
+					physicalAddedGrams: 0,
+					confirmed: false,
+					confirmedAt: null,
+					confirmationOrder: null,
+					recordCorrectionCount: 0
+				}))]
+			};
+		}
+	}
+	const decisionEvent = [...run.events].reverse().find((event) => event.type === "deviation_decision_accepted");
+	const decision = decisionEvent?.amendment;
+	const strategy = decision?.stableOptionId;
+	if (decisionEvent && session.invalidDurableRescue?.revision !== decision?.rescueRevision && (strategy === "keep_original_batch" || strategy === "enlarge_batch" || strategy === "restore_original_recipe" || strategy === "leave_as_is") && typeof decision?.sourceActualRevision === "number" && typeof decision?.rescueRevision === "number" && typeof decision?.finalMassG === "number" && typeof decision?.scoreDisplay === "string") session = {
+		...session,
+		lastDeviationDecision: {
+			strategy,
+			acceptedAt: decisionEvent.at,
+			sourceActualRevision: decision.sourceActualRevision,
+			rescueRevision: decision.rescueRevision,
+			finalMassG: decision.finalMassG,
+			scoreDisplay: decision.scoreDisplay
+		}
+	};
+	if (run.actual) {
+		const actualById = new Map(run.actual.items.map((item, index) => [item.id, {
+			item,
+			index
+		}]));
+		const restoreLine = (line) => {
+			const recorded = actualById.get(line.lineId);
+			const grams = recorded?.item.actualGrams;
+			if (!recorded || grams === null || grams === void 0) return line;
+			return {
+				...line,
+				draftActualGrams: grams,
+				draftActualEdited: false,
+				physicalAddedGrams: grams,
+				confirmed: true,
+				confirmedAt: recorded.item.confirmedAt ?? run.actual.recordedAt,
+				confirmationOrder: recorded.item.confirmationOrder ?? recorded.index + 1
+			};
+		};
+		session = {
+			...session,
+			durableActualRevision: run.actual.revision,
+			lines: session.lines.map(restoreLine),
+			addonLines: session.addonLines.map(restoreLine),
+			stage: session.lines.every((line) => actualById.get(line.lineId)?.item.actualGrams != null) && session.addonLines.length > 0 ? "addons" : "base",
+			substitutions: run.actual.substitutions.map((item) => ({
+				originalLineId: item.originalIngredientId,
+				originalCanonicalIngredientId: item.originalIngredientId,
+				substituteCanonicalIngredientId: null,
+				substituteName: item.substituteName,
+				grams: item.grams ?? 0,
+				reason: item.reason
+			})),
+			internalProductionNote: run.actual.operatorNotes ?? ""
+		};
+	}
+	if (run.rescue && run.actual && session.invalidDurableRescue === null) session = materializeAuthorizedProductionTopUps(session, run.rescue.revision, session.lastDeviationDecision?.sourceActualRevision ?? run.actual.revision, productionLineIdsExecutedAfterRescue(run, run.rescue.revision));
+	return run.status === "completed" ? completeProductionSession(session, calculateRecipe(buildFinalActualInput(session)), run.completedAt ?? run.updatedAt, run.actual?.recordedBy ?? run.ownerUserId) : session;
 }
 
 //#endregion
@@ -7989,666 +10240,6 @@ const solveIntegerLinearMaximum = (baseRows, baseBounds, objective, maxNodes = M
 };
 
 //#endregion
-//#region src/features/recipe-composition/finalProduct.ts
-const toppingEffectiveGrams = (item, context) => context === "actual_batch" ? item.actual_grams ?? item.planned_grams : item.planned_grams;
-function scienceToppingItem(item, context) {
-	if (isCatalogLabelToppingIngredient(item.ingredient)) return null;
-	const grams = toppingEffectiveGrams(item, context);
-	if (grams <= 0) return null;
-	return {
-		id: item.id,
-		ingredient: item.ingredient,
-		planned_grams: grams,
-		actual_grams: context === "actual_batch" ? grams : null,
-		lock_type: context === "actual_batch" ? "already_added" : "unlocked",
-		production_step: item.production_step,
-		notes: item.notes
-	};
-}
-function labelToppingItem(item, context) {
-	if (!isCatalogLabelToppingIngredient(item.ingredient)) return null;
-	const grams = toppingEffectiveGrams(item, context);
-	if (grams <= 0) return null;
-	return {
-		id: item.id,
-		ingredient: item.ingredient,
-		planned_grams: grams,
-		actual_grams: context === "actual_batch" ? grams : null,
-		lock_type: context === "actual_batch" ? "already_added" : "unlocked",
-		production_step: item.production_step,
-		notes: item.notes,
-		effective_grams: grams,
-		difference: context === "actual_batch" ? grams - item.planned_grams : 0,
-		is_actual: context === "actual_batch"
-	};
-}
-function combineLabelNutrition(factual, factualMassG, labelItems, finalMassG) {
-	if (!factual || finalMassG <= 0) return null;
-	const total = {
-		kcal: factual.kcal * factualMassG / 100,
-		fat_g: factual.fat_g * factualMassG / 100,
-		saturated_fat_g: factual.saturated_fat_g === null ? null : factual.saturated_fat_g * factualMassG / 100,
-		carbohydrate_g: factual.carbohydrate_g * factualMassG / 100,
-		sugars_g: factual.sugars_g * factualMassG / 100,
-		protein_g: factual.protein_g * factualMassG / 100,
-		salt_g: factual.salt_g * factualMassG / 100,
-		fiber_g: factual.fiber_g * factualMassG / 100
-	};
-	for (const item of labelItems) {
-		const grams = item.effective_grams;
-		const label = item.ingredient.label_nutrition_per_100g;
-		total.kcal += label.energyKcal * grams / 100;
-		total.fat_g += label.fat * grams / 100;
-		if (label.saturatedFat === null) total.saturated_fat_g = null;
-		else if (total.saturated_fat_g !== null) total.saturated_fat_g += label.saturatedFat * grams / 100;
-		total.carbohydrate_g += label.carbohydrate * grams / 100;
-		if (label.sugars === null) total.sugars_g = null;
-		else if (total.sugars_g !== null) total.sugars_g += label.sugars * grams / 100;
-		total.protein_g += label.protein * grams / 100;
-		total.salt_g += label.salt * grams / 100;
-		if (label.fibre === null) total.fiber_g = null;
-		else if (total.fiber_g !== null) total.fiber_g += label.fibre * grams / 100;
-	}
-	const per100 = (value) => value / finalMassG * 100;
-	return {
-		kcal: per100(total.kcal),
-		fat_g: per100(total.fat_g),
-		saturated_fat_g: total.saturated_fat_g === null ? null : per100(total.saturated_fat_g),
-		carbohydrate_g: per100(total.carbohydrate_g),
-		sugars_g: total.sugars_g === null ? null : per100(total.sugars_g),
-		protein_g: per100(total.protein_g),
-		salt_g: per100(total.salt_g),
-		fiber_g: total.fiber_g === null ? null : per100(total.fiber_g),
-		alcohol_g: labelItems.length === 0 ? factual.alcohol_g : null
-	};
-}
-function combineCosts(factual, labelItems, finalMassG) {
-	if (!factual) return null;
-	const missing = [...factual.missing_cost_ingredient_ids];
-	let knownTotal = factual.known_cost ?? factual.total_cost ?? 0;
-	for (const item of labelItems) {
-		const price = item.ingredient.cost_per_kg;
-		if (price === null) missing.push(item.ingredient.id);
-		else knownTotal += item.effective_grams / 1e3 * price;
-	}
-	const complete = factual.complete && missing.length === 0;
-	const totalCost = complete ? knownTotal : null;
-	const perKg = complete && finalMassG > 0 ? knownTotal / finalMassG * 1e3 : null;
-	const serving = (grams) => perKg === null ? null : perKg * grams / 1e3;
-	return {
-		known_cost: knownTotal,
-		total_cost: totalCost,
-		cost_per_kg: perKg,
-		cost_per_serving_60g: serving(60),
-		cost_per_serving_70g: serving(70),
-		cost_per_serving_80g: serving(80),
-		complete,
-		missing_cost_ingredient_ids: [...new Set(missing)]
-	};
-}
-function calculateFinalProduct(baseInput, toppings = [], context = "planning") {
-	const baseResult = calculateRecipe(baseInput);
-	const scienceItems = toppings.flatMap((item) => {
-		const next = scienceToppingItem(item, context);
-		return next ? [next] : [];
-	});
-	const scienceInputItems = [...baseInput.items.map((item) => ({ ...item })), ...scienceItems];
-	const factualMassG = scienceInputItems.reduce((sum, item) => sum + (item.actual_grams ?? item.planned_grams), 0);
-	const factualFinalResult = calculateRecipe({
-		...baseInput,
-		items: scienceInputItems,
-		target_batch_grams: factualMassG
-	});
-	const labelItems = toppings.flatMap((item) => {
-		const next = labelToppingItem(item, context);
-		return next ? [next] : [];
-	});
-	const toppingMassG = toppings.reduce((sum, item) => sum + toppingEffectiveGrams(item, context), 0);
-	const finalMassG = factualMassG + labelItems.reduce((sum, item) => sum + item.effective_grams, 0);
-	return {
-		baseResult,
-		finalItems: [...factualFinalResult.items, ...labelItems],
-		finalNutritionPer100g: labelItems.length === 0 ? factualFinalResult.nutrition_per_100g : null,
-		finalLabelNutritionPer100g: combineLabelNutrition(factualFinalResult.nutrition_per_100g, factualMassG, labelItems, finalMassG),
-		finalCosts: combineCosts(factualFinalResult.costs, labelItems, finalMassG),
-		baseMassG: baseResult.total_batch_g,
-		toppingMassG,
-		finalMassG,
-		toppingCount: toppings.length
-	};
-}
-
-//#endregion
-//#region src/features/production-workspace/productionRescueAuthority.ts
-/**
-* The terminal authority for the exact 0.1 g vector that Production will
-* persist and later hydrate. Engine bands are necessary but not sufficient:
-* this also retains Main and stabilizer policy, frozen ProductBehavior and all
-* profile gates.
-*/
-function evaluateProductionRescueTerminalAuthority(candidate, composition) {
-	const candidateBatchGrams = candidate.items.reduce((sum, item) => sum + item.planned_grams, 0);
-	return evaluateRecipeConstraintAuthority({
-		recipe: {
-			...candidate,
-			target_batch_grams: candidateBatchGrams
-		},
-		snapshots: composition.behaviorSnapshots ?? {},
-		module: "BATCH_RESCUE",
-		technicalOnlyMainLineIds: composition.ownerReviewGate?.technicalOnlyMainLineIds
-	});
-}
-
-//#endregion
-//#region src/features/production-workspace/productionSession.ts
-const PRODUCTION_GRAMS_EPSILON = 1e-6;
-function productionLotCodeForRun(sessionId, completedAt) {
-	return `LOT-${completedAt.slice(0, 10).replaceAll("-", "")}-${sessionId.replace(/[^a-z0-9]/gi, "").slice(0, 10).toUpperCase() || "RUN"}`;
-}
-function cloneRecipeInput(input) {
-	return {
-		...input,
-		goals: input.goals ? { ...input.goals } : void 0,
-		items: input.items.map((item) => ({
-			...item,
-			ingredient: {
-				...item.ingredient,
-				composition: { ...item.ingredient.composition },
-				flags: item.ingredient.flags ? { ...item.ingredient.flags } : void 0
-			},
-			actual_grams: null
-		}))
-	};
-}
-function productionSourceFingerprint(input, composition) {
-	return JSON.stringify({
-		category: input.category,
-		temperature: input.target_temperature_c,
-		batch: input.target_batch_grams,
-		machine: input.machine_capacity_grams,
-		machineSource: input.machine_capacity_source ?? null,
-		items: input.items.map((item) => ({
-			lineId: item.id,
-			ingredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
-			grams: item.planned_grams,
-			lockType: item.lock_type,
-			productionStep: item.production_step ?? null,
-			carbonationStatus: item.ingredient.carbonation_status ?? "UNKNOWN"
-		})),
-		composition: composition ? {
-			baseOrder: composition.baseOrder,
-			behaviorSnapshots: Object.entries(composition.behaviorSnapshots ?? {}).sort(([left], [right]) => left.localeCompare(right)).map(([lineId, snapshot]) => ({
-				lineId,
-				productVersionId: snapshot.productVersionId,
-				factsFingerprint: snapshot.factsFingerprint,
-				behaviorBindingId: snapshot.behaviorBindingId,
-				behaviorBindingVersion: snapshot.behaviorBindingVersion,
-				taxonomyVersion: snapshot.taxonomyVersion,
-				resolverVersion: snapshot.resolverVersion
-			})),
-			toppings: composition.toppings.map((item) => ({
-				lineId: item.id,
-				ingredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id,
-				grams: item.planned_grams,
-				position: item.addon_sort_order
-			}))
-		} : null
-	});
-}
-function createProductionSession(input) {
-	const plannedInput = cloneRecipeInput(input.plannedInput);
-	const plannedComposition = input.plannedComposition ?? recipeCompositionFromState({
-		items: plannedInput.items,
-		baseOrder: plannedInput.items.map((item) => item.id)
-	});
-	const basePosition = new Map(plannedComposition.baseOrder.map((lineId, index) => [lineId, index]));
-	const orderedBaseItems = plannedInput.items.map((item, sourceIndex) => ({
-		item,
-		sourceIndex
-	})).sort((a, b) => (basePosition.get(a.item.id) ?? a.sourceIndex) - (basePosition.get(b.item.id) ?? b.sourceIndex)).map(({ item }) => item);
-	return {
-		schemaVersion: 2,
-		sessionId: input.sessionId,
-		ownerUserId: input.ownerUserId,
-		source: { ...input.source },
-		sourceFingerprint: productionSourceFingerprint(plannedInput, plannedComposition),
-		status: "in_progress",
-		startedAt: input.startedAt,
-		completedAt: null,
-		plannedInput,
-		plannedComposition,
-		thermalMode: input.thermalMode ?? null,
-		processReadiness: input.processReadiness ?? null,
-		processAdvisories: structuredClone(input.processAdvisories ?? []),
-		heatInformationAcknowledgedAt: input.heatInformationAcknowledgedAt ?? null,
-		degassingRequired: input.degassingRequired ?? false,
-		degassingAcknowledged: input.degassingAcknowledged ?? false,
-		degassingAcknowledgedAt: input.degassingAcknowledgedAt ?? null,
-		carbonatedProductIds: [...input.carbonatedProductIds ?? []],
-		durableRescueAcceptedAt: null,
-		durableRescueRevision: 0,
-		supersededRescue: null,
-		durableActualRevision: 0,
-		lastDeviationDecision: null,
-		invalidDurableRescue: null,
-		rescueAddedItems: [],
-		topUpTasks: [],
-		lines: orderedBaseItems.map((item) => ({
-			lineId: item.id,
-			canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
-			name: item.ingredient.name,
-			plannedGrams: item.planned_grams,
-			targetGrams: item.planned_grams,
-			draftActualGrams: item.planned_grams,
-			draftActualEdited: false,
-			physicalAddedGrams: 0,
-			confirmed: false,
-			confirmedAt: null,
-			confirmationOrder: null,
-			recordCorrectionCount: 0
-		})),
-		addonLines: plannedComposition.toppings.map((item) => ({
-			lineId: item.id,
-			canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
-			name: item.ingredient.name,
-			plannedGrams: item.planned_grams,
-			targetGrams: item.planned_grams,
-			draftActualGrams: item.planned_grams,
-			draftActualEdited: false,
-			physicalAddedGrams: 0,
-			confirmed: false,
-			confirmedAt: null,
-			confirmationOrder: null,
-			recordCorrectionCount: 0
-		})),
-		stage: "base",
-		substitutions: [],
-		customerLabelNote: "",
-		internalProductionNote: "",
-		completionSnapshot: null
-	};
-}
-function requireActive(session) {
-	if (session.status !== "in_progress") throw new Error("Completed production is immutable.");
-}
-function pendingProductionTopUpTasks(session) {
-	return session.topUpTasks.filter((task) => task.status === "pending");
-}
-/** Confirmed actuals + pending target grams: the predicted finished batch. */
-function buildProductionForecastInput(session) {
-	const byId = new Map(session.lines.map((line) => [line.lineId, line]));
-	const pendingTopUpLineIds = new Set(pendingProductionTopUpTasks(session).map((task) => task.sourceRecipeLineId));
-	const items = [...session.plannedInput.items, ...session.rescueAddedItems].map((item) => {
-		const line = byId.get(item.id);
-		if (!line) throw new Error(`Production line missing for ${item.id}.`);
-		const hasPendingTopUp = pendingTopUpLineIds.has(line.lineId);
-		return {
-			...item,
-			planned_grams: line.targetGrams,
-			actual_grams: line.confirmed && !hasPendingTopUp ? line.physicalAddedGrams : null,
-			lock_type: line.confirmed && !hasPendingTopUp ? "already_added" : item.lock_type
-		};
-	});
-	const targetBatchGrams = session.durableRescueRevision > 0 ? session.lines.reduce((sum, line) => sum + line.targetGrams, 0) : session.plannedInput.target_batch_grams;
-	return {
-		...session.plannedInput,
-		target_batch_grams: targetBatchGrams,
-		items
-	};
-}
-/** Every line uses its actual confirmed mass; intended only at completion. */
-function buildFinalActualInput(session) {
-	if (pendingProductionTopUpTasks(session).length > 0) throw new Error("Every authorized Production top-up task must be confirmed before completion.");
-	if (session.lines.some((line) => !line.confirmed)) throw new Error("Every ingredient must be confirmed before production completion.");
-	const byId = new Map(session.lines.map((line) => [line.lineId, line]));
-	const items = [...session.plannedInput.items, ...session.rescueAddedItems].map((item) => {
-		const line = byId.get(item.id);
-		return {
-			...item,
-			planned_grams: line.plannedGrams,
-			actual_grams: line.physicalAddedGrams,
-			lock_type: "already_added"
-		};
-	});
-	const actualTotal = items.reduce((sum, item) => sum + (item.actual_grams ?? 0), 0);
-	return {
-		...session.plannedInput,
-		target_batch_grams: actualTotal,
-		items
-	};
-}
-const productionTopUpTaskId = (revisionId, lineId) => `production-top-up:${revisionId}:${encodeURIComponent(lineId)}`;
-function materializeAuthorizedProductionTopUps(session, rescueRevision, sourceActualRevision, executedAfterAuthorizationLineIds = /* @__PURE__ */ new Set()) {
-	if (session.lines.some((line) => {
-		if (!executedAfterAuthorizationLineIds.has(line.lineId)) return false;
-		return Math.abs(line.physicalAddedGrams - line.targetGrams) > 1e-6;
-	})) return {
-		...session,
-		topUpTasks: session.topUpTasks.map((task) => task.status === "pending" ? {
-			...task,
-			status: "invalidated"
-		} : task)
-	};
-	const existingByKey = new Map(session.topUpTasks.map((task) => [`${task.revisionId}:${task.sourceRecipeLineId}`, task]));
-	const materialized = [];
-	const lines = session.lines.map((line) => {
-		const confirmedBeforeAuthorization = line.confirmedAt !== null && !executedAfterAuthorizationLineIds.has(line.lineId);
-		const authorizedDeltaG = line.targetGrams - line.physicalAddedGrams;
-		if (!confirmedBeforeAuthorization || authorizedDeltaG <= 1e-6) return line;
-		const existing = existingByKey.get(`${rescueRevision}:${line.lineId}`);
-		materialized.push(existing?.status === "pending" && Math.abs(existing.physicalBaselineG - line.physicalAddedGrams) <= 1e-6 && Math.abs(existing.cumulativeTargetG - line.targetGrams) <= 1e-6 ? existing : {
-			taskId: productionTopUpTaskId(rescueRevision, line.lineId),
-			sourceIngredientId: line.canonicalIngredientId,
-			sourceRecipeLineId: line.lineId,
-			ingredientName: line.name,
-			physicalBaselineG: line.physicalAddedGrams,
-			authorizedDeltaG,
-			draftDeltaG: authorizedDeltaG,
-			cumulativeTargetG: line.targetGrams,
-			revisionId: rescueRevision,
-			sourceActualRevision,
-			status: "pending",
-			completedAt: null
-		});
-		return {
-			...line,
-			confirmed: true,
-			draftActualGrams: line.physicalAddedGrams,
-			draftActualEdited: false
-		};
-	});
-	const materializedIds = new Set(materialized.map((task) => task.taskId));
-	const history = session.topUpTasks.map((task) => task.status === "pending" && !materializedIds.has(task.taskId) ? {
-		...task,
-		status: "invalidated"
-	} : task);
-	const historyIds = new Set(history.map((task) => task.taskId));
-	return {
-		...session,
-		lines,
-		topUpTasks: [...history, ...materialized.filter((task) => !historyIds.has(task.taskId))]
-	};
-}
-function productionLineIdsExecutedAfterRescue(run, rescueRevision) {
-	let decisionIndex = -1;
-	for (let index = 0; index < run.events.length; index += 1) {
-		const event = run.events[index];
-		if (event.type === "deviation_decision_accepted" && event.amendment?.rescueRevision === rescueRevision) decisionIndex = index;
-	}
-	if (decisionIndex < 0) return /* @__PURE__ */ new Set();
-	return new Set(run.events.slice(decisionIndex + 1).flatMap((event) => {
-		if (event.type !== "ingredient_actual_confirmed" && event.type !== "actual_entry_corrected") return [];
-		const lineId = event.amendment?.lineId;
-		return typeof lineId === "string" && lineId.length > 0 ? [lineId] : [];
-	}));
-}
-function applyVerifiedRescueInput(session, candidate, rescueRevision = session.durableRescueRevision + 1) {
-	requireActive(session);
-	const authority = evaluateProductionRescueTerminalAuthority(candidate, session.plannedComposition);
-	if (!authority.valid) throw new Error(authority.issues[0]?.messagePl ?? "Production Rescue requires a fully verified recipe candidate.");
-	const candidateById = new Map(candidate.items.map((item) => [item.id, item]));
-	const lines = session.lines.map((line) => {
-		const item = candidateById.get(line.lineId);
-		if (!item) throw new Error(`Verified rescue removed production line ${line.lineId}.`);
-		const candidateFinalGrams = item.actual_grams ?? item.planned_grams;
-		if (candidateFinalGrams + 1e-6 < line.physicalAddedGrams) throw new Error(`Verified rescue attempted to reduce physically added ${line.name}.`);
-		const hasConfirmedPhysicalFact = line.confirmed || line.confirmedAt !== null && line.physicalAddedGrams > 1e-6;
-		return {
-			...line,
-			targetGrams: candidateFinalGrams,
-			draftActualGrams: hasConfirmedPhysicalFact ? line.physicalAddedGrams : candidateFinalGrams,
-			draftActualEdited: false,
-			confirmed: hasConfirmedPhysicalFact,
-			confirmedAt: hasConfirmedPhysicalFact ? line.confirmedAt : null,
-			confirmationOrder: hasConfirmedPhysicalFact ? line.confirmationOrder : null
-		};
-	});
-	const originalIds = new Set(session.plannedInput.items.map((item) => item.id));
-	const existingLineIds = new Set(session.lines.map((line) => line.lineId));
-	const rescueAddedItems = candidate.items.filter((item) => !originalIds.has(item.id)).map((item) => ({
-		...item,
-		actual_grams: null
-	}));
-	const requiredRescueIds = productBehaviorRequiredLineIds({ items: rescueAddedItems });
-	const rescueGate = productBehaviorModuleGate(session.plannedComposition.behaviorSnapshots ?? {}, "PRODUCTION", requiredRescueIds);
-	if (!rescueGate.ready) throw new Error(rescueGate.reason ?? "Production rescue requires verified product behavior.");
-	const addedLines = rescueAddedItems.filter((item) => !existingLineIds.has(item.id)).map((item) => ({
-		lineId: item.id,
-		canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
-		name: item.ingredient.name,
-		plannedGrams: 0,
-		targetGrams: item.planned_grams,
-		draftActualGrams: item.planned_grams,
-		draftActualEdited: false,
-		physicalAddedGrams: 0,
-		confirmed: false,
-		confirmedAt: null,
-		confirmationOrder: null,
-		recordCorrectionCount: 0
-	}));
-	return materializeAuthorizedProductionTopUps({
-		...session,
-		durableRescueRevision: rescueRevision,
-		supersededRescue: null,
-		invalidDurableRescue: null,
-		rescueAddedItems,
-		lines: [...lines, ...addedLines]
-	}, rescueRevision, session.durableActualRevision);
-}
-function completeProductionSession(session, _finalResult, completedAt, operatorUserId) {
-	requireActive(session);
-	const finalActualInput = buildFinalActualInput(session);
-	if (session.addonLines.some((line) => !line.confirmed)) throw new Error("Every topping must be confirmed before production completion.");
-	const addonById = new Map(session.addonLines.map((line) => [line.lineId, line]));
-	const actualToppings = session.plannedComposition.toppings.map((item) => ({
-		...item,
-		actual_grams: addonById.get(item.id)?.physicalAddedGrams ?? null
-	}));
-	const authority = buildRecipeBehaviorAuthority({
-		items: finalActualInput.items,
-		toppings: actualToppings,
-		snapshots: session.plannedComposition.behaviorSnapshots ?? {}
-	});
-	const productionGate = recipeBehaviorModuleGate(authority, "PRODUCTION");
-	const nutritionGate = recipeBehaviorModuleGate(authority, "NUTRITION");
-	if (!productionGate.ready || !nutritionGate.ready) throw new Error(productionGate.reason ?? nutritionGate.reason ?? "Production facts require revalidation.");
-	const authoritativeInput = recipeInputFromFrozenBehavior(finalActualInput, authority, "nutrition");
-	const authoritativeToppings = recipeToppingsFromFrozenBehavior(actualToppings, authority, "nutrition");
-	const authoritativeResult = calculateRecipe(authoritativeInput);
-	const finalProduct = calculateFinalProduct(authoritativeInput, authoritativeToppings, "actual_batch");
-	const actualFinalMassG = finalProduct.finalMassG;
-	const frozenComposition = {
-		...session.plannedComposition,
-		toppings: authoritativeToppings
-	};
-	const snapshot = {
-		sessionId: session.sessionId,
-		ownerUserId: session.ownerUserId,
-		source: { ...session.source },
-		plannedInput: cloneRecipeInput(session.plannedInput),
-		finalActualInput: authoritativeInput,
-		finalResult: authoritativeResult,
-		finalProduct: {
-			items: finalProduct.finalItems,
-			nutritionPer100g: finalProduct.finalNutritionPer100g,
-			labelNutritionPer100g: finalProduct.finalLabelNutritionPer100g,
-			costs: finalProduct.finalCosts,
-			baseMassG: finalProduct.baseMassG,
-			toppingMassG: finalProduct.toppingMassG,
-			finalMassG: finalProduct.finalMassG
-		},
-		productComposition: frozenComposition,
-		confirmedOrder: [...session.lines, ...session.addonLines].filter((line) => line.confirmedAt !== null && line.confirmationOrder !== null).sort((a, b) => a.confirmationOrder - b.confirmationOrder).map((line) => ({
-			lineId: line.lineId,
-			canonicalIngredientId: line.canonicalIngredientId,
-			actualGrams: line.physicalAddedGrams,
-			confirmedAt: line.confirmedAt,
-			order: line.confirmationOrder
-		})),
-		originalBatchTargetG: session.plannedInput.target_batch_grams,
-		actualFinalMassG,
-		machineCapacityG: effectiveMachineCapacityGrams(session.plannedInput),
-		machineCapacitySource: session.plannedInput.machine_capacity_source ?? null,
-		servingTemperatureC: session.plannedInput.target_temperature_c,
-		productionCompletedAt: completedAt,
-		lotCode: productionLotCodeForRun(session.sessionId, completedAt),
-		operatorUserId,
-		substitutions: session.substitutions.map((substitution) => ({ ...substitution })),
-		customerLabelNote: session.customerLabelNote,
-		internalProductionNote: session.internalProductionNote
-	};
-	return {
-		...session,
-		status: "completed",
-		completedAt,
-		completionSnapshot: snapshot
-	};
-}
-/**
-* Rebuild the physical workspace from the server-authoritative run. The exact
-* immutable recipe version remains the source of ingredient facts; the run
-* contributes only its frozen scaled plan, validated Rescue snapshot and
-* recorded actuals. Any mismatch fails closed instead of guessing.
-*/
-function hydrateProductionSessionFromRun(run, source, plannedInput, plannedComposition) {
-	if (run.status === "draft" || run.status === "planned" || run.status === "cancelled") throw new Error(`Cannot hydrate a non-active Production run (${run.status}).`);
-	if (source.recipeId !== run.recipeId || source.recipeVersionId !== run.recipeVersionId || source.recipeVersionNumber !== run.recipeVersionNumber) throw new Error("Durable Production run does not match the exact recipe version.");
-	const expectedIds = [...plannedComposition.baseOrder, ...plannedComposition.toppings.slice().sort((a, b) => a.addon_sort_order - b.addon_sort_order).map((item) => item.id)];
-	if (run.plannedItems.length !== expectedIds.length || run.plannedItems.some((line, index) => line.id !== expectedIds[index] || Math.abs(line.plannedGrams - (plannedInput.items.find((item) => item.id === line.id)?.planned_grams ?? plannedComposition.toppings.find((item) => item.id === line.id)?.planned_grams ?? NaN)) > 1e-6)) throw new Error("Durable Production plan differs from the exact local recipe version.");
-	let session = createProductionSession({
-		sessionId: run.runId,
-		ownerUserId: run.ownerUserId,
-		source,
-		plannedInput,
-		plannedComposition,
-		thermalMode: run.thermalMode ?? null,
-		processReadiness: run.processReadiness ?? null,
-		processAdvisories: run.processAdvisories ?? [],
-		heatInformationAcknowledgedAt: run.heatInformationAcknowledgedAt ?? null,
-		degassingRequired: run.degassingRequired === true,
-		degassingAcknowledged: run.degassingAcknowledged === true,
-		degassingAcknowledgedAt: run.degassingAcknowledgedAt ?? null,
-		carbonatedProductIds: [...run.carbonatedProductIds ?? []],
-		startedAt: run.events.find((event) => event.type === "started")?.at ?? run.createdAt
-	});
-	if (run.rescue) {
-		const rescueBaseSnapshots = Object.fromEntries(run.rescue.recipeInput.items.flatMap((item) => {
-			const snapshot = run.rescue?.productComposition.behaviorSnapshots?.[item.id];
-			return snapshot ? [[item.id, snapshot]] : [];
-		}));
-		session = {
-			...session,
-			plannedComposition: {
-				...session.plannedComposition,
-				behaviorSnapshots: {
-					...session.plannedComposition.behaviorSnapshots ?? {},
-					...rescueBaseSnapshots
-				}
-			}
-		};
-		const durableAuthority = evaluateProductionRescueTerminalAuthority(run.rescue.recipeInput, session.plannedComposition);
-		if (durableAuthority.valid) {
-			session = applyVerifiedRescueInput(session, run.rescue.recipeInput, run.rescue.revision);
-			session = {
-				...session,
-				durableRescueAcceptedAt: run.rescue.acceptedAt,
-				durableRescueRevision: run.rescue.revision
-			};
-		} else {
-			const actualById = new Map(run.actual?.items.map((item) => [item.id, item.actualGrams]) ?? []);
-			const originalIds = new Set(session.plannedInput.items.map((item) => item.id));
-			const physicallyPresentRescueItems = run.rescue.recipeInput.items.filter((item) => !originalIds.has(item.id) && (actualById.get(item.id) ?? 0) > 1e-6).map((item) => ({
-				...item,
-				planned_grams: actualById.get(item.id) ?? 0,
-				actual_grams: null
-			}));
-			session = {
-				...session,
-				durableRescueAcceptedAt: run.rescue.acceptedAt,
-				durableRescueRevision: run.rescue.revision,
-				supersededRescue: {
-					revision: run.rescue.revision,
-					acceptedAt: run.rescue.acceptedAt,
-					reasonPl: durableAuthority.issues[0]?.messagePl ?? "Zapisana korekta partii nie spełnia już aktualnych reguł bezpieczeństwa."
-				},
-				invalidDurableRescue: {
-					revision: run.rescue.revision,
-					acceptedAt: run.rescue.acceptedAt,
-					issueCodes: [...new Set(durableAuthority.issues.map((issue) => issue.code))]
-				},
-				rescueAddedItems: physicallyPresentRescueItems,
-				lines: [...session.lines, ...physicallyPresentRescueItems.map((item) => ({
-					lineId: item.id,
-					canonicalIngredientId: item.ingredient.canonical_ingredient_id ?? item.ingredient.id ?? null,
-					name: item.ingredient.name,
-					plannedGrams: 0,
-					targetGrams: item.planned_grams,
-					draftActualGrams: item.planned_grams,
-					draftActualEdited: false,
-					physicalAddedGrams: 0,
-					confirmed: false,
-					confirmedAt: null,
-					confirmationOrder: null,
-					recordCorrectionCount: 0
-				}))]
-			};
-		}
-	}
-	const decisionEvent = [...run.events].reverse().find((event) => event.type === "deviation_decision_accepted");
-	const decision = decisionEvent?.amendment;
-	const strategy = decision?.stableOptionId;
-	if (decisionEvent && session.invalidDurableRescue?.revision !== decision?.rescueRevision && (strategy === "keep_original_batch" || strategy === "enlarge_batch" || strategy === "restore_original_recipe" || strategy === "leave_as_is") && typeof decision?.sourceActualRevision === "number" && typeof decision?.rescueRevision === "number" && typeof decision?.finalMassG === "number" && typeof decision?.scoreDisplay === "string") session = {
-		...session,
-		lastDeviationDecision: {
-			strategy,
-			acceptedAt: decisionEvent.at,
-			sourceActualRevision: decision.sourceActualRevision,
-			rescueRevision: decision.rescueRevision,
-			finalMassG: decision.finalMassG,
-			scoreDisplay: decision.scoreDisplay
-		}
-	};
-	if (run.actual) {
-		const actualById = new Map(run.actual.items.map((item, index) => [item.id, {
-			item,
-			index
-		}]));
-		const restoreLine = (line) => {
-			const recorded = actualById.get(line.lineId);
-			const grams = recorded?.item.actualGrams;
-			if (!recorded || grams === null || grams === void 0) return line;
-			return {
-				...line,
-				draftActualGrams: grams,
-				draftActualEdited: false,
-				physicalAddedGrams: grams,
-				confirmed: true,
-				confirmedAt: recorded.item.confirmedAt ?? run.actual.recordedAt,
-				confirmationOrder: recorded.item.confirmationOrder ?? recorded.index + 1
-			};
-		};
-		session = {
-			...session,
-			durableActualRevision: run.actual.revision,
-			lines: session.lines.map(restoreLine),
-			addonLines: session.addonLines.map(restoreLine),
-			stage: session.lines.every((line) => actualById.get(line.lineId)?.item.actualGrams != null) && session.addonLines.length > 0 ? "addons" : "base",
-			substitutions: run.actual.substitutions.map((item) => ({
-				originalLineId: item.originalIngredientId,
-				originalCanonicalIngredientId: item.originalIngredientId,
-				substituteCanonicalIngredientId: null,
-				substituteName: item.substituteName,
-				grams: item.grams ?? 0,
-				reason: item.reason
-			})),
-			internalProductionNote: run.actual.operatorNotes ?? ""
-		};
-	}
-	if (run.rescue && run.actual && session.invalidDurableRescue === null) session = materializeAuthorizedProductionTopUps(session, run.rescue.revision, session.lastDeviationDecision?.sourceActualRevision ?? run.actual.revision, productionLineIdsExecutedAfterRescue(run, run.rescue.revision));
-	return run.status === "completed" ? completeProductionSession(session, calculateRecipe(buildFinalActualInput(session)), run.completedAt ?? run.updatedAt, run.actual?.recordedBy ?? run.ownerUserId) : session;
-}
-
-//#endregion
 //#region src/features/production-workspace/productionRescue.ts
 /**
 * Production-specific Rescue orchestration contract. Engine/config versions
@@ -9167,7 +10758,7 @@ function certifiedMinimumLargerBatchCandidate(session, forecastInput, lowerBound
 			intervalBounds.push(interval.stabilizerBand.maxGrams * 10, -interval.stabilizerBand.minGrams * 10);
 		}
 		if (!sorbetStabilizerSystemApplies(forecastInput.category)) {
-			const minimum = solveIntegerLinearMaximum(intervalRows, intervalBounds, totalRow.map((value) => -value), PRODUCTION_RESCUE_INTEGER_NODE_BUDGET);
+			const minimum = solveProductionRescueIntegerMaximum(intervalRows, intervalBounds, totalRow.map((value) => -value), PRODUCTION_RESCUE_INTEGER_NODE_BUDGET, integerBranchOrder, integerVariableSteps);
 			if (minimum.status !== "optimal" || !minimum.solution) {
 				if (minimum.exhausted) return null;
 				continue;

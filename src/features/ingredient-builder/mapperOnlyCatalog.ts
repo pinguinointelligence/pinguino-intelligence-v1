@@ -6,10 +6,11 @@ import { labelOnlyCatalogToppingIngredient } from '@/features/global-catalog/cat
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
 import type { CatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import { carbonationProfileFromPublicData } from '@/data/products/carbonation';
+import { MAPPER_SEARCH_RELEASE_SHA256 } from '@/features/mapper-search-runtime/generated/releaseManifest';
 
 /** Immutable source pin for the current PI catalog. */
 export const CURRENT_MAPPER_CATALOG_CACHE_KEY =
-  'mapper:v1.0:sha256:057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7';
+  `mapper:v1.0:sha256:${MAPPER_SEARCH_RELEASE_SHA256}`;
 
 export const MAPPER_ONLY_CATALOG_ERROR =
   'Produkt nie ma aktualnego kompletnego profilu technicznego. Odśwież katalog i spróbuj ponownie.';

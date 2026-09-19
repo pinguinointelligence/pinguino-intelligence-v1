@@ -109,7 +109,8 @@ describe('canonical product search v1', () => {
     expect(customerShell).toContain('{ authenticated: authUserId !== null }');
     expect(mapperAdapter).toContain('hit.usableInBase');
     expect(mapperAdapter).toContain('export async function searchCanonicalMapperIngredients');
-    expect(mapperAdapter).toContain('searchCanonicalMapperIngredientsWithPolicy(query, true)');
+    expect(mapperAdapter).toContain("localeVariant: query.localeVariant ?? '*'");
+    expect(mapperAdapter).toContain('searchCanonicalMapperIngredientsWithPolicy(');
     expect(mapperAdapter).toContain("entityKind: 'pi_base'");
     expect(legacyPicker).toContain('getEngineApprovedIngredientById');
     expect(legacyPicker).not.toContain('getIngredientById');

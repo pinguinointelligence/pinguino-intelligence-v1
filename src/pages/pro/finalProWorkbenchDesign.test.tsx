@@ -69,7 +69,7 @@ describe('final Pro visual system', () => {
     // the action. Asserted as a pair so the cue cannot be dropped silently.
     expect(scoreDock).toMatch(/bg-\[var\(--g-graphite\)\][^"']*text-white/);
     expect(scoreDock).toContain('data-testid="pro-workbar-recalc-cue"');
-    expect(scoreDock).toMatch(/rounded-full bg-\[#f58a07\]/);
+    expect(scoreDock).toMatch(/rounded-full bg-\[var\(--g-orange\)\]/);
     expect(workbar).toMatch(/bg-ink[^"']*text-white/);
     const tokens = read('styles', 'tokens.css');
     expect(tokens).toContain('--color-nonproduction-pink');
@@ -135,7 +135,7 @@ describe('one global menu and four local contexts', () => {
     expect(page).toContain('<WorkbenchModuleTabs');
     // V2.1 §8: the strip is anchored to the display column by the shared contract.
     expect(page).toContain('DESKTOP_TAB_STRIP');
-    expect(page).toContain('className="w-full border-b-0"');
+    expect(page).toContain('className="border-b-0"');
     expect(page).toContain('AppShell');
   });
 
@@ -323,7 +323,8 @@ describe('profile semantics and readiness', () => {
     expect(settings).not.toContain('ProteinTargetControl');
     expect(settings).not.toContain('Mapper 2088');
     expect(settings).not.toContain('testid="workbench-quality"');
-    expect(settings).toContain('testid="workbench-strategy"');
+    // DESIGN V3.0 correction I: OPTIMAL / ECO are two tiles (one radiogroup).
+    expect(settings).toContain("'workbench-strategy'");
     expect(settings).toContain("label: 'OPTIMAL'");
     expect(settings).toContain("label: 'ECO'");
     expect(settings).toContain('Priorytet smaku.');
@@ -334,7 +335,12 @@ describe('profile semantics and readiness', () => {
 
   it('hides serving mode for home machines and keeps it for professional machines', () => {
     const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
-    expect(settings).toContain("store.machineKind === 'home'");
+    // The machine authority moved with the settings handlers (DESIGN V3.0 §3
+    // shares them with the setup); the panel still gates serving on it.
+    expect(read('features', 'pro-workbench', 'proSettingsAuthority.ts')).toContain(
+      "store.machineKind === 'home'",
+    );
+    expect(settings).toContain('showsProfessionalServing(store.machineKind)');
     expect(settings).toContain('home-machine-capacity');
     expect(settings).toContain('Zalecany wsad na cykl');
     expect(settings).toContain('testid="workbench-serving"');
@@ -502,8 +508,16 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     expect(shouldActivateMobileCockpitModal(true, true)).toBe(true);
     expect(shouldActivateMobileCockpitModal(true, false)).toBe(false);
     expect(shouldActivateMobileCockpitModal(false, true)).toBe(false);
-    expect(surface).toContain('role="dialog"');
-    expect(surface).toContain('aria-modal="true"');
+    /* DESIGN V3.0 §12 + owner 2026-09-18 (OD-20): the cockpit is still a real modal for
+       Receptura, Produkcja and Etykieta — and explicitly NOT for Monitor, which is a
+       panel the recipe stays visible and usable under. Both halves are asserted, so
+       neither can be lost: the modal attributes are still written, and they are written
+       for everything except `monitorPanelMode`. */
+    expect(surface).toContain("role={monitorPanelMode ? undefined : 'dialog'}");
+    expect(surface).toContain('aria-modal={monitorPanelMode ? undefined : true}');
+    expect(surface).toContain(
+      "const monitorPanelMode = mobileCockpitOpen && mobileViewport && activeTab === 'monitor'",
+    );
     // The trigger is now the bottom preview bar itself (owner mobile UX §11):
     // each module button is the disclosure control for the cockpit sheet.
     expect(read('features', 'pro-workbench', 'WorkbenchModuleTabs.tsx')).toContain(
@@ -517,7 +531,12 @@ describe('Monitor, overlay, responsiveness and truthfulness', () => {
     );
     expect(surface).toContain("e.key === 'Escape'");
     expect(surface).toContain("e.key !== 'Tab'");
-    expect(surface).toContain("body.style.overflow = 'hidden'");
+    // PRO MOBILE UX v2 · A1 — the page lock is the ONE counted primitive every
+    // modal surface shares, so no closing order can leave the page locked.
+    expect(surface).toContain('lockBodyScroll()');
+    expect(read('components', 'ui', 'bodyScrollLock.ts')).toContain(
+      "document.body.style.overflow = 'hidden'",
+    );
   });
 
   it('uses pink only through explicit readiness states with accessible limitations', () => {

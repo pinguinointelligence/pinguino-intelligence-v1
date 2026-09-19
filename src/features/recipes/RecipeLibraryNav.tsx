@@ -13,7 +13,9 @@ const stripClasses =
 const entryClasses = (active: boolean) =>
   cn(
     'min-h-12 shrink-0 border-b-2 px-4 text-[13px] font-semibold tracking-normal',
-    active ? 'border-[#ef8708] text-ink' : 'border-transparent text-stone-600 hover:text-ink',
+    active
+      ? 'border-[var(--g-orange)] text-ink'
+      : 'border-transparent text-stone-600 hover:text-ink',
   );
 
 interface TabsModeProps {
@@ -32,11 +34,11 @@ interface LinksModeProps {
 /**
  * The one Recipes library strip.
  *
- * `/community` and `/top100` are part of the Recipes experience, not separate
- * destinations the customer is thrown into: they keep this strip, so the way
- * back to the library is always where the way out was. Inside `/recipes` the
- * four library panels stay a real tablist; on the two public routes every
- * entry is a link, which is what a route change actually is.
+ * `/community` is part of the Recipes experience, not a separate destination
+ * the customer is thrown into: it keeps this strip, so the way back to the
+ * library is always where the way out was. Inside `/recipes` the three library
+ * panels stay a real tablist; on public Community routes every entry is a link,
+ * which is what a route change actually is.
  */
 export function RecipeLibraryNav(props: TabsModeProps | LinksModeProps) {
   return (
@@ -45,7 +47,7 @@ export function RecipeLibraryNav(props: TabsModeProps | LinksModeProps) {
         <div
           role="tablist"
           aria-label="Biblioteka receptur"
-          className="flex w-full min-w-0 max-w-full overflow-x-auto lg:w-auto"
+          className="flex w-full min-w-0 max-w-full overflow-x-auto md:w-auto"
         >
           {RECIPE_LIBRARY_TABS.map(([id, label]) => (
             <button
@@ -68,7 +70,7 @@ export function RecipeLibraryNav(props: TabsModeProps | LinksModeProps) {
       ) : (
         <nav
           aria-label="Biblioteka receptur"
-          className="flex w-full min-w-0 max-w-full overflow-x-auto lg:w-auto"
+          className="flex w-full min-w-0 max-w-full overflow-x-auto md:w-auto"
         >
           {RECIPE_LIBRARY_TABS.map(([id, label]) => (
             <Link
@@ -84,7 +86,7 @@ export function RecipeLibraryNav(props: TabsModeProps | LinksModeProps) {
       )}
       <nav
         aria-label="Gellatti Community"
-        className="flex w-full min-w-0 max-w-full overflow-x-auto lg:w-auto"
+        className="flex w-full min-w-0 max-w-full overflow-x-auto md:w-auto"
       >
         {RECIPE_LIBRARY_LINKS.map(([href, label]) => {
           const active = props.mode === 'links' && props.activeHref === href;

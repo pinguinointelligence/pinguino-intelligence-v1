@@ -14,6 +14,7 @@ import { useLineLockControls } from '@/features/constraint-studio/useLineLockCon
 import {
   createSubstitutionPreviewWithServerAuthority,
   selectCanonicalDraft,
+  useConstraintStudioStore,
 } from '@/features/constraint-studio/constraintStudioStore';
 import { NonProductionBadge } from '@/features/design-review/NonProductionMarker';
 import { firstCanonicalBaseItem, useRecipeStore } from '@/stores/recipeStore';
@@ -56,6 +57,7 @@ import { useRecalculatedIngredientLines } from './ingredientChangeStore';
 import type { IngredientPriceView } from './IngredientPriceControl';
 import type { ProductionWorkspaceView } from '@/features/production-workspace/useProductionWorkspace';
 import { nextProductionLineId } from '@/features/production-workspace/productionNextAction';
+import { preparationOrderedBaseLines } from '@/features/production-workspace/preparationPlan';
 import { ProductionTopUpSection } from '@/features/production-workspace/ProductionTopUpSection';
 import { pendingProductionTopUpTasks } from '@/features/production-workspace/productionSession';
 import { repairableCanonicalDuplicateCount } from './ingredientDuplicateRepair';
@@ -87,6 +89,7 @@ import {
   canonicalReplaceContext,
   type ProductDiscoveryReplaceContext,
 } from './canonicalProductDiscovery';
+import { createReplacementSearchLineContext } from './replacementSearchContext';
 
 const b = copy.studio.builder;
 /**
@@ -101,7 +104,6 @@ export function IngredientBuilder({
   layout = 'card',
   mode = 'recipe',
   production,
-  productionReadyPresentation = false,
   recipeActionDock,
 }: {
   items: EffectiveRecipeItem[];
@@ -111,9 +113,6 @@ export function IngredientBuilder({
   layout?: 'card' | 'workbench';
   mode?: IngredientTableMode;
   production?: ProductionWorkspaceView;
-  /** Desktop-only presentation bridge for the approved inline process reminder.
-   * Mobile keeps the current Production cockpit card and interaction model. */
-  productionReadyPresentation?: boolean;
   recipeActionDock?: ReactNode;
 }) {
   const queryClient = useQueryClient();
@@ -233,7 +232,9 @@ export function IngredientBuilder({
   const removeItem = useRecipeStore((state) => state.removeItem);
   const setCanonicalUnavailable = useRecipeStore((state) => state.setIngredientUnavailable);
   const lockAwareCoreActions: IngredientRowActions = wrapActions({
-    setPlannedGrams: useRecipeStore((state) => state.setPlannedGrams),
+    // Shared HOME + PRO rule: a direct row grams edit is one exact-quantity
+    // transaction. System vectors, Apply and resize keep their own doors.
+    setPlannedGrams: useRecipeStore((state) => state.setExactGrams),
     setActualGrams: useRecipeStore((state) => state.setActualGrams),
     setLockType: useRecipeStore((state) => state.setLockType),
     setMainIngredient: useRecipeStore((state) => state.setMainIngredient),
@@ -251,7 +252,12 @@ export function IngredientBuilder({
   const editRefusalFor = (item: EffectiveRecipeItem): string | null => {
     const snapshots = useRecipeStore.getState().productBehaviorSnapshots;
     if (!productBehaviorIsManaged(snapshots)) return null;
-    const required = productBehaviorRequiredLineIds({ items: [item] });
+    // Judged at the amount the control would WRITE, exactly like the click
+    // path: a 0 g line is not "required", so judging it at its current mass
+    // showed an open stepper whose every press was then refused.
+    const required = productBehaviorRequiredLineIds({
+      items: [{ ...item, planned_grams: Math.max(item.planned_grams, 1) }],
+    });
     if (required.length === 0) return null;
     const gate = productBehaviorModuleGate(snapshots, 'BASE_RECIPE', required);
     if (gate.ready) return null;
@@ -268,7 +274,7 @@ export function IngredientBuilder({
       const requiredLineIds = productBehaviorRequiredLineIds({
         items: [{ ...line, planned_grams: requestedGrams }],
       });
-      // The managed check is the same authority `setPlannedGrams` and
+      // The managed check is the same authority `setExactGrams` and
       // `setPlannedGramsVector` apply in the store. Without it this wrapper was
       // strictly stricter than the action it wraps: an unresolved workspace
       // (signed-out, or the demo preset cold-open) has no snapshot for any
@@ -313,15 +319,51 @@ export function IngredientBuilder({
     ...coreActions,
     setPlannedPercent: (lineId, percent) => {
       const draft = selectCanonicalDraft();
+      const selected = draft.input.items.find((item) => item.id === lineId);
+      const selectedConstraint = draft.constraints.byLineId[lineId];
+      const selectedConstraintIsExact =
+        selectedConstraint?.mode === 'locked' || selectedConstraint?.mode === 'percent';
+      const preserveExactLock =
+        selected?.lock_type === 'grams' ||
+        selected?.lock_type === 'percent' ||
+        selectedConstraintIsExact;
+      const editableInput =
+        preserveExactLock &&
+        (selected?.lock_type === 'grams' || selected?.lock_type === 'percent')
+          ? {
+              ...draft.input,
+              items: draft.input.items.map((item) =>
+                item.id === lineId ? { ...item, lock_type: 'unlocked' as const } : item,
+              ),
+            }
+          : draft.input;
+      const editableConstraints = selectedConstraintIsExact
+        ? {
+            byLineId: { ...draft.constraints.byLineId, [lineId]: { mode: 'ai' as const } },
+          }
+        : draft.constraints;
       const next = buildDirectPercentEdit(
-        draft.input,
-        draft.constraints,
+        editableInput,
+        editableConstraints,
         lineId,
         percent,
         draft.excludedIngredientIds,
       );
       if (next.ok) {
+        const constraintStudio = preserveExactLock
+          ? useConstraintStudioStore.getState()
+          : null;
+        if (constraintStudio) {
+          if (selectedConstraint !== undefined && selectedConstraint.mode !== 'ai') {
+            constraintStudio.clearConstraint(lineId);
+          } else if (selected?.lock_type === 'percent') {
+            useRecipeStore.getState().setPercentLock(lineId, null);
+          } else {
+            useRecipeStore.getState().setGramLock(lineId, null);
+          }
+        }
         setPlannedGramsVector(next.gramsByLineId);
+        constraintStudio?.togglePercentLock(lineId);
         markDoseUserSet(lineId);
       }
     },
@@ -426,10 +468,30 @@ export function IngredientBuilder({
       setPickerNotice(null);
     },
     requestReplace: (lineId, context: ProductDiscoveryReplaceContext) => {
+      const current = items.find((item) => item.id === lineId);
+      if (!current) return;
       replaceRequestKey.current += 1;
       setReplaceRequest({
         lineId,
-        invocation: { key: replaceRequestKey.current, context },
+        invocation: {
+          key: replaceRequestKey.current,
+          context,
+          currentLine: createReplacementSearchLineContext({
+            usageMode: 'PRO_REPLACE',
+            lineId,
+            ingredient: current.ingredient,
+            snapshot: productBehaviorSnapshots[lineId],
+            recipeProfile: behaviorProfile,
+            currentRole: current.lock_type === 'main' ? 'MAIN' : 'STANDARD',
+            processScope: 'BASE_FORMULATION',
+            temperatureC: behaviorTemperatureC,
+            formulationMode: behaviorMode,
+            userFilters: context,
+            plannedGrams: current.planned_grams,
+            actualGrams: current.actual_grams,
+            lockType: current.lock_type,
+          }),
+        },
       });
     },
     moveUp: (lineId) => {
@@ -496,32 +558,18 @@ export function IngredientBuilder({
     mode === 'recipe' &&
     (pickerNotice !== null || compositionMigrationAmbiguities.length > 0 || duplicateCount > 0);
 
-  const orderIndex = new Map(baseOrder.map((id, index) => [id, index]));
+  // A running batch lists its rows in preparation-plan order, the same order as the
+  // active row and the plan card. Recipe mode and the stored recipe order are unchanged.
+  const displayOrder =
+    mode === 'production' && production?.session
+      ? preparationOrderedBaseLines(production.session).map((line) => line.lineId)
+      : baseOrder;
+  const orderIndex = new Map(displayOrder.map((id, index) => [id, index]));
   const orderedItems = [...items].sort((left, right) => {
     const leftIndex = orderIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER;
     const rightIndex = orderIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER;
     return leftIndex === rightIndex ? 0 : leftIndex - rightIndex;
   });
-  const pendingHeatAdvisories =
-    productionReadyPresentation && production && !production.heatInformationAcknowledged
-      ? (production.heatInformation ?? [])
-      : [];
-  const heatReminderLineId =
-    orderedItems.find((item) =>
-      pendingHeatAdvisories.some((advisory) => {
-        const identities = [
-          item.id,
-          item.ingredient.id,
-          item.ingredient.canonical_ingredient_id,
-        ].filter((identity): identity is string => Boolean(identity));
-        const normalizedName = item.ingredient.name.trim().toLocaleUpperCase('pl-PL');
-        const advisoryName = advisory.productName?.trim().toLocaleUpperCase('pl-PL') ?? '';
-        return (
-          (advisory.productId !== null && identities.includes(advisory.productId)) ||
-          advisoryName.includes(normalizedName)
-        );
-      }),
-    )?.id ?? null;
   const activeProductionLineId =
     mode === 'production'
       ? nextProductionLineId(
@@ -654,14 +702,6 @@ export function IngredientBuilder({
         productionLine={productionLine}
         productionActions={productionActions}
         productionActive={item.id === activeProductionLineId}
-        productionProcessReminder={
-          item.id === heatReminderLineId && production
-            ? {
-                disabled: production.persistenceBusy,
-                onConfirm: () => void production.acknowledgeHeatInformation(),
-              }
-            : undefined
-        }
         canMoveUp={rowIndex > 0}
         canMoveDown={rowIndex < orderedItems.length - 1}
         changed={isLineChanged(item.id)}
@@ -944,14 +984,14 @@ export function IngredientBuilder({
           temperatureC: behaviorTemperatureC,
           mode: behaviorMode,
         }}
+        behaviorSnapshot={productBehaviorSnapshots[item.id]}
         canMoveUp={index > 0}
         canMoveDown={index < toppings.length - 1}
         compact={layout === 'workbench'}
         onChange={(grams) => setToppingGrams(item.id, grams)}
         onRemove={() => removeTopping(item.id)}
         onReplace={(ingredient, behavior) => {
-          replaceToppingIngredient(item.id, ingredient);
-          if (behavior) setProductBehaviorSnapshot(item.id, { ...behavior, lineId: item.id });
+          replaceToppingIngredient(item.id, ingredient, behavior);
         }}
         onMove={(direction) => {
           moveTopping(item.id, direction);
@@ -1103,7 +1143,7 @@ export function IngredientBuilder({
                          other rule down this column is a neutral hairline, so
                          the one orange line is what separates "the recipe you
                          are reading" from "the things you can do to it". */
-                      className="flex min-w-0 flex-wrap items-center gap-2 border-t border-[#f58a07] bg-white px-[var(--pro-mobile-gutter)] py-2 lg:px-3"
+                      className="flex min-w-0 flex-wrap items-center gap-2 border-t border-[var(--g-orange)] bg-white px-[var(--pro-mobile-gutter)] py-2 lg:px-3"
                       data-testid="ingredient-action-toolbar"
                     >
                       <div

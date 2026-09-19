@@ -155,7 +155,7 @@ describe('savedToRecipeInput (load validation)', () => {
     expect(loaded.goals?.direction_targets).toEqual(input.goals.direction_targets);
     expect(loaded.goals?.direction_targets_active).toBe(true);
   });
-  it('round-trips persisted range and unavailable sidecars through a saved version', () => {
+  it('round-trips persisted range and dormant availability sidecars through a saved version', () => {
     const base = sampleInput();
     const [first] = base.items;
     const input = {
@@ -176,7 +176,7 @@ describe('savedToRecipeInput (load validation)', () => {
       },
     };
     const payload = buildSavePayload({
-      name: 'Range and availability',
+      name: 'Range and dormant availability',
       recipeInput: input,
       intakeProductId: null,
       intakeServingId: null,

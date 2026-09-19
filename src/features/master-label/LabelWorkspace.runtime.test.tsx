@@ -573,10 +573,13 @@ describe('LabelWorkspace unified actual-run surface', () => {
     ).toBe('eu_declaration');
     expect(
       host.querySelector('[data-testid="label-consumer-preview-sizer"]')?.getAttribute('class'),
-    ).toContain('max-w-full');
-    expect(
-      host.querySelector('[data-testid="label-consumer-preview"]')?.getAttribute('style'),
-    ).toContain('aspect-ratio: 102 / 152');
+    ).toContain('overflow-hidden');
+    const previewStyle = host
+      .querySelector('[data-testid="label-consumer-preview"]')
+      ?.getAttribute('style');
+    expect(previewStyle).toContain('width: 385.511811');
+    expect(previewStyle).toContain('height: 574.488188');
+    expect(previewStyle).toContain('transform: scale(1)');
     const exactPreview = host.querySelector<HTMLIFrameElement>(
       '[data-testid="label-print-document-preview"]',
     );
@@ -721,22 +724,33 @@ describe('LabelWorkspace unified actual-run surface', () => {
     expect(host.textContent).toContain('of which saturates3.2 g');
   });
 
-  it('keeps separate Basic rectangle and round dimensions without presets or Auto', async () => {
+  /* OWNER §36 (2026-09-10) — this used to prove that the Basic picker kept
+     rectangle and round dimensions apart while the customer toggled between
+     them. Round is no longer offered anywhere a customer can reach it, so the
+     toggle it drove does not exist. What survives from the old assertion is the
+     part that still matters: Basic edits dimensions directly, with no presets
+     and no Auto, and the value the customer typed is the value that stays. */
+  it('Basic edits rectangle dimensions directly, and offers no round format', async () => {
     await renderWorkspace('settings');
     const editor = host.querySelector('[data-testid="label-settings-view"]')!;
     expect(editor.textContent).not.toContain('Format: Auto');
     expect(editor.textContent).not.toContain('70 × 50 mm');
+    expect(button('Okrągła')).toBeUndefined();
+    expect(button('Prostokątna')).toBeUndefined();
+    expect(editor.querySelector('[data-testid="label-basic-diameter"]')).toBeNull();
+
     const width = editor.querySelector<HTMLInputElement>('[data-testid="label-basic-width"]')!;
     await act(async () => setInputValue(width, '111'));
-    await act(async () => button('Okrągła')!.click());
-    const diameter = editor.querySelector<HTMLInputElement>(
-      '[data-testid="label-basic-diameter"]',
-    )!;
-    await act(async () => setInputValue(diameter, '73'));
-    await act(async () => button('Prostokątna')!.click());
     expect(editor.querySelector<HTMLInputElement>('[data-testid="label-basic-width"]')?.value).toBe(
       '111',
     );
+
+    const format = editor.querySelector<HTMLSelectElement>(
+      '[data-testid="label-presentation-format"]',
+    );
+    if (format) {
+      expect([...format.options].map((option) => option.value)).toEqual(['rectangle']);
+    }
   });
 
   it('keeps Step 3 configuration-only and does not persist an unapplied market change', async () => {
@@ -1038,5 +1052,51 @@ describe('LabelWorkspace unified actual-run surface', () => {
     await renderWorkspace('settings', { settingsHome: 'production' });
     expect(dot('settings')).toBeNull();
     expect(host.querySelector('[data-active-label-view="settings"]')).toBeNull();
+  });
+
+  /* Production v3 §5 — applying THIS run's label settings does not rewrite the account
+     default unless the reader ticks „Zapisz jako moje ustawienie domyślne”. */
+  it('starts „Zapisz jako moje ustawienie domyślne” unticked and applies without saving the profile', async () => {
+    const repository = await renderWorkspace('settings');
+    const saveProfile = vi.spyOn(repository, 'saveAccountProfile');
+    const checkbox = [...host.querySelectorAll<HTMLLabelElement>('label')]
+      .find((label) => label.textContent?.includes('Zapisz jako moje ustawienie domyślne'))!
+      .querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    expect(checkbox.checked).toBe(false);
+    const market = host.querySelector<HTMLSelectElement>('[data-testid="label-market-select"]')!;
+    await act(async () => setSelectValue(market, 'UK'));
+    await act(async () => (button('Zastosuj ustawienia') as HTMLButtonElement).click());
+    expect(host.querySelector('[data-active-label-view="label"]')).not.toBeNull();
+    expect(saveProfile).not.toHaveBeenCalled();
+    expect((await repository.getAccountProfile())?.market).toBe('EU');
+  });
+
+  /* Production v3 §5 — a named saved version that does not exist (or belongs to another
+     run) is „not found”: never a new label built from the current profile, no print. */
+  it('shows „Nie znaleźliśmy tej wersji etykiety” for a missing saved version', async () => {
+    const repository = inMemoryLabelRepository('owner-label-workspace');
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <LabelWorkspace
+            snapshot={completedSnapshot()}
+            savedSnapshotId="snapshot-that-does-not-exist"
+            repository={repository}
+            initialView="label"
+          />
+        </MemoryRouter>,
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await vi.waitFor(() =>
+      expect(
+        host.querySelector('[data-testid="label-workspace-version-not-found"]'),
+      ).not.toBeNull(),
+    );
+    expect(host.textContent).toContain('Nie znaleźliśmy tej wersji etykiety.');
+    expect(host.querySelector('[data-testid="label-print"]')).toBeNull();
+    expect(host.querySelector('[data-testid="label-consumer-preview"]')).toBeNull();
+    expect(host.querySelector('[data-testid="label-change"]')).toBeNull();
   });
 });

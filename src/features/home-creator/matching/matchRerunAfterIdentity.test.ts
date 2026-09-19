@@ -66,7 +66,6 @@ describe('the two runs produce different verdicts — which is why the re-run ex
     const first = await searchExistingRecipes({
       requested: requestedFrom([chip({ ambiguous: true })]),
       profile: 'gelato',
-      canOpenOwnerReview: false,
     });
     expect(first.decision.kind).toBe('create_my_own');
     // §22: an unresolved identity must not even reach the oracle.
@@ -98,7 +97,6 @@ describe('the two runs produce different verdicts — which is why the re-run ex
     const second = await searchExistingRecipes({
       requested: requestedFrom([chip({ productId: COCOA })]),
       profile: 'gelato',
-      canOpenOwnerReview: false,
     });
     expect(second.decision.kind).toBe('show_popup');
     expect(matchCommunityTop100).toHaveBeenCalledTimes(1);
@@ -106,16 +104,17 @@ describe('the two runs produce different verdicts — which is why the re-run ex
 });
 
 describe('the page wires the re-run', () => {
-  it('calls runMatching from the identity answer, not only from the CTA', async () => {
+  it('an identity answer re-matches through the idea version, never suppressed by an old dismissal', async () => {
     const source = await import('node:fs').then((fs) =>
       fs.readFileSync('src/pages/home/HomeCreatorPage.tsx', 'utf8'),
     );
-    const handler = source.slice(
-      source.indexOf('onChooseIdentity'),
-      source.indexOf('onScan={'),
-    );
-    expect(handler).toContain('runMatching()');
-    // A stale dismissal must not suppress the newly-earned popup.
-    expect(handler).toContain('setMatchDismissed(false)');
+    // Owner 2026-09-17 (B): matching follows the idea version (useHomeIdeaSuggestions), so
+    // the §23 answer — which changes the resolved identities — re-runs it by itself, and a
+    // dismissal only ever applies to the exact version it was made for.
+    expect(source).toContain('useHomeIdeaSuggestions({');
+    expect(source).toContain('!suggestions.isDismissed(suggestions.signature)');
+    const handler = source.slice(source.indexOf('onChooseIdentity'), source.indexOf('onScan={'));
+    expect(handler).toContain('resolveChip(chip.id');
+    expect(handler).not.toContain('dismiss(');
   });
 });

@@ -88,6 +88,16 @@ describe('Slice 3 destination pages', () => {
     expect(/stripe/i.test(html)).toBe(false); // no payment provider wired
   });
 
+  it('Subscription cadence pages are generous touch targets (the book replaced the toggle)', () => {
+    const html = render(<SubscriptionPage />);
+    // Two plans × two pages of the book. The global toggle pills are gone.
+    const cadencePages = html.match(/<button type="button" role="radio"[^>]*>/g) ?? [];
+    expect(cadencePages).toHaveLength(4);
+    expect(html).not.toContain('aria-pressed');
+    // The whole page is the control, padded well past 44 px on every breakpoint.
+    for (const page of cadencePages) expect(page).toMatch(/class="[^"]*\bp-5\b/);
+  });
+
   it('API page lists the informational links', () => {
     const html = render(<APIPage />);
     expect(html).toContain(copy.nav.api.title);
@@ -106,7 +116,8 @@ describe('Slice 3 destination pages', () => {
     const html = render(<RecipesHubPage />);
     expect(html).toContain('data-testid="recipes-tab-mine"');
     expect(html).toContain('data-testid="recipes-tab-pinguino"');
-    expect(html).toContain('data-testid="recipes-tab-inspiration"');
+    expect(html).toContain('data-testid="recipes-tab-shared"');
+    expect(html).not.toContain('recipes-tab-inspiration');
     expect(html).toContain('role="tablist"');
     expect(html).toContain('aria-controls="recipes-panel-pinguino"');
     expect(html).toContain('id="recipes-panel-pinguino"');
@@ -114,18 +125,28 @@ describe('Slice 3 destination pages', () => {
     expect(html).toContain('tabindex="-1"');
     expect(html).toContain('min-h-10');
     expect(html).not.toContain('href="/my-recipes"');
-    expect(html).toContain(copy.nav.recipes.gelato);
+    expect(html).toContain('data-testid="official-collections"');
   });
 
-  it('routes Mine, PINGÜINO and Inspiration inside the same recipe destination', () => {
+  it('routes Gellatti, Mine and Shared inside the same recipe destination; Inspiracje is retired', () => {
     const mine = renderAt('/recipes?tab=mine', <RecipesHubPage />);
     expect(mine).toContain('data-testid="recipes-mine"');
-    const curated = renderAt('/recipes', <RecipesHubPage />);
-    expect(curated).toContain(copy.nav.recipes.discovery.lostTitle.replace('&', '&amp;'));
-    expect(curated).toContain(copy.nav.recipes.discovery.naturalTitle);
-    const inspiration = renderAt('/recipes?tab=inspiration', <RecipesHubPage />);
-    expect(inspiration).toContain(copy.nav.recipes.discovery.inspirationTitle);
-    expect(inspiration).not.toContain(copy.nav.recipes.discovery.lostTitle);
+    const official = renderAt('/recipes', <RecipesHubPage />);
+    for (const name of [
+      'Classics',
+      'Icons',
+      'Cocktails &amp; Spirits',
+      'Lost &amp; Legendary',
+      'Technical Bases',
+    ]) {
+      expect(official).toContain(name);
+    }
+    // The curated research tiles are owner-review tooling, not a customer destination.
+    expect(official).not.toContain(copy.nav.recipes.discovery.naturalTitle);
+    const retired = renderAt('/recipes?tab=inspiration', <RecipesHubPage />);
+    expect(retired).toContain('data-testid="official-collections"');
+    expect(retired).not.toContain('Inspiracje');
+    expect(retired).not.toContain('recipes-panel-inspiration');
   });
 
   it('no destination page shows customer-facing "Demo"', () => {

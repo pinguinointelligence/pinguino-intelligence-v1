@@ -1,5 +1,24 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from 'react';
+import { cn } from '@/lib/cn';
+import {
+  clampMonitorHeight,
+  monitorHeightForEditor,
+  monitorHeightForKey,
+  MONITOR_DRAG_THRESHOLD_PX,
+  MONITOR_MIN_HEIGHT_PX,
+} from '@/features/studio/monitorPanelResize';
 import { copy } from '@/copy/en';
+import { lockBodyScroll } from '@/components/ui/bodyScrollLock';
+import { usePublishedBottomStackHeight } from '@/features/studio/bottomStackHeight';
+import { revealWithinScrollContainer } from '@/features/studio/revealWithinScrollContainer';
 import { DESKTOP_WORKBENCH_COLUMNS } from '@/features/shell/desktopTabAnchorContract';
 import { useAccess } from '@/access/useAccess';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -28,15 +47,28 @@ import type { LabelWorkspaceView } from '@/features/master-label/LabelWorkspace'
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { WorkbenchRecipeActionDock } from '@/features/pro-workbench/WorkbenchRecipeActionDock';
 import { WorkbenchModuleTabs } from '@/features/pro-workbench/WorkbenchModuleTabs';
-import { useProductionWorkspace } from '@/features/production-workspace/useProductionWorkspace';
+import { useProductionHost } from '@/features/production-workspace/ProductionProcessHost';
 import { ProductionWorkspaceHeader } from '@/features/production-workspace/ProductionWorkspaceHeader';
 import {
   collapsedMobileCockpitRoute,
   MOBILE_COCKPIT_QUERY,
   nextMobileCockpitState,
+  optimisticMobileCockpitState,
+  reconcileMobileCockpitRoute,
   shouldActivateMobileCockpitModal,
   shouldRevealProductionWeighingOnNarrowViewport,
+  type MobileCockpitState,
 } from '@/features/studio/mobileCockpitModal';
+import {
+  cockpitMove,
+  runSpatialTransition,
+  type SpatialMove,
+} from '@/features/studio/spatialTransition';
+import { RecipeContextBar } from '@/features/studio/RecipeContextBar';
+import { mobileNextStep, type MobileNextStep } from '@/features/pro-workbench/mobileNextStep';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
+import { useProSetupFlowGate } from '@/features/pro-workbench/proSetupFlowGate';
+import { ProSetupDefaultsNotice, ProSetupFlow } from '@/features/pro-workbench/ProSetupFlow';
 
 const { studio } = copy;
 
@@ -159,7 +191,7 @@ export function StudioEngineSurface({
   const temperatureC = useRecipeStore((state) => state.target_temperature_c);
   const batchGrams = useRecipeStore((state) => state.target_batch_grams);
   const planning = useStudioResult('planning');
-  const production = useProductionWorkspace(activeTab === 'production');
+  const production = useProductionHost(activeTab === 'production');
   const productionActive =
     activeTab === 'production' &&
     production.practicalReady !== false &&
@@ -186,40 +218,121 @@ export function StudioEngineSurface({
    * route-sync below only fires for an EXTERNAL change — a deep link or the
    * back button — where „open" genuinely does follow the route.
    */
-  const [mobileCockpitState, setMobileCockpitState] = useState({
+  const [mobileCockpitState, setMobileCockpitState] = useState<MobileCockpitState<CockpitTab>>({
     activeTab,
     open: activeTab !== 'profile',
   });
-  if (mobileCockpitState.activeTab !== activeTab) {
-    setMobileCockpitState({ activeTab, open: activeTab !== 'profile' });
+  // A3 — an intent stated just before navigating survives the render in which
+  // React Router 7 has not delivered its route yet; only a genuinely external
+  // route change re-derives the state (see reconcileMobileCockpitRoute).
+  const routeReconciled = reconcileMobileCockpitRoute(mobileCockpitState, activeTab, 'profile');
+  if (routeReconciled) {
+    setMobileCockpitState(routeReconciled);
   }
   const mobileCockpitOpen = mobileCockpitState.open;
+  const [mobileViewport, setMobileViewport] = useState(false);
+  /* PRO MOBILE UX v2 · B2/B9 — what the phone's cockpit shows changes
+     SPATIALLY (spatialTransition.ts): the Receptura dashboard drops from the
+     recipe bar and lifts back into it, and the modules slide in the bottom
+     bar's order. A module change is also a route change, delivered by React
+     Router in a transition, so the movement waits for that route (at most
+     500 ms) before it takes its final picture. */
+  const routeWaitersRef = useRef<Array<{ tab: CockpitTab; resolve: () => void }>>([]);
+  const routeTabRef = useRef(activeTab);
+  useEffect(() => {
+    routeTabRef.current = activeTab;
+    const arrived = routeWaitersRef.current.filter((waiter) => waiter.tab === activeTab);
+    routeWaitersRef.current = routeWaitersRef.current.filter((waiter) => waiter.tab !== activeTab);
+    arrived.forEach((waiter) => waiter.resolve());
+  }, [activeTab]);
+  const untilRoute = useCallback(
+    (tab: CockpitTab) => () =>
+      new Promise<void>((resolve) => {
+        routeWaitersRef.current.push({ tab, resolve });
+        window.setTimeout(resolve, 500);
+      }),
+    [],
+  );
+  const withSpatialMove = (move: SpatialMove | null, apply: () => void, routeTab?: CockpitTab) =>
+    runSpatialTransition(
+      !mobileViewport ? null : move,
+      apply,
+      routeTab !== undefined && routeTab !== activeTab ? untilRoute(routeTab) : undefined,
+    );
   /** One selector for the bottom bar: open, collapse, or switch. */
   const selectMobileModule = (tab: CockpitTab) => {
     const next = nextMobileCockpitState(mobileCockpitState, tab);
-    setMobileCockpitState(next);
-    if (next.open && tab !== activeTab) onTabChange(tab);
+    const navigates = next.open && tab !== activeTab;
+    withSpatialMove(
+      cockpitMove(mobileCockpitState, next),
+      () => {
+        setMobileCockpitState(navigates ? optimisticMobileCockpitState(next, activeTab) : next);
+        if (navigates) onTabChange(tab);
+      },
+      navigates ? tab : undefined,
+    );
   };
   // Collapsing is also a ROUTE change for the non-default modules, so „what is
   // open" stays visible in the address bar and survives refresh/back.
-  const collapseMobileCockpit = () => {
-    setMobileCockpitState({ activeTab, open: false });
+  const collapseWithMove = (move?: SpatialMove) => {
     const routeAfterCollapse = collapsedMobileCockpitRoute(
       activeTab,
       'profile',
       activeTab === 'production' && production.session?.status === 'in_progress',
     );
-    if (routeAfterCollapse !== activeTab) onTabChange(routeAfterCollapse);
+    withSpatialMove(
+      move ?? cockpitMove(mobileCockpitState, { activeTab, open: false }),
+      () => {
+        setMobileCockpitState({ activeTab, open: false });
+        if (routeAfterCollapse !== activeTab) onTabChange(routeAfterCollapse);
+      },
+      routeAfterCollapse,
+    );
   };
+  const collapseMobileCockpit = () => collapseWithMove();
   // The Escape handler is installed once per open sheet; reading the collapse
   // through a ref keeps that effect's dependencies stable.
   const collapseRef = useRef(collapseMobileCockpit);
   useEffect(() => {
     collapseRef.current = collapseMobileCockpit;
   });
-  const [mobileViewport, setMobileViewport] = useState(false);
   const cockpitTriggerRef = useRef<HTMLButtonElement | null>(null);
   const cockpitPanelRef = useRef<HTMLElement | null>(null);
+  /** The desktop column's copy of the cockpit (A3 reveals inside the copy you can see). */
+  const desktopCockpitRef = useRef<HTMLElement | null>(null);
+  const workbenchRef = useRef<HTMLElement | null>(null);
+  const bottomStackRef = useRef<HTMLDivElement | null>(null);
+  usePublishedBottomStackHeight(bottomStackRef, workbenchRef);
+  /** A3 — every „Otwórz ustawienia" request is revealed exactly once. */
+  const [settingsRevealRequest, setSettingsRevealRequest] = useState(0);
+  const handledSettingsRevealRef = useRef(0);
+  /** B7 — every „Zapisz recepturę" request reveals the ONE existing name/save card once. */
+  const [saveRevealRequest, setSaveRevealRequest] = useState(0);
+  const handledSaveRevealRef = useRef(0);
+  /** Whether the sheet (not the column) hosts the cockpit, for listeners registered once. */
+  const phoneSheetRef = useRef(false);
+  /* DESIGN V3.0 §12 — Monitor on a phone / iPad portrait is NOT the modal cockpit the
+     other modules use: the recipe stays visible and usable underneath it, there is no
+     scrim, and a grip on the panel's bottom edge sets its height. Owner 2026-09-18
+     (OD-20): this is Monitor's rule alone — Produkcja and Etykieta keep the sheet they
+     have until DESIGN says otherwise, so the shared host below branches instead of
+     being generalised. */
+  const monitorPanelMode = mobileCockpitOpen && mobileViewport && activeTab === 'monitor';
+  const monitorHostRef = useRef<HTMLDivElement | null>(null);
+  /** The height the user chose with the grip; null until they touch it (= full). */
+  const [monitorHeight, setMonitorHeight] = useState<number | null>(null);
+  /** The temporary give-way for an open ingredient panel — never the user's own value. */
+  const [monitorFitHeight, setMonitorFitHeight] = useState<number | null>(null);
+  /* §12: „Zjeżdża z góry i startuje na pełną wysokość.” Both values belong to ONE visit
+     to Monitor, so leaving it forgets them and the next visit starts full again. Same
+     shape as the route reconciliation above: a state that has to follow a prop is
+     adjusted during render, not in an effect that would render twice. */
+  const [monitorVisit, setMonitorVisit] = useState(false);
+  if (monitorVisit !== monitorPanelMode) {
+    setMonitorVisit(monitorPanelMode);
+    setMonitorHeight(null);
+    setMonitorFitHeight(null);
+  }
   const previousProductionSessionIdRef = useRef(production.session?.sessionId ?? null);
   const focusProductionAfterCollapseRef = useRef(false);
 
@@ -234,20 +347,35 @@ export function StudioEngineSurface({
 
   useEffect(() => {
     const showProfileSettings = () => {
-      onTabChange('profile');
-      setMobileCockpitState({ activeTab: 'profile', open: true });
-      queueMicrotask(() =>
-        document.querySelector<HTMLElement>('[data-testid="workbench-settings-line"]')?.focus(),
+      // The intent first, carrying the module it leaves, then the route. On a
+      // phone the Receptura dashboard drops down from the recipe bar (B2).
+      runSpatialTransition(
+        phoneSheetRef.current ? 'drop' : null,
+        () => {
+          setMobileCockpitState((current) =>
+            optimisticMobileCockpitState({ activeTab: 'profile', open: true }, current.activeTab),
+          );
+          onTabChange('profile');
+        },
+        routeTabRef.current !== 'profile' ? untilRoute('profile') : undefined,
       );
+      // A3 — the reveal runs once the sheet has mounted (effect below), inside
+      // the copy the customer can SEE. A document-wide lookup one microtask
+      // later found the hidden desktop column's copy first on a phone, so the
+      // sheet opened on the recipe name instead of on the settings.
+      setSettingsRevealRequest((request) => request + 1);
     };
     window.addEventListener('pinguino:profile-settings-required', showProfileSettings);
     return () =>
       window.removeEventListener('pinguino:profile-settings-required', showProfileSettings);
-  }, [onTabChange]);
+  }, [onTabChange, untilRoute]);
 
   useEffect(() => {
     const query = window.matchMedia(MOBILE_COCKPIT_QUERY);
-    const sync = () => setMobileViewport(query.matches);
+    const sync = () => {
+      phoneSheetRef.current = query.matches;
+      setMobileViewport(query.matches);
+    };
     sync();
     query.addEventListener('change', sync);
     return () => query.removeEventListener('change', sync);
@@ -326,23 +454,28 @@ export function StudioEngineSurface({
 
   useEffect(() => {
     if (!shouldActivateMobileCockpitModal(mobileCockpitOpen, mobileViewport)) return;
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
     const trigger = cockpitTriggerRef.current;
     const focusables = () =>
       cockpitPanelRef.current
         ? Array.from(cockpitPanelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
         : [];
 
-    body.style.overflow = 'hidden';
-    focusables()[0]?.focus();
+    /* §12: Monitor is not modal. The recipe underneath stays scrollable and keeps its
+       own tab order, so Monitor takes neither the page lock nor the focus trap — only
+       Escape still closes it. Every other module keeps the modal cockpit unchanged. */
+    const modal = !monitorPanelMode;
+
+    // One shared, counted page lock (A1). A dialog still open inside this sheet
+    // when the recipe context remounts used to restore its saved `hidden` last.
+    const releaseScroll = modal ? lockBodyScroll() : null;
+    if (modal) focusables()[0]?.focus();
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         collapseRef.current();
         return;
       }
-      if (e.key !== 'Tab') return;
+      if (!modal || e.key !== 'Tab') return;
 
       const list = focusables();
       const first = list[0];
@@ -361,10 +494,219 @@ export function StudioEngineSurface({
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
-      body.style.overflow = previousOverflow;
-      if (!focusProductionAfterCollapseRef.current) trigger?.focus();
+      releaseScroll?.();
+      // Focus goes back only where it was taken from the trigger in the first place.
+      if (modal && !focusProductionAfterCollapseRef.current) trigger?.focus();
     };
-  }, [activeTab, mobileCockpitOpen, mobileViewport]);
+  }, [activeTab, mobileCockpitOpen, mobileViewport, monitorPanelMode]);
+
+  /* §12 — what Monitor is drawn at: the temporary give-way for an open ingredient
+     panel wins over the user's own height, and „no height yet” means full. */
+  const monitorPanelHeight = monitorFitHeight ?? monitorHeight;
+
+  /* §12: with an ingredient panel open Monitor gives way only as far as needed, leaving
+     a strip of the recipe between the two, and the user's own height returns afterwards.
+     The room is measured against the height the user ASKED for (or full), never against
+     the height already rendered — measuring the rendered one would shrink, re-measure,
+     find room, grow back, and oscillate. The panel is top-anchored inside its host, so
+     the host's own top is the panel's top. */
+  useEffect(() => {
+    if (!monitorPanelMode) return;
+    const measure = () => {
+      const host = monitorHostRef.current;
+      if (!host) return;
+      const editor = document.querySelector('.ingredient-editor-sheet');
+      if (!editor) {
+        setMonitorFitHeight(null);
+        return;
+      }
+      const hostRect = host.getBoundingClientRect();
+      if (hostRect.height <= 0) return;
+      setMonitorFitHeight(
+        monitorHeightForEditor({
+          panelTop: hostRect.top,
+          editorTop: editor.getBoundingClientRect().top,
+          current: monitorHeight ?? hostRect.height,
+          available: hostRect.height,
+        }),
+      );
+    };
+    measure();
+    // The editor is a portal outside this tree, and the keyboard moves it after it opens.
+    const observer = new MutationObserver(measure);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+    });
+    window.addEventListener('resize', measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+    // The user's own height is an input here: resizing with a panel open re-measures.
+  }, [monitorPanelMode, monitorHeight]);
+
+  /** The room the grip may move within: the host already ends above the bottom stack. */
+  const monitorGeometry = () => {
+    const host = monitorHostRef.current;
+    const panel = cockpitPanelRef.current;
+    if (!host) return null;
+    const available = host.getBoundingClientRect().height;
+    const rendered = panel?.getBoundingClientRect().height ?? 0;
+    return { available, current: rendered > 0 ? rendered : (monitorHeight ?? available) };
+  };
+
+  /* §12: one finger, pointer events, pointer capture, and a gesture of its OWN — the
+     indicators keep their normal one-finger scroll because only this grip listens, and
+     a move under the threshold stays a tap. */
+  const beginMonitorResize = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const geometry = monitorGeometry();
+    if (!geometry) return;
+    event.preventDefault();
+    const grip = event.currentTarget;
+    /* Served 2026-09-18 (staging a1e1d729, 375 x 812): the grip could never be focused by
+       touching it, so „tap the grip, then use the arrows” did nothing — `preventDefault`
+       above stops the browser's own focus along with the text selection and scroll it is
+       there to stop. §12 gives the grip arrow keys, so the pointer must hand it the focus
+       those keys need. `preventScroll` keeps the page exactly where the finger left it. */
+    grip.focus({ preventScroll: true });
+    const startY = event.clientY;
+    const startHeight = geometry.current;
+    let moved = false;
+    try {
+      grip.setPointerCapture(event.pointerId);
+    } catch {
+      /* a synthetic pointer (tests) or a browser that refuses capture: the drag still runs */
+    }
+    const move = (moveEvent: PointerEvent) => {
+      const dy = moveEvent.clientY - startY;
+      if (!moved && Math.abs(dy) < MONITOR_DRAG_THRESHOLD_PX) return;
+      moved = true;
+      setMonitorFitHeight(null);
+      setMonitorHeight(clampMonitorHeight(Math.round(startHeight + dy), geometry.available));
+    };
+    const end = () => {
+      grip.removeEventListener('pointermove', move);
+      grip.removeEventListener('pointerup', end);
+      grip.removeEventListener('pointercancel', end);
+      try {
+        grip.releasePointerCapture(event.pointerId);
+      } catch {
+        /* nothing held it */
+      }
+    };
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', end);
+    grip.addEventListener('pointercancel', end);
+  };
+
+  /** §12: „strzałki klawiatury też działają” — the same separator, without a pointer. */
+  const onMonitorGripKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const geometry = monitorGeometry();
+    if (!geometry) return;
+    const next = monitorHeightForKey(event.key, geometry.current, geometry.available);
+    if (next === null) return;
+    event.preventDefault();
+    setMonitorFitHeight(null);
+    setMonitorHeight(next);
+  };
+
+  // A3 — land ON the settings. Declared after the modal effect so that, in the
+  // commit that opens the sheet, the sheet's own first focus happens first and
+  // this reveal has the last word. A request is revealed once: reopening
+  // Receptura later does not jump to the settings again.
+  // Exactly the condition under which the sheet, not the column, hosts the
+  // cockpit — the same expression that mounts the sheet further down.
+  const sheetHostsCockpit = mobileCockpitOpen && mobileViewport;
+  useEffect(() => {
+    if (settingsRevealRequest === handledSettingsRevealRef.current) return;
+    const container = sheetHostsCockpit ? cockpitPanelRef.current : desktopCockpitRef.current;
+    if (!container) return;
+    handledSettingsRevealRef.current = settingsRevealRequest;
+    return revealWithinScrollContainer({
+      container,
+      selector: '[data-testid="workbench-settings-line"]',
+      onSettled: (target) => target.focus({ preventScroll: true }),
+    });
+  }, [settingsRevealRequest, sheetHostsCockpit]);
+
+  // B7 — „Zapisz recepturę" lands ON the one existing name/save card: the empty
+  // name field first, otherwise ZAPISZ itself. Saving stays the card's own act.
+  useEffect(() => {
+    if (saveRevealRequest === handledSaveRevealRef.current) return;
+    const container = sheetHostsCockpit ? cockpitPanelRef.current : desktopCockpitRef.current;
+    if (!container) return;
+    handledSaveRevealRef.current = saveRevealRequest;
+    return revealWithinScrollContainer({
+      container,
+      selector: '[data-testid="pro-workbar"]',
+      onSettled: (card) => {
+        const name = card.querySelector<HTMLTextAreaElement>(
+          '[data-testid="pro-workbar-name-wrap"]',
+        );
+        const save = card.querySelector<HTMLButtonElement>('[data-testid="pro-workbar-save"]');
+        const target =
+          name && name.value.trim() === '' ? name : save && !save.disabled ? save : name;
+        target?.focus({ preventScroll: true });
+      },
+    });
+  }, [saveRevealRequest, sheetHostsCockpit]);
+
+  /** B2 — brings the Receptura dashboard down (recipe bar, „Zapisz recepturę"). */
+  const openRecipeDashboard = (afterOpen?: () => void) => {
+    const next: MobileCockpitState<CockpitTab> = { activeTab: 'profile', open: true };
+    withSpatialMove(
+      cockpitMove(mobileCockpitState, next),
+      () => {
+        setMobileCockpitState(optimisticMobileCockpitState(next, activeTab));
+        if (activeTab !== 'profile') onTabChange('profile');
+        afterOpen?.();
+      },
+      'profile',
+    );
+  };
+
+  /* B6 — the ONE next step of the phone strip, from published facts only. */
+  const settingsConfirmed = useRecipeProfileStore((state) => state.settingsConfirmed);
+  const recipeDirty = useRecipeStore((state) => state.dirty);
+  const savedRecipeId = useRecipeStore((state) => state.savedRecipeId);
+  const mobileNext = mobileNextStep({
+    settingsConfirmed,
+    saveRequired: recipeSaveAttention,
+    savedAndClean: savedRecipeId !== null && !recipeDirty,
+    activeTab,
+  });
+  const onMobileNext = (step: MobileNextStep) => {
+    if (step === 'settings') {
+      window.dispatchEvent(new Event('pinguino:profile-settings-required'));
+    } else if (step === 'save') {
+      openRecipeDashboard(() => setSaveRevealRequest((request) => request + 1));
+    } else {
+      selectMobileModule(step);
+    }
+  };
+
+  /* DESIGN V3.0 §3 (owner-LOCKED Points 1–4) — a NEW unsaved recipe on a
+     phone or iPad portrait starts with the full-screen setup instead of the
+     settings sheet (it supersedes B3). Step 1 is always asked; saved defaults
+     skip Steps 2–3 and leave „Używamy Twoich domyślnych ustawień · Zmień ✓"
+     under the recipe. The setup is hosted only where the phone composition is
+     — modal behaviour, never a value — and until it is done nothing later in
+     the flow (the dock with Przelicz, the module tabs, the sheets) is
+     reachable: the workbench under it is inert. The desktop keeps its
+     permanent settings column. */
+  const setup = useProSetupFlowGate({
+    mobileViewport,
+    available: fullFormula,
+    activeTab,
+  });
+  const setupOpen = setup.step !== null;
+  /* The setup leaves and the recipe drops in from above (the V3 reveal), with
+     the same spatial authority every other phone move uses. */
+  const revealAfterSetup = (apply: () => void) =>
+    runSpatialTransition(!mobileViewport ? null : 'reveal', apply);
 
   // ONE recipe action dock (score / „Przelicz" + the action bar). It is placed
   // in the editor toolbar on the workbench breakpoint and in the mobile bottom
@@ -391,6 +733,7 @@ export function StudioEngineSurface({
         onRecalculate={onRecalculate}
         onOpenPreview={onOpenExistingPreview ?? (() => undefined)}
         onOpenLearning={openLearning}
+        mobileFlow={{ next: mobileNext, onNext: onMobileNext }}
       />
     ) : null;
   const productionNeedsAttention =
@@ -412,9 +755,25 @@ export function StudioEngineSurface({
       {/* ── ONE-SCREEN WORKBENCH — fills the remaining viewport height on desktop; every
           edit-loop control lives INSIDE this section (owner zero-page-scroll rule). ── */}
       <section
-        className="pro-workbench-surface flex min-h-0 flex-col pb-[calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom))]"
+        ref={workbenchRef}
+        /* A2 — the document reserves exactly the MEASURED bottom stack (strip +
+           module bar + safe area). The old estimate is only the fallback for
+           the frame before the first measurement. */
+        className="pro-workbench-surface flex min-h-0 flex-col pb-[var(--pro-mobile-bottom-stack-height,calc(var(--pro-bottom-nav-height)+4.75rem+env(safe-area-inset-bottom)))]"
         data-testid="pro-workbench"
+        /* V3 §3 — while the setup is open the workbench under it is inert:
+           no tab stop, no pointer and no screen-reader path reaches Przelicz,
+           the module tabs or any sheet before the recipe exists. */
+        inert={setupOpen || undefined}
       >
+        <RecipeContextBar
+          stage={MOBILE_PREVIEW_TITLES[activeTab]}
+          settingsPending={settingsConfirmed === false}
+          onOpen={() => openRecipeDashboard()}
+        />
+        {setup.defaultsNotice && setup.draftIdentity !== null ? (
+          <ProSetupDefaultsNotice draftIdentity={setup.draftIdentity} />
+        ) : null}
         {activeTab === 'production' && production.session ? (
           <ProductionWorkspaceHeader production={production} />
         ) : null}
@@ -448,7 +807,6 @@ export function StudioEngineSurface({
                   layout="workbench"
                   mode={productionActive ? 'production' : 'recipe'}
                   production={production}
-                  productionReadyPresentation={activeTab === 'production' && !productionActive}
                   recipeActionDock={recipeActionDock ?? undefined}
                 />
               </div>
@@ -463,6 +821,7 @@ export function StudioEngineSurface({
               change (useStudioResult), ONE predictable internal scroll surface (B6).
               Mobile reaches the SAME content through the Monitor bottom sheet. */}
           <aside
+            ref={desktopCockpitRef}
             className="pro-workbench-right-track hidden min-h-0"
             data-testid="pro-monitor-panel"
             aria-label={copy.proWorkbench.profile.title}
@@ -495,11 +854,12 @@ export function StudioEngineSurface({
             formal calculation state is never more than a thumb away, and the
             whole stack respects `env(safe-area-inset-bottom)`. */}
         <div
+          ref={bottomStackRef}
           className="pro-workbench-mobile-only fixed inset-x-0 bottom-0 z-[60]"
           data-testid="mobile-cockpit-trigger"
         >
           {mobileRecipeActionDock ? (
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-ink/10 bg-white px-[var(--pro-mobile-gutter)] py-2">
+            <div className="gellatti-touch-control flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-ink/10 bg-white px-[var(--pro-mobile-gutter)] py-2">
               {mobileRecipeActionDock}
             </div>
           ) : null}
@@ -514,7 +874,7 @@ export function StudioEngineSurface({
             attentionTab={mobileAttentionTab}
           />
         </div>
-        {mobileCockpitOpen && mobileViewport ? (
+        {mobileCockpitOpen && mobileViewport && !setupOpen ? (
           <div
             /* OWNER 2026-09-03: the sheet starts BELOW the global header, not at
                `top-0`. On a phone Monitor and Produkcja open this cockpit as soon
@@ -524,26 +884,57 @@ export function StudioEngineSurface({
                backdrop is inset with it, so the header is neither dimmed nor
                swallowed. `--pro-mobile-header-height` is the canonical offset:
                65 px on a phone, 69 px from `sm`, both measured live. */
-            className="pro-workbench-mobile-only fixed inset-x-0 top-[var(--pro-mobile-header-height)] bottom-[calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom))] z-50"
+            ref={monitorHostRef}
+            className={cn(
+              'pro-workbench-mobile-only fixed inset-x-0 top-[var(--pro-mobile-header-height)] bottom-[var(--pro-mobile-bottom-stack-height,calc(var(--pro-bottom-nav-height)+env(safe-area-inset-bottom)))] z-50',
+              /* §12 — with no scrim the host itself must not swallow taps meant for the
+                 recipe below it; only the panel takes pointer events. */
+              monitorPanelMode && 'pointer-events-none',
+            )}
+            /* A2 — and it ENDS at the top of the measured bottom stack. It used
+               to end at the top of the module bar only, so the score / „Przelicz"
+               strip covered its last 62 px (served, 375 × 812), including the
+               Etykieta print bar that sticks to the sheet's bottom edge. */
             data-testid="mobile-cockpit-sheet"
           >
-            <button
-              type="button"
-              aria-label="Zamknij kokpit"
-              onClick={collapseMobileCockpit}
-              className="absolute inset-0 bg-black/35"
-            />
+            {/* §12: „Receptura zostaje pod spodem i nie ma zasłony.” Monitor is the one
+                module without the dimming backdrop — every other module keeps it. */}
+            {monitorPanelMode ? null : (
+              <button
+                type="button"
+                aria-label="Zamknij kokpit"
+                onClick={collapseMobileCockpit}
+                className="absolute inset-0 bg-black/35"
+              />
+            )}
             <section
               ref={cockpitPanelRef}
               id="mobile-cockpit-dialog"
-              role="dialog"
-              aria-modal="true"
+              data-sheet-anchor={monitorPanelMode || activeTab === 'profile' ? 'top' : 'bottom'}
+              data-testid={monitorPanelMode ? 'monitor-resizable-panel' : undefined}
+              /* §12: Monitor is a panel over the recipe, not a dialog over the app — it
+                 takes neither `role="dialog"` nor `aria-modal`, so a screen reader keeps
+                 the recipe underneath in the same document. Its `aria-labelledby` still
+                 names it, which makes the section a region landmark. */
+              role={monitorPanelMode ? undefined : 'dialog'}
+              aria-modal={monitorPanelMode ? undefined : true}
               aria-labelledby="mobile-cockpit-title"
               /* The panel filled 92dvh measured from the VIEWPORT, which is what
                  pushed it up over the header. It now fills its own container,
                  which already starts below the header, so the height follows the
                  offset instead of competing with it. */
-              className="absolute inset-x-0 bottom-0 flex h-full max-h-full flex-col overflow-hidden rounded-t-[22px] border-t border-ink/10 bg-white shadow-pro-e3 [overscroll-behavior:contain]"
+              className={cn(
+                'absolute inset-x-0 flex max-h-full flex-col overflow-hidden border-ink/10 bg-white shadow-pro-e3 [overscroll-behavior:contain]',
+                monitorPanelMode
+                  ? /* §12: it comes DOWN from the top and its height is the grip's business. */
+                    'pointer-events-auto top-0 rounded-b-[22px] border-b'
+                  : 'bottom-0 h-full rounded-t-[22px] border-t',
+              )}
+              style={
+                monitorPanelMode
+                  ? { height: monitorPanelHeight === null ? '100%' : `${monitorPanelHeight}px` }
+                  : undefined
+              }
             >
               <div className="relative z-40 flex shrink-0 items-center justify-between border-b border-ink/10 bg-white px-4 py-3">
                 <h2 id="mobile-cockpit-title" className="text-sm font-semibold text-ink">
@@ -558,7 +949,11 @@ export function StudioEngineSurface({
                   ×
                 </button>
               </div>
-              <div className="relative min-h-0 flex-1 overflow-y-auto [--label-workspace-bottom-inset:4.75rem]">
+              <div
+                /* A2 — nothing of the bottom stack overlaps this box any more, so
+                   the insets that compensated for it are zero in here. */
+                className="relative min-h-0 flex-1 overflow-y-auto [--pro-bottom-chrome-overlap:0px]"
+              >
                 <RecipeProfilePanel
                   activeTab={activeTab}
                   onTabChange={onTabChange}
@@ -578,10 +973,35 @@ export function StudioEngineSurface({
                   labelSettingsRestoreScrollTop={labelSettingsRestoreScrollTop}
                 />
               </div>
+              {monitorPanelMode ? (
+                /* §12: the grip on the BOTTOM edge. It is a separator, not a button: it
+                   sets a value between two areas, which is exactly what the arrows do
+                   here too. `touch-none` keeps the browser from turning the drag into a
+                   page gesture, and because only this element listens, the indicators
+                   above keep their ordinary one-finger scroll. */
+                <div
+                  role="separator"
+                  aria-orientation="horizontal"
+                  aria-label="Przeciągnij, aby zmienić wysokość Monitora"
+                  aria-valuemin={MONITOR_MIN_HEIGHT_PX}
+                  aria-valuenow={monitorPanelHeight ?? undefined}
+                  tabIndex={0}
+                  data-testid="monitor-resize-handle"
+                  onPointerDown={beginMonitorResize}
+                  onKeyDown={onMonitorGripKeyDown}
+                  className="flex h-9 shrink-0 cursor-row-resize touch-none items-center justify-center border-t border-ink/10 bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ink/40"
+                >
+                  <span aria-hidden="true" className="h-1 w-10 rounded-full bg-ink/20" />
+                </div>
+              ) : null}
             </section>
           </div>
         ) : null}
       </section>
+
+      {/* DESIGN V3.0 §3 — the full-screen setup of a new recipe (phone and
+          iPad portrait only; see `useProSetupFlowGate`). */}
+      {setup.step !== null ? <ProSetupFlow step={setup.step} onReveal={revealAfterSetup} /> : null}
 
       {/* Przelicz z PI — the compact OVERLAY (never a page section). */}
       {recalcSlot}

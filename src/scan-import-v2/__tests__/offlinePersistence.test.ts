@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   createOfflineCache,
   createSupabaseV2Ports,
@@ -44,6 +44,9 @@ const gtinRow = (over: Record<string, unknown> = {}) => ({
   mapper_ingredient_id: null,
   engine_usable: true,
   lifecycle_rejected: false,
+  is_active: true,
+  merged_into_product_id: null,
+  current_version_facts: { productIntelligence: { engineUsable: true } },
   ...over,
 });
 function client(rows: unknown[], upserts: unknown[] = []): SupabaseLike {
@@ -68,7 +71,7 @@ const base = (cache: ReturnType<typeof createOfflineCache>) => ({
 });
 
 describe('Persistent offline cache (Web Storage backend, reload-safe)', () => {
-  it('online exact resolution persists; a RELOAD (new cache over the same storage) resolves the same identity offline', async () => {
+  it('online exact resolution persists; a RELOAD exposes only a local hint offline', async () => {
     const storage = fakeStorage();
     const c1 = createOfflineCache({ store: createWebStorageStore(storage) });
     const online = await runScanImportV2(scan('8402001047251'), ctx(), {
@@ -83,10 +86,9 @@ describe('Persistent offline cache (Web Storage backend, reload-safe)', () => {
       ...base(c2),
     });
     expect(offline).toMatchObject({
-      kind: 'resolved_exact',
-      provenance: 'local_cache',
-      product: { productId: 'P-HAC', productCode: 'PR-ING-007173', currentVersionId: 'v1' },
-      importSkipped: 'offline',
+      kind: 'offline',
+      knownLocally: true,
+      cachedProduct: { productId: 'P-HAC', productCode: 'PR-ING-007173', currentVersionId: 'v1' },
     });
   });
   it('offline unknown stays OFFLINE, never unknown-as-if-answered', async () => {
@@ -141,6 +143,37 @@ describe('Persistent offline cache (Web Storage backend, reload-safe)', () => {
     expect((await c.get('user-1', '8402001047251'))?.candidate.currentVersionId).toBe('v2');
     expect(await c.size()).toBe(1);
   });
+  it('invokes the stale-version guard on an authoritative online hit', async () => {
+    const c = createOfflineCache({ store: createMemoryStore() });
+    const invalidateIfStale = vi.spyOn(c, 'invalidateIfStale');
+    await runScanImportV2(scan('8402001047251'), ctx(), {
+      ...createSupabaseV2Ports(client([gtinRow({ current_version_id: 'v2' })])),
+      ...base(c),
+    });
+    expect(invalidateIfStale).toHaveBeenCalledWith('user-1', '8402001047251', 'v2');
+  });
+  it('evicts an earlier exact answer when online authority later quarantines or removes it', async () => {
+    const c = createOfflineCache({ store: createMemoryStore() });
+    await runScanImportV2(scan('8402001047251'), ctx(), {
+      ...createSupabaseV2Ports(client([gtinRow()])),
+      ...base(c),
+    });
+    expect(await c.size()).toBe(1);
+
+    expect(
+      await runScanImportV2(scan('8402001047251'), ctx(), {
+        ...createSupabaseV2Ports(client([])),
+        ...base(c),
+      }),
+    ).toMatchObject({ kind: 'unknown' });
+    expect(await c.size()).toBe(0);
+    expect(
+      await runScanImportV2(scan('8402001047251'), ctx({ online: false }), {
+        ...createSupabaseV2Ports(client([])),
+        ...base(c),
+      }),
+    ).toMatchObject({ kind: 'offline', knownLocally: false });
+  });
   it("account separation and guest separation: one account's entry is invisible to another account and to guests; no private leak", async () => {
     const storage = fakeStorage();
     const c = createOfflineCache({ store: createWebStorageStore(storage) });
@@ -173,7 +206,7 @@ describe('Persistent offline cache (Web Storage backend, reload-safe)', () => {
         ...createSupabaseV2Ports(client([])),
         ...base(c),
       }),
-    ).toMatchObject({ kind: 'resolved_exact', product: { productId: 'CA-PRIV' } });
+    ).toMatchObject({ kind: 'offline', knownLocally: true, cachedProduct: { productId: 'CA-PRIV' } });
     for (const raw of storage.map.values())
       expect(raw).not.toMatch(/privatePrice|favorite|owner_user_id/);
   });

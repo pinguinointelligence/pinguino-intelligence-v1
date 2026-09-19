@@ -54,6 +54,10 @@ import { customerErrorMessage } from '@/copy/customerError';
 import { PrintMissingDataDialog } from './PrintMissingDataDialog';
 import { printMissingFields, printReadinessForLabel } from './printMissingData';
 import { MissingLabelDataSettings } from './MissingLabelDataFields';
+import { productionBatchesLabelsCopy } from '@/copy/productionBatchesLabels';
+import { useRegisterUnsaved } from '@/features/production-area/useRegisterUnsaved';
+
+const labelsCopy = productionBatchesLabelsCopy.labels;
 
 const MARKET_CODES: readonly MarketProfileCode[] = MARKET_PROFILE_ORDER;
 export type LabelWorkspaceView = 'data' | 'settings' | 'label';
@@ -183,7 +187,12 @@ export function LabelWorkspace({
   const [saved, setSaved] = useState<RunLabelSnapshot | null>(null);
   const [label, setLabel] = useState<MasterLabelData | null>(null);
   const [editing, setEditing] = useState(false);
-  const [saveAsDefault, setSaveAsDefault] = useState(true);
+  /* Production v3 §5 — a change to THIS run's label never becomes the account
+     default unless the reader ticks „Zapisz jako moje ustawienie domyślne”. */
+  const [saveAsDefault, setSaveAsDefault] = useState(false);
+  /* An explicitly named saved version that does not exist, or belongs to another
+     run: shown as „not found” — never replaced by a new label from the profile. */
+  const [missingSavedVersion, setMissingSavedVersion] = useState(false);
   const [activeView, setActiveView] = useState<LabelWorkspaceView>(
     initialView === 'settings' && !settingsLiveHere ? 'data' : initialView,
   );
@@ -238,17 +247,20 @@ export function LabelWorkspace({
         const nextProfile = existingProfile ?? defaultAccountLabelProfile(ownerId);
         let nextSnapshot = suppliedSnapshot;
         let nextSaved: RunLabelSnapshot | null = null;
+        let savedVersionMissing = false;
         if (!profileOnly && requestedRunId) {
           nextSnapshot = nextSnapshot ?? (await repository.getCompletedSnapshot(requestedRunId));
           nextSaved = savedSnapshotId
             ? await repository.getRunLabelSnapshotById(savedSnapshotId)
             : await repository.getRunLabelSnapshot(requestedRunId);
-          if (nextSaved && nextSaved.runId !== requestedRunId) {
-            throw new Error('Wybrany zapis etykiety nie należy do wskazanej partii.');
+          if (savedSnapshotId && (!nextSaved || nextSaved.runId !== requestedRunId)) {
+            savedVersionMissing = true;
+            nextSaved = null;
           }
           if (nextSnapshot) await repository.freezeCompletedSnapshot(nextSnapshot);
         }
         if (cancelled) return;
+        setMissingSavedVersion(savedVersionMissing);
         setProfile(nextProfile);
         setProfileWasPersisted(Boolean(existingProfile));
         setSnapshot(nextSnapshot ?? null);
@@ -259,7 +271,7 @@ export function LabelWorkspace({
             ? editingSavedVersion
               ? { ...nextSaved.label, snapshotEvidence: null }
               : nextSaved.label
-            : nextSnapshot
+            : nextSnapshot && !savedVersionMissing
               ? labelFromProfile(nextSnapshot, nextProfile)
               : null,
         );
@@ -426,14 +438,17 @@ export function LabelWorkspace({
             logoUrl={logoUrl}
             repository={repository}
             onClose={() => setEditing(false)}
+            unsavedGuard={{ id: 'labels-profile', label: labelsCopy.unsavedProfile }}
             onSave={async (next) => {
               setBusy(true);
               setError(null);
               try {
                 await persistProfile(next);
                 setEditing(false);
+                return true;
               } catch (caught) {
                 setError(customerErrorMessage(caught, 'labels', 'LABEL_SAVE_FAILED'));
+                return false;
               } finally {
                 setBusy(false);
               }
@@ -441,6 +456,20 @@ export function LabelWorkspace({
           />
         ) : null}
       </div>
+    );
+  }
+
+  if (missingSavedVersion) {
+    return (
+      <WorkflowNotice
+        className="my-3"
+        eyebrow="Etykieta"
+        title={labelsCopy.snapshotNotFoundTitle}
+        description={labelsCopy.snapshotNotFoundBody}
+        variant="blocking"
+        role="alert"
+        testId="label-workspace-version-not-found"
+      />
     );
   }
 
@@ -562,6 +591,11 @@ export function LabelWorkspace({
             saveAsDefault={saveAsDefault}
             onSaveAsDefaultChange={setSaveAsDefault}
             onClose={() => openView('label')}
+            unsavedGuard={
+              settingsLiveHere
+                ? { id: 'labels-run-settings', label: labelsCopy.unsavedRunSettings }
+                : undefined
+            }
             onSave={async (next) => {
               setBusy(true);
               setError(null);
@@ -574,8 +608,10 @@ export function LabelWorkspace({
                 onSaved?.(frozen);
                 setTransitionDirection('forward');
                 setActiveView(nextReady ? 'label' : 'data');
+                return true;
               } catch (caught) {
                 setError(customerErrorMessage(caught, 'labels', 'LABEL_SAVE_FAILED'));
+                return false;
               } finally {
                 setBusy(false);
               }
@@ -667,15 +703,28 @@ function ProfileEditor({
   repository,
   onClose,
   onSave,
+  unsavedGuard,
 }: {
   profile: AccountLabelProfile;
   logoUrl: string | null;
   repository: LabelRepository;
   onClose: () => void;
-  onSave: (profile: AccountLabelProfile) => Promise<void>;
+  /** Resolves `false` when the save failed (its own message is already shown). */
+  onSave: (profile: AccountLabelProfile) => Promise<boolean | void>;
+  /** Produkcja → Etykiety: ask before this form is left with unsaved changes. */
+  unsavedGuard?: { id: string; label: string };
 }) {
   const [draft, setDraft] = useState(profile);
   const [uploading, setUploading] = useState(false);
+  useRegisterUnsaved({
+    id: unsavedGuard?.id ?? 'label-profile-editor',
+    label: unsavedGuard?.label,
+    enabled: Boolean(unsavedGuard),
+    dirty: JSON.stringify(draft) !== JSON.stringify(profile),
+    // „Zapisz i przejdź” is this form's own „Zapisz profil”.
+    save: async () => ({ ok: (await onSave(draft)) !== false }),
+    discard: onClose,
+  });
   return (
     <DialogShell
       label="Edytuj domyślny profil etykiet"
@@ -1011,6 +1060,7 @@ export function CompactRunLabelSettings({
   onSave,
   showSaveAsDefault = true,
   showDraftData = false,
+  unsavedGuard,
 }: {
   label: MasterLabelData;
   logoUrl?: string | null;
@@ -1018,11 +1068,23 @@ export function CompactRunLabelSettings({
   saveAsDefault: boolean;
   onSaveAsDefaultChange: (value: boolean) => void;
   onClose: () => void;
-  onSave: (label: MasterLabelData) => Promise<void>;
+  /** Resolves `false` when the save failed (its own message is already shown). */
+  onSave: (label: MasterLabelData) => Promise<boolean | void>;
   showSaveAsDefault?: boolean;
   showDraftData?: boolean;
+  /** Produkcja → Etykiety (a run's label): ask before this form is left unsaved. */
+  unsavedGuard?: { id: string; label: string };
 }) {
   const [draft, setDraft] = useState(label);
+  useRegisterUnsaved({
+    id: unsavedGuard?.id ?? 'label-run-settings',
+    label: unsavedGuard?.label,
+    enabled: Boolean(unsavedGuard),
+    dirty: JSON.stringify(draft) !== JSON.stringify(label),
+    // „Zapisz i przejdź” is this form's own „Zastosuj ustawienia”.
+    save: async () => ({ ok: (await onSave(draft)) !== false }),
+    discard: onClose,
+  });
   const draftGeometry = useMemo(() => buildLabelPreflight(draft).geometry, [draft]);
   const finalMass = draft.actualBatchQuantityG ?? draft.netQuantityG ?? 0;
   const initialPackageMass = draft.packageQuantity?.netWeightG ?? finalMass;
@@ -1477,34 +1539,20 @@ function BasicSizeFields({
     sizes.current.round = { diameterMm };
     onChange({ format: 'round', widthMm: diameterMm, heightMm: diameterMm });
   };
+  /* OWNER §36 — Gellatti prints RECTANGULAR labels. The round option is gone
+     from every place a customer can reach.
+   *
+   * What is deliberately NOT removed: `format: 'round'` in the data model and
+   * in the renderers (`masterLabelPdf`, `masterLabelPrint`, `labelGeometry`).
+   * Labels already saved as round are immutable historical records, and a
+   * renderer that no longer knows how to draw one would not remove the option —
+   * it would corrupt the archive. So the choice disappears; the ability to
+   * render what was already chosen does not. */
   return (
     <div data-testid="label-basic-size">
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          className={cn(
-            'pro-focus-ring min-h-11 rounded-[10px] border px-3 text-xs font-semibold',
-            format === 'rectangle'
-              ? 'border-ink bg-ink text-white'
-              : 'border-ink/15 bg-white text-ink',
-          )}
-          onClick={() => onChange({ format: 'rectangle', ...sizes.current.rectangle })}
-        >
-          Prostokątna
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'pro-focus-ring min-h-11 rounded-[10px] border px-3 text-xs font-semibold',
-            format === 'round' ? 'border-ink bg-ink text-white' : 'border-ink/15 bg-white text-ink',
-          )}
-          onClick={() => changeRound(sizes.current.round.diameterMm)}
-        >
-          Okrągła
-        </button>
-      </div>
       {format === 'round' ? (
-        <label className="mt-3 block text-xs font-medium text-stone-600">
+        /* Only reachable from an archived label saved before §36. */
+        <label className="block text-xs font-medium text-stone-600">
           Średnica (mm)
           <input
             type="number"
@@ -4985,6 +5033,8 @@ function PresentationFields({
   return (
     <fieldset className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
       <legend className="sr-only">Prezentacja etykiety</legend>
+      {/* OWNER §36 — rectangular only. An archived round label keeps its own
+          option so its format is not silently rewritten when someone opens it. */}
       <label className="text-xs text-stone-600">
         Format
         <select
@@ -4993,9 +5043,10 @@ function PresentationFields({
             onChange({ ...current, format: event.currentTarget.value as 'rectangle' | 'round' })
           }
           className={SETTINGS_INPUT_CLASS}
+          data-testid="label-presentation-format"
         >
           <option value="rectangle">Prostokąt</option>
-          <option value="round">Okrągła</option>
+          {format === 'round' ? <option value="round">Okrągła (archiwalna)</option> : null}
         </select>
       </label>
       <label className="text-xs text-stone-600">

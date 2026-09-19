@@ -3,6 +3,8 @@ import { calculateRecipe, detectViolations, type RecipeInput } from '@/engine';
 import { INTERNET_PROTEIN_RECIPES } from '@/features/protein-gelato/__fixtures__/internetProteinRecipes';
 import { recipeFitForInput } from '@/features/protein-gelato/proteinAuthority';
 import {
+  mapperIngredientForHistoricalVersion,
+  PRE_FINAL_2089_COMPOSITION_VERSION,
   sorbetMapperIngredient,
   sorbetMultiMainBase,
 } from '@/features/recipe-constraints/__fixtures__/sorbetAuthorityFixture';
@@ -52,7 +54,10 @@ const ownerObservedInput = (): RecipeInput => ({
     ['strawberry', 'PI-ING-001553', 128],
   ].map(([id, mapperId, grams]) => ({
     id: String(id),
-    ingredient: sorbetMapperIngredient(String(mapperId)),
+    ingredient: mapperIngredientForHistoricalVersion(
+      PRE_FINAL_2089_COMPOSITION_VERSION,
+      String(mapperId),
+    ),
     planned_grams: Number(grams),
     actual_grams: null,
     lock_type: 'unlocked' as const,

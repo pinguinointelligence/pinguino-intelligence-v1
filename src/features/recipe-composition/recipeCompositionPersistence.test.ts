@@ -155,6 +155,45 @@ describe('Base/Topping composition sidecar', () => {
     );
   });
 
+  it('PRING-SAVE-01 reloads an exact PR Topping with unresolved public label text', () => {
+    const exactProduct = {
+      ...labelIngredient,
+      id: 'PR-ING-007205',
+      canonical_ingredient_id: 'PR-ING-007205',
+      private_product_id: 'catalog:haribo:version:haribo-v1',
+      catalog_product_id: 'haribo',
+      catalog_version_id: 'haribo-v1',
+      ingredients_text: '',
+      allergens_text: '',
+    };
+    const parsed = readRecipeCompositionMetadata({
+      schemaVersion: 1,
+      baseScope: 'BASE_FORMULATION',
+      baseOrder: [],
+      toppings: [
+        {
+          id: 'haribo-line',
+          ingredient: exactProduct,
+          planned_grams: 35,
+          actual_grams: null,
+          process_scope: 'POST_PROCESS_ADDON',
+          addon_sort_order: 0,
+        },
+      ],
+      migrationAmbiguities: [],
+    });
+
+    expect(parsed?.toppings[0]).toMatchObject({
+      ingredient: {
+        id: 'PR-ING-007205',
+        canonical_ingredient_id: 'PR-ING-007205',
+        ingredients_text: '',
+        allergens_text: '',
+      },
+      planned_grams: 35,
+    });
+  });
+
   it('rejects a persisted Base/Topping line-id collision instead of deadlocking Production', () => {
     const collision = topping('base-milk', 70, 'PI-ING-TOPPING');
     const parsed = readRecipeCompositionMetadata(
@@ -273,7 +312,8 @@ describe('Base/Topping composition sidecar', () => {
     expect(toppingIngredientIdentity(parsed!.toppings[0]!.ingredient)).toBe('catalog:label-sauce');
   });
 
-  it('keeps topping substitution inside topping scope and merges a duplicate canonical target', () => {
+  it('RPL-TOP-01 keeps topping scope, merges a duplicate, and requires recalculation', () => {
+    useRecipeProfileStore.getState().acknowledgeRecalculation();
     const [milk, sugar] = useRecipeStore.getState().items.map((item) => item.ingredient);
     useRecipeStore.getState().addTopping(milk!, 70);
     useRecipeStore.getState().addTopping(sugar!, 60);
@@ -291,6 +331,22 @@ describe('Base/Topping composition sidecar', () => {
       canonicalIngredientId(sugar!),
     );
     expect(state.items).toHaveLength(DEFAULT_PRESET.items.length);
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+  });
+
+  it('RPL-TOP-02 does not require recalculation for a price-only topping refresh', () => {
+    useRecipeProfileStore.getState().acknowledgeRecalculation();
+    const milk = useRecipeStore.getState().items[0]!.ingredient;
+    useRecipeStore.getState().addTopping(milk, 70);
+    const current = useRecipeStore.getState().toppings[0]!;
+
+    useRecipeStore.getState().replaceToppingIngredient(current.id, {
+      ...current.ingredient,
+      cost_per_kg: 12.5,
+    });
+
+    expect(useRecipeStore.getState().toppings[0]?.ingredient.cost_per_kg).toBe(12.5);
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
   });
 
   it('removes only the selected topping and round-trips the remaining topping scope through reload', () => {

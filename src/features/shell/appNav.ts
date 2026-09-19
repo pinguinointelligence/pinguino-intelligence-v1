@@ -7,6 +7,7 @@
  * and internal/admin tools deliberately do not belong here.
  */
 import { copy } from '@/copy/en';
+import { isProductionAreaLocation } from '@/features/production-area/productionAreaSections';
 
 const s = copy.shell;
 
@@ -46,21 +47,26 @@ const pathOrNested = (path: string) => (loc: NavLocation) =>
 
 const recipeDestination = (loc: NavLocation) =>
   pathOrNested('/recipes')(loc) || loc.pathname === '/my-recipes';
-const productionDestination = (loc: NavLocation) =>
-  pathOrNested('/production')(loc) || ['/pro/production', '/pro/history'].includes(loc.pathname);
-const productsDestination = (loc: NavLocation) =>
-  pathOrNested('/products')(loc) ||
-  ['/create-ingredient', '/products/import'].includes(loc.pathname);
+/*
+  OWNER DECISION 2026-09-17 (Produkcja area, GEL-P0-033 navigation clause) — ONE „Produkcja”
+  entry replaces four (Produkcja, Produkty, Maszyna, Ustawienia etykiety). Partie · Produkty ·
+  Maszyna · Etykiety are the SECTIONS of that one area, and the entry is current on every one
+  of their addresses. `PRODUCTION_AREA_SECTIONS` is the single list both the section bar and
+  this entry are matched against, so the two can never disagree.
+
+  `/pro/production` is the recipe's own Produkcja tab inside the Pro workspace, not an area
+  address: it marks „Pro”, like every other `/pro/*` workbench tab.
+*/
+const productionAreaDestination = (loc: NavLocation) => isProductionAreaLocation(loc);
 const communityDestination = (loc: NavLocation) =>
   ['/community', '/top100', '/creator'].includes(loc.pathname);
-const machineDestination = (loc: NavLocation) =>
-  ['/machine', '/profile/machine', '/pro/machine'].includes(loc.pathname);
 const proWorkspaceDestination = (loc: NavLocation) =>
   loc.pathname === '/pro' ||
   [
     '/pro/recipe',
     '/pro/monitor',
     '/pro/versions',
+    '/pro/production',
     '/pro/costs',
     '/pro/exports',
     '/pro/tools',
@@ -68,13 +74,26 @@ const proWorkspaceDestination = (loc: NavLocation) =>
 
 export const APP_NAV_ITEMS: readonly AppNavItem[] = [
   {
+    // The guest's way in is the canonical HOME creator (`/home`, which the root also
+    // renders) — never the legacy `/start` shell, a second and different idea screen.
     id: 'tryPinguino',
     label: s.items.tryPinguino,
-    to: '/start',
+    to: '/home',
     group: 'product',
     order: 1,
     audiences: ['guest'],
-    isActive: exact('/start'),
+    isActive: anyOf('/', '/home'),
+  },
+  {
+    // `/recipes` serves guests (the Gellatti collection), so the guest drawer names it
+    // too. A guest-only twin: the signed-in entry and its `?tab=mine` stay unchanged.
+    id: 'guestRecipes',
+    label: s.items.recipes,
+    to: '/recipes',
+    group: 'product',
+    order: 1.25,
+    audiences: ['guest'],
+    isActive: recipeDestination,
   },
   {
     id: 'howItWorks',
@@ -133,51 +152,16 @@ export const APP_NAV_ITEMS: readonly AppNavItem[] = [
     isActive: recipeDestination,
   },
   {
+    // ONE entry for the whole Produkcja area (owner decision 2026-09-17), for HOME and PRO.
+    // Produkty (with „Skanuj produkt”, Moje produkty, Niezweryfikowane), Maszyna and Etykiety
+    // are its sections — reached from the area's section bar, never from separate drawer rows.
     id: 'production',
     label: s.items.production,
     to: '/production',
     group: 'product',
     order: 2,
-    audiences: ['pro'],
-    isActive: productionDestination,
-  },
-  {
-    id: 'labels',
-    label: s.items.labels,
-    to: '/labels',
-    group: 'product',
-    order: 2.5,
-    audiences: ['pro'],
-    isActive: exact('/labels'),
-  },
-  {
-    id: 'products',
-    label: s.items.products,
-    to: '/products',
-    group: 'product',
-    order: 3,
     audiences: ['home', 'pro'],
-    isActive: productsDestination,
-  },
-  /*
-    OWNER CORRECTION 2026-09-07 — THE PRODUCT AREA HAS ONE HAMBURGER ENTRY: „Produkty".
-
-    Two more were added on top of it — „Dodaj produkt" (order 3.5) and „Niezweryfikowane"
-    (order 3.6) — and both duplicated the same area from the drawer. „Skanuj produkt" is an ACTION
-    on the products page, and „Niezweryfikowane" is a FILTER of the products list; neither is a
-    destination of its own. Both were removed from the drawer and now live inside `/products`,
-    where the URLs they used (`/products/scan`, `/products?filter=unverified`) still work exactly as
-    before — so „Uzupełnij dane" and any saved link keep working. `appNav.test.ts` holds the
-    contract that the product group is one item.
-  */
-  {
-    id: 'machine',
-    label: s.items.machine,
-    to: '/machine',
-    group: 'product',
-    order: 5,
-    audiences: ['home', 'pro'],
-    isActive: machineDestination,
+    isActive: productionAreaDestination,
   },
   {
     id: 'memberShop',

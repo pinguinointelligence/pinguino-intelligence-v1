@@ -82,6 +82,8 @@ const adapter = (ean: string | null = null): TextImportAdapterOutput => ({
       cocoaSolidsPercent: null,
       fruitContentPercent: null,
       brix: null,
+      waterPercent: null,
+      totalSolidsPercent: null,
       concentrationText: null,
       dosageText: null,
       technicalParametersText: null,

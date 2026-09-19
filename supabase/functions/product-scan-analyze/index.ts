@@ -7,12 +7,41 @@ import {
   extractResponseText,
   mergeProductScanResults,
   normalizeValidatedBarcode,
+  scannerCaptureFormatForSymbology,
   sha256Text,
   stableJson,
+  type AuthoritativeBarcodeIdentity,
+  verifyScannerBarcodePayload,
   validateServerResult,
   webCallsInResponse,
 } from '../_shared/productScanner.ts';
 import { requestedLabelFields } from '../../../src/features/product-scanner/labelAnalysisRequest.ts';
+import {
+  candidateFromGtinRow,
+  exactLookupQueries,
+  exactResolverVerdict,
+  exactRowsWithRetry,
+  isRetryableExactResolverError,
+  ExactResolverError,
+  type ExactCandidateLike,
+  type ExactLookupIdentity,
+  type ExactRpcClient,
+  type GtinExactRow,
+} from '../../../src/features/product-scanner/gtinExactResolver.ts';
+// Deno loads these by relative path: the `.ts` extension is REQUIRED on a value import or the
+// deploy fails, and nothing in CI can see it.
+import {
+  rescanReevaluationPlan,
+  scanResultFromStoredFacts,
+} from '../../../src/features/product-scanner/rescanEvaluation.ts';
+import {
+  eanLookupVerdict,
+  lookupSkippedNoticePl,
+} from '../../../src/features/product-scanner/eanLookupOutcome.ts';
+import {
+  openFoodFactsApiUrl,
+  openFoodFactsFactsForExactEan,
+} from '../../../src/features/product-scanner/openFoodFactsDirectLookup.ts';
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -64,6 +93,15 @@ const objectValue = (value: unknown): Record<string, unknown> =>
   value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : {};
+const isOpenFoodFactsSource = (fact: Record<string, unknown>): boolean => {
+  if (fact.sourceDomain === 'world.openfoodfacts.org') return true;
+  if (typeof fact.sourceUrl !== 'string') return false;
+  try {
+    return new URL(fact.sourceUrl).hostname === 'world.openfoodfacts.org';
+  } catch {
+    return false;
+  }
+};
 const mimeMatchesBytes = (mime: string, bytes: Uint8Array) => {
   if (mime === 'image/jpeg')
     return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes.at(-2) === 0xff && bytes.at(-1) === 0xd9;
@@ -83,65 +121,203 @@ const mimeMatchesBytes = (mime: string, bytes: Uint8Array) => {
   return false;
 };
 
-async function exactProductForBarcode(
-  service: ReturnType<typeof createClient>,
-  barcode: string | null,
-  actorUserId: string,
-) {
-  if (!barcode) return null;
-  const digits = barcode.replace(/\D/g, '');
-  if (![8, 12, 13].includes(digits.length)) return null;
-  const candidates = new Set([digits]);
-  if (digits.length === 12) candidates.add(`0${digits}`);
-  if (digits.length === 13 && digits.startsWith('0')) candidates.add(digits.slice(1));
-  const { data } = await service
-    .from('product_variants')
-    .select(
-      'product_id,ean,products!inner(id,is_active,merged_into_product_id,product_name_display,brand,product_kind,canonical_verification_status,product_code,current_version_id)',
-    )
-    .in('ean', [...candidates])
-    .eq('is_current', true)
-    .limit(1)
-    .maybeSingle();
-  const related = data?.products as unknown;
-  const product = Array.isArray(related) ? objectValue(related[0]) : objectValue(related);
-  if (product?.is_active !== true || product.merged_into_product_id !== null) return null;
-  // A pending CA is central by EAN but remains account-private. Only an
-  // already-linked customer may use the zero-cost exact path. Another customer
-  // must finish the normal evidence/finalize flow, whose one-EAN transaction
-  // adds their account relation and increments distinct_customer_count.
-  if (product.product_kind === 'customer_provisional') {
-    const { data: linked } = await service
-      .from('customer_added_product_accounts')
-      .select('product_id')
-      .eq('product_id', product.id)
-      .eq('user_id', actorUserId)
-      .maybeSingle();
-    if (!linked) return null;
+type ExactProductLookup =
+  | { kind: 'EXACT_PRODUCT'; product: Record<string, unknown> }
+  | { kind: 'NO_EXACT_PRODUCT' }
+  | { kind: 'EXACT_CONFLICT'; productIds: readonly string[] }
+  | { kind: 'NOT_APPLICABLE' }
+  | { kind: 'ERROR'; code: 'UNAVAILABLE' | 'MALFORMED_RESPONSE' };
+
+/** The browser adapter and this Edge function both ask the same caller-scoped exact RPC. */
+async function exactRowsForIdentity(
+  resolverClient: ExactRpcClient,
+  identity: ExactLookupIdentity,
+): Promise<{ rows: GtinExactRow[]; candidates: ExactCandidateLike[] }> {
+  for (const query of exactLookupQueries(identity)) {
+    const rows = await exactRowsWithRetry(resolverClient, query);
+    const candidates = rows
+      .map((row) => candidateFromGtinRow(row))
+      .filter((candidate): candidate is ExactCandidateLike => candidate !== null);
+    if (candidates.length > 0) return { rows, candidates };
   }
-  const { data: currentVersion } = await service
-    .from('product_versions')
-    .select('facts')
-    .eq('id', product.current_version_id)
-    .maybeSingle();
-  const facts = objectValue(currentVersion?.facts);
-  const intelligence = objectValue(facts.productIntelligence);
-  const behavior = objectValue(intelligence.productBehaviorAuthority);
-  const accuracy = Number(facts.productAccuracy);
-  const roleReady =
-    behavior.classificationOutcome === 'classified' &&
-    (behavior.baseRecipeEligible === true || behavior.toppingEligible === true);
-  return {
-    ...product,
-    product_accuracy: Number.isFinite(accuracy) ? accuracy : null,
-    // Historical response name: this is canonical role usability, not only
-    // BASE physics. A TOPPING_ONLY article is ready when ProductBehavior grants
-    // that role, even though its composition need not enter the base Engine.
-    engine_ready:
-      product.product_kind === 'mapper_reference' ||
-      intelligence.engineUsable === true ||
-      roleReady,
-  };
+  return { rows: [], candidates: [] };
+}
+
+async function exactProductForBarcode(
+  resolverClient: ExactRpcClient,
+  identity: ExactLookupIdentity | null,
+): Promise<ExactProductLookup> {
+  if (!identity) return { kind: 'NOT_APPLICABLE' };
+  try {
+    const { rows, candidates } = await exactRowsForIdentity(resolverClient, identity);
+    const verdict = exactResolverVerdict(candidates);
+    if (verdict.kind === 'NO_EXACT_PRODUCT') return verdict;
+    if (verdict.kind === 'EXACT_CONFLICT')
+      return {
+        kind: verdict.kind,
+        productIds: verdict.candidates.map((candidate) => candidate.productId),
+      };
+
+    const candidate = verdict.product;
+    const row = rows.find((item) => item.product_id === candidate.productId);
+    if (!row) throw new Error('exact_resolver_row_missing');
+
+    // Identity, lifecycle, visibility and current-version facts come from one RPC row/snapshot.
+    // A second table read here could assemble an impossible productId/version/visibility tuple.
+    const facts = row.current_version_facts;
+    const intelligence = objectValue(facts.productIntelligence);
+    const behavior = objectValue(intelligence.productBehaviorAuthority);
+    const accuracy = Number(facts.productAccuracy);
+    const roleReady =
+      behavior.classificationOutcome === 'classified' &&
+      (behavior.baseRecipeEligible === true || behavior.toppingEligible === true);
+    const privateOverlay = candidates.find(
+      (item) =>
+        item.productId !== candidate.productId &&
+        item.evidence.ownership === 'own' &&
+        item.strength !== 'canonical_shared',
+    );
+
+    return {
+      kind: 'EXACT_PRODUCT',
+      product: {
+        id: row.product_id,
+        // The RPC's matched_gtin records the catalogue key that hit (which may be an explicit
+        // EAN-8/UPC alias). The scanner response must carry the already-validated canonical
+        // identity, while the row still remains the authority for product/version facts.
+        canonical_gtin: identity.canonicalGtin13,
+        product_code: row.product_code,
+        product_name_display: row.display_name,
+        brand: row.brand,
+        product_kind: row.product_kind,
+        visibility: row.visibility,
+        ownership: row.ownership,
+        canonical_verification_status: row.verification_status,
+        current_version_id: row.current_version_id,
+        current_version_facts: facts,
+        is_active: row.is_active,
+        merged_into_product_id: row.merged_into_product_id,
+        stored_facts: facts,
+        private_overlay_product_id: privateOverlay?.productId ?? null,
+        private_overlay_product_code: privateOverlay?.productCode ?? null,
+        product_accuracy: Number.isFinite(accuracy) ? accuracy : null,
+        engine_ready: row.engine_usable === true || intelligence.engineUsable === true || roleReady,
+      },
+    };
+  } catch (error) {
+    return {
+      kind: 'ERROR',
+      code:
+        error instanceof ExactResolverError
+          ? error.code
+          : isRetryableExactResolverError(error)
+            ? 'UNAVAILABLE'
+            : 'MALFORMED_RESPONSE',
+    };
+  }
+}
+
+/**
+ * RE-EVALUATE the caller's own private product, through the ONE authority that already decides
+ * this. No rule is duplicated here: `product-scan-finalize` re-derives recognition, the Mapper,
+ * the rescue, the behaviour and the readiness from the session this function has just re-seeded,
+ * and `gellatti_upsert_customer_added_product_v1` applies the single routing rule
+ * (`v_ready and v_conf>85 -> PR`) to the result. When that verdict is PR on a product that
+ * already exists as this customer's PM, the RPC promotes THAT row — same product id, no second
+ * row for the EAN.
+ *
+ * Nothing paid runs on this path: no photograph is read, no source is called, and the semantic
+ * classifier finalize may consult is keyed by evidence fingerprint, so a product whose evidence
+ * has not changed reads its stored verdict instead of buying a new one.
+ *
+ * Any refusal is a legitimate answer — a product that is not production-ready simply stays a PM —
+ * so a failure here leaves the stored row untouched and the rescan answers exactly as before.
+ */
+type OwnPrivateProductReevaluation = {
+  attempted: boolean;
+  saved: boolean;
+  httpStatus: number | null;
+  errorCode: string | null;
+  reasonCode: string | null;
+};
+
+const finalizerErrorCode = (value: unknown): string | null => {
+  const candidate = objectValue(value).error;
+  return typeof candidate === 'string' && /^[a-z0-9_]{1,120}$/.test(candidate) ? candidate : null;
+};
+
+const finalizerReasonCode = (value: unknown): string | null => {
+  const candidate = objectValue(value).reasonCode;
+  return typeof candidate === 'string' &&
+    [
+      'scanner_mapper_authority_read_failed',
+      'scanner_behavior_authority_read_failed',
+      'customer_product_profile_computation_failed',
+    ].includes(candidate)
+    ? candidate
+    : null;
+};
+
+async function reevaluateOwnPrivateProduct(input: {
+  url: string;
+  anonKey: string;
+  authorization: string;
+  sessionId: string;
+}): Promise<OwnPrivateProductReevaluation> {
+  try {
+    const response = await fetch(`${input.url}/functions/v1/product-scan-finalize`, {
+      method: 'POST',
+      headers: {
+        Authorization: input.authorization,
+        apikey: input.anonKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'finalize',
+        sessionId: input.sessionId,
+        idempotencyKey: `product-scan-rescan-${input.sessionId}`,
+        confirmations: {},
+        privateOverlay: {},
+      }),
+    });
+    let payload: unknown = null;
+    try {
+      payload = await response.json();
+    } catch {
+      // HTTP status remains authoritative when an upstream gateway returns no JSON.
+    }
+    if (!response.ok)
+      return {
+        attempted: true,
+        saved: false,
+        httpStatus: response.status,
+        errorCode: finalizerErrorCode(payload),
+        reasonCode: finalizerReasonCode(payload),
+      };
+    const body = objectValue(payload);
+    // A newly routed product reports `route`; request-driven revalidation of an existing shared
+    // PR reports either its semantic-binding revalidation or a material immutable-version
+    // supersession. Refusals, stale assessments and family questions report none of those and
+    // must remain unsaved.
+    return {
+      attempted: true,
+      saved:
+        typeof body.route === 'string' ||
+        body.semanticRevalidated === true ||
+        body.versionSuperseded === true,
+      httpStatus: response.status,
+      errorCode: finalizerErrorCode(body),
+      reasonCode: finalizerReasonCode(body),
+    };
+  } catch {
+    return {
+      attempted: true,
+      saved: false,
+      httpStatus: null,
+      errorCode: 'product_scan_finalize_transport_failed',
+      reasonCode: null,
+    };
+  }
 }
 
 Deno.serve(async (request) => {
@@ -219,18 +395,43 @@ Deno.serve(async (request) => {
   if (totalEncodedBytes > 42_000_000) return json({ error: 'scan_payload_too_large' }, 413);
 
   const suppliedBarcode = objectValue(body.barcode);
-  const incomingBarcode = normalizeValidatedBarcode(
-    typeof suppliedBarcode.lookupValue === 'string'
-      ? suppliedBarcode.lookupValue
-      : typeof suppliedBarcode.value === 'string'
-        ? suppliedBarcode.value
-        : null,
-  );
-  const { data: existingSession } = await service
+  const hasBarcodePayload = Object.keys(suppliedBarcode).length > 0;
+  const hasCanonicalValue = suppliedBarcode.canonicalValue !== undefined;
+  const suppliedRawValue = hasCanonicalValue
+    ? suppliedBarcode.rawValue
+    : suppliedBarcode.rawValue !== undefined
+      ? suppliedBarcode.rawValue
+      : suppliedBarcode.value;
+  const suppliedCapturedFormat =
+    suppliedBarcode.capturedFormat !== undefined
+      ? suppliedBarcode.capturedFormat
+      : suppliedBarcode.format;
+  const barcodeIdentity = hasBarcodePayload
+    ? verifyScannerBarcodePayload({
+        rawValue: suppliedRawValue,
+        capturedFormat: suppliedCapturedFormat,
+        ...(suppliedBarcode.canonicalValue !== undefined
+          ? { canonicalValue: suppliedBarcode.canonicalValue }
+          : {}),
+      })
+    : null;
+  if (barcodeIdentity && !barcodeIdentity.ok) {
+    return json({ error: 'invalid_barcode_identity', reason: barcodeIdentity.reason }, 400);
+  }
+  const incomingBarcode = barcodeIdentity?.ok ? barcodeIdentity.identity.canonicalGtin13 : null;
+  const barcodeAuthority: AuthoritativeBarcodeIdentity | string | null = barcodeIdentity?.ok
+    ? {
+        canonicalValue: barcodeIdentity.identity.canonicalGtin13,
+        capturedFormat: scannerCaptureFormatForSymbology(barcodeIdentity.identity.symbology),
+        rawValue: barcodeIdentity.identity.rawValue,
+      }
+    : null;
+  const { data: existingSession, error: existingSessionError } = await service
     .from('product_scan_sessions')
     .select('user_id,result_json,validation_json,overlay_state,barcode,vision_calls')
     .eq('id', sessionId)
     .maybeSingle();
+  if (existingSessionError) return json({ error: 'scan_session_read_failed' }, 503);
   if (existingSession && existingSession.user_id !== auth.user.id) {
     return json({ error: 'scan_session_ownership_mismatch' }, 403);
   }
@@ -239,7 +440,41 @@ Deno.serve(async (request) => {
     return json({ error: 'scan_session_barcode_conflict' }, 409);
   }
   const barcode = establishedBarcode ?? incomingBarcode;
-  const exact = await exactProductForBarcode(service, barcode, auth.user.id);
+  // A stored session barcode is already a validated canonical GTIN-13. It carries no new capture
+  // alias, so the stored-session fallback deliberately uses the canonical-only RPC query.
+  const exactIdentity: ExactLookupIdentity | null = barcodeIdentity?.ok
+    ? barcodeIdentity.identity
+    : barcode && /^\d{13}$/.test(barcode)
+      ? {
+          symbology: 'EAN-13',
+          canonicalGtin13: barcode,
+          lookupKeys: [barcode],
+          rawValue: null,
+        }
+      : null;
+  const effectiveBarcodeAuthority = barcodeAuthority ?? barcode;
+  if (mode === 'ean_lookup' && !barcode) return json({ error: 'lookup_requires_barcode' }, 400);
+  const exactLookup = await exactProductForBarcode(authClient, exactIdentity);
+  if (exactLookup.kind === 'ERROR') {
+    // ERROR/UNAVAILABLE is not a no-match. Stop before session persistence, OFF, Recognition or
+    // any other later Scanner stage can observe a false negative.
+    return json({ error: 'exact_resolver_unavailable', code: exactLookup.code }, 503);
+  }
+  if (exactLookup.kind === 'EXACT_CONFLICT')
+    return json(
+      {
+        error: 'exact_product_conflict',
+        kind: 'EXACT_CONFLICT',
+        productIds: exactLookup.productIds,
+      },
+      409,
+    );
+  const exactNoMatch = exactLookup.kind === 'NO_EXACT_PRODUCT';
+  const exact = exactLookup.kind === 'EXACT_PRODUCT' ? exactLookup.product : null;
+  // Only the authoritative NO_EXACT_PRODUCT verdict may open the barcode fallback. Image-only
+  // analysis is NOT_APPLICABLE and follows its primary Recognition path; ERROR is handled above.
+  if (mode === 'ean_lookup' && !exact && !exactNoMatch)
+    return json({ error: 'exact_resolver_unavailable' }, 503);
   if (!existingSession) {
     const { error: insertSessionError } = await service.from('product_scan_sessions').insert({
       id: sessionId,
@@ -251,7 +486,7 @@ Deno.serve(async (request) => {
     });
     if (insertSessionError) return json({ error: 'scan_session_create_failed' }, 503);
   } else if (exact) {
-    await service
+    const { error: sessionUpdateError } = await service
       .from('product_scan_sessions')
       .update({
         state: 'matched',
@@ -261,37 +496,131 @@ Deno.serve(async (request) => {
       })
       .eq('id', sessionId)
       .eq('user_id', auth.user.id);
+    if (sessionUpdateError) return json({ error: 'scan_session_update_failed' }, 503);
   } else if (!establishedBarcode && barcode) {
-    await service
+    const { error: barcodeUpdateError } = await service
       .from('product_scan_sessions')
       .update({ barcode, updated_at: new Date().toISOString() })
       .eq('id', sessionId)
       .eq('user_id', auth.user.id)
       .is('barcode', null);
+    if (barcodeUpdateError) return json({ error: 'scan_session_update_failed' }, 503);
   }
   if (mode === 'ean_lookup') {
     // An exact canonical product answers the scan outright: no model, no source call,
     // no allowance. This is the cheap path a rescan of a known package must take (§16).
-    if (exact)
+    if (exact) {
+      /*
+        RESCAN RE-EVALUATION (owner contract 2026-09-07). Answering from the stored row is right
+        and stays free. What was wrong is that it was the WHOLE answer: a product saved earlier
+        with weaker evidence was handed back unchanged for ever, because the evaluation that
+        could promote it was never reached again.
+
+        So for the caller's OWN private product the session is re-seeded from the evidence that
+        product was built from — reused verbatim, nothing re-acquired — and the normal finalize
+        authority re-derives the verdict on today's Mapper, rescue and classification. A shared
+        PR and a Mapper reference skip this entirely: neither has anything to promote.
+      */
+      const plan = rescanReevaluationPlan({ productKind: exact.product_kind as string });
+      const storedResult = plan.reevaluate ? scanResultFromStoredFacts(exact.stored_facts) : null;
+      let current = exact;
+      let reevaluation: OwnPrivateProductReevaluation | null = null;
+      if (storedResult) {
+        const seeded = mergeProductScanResults(storedResult, {}, effectiveBarcodeAuthority);
+        const seededValidation = validateServerResult(seeded, []);
+        const { error: seedError } = await service.rpc('complete_product_scan_ean_lookup_v1', {
+          p_actor_user_id: auth.user.id,
+          p_session_id: sessionId,
+          p_result: seeded,
+          p_validation: {
+            missingCriticalFields: seededValidation.missingCriticalFields,
+            highRiskAuthorityRequired: seededValidation.highRiskAuthorityRequired,
+          },
+          p_overlay_state: seededValidation.overlayState,
+          // The evidence is REUSED, not bought again. A rescan still costs nothing.
+          p_cost_usd: 0,
+        });
+        if (seedError) {
+          reevaluation = {
+            attempted: false,
+            saved: false,
+            httpStatus: null,
+            errorCode: 'scan_session_reseed_failed',
+            reasonCode: null,
+          };
+        } else {
+          reevaluation = await reevaluateOwnPrivateProduct({
+            url,
+            anonKey,
+            authorization,
+            sessionId,
+          });
+          // Read the row back only when something was actually saved, so the answer carries the
+          // PR article code and the readiness the promotion has just granted.
+          if (reevaluation.saved) {
+            const refreshed = await exactProductForBarcode(authClient, exactIdentity);
+            if (refreshed.kind === 'ERROR')
+              return json({ error: 'exact_resolver_unavailable', code: refreshed.code }, 503);
+            if (refreshed.kind === 'EXACT_PRODUCT') current = refreshed.product;
+          }
+        }
+        /*
+          Keep the bounded, non-secret result beside the disposable scan session. Exact-product
+          revalidation used to collapse every refusal and transport failure into the same boolean,
+          which made a live acceptance failure impossible to distinguish from a legitimate
+          fail-closed verdict. This field contains no token, response body or customer data.
+        */
+        const { data: latestSession, error: latestSessionError } = await service
+          .from('product_scan_sessions')
+          .select('validation_json')
+          .eq('id', sessionId)
+          .eq('user_id', auth.user.id)
+          .maybeSingle();
+        if (latestSessionError) return json({ error: 'scan_session_read_failed' }, 503);
+        if (latestSession) {
+          const { error: latestSessionUpdateError } = await service
+            .from('product_scan_sessions')
+            .update({
+              validation_json: {
+                ...objectValue(latestSession.validation_json),
+                exactProductReevaluation: reevaluation,
+              },
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', sessionId)
+            .eq('user_id', auth.user.id);
+          if (latestSessionUpdateError)
+            return json({ error: 'scan_session_update_failed' }, 503);
+        }
+      }
       return json({
         sessionId,
         kind: 'existing_product',
+        reevaluated: reevaluation?.saved === true,
+        reevaluation,
         product: {
-          id: exact.id,
-          displayName: exact.product_name_display,
-          brand: exact.brand ?? null,
-          entityKind: exact.product_kind === 'mapper_reference' ? 'pi_base' : 'commercial_product',
+          id: current.id,
+          canonicalGtin: current.canonical_gtin,
+          displayName: current.product_name_display,
+          brand: current.brand ?? null,
+          ownership: current.ownership,
+          visibility: current.visibility,
+          entityKind:
+            current.product_kind === 'mapper_reference' ? 'pi_base' : 'commercial_product',
           status:
-            exact.product_kind === 'mapper_reference'
+            current.product_kind === 'mapper_reference'
               ? 'pi_base'
-              : exact.canonical_verification_status,
-          productCode: exact.product_code ?? null,
-          productAccuracy: exact.product_accuracy,
-          engineReady: exact.engine_ready,
+              : current.canonical_verification_status,
+          productCode: current.product_code ?? null,
+          currentVersionId: current.current_version_id ?? null,
+          isActive: current.is_active === true,
+          mergedIntoProductId: current.merged_into_product_id ?? null,
+          productAccuracy: current.product_accuracy,
+          engineReady: current.engine_ready,
         },
         usage: { visionCalls: 0, webCalls: 0, estimatedCostUsd: 0 },
       });
-    if (!barcode) return json({ error: 'lookup_requires_barcode' }, 400);
+    }
     const { data: lookupReservation, error: lookupReserveError } = await service.rpc(
       'reserve_product_scan_ean_lookup_v1',
       { p_actor_user_id: auth.user.id, p_session_id: sessionId },
@@ -301,10 +630,13 @@ Deno.serve(async (request) => {
     if (lookupReserved.allowed !== true) {
       // A refused lookup is not a failure of the scan. The session keeps whatever it
       // has and the flow continues locally (§24).
+      const skippedReason = String(lookupReserved.reason ?? 'session_lookup_already_used');
       return json({
         sessionId,
         kind: 'ean_lookup',
-        skipped: String(lookupReserved.reason ?? 'session_lookup_already_used'),
+        skipped: skippedReason,
+        retryable: false,
+        notice: lookupSkippedNoticePl(skippedReason),
         result: existingSession?.result_json ?? null,
         overlayState: existingSession?.overlay_state ?? null,
         missingCriticalFields:
@@ -318,60 +650,159 @@ Deno.serve(async (request) => {
     }
     const priorResult = objectValue(existingSession?.result_json);
     const identity = objectValue(priorResult.identity);
-    let facts: Record<string, unknown>[] = [];
-    let providerError: string | null;
+    /*
+      DIRECT GTIN LOOKUP (owner approval 2026-09-12).
+
+      `GTIN_LOOKUP` used to be only a sentence in an OpenAI web-search prompt. Search ranking
+      could miss a real OpenFoodFacts record even though OFF is already an approved structured
+      database. Ask its exact keyless product endpoint first and accept its fields only when the
+      response's own `code` is byte-for-byte the normalized scanned EAN. Existing research remains
+      available, but only for fields the direct record did not supply.
+    */
+    let directFacts: Record<string, unknown>[] = [];
+    try {
+      const endpoint = new URL(openFoodFactsApiUrl(barcode));
+      endpoint.searchParams.set(
+        'fields',
+        [
+          'code',
+          'product_name',
+          'generic_name',
+          'brands',
+          'quantity',
+          'categories',
+          'categories_tags',
+          'ingredients_text',
+          'allergens',
+          'allergens_tags',
+          'origins',
+          'origins_tags',
+          'nutrition_data_per',
+          'nutriments',
+        ].join(','),
+      );
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        signal: AbortSignal.timeout(8_000),
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'GellattiProductScanner/1.0 (https://pinguinoai.com)',
+        },
+      });
+      if (response.status === 404) {
+        directFacts = [];
+      } else if (response.ok) {
+        directFacts = openFoodFactsFactsForExactEan(
+          await response.json(),
+          barcode,
+          new Date().toISOString(),
+        ).facts;
+      }
+    } catch {
+      // The existing research provider below is the bounded fallback for every missing field.
+    }
+
+    const directFields = new Set(directFacts.map((fact) => String(fact.field ?? '')));
+    const unresolvedLookupFields = EAN_LOOKUP_FIELDS.filter((field) => !directFields.has(field));
+    let fallbackFacts: Record<string, unknown>[] = [];
+    let fallbackProviderError: string | null = null;
     /** What the provider ACTUALLY did — a cache hit costs nothing and must say so. */
     let providerWebCalls = 0;
-    try {
-      // The narrowest dedicated server-side source path this repository has, called
-      // with its OWN flag, its OWN caps and its OWN source-authority classification.
-      // The Scanner's general web search is NOT switched on to reach it (§6).
-      const response = await fetch(`${url}/functions/v1/intimport-enrich`, {
-        method: 'POST',
-        headers: {
-          Authorization: authorization,
-          apikey: anonKey,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          importId: `product-scan-${sessionId}`,
-          product: {
-            brand: typeof identity.brand === 'string' ? identity.brand : null,
-            manufacturer: null,
-            name:
-              typeof identity.displayName === 'string'
-                ? identity.displayName
-                : typeof identity.originalName === 'string'
-                  ? identity.originalName
-                  : null,
-            variant: null,
-            barcode,
-            netQuantity: null,
-            knownSourceUrl: null,
-            technicalPdfUrl: null,
+    if (unresolvedLookupFields.length > 0) {
+      try {
+        // The narrowest dedicated server-side source path this repository has, called
+        // with its OWN flag, its OWN caps and its OWN source-authority classification.
+        // The Scanner's general web search is NOT switched on to reach it (§6).
+        const response = await fetch(`${url}/functions/v1/intimport-enrich`, {
+          method: 'POST',
+          headers: {
+            Authorization: authorization,
+            apikey: anonKey,
+            'Content-Type': 'application/json',
           },
-          researchStep: { kind: 'GTIN_LOOKUP', url: null, allowedDomains: [] },
-          fields: [...EAN_LOOKUP_FIELDS],
-        }),
-      });
-      const payload = objectValue(await response.json());
-      if (!response.ok) throw new Error('lookup_provider_failed');
-      facts = Array.isArray(payload.facts) ? payload.facts.map(objectValue) : [];
-      providerError = typeof payload.error === 'string' ? payload.error : null;
-      providerWebCalls =
-        payload.cacheHit === true ? 0 : Math.max(0, Math.min(3, Number(payload.webCalls ?? 1)));
-    } catch {
-      providerError = 'lookup_provider_unavailable';
+          body: JSON.stringify({
+            importId: `product-scan-${sessionId}`,
+            product: {
+              brand:
+                typeof directFacts.find((fact) => fact.field === 'brand')?.value === 'string'
+                  ? directFacts.find((fact) => fact.field === 'brand')?.value
+                  : typeof identity.brand === 'string'
+                    ? identity.brand
+                    : null,
+              manufacturer: null,
+              name:
+                typeof directFacts.find((fact) => fact.field === 'productName')?.value === 'string'
+                  ? directFacts.find((fact) => fact.field === 'productName')?.value
+                  : typeof identity.displayName === 'string'
+                    ? identity.displayName
+                    : typeof identity.originalName === 'string'
+                      ? identity.originalName
+                      : null,
+              variant: null,
+              barcode,
+              netQuantity: null,
+              knownSourceUrl: null,
+              technicalPdfUrl: null,
+            },
+            researchStep: { kind: 'GTIN_LOOKUP', url: null, allowedDomains: [] },
+            fields: unresolvedLookupFields,
+          }),
+        });
+        const payload = objectValue(await response.json());
+        if (!response.ok) throw new Error('lookup_provider_failed');
+        /*
+          OFF was already acquired and exact-EAN verified above. The fallback may supply missing
+          manufacturer/retailer facts, but any OFF copy it reports is discarded so it cannot
+          become a second registry receipt or independently populate competing OFF fields.
+        */
+        fallbackFacts = Array.isArray(payload.facts)
+          ? payload.facts.map(objectValue).filter((fact) => !isOpenFoodFactsSource(fact))
+          : [];
+        fallbackProviderError = typeof payload.error === 'string' ? payload.error : null;
+        providerWebCalls =
+          payload.cacheHit === true ? 0 : Math.max(0, Math.min(3, Number(payload.webCalls ?? 1)));
+      } catch {
+        fallbackProviderError = 'lookup_provider_unavailable';
+      }
     }
-    const lookupResult = providerError ? null : scanResultFromLookupFacts(facts);
-    const merged = lookupResult
-      ? mergeProductScanResults(existingSession?.result_json ?? null, lookupResult, barcode)
-      : null;
-    const { data: priorAssets } = await service
+    const facts = [...directFacts, ...(fallbackProviderError ? [] : fallbackFacts)];
+    const lookupResult = scanResultFromLookupFacts(facts);
+    // A usable direct OFF record is already an answer even if research for its remaining fields
+    // was temporarily unavailable. With no direct facts, preserve the prior retryable semantics.
+    const providerAnswered = directFacts.length > 0 || fallbackProviderError === null;
+    const verdict = eanLookupVerdict({
+      providerAnswered,
+      resultSurvived: lookupResult !== null,
+      providerWebCalls,
+    });
+    /*
+      A LOOKUP THAT RESOLVES NOTHING MUST STILL LEAVE A SESSION THE FLOW CAN USE (owner defect
+      2026-09-07, session b414f3e6, EAN 8480000804693). `scanResultFromLookupFacts` returns null
+      as soon as no external source survives, so a provider that honestly answered "this code is
+      in no public source" produced no result, skipped the completion RPC entirely, and left the
+      session in `collecting`. The next step of the flow finalizes, finalize accepts only
+      `analyzed`, and its 409 carries no `kind` — so the discovery adapter rethrows it and the
+      customer reads a generic failure about a lookup that had in fact answered clearly.
+
+      The answer "nothing" is a RESULT. It is persisted like one: the authoritative barcode with
+      no other field, which is exactly what is true, and which leaves the session `analyzed` with
+      every critical field listed as missing so the flow asks for the label. A provider that never
+      answered is different — there is nothing to persist, and the allowance is given back below.
+    */
+    const merged =
+      verdict.outcome === 'provider_unavailable'
+        ? null
+        : mergeProductScanResults(
+            existingSession?.result_json ?? null,
+            lookupResult ?? {},
+            effectiveBarcodeAuthority,
+          );
+    const { data: priorAssets, error: priorAssetsError } = await service
       .from('product_scan_assets')
       .select('id')
       .eq('session_id', sessionId)
       .eq('user_id', auth.user.id);
+    if (priorAssetsError) return json({ error: 'scan_asset_metadata_failed' }, 503);
     const lookupValidation = merged
       ? validateServerResult(
           merged,
@@ -395,11 +826,31 @@ Deno.serve(async (request) => {
       );
       if (lookupCompleteError) return json({ error: 'scanner_result_persistence_failed' }, 503);
     }
+    /*
+      GIVE AN UNSPENT ALLOWANCE BACK. `reserve_product_scan_ean_lookup_v1` increments web_calls
+      BEFORE the provider is called and refuses at `web_calls >= 1`, so a provider that never
+      answered used to spend the session's only lookup on nothing — and the retry button, which
+      reuses the same session id for the life of the mount, could never succeed. Releasing is
+      restricted to the case where nothing was billed, and the RPC checks that independently
+      against the session, its external sources and the provider's own usage ledger.
+    */
+    if (verdict.releaseReservation) {
+      const { error: releaseError } = await service.rpc('release_product_scan_ean_lookup_v1', {
+        p_actor_user_id: auth.user.id,
+        p_session_id: sessionId,
+      });
+      if (releaseError) return json({ error: 'scanner_lookup_release_failed' }, 503);
+    }
     return json({
       sessionId,
       kind: 'ean_lookup',
-      resolvedNothing: merged === null,
-      providerUnavailable: providerError !== null,
+      outcome: verdict.outcome,
+      resolvedNothing: verdict.outcome === 'resolved_nothing',
+      providerUnavailable: verdict.outcome === 'provider_unavailable',
+      /** Whether pressing "try again" on THIS session can produce a different answer. */
+      retryable: verdict.retryable,
+      /** Plain Polish, ready to show: what happened, and what resolves it. */
+      notice: verdict.noticePl,
       result: merged ?? existingSession?.result_json ?? null,
       overlayState: lookupValidation?.overlayState ?? null,
       missingCriticalFields: lookupValidation?.missingCriticalFields ?? [],
@@ -411,7 +862,9 @@ Deno.serve(async (request) => {
     });
   }
 
-  const assetRows = [];
+  // Pre-existing implicit any[], surfaced once this file was actually type-checked: `npm run
+  // build` never reaches supabase/functions (root tsconfig is `files: []` + refs over src).
+  const assetRows: Record<string, unknown>[] = [];
   try {
     for (const image of images) {
       const binary = atob(String(image.base64));
@@ -483,14 +936,20 @@ Deno.serve(async (request) => {
       kind: 'existing_product',
       product: {
         id: exact.id,
+        canonicalGtin: exact.canonical_gtin,
         displayName: exact.product_name_display,
         brand: exact.brand ?? null,
+        ownership: exact.ownership,
+        visibility: exact.visibility,
         entityKind: exact.product_kind === 'mapper_reference' ? 'pi_base' : 'commercial_product',
         status:
           exact.product_kind === 'mapper_reference'
             ? 'pi_base'
             : exact.canonical_verification_status,
         productCode: exact.product_code ?? null,
+        currentVersionId: exact.current_version_id ?? null,
+        isActive: exact.is_active === true,
+        mergedIntoProductId: exact.merged_into_product_id ?? null,
         productAccuracy: exact.product_accuracy,
         engineReady: exact.engine_ready,
       },
@@ -718,7 +1177,7 @@ Deno.serve(async (request) => {
     (inputTokens / 1_000_000) * pricing.input +
     (outputTokens / 1_000_000) * pricing.output +
     webCalls * 0.01;
-  const currentCallResult = mergeProductScanResults(null, result, barcode);
+  const currentCallResult = mergeProductScanResults(null, result, effectiveBarcodeAuthority);
   const currentCallValidation = validateServerResult(
     currentCallResult,
     images.map((image) => String(image.assetId)),
@@ -749,7 +1208,7 @@ Deno.serve(async (request) => {
   const cumulativeResult = mergeProductScanResults(
     existingSession?.result_json,
     currentCallResult,
-    barcode,
+    effectiveBarcodeAuthority,
   );
   const validation = validateServerResult(cumulativeResult, sessionAssetIds);
   if (!validation.ok) {

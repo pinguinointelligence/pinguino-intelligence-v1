@@ -61,7 +61,7 @@ Rules:
 - [ ] **SOL-028 · TODO — Protein Multi-Main przekracza watchdog.** Przypadek Protein z wieloma składnikami Main nie kończy obliczeń w wymaganym czasie.
 - [ ] **SOL-029 · TODO — otwarty Guide znika po zmianie desktop → tablet/mobile.** Problem dotyczy zachowania otwartego panelu podczas zmiany breakpointu, nie geometrii plansz.
 - [ ] **SOL-030 · TODO — draft Label pomija topping i finalną masę.** Draft korzysta tylko z bazy; dla bazy 1000 g i toppingu 25 g powinien przedstawiać produkt finalny 1025 g.
-- [x] **SOL-031 · RESOLVED_ON_STAGING — draft Label nie przedstawia znanych alergenów.** Bieżąca poprawka Owner QA po #208 zachowuje wszystkie znane deklaracje Base/Main/Topping/pozostałych składników nawet wtedy, gdy inny składnik ma `UNKNOWN`; ręczna końcowa linia receptury lub partii pozostaje najwyższym autorytetem. Jeden wspólny modal przed drukiem dla EU/UK/US/CA/AU-NZ/World pozwala uzupełnić dowolną część brakujących danych albo pominąć je bez usuwania znanej części. Pominięte wartości nie tworzą pustych wierszy, zer, `UNKNOWN` ani tekstu „bez alergenów”, a braki nie blokują podglądu, snapshotu, PDF ani wydruku. Główny ekran etykiety ogranicza się do nazwy, podglądu, dwóch kompaktowych wierszy oraz `Drukuj`/`Zmień`; bez zmian Scannera, Mappera, Product Registry ani Engine. Evidence: PR #216; head `73186e957858b91de2877928144a818ed8296fab`; merge i finalny staging SHA `5091cd866581f9d4993e7333c74e09328601cc02`; staging CI run `34060072184` PASS; canonical `staging.pinguinoai.com` zwraca HTTP 200 i wskazuje na deployment `dpl_6ZKwjNiZiLV7GQzT4iCzuHdJnuQq` o statusie READY. Staging Supabase `tunabqqrwabacxjcxxkz` zastosował wyłącznie migrację `20260906192729_nonblocking_label_print_snapshots.sql`; RPC `production_save_label_snapshot_v3` jest potwierdzone w wygenerowanych typach i zdalnym ledgerze. Produkcyjny `main` pozostał na `0a523544b79f3f1c6b0881b8605a639f5ac1b027`. `OWNER QA PENDING`; `OWNER ACCEPTED: NO`.
+- [x] **SOL-031 · RESOLVED_ON_STAGING — draft Label nie przedstawia znanych alergenów.** Bieżąca poprawka Owner QA po #208 zachowuje wszystkie znane deklaracje Base/Main/Topping/pozostałych składników nawet wtedy, gdy inny składnik ma `UNKNOWN`; ręczna końcowa linia receptury lub partii pozostaje najwyższym autorytetem. Jeden wspólny modal przed drukiem dla EU/UK/US/CA/AU-NZ/World pozwala uzupełnić dowolną część brakujących danych albo pominąć je bez usuwania znanej części. Pominięte wartości nie tworzą pustych wierszy, zer, `UNKNOWN` ani tekstu „bez alergenów”, a braki nie blokują podglądu, snapshotu, PDF ani wydruku. Główny ekran etykiety ogranicza się do nazwy, podglądu, dwóch kompaktowych wierszy oraz `Drukuj`/`Zmień`; bez zmian Scannera, Mappera, Product Registry ani Engine. Evidence: PR #216; head `73186e957858b91de2877928144a818ed8296fab`; merge i finalny staging SHA `5091cd866581f9d4993e7333c74e09328601cc02`; staging CI run `34060072184` PASS; canonical deployment `dpl_6ZKwjNiZiLV7GQzT4iCzuHdJnuQq` o statusie READY. Finalny close-out: PR #221 merge `a59757c18c4c587854e490a163b477322710e511`; PR #224 merge `4bb77ad6bd3c535f5e626dddcf46da89609e6eb1`; PR #225 merge `54883d31307d5f2a0d229834e35870691e18aba3`; final staging SHA `54883d31307d5f2a0d229834e35870691e18aba3`; canonical deployment `6311619156` success dla dokładnego SHA; post-merge staging CI `34137756717` PASS. Produkcyjny `main` pozostał na `7fa3689057eba8e06ef001f35f02fd7a1ea11ecd`. `OWNER QA PENDING`; `OWNER ACCEPTED: NO`.
 - [ ] **SOL-032 · TODO — wyścig gotowości Produkcji Sorbet po Apply/Save.** Gotowość Produkcji może być oceniona przed ustabilizowaniem aktualnego stanu po Apply lub Save.
 - [ ] **SOL-033 · TODO — aktywny backend Scannera pochodzi częściowo z niezmergowanego PR #186.** Ledger migracji i aktywne funkcje zawierają elementy workstreamu `claude/scanner-complete`, których nie ma w scalonym stagingowym repo.
 - [x] **SOL-034 · RESOLVED_ON_STAGING — geometria Knowledge Tour w pełnym webie, mobile i embedded PRO została poprawiona przez #204 i zaakceptowana w Owner QA 2026-09-06.** Evidence: PR #204; merge SHA `6f71ac6a`; web PASS; mobile PASS; prawy podgląd dashboardu PASS; `OWNER ACCEPTED: YES`.
@@ -221,6 +221,31 @@ This checkpoint extends the existing SOL-031; it does not allocate another SOL I
   `20260906192729_nonblocking_label_print_snapshots.sql`; RPC
   `production_save_label_snapshot_v3` is present in generated types and the
   remote migration ledger. Production was not touched.
+- Final close-out evidence: PR #221 merge
+  `a59757c18c4c587854e490a163b477322710e511`, PR #224 merge
+  `4bb77ad6bd3c535f5e626dddcf46da89609e6eb1`, and PR #225 merge
+  `54883d31307d5f2a0d229834e35870691e18aba3`; final staging SHA
+  `54883d31307d5f2a0d229834e35870691e18aba3`; canonical deployment `6311619156`
+  succeeded for the exact SHA; post-merge staging CI `34137756717` passed all
+  four jobs. Production `main` remained at
+  `7fa3689057eba8e06ef001f35f02fd7a1ea11ecd`.
+- Final regression evidence: preview/runtime focused tests 33/33 PASS; the whole
+  master-label suite reported 262 PASS, 1 skipped; `verify:staging` passed 215
+  contracts, typecheck, lint with zero errors and the production build.
+- Served canonical QA: mobile and web had no horizontal overflow or clipping;
+  the modal was centered; `milk` was prefilled; `Wróć` preserved state; a partial
+  `3.2 g/100 g` value created snapshot v3
+  `adbb524e-9a82-4be1-88d2-5e2521443d64`, survived reopen, and reached native
+  print preview.
+- Independent PDF evidence: one complete 102×152 mm page for every required
+  market/shape, with `milk` retained and no `UNKNOWN`, placeholder zero, or empty
+  saturates row; SHA256
+  `0e4c073cf1649ccdb17876620ed65733e9d7ec2a50f9a3813febde702319da39`.
+- Saturates provenance audit: the external mapper-basement CSV was the exact
+  point where a missing source value became zero. The current generator preserves
+  blank as NULL and the guard rejects placeholder zero. The 2,089-record manifest
+  remains unchanged and all entries are `PENDING_OWNER_REVIEW`; no automatic data
+  correction was performed.
 - Required Owner QA after merge: mobile and web layout; `Drukuj → uzupełnij / pomiń
 → podgląd systemowy → drukarka / powrót`; partial allergen continuity and omission
   of all unknown values for EU, UK, US, Canada, AU/NZ and World; refresh/reopen of

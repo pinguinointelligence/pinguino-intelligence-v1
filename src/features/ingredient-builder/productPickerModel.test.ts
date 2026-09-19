@@ -247,9 +247,10 @@ describe('per-row catalog → Mapper verification status', () => {
       },
     });
 
-    expect(productPickerVerificationView(canonicalTopping, 'BASE_FORMULATION').status).toBe(
-      'WYMAGA POWIĄZANIA',
-    );
+    const wrongContext = productPickerVerificationView(canonicalTopping, 'BASE_FORMULATION');
+    expect(wrongContext.status).toBe('DOPASOWANY');
+    expect(wrongContext.reason).toContain('katalogu Toppingów');
+    expect(wrongContext.reason).not.toContain('mappedIngredientId');
     expect(productPickerVerificationView(canonicalTopping, 'POST_PROCESS_ADDON')).toEqual({
       status: 'GELLATTI — SPRAWDZONY',
       reason: null,

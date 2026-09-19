@@ -640,9 +640,9 @@ describe('Zero-gram executable recipe invariant', () => {
     const held = stageAndApply('Direction softness −1');
     expect(held.mainHeldByExactDirection).toBe(true);
     expect(storeItems()).toEqual([
-      ['new-recipe-1-water', 156],
-      ['new-recipe-2-sucrose', 80],
-      ['new-recipe-3-dextrose', 105],
+      ['new-recipe-1-water', 157],
+      ['new-recipe-2-sucrose', 74],
+      ['new-recipe-3-dextrose', 110],
       ['new-recipe-4-inulin', 55],
       ['new-recipe-5-tara_gum', 4],
       ['line-strawberry', 600],

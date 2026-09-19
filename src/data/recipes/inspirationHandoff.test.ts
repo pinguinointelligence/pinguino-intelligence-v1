@@ -18,10 +18,10 @@ describe('inspiration → current workbench handoff', () => {
     expect(serialized).not.toMatch(/gram|dose|planned_grams|actual_grams/i);
   });
 
-  it('opens the existing /start recipe flow and round-trips the intent', () => {
+  it('opens the canonical /home recipe flow and round-trips the intent', () => {
     const intent = flavorInspirationStartIntent(entry);
     const href = inspirationStartHref(intent);
-    expect(href.startsWith('/start?')).toBe(true);
+    expect(href.startsWith('/home?')).toBe(true);
     const parsed = parseInspirationStartIntent(new URLSearchParams(href.split('?')[1]));
     expect(parsed).toMatchObject({
       source: 'flavor_inspiration',
@@ -36,13 +36,13 @@ describe('inspiration → current workbench handoff', () => {
     const href = inspirationStartHref(intent, {
       persona: 'pro',
       executableTemplateId: 'fantasy-rocero-v1',
-      returnTo: '/recipes?tab=inspiration',
+      returnTo: '/recipes',
     });
     expect(href.startsWith('/pro/recipe?')).toBe(true);
     expect(href).not.toMatch(/^\/(home|start)(?:\?|$)/);
     const params = new URLSearchParams(href.split('?')[1]);
     expect(params.get('libraryTemplate')).toBe('fantasy-rocero-v1');
-    expect(params.get('returnTo')).toBe('/recipes?tab=inspiration');
+    expect(params.get('returnTo')).toBe('/recipes');
   });
 
   it('does not change the accepted non-Pro destination', () => {
@@ -52,7 +52,7 @@ describe('inspiration → current workbench handoff', () => {
     expect(inspirationStartHref(intent, {
       persona: 'home',
       executableTemplateId: 'fantasy-rocero-v1',
-      returnTo: '/recipes?tab=inspiration',
+      returnTo: '/recipes',
     })).toBe(inspirationStartHref(intent));
   });
 

@@ -12,8 +12,12 @@ import {
 } from '@/services/globalCatalog';
 import type { CatalogMarketPreferences } from './contracts';
 import { selectPrimaryProductMarket } from './productMarketPreferences';
+import { productionAreaCopy } from '@/copy/productionArea';
+import { useRegisterUnsaved } from '@/features/production-area/useRegisterUnsaved';
+import type { UnsavedSaveResult } from '@/features/production-area/unsavedGuard';
 
 const discoveryCopy = productDiscoveryCopy();
+const areaCopy = productionAreaCopy();
 
 export function AccountProductMarkets() {
   const queryClient = useQueryClient();
@@ -57,6 +61,25 @@ export function AccountProductMarkets() {
       queryClient.setQueryData(['global-catalog-market-preferences'], preferences);
       await queryClient.invalidateQueries({ queryKey: ['product-search-v1'] });
     },
+  });
+  /* Produkcja v3 §4 — Produkty → Rynki produktów joins the area's unsaved-changes question.
+     „Zapisz i przejdź” is THIS form's save (the same mutation as „Zapisz ustawienia”); a failed
+     save keeps the draft and the existing „Nie udało się zapisać krajów.”. */
+  const unsaved =
+    draft !== null &&
+    JSON.stringify(draft) !== JSON.stringify(saved.data ?? DEFAULT_CATALOG_MARKET_PREFERENCES);
+  useRegisterUnsaved({
+    id: 'product-markets',
+    label: areaCopy.products.marketsLink,
+    dirty: unsaved,
+    save: (): Promise<UnsavedSaveResult> =>
+      form.guestCountryConflict
+        ? Promise.resolve({ ok: false })
+        : mutation.mutateAsync(form).then(
+            () => ({ ok: true }),
+            () => ({ ok: false }),
+          ),
+    discard: () => setDraft(null),
   });
   const toggleCountry = (code: string) =>
     updateDraft((current) => {

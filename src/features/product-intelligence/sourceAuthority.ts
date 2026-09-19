@@ -151,6 +151,19 @@ export interface SourceAuthorityInput {
   manufacturer?: string | null;
   /** True when the URL was supplied by the owner's export rather than found by research. */
   ownerProvided?: boolean;
+  /**
+   * The SERVER has compared the barcode printed on that page with the code that was scanned and
+   * they are the same. Never a caller's opinion and never read from the URL: it is the page's own
+   * statement about which article it describes, matched here.
+   *
+   * A commercial page that names the exact article is an authoritative retailer for it, whatever
+   * its domain. The fixed RETAILER_DOMAINS list is Poland-centric and could never keep up: El
+   * Corte Inglés and La Tienda en Casa carry the owner's products and scored OTHER_WEB, so their
+   * ingredient text earned nothing. Identity, not reputation, is what makes a page usable — and a
+   * forum or social host is still refused below, because stating a barcode does not make a
+   * discussion thread a seller.
+   */
+  exactEanConfirmedOnPage?: boolean;
   /** Content type, when known — a PDF under an official domain is a spec sheet. */
   contentType?: string | null;
   /**
@@ -238,6 +251,15 @@ export function classifySourceAuthority(
     }
     reasons.push('rozpoznany sprzedawca detaliczny');
     return { authority: 'AUTHORITATIVE_RETAILER', evidenceSource: TIER.AUTHORITATIVE_RETAILER, domain, reasons };
+  }
+  if (input.exactEanConfirmedOnPage === true && !includesAny(domain, NON_OFFICIAL_HINTS)) {
+    reasons.push('strona podaje dokładnie zeskanowany kod produktu');
+    return {
+      authority: 'AUTHORITATIVE_RETAILER',
+      evidenceSource: TIER.AUTHORITATIVE_RETAILER,
+      domain,
+      reasons,
+    };
   }
   if (isPdf && includesAny(domain, TECHNICAL_DOCUMENT_HOSTS)) {
     // A PDF on an unverified CDN is a document, but not provably the maker's.

@@ -7,28 +7,42 @@
  */
 import { useState } from 'react';
 import { buttonClasses } from '@/components/ui/buttonStyles';
+import '@/components/ui/homeLayer.css';
 import { homeCreatorCopy } from '../homeCreatorCopy';
 import { confirmedGrams, isConfirmableAmount } from '../homeAddAmountDecision';
 
 export function HomeAmountPrompt({
   productName,
   recommendedDose,
+  initialGrams,
   onConfirm,
   onCancel,
+  cancelLabel = homeCreatorCopy.recipe.askAmountCancel,
 }: {
   productName: string;
   /** Canonical dosage authority, or null when the product genuinely carries none. */
   recommendedDose: string | null;
+  /** Toppings begin at the exact canonical 5% projection; BASE questions stay blank. */
+  initialGrams?: number | null;
   onConfirm: (grams: number) => void;
   onCancel: () => void;
+  /**
+   * „Usuń” when cancelling removes something the customer already has (an idea chip
+   * waiting for its amount); „Anuluj” when nothing exists yet (a live add).
+   */
+  cancelLabel?: string;
 }) {
-  const [raw, setRaw] = useState('');
+  const [raw, setRaw] = useState(
+    initialGrams != null && initialGrams > 0 ? String(initialGrams) : '',
+  );
   const [touched, setTouched] = useState(false);
   const valid = isConfirmableAmount(raw);
 
   return (
     <div
-      className="fixed inset-0 z-[95] grid place-items-center bg-black/20 p-4"
+      // DESIGN V3.0 XIII: the HOME layer frame — a compact bottom layer on a phone and a
+      // portrait tablet, a light centred modal from 1024 px (`homeLayer.css`).
+      className="home-layer-scrim home-layer-overlay fixed inset-0 z-[95]"
       data-testid="home-amount-prompt"
       role="dialog"
       aria-modal="true"
@@ -37,15 +51,25 @@ export function HomeAmountPrompt({
         if (event.key === 'Escape') onCancel();
       }}
     >
-      <div
-        className="w-full max-w-[380px] rounded-[16px] border bg-white p-5"
-        style={{ borderColor: 'var(--g-line)' }}
-      >
+      <div className="home-layer-panel">
         <p className="text-[17px]" style={{ color: 'var(--g-ink)' }}>
           {homeCreatorCopy.recipe.askAmountTitle} {productName}?
         </p>
 
         <div className="mt-4 flex items-center gap-2">
+          <button
+            type="button"
+            aria-label={`Zmniejsz ilość ${productName}`}
+            data-testid="home-amount-prompt-minus"
+            className="grid size-11 place-items-center rounded-[10px] border text-lg"
+            style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
+            onClick={() => {
+              setRaw(String(Math.max(1, (valid ? confirmedGrams(raw) : 1) - 1)));
+              setTouched(true);
+            }}
+          >
+            −
+          </button>
           <input
             autoFocus
             type="text"
@@ -60,12 +84,25 @@ export function HomeAmountPrompt({
             onKeyDown={(event) => {
               if (event.key === 'Enter' && valid) onConfirm(confirmedGrams(raw));
             }}
-            className="h-11 w-[110px] rounded-[10px] border px-3 text-center font-mono text-[15px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[#f58a07]"
+            className="h-11 w-[110px] rounded-[10px] border px-3 text-center font-mono text-[15px] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--g-orange-line)]"
             style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
           />
           <span className="text-[15px]" style={{ color: 'var(--g-text-secondary)' }}>
             {homeCreatorCopy.recipe.grams}
           </span>
+          <button
+            type="button"
+            aria-label={`Zwiększ ilość ${productName}`}
+            data-testid="home-amount-prompt-plus"
+            className="grid size-11 place-items-center rounded-[10px] border text-lg"
+            style={{ borderColor: 'var(--g-line)', color: 'var(--g-ink)' }}
+            onClick={() => {
+              setRaw(String((valid ? confirmedGrams(raw) : 0) + 1));
+              setTouched(true);
+            }}
+          >
+            +
+          </button>
         </div>
 
         {/* Shown ONLY when the canonical dosage authority carries a value. HOME never
@@ -98,7 +135,7 @@ export function HomeAmountPrompt({
             data-testid="home-amount-prompt-cancel"
             onClick={onCancel}
           >
-            {homeCreatorCopy.recipe.askAmountCancel}
+            {cancelLabel}
           </button>
           <button
             type="button"

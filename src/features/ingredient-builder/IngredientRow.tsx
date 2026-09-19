@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { copy } from '@/copy/en';
 import type { EffectiveRecipeItem, LockType } from '@/engine';
 import { cn } from '@/lib/cn';
@@ -98,7 +98,7 @@ export interface IngredientRowActions {
   moveDown?: (lineId: string) => void;
 }
 
-type ArticleActionIconName = 'up' | 'down' | 'swap' | 'info' | 'availability' | 'standard';
+type ArticleActionIconName = 'up' | 'down' | 'swap' | 'info' | 'standard';
 
 function ArticleActionIcon({ name }: { name: ArticleActionIconName }) {
   const paths: Record<ArticleActionIconName, React.ReactNode> = {
@@ -111,12 +111,6 @@ function ArticleActionIcon({ name }: { name: ArticleActionIconName }) {
       <>
         <circle cx="8" cy="8" r="5.5" />
         <path d="M8 7.25v3.25M8 5.1h.01" />
-      </>
-    ),
-    availability: (
-      <>
-        <path d="M3 8s1.8-3 5-3 5 3 5 3-1.8 3-5 3-5-3-5-3Z" />
-        <circle cx="8" cy="8" r="1.25" />
       </>
     ),
     standard: <path d="m3.5 8.25 3 3 6-6.5" />,
@@ -470,13 +464,10 @@ function RecipeRow({
   mainUserHeld = false,
   compact,
   changed,
-  processReminder,
 }: {
   item: EffectiveRecipeItem;
   totalBatchG: number;
   actions: IngredientRowActions;
-  /** V2.1 §17: the heat acknowledgement lives INSIDE the line it belongs to. */
-  processReminder?: { onConfirm: () => void; disabled?: boolean };
   lock?: IngredientRowLockView;
   meta: IngredientRowMeta;
   substituteCandidates: readonly SubstituteCandidate[];
@@ -498,11 +489,38 @@ function RecipeRow({
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [ingredientModalView, setIngredientModalView] = useState<'actions' | 'data'>('actions');
   const [dialog, setDialog] = useState<'substitute' | 'required' | 'required-confirm' | null>(null);
+  /** PRO MOBILE UX v2 · B10 — „Moja cena" opens only when asked for (product sheet). */
+  const [priceOpen, setPriceOpen] = useState(false);
   const closeLineMenus = () => {
     setRowMenuOpen(false);
     setMobileSheetOpen(false);
     setIngredientModalView('actions');
+    setPriceOpen(false);
   };
+  /* PRO MOBILE UX v2 · B11 — while this line's sheet is open the list keeps the
+     line in view above it, and follows it when „Przesuń wyżej / niżej" moves it,
+     so the controls and the row they act on are never apart. Same line identity,
+     no second state: the row is found by its own `recipe_line_id` test id. */
+  const followedLineTopRef = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (!mobileSheetOpen) {
+      followedLineTopRef.current = null;
+      return;
+    }
+    const line = document.querySelector<HTMLElement>(`[data-testid="row-mobile-line-${item.id}"]`);
+    if (!line || typeof line.scrollIntoView !== 'function') return;
+    const top = line.offsetTop;
+    if (followedLineTopRef.current === top) return;
+    followedLineTopRef.current = top;
+    line.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  });
+  /** ONE way into the desktop row's product panel: the ••• and, on a touch
+   *  device, the whole row (A8) call this same action. */
+  const openRowMenu = () => {
+    setIngredientModalView('actions');
+    setRowMenuOpen(true);
+  };
+  const rowMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const [loadedSubstitutes, setLoadedSubstitutes] =
     useState<readonly SubstituteCandidate[]>(substituteCandidates);
   const [substitutesLoading, setSubstitutesLoading] = useState(false);
@@ -516,7 +534,6 @@ function RecipeRow({
      `IngredientRowMeta.editRefusal`: the refusal was already correct, it was
      just invisible until you pressed a button that then did nothing. */
   const editRefusal = meta.editRefusal ?? null;
-  const estimated = !item.ingredient.is_verified || item.ingredient.confidence_score < 90;
   const missingAmount = meta.dose.provenance === 'UNKNOWN' && item.planned_grams <= 0;
   const displayQuantity = item.planned_grams;
   const baseCost = priceView?.cost ?? effectiveCostForIngredient(item.ingredient, {});
@@ -651,12 +668,6 @@ function RecipeRow({
           </div>
         </span>
         <span className="flex min-w-0 items-center gap-2.5">
-          <ArticleActionButton
-            label={meta.unavailable ? 'Oznacz jako dostępny' : 'Oznacz jako niedostępny'}
-            icon="availability"
-            selected={meta.unavailable}
-            onClick={() => actions.setIngredientUnavailable?.(item.id, !meta.unavailable)}
-          />
           <ArticleActionButton label="Znajdź zamiennik" icon="swap" onClick={openSubstitute} />
           <ArticleActionButton
             label="Dane składnika"
@@ -676,22 +687,54 @@ function RecipeRow({
         </div>
       ) : null}
 
-      <div className="mt-2.5">
-        <CustomerPriceEditor
-          view={priceView}
-          lineId={item.id}
-          variant="article"
-          footerAction={
-            <button
-              type="button"
-              aria-label={t.remove.action}
-              onClick={requestRemove}
-              className="pro-focus-ring h-9 shrink-0 rounded-[8px] border border-status-error/35 bg-status-error/[0.06] px-3 text-[10px] font-semibold text-status-error transition-colors hover:border-status-error/50 hover:bg-status-error/[0.1]"
-            >
-              {t.remove.action}
-            </button>
-          }
-        />
+      {/* PRO MOBILE UX v2 · B10 — the everyday controls lead and „Moja cena" is
+          SECONDARY: in the product sheet (the collapsed line's panel, below `lg`)
+          it is one row until asked for; the desktop ••• dialog keeps its editor
+          open. Removing the ingredient no longer hides inside the price editor,
+          so it stays in reach whichever way that row is folded. */}
+      <div
+        className="gellatti-price-secondary mt-2.5"
+        data-price-open={priceOpen ? 'true' : 'false'}
+        data-testid={`article-price-secondary-${item.id}`}
+      >
+        <button
+          type="button"
+          onClick={() => setPriceOpen((wasOpen) => !wasOpen)}
+          aria-expanded={priceOpen}
+          data-testid={`article-price-toggle-${item.id}`}
+          className="pro-focus-ring flex min-h-11 w-full items-center justify-between gap-3 rounded-[10px] border border-ink/10 bg-white/70 px-3 text-left text-[12px] font-semibold text-[var(--g-text-secondary)] lg:hidden"
+        >
+          <span>{copy.proWorkbench.pricePanel.toggle}</span>
+          <svg
+            aria-hidden
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            className={cn('shrink-0 transition-transform', priceOpen && 'rotate-180')}
+          >
+            <path
+              d="M6 9l6 6 6-6"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        <div className="gellatti-price-secondary__body">
+          <CustomerPriceEditor view={priceView} lineId={item.id} variant="article" />
+        </div>
+      </div>
+      <div className="mt-2.5 flex justify-end">
+        <button
+          type="button"
+          aria-label={t.remove.action}
+          onClick={requestRemove}
+          className="pro-focus-ring h-9 shrink-0 rounded-[8px] border border-status-error/35 bg-status-error/[0.06] px-3 text-[10px] font-semibold text-status-error transition-colors hover:border-status-error/50 hover:bg-status-error/[0.1]"
+        >
+          {t.remove.action}
+        </button>
       </div>
     </div>
   );
@@ -705,12 +748,12 @@ function RecipeRow({
           names, which is exactly the squeeze §5 forbids. */}
       <div className="pro-ingredient-row-mobile lg:hidden">
         <MobileIngredientLine
+          editing={mobileSheetOpen}
           item={item}
           percent={share}
           isMain={isMain}
           required={required}
           unavailable={meta.unavailable}
-          estimated={estimated}
           changed={changed}
           missingAmount={missingAmount}
           mainUnavailableReason={mainUnavailableReason}
@@ -721,8 +764,23 @@ function RecipeRow({
 
       {/* WIDE (lg+) — the accepted Production table row, unchanged. */}
       <div className="pro-ingredient-row-desktop hidden lg:block">
+        {/* A8 — on a TOUCH device (coarse pointer) the whole row opens the same
+            product panel as •••, also in the ≥ 960 px layout. CSS shows this
+            surface only for a coarse pointer, painted UNDER the row's own
+            content; a mouse never sees it, and the keyboard path stays •••. */}
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={openRowMenu}
+          className="gellatti-row-touch-target transition-colors active:bg-[var(--g-ivory)]"
+          data-testid={`row-touch-target-${item.id}`}
+        />
         <div
-          className={cn('group/row', compact ? COMPACT_ROW_GRID : ROW_GRID)}
+          className={cn(
+            'group/row gellatti-row-touch-content',
+            compact ? COMPACT_ROW_GRID : ROW_GRID,
+          )}
           onDragOver={(event) => event.preventDefault()}
           onDrop={(event) => {
             event.preventDefault();
@@ -756,7 +814,7 @@ function RecipeRow({
                   key={dot}
                   className={cn(
                     'size-[3px] rounded-full bg-[var(--g-text-muted)] transition-colors',
-                    (dot === 2 || dot === 3) && 'group-hover/row:bg-[#f58a07]',
+                    (dot === 2 || dot === 3) && 'group-hover/row:bg-[var(--g-orange-line)]',
                   )}
                 />
               ))}
@@ -771,14 +829,6 @@ function RecipeRow({
                     category: item.ingredient.category,
                   })}
                 />
-                {estimated ? (
-                  <span
-                    aria-label={t.data.estimatedHint}
-                    title={t.data.estimatedHint}
-                    className="absolute -right-0.5 -bottom-0.5 size-2 rounded-full border border-white bg-status-risky"
-                    data-testid={`row-estimated-${item.id}`}
-                  />
-                ) : null}
               </span>
               {/* Truncation is visual only — the full name stays in the DOM for
                   assistive technology, and the hover preview serves the mouse.
@@ -818,31 +868,6 @@ function RecipeRow({
                   !
                 </span>
               ) : null}
-              {processReminder ? (
-                <span
-                  className="pro-workbench-desktop-only min-w-0 flex-1 items-center gap-2"
-                  data-testid="production-inline-process-reminder"
-                >
-                  <span className="min-w-0">
-                    <strong className="block text-[10px] leading-[12px] font-black text-[var(--g-attention-ink)]">
-                      Pamiętaj o obróbce
-                    </strong>
-                    <span className="mt-0.5 block text-[8px] leading-[10px] font-bold text-[var(--g-text-muted)]">
-                      Dla poniższych składników wskazana jest obróbka na ciepło:
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    onClick={processReminder.onConfirm}
-                    disabled={processReminder.disabled}
-                    aria-label="Potwierdź informację o obróbce"
-                    className="gellatti-next-action-attention pro-focus-ring grid h-8 w-9 shrink-0 place-items-center rounded-[9px] bg-[var(--g-graphite)] text-[10px] font-extrabold text-white disabled:cursor-wait disabled:opacity-60"
-                    data-testid="acknowledge-production-heat-information-inline"
-                  >
-                    OK
-                  </button>
-                </span>
-              ) : null}
               <span
                 aria-hidden={!isMain && mainUnavailableReason ? true : undefined}
                 data-testid={`row-main-slot-${item.id}`}
@@ -879,18 +904,6 @@ function RecipeRow({
                 {editRefusal}
               </span>
             ) : null}
-            {meta.unavailable ? (
-              <span className="mt-1 flex items-center gap-2 text-xs font-semibold text-status-error">
-                {t.recipe.unavailableStatus}
-                <button
-                  type="button"
-                  onClick={openSubstitute}
-                  className="inline-flex min-h-11 items-center rounded-lg px-2 text-ink underline decoration-ink/25 underline-offset-2"
-                >
-                  {t.recipe.findSubstitute}
-                </button>
-              </span>
-            ) : null}
             {lock && lock.state !== 'ai' ? (
               <span
                 className={cn(
@@ -923,14 +936,7 @@ function RecipeRow({
                 decimals={1}
                 suffix="%"
                 ariaLabel={`${item.ingredient.name} — udział w partii`}
-                disabled={
-                  share === null ||
-                  !actions.setPlannedPercent ||
-                  Boolean(lock?.plannedDisabled) ||
-                  gramsLocked ||
-                  Boolean(lock?.percentLocked) ||
-                  editRefusal !== null
-                }
+                disabled={share === null || !actions.setPlannedPercent || editRefusal !== null}
                 onChange={(percent) => actions.setPlannedPercent?.(item.id, percent)}
                 testId={`row-percent-control-${item.id}`}
                 widthPreset="percent"
@@ -962,12 +968,7 @@ function RecipeRow({
                 decimals={Number.isInteger(displayQuantity) ? 0 : 1}
                 suffix={unit}
                 ariaLabel={`${item.ingredient.name} — ilość w ${unit}`}
-                disabled={
-                  Boolean(lock?.plannedDisabled) ||
-                  gramsLocked ||
-                  Boolean(lock?.percentLocked) ||
-                  editRefusal !== null
-                }
+                disabled={editRefusal !== null}
                 onChange={(next) => actions.setPlannedGrams(item.id, Math.max(0, next))}
                 testId={`row-grams-control-${item.id}`}
                 widthPreset="grams"
@@ -1001,10 +1002,8 @@ function RecipeRow({
               aria-haspopup="dialog"
               aria-expanded={rowMenuOpen}
               aria-controls={`row-menu-dialog-${item.id}`}
-              onClick={() => {
-                setIngredientModalView('actions');
-                setRowMenuOpen(true);
-              }}
+              ref={rowMenuTriggerRef}
+              onClick={openRowMenu}
               className={iconButtonClasses('xs')}
             >
               {/* The button shell stays exactly as contracted — it is the
@@ -1017,7 +1016,7 @@ function RecipeRow({
                     key={dot}
                     className={cn(
                       'size-[3px] rounded-full bg-current transition-colors',
-                      dot === 1 && 'group-hover/row:bg-[#f58a07]',
+                      dot === 1 && 'group-hover/row:bg-[var(--g-orange-line)]',
                     )}
                   />
                 ))}
@@ -1038,6 +1037,8 @@ function RecipeRow({
                 // the width it had while stating it once instead of forcing it.
                 size="default"
                 panelClassName="sm:min-h-[290px] sm:p-0"
+                // A8: a panel opened from the row surface hands focus back to •••.
+                returnFocus={() => rowMenuTriggerRef.current}
                 onClose={() => closeLineMenus()}
               >
                 <div id={`row-menu-dialog-${item.id}`} data-ingredient-modal-shell="true">
@@ -1397,7 +1398,6 @@ export function IngredientRow({
   productionLine,
   productionActions,
   productionActive = false,
-  productionProcessReminder,
   canMoveUp = false,
   canMoveDown = false,
   onDragStart,
@@ -1420,11 +1420,6 @@ export function IngredientRow({
   productionActions?: ProductionRowActions;
   /** Presentation-only marker for the one next physical weighing action. */
   productionActive?: boolean;
-  /** Desktop-only visual placement of the existing pre-start heat acknowledgement. */
-  productionProcessReminder?: {
-    disabled?: boolean;
-    onConfirm: () => void;
-  };
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   onDragStart?: (lineId: string) => void;
@@ -1459,19 +1454,13 @@ export function IngredientRow({
         mode === 'recipe' &&
           customerRoleFor(item.lock_type, meta) === 'addition' &&
           'bg-pro-sage/35 hover:bg-pro-sage/55',
-        mode === 'recipe' &&
-          meta.unavailable &&
-          'border-status-error/20 bg-status-error/[0.045] hover:bg-status-error/[0.06]',
         mode === 'recipe' && changed && 'ingredient-line-changed',
         mode === 'production' && productionActive && 'production-line-active',
-        productionProcessReminder &&
-          'xl:min-h-[64px] xl:border-l-[3px] xl:border-l-[#f58a07] xl:bg-[var(--g-attention-surface)]',
       )}
       data-ingredient-mode={mode}
       data-production-row-family={mode === 'production' ? 'recipe-table' : undefined}
       data-production-active={mode === 'production' && productionActive ? 'true' : undefined}
       data-changed={mode === 'recipe' && changed ? 'true' : undefined}
-      data-unavailable={mode === 'recipe' && meta.unavailable ? 'true' : undefined}
       data-edit-refused={mode === 'recipe' && meta.editRefusal ? 'true' : undefined}
       data-line-id={item.id}
       data-customer-role={mode === 'recipe' ? customerRoleFor(item.lock_type, meta) : undefined}
@@ -1486,7 +1475,6 @@ export function IngredientRow({
           item={item}
           totalBatchG={totalBatchG}
           actions={actions}
-          processReminder={productionProcessReminder}
           lock={lock}
           meta={meta}
           substituteCandidates={substituteCandidates}

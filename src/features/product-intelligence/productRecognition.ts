@@ -590,6 +590,34 @@ export function parseProductDosage(value: string | null | undefined): ProductDos
       reasonCodes: ['DOSAGE_PERCENT_EXACT'],
     };
   }
+  /*
+    A dose is a quantity. Text that states none is not an unresolved dosage — it states no
+    dosage, and saying UNKNOWN about it is simply untrue. A ready-to-drink bottle carries
+    "Número de raciones por envase: 1; Modo de empleo: Servir bien fría": a serving suggestion,
+    with a number that has no unit behind it. Read as UNKNOWN it raised
+    DOSAGE_SEMANTICS_UNKNOWN, which kept modelRequired true, which is a hard gate in both
+    productProductionAccuracy and productBehaviorAuthority — a product blocked for not answering
+    a question its label was never asked.
+
+    UNKNOWN is kept for text that DOES carry a quantity this parser could not place, because
+    there the uncertainty is real.
+  */
+  const carriesADose = /\d+(?:[.,]\d+)?\s*(?:%|g|kg|mg|ml|l)\b/.test(dosageSyntax);
+  if (!carriesADose) {
+    return {
+      semantics: 'NONE',
+      value: null,
+      valueMax: null,
+      unit: 'UNKNOWN',
+      basis: 'UNKNOWN',
+      normalizedMassPercent: null,
+      normalizedMassPercentMax: null,
+      normalizationBasis: null,
+      densityResolved: false,
+      evidence: raw,
+      reasonCodes: ['DOSAGE_NOT_STATED'],
+    };
+  }
   return {
     semantics: 'UNKNOWN',
     value: null,
@@ -810,6 +838,15 @@ const formOf = (
     archetype === 'CONFECTIONERY'
   )
     return 'SOLID';
+  // An explicit form qualifier attached to a chocolate/couverture identity is
+  // product semantics, not storage wording. Keep it ahead of family defaults so
+  // a dairy word inside "milk chocolate" cannot manufacture a liquid form.
+  if (
+    archetype === 'CHOCOLATE' &&
+    /\b(dry|dried|suchy|sucha|suche|secco|sec|trocken)\b/.test(`${identity} ${subcategory}`)
+  ) {
+    return 'DRY';
+  }
   if (archetype === 'STABILIZER' || archetype === 'EMULSIFIER' || archetype === 'BASE_MIX') {
     return /\b(liquid|plyn)\b/.test(all) ? 'LIQUID' : 'POWDER';
   }
@@ -857,7 +894,12 @@ const roleOf = (archetype: ProductArchetype, all: string): ProductIntendedUsageR
   return 'BASE_ONLY';
 };
 
-const mapperCategoriesFor = (
+/**
+ * The single mapping from a resolved semantic identity to the Mapper cohorts it may match.
+ * Exported so that anything which RESOLVES a family later in the flow — the customer's own
+ * family answer, for one — recomputes this list here instead of carrying a second table.
+ */
+export const mapperCategoriesFor = (
   family: ProductSemanticFamily,
   archetype: ProductArchetype,
 ): string[] => {
@@ -881,6 +923,13 @@ const mapperCategoriesFor = (
     stabilizer_hydrocolloid: ['stabilizer'],
     emulsifier: ['emulsifier', 'stabilizer'],
     alcohol: ['alcohol'],
+    /*
+      The two liquid families had no entry at all, so a product the classifier had already
+      recognised as a drink still reached the Mapper with an EMPTY compatible-category list and
+      could match no cohort. The recognition was right and simply never travelled.
+    */
+    plant_beverage: ['beverage'],
+    dairy_liquid: ['dairy'],
   };
   return map[family] ?? [];
 };
@@ -915,7 +964,18 @@ export function classifyProductSemantics(
     inferredFamily,
   );
   const ingredientFamily = semanticFamilyOf(productArchetype, inferredFamily);
-  const physicalForm = formOf(identity, category, subcategory, description, productArchetype);
+  /*
+    A family that is liquid by definition settles the form. Without this a drink kept
+    physicalForm UNKNOWN, which raised FORM_UNKNOWN, which kept modelRequired true, which is a
+    hard gate in both productProductionAccuracy and productBehaviorAuthority. The text never says
+    "liquid" on a bottle of water; the family already does.
+  */
+  const LIQUID_BY_FAMILY: readonly ProductSemanticFamily[] = ['plant_beverage', 'dairy_liquid'];
+  const detectedForm = formOf(identity, category, subcategory, description, productArchetype);
+  const physicalForm: ProductPhysicalForm =
+    detectedForm === 'UNKNOWN' && LIQUID_BY_FAMILY.includes(ingredientFamily)
+      ? 'LIQUID'
+      : detectedForm;
   const dosage = parseProductDosage(input.dosage);
   const intendedUsageRole = roleOf(productArchetype, all);
   const flavorDomain = flavorDomainOf(all, productArchetype);
@@ -1199,6 +1259,25 @@ const flavorContradiction = (a: ProductFlavorDomain, b: ProductFlavorDomain): bo
 const roleContradiction = (a: ProductIntendedUsageRole, b: ProductIntendedUsageRole): boolean =>
   (a === 'BASE_ONLY' && b === 'TOPPING_ONLY') || (a === 'TOPPING_ONLY' && b === 'BASE_ONLY');
 
+const archetypeContradiction = (a: ProductArchetype, b: ProductArchetype): boolean =>
+  a !== 'UNKNOWN' && b !== 'UNKNOWN' && a !== b;
+
+/** Manufacturer/Mapper subcategories are the only current subfamily facts.
+ * Compare their existing canonical spelling only when both sides state one;
+ * absence remains unknown rather than becoming an incompatibility. */
+const subfamilyContradiction = (
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean => {
+  const productSubfamily = meaningful(a);
+  const candidateSubfamily = meaningful(b);
+  return (
+    productSubfamily !== null &&
+    candidateSubfamily !== null &&
+    normalized(productSubfamily) !== normalized(candidateSubfamily)
+  );
+};
+
 /** Generic semantic gate used by all Mapper tiers. No product-ID exceptions exist. */
 export function evaluateMapperSemanticCompatibility(
   product: ProductSemanticClassification,
@@ -1225,14 +1304,33 @@ export function evaluateMapperSemanticCompatibility(
   if (!familyCompatible(product.ingredientFamily, candidateSemantic.ingredientFamily)) {
     reasonCodes.push('SEMANTIC_FAMILY_CONTRADICTION');
   }
+  if (archetypeContradiction(product.productArchetype, candidateSemantic.productArchetype)) {
+    reasonCodes.push('SEMANTIC_PRODUCT_ARCHETYPE_CONTRADICTION');
+  }
   if (formContradiction(product.physicalForm, candidateSemantic.physicalForm)) {
     reasonCodes.push('SEMANTIC_FORM_CONTRADICTION');
   }
   if (roleContradiction(product.intendedUsageRole, candidateSemantic.intendedUsageRole)) {
     reasonCodes.push('SEMANTIC_ROLE_CONTRADICTION');
   }
+  // These are total canonical Recognition booleans, not inferred tri-state
+  // flags. Opposite values therefore describe a known incompatibility.
+  if (product.isTechnicalProduct !== candidateSemantic.isTechnicalProduct) {
+    reasonCodes.push('SEMANTIC_TECHNICAL_STATUS_CONTRADICTION');
+  }
+  if (product.isDosageDependent !== candidateSemantic.isDosageDependent) {
+    reasonCodes.push('SEMANTIC_DOSAGE_DEPENDENCE_CONTRADICTION');
+  }
   if (flavorContradiction(product.flavorDomain, candidateSemantic.flavorDomain)) {
     reasonCodes.push('SEMANTIC_FLAVOR_DOMAIN_CONTRADICTION');
+  }
+  if (
+    subfamilyContradiction(
+      product.manufacturerSubcategory,
+      candidateSemantic.manufacturerSubcategory,
+    )
+  ) {
+    reasonCodes.push('SEMANTIC_SUBFAMILY_CONTRADICTION');
   }
   const category = normalized(candidate.category).replace(/\s+/g, '_');
   if (

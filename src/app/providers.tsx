@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { consumeOAuthRedirectError } from '@/services/authRedirect';
 import { syncEffectiveAccess } from '@/services/accountAccess/liveEffectiveAccess';
+import { coordinatePartnerInvitation } from '@/services/accountAccess/partnerInvitationCoordinator';
 import { useProCoreAccessStore } from '@/features/pro-core/proCoreAccessStore';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionStore } from '@/stores/subscriptionStore';
@@ -37,11 +38,13 @@ function browserOwnerStorage(): AccountOwnerStorage | null {
 function ResolvedAccountProviders({
   children,
   identity,
+  authStatus,
   userId,
   userEmail,
 }: {
   children: ReactNode;
   identity: string;
+  authStatus: 'anon' | 'authed';
   userId: string | null;
   userEmail: string | null;
 }) {
@@ -69,13 +72,36 @@ function ResolvedAccountProviders({
 
   useEffect(() => {
     let cancelled = false;
-    void syncEffectiveAccess(userId, userEmail).then((access) => {
-      if (!cancelled) setEffectiveAccess(access);
-    });
+    void (async () => {
+      await coordinatePartnerInvitation({ status: authStatus, userId });
+      const currentAfterInvitation = useAuthStore.getState();
+      const currentUserIdAfterInvitation =
+        currentAfterInvitation.status === 'authed'
+          ? (currentAfterInvitation.user?.id ?? null)
+          : null;
+      if (
+        cancelled ||
+        currentAfterInvitation.status !== authStatus ||
+        currentUserIdAfterInvitation !== userId
+      ) {
+        return;
+      }
+      const access = await syncEffectiveAccess(userId, userEmail);
+      const currentAfterAccess = useAuthStore.getState();
+      const currentUserIdAfterAccess =
+        currentAfterAccess.status === 'authed' ? (currentAfterAccess.user?.id ?? null) : null;
+      if (
+        !cancelled &&
+        currentAfterAccess.status === authStatus &&
+        currentUserIdAfterAccess === userId
+      ) {
+        setEffectiveAccess(access);
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, [userId, userEmail, setEffectiveAccess]);
+  }, [authStatus, userId, userEmail, setEffectiveAccess]);
 
   /* The account's saved machine is the default for a NEW recipe. It lives in
      its own store (`/machine` writes a MachinePreferenceRecord), so it is
@@ -176,6 +202,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <ResolvedAccountProviders
       key={identity}
       identity={identity}
+      authStatus={authStatus}
       userId={resolvedUserId}
       userEmail={resolvedUserId ? userEmail : null}
     >

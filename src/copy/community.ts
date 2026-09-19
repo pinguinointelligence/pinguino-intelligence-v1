@@ -53,7 +53,10 @@ export interface CommunityCopy {
   readonly metrics: {
     readonly made: string;
     readonly makers: string;
+    /** Column / metric HEADING („Wersji”). */
     readonly remixes: string;
+    /** A COUNTED noun on a card: „1 wersja”, „3 wersje”, „5 wersji”. */
+    readonly remixCount: (count: number) => string;
     readonly verifiedRating: string;
     readonly noRatingYet: string;
     readonly uniqueUsers: string;
@@ -78,6 +81,25 @@ export interface CommunityCopy {
     readonly revoked: string;
     readonly expired: string;
     readonly openedByYou: string;
+    /** Direct-share own photograph (owner decision 2026-09-17). */
+    readonly photoTitle: string;
+    readonly photoFallbackNote: string;
+    readonly photoTake: string;
+    readonly photoChoose: string;
+    readonly photoUploading: string;
+    readonly photoAttached: string;
+    readonly photoRemove: string;
+    readonly photoFailed: string;
+    readonly photoRetry: string;
+    readonly photoSkip: string;
+    readonly photoReplaceFailed: string;
+    readonly photoKeepCurrent: string;
+    readonly photoRemoveFailed: string;
+    readonly photoOptionsFailed: string;
+    /** Recipient page: the photograph could not be loaded (a failure, not „no photo"). */
+    readonly ownPhotoUnavailable: string;
+    /** Recipient page: the server refused the photograph (revoked, expired, no access). */
+    readonly ownPhotoRefused: string;
   };
   readonly publish: {
     readonly dialogTitle: string;
@@ -94,6 +116,11 @@ export interface CommunityCopy {
     readonly slugLabel: string;
     readonly imageLabel: string;
     readonly imageRequired: string;
+    /** Why „Opublikuj" is unavailable while no own photograph is attached. */
+    readonly ownPhotoRequired: string;
+    /** Shown only when the recipe version is confirmed saved. */
+    readonly ownPhotoLaterSaved: string;
+    readonly publishLater: string;
     readonly needsCreatorProfile: string;
     readonly published: string;
   };
@@ -135,11 +162,21 @@ export interface CommunityCopy {
   };
 }
 
+/** Polish plural of „wersja” (1 / 2–4 / 5+): „1 wersja”, „3 wersje”, „12 wersji”, „22 wersje”. */
+export function pluralWersja(n: number): string {
+  const abs = Math.abs(n);
+  const mod10 = abs % 10;
+  const mod100 = abs % 100;
+  if (abs === 1) return 'wersja';
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return 'wersje';
+  return 'wersji';
+}
+
 /** Polish — the shipping default. */
 export const communityCopyPl: CommunityCopy = {
   nav: {
     myRecipes: 'Moje receptury',
-    sharedWithMe: 'Udostępnione mi',
+    sharedWithMe: 'Udostępnione',
     community: 'Community',
     top100: 'TOP 100',
     received: 'Otrzymane',
@@ -156,7 +193,7 @@ export const communityCopyPl: CommunityCopy = {
     shareRecipe: 'Udostępnij recepturę',
     publishToCommunity: 'Opublikuj w Community',
     unpublish: 'Wycofaj publikację',
-    useThisRecipe: 'Użyj tej receptury',
+    useThisRecipe: 'Zrób te lody',
     createMyVersion: 'Stwórz moją wersję',
     unlockThisRecipe: 'Odblokuj tę recepturę',
     revokeLink: 'Unieważnij link',
@@ -179,6 +216,7 @@ export const communityCopyPl: CommunityCopy = {
     made: 'Wykonań',
     makers: 'Osób zrobiło',
     remixes: 'Wersji',
+    remixCount: (count) => `${count} ${pluralWersja(count)}`,
     verifiedRating: 'Ocena zweryfikowana',
     noRatingYet: 'Brak ocen',
     uniqueUsers: 'Użytkowników',
@@ -206,6 +244,25 @@ export const communityCopyPl: CommunityCopy = {
     revoked: 'Ten link został wyłączony. Poproś o nowy, jeśli nadal potrzebujesz dostępu.',
     expired: 'Ten link wygasł. Poproś o nowy.',
     openedByYou: 'Otwarto',
+    photoTitle: 'Zdjęcie dla odbiorcy',
+    photoFallbackNote:
+      'Bez własnego zdjęcia odbiorca zobaczy zdjęcie Gellatti dla tego rodzaju lodów.',
+    photoTake: 'Zrób zdjęcie',
+    photoChoose: 'Wybierz z galerii',
+    photoUploading: 'Dodaję zdjęcie…',
+    photoAttached:
+      'Zdjęcie dodane. Zobaczy je każdy, kto otworzy ten link — nie trafia do Community.',
+    photoRemove: 'Usuń zdjęcie',
+    photoFailed:
+      'Nie udało się dodać zdjęcia. Do czasu dodania własnego odbiorca zobaczy zdjęcie Gellatti.',
+    photoRetry: 'Spróbuj ponownie',
+    photoSkip: 'Udostępnij bez zdjęcia',
+    photoReplaceFailed: 'Nie udało się dodać nowego zdjęcia. Odbiorca nadal widzi poprzednie.',
+    photoKeepCurrent: 'Zostaw obecne zdjęcie',
+    photoRemoveFailed: 'Nie udało się usunąć zdjęcia. Odbiorca nadal je widzi.',
+    photoOptionsFailed: 'Nie udało się sprawdzić zdjęcia dla tego linku.',
+    ownPhotoUnavailable: 'Nie udało się wczytać zdjęcia autora.',
+    ownPhotoRefused: 'To zdjęcie nie jest już dostępne.',
   },
   publish: {
     dialogTitle: 'Opublikuj w Community',
@@ -224,6 +281,9 @@ export const communityCopyPl: CommunityCopy = {
     slugLabel: 'Adres publiczny',
     imageLabel: 'Zdjęcie',
     imageRequired: 'Wybierz zdjęcie receptury.',
+    ownPhotoRequired: 'Aby opublikować w Community, dodaj własne zdjęcie gotowych lodów.',
+    ownPhotoLaterSaved: 'Możesz zrobić to później — Twoja receptura pozostaje zapisana.',
+    publishLater: 'Opublikuję później',
     needsCreatorProfile: 'Najpierw utwórz profil Twórcy.',
     published: 'Receptura jest już w Community.',
   },
@@ -271,7 +331,7 @@ export const communityCopyPl: CommunityCopy = {
 export const communityCopyEn: CommunityCopy = {
   nav: {
     myRecipes: 'Moje receptury',
-    sharedWithMe: 'Udostępnione mi',
+    sharedWithMe: 'Udostępnione',
     community: 'Community',
     top100: 'TOP 100',
     received: 'Received',
@@ -288,7 +348,7 @@ export const communityCopyEn: CommunityCopy = {
     shareRecipe: 'Udostępnij recepturę',
     publishToCommunity: 'Opublikuj w Community',
     unpublish: 'Unpublish',
-    useThisRecipe: 'Użyj tej receptury',
+    useThisRecipe: 'Make this gelato',
     createMyVersion: 'Utwórz własną wersję',
     unlockThisRecipe: 'Odblokuj tę recepturę',
     revokeLink: 'Revoke link',
@@ -311,6 +371,7 @@ export const communityCopyEn: CommunityCopy = {
     made: 'Makes',
     makers: 'People made it',
     remixes: 'Remixes',
+    remixCount: (count) => `${count} ${count === 1 ? 'remix' : 'remixes'}`,
     verifiedRating: 'Verified rating',
     noRatingYet: 'Brak ocen.',
     uniqueUsers: 'Users',
@@ -337,6 +398,26 @@ export const communityCopyEn: CommunityCopy = {
     revoked: 'Osoba, która wysłała ten link, wycofała go.',
     expired: 'Ten link wygasł.',
     openedByYou: 'Opened',
+    photoTitle: 'Photo for the recipient',
+    photoFallbackNote:
+      'Without your own photo, the recipient sees the Gellatti photo for this kind of ice cream.',
+    photoTake: 'Take a photo',
+    photoChoose: 'Choose from gallery',
+    photoUploading: 'Adding the photo…',
+    photoAttached:
+      'Photo added. Anyone who opens this link sees it — it is not posted to Community.',
+    photoRemove: 'Remove photo',
+    photoFailed:
+      'The photo could not be added. Until you add your own, the recipient sees the Gellatti photo.',
+    photoRetry: 'Try again',
+    photoSkip: 'Share without a photo',
+    photoReplaceFailed:
+      'The new photo could not be added. The recipient still sees the previous one.',
+    photoKeepCurrent: 'Keep the current photo',
+    photoRemoveFailed: 'The photo could not be removed. The recipient still sees it.',
+    photoOptionsFailed: 'The photo options for this link could not be loaded.',
+    ownPhotoUnavailable: "The author's photo could not be loaded.",
+    ownPhotoRefused: 'This photo is no longer available.',
   },
   publish: {
     dialogTitle: 'Opublikuj w Community',
@@ -355,6 +436,9 @@ export const communityCopyEn: CommunityCopy = {
     slugLabel: 'Public address',
     imageLabel: 'Photo',
     imageRequired: 'Choose a recipe photo.',
+    ownPhotoRequired: 'To publish in Community, add your own photo of the finished ice cream.',
+    ownPhotoLaterSaved: 'You can do it later — your recipe stays saved.',
+    publishLater: "I'll publish later",
     needsCreatorProfile: 'Najpierw utwórz profil twórcy.',
     published: 'Published',
   },

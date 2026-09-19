@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { findDemoIngredient } from '@/data/demoIngredients';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import type { EngineIngredient, RecipeItem } from '@/engine';
+import { useRecipeProfileStore } from '@/features/pro-workbench/recipeProfileStore';
 import { useRecipeStore, type RecipeState } from './recipeStore';
 
 const line = (id: string, ingredient: EngineIngredient): RecipeItem => ({
@@ -28,11 +29,12 @@ describe('atomic Base ingredient replacement', () => {
       dirty: false,
       draftRevision: 70,
     });
+    useRecipeProfileStore.getState().acknowledgeRecalculation();
   });
 
   afterEach(() => useRecipeStore.setState(prior, true));
 
-  it('replaces the selected row instead of adding a second row', () => {
+  it('RPL-BASE-01 replaces in place and requires recalculation when facts change', () => {
     const milk = findDemoIngredient('milk_3_5')!;
     const cream = findDemoIngredient('cream_30')!;
     useRecipeStore.setState({ items: [line('line-milk', milk)], baseOrder: ['line-milk'] });
@@ -54,6 +56,7 @@ describe('atomic Base ingredient replacement', () => {
       grams_constraint: { grams: 125 },
     });
     expect(state.draftRevision).toBe(71);
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
   });
 
   it('fails closed when the selected replacement already exists in another row', () => {
@@ -76,7 +79,7 @@ describe('atomic Base ingredient replacement', () => {
     expect(useRecipeStore.getState().items).toHaveLength(2);
   });
 
-  it('can switch exact SKUs inside one canonical slot without treating the target row as a duplicate', () => {
+  it('RPL-BASE-02 stores the exact new SKU and invalidates old results when its facts differ', () => {
     const base = findDemoIngredient('milk_3_5')!;
     const skuA: EngineIngredient = {
       ...base,
@@ -91,6 +94,10 @@ describe('atomic Base ingredient replacement', () => {
       id: 'sku-b',
       private_product_id: 'sku-b',
       name: 'MILK 3.5% · SKU B',
+      composition: {
+        ...skuA.composition,
+        fat_percent: skuA.composition.fat_percent + 1,
+      },
     };
     useRecipeStore.setState({ items: [line('line-milk', skuA)], baseOrder: ['line-milk'] });
 
@@ -100,5 +107,26 @@ describe('atomic Base ingredient replacement', () => {
       canonical_ingredient_id: 'PI-ING-MILK-35',
       private_product_id: 'sku-b',
     });
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(true);
+  });
+
+  it('RPL-BASE-03 does not invalidate a calculated result for a fact-identical exact SKU', () => {
+    const base = findDemoIngredient('milk_3_5')!;
+    const skuA: EngineIngredient = {
+      ...base,
+      id: 'sku-a',
+      canonical_ingredient_id: 'PI-ING-MILK-35',
+      private_product_id: 'sku-a',
+      identity_provenance: 'private_product',
+    };
+    const skuB: EngineIngredient = {
+      ...skuA,
+      id: 'sku-b',
+      private_product_id: 'sku-b',
+    };
+    useRecipeStore.setState({ items: [line('line-milk', skuA)], baseOrder: ['line-milk'] });
+
+    expect(useRecipeStore.getState().replaceIngredient('line-milk', skuB).status).toBe('replaced');
+    expect(useRecipeProfileStore.getState().awaitingRecalculation).toBe(false);
   });
 });

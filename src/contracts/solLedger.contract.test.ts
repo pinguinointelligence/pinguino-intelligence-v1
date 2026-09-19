@@ -81,6 +81,22 @@ describe('Gellatti SOL ledger continuity', () => {
     expect(ledger).toContain('`OWNER ACCEPTED: NO`');
   });
 
+  it('records the final SOL-031 label close-out without claiming Owner acceptance', () => {
+    expect(entries.find(({ id }) => id === 'SOL-031')?.status).toBe('RESOLVED_ON_STAGING');
+    expect(ledger).toContain('PR #221 merge `a59757c18c4c587854e490a163b477322710e511`');
+    expect(ledger).toContain('PR #224 merge `4bb77ad6bd3c535f5e626dddcf46da89609e6eb1`');
+    expect(ledger).toContain('PR #225 merge `54883d31307d5f2a0d229834e35870691e18aba3`');
+    expect(ledger).toContain('final staging SHA `54883d31307d5f2a0d229834e35870691e18aba3`');
+    expect(ledger).toContain('deployment `6311619156`');
+    expect(ledger).toContain('post-merge staging CI `34137756717`');
+    expect(ledger).toContain('33/33 PASS');
+    expect(ledger).toContain('262 PASS, 1 skipped');
+    expect(ledger).toContain('`0e4c073cf1649ccdb17876620ed65733e9d7ec2a50f9a3813febde702319da39`');
+    expect(ledger).toContain('all entries are `PENDING_OWNER_REVIEW`');
+    expect(ledger).toContain('`OWNER QA PENDING`');
+    expect(ledger).toContain('`OWNER ACCEPTED: NO`');
+  });
+
   it('retains the confirmed SOL-039 through SOL-045 findings as TODO', () => {
     for (let number = 39; number <= 45; number += 1) {
       const id = `SOL-${String(number).padStart(3, '0')}`;

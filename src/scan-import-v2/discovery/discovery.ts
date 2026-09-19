@@ -19,10 +19,13 @@ import type {
   DiscoverySession,
   DiscoveryStage,
   FactLedger,
+  ClientReadinessState,
+  FinalRoute,
   FinalizeInput,
   LabelImage,
 } from './contracts';
 import { buildLedger, stageFromLedger } from './ledger';
+import { assertScanRunCurrent } from '../runAuthority';
 
 export type DiscoveryResult = Extract<
   ScanImportV2Result,
@@ -55,6 +58,7 @@ function pending(
     { kind: 'discovered_pending' }
   >['evidenceError'] = null,
   note: string | null = null,
+  readiness?: ClientReadinessState,
 ): Extract<ScanImportV2Result, { kind: 'discovered_pending' }> {
   const ledger = buildLedger(session.identity, session.result, session.missingCritical, {
     sessionId: session.sessionId,
@@ -62,11 +66,7 @@ function pending(
   });
   const stage = stageFromLedger(ledger);
   const next: Extract<ScanImportV2Result, { kind: 'discovered_pending' }>['next'] =
-    !ledger.facts.some((f) => f.source === 'label')
-      ? 'label_photo'
-      : ledger.missingCritical.length > 0
-        ? 'label_photo'
-        : 'finalize';
+    ledger.missingCritical.length > 0 ? 'label_photo' : 'finalize';
   return {
     kind: 'discovered_pending',
     identity: session.identity,
@@ -76,8 +76,10 @@ function pending(
     next,
     evidenceError,
     note,
+    canonicalResult: session.result,
     engineReady: false,
     canonical: false,
+    readiness,
   };
 }
 
@@ -89,26 +91,49 @@ export function discoveredExact(
     productCode: string | null;
     engineUsable: boolean;
     existing: boolean;
+    route: FinalRoute;
+    productionReady: boolean;
+    readiness?: ClientReadinessState;
   },
   sessionId: string,
 ): Extract<ScanImportV2Result, { kind: 'discovered_exact' }> {
+  const readiness: ClientReadinessState =
+    created.readiness ??
+    {
+      ready: created.productionReady,
+      productionReady: created.productionReady,
+      missingCritical: ledger.missingCritical,
+      criticalGapsKnown: true,
+      roleReadiness: null,
+      assessmentVersion: null,
+      assessmentHash: null,
+      assessmentSessionId: null,
+    };
+  const finalLedger = created.readiness?.criticalGapsKnown
+    ? { ...ledger, missingCritical: [...created.readiness.missingCritical] }
+    : ledger;
+  const canonical = created.route === 'PR';
   const product: ExactCandidate = {
     productId: created.productId,
     productCode: created.productCode,
     displayName: ledger.identity.name ?? identity.value,
     brand: ledger.identity.brand,
     ean: identity.canonicalGtin13,
-    strength: 'provisional_linked',
-    entityKind: 'customer_provisional',
+    strength: canonical ? 'canonical_shared' : 'provisional_linked',
+    entityKind: canonical ? 'commercial_product' : 'customer_provisional',
     engineReady: created.engineUsable,
     mapperSlotId: null,
     country: null,
     currentVersionId: null,
-    evidence: { createdThroughFinalize: true, existing: created.existing },
+    evidence: {
+      createdThroughFinalize: true,
+      existing: created.existing,
+      finalRoute: created.route,
+    },
   };
   const stage: DiscoveryStage = created.engineUsable
     ? 'engine_ready'
-    : ledger.missingCritical.length === 0
+    : finalLedger.missingCritical.length === 0
       ? 'behaviour_bound'
       : 'exact_sku_created';
   return {
@@ -117,15 +142,16 @@ export function discoveredExact(
     sessionId,
     product,
     stage,
-    ledger,
+    ledger: finalLedger,
     engineReady: created.engineUsable,
     behaviour: created.engineUsable
       ? { outcome: 'classified', bindingId: null }
       : { outcome: 'unknown_requires_review', bindingId: null },
-    canonical: false,
+    canonical,
     readiness: {
+      ...readiness,
       engineReady: created.engineUsable,
-      missingCritical: ledger.missingCritical,
+      missingCritical: finalLedger.missingCritical,
       note: created.engineUsable
         ? null
         : 'technical profile incomplete or ProductBehaviour unresolved — exact identity preserved, not usable by the Engine yet',
@@ -138,7 +164,9 @@ export async function startDiscovery(
   ctx: RequestContext,
   port: DiscoveryPort,
 ): Promise<DiscoveryResult> {
+  assertScanRunCurrent(ctx);
   const own = await port.findOwnRequest(identity, ctx);
+  assertScanRunCurrent(ctx);
   if (own && !own.approvedProductId) {
     return {
       kind: 'discovery_requested',
@@ -151,7 +179,9 @@ export async function startDiscovery(
       engineReady: false,
     };
   }
+  assertScanRunCurrent(ctx);
   const r = await port.research(identity, ctx);
+  assertScanRunCurrent(ctx);
   if (r.kind === 'existing_product')
     return {
       kind: 'resolved_exact',
@@ -169,8 +199,15 @@ export async function startDiscovery(
       importSkipped: null,
       needsConfirmation: false,
     } as DiscoveryResult;
-  if (r.kind === 'skipped') return pending(r.session, null, `research skipped: ${r.reason}`);
-  return pending(r.session, r.evidenceError);
+  /*
+    The note the customer reads about the external sources. It is the SERVER's sentence or
+    nothing: `r.reason` and `r.evidenceError` are internal tokens, and composing a note out of
+    them is what produced „research skipped: session_lookup_already_used" on a phone — a string
+    the customer-copy gate could only replace with a generic sentence, so a lookup with a
+    specific outcome explained nothing (owner defect 2026-09-07, EAN 8480000804693).
+  */
+  if (r.kind === 'skipped') return pending(r.session, null, r.notice ?? null);
+  return pending(r.session, r.evidenceError, r.notice ?? null);
 }
 
 export async function continueDiscovery(
@@ -179,8 +216,10 @@ export async function continueDiscovery(
   ctx: RequestContext,
   port: DiscoveryPort,
 ): Promise<DiscoveryResult> {
+  assertScanRunCurrent(ctx);
   if (action.type === 'label') {
     const a = await port.analyzeLabel(session, action.images, ctx);
+    assertScanRunCurrent(ctx);
     if (a.kind === 'existing_product')
       return {
         kind: 'resolved_exact',
@@ -206,6 +245,7 @@ export async function continueDiscovery(
   });
   if (action.type === 'request') {
     const q = await port.submitRequest(session.identity, ledger, session, ctx);
+    assertScanRunCurrent(ctx);
     if (q.kind === 'existing_product')
       return {
         kind: 'resolved_exact',
@@ -232,6 +272,7 @@ export async function continueDiscovery(
     };
   }
   const f = await port.finalize(session, action.input, ctx, action.type === 'finalize_unverified');
+  assertScanRunCurrent(ctx);
   switch (f.kind) {
     case 'created':
       return discoveredExact(session.identity, ledger, f, session.sessionId);
@@ -256,14 +297,14 @@ export async function continueDiscovery(
         plain Polish from `missingCritical`, by the screen that asks for it.
       */
       return {
-        ...pending({ ...session, missingCritical: f.missingCritical }),
+        ...pending({ ...session, missingCritical: f.missingCritical }, null, null, f.readiness),
         note: null,
         diagnostics: f.reasons,
-        assessmentHash: f.assessmentHash ?? null,
+        assessmentHash: f.assessmentHash ?? f.readiness?.assessmentHash ?? null,
       };
     case 'assessment_stale':
       return {
-        ...pending(session),
+        ...pending(session, null, null, f.readiness),
         note: 'Dane produktu zmieniły się w trakcie zapisu. Spróbuj jeszcze raz.',
         diagnostics: ['scan_assessment_stale'],
       };

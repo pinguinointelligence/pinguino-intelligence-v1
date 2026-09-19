@@ -3,7 +3,20 @@ import { createPortal } from 'react-dom';
 import { ReadinessFrame } from '@/features/design-review/ReadinessMarker';
 import type { ProductionWorkspaceView } from './useProductionWorkspace';
 import { ProductionActualControl } from './ProductionActualControl';
+import {
+  productionDecisionExplanation,
+  productionDecisionOptions,
+  productionDecisionTitle,
+} from './productionDecisionOptions';
 import { productionLotCodeForRun, productionStepForGrams } from './productionSession';
+import {
+  preparationPlanForRecipe,
+  preparationPlanForSession,
+  type PreparationPlan,
+  type PreparationStep,
+} from './preparationPlan';
+import { educationCopy } from '@/copy/education.pl';
+import { PreparationIllustrationImage } from '@/features/education/PreparationIllustrationImage';
 import { isCatalogLabelToppingIngredient } from '@/features/recipe-composition/labelTopping';
 import { CatalogVerificationBadge } from '@/features/global-catalog/CatalogVerificationBadge';
 import { buttonClasses } from '@/components/ui/buttonStyles';
@@ -15,6 +28,7 @@ import { recipeTechnicalFit } from '@/features/recipe-score';
 import { PublishToCommunityDialog } from '@/features/community/ui/PublishToCommunityDialog';
 import { useCreatorProfile } from '@/features/community/useCreatorProfile';
 import { refreshCurrentRecipeBehaviorWorkingCopy } from '@/features/product-intelligence/refreshRecipeBehaviorWorkingCopy';
+import { ProWorkbar } from '@/features/pro-core/ProWorkbar';
 
 const formatPhysicalMassG = (value: number): string =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(3).replace(/\.?0+$/, '');
@@ -29,78 +43,213 @@ const scoreFromDisplay = (display: string | undefined): TenPointScore | null => 
   return Number.isInteger(value) && value >= 1 && value <= 10 ? (value as TenPointScore) : null;
 };
 
-/**
- * OWNER RULE §2 — HEAT INFORMATION IS A REMINDER, NOT A ROUTE.
- *
- * This renders only when authoritative metadata POSITIVELY indicates that a
- * named product is meant to be heated. It selects no process, changes no gram,
- * touches no ProductBehavior and blocks nothing. An unknown process renders
- * nothing at all (§3) — that fact belongs under the product `?`.
- */
-function HeatInformationCard({ production }: { production: ProductionWorkspaceView }) {
-  const advisories = production.heatInformation ?? [];
-  const products = [
-    ...new Set(
-      advisories
-        .map((detail) => detail.productName?.trim())
-        .filter((name): name is string => Boolean(name)),
-    ),
-  ];
-  if (products.length === 0) return null;
-  const acknowledged = production.heatInformationAcknowledged;
-  if (acknowledged) return null;
-  return (
-    <section
-      className="pro-workbench-mobile-only grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1.5 rounded-[12px] border border-[#d9c49a] bg-[#fbf8f1] px-3 py-2.5 text-ink"
-      role="status"
-      data-testid="production-heat-information"
-      data-acknowledged={acknowledged ? 'true' : 'false'}
-    >
-      <div className="min-w-0">
-        <p className="text-xs font-semibold leading-relaxed">Pamiętaj o obróbce</p>
-        <p className="mt-0.5 text-[11px] leading-relaxed text-stone-600">
-          Dla poniższych składników wskazana jest obróbka na ciepło:
-        </p>
-        <ul className="mt-1 space-y-0.5 text-xs text-stone-700">
-          {products.map((productName) => (
-            <li key={productName}>{productName}</li>
-          ))}
-        </ul>
-      </div>
-      <button
-        type="button"
-        onClick={() => void production.acknowledgeHeatInformation()}
-        disabled={production.persistenceBusy}
-        className="pro-focus-ring min-h-11 self-start rounded-[10px] bg-ink px-3 py-1.5 text-xs font-semibold text-white shadow-pro-sm disabled:cursor-wait disabled:opacity-60"
-        data-testid="acknowledge-production-heat-information"
-      >
-        OK
-      </button>
-    </section>
-  );
+const preparationCopy = educationCopy.preparation;
+
+type PlanLineStep = Extract<PreparationStep, { kind: 'line' }>;
+
+/** One plan for the batch being made (or about to start): the same builder HOME uses. */
+function preparationPlanForView(production: ProductionWorkspaceView): PreparationPlan {
+  const guide = production.machineGuide ?? null;
+  return production.session
+    ? preparationPlanForSession(production.session, guide)
+    : preparationPlanForRecipe(
+        production.plannedInput,
+        production.plannedComposition ?? null,
+        guide,
+      );
 }
 
-function MachineOperationCard({ production }: { production: ProductionWorkspaceView }) {
-  const guide = production.machineGuide;
-  if (!guide) return null;
+/** A line step adds something the Production row does not already say. */
+const lineStepAddsInformation = (step: PlanLineStep): boolean => {
+  const defaultInstruction =
+    step.scope === 'addon' ? preparationCopy.actions.addAfterMachine : preparationCopy.actions.add;
+  return step.note !== null || step.instruction !== defaultInstruction;
+};
+
+function MachineOperationCard({ step }: { step: Extract<PreparationStep, { kind: 'machine' }> }) {
   return (
     <section
       className="rounded-[18px] border border-ink/10 bg-white p-4 text-ink shadow-pro-e0"
       data-testid="production-machine-instructions"
-      data-machine-id={guide.sourceMachineId ?? undefined}
+      data-machine-id={step.sourceMachineId ?? undefined}
     >
       <p className="text-[10px] font-semibold tracking-[0.09em] text-stone-500 uppercase">
         Instrukcja maszyny
       </p>
-      <h2 className="mt-1 text-sm font-semibold text-ink">{guide.title}</h2>
+      <h2 className="mt-1 text-sm font-semibold text-ink">{step.title}</h2>
+      {step.illustration ? (
+        <PreparationIllustrationImage
+          illustration={step.illustration}
+          className="mt-3 w-full max-w-[220px]"
+        />
+      ) : null}
       <ol className="mt-3 space-y-2 pl-5 text-xs leading-relaxed text-stone-700">
-        {guide.steps.map((step) => (
-          <li key={step} className="list-decimal pl-1">
-            {step}
+        {step.details.map((detail, index) => (
+          <li key={`${index}:${detail}`} className="list-decimal pl-1">
+            {detail}
           </li>
         ))}
       </ol>
+      {step.timing ? <p className="mt-2 text-[11px] text-stone-500">{step.timing}</p> : null}
     </section>
+  );
+}
+
+function PlanLineNote({ step }: { step: PlanLineStep }) {
+  return (
+    <li
+      className={cn('text-xs leading-relaxed', step.done && 'opacity-60')}
+      data-testid={`production-plan-line-${step.lineId}`}
+      data-done={step.done ? 'true' : 'false'}
+      data-moved={step.moved ? 'true' : 'false'}
+    >
+      <span className="font-semibold text-ink">
+        {step.done ? '✓ ' : ''}
+        {step.name}
+      </span>
+      {step.instruction !==
+      (step.scope === 'addon'
+        ? preparationCopy.actions.addAfterMachine
+        : preparationCopy.actions.add) ? (
+        <span className="text-ink"> — {step.instruction}</span>
+      ) : null}
+      {step.note ? <span className="block text-[11px] text-stone-500">{step.note}</span> : null}
+    </li>
+  );
+}
+
+/**
+ * The preparation plan in the slot the machine instruction used to take. It
+ * lists only what the Production rows do not already show — machine preparation
+ * before start, line instructions, the heat step and what is added after
+ * cooling, the machine run and topping instructions. Grams, order of weighing
+ * and confirmations stay in the existing rows; the card confirms and gates nothing.
+ */
+function PreparationPlanCard({ production }: { production: ProductionWorkspaceView }) {
+  const plan = preparationPlanForView(production);
+  const heatIndex = plan.steps.findIndex((step) => step.kind === 'heat');
+  const lineNotes = (from: number, to: number, scope: PlanLineStep['scope']) =>
+    plan.steps
+      .slice(from, to)
+      .filter(
+        (step): step is PlanLineStep =>
+          step.kind === 'line' && step.scope === scope && lineStepAddsInformation(step),
+      );
+  // Machine preparation belongs before the batch: once weighing has begun it is history
+  // (the same moment HOME stops showing it).
+  const before =
+    !production.session || production.session.lines.every((line) => !line.confirmed)
+      ? plan.steps.find((step) => step.kind === 'machine_before')
+      : undefined;
+  const heat = heatIndex >= 0 ? plan.steps[heatIndex] : undefined;
+  const machine = plan.steps.find((step) => step.kind === 'machine');
+  const machineIndex = machine ? plan.steps.indexOf(machine) : plan.steps.length;
+  const baseBeforeHeat = lineNotes(0, heatIndex >= 0 ? heatIndex : machineIndex, 'base');
+  const afterCooling = plan.steps.filter(
+    (step): step is PlanLineStep =>
+      step.kind === 'line' && step.afterCooling && lineStepAddsInformation(step),
+  );
+  // Lines a Rescue appended after start: shown after the heat step only when they add information.
+  const rescueNotes =
+    heatIndex >= 0
+      ? plan.steps
+          .slice(heatIndex + 1, machineIndex)
+          .filter(
+            (step): step is PlanLineStep =>
+              step.kind === 'line' &&
+              step.scope === 'base' &&
+              !step.afterCooling &&
+              lineStepAddsInformation(step),
+          )
+      : [];
+  const addons = lineNotes(0, plan.steps.length, 'addon');
+  const planCard =
+    before || baseBeforeHeat.length > 0 || heat || rescueNotes.length > 0 ? (
+      <section
+        className="rounded-[18px] border border-ink/10 bg-white p-4 text-ink shadow-pro-e0"
+        data-testid="production-preparation-plan"
+      >
+        <p className="text-[10px] font-semibold tracking-[0.09em] text-stone-500 uppercase">
+          {preparationCopy.title}
+        </p>
+        {before && before.kind === 'machine_before' ? (
+          <div className="mt-2" data-testid="production-plan-before-start">
+            <p className="text-xs font-semibold text-ink">{before.title}</p>
+            <ul className="mt-0.5 text-xs text-stone-700">
+              {before.details.map((detail) => (
+                <li key={detail}>{detail}</li>
+              ))}
+            </ul>
+            <p className="mt-0.5 text-[11px] text-stone-500">{before.timing}</p>
+          </div>
+        ) : null}
+        {baseBeforeHeat.length > 0 ? (
+          <ul className="mt-2 space-y-1">
+            {baseBeforeHeat.map((step) => (
+              <PlanLineNote key={step.id} step={step} />
+            ))}
+          </ul>
+        ) : null}
+        {heat && heat.kind === 'heat' ? (
+          <div
+            className="mt-2 rounded-[12px] border border-[#d9c49a] bg-[#fbf8f1] px-3 py-2.5"
+            data-testid="production-plan-heat"
+          >
+            <p className="text-xs font-semibold text-ink">{heat.title}</p>
+            {/* Owner addendum 2026-09-17: the heat step is the one place that names
+                what needs heat — no separate reminder, no OK, before or during a run. */}
+            <p className="mt-0.5 text-xs text-stone-700">
+              {preparationCopy.heat.lead} {heat.productNames.join(', ')}
+            </p>
+            {heat.details.map((detail) => (
+              <p key={detail} className="mt-0.5 text-[11px] leading-relaxed text-stone-600">
+                {detail}
+              </p>
+            ))}
+            {afterCooling.length > 0 ? (
+              <>
+                <p className="mt-2 text-xs font-semibold text-ink">
+                  {preparationCopy.heat.afterCoolingTitle}
+                </p>
+                <ul className="mt-0.5 space-y-1">
+                  {afterCooling.map((step) => (
+                    <PlanLineNote key={step.id} step={step} />
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </div>
+        ) : null}
+        {rescueNotes.length > 0 ? (
+          <ul className="mt-2 space-y-1">
+            {rescueNotes.map((step) => (
+              <PlanLineNote key={step.id} step={step} />
+            ))}
+          </ul>
+        ) : null}
+      </section>
+    ) : null;
+  return (
+    <>
+      {planCard}
+      {machine && machine.kind === 'machine' ? <MachineOperationCard step={machine} /> : null}
+      {/* In the topping stage the same instruction sits on each topping row. */}
+      {addons.length > 0 && production.session?.stage !== 'addons' ? (
+        <section
+          className="rounded-[18px] border border-ink/10 bg-white p-4 text-ink shadow-pro-e0"
+          data-testid="production-plan-addons"
+        >
+          <p className="text-[10px] font-semibold tracking-[0.09em] text-stone-500 uppercase">
+            {preparationCopy.addonsTitle}
+          </p>
+          <ul className="mt-2 space-y-1">
+            {addons.map((step) => (
+              <PlanLineNote key={step.id} step={step} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </>
   );
 }
 
@@ -295,6 +444,44 @@ export function ProductionCockpit({
       </div>
     </DialogShell>
   ) : null;
+  /* OWNER §19 — a recipe that has no name yet is not a Production problem.
+   *
+   * `saved_version_required` used to be told the way every other blocker is
+   * told: an amber „Wymaga receptury wykonawczej" card, the sentence
+   * „Zapisz wersję wykonawczą", and a button that ejected the user out of
+   * Produkcja into Receptura to do one thing and walk back. Nothing about that
+   * was a refusal — the recipe is ready; it just has no name.
+   *
+   * So the SAME component the Receptura tab shows is mounted here instead. Not
+   * a copy of its look: `<ProWorkbar variant="panel" />` itself, so the box, the
+   * name field, the „Niezapisane" status, the ZAPISZ tongue, the geometry and
+   * the colours cannot drift apart, and the moment it saves, the prerequisite
+   * is gone and Produkcja continues where the user is already standing. */
+  if (prerequisite?.code === 'saved_version_required' && !completedRecordVisible) {
+    return (
+      <>
+        <section
+          className="m-3"
+          data-testid="production-save-recipe-inline"
+          data-prerequisite={prerequisite.code}
+        >
+          <p className="text-sm font-semibold text-ink" data-testid="production-save-recipe-title">
+            Zapisz nazwę receptury
+          </p>
+          <div className="mt-4">
+            <ProWorkbar variant="panel" />
+          </div>
+          {production.persistenceError ? (
+            <p className="mt-3 text-xs leading-relaxed text-status-error" role="alert">
+              {production.persistenceError}
+            </p>
+          ) : null}
+        </section>
+        {archiveSessionDialog}
+      </>
+    );
+  }
+
   if (prerequisite && !completedRecordVisible) {
     return (
       <>
@@ -341,8 +528,7 @@ export function ProductionCockpit({
   if (!session || !progress) {
     return (
       <div className="space-y-3 p-3 text-ink xl:space-y-2.5 xl:p-0">
-        <HeatInformationCard production={production} />
-        <MachineOperationCard production={production} />
+        <PreparationPlanCard production={production} />
         <DegassingCard production={production} />
         {/* GELLATTI V2.1 §17: the ingredient progress is the FIRST card of the
             Production column — the batch card sits under it, not above it. The
@@ -410,14 +596,15 @@ export function ProductionCockpit({
             className="pro-focus-ring mt-3 min-h-11 w-full rounded-[9px] bg-[var(--g-graphite)] px-4 py-2 text-xs font-semibold text-white shadow-none disabled:cursor-wait disabled:opacity-45 lg:min-h-[42px] lg:text-[11px]"
             data-testid="start-production-session"
           >
+            {/* OWNER §21 (2026-09-11) — the FIRST start of production says ROBIMY,
+                and „Zaczynamy…" while it starts. The one remaining pre-start gate is
+                degassing (the heat OK was removed by the owner addendum 2026-09-17). A finished run is a different
+                question and answers POWTÓRZ further down. */}
             {production.sessionStarting
-              ? 'Rozpoczynamy partię…'
+              ? 'Zaczynamy…'
               : production.degassingRequired && !production.degassingAcknowledged
                 ? 'Najpierw potwierdź odgazowanie'
-                : (production.heatInformation?.length ?? 0) > 0 &&
-                    !production.heatInformationAcknowledged
-                  ? 'Najpierw potwierdź informację'
-                  : 'Rozpocznij partię'}
+                : 'ROBIMY'}
           </button>
           {production.sessionStartError ? (
             <p className="mt-2 text-xs leading-relaxed text-status-error" role="alert">
@@ -517,21 +704,36 @@ export function ProductionCockpit({
             >
               Przejdź do etykiety
             </button>
+            {/* OWNER §21 — after a finished run this control starts another run of
+                the SAME recipe from the SAME source (`startNewSession` reuses
+                `production.source`), so „Rozpocznij partię" was describing the
+                mechanism rather than the intention. The word „partia" leaves the
+                customer's language here; what they are being asked is simply
+                whether they want to make it again. The pre-production start
+                control is a different question and keeps its own wording. */}
             <button
               type="button"
               onClick={prerequisite ? prerequisiteAction : () => void production.startNewSession()}
               disabled={prerequisiteActionBusy}
               aria-busy={prerequisiteActionBusy}
               className={cn(buttonClasses('ghost', 'md'), 'w-full sm:w-auto')}
+              data-testid="production-repeat-recipe"
             >
-              {prerequisite ? prerequisiteActionLabel : 'Rozpocznij partię'}
+              {prerequisite ? prerequisiteActionLabel : 'POWTÓRZ'}
             </button>
           </div>
           {prerequisite ? (
             <p className="mt-2 text-xs leading-relaxed text-stone-700" role="status">
               {prerequisite.message}
             </p>
-          ) : null}
+          ) : (
+            <p
+              className="mt-2 text-xs leading-relaxed text-stone-700"
+              data-testid="production-repeat-question"
+            >
+              Chcesz powtórzyć?
+            </p>
+          )}
           {canPublishCompletion && !communityCardDismissed ? (
             <aside
               className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-ink/8 pt-3"
@@ -595,30 +797,11 @@ export function ProductionCockpit({
     production.plannedScore?.score != null &&
     score.score != null &&
     score.score < production.plannedScore.score;
-  const decisionOptions = [
-    {
-      id: 'keep_original_batch',
-      title: `Zachowaj ${formatPhysicalMassG(progress.currentPlanMassG)} g`,
-      explanation:
-        'Dostosujemy ilości, których jeszcze nie dodano. Potwierdzonych ilości nie odejmiemy.',
-    },
-    {
-      id: 'enlarge_batch',
-      title: 'Zwiększ partię',
-      explanation: 'Znajdziemy najmniejszą większą partię i przeliczymy pozostałe ilości.',
-    },
-    {
-      id: 'restore_original_recipe',
-      title: 'Przywróć oryginalną recepturę',
-      explanation:
-        'Dodamy odpowiednie ilości wszystkich potrzebnych produktów, aby wrócić do wyjściowych proporcji.',
-    },
-    {
-      id: 'leave_as_is',
-      title: 'Kontynuuj bez korekty',
-      explanation: `Nie zmienimy dalszego planu${production.plannedScore?.score && score.score ? `. Przewidywany wynik: ${production.plannedScore.score} → ${score.score}.` : '.'}`,
-    },
-  ] as const;
+  const decisionOptions = productionDecisionOptions({
+    currentPlanMassG: progress.currentPlanMassG,
+    plannedScore: production.plannedScore?.score,
+    forecastScore: score.score,
+  });
   const everyDecisionUnavailable =
     rescue?.state === 'options' &&
     decisionOptions.every(
@@ -654,13 +837,18 @@ export function ProductionCockpit({
               : 'Zakończ ważenie bazy';
   const progressPercent =
     progress.totalCount > 0 ? (progress.confirmedCount / progress.totalCount) * 100 : 0;
+  const toppingPlanSteps = new Map(
+    preparationPlanForView(production).steps.flatMap((step) =>
+      step.kind === 'line' && step.scope === 'addon' ? [[step.lineId, step] as const] : [],
+    ),
+  );
 
   return (
     <div
       className="pro-scroll-safe space-y-3 p-3 text-ink xl:space-y-2.5 xl:p-0"
       data-testid="production-cockpit"
     >
-      <MachineOperationCard production={production} />
+      <PreparationPlanCard production={production} />
       {production.persistenceError ? (
         <p
           className="rounded-[12px] border border-status-error/25 bg-status-error/[0.04] px-3 py-2 text-xs leading-relaxed text-status-error"
@@ -841,11 +1029,7 @@ export function ProductionCockpit({
                     <span className="min-w-0">
                       <span className="flex flex-wrap items-center gap-2">
                         <strong className="text-xs text-ink">
-                          {preview && option.id === 'enlarge_batch'
-                            ? `Zwiększ partię do ${formatPhysicalMassG(preview.finalMassG)} g`
-                            : preview && option.id === 'restore_original_recipe'
-                              ? `Przywróć oryginalną recepturę · ${formatPhysicalMassG(preview.finalMassG)} g`
-                              : option.title}
+                          {productionDecisionTitle(option, preview ? preview.finalMassG : null)}
                         </strong>
                         {recommended ? (
                           <span className="rounded-md border border-[#d9c49a] bg-[#efe8dc] px-1.5 py-0.5 text-[9px] font-semibold tracking-[0.04em] text-[#765224] uppercase">
@@ -859,11 +1043,11 @@ export function ProductionCockpit({
                         ) : null}
                       </span>
                       <span className="mt-1 block text-[11px] leading-relaxed text-stone-600">
-                        {option.id === 'leave_as_is' &&
-                        production.plannedScore?.score &&
-                        previewScore
-                          ? `Nie zmienimy dalszego planu. Przewidywany wynik: ${production.plannedScore.score} → ${previewScore}.`
-                          : option.explanation}
+                        {productionDecisionExplanation(
+                          option,
+                          production.plannedScore?.score,
+                          previewScore,
+                        )}
                       </span>
                     </span>
                     {preview ? (
@@ -1078,6 +1262,7 @@ export function ProductionCockpit({
           </div>
           <div className="divide-y divide-ink/8 px-3 py-1">
             {session.addonLines.map((line) => {
+              const planStep = toppingPlanSteps.get(line.lineId);
               const value = line.confirmed ? line.physicalAddedGrams : line.draftActualGrams;
               const difference = value - line.plannedGrams;
               const plannedTopping = session.plannedComposition.toppings.find(
@@ -1117,6 +1302,17 @@ export function ProductionCockpit({
                       </strong>
                     </span>
                   </div>
+                  {planStep ? (
+                    <p
+                      className="-mt-1 mb-2 text-[11px] font-medium text-ink"
+                      data-testid={`production-topping-instruction-${line.lineId}`}
+                    >
+                      {planStep.instruction}
+                      {planStep.note ? (
+                        <span className="block font-normal text-stone-500">{planStep.note}</span>
+                      ) : null}
+                    </p>
+                  ) : null}
                   <ProductionActualControl
                     lineId={line.lineId}
                     ingredientName={`${line.name} — topping`}

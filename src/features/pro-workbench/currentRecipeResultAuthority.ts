@@ -65,10 +65,18 @@ export function buildCurrentRecipeResultAuthority(
     toppings: input.toppings,
     snapshots: input.snapshots,
   });
+  const baseAuthority = buildRecipeBehaviorAuthority({
+    items: input.recipe.items,
+    snapshots: input.snapshots,
+  });
   const moduleGates = Object.fromEntries(
     CURRENT_RECIPE_RESULT_MODULES.map((module) => [
       module,
-      recipeBehaviorModuleGate(authority, module),
+      // MONITOR is the technical result of the Base formulation. A positive
+      // post-process addon must carry TOPPING authority and may contribute its
+      // frozen facts to Nutrition, Cost and Summary, but it deliberately has
+      // no MONITOR permission because it never enters the Base engine.
+      recipeBehaviorModuleGate(module === 'MONITOR' ? baseAuthority : authority, module),
     ]),
   ) as Record<CurrentRecipeResultModule, ProductBehaviorModuleGate>;
   const blockedModules = CURRENT_RECIPE_RESULT_MODULES.filter(

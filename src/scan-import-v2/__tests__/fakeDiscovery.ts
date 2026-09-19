@@ -51,6 +51,10 @@ export class FakeDiscovery implements DiscoveryPort {
   serverCatalogue = new Map<string, ExactCandidate>();
   provider = new Map<string, ProviderFacts>();
   secondProvider = new Map<string, SecondProviderFacts>();
+  /** Canonical server-session payload returned by the exact-EAN lookup. */
+  serverResult = new Map<string, ScanResultLike>();
+  /** Deterministic family derived by the fake server from that automatic payload. */
+  automaticFamily = new Map<string, CustomerFamily>();
   clock = 1_000;
   providerError: 'provider_timeout' | 'provider_failed' | 'provider_unavailable' | null = null;
   label = new Map<string, LabelFacts>();
@@ -95,8 +99,16 @@ export class FakeDiscovery implements DiscoveryPort {
     const s = this.session(identity);
     if (this.providerError)
       return { kind: 'researched', session: s, evidenceError: this.providerError };
+    const canonical = this.serverResult.get(identity.canonicalGtin13);
+    if (canonical) {
+      s.result = structuredClone(canonical);
+      s.usage = {
+        ...s.usage,
+        webCalls: Math.max(1, canonical.externalSources?.length ?? 0),
+      };
+    }
     const p = this.provider.get(identity.canonicalGtin13);
-    if (p) {
+    if (p && !canonical) {
       const src = p.sourceType ?? 'manufacturer';
       const fields = ['identity.displayName', 'identity.brand', 'identity.countryOfOrigin'].filter(
         (f) =>
@@ -202,16 +214,30 @@ export class FakeDiscovery implements DiscoveryPort {
     this.calls.push(`finalize:${session.identity.canonicalGtin13}`);
     this.finalizeInputs.push(input);
     const s = this.session(session.identity);
-    // customer-entered plain fields (finalize confirmations.productFields), as the server's corrections apply them
+    // Exact-registry evidence fills gaps first; it is deliberately separate from user confirmation.
+    const automatic = (input.automaticEvidence?.productFields ?? {}) as Record<string, unknown>;
     const pf = (input.confirmations?.productFields ?? {}) as Record<string, unknown>;
+    const automaticIdentity = (automatic['identity'] ?? {}) as Record<string, unknown>;
+    const automaticNutrition = (automatic['nutrition'] ?? {}) as Record<string, unknown>;
     const pfIdentity = (pf['identity'] ?? {}) as Record<string, unknown>;
     const pfNutrition = (pf['nutrition'] ?? {}) as Record<string, unknown>;
-    if (Object.keys(pf).length > 0) {
+    const pfDeclarations = (pf['productionDeclarations'] ?? {}) as Record<string, unknown>;
+    if (Object.keys(automatic).length > 0 || Object.keys(pf).length > 0) {
       const prior = s.result ?? {};
+      const priorNutrition = prior.nutrition ?? {};
+      const missingAutomaticNutrition = Object.fromEntries(
+        Object.entries(automaticNutrition).filter(([key]) => priorNutrition[key] == null),
+      );
       s.result = {
         ...prior,
         identity: {
           ...(prior.identity ?? {}),
+          ...(!prior.identity?.displayName && typeof automaticIdentity['displayName'] === 'string'
+            ? { displayName: automaticIdentity['displayName'] as string }
+            : {}),
+          ...(!prior.identity?.brand && typeof automaticIdentity['brand'] === 'string'
+            ? { brand: automaticIdentity['brand'] as string }
+            : {}),
           ...(typeof pfIdentity['displayName'] === 'string'
             ? { displayName: pfIdentity['displayName'] as string }
             : {}),
@@ -220,20 +246,30 @@ export class FakeDiscovery implements DiscoveryPort {
             : {}),
         },
         nutrition: {
-          ...(prior.nutrition ?? {}),
+          ...priorNutrition,
+          ...missingAutomaticNutrition,
           ...(typeof pfNutrition['energyKcal'] === 'number'
             ? { energyKcal: pfNutrition['energyKcal'] as number }
             : {}),
         },
+        productionDeclarations: {
+          ...((prior as Record<string, unknown>)['productionDeclarations'] as
+            | Record<string, unknown>
+            | undefined),
+          ...pfDeclarations,
+        },
         ingredientsText:
           typeof pf['ingredientsText'] === 'string'
             ? (pf['ingredientsText'] as string)
-            : (prior.ingredientsText ?? null),
+            : (prior.ingredientsText ??
+              (typeof automatic['ingredientsText'] === 'string'
+                ? (automatic['ingredientsText'] as string)
+                : null)),
       };
       s.missingCritical = missingOf(s.result);
     }
     if (!s.result?.identity?.displayName) return { kind: 'identity_required' };
-    if (!input.customerFamily)
+    if (!input.customerFamily && !this.automaticFamily.has(session.identity.canonicalGtin13))
       return {
         kind: 'family_confirmation_required',
         options: [
@@ -247,11 +283,22 @@ export class FakeDiscovery implements DiscoveryPort {
         ] satisfies CustomerFamily[],
       };
     const missing = missingOf(s.result);
+    const declarations = ((s.result as Record<string, unknown> | null)?.[
+      'productionDeclarations'
+    ] ?? {}) as Record<string, unknown>;
+    const answeredMassBalance =
+      typeof declarations['totalSolidsPercent'] === 'number' ||
+      typeof declarations['waterPercent'] === 'number';
+    const authorityMissing = (
+      this.notReadyMissing.get(session.identity.canonicalGtin13) ?? []
+    ).filter(
+      (field) => !(answeredMassBalance && /MISSING_(TOTAL_SOLIDS|WATER)_PERCENT/i.test(field)),
+    );
     // the completion form is offered first; only an explicit save_unverified persists an unready one
-    if (missing.length > 0 && saveUnverified !== true)
+    if ((missing.length > 0 || authorityMissing.length > 0) && saveUnverified !== true)
       return {
         kind: 'not_ready',
-        missingCritical: this.notReadyMissing.get(session.identity.canonicalGtin13) ?? missing,
+        missingCritical: authorityMissing.length > 0 ? authorityMissing : missing,
         reasons: this.notReadyReasons.get(session.identity.canonicalGtin13) ?? [
           'critical_fields_missing',
         ],
@@ -267,7 +314,10 @@ export class FakeDiscovery implements DiscoveryPort {
     */
     // productionReady keeps the pre-existing seam (`authorityEngineUsable`, default false) so the
     // legacy lifecycle tests are unchanged; a test opts in to a ready product exactly as before.
-    const productionReady = missing.length === 0 && (this.authorityEngineUsable.get(gtin) ?? false);
+    const productionReady =
+      missing.length === 0 &&
+      authorityMissing.length === 0 &&
+      (this.authorityEngineUsable.get(gtin) ?? false);
     const finalConfidence = this.confidence.get(gtin) ?? (productionReady ? 90 : 40);
     const route: FinalRoute =
       productionReady && finalConfidence > 85

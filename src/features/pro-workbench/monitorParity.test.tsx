@@ -336,7 +336,7 @@ describe('professional Monitor acceptance contract', () => {
       <ProfessionalMonitorModules modules={current} previewModules={preview} />,
     );
     expect(previewHtml).toContain('data-testid="monitor-scale-freezing-preview"');
-    expect(previewHtml).toContain('border-[#f58a07]');
+    expect(previewHtml).toContain('border-[var(--g-orange)]');
   });
 
   it('renders honest no-evaluation scales for incomplete input without hiding modules', () => {

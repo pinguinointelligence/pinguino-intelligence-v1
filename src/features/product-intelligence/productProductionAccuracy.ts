@@ -15,6 +15,7 @@ import type {
 } from './productEvidenceConfidence.ts';
 import {
   WORKING_NUMERIC_FIELDS,
+  type CohortEvidence,
   type FieldBasis,
   type FieldTruthState,
   type ProductFieldTruthMap,
@@ -25,7 +26,7 @@ import type {
   ProductIntendedUsageRole,
   ProductSemanticClassification,
 } from './productRecognition.ts';
-import type { SweetnessPath } from './productWorkingValues.ts';
+import { estimatedFieldIsEngineSafe, type SweetnessPath } from './productWorkingValues.ts';
 import { PROFILE_MATCH_FLOOR } from './mapperValueInference.ts';
 
 export const PRODUCT_PRODUCTION_ACCURACY_VERSION = 'PRODUCT_PRODUCTION_ACCURACY_V2' as const;
@@ -49,6 +50,9 @@ export interface ProductionAccuracyFieldTruth {
   value: number;
   state: FieldTruthState;
   basis: FieldBasis;
+  confidence?: number;
+  algorithmVersion?: string | null;
+  cohort?: CohortEvidence | null;
 }
 
 export interface ProductProductionAccuracyBehavior {
@@ -70,8 +74,8 @@ export interface ProductProductionAccuracyInput {
   evidence: ProductEvidenceInput;
   evidenceProvenance?: Partial<Record<ProductEvidenceField, ProductionAccuracyEvidenceProvenance>>;
   fieldTruth: Partial<Record<WorkingNumericField, ProductionAccuracyFieldTruth>>;
-  /** Server-selected compatible whole-profile donor confidence. Per-field
-   * cohort estimates do not earn the 80% credit without this >=0.85 gate. */
+  /** Server-selected compatible whole-profile donor confidence. Retained for
+   * legacy field-truth payloads; current estimates carry their own confidence. */
   mapperWholeProfileSimilarity: number | null;
   recognition: ProductSemanticClassification | null;
   engineUsable: boolean;
@@ -240,11 +244,21 @@ function truthCredit(input: ProductProductionAccuracyInput, field: WorkingNumeri
   if (fieldHasConflict(input, field)) return 0;
   const truth = input.fieldTruth[field];
   if (!truth || !Number.isFinite(truth.value) || truth.state === 'UNKNOWN') return 0;
-  return truth.state === 'ESTIMATED'
-    ? (input.mapperWholeProfileSimilarity ?? 0) >= PROFILE_MATCH_FLOOR
+  if (truth.state !== 'ESTIMATED') return 1;
+  if (typeof truth.confidence === 'number' && Number.isFinite(truth.confidence)) {
+    return estimatedFieldIsEngineSafe({
+      field,
+      confidence: truth.confidence,
+      algorithmVersion: truth.algorithmVersion,
+      cohort: truth.cohort,
+      mapperWholeProfileSimilarity: input.mapperWholeProfileSimilarity,
+    })
       ? 0.8
-      : 0
-    : 1;
+      : 0;
+  }
+  // Historical persisted snapshots predate field-level confidence. Preserve
+  // their existing whole-profile rule rather than silently reclassifying them.
+  return (input.mapperWholeProfileSimilarity ?? 0) >= PROFILE_MATCH_FLOOR ? 0.8 : 0;
 }
 
 const component = (earnedPoints: number, availablePoints: number): ProductionAccuracyComponent => ({
@@ -332,7 +346,15 @@ export function assessProductProductionAccuracy(
   for (const [field, weight] of nutritionWeights) addTruth('nutrition', field, weight);
 
   const role = recognition?.intendedUsageRole ?? input.behavior.intendedUsageRole;
-  const toppingOnly = role === 'TOPPING_ONLY';
+  const semanticsResolved =
+    recognition != null &&
+    recognition.modelRequired === false &&
+    recognition.productArchetype !== 'UNKNOWN' &&
+    recognition.ingredientFamily !== 'unknown' &&
+    recognition.physicalForm !== 'UNKNOWN' &&
+    role !== 'NEITHER_REVIEW';
+  const toppingOnly = semanticsResolved && role === 'TOPPING_ONLY';
+  const baseRequirementsApplicable = semanticsResolved && !toppingOnly;
 
   // Engine physics — 25. For a true topping, base-freezing physics is outside
   // the accepted role and therefore not a missing requirement.
@@ -428,13 +450,22 @@ export function assessProductProductionAccuracy(
       ? input.behavior.toppingEligible
       : input.behavior.baseRecipeEligible &&
         (role !== 'BASE_AND_TOPPING' || input.behavior.toppingEligible));
+  // A binding can be mechanically classified while still declaring that its family/form or Main
+  // policy is unknown. It may remain usable under the existing readiness authority, but it is not
+  // entitled to the full ProductBehavior confidence used by shared-publication routing.
+  const weakBehaviorAuthority = input.behavior.classificationReasonCodes.some((reason) =>
+    /UNKNOWN_REQUIRES_EVIDENCE|family_and_form_evidence_missing|MAIN_BLOCKED_POLICY|BLOCKED_DATA/i.test(
+      reason,
+    ),
+  );
   const behaviorWithheldOnlyByPhysics =
     input.behavior.classificationOutcome === 'unknown_requires_review' &&
     input.behavior.classificationReasonCodes.length > 0 &&
     input.behavior.classificationReasonCodes.every((reason) =>
       input.criticalPhysicsBlockers.includes(reason),
     );
-  componentEarned.productBehavior += acceptedForRole || behaviorWithheldOnlyByPhysics ? 4 : 0;
+  componentEarned.productBehavior +=
+    (acceptedForRole || behaviorWithheldOnlyByPhysics) && !weakBehaviorAuthority ? 4 : 0;
   const dosageRequired =
     recognition?.isTechnicalProduct === true || recognition?.isDosageDependent === true;
   const dosage = input.behavior.dosageInterpretation ?? recognition?.dosage ?? null;
@@ -490,17 +521,19 @@ export function assessProductProductionAccuracy(
     'protein_percent',
     'carbohydrate_percent',
     'total_sugars_percent',
-    'salt_percent',
-    'kcal_per_100g',
   ] as const satisfies readonly WorkingNumericField[]) {
     if (truthCredit(input, field) === 0) {
       criticalBlockers.add(`NUTRITION_FACT_REQUIRED:${field}`);
     }
   }
-  if (dosageRequired && !dosageResolved) {
+  if (semanticsResolved && dosageRequired && !dosageResolved) {
     criticalBlockers.add('TECHNICAL_DOSAGE_AUTHORITY_REQUIRED');
   }
-  if (recognition?.isTechnicalProduct && input.behavior.classificationOutcome !== 'classified') {
+  if (
+    semanticsResolved &&
+    recognition?.isTechnicalProduct &&
+    input.behavior.classificationOutcome !== 'classified'
+  ) {
     criticalBlockers.add('TECHNICAL_DOSAGE_AUTHORITY_REQUIRED');
   }
   if (toppingOnly) {
@@ -511,9 +544,11 @@ export function assessProductProductionAccuracy(
       }
     }
   } else {
-    for (const blocker of input.criticalPhysicsBlockers) criticalBlockers.add(blocker);
-    if (!input.engineUsable && input.criticalPhysicsBlockers.length === 0) {
-      criticalBlockers.add('PRODUCT_ENGINE_NOT_READY');
+    if (baseRequirementsApplicable) {
+      for (const blocker of input.criticalPhysicsBlockers) criticalBlockers.add(blocker);
+      if (!input.engineUsable && input.criticalPhysicsBlockers.length === 0) {
+        criticalBlockers.add('PRODUCT_ENGINE_NOT_READY');
+      }
     }
     if (!acceptedForRole) {
       for (const reason of input.behavior.classificationReasonCodes) criticalBlockers.add(reason);
@@ -553,7 +588,7 @@ export function assessProductProductionAccuracy(
   const criticalCapApplied = false;
   const productAccuracy = rawProductAccuracy;
   const baseEngineReady =
-    !toppingOnly &&
+    baseRequirementsApplicable &&
     input.engineUsable &&
     input.behavior.baseRecipeEligible &&
     blockerList.length === 0;

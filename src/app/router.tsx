@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes, useLocation, useParams } from 'react-router';
-import { legacyDestinationRedirectTo } from './redirectState';
+import { CUSTOMER_HOME_PATH, legacyDestinationRedirectTo } from './redirectState';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { MapperBatch6Page } from '@/pages/dev/MapperBatch6Page';
 import { MapperReviewPage } from '@/pages/dev/MapperReviewPage';
@@ -19,6 +19,7 @@ import { IngredientResolutionDevPage } from '@/pages/dev/IngredientResolutionDev
 import { ProCoreRecipesDevPage } from '@/pages/dev/ProCoreRecipesDevPage';
 import { ProCoreProductionDevPage } from '@/pages/dev/ProCoreProductionDevPage';
 import { ProCoreCostsDevPage } from '@/pages/dev/ProCoreCostsDevPage';
+import { MapperSearchAcceptancePage } from '@/pages/dev/MapperSearchAcceptancePage';
 import { buildRealIntakeWiring } from '@/features/ocr-intake/ui/intakeWiring';
 import { ReferenceProposalsPage } from '@/pages/dev/ReferenceProposalsPage';
 import { SpineStatusPage } from '@/pages/dev/SpineStatusPage';
@@ -84,7 +85,9 @@ export function LegacyStudioRedirect() {
   return <Navigate to={studioRedirectTo(location.search, location.hash)} replace />;
 }
 
-/** Preserve recipe/session query state while consolidating a legacy destination. */
+/** Preserve recipe/session query state — and the navigation state, e.g. a label
+ * screen's return route (`labelSettingsReturn` on `/label`) — while consolidating
+ * a legacy destination. */
 export function LegacyDestinationRedirect({
   pathname,
   forcedSearch,
@@ -96,6 +99,7 @@ export function LegacyDestinationRedirect({
   return (
     <Navigate
       to={legacyDestinationRedirectTo(pathname, location.search, forcedSearch, location.hash)}
+      state={location.state}
       replace
     />
   );
@@ -124,11 +128,21 @@ export function AppRoutes() {
   return (
     <Routes>
       {/* HOME Creator V1 §9 (owner, 2026-08-30): the public root IS the HOME Creator —
-          no marketing landing page before the product. `/start` still serves the
-          earlier customer shell so existing links keep their meaning. */}
+          no marketing landing page before the product. UNCHANGED.
+
+          Owner decision (2026-09-18): `/start` is no longer a separate flow. It used
+          to mount `CustomerShellV1` as a second, independent customer entrypoint; it
+          now redirects into the canonical `/home`, and the shell is off the route
+          table entirely. The file stays in the tree — a dead-code sweep is its own
+          change, once no imports remain. */}
       <Route path="/" element={<RoleAwareEntryRoute entry="root" />} />
-      <Route path="/start" element={<RoleAwareEntryRoute entry="start" />} />
+      {/* The literal is deliberate: `homeEndToEndClosure.test.ts` (HOME-E2E-37)
+          reads THIS FILE as text and requires `path="/home` to be visible, so a
+          `{CUSTOMER_HOME_PATH}` expression here would silently drop the HOME
+          route from that contract. The constant still names every redirect
+          TARGET below, where its job is to keep the aliases in one place. */}
       <Route path="/home" element={<RoleAwareEntryRoute entry="home" />} />
+      <Route path="/start" element={<LegacyDestinationRedirect pathname={CUSTOMER_HOME_PATH} />} />
       <Route path="/how-it-works" element={<HowItWorksPage />} />
       <Route path="/shop" element={<ShopPage />} />
       {/* The 0 EUR Local pack is its own ROUTE so the intent survives auth and
@@ -142,12 +156,13 @@ export function AppRoutes() {
       <Route path="/mobile" element={<MobileEquipmentPage />} />
       <Route path="/trailer" element={<TrailerPage />} />
       {/* Owner decision (2026-07-17): retire the legacy dark AI-chat Home — „no page
-          may look legacy”. /classic now redirects into the light flow, like /demo.
-          The HomePage component is kept in the tree, just unrouted. */}
-      <Route path="/classic" element={<LegacyDestinationRedirect pathname="/start" />} />
+          may look legacy”. The HomePage component is kept in the tree, just unrouted.
+          These aliases pointed at `/start`; they now name the canonical `/home`
+          directly, so no alias hops through a retired address. */}
+      <Route path="/classic" element={<LegacyDestinationRedirect pathname={CUSTOMER_HOME_PATH} />} />
       {/* Legacy /demo entry pointed at the flow → keep old links/bookmarks landing
           in the flow, not on the marketing page. */}
-      <Route path="/demo" element={<LegacyDestinationRedirect pathname="/start" />} />
+      <Route path="/demo" element={<LegacyDestinationRedirect pathname={CUSTOMER_HOME_PATH} />} />
       {/* PINGÜINO Pro — the ONE canonical professional workspace (owner P0, 2026-07-22).
           /pro = workspace root (shows the recipe editor); /pro/<section> = stable section URLs
           (recipe/monitor/versions/production/history/costs/exports/settings — direct link +
@@ -303,12 +318,16 @@ export function AppRoutes() {
       )}
 
       {/* Legacy customer-shell preview path → the flow's new canonical /start. */}
-      <Route path="/customer-v1" element={<LegacyDestinationRedirect pathname="/start" />} />
+      <Route
+        path="/customer-v1"
+        element={<LegacyDestinationRedirect pathname={CUSTOMER_HOME_PATH} />}
+      />
 
       {/* DEV-ONLY internal tools — registered only in a dev build, never linked in nav.
           In production import.meta.env.DEV is false, so the route is never created and
           MapperSmokePage is dead-code-eliminated from the bundle. */}
       {import.meta.env.DEV && <Route path="/dev/mapper-smoke" element={<MapperSmokePage />} />}
+      <Route path="/qa/mapper-search-acceptance" element={<MapperSearchAcceptancePage />} />
       {/* Scan Import 2.0 QA harness: dev, or staging with VITE_SCAN_IMPORT_LAB=1. Never HOME. */}
       {(import.meta.env.DEV || import.meta.env.VITE_SCAN_IMPORT_LAB === '1') && (
         <Route path="/dev/scan-import-v2" element={<ScanImportV2LabPage />} />

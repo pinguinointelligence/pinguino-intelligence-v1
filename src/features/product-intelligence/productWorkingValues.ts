@@ -10,9 +10,9 @@
  * number was measured or estimated. The difference lives in the provenance
  * carried alongside each field, never in whether the field works.
  *
- * Readiness is decided here too, and it is decided from the SAME nine fields the
- * Mapper already calls engine-required — so an imported product and a Mapper row
- * are held to one standard, not two.
+ * Readiness is decided here too, and it is decided from the SAME working-field
+ * truth the resolver returns — so an imported product and a Mapper row are held
+ * to one standard, not two.
  *
  * Pure and deterministic: no DB, no network, no AI, no clock.
  */
@@ -25,17 +25,26 @@ import {
   findProfileMatch,
   inferMapperValues,
   profileFieldValue,
-  residualSolidsEstimate,
+  rescueMassBalanceFromCohort,
+  rescueSugarSpectrumFromCohort,
+  MASS_BALANCE_RESCUE_POLICY,
+  MAPPER_FIELD_RESCUE_ALGORITHM_VERSION,
   PROFILE_MATCH_FLOOR,
+  SUGAR_SPECTRUM_RESCUE_ALGORITHM_VERSION,
+  SUGAR_SPECTRUM_RESCUE_POLICY,
+  TARGET_AWARE_SUGAR_SPECTRUM_FIELDS,
   type ProfileMatch,
   type MapperInferenceInput,
   type MapperInferenceTier,
   type MapperKnowledge,
+  type RescueTargetIdentityEvidence,
 } from './mapperValueInference.ts';
 import {
   applyFieldTruth,
   emptyFieldTruthMap,
   knownField,
+  MAPPER_FIRST_ALGORITHM_VERSION,
+  unknownField,
   WORKING_NUMERIC_FIELDS,
   workingValues,
   type FieldTruth,
@@ -65,7 +74,6 @@ export const ENGINE_COMPOSITION_FIELDS = [
   'protein_percent',
   'carbohydrate_percent',
   'total_sugars_percent',
-  'salt_percent',
 ] as const satisfies readonly WorkingNumericField[];
 
 /**
@@ -95,6 +103,47 @@ export const MAPPER_CURATION_FIELDS: readonly WorkingNumericField[] =
 
 /** Confidence at or above which an estimated product is fit to work with. */
 export const ESTIMATED_READY_FLOOR = 0.85;
+
+/** Distinguishes an accepted whole-vector authority from independent cohort
+ * estimates. The latter cannot borrow the whole profile's 0.85 decision. */
+export const MAPPER_WHOLE_PROFILE_ALGORITHM_VERSION = MAPPER_FIRST_ALGORITHM_VERSION;
+
+/**
+ * Engine admission floors are field-specific. The historical 0.85 profile
+ * floor remains the whole-vector rule; it is not reused as a proxy for every
+ * independently estimated field.
+ */
+export const ENGINE_ESTIMATE_READY_FLOORS: Readonly<Partial<Record<WorkingNumericField, number>>> =
+  Object.freeze({
+    water_percent: MASS_BALANCE_RESCUE_POLICY.readyConfidenceFloor,
+    total_solids_percent: MASS_BALANCE_RESCUE_POLICY.readyConfidenceFloor,
+    // Global leave-one-row-out showed false-confidence cases at every attainable
+    // cohort tier (whose maximum is 0.95). A 0.96 sentinel therefore keeps these
+    // label/specification fields out of Engine admission unless an accepted whole
+    // profile supplies them. This is fail-closed, not a claim of 96% probability.
+    fat_percent: 0.96,
+    protein_percent: 0.96,
+    carbohydrate_percent: 0.96,
+    total_sugars_percent: 0.96,
+    salt_percent: 0.96,
+  });
+
+export function estimatedFieldIsEngineSafe(input: {
+  field: WorkingNumericField;
+  confidence: number;
+  algorithmVersion: string | null | undefined;
+  cohort?: FieldTruth['provenance']['cohort'];
+  mapperWholeProfileSimilarity: number | null;
+}): boolean {
+  if (input.algorithmVersion === MAPPER_WHOLE_PROFILE_ALGORITHM_VERSION && input.cohort == null) {
+    return (
+      input.mapperWholeProfileSimilarity !== null &&
+      input.mapperWholeProfileSimilarity >= PROFILE_MATCH_FLOOR &&
+      input.confidence >= PROFILE_MATCH_FLOOR
+    );
+  }
+  return input.confidence >= (ENGINE_ESTIMATE_READY_FLOORS[input.field] ?? 0.96);
+}
 
 /**
  * How far a declared value may sit from the Mapper's expectation before the
@@ -134,12 +183,31 @@ export interface EstimateConflict {
   delta: number;
 }
 
+/** Canonical Scanner conflict carried intact to the working-value authority.
+ * `state` is derived from the Scanner's retained source; unresolved conflicts
+ * never lend either observation to Mapper inference. */
+export interface ProductMaterialConflictContext {
+  field: string;
+  labelValue: string | number | null;
+  externalValue: string | number | null;
+  retainedSource: string | null;
+  state: 'UNRESOLVED' | 'RESOLVED';
+  canonicalValue: string | number | null;
+}
+
 export interface ProductWorkingValuesInput {
   /** Values the product itself declares. Absent/null means not declared. */
   declared: Partial<Record<WorkingNumericField, number | null>>;
   /** Per-field declaration provenance. Scanner/manual completion uses
    * `user_confirmed`; import/label declarations keep `product_declared`. */
-  declaredBasis?: Partial<Record<WorkingNumericField, 'product_declared' | 'user_confirmed'>>;
+  /*
+    `derived` is here for a value computed from this product's OWN exact declaration — the sugar
+    spectrum closed from an exact total and a single named caloric sugar. It ranks below
+    product_declared, which is right: it is arithmetic on a declaration, not a declaration.
+  */
+  declaredBasis?: Partial<
+    Record<WorkingNumericField, 'product_declared' | 'user_confirmed' | 'derived'>
+  >;
   /**
    * Confidence the declaration earns from its source (§9 source authority).
    * A manufacturer datasheet and a random blog do not declare equally.
@@ -160,6 +228,38 @@ export interface ProductWorkingValuesInput {
    * product's dosage is unproven, and it never withholds anything.
    */
   technicalAuthority?: boolean;
+  /** Exact product-owned facts used only to authorize a missing field's Rescue.
+   * Numeric anchors still come from VERIFIED field truth. */
+  rescueTargetEvidence?: RescueTargetIdentityEvidence | null;
+  /** Structured canonical Scanner conflicts. The string summary used by
+   * Product Accuracy is intentionally not used as a substitute here. */
+  materialConflictDetails?: readonly ProductMaterialConflictContext[];
+}
+
+/** Whole-run result for the Mapper Rescue authority. Field-level provenance
+ * remains the source of numeric detail; this status answers whether Rescue
+ * ran and what it accomplished without making downstream infer that from gaps.
+ */
+export type MapperRescueOutcomeStatus =
+  | 'NOT_RUN'
+  | 'NO_SAFE_RESULT'
+  | 'PARTIAL'
+  | 'SUCCESS'
+  | 'BLOCKED';
+
+export interface MapperRescueOutcome {
+  status: MapperRescueOutcomeStatus;
+  attempted: boolean;
+  resolvedFields: WorkingNumericField[];
+  unresolvedFields: WorkingNumericField[];
+  reasonCodes: string[];
+}
+
+export interface ProductWorkingValuesResolutionOptions {
+  /** Whole-profile publication/runtime authority may use a narrower universe
+   * than field Rescue. Keeping it separate prevents donor provenance from
+   * becoming a field-Rescue gate. */
+  wholeProfileKnowledge?: MapperKnowledge;
 }
 
 export interface ProductWorkingValues {
@@ -173,11 +273,15 @@ export interface ProductWorkingValues {
    * absent. It never gates use — process and dosage describe handling, not
    * composition. */
   technicalAuthorityRequired: boolean;
-  /** Weakest confidence across the engine-required nine, or null if any missing. */
+  /** Weakest confidence across the fields required by the readiness verdict. */
   engineConfidence: number | null;
   engineReady: boolean;
   /** Engine-required fields still holding no value. */
   missingEngineFields: WorkingNumericField[];
+  /** Exact field-level reasons after every automatic path was exhausted. */
+  unresolvedEngineFieldReasons: Partial<Record<WorkingNumericField, string[]>>;
+  /** Explicit whole-run Mapper Rescue result; never inferred downstream. */
+  rescueOutcome: MapperRescueOutcome;
   /** How POD/PAC can be resolved for this product — Engine-derived, not stored. */
   sweetnessPath: SweetnessPath;
   /** Canonical blockers derived from the same Engine requirements and
@@ -192,6 +296,8 @@ export interface ProductWorkingValues {
   mapperReferences: string[];
   /** Declared values the Mapper strongly disagrees with. Declaration still wins. */
   conflicts: EstimateConflict[];
+  /** Exact Scanner conflicts received by this resolver. */
+  materialConflictDetails: ProductMaterialConflictContext[];
   /** Joint impossibilities found in the assembled product. */
   plausibilityViolations: PlausibilityViolation[];
   /**
@@ -201,6 +307,17 @@ export interface ProductWorkingValues {
   contradictedByDeclaration: boolean;
   trace: string[];
 }
+
+const semanticRequirementsResolved = (
+  semantic: ProductWorkingValuesInput['identity']['semantic'],
+): semantic is NonNullable<ProductWorkingValuesInput['identity']['semantic']> =>
+  semantic !== null &&
+  semantic !== undefined &&
+  semantic.modelRequired === false &&
+  semantic.productArchetype !== 'UNKNOWN' &&
+  semantic.ingredientFamily !== 'unknown' &&
+  semantic.physicalForm !== 'UNKNOWN' &&
+  semantic.intendedUsageRole !== 'NEITHER_REVIEW';
 
 export type SweetnessPathKind =
   | 'stored'
@@ -280,6 +397,32 @@ export function sweetnessPathOf(
         kind: 'sugar_spectrum',
         resolved: true,
         reason: `Zweryfikowane widmo cukrow pokrywa ${named.toFixed(1)} z ${sugars.toFixed(1)} g`,
+      };
+    }
+  }
+  const acceptedRescueSpectrum = TARGET_AWARE_SUGAR_SPECTRUM_FIELDS.map((field) => fields[field]);
+  const rescueSpectrumAccepted = acceptedRescueSpectrum.every(
+    (truth) =>
+      truth.value !== null &&
+      (truth.provenance.state === 'VERIFIED' ||
+        (truth.provenance.state === 'ESTIMATED' &&
+          truth.provenance.algorithmVersion === SUGAR_SPECTRUM_RESCUE_ALGORITHM_VERSION &&
+          truth.provenance.confidence >= SUGAR_SPECTRUM_RESCUE_POLICY.readyConfidenceFloor)),
+  );
+  if (
+    sugars !== null &&
+    fields.total_sugars_percent.provenance.state === 'VERIFIED' &&
+    rescueSpectrumAccepted &&
+    (polyol ?? 0) === 0
+  ) {
+    const named = acceptedRescueSpectrum.reduce((total, truth) => total + (truth.value ?? 0), 0);
+    if (Math.abs(named - sugars) <= SUGAR_SPECTRUM_RESCUE_POLICY.targetClosureTolerance) {
+      return {
+        kind: 'sugar_spectrum',
+        resolved: true,
+        reason:
+          `bezpieczny Rescue widma pokrywa ${named.toFixed(1)} z ${sugars.toFixed(1)} g; ` +
+          `Engine wylicza POD/PAC z typow cukru`,
       };
     }
   }
@@ -377,6 +520,35 @@ const numeric = (value: number | null | undefined): number | null =>
 
 const round4 = (value: number): number => Math.round(value * 1e4) / 1e4;
 
+const WORKING_FIELD_BY_CONFLICT_PATH: Readonly<Partial<Record<string, WorkingNumericField>>> =
+  Object.freeze({
+    'nutrition.energyKj': 'kcal_per_100g',
+    'nutrition.energyKcal': 'kcal_per_100g',
+    'nutrition.fat': 'fat_percent',
+    'nutrition.protein': 'protein_percent',
+    'nutrition.carbohydrate': 'carbohydrate_percent',
+    'nutrition.sugars': 'total_sugars_percent',
+    'nutrition.fibre': 'fiber_percent',
+    'nutrition.salt': 'salt_percent',
+    'productionDeclarations.alcoholAbv': 'alcohol_percent',
+    'productionDeclarations.waterPercent': 'water_percent',
+    'productionDeclarations.totalSolidsPercent': 'total_solids_percent',
+  });
+
+const RESCUE_IDENTITY_CONFLICT_PATHS = new Set([
+  'identity.displayName',
+  'identity.originalName',
+  'identity.brand',
+  'identity.category',
+  'identity.subcategory',
+  'identity.variant',
+]);
+
+const materialConflictReason = (conflicts: readonly ProductMaterialConflictContext[]): string =>
+  [...new Set(conflicts.map((conflict) => `RESCUE_INPUT_MATERIAL_CONFLICT:${conflict.field}`))]
+    .sort()
+    .join(',');
+
 /**
  * Resolve one product's working values.
  *
@@ -388,13 +560,76 @@ const round4 = (value: number): number => Math.round(value * 1e4) / 1e4;
 export function resolveProductWorkingValues(
   input: ProductWorkingValuesInput,
   knowledge: MapperKnowledge,
+  options: ProductWorkingValuesResolutionOptions = {},
 ): ProductWorkingValues {
   let fields = emptyFieldTruthMap();
   const trace: string[] = [];
+  const materialConflictDetails = (input.materialConflictDetails ?? []).map((conflict) => ({
+    ...conflict,
+  }));
+  const unresolvedMaterialConflicts = materialConflictDetails.filter(
+    (conflict) => conflict.state === 'UNRESOLVED',
+  );
+  const materialConflictsByWorkingField = new Map<
+    WorkingNumericField,
+    ProductMaterialConflictContext[]
+  >();
+  for (const conflict of unresolvedMaterialConflicts) {
+    const field = WORKING_FIELD_BY_CONFLICT_PATH[conflict.field];
+    if (!field) continue;
+    const conflicts = materialConflictsByWorkingField.get(field) ?? [];
+    conflicts.push(conflict);
+    materialConflictsByWorkingField.set(field, conflicts);
+  }
+  const conflictedWorkingFields = new Set(materialConflictsByWorkingField.keys());
+  const mapperIdentityConflicted = unresolvedMaterialConflicts.some(
+    (conflict) =>
+      RESCUE_IDENTITY_CONFLICT_PATHS.has(conflict.field) ||
+      conflict.field === 'barcodes' ||
+      conflict.field.startsWith('barcodes.'),
+  );
+  const ingredientIdentityConflicted = unresolvedMaterialConflicts.some(
+    (conflict) => conflict.field === 'ingredientsText',
+  );
+  const rescueEvidenceConflicts = unresolvedMaterialConflicts.filter(
+    (conflict) =>
+      RESCUE_IDENTITY_CONFLICT_PATHS.has(conflict.field) ||
+      conflict.field === 'barcodes' ||
+      conflict.field.startsWith('barcodes.') ||
+      conflict.field === 'ingredientsText',
+  );
+  const rescueTargetEvidence = input.rescueTargetEvidence
+    ? {
+        ...input.rescueTargetEvidence,
+        exactProductIdentity:
+          input.rescueTargetEvidence.exactProductIdentity && !mapperIdentityConflicted,
+        ingredientOrCompositionIdentity:
+          input.rescueTargetEvidence.ingredientOrCompositionIdentity &&
+          !ingredientIdentityConflicted,
+      }
+    : input.rescueTargetEvidence;
+  const enforceUnresolvedMaterialConflicts = (
+    candidateFields: ProductFieldTruthMap,
+  ): ProductFieldTruthMap => {
+    let sanitized = candidateFields;
+    for (const [field, conflicts] of materialConflictsByWorkingField) {
+      sanitized = {
+        ...sanitized,
+        [field]: unknownField(materialConflictReason(conflicts)),
+      };
+    }
+    return sanitized;
+  };
+  if (materialConflictDetails.length > 0) {
+    trace.push(
+      `material_conflicts: ${unresolvedMaterialConflicts.length} unresolved / ${materialConflictDetails.length} total`,
+    );
+  }
 
   /* 1. what the product declares about itself — verified */
   let declaredCount = 0;
   for (const field of WORKING_NUMERIC_FIELDS) {
+    if (conflictedWorkingFields.has(field)) continue;
     const value = numeric(input.declared[field]);
     if (value === null) continue;
     fields = applyFieldTruth(
@@ -415,6 +650,7 @@ export function resolveProductWorkingValues(
   /* 2. an identity-confirmed source card — stronger than any estimate */
   let cardFields = 0;
   for (const [field, truth] of Object.entries(input.sourceCard?.fields ?? {})) {
+    if (conflictedWorkingFields.has(field as WorkingNumericField)) continue;
     fields = applyFieldTruth(fields, field as WorkingNumericField, truth);
     cardFields++;
   }
@@ -426,7 +662,15 @@ export function resolveProductWorkingValues(
   // Water and total solids are one formulation property. If exact evidence
   // establishes either side, derive its complement now so no Mapper donor can
   // independently supply a second, potentially inconsistent estimate.
-  fields = closeArithmetic(fields, trace);
+  fields = closeArithmetic(fields, trace, input.identity.semantic);
+  fields = enforceUnresolvedMaterialConflicts(fields);
+
+  // Rescue eligibility is the set of canonical working-field gaps that existed
+  // before any Mapper path ran. Product-owned declarations/cards and their
+  // deterministic closure are therefore never misclassified as Rescue output.
+  const rescueEligibleFields = WORKING_NUMERIC_FIELDS.filter(
+    (field) => fields[field].value === null,
+  );
 
   /* 3. Mapper knowledge fills the gaps — conditioned on what is already known */
   // Macros established by the label or an exact source card are the strongest
@@ -442,6 +686,7 @@ export function resolveProductWorkingValues(
   }
   const inference = inferMapperValues({ ...input.identity, knownMacros }, knowledge);
   for (const field of WORKING_NUMERIC_FIELDS) {
+    if (mapperIdentityConflicted || conflictedWorkingFields.has(field)) continue;
     const candidate = inference.fields[field];
     if (!candidate) continue;
     if (
@@ -460,6 +705,7 @@ export function resolveProductWorkingValues(
   // represented by a physical profile, not whether each number is independently
   // provable. A profile clearing the floor fills what is still missing at once,
   // as ESTIMATED. Nothing the product already states is touched.
+  const wholeProfileKnowledge = options.wholeProfileKnowledge ?? knowledge;
   const profileMatch = findProfileMatch(
     {
       name: input.identity.name,
@@ -472,11 +718,12 @@ export function resolveProductWorkingValues(
       technical: input.technical,
       semantic: input.identity.semantic,
     },
-    knowledge,
+    wholeProfileKnowledge,
   );
   if (profileMatch.confidence >= PROFILE_MATCH_FLOOR) {
     let filled = 0;
     for (const field of WORKING_NUMERIC_FIELDS) {
+      if (mapperIdentityConflicted || conflictedWorkingFields.has(field)) continue;
       // The accepted profile is the AUTHORITY for the formulation vector, so it
       // replaces per-field cohort estimates rather than merely filling their
       // gaps. Those medians are drawn field by field from different subsets, so
@@ -504,7 +751,8 @@ export function resolveProductWorkingValues(
           confidence: profileMatch.confidence,
           basis: 'mapper_similar_profile',
           mapperReferences: supplied.contributors,
-          mapperFingerprint: knowledge.fingerprint,
+          algorithmVersion: MAPPER_WHOLE_PROFILE_ALGORITHM_VERSION,
+          mapperFingerprint: wholeProfileKnowledge.fingerprint,
           note: `profil zgodny (${profileMatch.basis}, ${Math.round(profileMatch.confidence * 100)}%)`,
         }),
       };
@@ -519,58 +767,14 @@ export function resolveProductWorkingValues(
   }
 
   /* 4. arithmetic closure over what is now known */
-  fields = closeArithmetic(fields, trace);
-
-  /* 4b. solids from THIS product's own macros plus the cohort's unnamed residual */
-  if (
-    fields.total_solids_percent.value === null &&
-    fields.water_percent.value === null &&
-    inference.bestCohort
-  ) {
-    const majorFields = ['fat_percent', 'protein_percent', 'carbohydrate_percent'] as const;
-    const minorFields = ['fiber_percent', 'salt_percent'] as const;
-    // Only when the three that dominate dry matter are actually known.
-    if (majorFields.every((field) => fields[field].value !== null)) {
-      const namedSolids = [...majorFields, ...minorFields].reduce(
-        (total, field) => total + (fields[field].value ?? 0),
-        0,
-      );
-      const estimate = residualSolidsEstimate(
-        inference.bestCohort.rows,
-        namedSolids,
-        inference.bestCohort.minCohort,
-      );
-      if (estimate) {
-        const weakest = majorFields.reduce(
-          (min, field) => Math.min(min, fields[field].provenance.confidence),
-          1,
-        );
-        fields = applyFieldTruth(
-          fields,
-          'total_solids_percent',
-          knownField({
-            value: estimate.totalSolids,
-            state: 'ESTIMATED',
-            // Never stronger than the macros it was built from, and discounted
-            // again for the residual the cohort had to supply.
-            confidence: round4(weakest * 0.97),
-            basis: 'mapper_similar_profile',
-            mapperReferences: estimate.contributors,
-            mapperFingerprint: knowledge.fingerprint,
-            note: `sucha masa = makroskladniki ${round4(namedSolids)} + reszta niewymieniona ${estimate.residual} (${inference.bestCohort.label})`,
-          }),
-        );
-        trace.push(
-          `residual_solids: ${estimate.totalSolids} = ${round4(namedSolids)} + ${estimate.residual}`,
-        );
-        fields = closeArithmetic(fields, trace);
-      }
-    }
-  }
+  fields = closeArithmetic(fields, trace, input.identity.semantic);
+  fields = enforceUnresolvedMaterialConflicts(fields);
 
   /* 5. reject whatever the assembled product cannot jointly be */
-  const plausibility = validatePlausibility(fields);
+  let plausibility = validatePlausibility(fields);
   fields = plausibility.fields;
+  const plausibilityViolations = [...plausibility.violations];
+  let contradictedByDeclaration = plausibility.contradictedByDeclaration;
   for (const violation of plausibility.violations) {
     trace.push(
       `plausibility[${violation.rule}]: ${violation.detail}` +
@@ -580,7 +784,188 @@ export function resolveProductWorkingValues(
   // A withdrawal can open a gap that closure could legitimately fill again from
   // the values that survived, so closure runs once more over the cleaned set.
   if (plausibility.violations.some((violation) => violation.withdrawn.length > 0)) {
-    fields = closeArithmetic(fields, trace);
+    fields = closeArithmetic(fields, trace, input.identity.semantic);
+    fields = enforceUnresolvedMaterialConflicts(fields);
+  }
+
+  /* 5b. field-specific mass-balance Rescue after unsafe aggregate estimates
+   * have been withdrawn. A rejected whole profile is intentionally irrelevant:
+   * this asks only whether water/solids have their own coherent evidence. */
+  let massBalanceRescueReasons: string[] = [];
+  let sugarSpectrumCohort = inference.bestCohort?.rows ?? [];
+  const massBalanceConflict =
+    conflictedWorkingFields.has('water_percent') ||
+    conflictedWorkingFields.has('total_solids_percent');
+  if (massBalanceConflict) {
+    massBalanceRescueReasons = [
+      ...new Set(
+        ['water_percent', 'total_solids_percent'].flatMap((field) =>
+          materialConflictsByWorkingField.has(field as WorkingNumericField)
+            ? materialConflictReason(
+                materialConflictsByWorkingField.get(field as WorkingNumericField) ?? [],
+              ).split(',')
+            : [],
+        ),
+      ),
+    ];
+    trace.push(`field_rescue: blocked ${massBalanceRescueReasons.join(',')}`);
+  } else if (fields.total_solids_percent.value === null && fields.water_percent.value === null) {
+    const rescue = rescueMassBalanceFromCohort({
+      cohort: inference.bestCohort?.rows ?? [],
+      fields,
+      semantic: input.identity.semantic,
+      targetEvidence: rescueTargetEvidence,
+    });
+    massBalanceRescueReasons = [
+      ...new Set([
+        ...rescue.reasonCodes,
+        ...(rescue.resolved || rescueEvidenceConflicts.length === 0
+          ? []
+          : materialConflictReason(rescueEvidenceConflicts).split(',')),
+      ]),
+    ];
+    if (rescue.candidates.length > 0) {
+      const acceptedCandidateIds = new Set(
+        rescue.candidates.map((candidate) => candidate.ingredientId),
+      );
+      sugarSpectrumCohort = sugarSpectrumCohort.filter((row) =>
+        acceptedCandidateIds.has(row.ingredient_id),
+      );
+    }
+    if (rescue.resolved && rescue.totalSolids !== null && rescue.dispersion) {
+      fields = applyFieldTruth(
+        fields,
+        'total_solids_percent',
+        knownField({
+          value: rescue.totalSolids,
+          state: 'ESTIMATED',
+          confidence: rescue.confidence,
+          basis: 'mapper_similar_profile',
+          mapperReferences: rescue.candidates.map((candidate) => candidate.ingredientId),
+          algorithmVersion: MAPPER_FIELD_RESCUE_ALGORITHM_VERSION,
+          mapperFingerprint: knowledge.fingerprint,
+          note:
+            `RESCUE_MASS_BALANCE_SUCCESS; ${rescue.method}; ` +
+            `MAD ${rescue.dispersion.mad}; IQR ${rescue.dispersion.iqr}; ` +
+            `n_eff ${rescue.dispersion.effectiveSampleSize}`,
+          cohort: {
+            size: rescue.candidates.length,
+            spread: round4(rescue.dispersion.iqr / 2),
+            band: round4(MASS_BALANCE_RESCUE_POLICY.maxIqr / 2),
+            tightness: round4(
+              1 - Math.min(1, rescue.dispersion.iqr / MASS_BALANCE_RESCUE_POLICY.maxIqr),
+            ),
+            ceiling: 0.94,
+          },
+        }),
+      );
+      trace.push(
+        `field_rescue: total_solids_percent=${rescue.totalSolids}; ` +
+          `water_percent=${rescue.water}; ${rescue.reasonCodes.join(',')}`,
+      );
+      fields = closeArithmetic(fields, trace, input.identity.semantic);
+      fields = enforceUnresolvedMaterialConflicts(fields);
+
+      // The rescue is admitted only if the resulting product is still coherent
+      // with every exact fact. Any estimated member is withdrawn fail-closed.
+      plausibility = validatePlausibility(fields);
+      fields = plausibility.fields;
+      plausibilityViolations.push(...plausibility.violations);
+      contradictedByDeclaration ||= plausibility.contradictedByDeclaration;
+      for (const violation of plausibility.violations) {
+        trace.push(
+          `plausibility_after_rescue[${violation.rule}]: ${violation.detail}` +
+            (violation.withdrawn.length > 0 ? ` → wycofano ${violation.withdrawn.join(', ')}` : ''),
+        );
+      }
+      if (plausibility.violations.some((violation) => violation.withdrawn.length > 0)) {
+        fields = closeArithmetic(fields, trace, input.identity.semantic);
+        fields = enforceUnresolvedMaterialConflicts(fields);
+        massBalanceRescueReasons = [
+          ...new Set([
+            ...massBalanceRescueReasons,
+            ...plausibility.violations.map(
+              (violation) => `RESCUE_CROSS_FIELD_CONSISTENCY_REJECTED:${violation.rule}`,
+            ),
+          ]),
+        ];
+      }
+    } else {
+      const reason = rescue.reasonCodes.join(',');
+      fields = {
+        ...fields,
+        water_percent: unknownField(reason),
+        total_solids_percent: unknownField(reason),
+      };
+      trace.push(`field_rescue: unresolved ${reason}`);
+    }
+  }
+
+  /* 5c. Target-aware sugar-spectrum Rescue. The target's VERIFIED total sugar
+   * is immutable; compatible donors contribute only normalized species shares.
+   * POD/PAC stay absent and remain the Engine's deterministic responsibility. */
+  const spectrumRescue = rescueSugarSpectrumFromCohort({
+    cohort: sugarSpectrumCohort,
+    fields,
+    semantic: input.identity.semantic,
+    targetEvidence: rescueTargetEvidence,
+  });
+  if (spectrumRescue.resolved && spectrumRescue.targetSpectrum && spectrumRescue.dispersion) {
+    for (const field of TARGET_AWARE_SUGAR_SPECTRUM_FIELDS) {
+      if (conflictedWorkingFields.has(field)) continue;
+      if (fields[field].provenance.state === 'VERIFIED') continue;
+      fields = applyFieldTruth(
+        fields,
+        field,
+        knownField({
+          value: spectrumRescue.targetSpectrum[field],
+          state: 'ESTIMATED',
+          confidence: spectrumRescue.confidence,
+          basis: 'mapper_similar_profile',
+          mapperReferences: spectrumRescue.candidates,
+          algorithmVersion: SUGAR_SPECTRUM_RESCUE_ALGORITHM_VERSION,
+          mapperFingerprint: knowledge.fingerprint,
+          note:
+            `RESCUE_SUGAR_SPECTRUM_SUCCESS; target-total normalized shares; ` +
+            `${spectrumRescue.validSpectrumCandidateCount} valid, ` +
+            `${spectrumRescue.candidates.length} after outliers; ` +
+            `max half-IQR ${spectrumRescue.dispersion.maximumHalfIqr}`,
+          cohort: {
+            size: spectrumRescue.candidates.length,
+            spread: spectrumRescue.dispersion.maximumHalfIqr,
+            band: SUGAR_SPECTRUM_RESCUE_POLICY.maxShareHalfIqr,
+            tightness: round4(
+              1 -
+                Math.min(
+                  1,
+                  spectrumRescue.dispersion.maximumHalfIqr /
+                    SUGAR_SPECTRUM_RESCUE_POLICY.maxShareHalfIqr,
+                ),
+            ),
+            ceiling: SUGAR_SPECTRUM_RESCUE_POLICY.confidenceCeiling,
+          },
+        }),
+      );
+    }
+    trace.push(
+      `sugar_spectrum_rescue: confidence=${spectrumRescue.confidence}; ` +
+        `compatible=${spectrumRescue.compatibleCandidateCount}; ` +
+        `valid=${spectrumRescue.validSpectrumCandidateCount}; ` +
+        `used=${spectrumRescue.candidates.length}`,
+    );
+    plausibility = validatePlausibility(fields);
+    fields = plausibility.fields;
+    fields = enforceUnresolvedMaterialConflicts(fields);
+    plausibilityViolations.push(...plausibility.violations);
+    contradictedByDeclaration ||= plausibility.contradictedByDeclaration;
+    for (const violation of plausibility.violations) {
+      trace.push(
+        `plausibility_after_spectrum_rescue[${violation.rule}]: ${violation.detail}` +
+          (violation.withdrawn.length > 0 ? ` → wycofano ${violation.withdrawn.join(', ')}` : ''),
+      );
+    }
+  } else {
+    trace.push(`sugar_spectrum_rescue: unresolved ${spectrumRescue.reasonCodes.join(',')}`);
   }
 
   /* 6. record where the Mapper disagrees with the declaration, without acting on it */
@@ -591,9 +976,35 @@ export function resolveProductWorkingValues(
   // single gap rather than two.
   const massBalanceKnown =
     fields.water_percent.value !== null || fields.total_solids_percent.value !== null;
-  const missingEngineFields = ENGINE_REQUIRED_WORKING_FIELDS.filter(
-    (field) => fields[field].value === null,
-  );
+  const requirementsApplicable =
+    semanticRequirementsResolved(input.identity.semantic) &&
+    input.identity.semantic.intendedUsageRole !== 'TOPPING_ONLY';
+  const missingEngineFields = requirementsApplicable
+    ? ENGINE_REQUIRED_WORKING_FIELDS.filter((field) => fields[field].value === null)
+    : [];
+  const unresolvedEngineFieldReasons: ProductWorkingValues['unresolvedEngineFieldReasons'] = {};
+  for (const field of missingEngineFields) {
+    const consistencyRules = plausibilityViolations
+      .filter((violation) => violation.fields.includes(field))
+      .map((violation) => `RESCUE_CROSS_FIELD_CONSISTENCY_REJECTED:${violation.rule}`);
+    const reasons = materialConflictsByWorkingField.has(field)
+      ? materialConflictReason(materialConflictsByWorkingField.get(field) ?? []).split(',')
+      : mapperIdentityConflicted
+        ? materialConflictReason(
+            unresolvedMaterialConflicts.filter(
+              (conflict) =>
+                RESCUE_IDENTITY_CONFLICT_PATHS.has(conflict.field) ||
+                conflict.field === 'barcodes' ||
+                conflict.field.startsWith('barcodes.'),
+            ),
+          ).split(',')
+        : field === 'water_percent' || field === 'total_solids_percent'
+          ? massBalanceRescueReasons
+          : inference.bestCohort
+            ? ['RESCUE_FIELD_DISPERSION_OR_SUPPORT_FAILED']
+            : ['RESCUE_NO_COMPATIBLE_COHORT'];
+    unresolvedEngineFieldReasons[field] = [...new Set([...reasons, ...consistencyRules])];
+  }
   const missingRequired = [
     ...REQUIRED_COMPOSITION_FIELDS.filter((field) => fields[field].value === null),
     ...(massBalanceKnown ? [] : (['water_percent'] as const)),
@@ -605,9 +1016,11 @@ export function resolveProductWorkingValues(
       ...power.materiality.reasonCodes,
     );
   }
-  const estimatedEngineFields = ENGINE_REQUIRED_WORKING_FIELDS.filter(
-    (field) => fields[field].provenance.state === 'ESTIMATED',
-  );
+  const estimatedEngineFields = requirementsApplicable
+    ? ENGINE_REQUIRED_WORKING_FIELDS.filter(
+        (field) => fields[field].provenance.state === 'ESTIMATED',
+      )
+    : [];
   // Confidence over the fields the verdict actually depends on. Water and solids
   // contribute once — penalising both would charge twice for one unknown.
   const confidenceFields: WorkingNumericField[] = [
@@ -616,40 +1029,92 @@ export function resolveProductWorkingValues(
       ? (['water_percent'] as const)
       : (['total_solids_percent'] as const)),
   ];
-  // A product whose values are all measured is judged on those measurements.
-  // A product leaning on a Mapper profile is judged on how well that profile
-  // represents it — one question with one answer, never nine multiplied.
-  const leansOnProfile = confidenceFields.some(
-    (field) => fields[field].provenance.state === 'ESTIMATED',
-  );
   const engineConfidence =
     missingRequired.length > 0
       ? null
-      : leansOnProfile
-        ? Math.max(
-            profileMatch.confidence,
-            round4(
-              confidenceFields.reduce(
-                (min, field) => Math.min(min, fields[field].provenance.confidence),
-                1,
-              ),
-            ),
-          )
-        : round4(
-            confidenceFields.reduce(
-              (min, field) => Math.min(min, fields[field].provenance.confidence),
-              1,
-            ),
-          );
+      : round4(
+          confidenceFields.reduce(
+            (min, field) => Math.min(min, fields[field].provenance.confidence),
+            1,
+          ),
+        );
+  const unsafeEstimatedFields = confidenceFields.filter((field) => {
+    const truth = fields[field];
+    if (truth.provenance.state !== 'ESTIMATED') return false;
+    return !estimatedFieldIsEngineSafe({
+      field,
+      confidence: truth.provenance.confidence,
+      algorithmVersion: truth.provenance.algorithmVersion,
+      cohort: truth.provenance.cohort,
+      mapperWholeProfileSimilarity:
+        profileMatch.confidence >= PROFILE_MATCH_FLOOR ? profileMatch.confidence : null,
+    });
+  });
+  for (const field of unsafeEstimatedFields) {
+    unresolvedEngineFieldReasons[field] = [
+      `RESCUE_FIELD_CONFIDENCE_NOT_CALIBRATED_FOR_ENGINE:${fields[field].provenance.algorithmVersion}`,
+    ];
+  }
+
+  const rescueResolvedFields = rescueEligibleFields
+    .filter((field) => {
+      const truth = fields[field];
+      return (
+        truth.value !== null &&
+        (truth.provenance.state === 'ESTIMATED' ||
+          truth.provenance.basis.startsWith('mapper_') ||
+          truth.provenance.mapperReferences.length > 0)
+      );
+    })
+    .sort();
+  const rescueUnresolvedFields = rescueEligibleFields
+    .filter((field) => !rescueResolvedFields.includes(field))
+    .sort();
+  const rescueReasonCodes = [
+    ...massBalanceRescueReasons,
+    ...spectrumRescue.reasonCodes,
+    ...Object.values(unresolvedEngineFieldReasons).flatMap((reasons) => reasons ?? []),
+    ...(profileMatch.rejected ? [profileMatch.rejected] : []),
+  ]
+    .filter((reason): reason is string => Boolean(reason))
+    .filter((reason, index, reasons) => reasons.indexOf(reason) === index)
+    .sort();
+  const rescueBlocked =
+    mapperIdentityConflicted ||
+    ingredientIdentityConflicted ||
+    rescueReasonCodes.some(
+      (reason) =>
+        reason.startsWith('RESCUE_INPUT_MATERIAL_CONFLICT:') ||
+        reason === 'RESCUE_TARGET_SEMANTICS_UNRESOLVED' ||
+        reason === 'RESCUE_TARGET_EVIDENCE_INSUFFICIENT' ||
+        reason === 'RESCUE_TARGET_ALCOHOL_UNRESOLVED',
+    );
+  const rescueOutcome: MapperRescueOutcome = {
+    status:
+      rescueEligibleFields.length === 0
+        ? 'NOT_RUN'
+        : rescueBlocked
+          ? 'BLOCKED'
+          : rescueResolvedFields.length === 0
+            ? 'NO_SAFE_RESULT'
+            : rescueUnresolvedFields.length === 0
+              ? 'SUCCESS'
+              : 'PARTIAL',
+    attempted: rescueEligibleFields.length > 0,
+    resolvedFields: rescueResolvedFields,
+    unresolvedFields: rescueUnresolvedFields,
+    reasonCodes: rescueReasonCodes,
+  };
 
   const valueReadiness = decideValueReadiness({
     missing: missingRequired.length,
     powerResolved: power.resolved,
     estimated: estimatedEngineFields.length,
     engineConfidence,
+    unsafeEstimatedFields: unsafeEstimatedFields.length,
     // A product whose own declared values contradict each other is not ready,
     // however complete and confident those values look individually.
-    selfContradictory: plausibility.contradictedByDeclaration,
+    selfContradictory: contradictedByDeclaration,
   });
   // Process (HEAT / COLD / BOTH / UNKNOWN) and professional dosage are
   // INFORMATIONAL. They describe how a product is worked with; they are not
@@ -660,15 +1125,34 @@ export function resolveProductWorkingValues(
   const technicalAuthorityRequired =
     input.technical && !input.technicalAuthority && valueReadiness !== 'REVIEW';
   const readiness: ProductReadiness = valueReadiness;
+  let massBalanceBlockerEmitted = false;
   const criticalPhysicsBlockers = [
-    ...missingEngineFields.map((field) => `MISSING_${field.toUpperCase()}`),
+    // Semantic uncertainty defers the ordinary BASE requirement set. The
+    // independent freezing-path and declaration-consistency blockers remain
+    // truthful regardless of role/form certainty.
+    ...(requirementsApplicable
+      ? missingEngineFields.flatMap((field) => {
+          const isMassBalanceField = field === 'water_percent' || field === 'total_solids_percent';
+          if (isMassBalanceField) {
+            // Water and total solids are one degree of freedom. Keep the existing
+            // solids code as the deterministic external representative so the
+            // complementary unknown cannot become two obligations. A material
+            // conflict remains represented by Product Accuracy's conflict blocker.
+            if (massBalanceConflict || massBalanceBlockerEmitted) return [];
+            massBalanceBlockerEmitted = true;
+            return ['MISSING_TOTAL_SOLIDS_PERCENT'];
+          }
+          return [`MISSING_${field.toUpperCase()}`];
+        })
+      : []),
     ...(power.resolved ? [] : ['UNRESOLVED_SWEETENING_FREEZING_PATH']),
-    ...(plausibility.contradictedByDeclaration ? ['SELF_CONTRADICTORY_DECLARATION'] : []),
-    ...(readiness === 'REVIEW' &&
-    missingEngineFields.length === 0 &&
-    power.resolved &&
-    !plausibility.contradictedByDeclaration
-      ? ['PROFILE_CONFIDENCE_BELOW_ENGINE_READY_FLOOR']
+    ...(contradictedByDeclaration ? ['SELF_CONTRADICTORY_DECLARATION'] : []),
+    ...(requirementsApplicable
+      ? unsafeEstimatedFields.map(
+          (field) =>
+            `FIELD_CONFIDENCE_BELOW_READY_FLOOR:${field}:` +
+            `${fields[field].provenance.confidence.toFixed(4)}<${(ENGINE_ESTIMATE_READY_FLOORS[field] ?? 0.96).toFixed(4)}`,
+        )
       : []),
   ];
 
@@ -686,8 +1170,12 @@ export function resolveProductWorkingValues(
     technicalAuthorityRequired,
     engineConfidence,
     // The Engine can compute with these numbers.
-    engineReady: valueReadiness === 'READY' || valueReadiness === 'ESTIMATED_READY',
+    engineReady:
+      requirementsApplicable &&
+      (valueReadiness === 'READY' || valueReadiness === 'ESTIMATED_READY'),
     missingEngineFields,
+    unresolvedEngineFieldReasons,
+    rescueOutcome,
     sweetnessPath: power,
     criticalPhysicsBlockers,
     profileMatch,
@@ -695,8 +1183,9 @@ export function resolveProductWorkingValues(
     mapperTiersUsed: inference.tiersUsed,
     mapperReferences,
     conflicts,
-    plausibilityViolations: plausibility.violations,
-    contradictedByDeclaration: plausibility.contradictedByDeclaration,
+    materialConflictDetails,
+    plausibilityViolations,
+    contradictedByDeclaration,
     trace,
   };
 }
@@ -709,13 +1198,22 @@ export function resolveProductWorkingValues(
  * depend on the sugar spectrum, which this layer never estimates — deriving
  * them from macros alone would invent Engine coefficients.
  */
-function closeArithmetic(fields: ProductFieldTruthMap, trace: string[]): ProductFieldTruthMap {
+function closeArithmetic(
+  fields: ProductFieldTruthMap,
+  trace: string[],
+  semantic?: ProductWorkingValuesInput['identity']['semantic'],
+): ProductFieldTruthMap {
   let next = fields;
 
   const complement = (from: WorkingNumericField, to: WorkingNumericField): void => {
     const source = next[from];
     if (source.value === null || next[to].value !== null) return;
-    const value = round4(100 - source.value);
+    const alcohol = next.alcohol_percent.value;
+    const alcoholRelevant =
+      semantic?.ingredientFamily === 'alcohol' || semantic?.flavorDomain === 'ALCOHOL';
+    if (alcoholRelevant && alcohol === null) return;
+    const alcoholValue = alcohol ?? 0;
+    const value = round4(100 - source.value - alcoholValue);
     if (value < 0 || value > 100) return;
     next = applyFieldTruth(
       next,
@@ -727,11 +1225,13 @@ function closeArithmetic(fields: ProductFieldTruthMap, trace: string[]): Product
         confidence: source.provenance.confidence,
         basis: 'derived',
         mapperReferences: source.provenance.mapperReferences,
+        algorithmVersion: source.provenance.algorithmVersion,
         mapperFingerprint: source.provenance.mapperFingerprint,
-        note: `100 − ${from}`,
+        note: `100 − ${from}${alcoholValue > 0 ? ' − alcohol_percent' : ''}`,
+        cohort: source.provenance.cohort,
       }),
     );
-    trace.push(`derived: ${to} = 100 − ${from}`);
+    trace.push(`derived: ${to} = 100 − ${from}${alcoholValue > 0 ? ' − alcohol_percent' : ''}`);
   };
 
   complement('water_percent', 'total_solids_percent');
@@ -820,6 +1320,7 @@ function decideValueReadiness(input: {
   powerResolved: boolean;
   estimated: number;
   engineConfidence: number | null;
+  unsafeEstimatedFields: number;
   selfContradictory: boolean;
 }): ValueReadiness {
   if (input.selfContradictory) return 'REVIEW';
@@ -827,5 +1328,5 @@ function decideValueReadiness(input: {
   // Sugars of an unknown kind would formulate as if they did nothing.
   if (!input.powerResolved) return 'REVIEW';
   if (input.estimated === 0) return 'READY';
-  return input.engineConfidence >= ESTIMATED_READY_FLOOR ? 'ESTIMATED_READY' : 'REVIEW';
+  return input.unsafeEstimatedFields === 0 ? 'ESTIMATED_READY' : 'REVIEW';
 }

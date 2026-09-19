@@ -656,13 +656,18 @@ describe('profile hierarchy and compact preflight', () => {
   });
 
   it('keeps canonical field order and removes legacy advanced settings', () => {
-    const card = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
-    const productAt = card.indexOf('workbench-product-type');
+    const file = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+    /* DESIGN V3.0 correction I moved the field presentations (machine field,
+       serving segments, OPTIMAL/ECO tiles, the defaults box) into shared
+       components below the panel, so the SOURCE order is read inside the
+       panel component itself. */
+    const card = file.slice(file.indexOf('export function WorkbenchSettingsLine'));
+    const productAt = card.indexOf('data-settings-cell="product-type"');
     const confirmationAt = card.indexOf('data-settings-cell="confirmation"');
-    const machineAt = card.indexOf('workbench-machine');
+    const machineAt = card.indexOf('data-settings-cell="machine"');
     const conditionalAt = card.indexOf('machine-conditional-settings');
     const batchAt = card.indexOf('<TargetBatchControl');
-    const strategyAt = card.indexOf('workbench-strategy');
+    const strategyAt = card.indexOf('data-settings-cell="strategy"');
     expect(productAt).toBeGreaterThan(-1);
     // OWNER FROZEN PRO VISUAL: the confirmation left the grid for the band
     // header, so it now precedes every field in source. The FIELDS keep their
@@ -672,13 +677,19 @@ describe('profile hierarchy and compact preflight', () => {
     expect(conditionalAt).toBeGreaterThan(machineAt);
     expect(batchAt).toBeGreaterThan(conditionalAt);
     expect(strategyAt).toBeGreaterThan(batchAt);
-    // Owner regression restore 2026-09-04: the approved model again includes
-    // the editable target batch after the machine/serving row.
-    expect(card).toContain("compact && 'order-1'");
-    expect(card).toContain('relative order-2 min-w-0');
-    expect(card).toContain("compact ? 'order-3'");
-    expect(card).toContain("compact && 'order-4'");
-    expect(card).toContain('order-5');
+    /* DESIGN V3.0 correction I — below the workbench breakpoint ONE column in
+       the design's reading order (Rodzaj lodów · Docelowa masa partii · Maszyna
+       · Temperatura podawania · OPTIMAL/ECO); the desktop keeps its frozen
+       two-column field grid (type/serving, machine/batch) with the tiles as a
+       full row in place of the „Tryb" list. */
+    expect(card).toContain('className="order-1 min-w-0" data-settings-cell="product-type"');
+    expect(card).toContain("'order-2 border-b");
+    expect(card).toContain('order-3 min-w-0 min-[68.5rem]:order-4');
+    expect(card).toContain('order-4 min-w-0 min-[68.5rem]:order-3');
+    expect(card).toContain(
+      "professionalServing ? 'min-[68.5rem]:order-5' : 'min-[68.5rem]:order-3'",
+    );
+    expect(card).toContain('order-5 min-w-0 min-[68.5rem]:order-6 min-[68.5rem]:col-span-2');
     expect(card).not.toContain('profile-settings-base-readout order-6');
     expect(card).not.toContain('workbench-quality');
     expect(card).not.toContain('Więcej ustawień');
@@ -690,10 +701,14 @@ describe('profile hierarchy and compact preflight', () => {
     const card = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
     expect(card).toContain('data-testid="profile-settings-confirm"');
     // Renamed and relocated by owner authority 2026-09-02 (§8): confirmation
-    // lives INSIDE expanded Settings, to the right of the permanent
-    // „Zapisz jako domyślne", and reads „Potwierdź zmiany".
+    // lives INSIDE expanded Settings and reads „Potwierdź zmiany".
     expect(card.match(/data-testid="profile-settings-confirm"/g)).toHaveLength(1);
-    expect(card).toContain('data-testid="profile-settings-save-default"');
+    // DESIGN V3.0 correction I: „[ ] Ustaw jako domyślne" replaces the
+    // „Zapisz jako domyślne" button (no duplicate); saving stays on the
+    // confirmation through the same defaults mechanism.
+    expect(card).not.toContain('data-testid="profile-settings-save-default"');
+    expect(card).toContain('<DefaultsCheckbox');
+    expect(card).toContain("testid = 'profile-settings-default'");
     expect(card).toContain('testid="workbench-serving"');
     expect(card).toContain('data-testid="home-machine-capacity"');
     expect(card).toContain('Zalecany wsad na cykl');
@@ -708,8 +723,7 @@ describe('profile hierarchy and compact preflight', () => {
     expect(card.indexOf('data-settings-cell="confirmation"')).toBeLessThan(
       card.indexOf('data-settings-cell="product-type"'),
     );
-    expect(card).toContain("compact && 'order-1'");
-    expect(card).toContain("compact ? 'order-3'");
+    expect(card).toContain('className="order-1 min-w-0" data-settings-cell="product-type"');
     expect(card.indexOf('data-settings-cell="product-type"')).toBeLessThan(
       card.indexOf('data-settings-cell="machine"'),
     );
@@ -717,7 +731,6 @@ describe('profile hierarchy and compact preflight', () => {
     expect(card).not.toContain('BAZA LODOWA BEZ TOPPINGU');
     expect(card).not.toContain("compactSelect, 'w-16'");
     expect(card).not.toContain('2xl:h-[63px]');
-    expect(card).not.toContain('Ustaw jako domyślne');
     expect(card).toContain('inline-flex h-11 items-center justify-center rounded-full');
     expect(read('features', 'pro-workbench', 'AccountRecipeDefaults.tsx')).toContain(
       'Domyślne ustawienia receptury',
@@ -725,7 +738,10 @@ describe('profile hierarchy and compact preflight', () => {
   });
 
   it('routes every profile change through confirmation and the native hard-reset authority', () => {
-    const card = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+    // The panel and its settings authority (shared with the V3 setup).
+    const card =
+      read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx') +
+      read('features', 'pro-workbench', 'proSettingsAuthority.ts');
     expect(card).toContain('store.setFormulationStrategy(strategy)');
     expect(card).toContain('requestNewRecipeProductTypeChange(next)');
     expect(card).toContain('setPendingBaseProfile(next)');
@@ -981,9 +997,13 @@ describe('Direction explains itself, and agrees with the engine', () => {
     expect(axes).toContain("reversed={axis === 'softness'}");
     expect(axes).toContain('const visual = reversed ? [...detents].reverse() : [...detents];');
     expect(axes).toContain('const indexOfDetent = (detent: DirectionIntent) =>');
-    // Firm left, soft right — the owner's approved reading order.
-    expect(axes).toContain("['bardziej twarde', 'bardziej miękkie']");
-    expect(axes).not.toContain("['bardziej miękkie', 'bardziej twarde']");
+    /* Firm left, soft right — the owner's approved reading order. DESIGN V3.0
+       correction I replaces the two end words with the five position names,
+       which follow the DRAWN order (−2 · −1 · Optymalne · +1 · +2 on both
+       axes), so the mirror never reaches a stored value. */
+    expect(axes).toContain('{stepNamesFor(count).map((name, index) => (');
+    expect(axes).toContain('style={{ left: visualLeft(index, count) }}');
+    expect(axes).not.toContain('endLabels');
     /* Spoken names stay canonical: index 0 of the softness table is -2, and -2
        is SOFT. If this ever flips, the control announces its own mirror. */
     const soft = axes.indexOf('znacznie bardziej miękkie');
@@ -1060,12 +1080,12 @@ describe('Settings onboarding attention stays separate from save refusal', () =>
     // Same colour and same 4% tint as `.ingredient-line-changed`; the only
     // difference is that it goes all the way round, because here the whole
     // module is what needs attention rather than one cell in a row.
-    expect(theme).toMatch(/\.ingredient-line-changed \{[^}]*var\(--color-attention\)/);
+    expect(theme).toMatch(/\.ingredient-line-changed \{[^}]*var\(--g-attention-line\)/);
     expect(theme).toMatch(
-      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?border-color: var\(--color-attention\)/,
+      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?border-color: var\(--g-attention-line\)/,
     );
     expect(theme).toMatch(
-      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?color-mix\(in srgb, var\(--color-attention\) 4%/,
+      /\.pro-legend-box\.settings-preflight-blocked \{[\s\S]*?color-mix\(in srgb, var\(--g-attention-line\) 4%/,
     );
     // Two classes, or the border shorthand on .pro-legend-box wins on order.
     expect(theme).not.toMatch(/^\.settings-preflight-blocked \{/m);
@@ -1106,10 +1126,10 @@ describe('OWNER CORRECTION · one blocker, one next action', () => {
     expect(header).toContain("recalcAttention && 'pro-action-attention'");
   });
 
-  it('the attention marker is orange, never red', () => {
+  it('the attention marker is gold, never red', () => {
     // Red is how this app says something is WRONG. Nothing here is wrong — the customer
     // simply has one thing left to press.
-    expect(theme).toMatch(/\.pro-action-attention \{[\s\S]*?var\(--color-attention\)/);
+    expect(theme).toMatch(/\.pro-action-attention \{[\s\S]*?var\(--g-attention-line\)/);
     expect(theme).not.toMatch(/\.pro-action-attention \{[\s\S]*?status-error/);
   });
 
@@ -1126,22 +1146,30 @@ describe('OWNER CORRECTION · one blocker, one next action', () => {
 });
 
 describe('settings confirmation lifecycle', () => {
-  const settings = read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx');
+  // The panel and its settings authority (shared with the V3 setup).
+  const settings =
+    read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx') +
+    read('features', 'pro-workbench', 'proSettingsAuthority.ts');
 
   it('the FIRST-EVER confirmation establishes the defaults, and only that one', () => {
     expect(settings).toContain('const confirmAndSeedDefaults');
-    expect(settings).toContain('if (alreadyEstablished) return;');
-    // Later confirmations are for the recipe in front of you; only „Zapisz jako
-    // domyślne" may rewrite what every future recipe starts from.
-    expect(settings).toContain('const saveAsDefault');
+    expect(settings).toContain('if (alreadyEstablished) return null;');
+    /* Later confirmations are for the recipe in front of you; only the ticked
+       „Ustaw jako domyślne" (DESIGN V3.0 correction I, replacing the „Zapisz
+       jako domyślne" button) may rewrite what every future recipe starts
+       from — and it does so on the confirmation, through the same mechanism. */
+    expect(settings).toContain('if (asDefault) return saveDefaults();');
+    expect(settings).toContain('upsertUserRecipeDefault(authenticatedOwner');
+    expect(settings).toContain('commitRecipeDefaultsAfterRemoteSave(');
   });
 
   it('collapses after confirmation without coupling disclosure to the blocker', () => {
     expect(settings).toContain('const open = manualExpanded || initialSettingsAttentionRequired;');
     expect(settings).not.toContain('openedByBlocker');
     expect(settings).toMatch(
-      /const confirmAndSeedDefaults = \(\) => \{[\s\S]*?setManualExpanded\(false\);[\s\S]*?confirmSettings/,
+      /const confirmAndSeedDefaults = \(\) => \{[\s\S]*?setManualExpanded\(false\);[\s\S]*?settings\.confirm\(asDefault\)/,
     );
+    expect(settings).toMatch(/const confirm = \(asDefault: boolean\)[\s\S]*?confirmSettings\(/);
     expect(settings).not.toContain('if (settingsBlocked) {');
   });
 
@@ -1276,7 +1304,7 @@ describe('five-detent direction language', () => {
     // a 13 px thumb. Geometry only — the intent wiring asserted around it is
     // what this test is actually for, and it is unchanged.
     expect(read('features', 'pro-workbench', 'ProfileDirectionAxes.tsx')).toContain('size-[26px]');
-    expect(read('features', 'pro-workbench', 'WorkbenchSettingsLine.tsx')).toContain(
+    expect(read('features', 'pro-workbench', 'proSettingsAuthority.ts')).toContain(
       'profileSnapshotFromState(store, directionTargets, directionIntents)',
     );
   });

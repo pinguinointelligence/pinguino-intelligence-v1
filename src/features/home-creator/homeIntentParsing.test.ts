@@ -3,6 +3,8 @@ import {
   boundedEditDistance,
   detectProfile,
   detectStatedRole,
+  intentSegmentParts,
+  intentSegments,
   normalizeIntentText,
   parseIntent,
 } from './homeIntentParsing';
@@ -118,6 +120,16 @@ describe('§22 — understanding is not identity resolution', () => {
     const found = concepts('chocolate czekolada chocolate');
     expect(found.filter((c) => c === 'chocolate')).toHaveLength(1);
   });
+
+  it('KIWI-08: the same product in a DIFFERENT role is two deliberate uses, not a repetition', () => {
+    const terms = parseIntent('truskawki i truskawki jako posypka').terms;
+    expect(terms.map((term) => [term.concept, term.role])).toEqual([
+      ['strawberry', null],
+      ['strawberry', 'topping'],
+    ]);
+    // „chocolate czekolada chocolate” is still one request: same words, same role.
+    expect(parseIntent('chocolate czekolada chocolate').terms).toHaveLength(1);
+  });
 });
 
 /**
@@ -158,5 +170,28 @@ describe('a role belongs to the product it was said about', () => {
   it('marks nothing when no role was stated', () => {
     const { terms } = parseIntent('banan, czekolada');
     expect(terms.every((t) => t.role === null)).toBe(true);
+  });
+});
+
+describe('listed elements keep what joined them (form attachment input)', () => {
+  it('reports each element with the separator said before it', () => {
+    expect(intentSegmentParts('sok z cytryny, banan i truskawki')).toEqual([
+      { text: 'sok', separatorBefore: null },
+      { text: 'cytryny', separatorBefore: ' z ' },
+      { text: 'banan', separatorBefore: ', ' },
+      { text: 'truskawki', separatorBefore: ' i ' },
+    ]);
+    expect(intentSegmentParts('sok z cytryny, banan i truskawki').map((part) => part.text)).toEqual(
+      intentSegments('sok z cytryny, banan i truskawki'),
+    );
+  });
+
+  it('gives every term its utterance and element index', () => {
+    const terms = parseIntent('puree z mango, banan').terms;
+    expect(terms.map((term) => [term.raw, term.segmentIndex, term.utterance])).toEqual([
+      ['puree', 0, 'puree z mango, banan'],
+      ['mango', 1, 'puree z mango, banan'],
+      ['banan', 2, 'puree z mango, banan'],
+    ]);
   });
 });

@@ -1,4 +1,5 @@
 import type { EngineIngredient, IngredientComponentProfile } from '@/engine';
+import { canonicalMapperComposition } from './canonicalToolboxCompositions';
 import { findVerifiedVeganFormulationCandidate } from './verifiedVeganToolbox';
 
 const ZERO: IngredientComponentProfile = {
@@ -189,7 +190,22 @@ const PLANT_PROTEIN_CANDIDATES = PLANT_IDS.map((id) => findVerifiedVeganFormulat
 export const VERIFIED_PROTEIN_FORMULATION_CANDIDATES: readonly EngineIngredient[] = [
   ...DAIRY_PROTEIN_CANDIDATES,
   ...PLANT_PROTEIN_CANDIDATES,
-];
+].map((candidate) => {
+  const canonical = canonicalMapperComposition(candidate.id);
+  if (!canonical) return candidate;
+  return {
+    ...candidate,
+    name: canonical.displayName,
+    composition: canonical.composition,
+    pod_value: canonical.pod_value,
+    pac_value: canonical.pac_value,
+    de_value: canonical.de_value,
+    cost_per_kg: canonical.cost_per_kg,
+    confidence_score: canonical.confidence_score,
+    source_type: canonical.verified ? 'verified_db' : 'ai_estimated',
+    is_verified: canonical.verified,
+  };
+});
 
 export function findVerifiedProteinFormulationCandidate(id: string): EngineIngredient | null {
   return VERIFIED_PROTEIN_FORMULATION_CANDIDATES.find((ingredient) => ingredient.id === id) ?? null;

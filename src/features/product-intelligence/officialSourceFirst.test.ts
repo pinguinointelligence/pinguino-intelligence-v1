@@ -177,7 +177,9 @@ describe('cache identity is the product, not the import run', () => {
       keyStart,
       edgeSource.indexOf('const { data: cached }', keyStart),
     );
-    expect(keyBlock).toContain('stableJson({ identity, fields:');
+    expect(keyBlock).toContain('identity,');
+    expect(keyBlock).toContain('fields: [...requestedFields].sort()');
+    expect(keyBlock).toContain('accumulatedEvidence: hasAccumulatedEvidence');
     expect(keyBlock).not.toMatch(/importId/);
   });
 

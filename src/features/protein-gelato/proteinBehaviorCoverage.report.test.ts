@@ -89,7 +89,7 @@ const proteinRelevant = ingredients.filter(
 
 describe('derived ProteinBehavior coverage over the canonical Mapper base', () => {
   it('classifies every row deterministically and never throws', () => {
-    expect(ingredients.length).toBe(2089);
+    expect(ingredients.length).toBe(2541);
     for (const ingredient of ingredients) {
       const first = deriveProteinBehavior(ingredient);
       const second = deriveProteinBehavior(ingredient);
@@ -110,9 +110,8 @@ describe('derived ProteinBehavior coverage over the canonical Mapper base', () =
       if (behavior.fatPerProteinGram !== null) fatKnown += 1;
     }
 
-    // ash_percent is present as a COLUMN but carries no information anywhere in
-    // the base — every non-null cell is 0. Recorded here so the audit report
-    // never claims mineral differentiation that the data cannot support.
+    // FINAL Mapper contains explicit mineral mass-balance values where source
+    // authority supports them. Pin that coverage so it cannot silently vanish.
     const ashValues = rows
       .map((row) => (row as unknown as Record<string, number | null>).ash_percent)
       .filter((value): value is number => value !== null && value !== undefined);
@@ -135,9 +134,7 @@ describe('derived ProteinBehavior coverage over the canonical Mapper base', () =
       ),
     );
 
-    // The audit's own hard finding: ash carries zero information, so no
-    // mineral-differentiated protein behaviour may be claimed.
-    expect(ashNonZero).toBe(0);
+    expect(ashNonZero).toBe(498);
     // Composition-derived fields are always available for a protein source.
     expect(lactoseKnown).toBe(proteinRelevant.length);
     expect(fatKnown).toBe(proteinRelevant.length);
@@ -171,8 +168,9 @@ describe('classification honesty spot-checks', () => {
   });
 
   it('refuses to guess a class for a self-contradicting product name', () => {
-    // "MILK PROTEIN CONCENTRATE WPC 75%" claims both MPC and WPC.
-    const contradictory = byName('MILK PROTEIN CONCENTRATE WPC');
+    // The retained legacy identity explicitly records the unresolved MPC/WPC
+    // contradiction instead of relabelling it as one source class.
+    const contradictory = byName('Legacy MPC/WPC identity');
     const behavior = deriveProteinBehavior(contradictory);
     expect(behavior.sourceClass).toBe('mixed_dairy_protein');
     expect(behavior.wheyCaseinClass).toBe('unknown');
@@ -180,8 +178,8 @@ describe('classification honesty spot-checks', () => {
   });
 
   it('separates protein sources that deliver the same protein with different lactose', () => {
-    const wpc60 = byName('WPC 60%');
-    const wpc80 = byName('WPC 80%');
+    const wpc60 = byName('WPC 60 ·');
+    const wpc80 = byName('WPC 80 ·');
     const a = deriveProteinBehavior(wpc60);
     const b = deriveProteinBehavior(wpc80);
     expect(a.sourceClass).toBe('whey_protein_concentrate');

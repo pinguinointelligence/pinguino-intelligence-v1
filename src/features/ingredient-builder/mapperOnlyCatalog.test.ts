@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import type { IngredientRow } from '@/data/ingredients/ingredientRow';
 import type { CatalogProductSearchHit } from '@/features/global-catalog/contracts';
+import { MAPPER_SEARCH_RELEASE_SHA256 } from '@/features/mapper-search-runtime/generated/releaseManifest';
 import {
   CURRENT_MAPPER_CATALOG_CACHE_KEY,
   MAPPER_ONLY_CATALOG_ERROR,
@@ -159,21 +160,19 @@ const row = (overrides: Partial<IngredientRow> = {}): IngredientRow => ({
 });
 
 describe('Mapper-only product catalog', () => {
-  it('A/B derives the exact current/selectable census from the owner-approved 2,089-row Mapper', () => {
+  it('A/B derives the exact current/selectable census from the FINAL_FROZEN 2,541-row Mapper', () => {
     const mapper = parseCsv(
       readFileSync(
         resolve(process.cwd(), 'docs/ingredients/validation/mapper_basement.csv'),
         'utf8',
       ),
     );
-    expect(mapper).toHaveLength(2089);
-    expect(new Set(mapper.map((entry) => entry.ingredient_id)).size).toBe(2089);
+    expect(mapper).toHaveLength(2541);
+    expect(new Set(mapper.map((entry) => entry.ingredient_id)).size).toBe(2541);
     expect(
       mapper.filter((entry) => entry.approved_for_base?.toLowerCase() === 'true'),
-    ).toHaveLength(2076);
-    expect(CURRENT_MAPPER_CATALOG_CACHE_KEY).toContain(
-      '057375cd60cefe613892ff1d9f8f7eda880ff0eb06732f9229051fc37d8deca7',
-    );
+    ).toHaveLength(2491);
+    expect(CURRENT_MAPPER_CATALOG_CACHE_KEY).toContain(MAPPER_SEARCH_RELEASE_SHA256);
   });
 
   it('C/E/F/G rejects QA, unbound, commercial, stale favorite and stale recent records', () => {

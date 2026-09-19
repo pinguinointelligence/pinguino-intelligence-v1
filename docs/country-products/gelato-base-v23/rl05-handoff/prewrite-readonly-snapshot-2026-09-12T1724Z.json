@@ -1,0 +1,54 @@
+{
+  "schema": "gellatti.rl05.prewrite-readonly-snapshot.v1",
+  "capturedAt": "2026-09-12T17:24:01Z",
+  "projectRef": "tunabqqrwabacxjcxxkz",
+  "sharedWithProduction": true,
+  "sharedWithProductionEvidence": {
+    "staging.pinguinoai.com": "bundle /assets/index-DRwrKI6I.js -> https://tunabqqrwabacxjcxxkz.supabase.co",
+    "www.pinguinoai.com": "bundle /assets/index-yEAiKU4W.js -> https://tunabqqrwabacxjcxxkz.supabase.co"
+  },
+  "readOnly": true,
+  "writesPerformed": 0,
+  "counts": {
+    "catalog_market_countries": 18,
+    "products": 2601,
+    "product_versions": 4697,
+    "product_behavior_bindings": 24119,
+    "product_variants": 59,
+    "product_variant_markets": 46,
+    "product_canonical_slot_reviews": 3,
+    "country_product_slot_assignments": 3,
+    "country_product_slot_assignments_active": 3,
+    "product_add_requests": 12
+  },
+  "catalogMarkets": ["AT", "BE", "CZ", "DE", "DK", "ES", "FI", "FR", "GB", "IE", "IT", "NL", "PH", "PL", "PT", "SE", "SK", "US"],
+  "v23MarketsRequired": 75,
+  "v23MarketsMissing": 57,
+  "liveCountryRoutes": [
+    { "country": "ES", "pi": "PI-ING-000236", "product": "PR-ING-007173", "kind": "PRIMARY_DEFAULT", "active": true, "usableAtRuntime": false },
+    { "country": "FR", "pi": "PI-ING-000236", "product": "PR-ING-007174", "kind": "PRIMARY_DEFAULT", "active": true, "usableAtRuntime": false },
+    { "country": "PL", "pi": "PI-ING-000236", "product": "PR-ING-007172", "kind": "PRIMARY_DEFAULT", "active": true, "usableAtRuntime": false }
+  ],
+  "routeValidatorFinding": {
+    "chain": "resolve_country_product_slots_v1 -> private.country_product_slot_assignment_is_usable_v1 -> private.product_has_current_canonical_slot_review_v1 -> private.product_canonical_slot_candidate_is_valid_v1",
+    "failingCondition": "lower(mapper_basement.verification_status) like 'verified%'",
+    "everyOtherConditionPasses": "binding ready + BASE_RECIPE, engineUsable, full technicalComposition, current variant in market, PI active + approved",
+    "v23RolePiStatus": {
+      "PI-ING-000236 MILK": "Estimated / PI Calculated (fails)",
+      "PI-ING-000180 CREAM": "Estimated / PI Calculated (fails)",
+      "PI-ING-000270 SMP": "Estimated / PI Calculated (fails)",
+      "PI-ING-000514 SUCROSE": "Verified (passes; global PI, no product route)",
+      "PI-ING-000494 DEXTROSE": "Verified / Global Reference (passes)",
+      "PI-ING-000492 TARA": "Verified (passes)",
+      "PI-ING-002114 GELLATTI STABILIZER": "Verified / PI Calculated (passes)"
+    },
+    "activeApprovedPisPassing": "1578 of 2491",
+    "resolution": "needs a validator migration (owner approval) or a Mapper FINAL status change (not approved); nothing was changed"
+  },
+  "sharedPrIngArchitecture": {
+    "migration20260912120000_shared_pr_ing_semantic_binding": "applied on the shared DB",
+    "baseRolesRule": "BASE and SUBSTITUTE keep their fail-closed Mapper-reference requirement; only TOPPING_ONLY may omit it",
+    "v23DryRunPackage": "docs/country-products/gelato-base-v23 (seed snapshot 2026-09-11; must be re-captured and reconciled immediately before any approved write)"
+  },
+  "rollback": "no writes were performed, so there is nothing to roll back"
+}

@@ -55,13 +55,13 @@ describe('PRO responsive frame authority', () => {
   });
 
   it('has one canonical desktop density and one true-mobile transition', () => {
-    expect(tokens).toContain('--pro-desktop-min-width: 60rem');
+    expect(tokens).toContain('--pro-desktop-min-width: 68.5rem');
     expect(tokens).not.toContain('--pro-density-state');
     expect(tokens).not.toContain('--pro-structural-mode');
     expect(tokens).not.toContain('TIGHT');
     expect(tokens).not.toContain('COMPACT');
     expect(tokens).not.toContain('SPACIOUS');
-    expect(css).toContain('@media (min-width: 60rem)');
+    expect(css).toContain('@media (min-width: 68.5rem)');
     expect(css).not.toContain('@media (min-width: 70rem)');
     expect(css).toContain('.pro-workbench-mobile-only');
     expect(css).toContain('.pro-workbench-desktop-only');
@@ -73,7 +73,7 @@ describe('PRO responsive frame authority', () => {
     const directNumberControl = read('features', 'ingredient-builder', 'DirectNumberControl.tsx');
     expect(row).toContain('data-gellatti-row="ingredient"');
     expect(css).toMatch(
-      /@media \(min-width: 60rem\)[\s\S]*\[data-gellatti-row='ingredient'\][\s\S]*grid-template-columns:/,
+      /@media \(min-width: 68.5rem\)[\s\S]*\[data-gellatti-row='ingredient'\][\s\S]*grid-template-columns:/,
     );
     expect(css).toContain('minmax(0, 1fr)');
 
@@ -94,14 +94,17 @@ describe('PRO responsive frame authority', () => {
     const breakpoint = read('features', 'shell', 'proFrameGeometry.ts');
     const cockpit = read('features', 'studio', 'mobileCockpitModal.ts');
     const picker = read('features', 'ingredient-builder', 'ProductPickerPopover.tsx');
-    expect(breakpoint).toContain('PRO_DESKTOP_MIN_WIDTH_PX = 960');
+    // OWNER 2026-09-12 — the handoff where the account, yielded to its 112 px
+    // compact width, would need the desktop below 2/3 to keep its 40 px lane
+    // (derived in `applicationScaleAuthority.test.ts`). No account moves it.
+    expect(breakpoint).toContain('PRO_DESKTOP_MIN_WIDTH_PX = 1096');
     expect(breakpoint).toContain('PRO_DESKTOP_MEDIA_QUERY');
     expect(breakpoint).toContain('PRO_TABLET_MEDIA_QUERY');
     expect(cockpit).toContain('PRO_TABLET_MEDIA_QUERY');
     expect(picker).toContain('PRO_DESKTOP_MEDIA_QUERY');
     expect(picker).toContain('pro-product-picker-backdrop');
     expect(css).toMatch(
-      /@media \(min-width: 60rem\)[\s\S]*\.pro-product-picker-backdrop\s*\{[\s\S]*background:\s*transparent/,
+      /@media \(min-width: 68.5rem\)[\s\S]*\.pro-product-picker-backdrop\s*\{[\s\S]*background:\s*transparent/,
     );
     expect(picker).not.toContain("matchMedia('(min-width: 1280px)')");
   });

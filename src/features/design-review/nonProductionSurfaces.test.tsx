@@ -153,7 +153,7 @@ describe('markers are wired into the heavy shells (source-level proof)', () => {
     // a bordered detent. What this line guards is that the axes stay on the
     // LIGHT control system — the plain accent, never a nonprod marker — which
     // the assertions above and below still pin.
-    expect(direction).toContain('bg-[#f58a07]');
+    expect(direction).toContain('bg-[var(--g-orange)]');
     expect(direction).not.toContain('nonprod');
   });
 });

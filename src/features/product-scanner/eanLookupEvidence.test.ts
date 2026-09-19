@@ -15,7 +15,16 @@ const fact = (
   value: string,
   authority = 'OFFICIAL_MANUFACTURER',
   sourceUrl = 'https://www.coca-cola.com/pl/pl/brands/coca-cola-zero',
-) => ({ field, value, sourceUrl, sourceAuthorityClass: authority, sourceTitle: 'Coca-Cola Zero' });
+) => ({
+  field,
+  value,
+  sourceUrl,
+  sourceAuthorityClass: authority,
+  sourceTitle: 'Coca-Cola Zero',
+  sourceStatedEan: '5449000131805',
+  sourceEanConfirmationMethod: 'page_text',
+  sourceEanConfirmedAt: '2026-09-11T00:00:00.000Z',
+});
 
 const labelResult = (overrides: Record<string, unknown> = {}) => ({
   schemaVersion: 'gellatti_product_scan_v1',
@@ -78,14 +87,47 @@ const labelResult = (overrides: Record<string, unknown> = {}) => ({
 });
 
 describe('the exact GTIN source fills gaps and never overwrites a label', () => {
-  it('asks only for fields a scan can use, and never for the product name', () => {
+  it('asks for every usable exact-product field, including name and brand', () => {
+    expect([...EAN_LOOKUP_FIELDS]).toContain('productName');
+    expect([...EAN_LOOKUP_FIELDS]).toContain('brand');
     expect([...EAN_LOOKUP_FIELDS]).toContain('ingredients');
     expect([...EAN_LOOKUP_FIELDS]).toContain('nutritionBasis');
     expect([...EAN_LOOKUP_FIELDS]).toContain('productCategory');
     expect([...EAN_LOOKUP_FIELDS]).toContain('productDescription');
-    // Identity is read from the package the owner is holding, never guessed from a page.
+    // The lookup is pinned to the scanned GTIN; publication eligibility remains a separate gate.
     expect([...EAN_LOOKUP_FIELDS]).not.toContain('name');
-    expect([...EAN_LOOKUP_FIELDS]).not.toContain('brand');
+  });
+
+  it('maps exact internet identity for 8411092721032 without customer confirmation', () => {
+    const result = scanResultFromLookupFacts([
+      fact('productName', 'NESTEA Mango-Piña'),
+      fact('brand', 'Nestlé'),
+      fact('manufacturer', 'Nestlé España, S.A.'),
+      fact('netQuantity', '330 ml'),
+      fact('nutritionBasis', 'na 100 ml'),
+      fact('energyKcal', '19 kcal'),
+      fact('ingredients', 'Woda, cukier, sok mango i ananas'),
+    ])!;
+    expect(result.identity).toMatchObject({
+      displayName: 'NESTEA Mango-Piña',
+      originalName: 'NESTEA Mango-Piña',
+      brand: 'Nestlé',
+    });
+    expect(result.manufacturer).toBe('Nestlé España, S.A.');
+    expect(result.package).toMatchObject({ netQuantity: 330, unit: 'ml' });
+    expect(result.nutrition).toMatchObject({ basis: 'per_100ml', energyKcal: 19 });
+    expect(result.externalSources).toEqual([
+      expect.objectContaining({
+        fieldsUsed: expect.arrayContaining([
+          'identity.displayName',
+          'identity.brand',
+          'manufacturer',
+          'package.netQuantity',
+          'nutrition.energyKcal',
+          'ingredientsText',
+        ]),
+      }),
+    ]);
   });
 
   it('turns verbatim facts into scan fields with their source attached', () => {
@@ -99,9 +141,7 @@ describe('the exact GTIN source fills gaps and never overwrites a label', () => 
       fact('netQuantity', '330 ml'),
     ])!;
     expect(result.ingredientsText).toBe('Woda, barwnik: karmel E150d, kwas fosforowy');
-    expect((result.identity as Record<string, unknown>).category).toBe(
-      'Napoje gazowane bez cukru',
-    );
+    expect((result.identity as Record<string, unknown>).category).toBe('Napoje gazowane bez cukru');
     expect(result.claims).toEqual(['Napój gazowany o smaku coli bez cukru.']);
     expect((result.nutrition as Record<string, unknown>).basis).toBe('per_100ml');
     expect((result.nutrition as Record<string, unknown>).energyKcal).toBe(0.2);
@@ -110,6 +150,25 @@ describe('the exact GTIN source fills gaps and never overwrites a label', () => 
     expect(sources[0]?.sourceType).toBe('manufacturer');
     expect(sources[0]?.fieldsUsed).toContain('nutrition.energyKcal');
     expect(sources[0]?.fieldsUsed).toContain('ingredientsText');
+  });
+
+  it('SCN-AI-03 maps sourced water/solids facts without deriving either one', () => {
+    const result = scanResultFromLookupFacts([
+      fact('waterPercent', '87,6 %'),
+      fact('totalSolidsPercent', '12,4 %'),
+    ])!;
+    expect(result.productionDeclarations).toMatchObject({
+      waterPercent: 87.6,
+      totalSolidsPercent: 12.4,
+    });
+    expect(result.externalSources).toEqual([
+      expect.objectContaining({
+        fieldsUsed: expect.arrayContaining([
+          'productionDeclarations.waterPercent',
+          'productionDeclarations.totalSolidsPercent',
+        ]),
+      }),
+    ]);
   });
 
   it('drops nutrition numbers that arrive without a declared basis', () => {
@@ -147,26 +206,50 @@ describe('the exact GTIN source fills gaps and never overwrites a label', () => 
     expect(scanResultFromLookupFacts([fact('ingredients', '   ')])).toBeNull();
   });
 
-  it('lets the label win every disagreement with the source', () => {
+  it('does not let OCR overwrite exact-EAN hard evidence and opens a material conflict', () => {
     const lookup = scanResultFromLookupFacts([
       fact('nutritionBasis', 'per 100 ml'),
       fact('salt', '0,05 g'),
       fact('ingredients', 'Woda gazowana'),
     ])!;
     const merged = mergeProductScanResults(lookup, labelResult(), '5449000131805');
-    expect((merged.nutrition as Record<string, unknown>).salt).toBe(0.01);
-    // The disagreement is kept, retained on the label side.
+    expect((merged.nutrition as Record<string, unknown>).salt).toBe(0.05);
+    // Two hard sources disagree: exact product data stays intact and review remains explicit.
     expect(merged.conflicts).toContainEqual(
-      expect.objectContaining({ field: 'nutrition.salt', retainedSource: 'label' }),
+      expect.objectContaining({ field: 'nutrition.salt', retainedSource: null }),
     );
     // What the label did not carry is filled rather than asked for again.
     expect(merged.ingredientsText).toBe('Woda gazowana');
   });
 
+  it('treats punctuation-only ingredient differences as corroboration, not a conflict', () => {
+    const lookup = scanResultFromLookupFacts([
+      fact('ingredients', 'Leche desnatada, fermentos lacticos.'),
+    ])!;
+    const photo = labelResult({
+      ingredientsText: 'Leche desnatada; fermentos lácticos',
+      evidence: [
+        {
+          assetId: '11111111-1111-4111-8111-111111111111',
+          field: 'ingredientsText',
+          source: 'label',
+          confidence: 'high',
+          region: 'ingredients',
+          directVisibility: true,
+        },
+      ],
+    });
+    const merged = mergeProductScanResults(lookup, photo, '5449000131805');
+    expect(merged.ingredientsText).toBe('Leche desnatada, fermentos lacticos.');
+    expect(merged.conflicts).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ field: 'ingredientsText' })]),
+    );
+  });
+
   it('refuses to pick a winner when neither side carries evidence', () => {
     const lookup = scanResultFromLookupFacts([
-      fact('nutritionBasis', 'per 100 ml'),
-      fact('salt', '0,05 g'),
+      fact('nutritionBasis', 'per 100 ml', 'OTHER_WEB'),
+      fact('salt', '0,05 g', 'OTHER_WEB'),
     ])!;
     const unevidenced = labelResult({ evidence: [] });
     const merged = mergeProductScanResults(lookup, unevidenced, '5449000131805');

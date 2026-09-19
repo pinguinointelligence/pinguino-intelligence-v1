@@ -1,0 +1,117 @@
+{
+  "schema": "gellatti.country-products.gelato-base.manifest/v1",
+  "registryId": "GELATO_BASE_V12",
+  "source": {
+    "basename": "GELLATTI_BAZA_GELATO_75_KRAJOW_v12_SYNC.xlsx",
+    "sha256": "09864e8602a6a7d3a89838091ce83dec7659bd2143517b5831d86f8d2f356172",
+    "sheetsUsed": ["00_DASHBOARD", "01_BAZA_PI", "02_KRAJE_75", "03_ROUTING_22", "04_POKRYCIE_PR", "05_PR_ING_ARTYKULY", "06_ZRODLA", "07_BLOKERY_QA", "08_ZASADY", "13_PRZELICZENIA", "11_MLEKO_75", "15_CREAM_PRZELICZENIA", "14_SMIETANKA_75", "17_PROSZEK_75", "18_SMP_PRZELICZENIA", "20_DEKSTROZA_75", "21_DEX_PRZELICZENIA", "23_TARA_75", "24_TARA_PRZELICZENIA", "27_CHECKLIST_AKTYWNA", "34_PRODUKTY_DE_AT", "36_DOWODY_V11", "37_ZMIANY_V11", "39_SYNC_V12", "40_POZOSTALE_V12"],
+    "sheetsInWorkbook": 41
+  },
+  "catalogSnapshot": {
+    "path": "docs/country-products/gelato-base-v12/catalog-dedupe-snapshot.json",
+    "sha256": "d23ac5df54e5f447a9325e2fcef0a491e28f521a60581f4144507f7a3b268d1b",
+    "capturedAt": "2026-09-11T08:39:03Z",
+    "projectRef": "tunabqqrwabacxjcxxkz",
+    "readOnly": true
+  },
+  "outputs": [
+    {
+      "path": "docs/country-products/gelato-base-v12/registry.json",
+      "sha256": "70d4d01c52a0d8829685bf98b067843f6f31b9fbc7a6a57f51be0524ac609b29",
+      "bytes": 2689999
+    },
+    {
+      "path": "reports/COUNTRY_PRODUCTS_V12_COVERAGE.md",
+      "sha256": "a8975809469402da2b3aef65415fb439e6b495677a2c4bd48ef027787b84b7b4",
+      "bytes": 89431
+    },
+    {
+      "path": "reports/COUNTRY_PRODUCTS_V12_OPEN_GAPS.md",
+      "sha256": "a66044154534adc63f7fc1535c3883ca80e06d9194ed89a2f5eff389f4bedc80",
+      "bytes": 54360
+    },
+    {
+      "path": "reports/COUNTRY_PRODUCTS_V12_DB_PACKAGE.md",
+      "sha256": "9f0b73aeef36fbfb3dd06afa168e8b09194fcfd994120cc46f7369bba956aa1d",
+      "bytes": 48160
+    }
+  ],
+  "counts": {
+    "countries": 75,
+    "baseSlots": 6,
+    "selections": 450,
+    "exactProductSelections": 375,
+    "globalPiSelections": 75,
+    "products": 253,
+    "productsBySlot": { "MILK": 67, "CREAM": 52, "SMP": 52, "DEXTROSE": 51, "STABILIZER": 31 },
+    "newPiCreated": 0,
+    "prIngNumbersAssigned": 0,
+    "proposalDecisions": { "DUPLICATE_WITHIN_V12": 122, "NEW_PR_REQUIRED": 252, "REUSE_EXISTING_PR": 1 },
+    "productCatalogDecisions": { "NEW_PR_REQUIRED": 252, "REUSE_EXISTING_PR": 1 },
+    "duplicatesPrevented": {
+      "total": 122,
+      "alreadyGroupedByWorkbookProposalKey": 119,
+      "additionalMergesBySameGtin": 0,
+      "additionalMergesBySameBrandArticlePack": 3
+    },
+    "possibleDuplicatesNotMerged": 2,
+    "identityBasis": { "BRAND_ARTICLE_CODE": 32, "GTIN": 181, "LISTING_CODE": 7, "NAME_HASH": 33 },
+    "selectionStates": {
+      "MILK": { "SELECTION_CLOSED": 75 },
+      "CREAM": { "RESEARCH_OPEN": 4, "SELECTION_CLOSED": 71 },
+      "SMP": { "RESEARCH_OPEN": 16, "SELECTION_CLOSED": 59 },
+      "DEXTROSE": { "RESEARCH_OPEN": 42, "SELECTION_CLOSED": 33 },
+      "STABILIZER": { "BLOCKED": 1, "RESEARCH_OPEN": 46, "SELECTION_CLOSED": 28 }
+    },
+    "openGaps": {
+      "total": 109,
+      "byWorkbookRole": { "CREAM": 4, "SMP": 16, "DEXTROSE": 42, "TARA": 47 },
+      "workbookHeader": { "total": 109, "CREAM": 4, "SMP": 16, "DEXTROSE": 42, "TARA": 47 },
+      "matchesWorkbookHeader": true,
+      "stabilizerResearchEntries": 47,
+      "stabilizerResearchIsNotMissingMandatoryTara": true
+    },
+    "routes": {
+      "byDecision": { "ROUTE_ALREADY_PRESENT": 1, "ROUTE_BLOCKED": 297, "ROUTE_CREATABLE_NOW": 77 },
+      "marketRowPresent": 90,
+      "blockedByMarketForeignKey": 285,
+      "blockedWithMarketRowPresent": 12,
+      "existingPrimaryConflicts": 2
+    },
+    "engineProfileExpectation": { "DECLARED_BUT_DISPUTED_OPEN_CASE": 4, "DECLARED_PROFILE_COMPLETE": 172, "ESTIMATED_OR_MISSING_LABEL_FIELDS": 77 },
+    "alternativesRecorded": 23,
+    "consistencyChecksFailed": 0,
+    "sources": 826,
+    "texts": 814
+  },
+  "dbPlan": {
+    "productsToCreate": 54,
+    "tableCounts": {
+      "product_add_requests": 54,
+      "products": 54,
+      "product_versions": 54,
+      "product_behavior_bindings": 54,
+      "product_variants": 54,
+      "product_variant_markets": 77,
+      "product_variant_markets_via_ingest": 54,
+      "product_variant_markets_via_add_market": 23,
+      "product_canonical_slot_reviews": 54,
+      "country_product_slot_assignments": 77,
+      "catalog_market_countries": 0,
+      "mapper_basement": 0,
+      "pi_ing_created": 0
+    },
+    "routeCounts": {
+      "creatableNow": 77,
+      "alreadyPresent": 1,
+      "blockedByMarketForeignKey": 285,
+      "blockedOtherwise": 12,
+      "existingPrimaryConflicts": 2
+    },
+    "approvalToken": "GELLATTI-V12-PR-ING",
+    "executed": false
+  },
+  "generator": "scripts/countryProducts/importGelatoBaseV12.mjs",
+  "regenerate": "node scripts/countryProducts/importGelatoBaseV12.mjs <path>/GELLATTI_BAZA_GELATO_75_KRAJOW_v12_SYNC.xlsx",
+  "verify": "node scripts/countryProducts/importGelatoBaseV12.mjs <path>/GELLATTI_BAZA_GELATO_75_KRAJOW_v12_SYNC.xlsx --check"
+}

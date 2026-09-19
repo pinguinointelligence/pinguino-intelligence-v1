@@ -66,7 +66,6 @@ export function OwnerDiagnosticPanel({
   const blocked = useConstraintStudioStore((s) => s.blocked);
   const preview = useConstraintStudioStore((s) => s.preview);
   const previewIssue = useConstraintStudioStore((s) => s.previewIssue);
-  const excludedIds = useRecipeStore((s) => s.excludedIngredientIds);
   const draftRevision = useRecipeStore((s) => s.draftRevision);
   const visibleItems = useRecipeStore((s) => s.items);
 
@@ -261,7 +260,6 @@ export function OwnerDiagnosticPanel({
               : d.none
           }
         />
-        <Row label={d.excluded} value={excludedIds.length > 0 ? excludedIds.join(', ') : d.none} />
         <Row
           label={d.rejectionCode}
           value={previewIssue ? previewIssue.code : blocked ? blocked.code : d.none}

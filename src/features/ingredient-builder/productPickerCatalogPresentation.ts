@@ -110,19 +110,49 @@ export function buildProductPickerSegments<T extends SegmentableCatalogProduct>(
     unique.push(product);
   }
 
-  // A non-empty query is already relevance-ordered by the canonical search
-  // authority. Favorite/recent state is decoration only here; segmenting either
-  // group above the first match would silently replace that deterministic order.
+  // A non-empty query has already passed query, user-filter and context eligibility
+  // gates. Only matching recent rows may lead that result set; unrelated history
+  // never enters this function. The remaining rows keep canonical server order.
   if (activeQuery) {
-    return unique.length === 0
-      ? []
-      : [
-          {
-            id: 'ingredients',
-            label: PRODUCT_PICKER_SEGMENT_LABELS.ingredients,
-            items: unique,
-          },
-        ];
+    if (unique.length === 0) return [];
+    const recent = unique
+      .filter((product) => product.recent)
+      .sort((left, right) => {
+        const timestampOrder = recentTimestamp(right) - recentTimestamp(left);
+        return (
+          timestampOrder ||
+          left.canonicalId.localeCompare(right.canonicalId, 'en', {
+            numeric: true,
+          })
+        );
+      });
+    if (recent.length === 0) {
+      return [
+        {
+          id: 'ingredients',
+          label: PRODUCT_PICKER_SEGMENT_LABELS.ingredients,
+          items: unique,
+        },
+      ];
+    }
+    const recentIds = new Set(recent.map((product) => product.canonicalId));
+    const remaining = unique.filter((product) => !recentIds.has(product.canonicalId));
+    return [
+      {
+        id: 'recent',
+        label: PRODUCT_PICKER_SEGMENT_LABELS.recent,
+        items: recent,
+      },
+      ...(remaining.length > 0
+        ? [
+            {
+              id: 'remaining' as ProductPickerSegmentId,
+              label: PRODUCT_PICKER_SEGMENT_LABELS.remaining,
+              items: remaining,
+            },
+          ]
+        : []),
+    ];
   }
 
   // With an empty box there is no relevance to sort by, so the useful default is

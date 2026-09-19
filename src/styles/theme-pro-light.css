@@ -37,8 +37,303 @@
 
 .theme-pro-light [data-testid='ingredient-rows-scroll'],
 .theme-pro-light [data-testid='pro-monitor-panel'] {
-  overscroll-behavior: contain;
   scrollbar-width: thin;
+}
+
+/* PRO MOBILE UX v2 · A1 — ONE scroll owner per layout.
+   From 68.5rem the workbench is locked to the viewport and these two panes are
+   its inner scroll surfaces, so reaching the end of one must not drag the page.
+   Below 68.5rem the DOCUMENT scrolls and the ingredient pane simply grows with its
+   rows. Left there as an `overflow-y: auto` box with `overscroll-behavior:
+   contain`, it still stopped every one-finger swipe that started on a row from
+   reaching the page: containment belongs to the scroll CONTAINER, whether or
+   not it has anything to scroll, and on a phone that pane holds everything
+   between the header and the bottom bar. */
+@media (min-width: 68.5rem) {
+  .theme-pro-light [data-testid='ingredient-rows-scroll'],
+  .theme-pro-light [data-testid='pro-monitor-panel'] {
+    overscroll-behavior: contain;
+  }
+}
+
+@media not all and (min-width: 68.5rem) {
+  .theme-pro-light [data-testid='ingredient-rows-scroll'] {
+    overflow-y: visible;
+  }
+}
+
+/* PRO MOBILE UX v2 · A9 — a long press on something the customer PRESSES must
+   not start text selection or the iOS callout: holding − / + to repeat, resting
+   a thumb on a recipe line, the module bar, a Direction position. Opt-in per
+   control and never global, so labels, readouts and notes stay selectable. */
+.gellatti-touch-control {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* PRO MOBILE UX v2 · A8 — on a TOUCH device the whole product row opens its
+   panel, in every layout. Below 960px the collapsed line already is one tap
+   target. From 960px — a touch tablet — the desktop row keeps its inline
+   controls and its ••• affordance and gains a tap surface UNDER them: a tap on
+   the name, the icon or empty space falls through to it, while steppers,
+   inputs, the crown, the lock and ••• keep their own taps. A mouse or trackpad
+   (fine pointer) never sees the surface, so the desktop row is unchanged, and
+   the keyboard path stays the ••• button.
+
+   No z-index anywhere: the surface and the row grid are both positioned with
+   z-index auto, so the grid — later in the document — paints above the surface
+   without creating a stacking context that could trap a row's own tooltip. */
+.gellatti-row-touch-target {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .pro-ingredient-row-desktop,
+  .gellatti-row-touch-surface {
+    position: relative;
+  }
+
+  .gellatti-row-touch-target {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .gellatti-row-touch-content {
+    position: relative;
+    pointer-events: none;
+  }
+
+  .gellatti-row-touch-content
+    :is(
+      button,
+      a[href],
+      input,
+      select,
+      textarea,
+      label,
+      [role='button'],
+      [role='spinbutton'],
+      [draggable='true'],
+      [tabindex]:not([tabindex='-1'])
+    ) {
+    pointer-events: auto;
+  }
+}
+
+/* PRO MOBILE UX v2 · B2/B9 — the spatial model of the phone workbench.
+   The View Transitions API moves the EXISTING cockpit sheet; `html[data-pro-spatial]`
+   names the move for the lifetime of one transition (spatialTransition.ts). Only
+   the named surfaces move — the page itself never cross-fades — and nothing is
+   named from the workbench breakpoint up, where the dashboard is a column. */
+@media not all and (min-width: 68.5rem) {
+  #mobile-cockpit-dialog {
+    view-transition-name: pro-cockpit-sheet;
+  }
+
+  [data-testid='workbench-editor-pane'] {
+    view-transition-name: pro-recipe-workspace;
+  }
+
+  [data-testid='pro-recipe-context-bar'] {
+    view-transition-name: pro-recipe-bar;
+  }
+
+  /* DESIGN V3.0 §3 — the new-recipe setup is named so it can leave as the
+     recipe drops in from above (the Point 4 reveal). */
+  [data-testid='pro-setup-flow'] {
+    view-transition-name: pro-setup-flow;
+  }
+}
+
+html[data-pro-spatial='reveal']::view-transition-old(pro-setup-flow) {
+  animation: pro-fade-out 200ms ease both;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+::view-transition-group(pro-cockpit-sheet),
+::view-transition-old(pro-cockpit-sheet),
+::view-transition-new(pro-cockpit-sheet),
+::view-transition-old(pro-recipe-workspace),
+::view-transition-new(pro-recipe-workspace) {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* The Receptura dashboard drops from the recipe bar … */
+html[data-pro-spatial='drop']::view-transition-new(pro-cockpit-sheet) {
+  animation-name: pro-sheet-from-above;
+}
+
+html[data-pro-spatial='drop']::view-transition-old(pro-cockpit-sheet) {
+  animation-name: pro-fade-out;
+}
+
+/* … and lifts back into it; a module it gives way to rises beneath it. */
+html[data-pro-spatial='lift']::view-transition-old(pro-cockpit-sheet),
+html[data-pro-spatial='reveal']::view-transition-old(pro-cockpit-sheet) {
+  animation-name: pro-sheet-to-above;
+}
+
+html[data-pro-spatial='lift']::view-transition-new(pro-cockpit-sheet) {
+  animation-name: pro-sheet-from-below-soft;
+}
+
+/* After the first-run settings the ingredient workspace enters from above. */
+html[data-pro-spatial='reveal']::view-transition-new(pro-recipe-workspace) {
+  animation-name: pro-workspace-from-above;
+}
+
+/* The process modules sit side by side, in the bottom bar's order. */
+html[data-pro-spatial='forward']::view-transition-old(pro-cockpit-sheet) {
+  animation-name: pro-panel-to-left;
+}
+
+html[data-pro-spatial='forward']::view-transition-new(pro-cockpit-sheet) {
+  animation-name: pro-panel-from-right;
+}
+
+html[data-pro-spatial='back']::view-transition-old(pro-cockpit-sheet) {
+  animation-name: pro-panel-to-right;
+}
+
+html[data-pro-spatial='back']::view-transition-new(pro-cockpit-sheet) {
+  animation-name: pro-panel-from-left;
+}
+
+/* A module chosen in the bottom bar rises out of it and sinks back into it. */
+html[data-pro-spatial='rise']::view-transition-new(pro-cockpit-sheet) {
+  animation-name: pro-sheet-from-below;
+}
+
+html[data-pro-spatial='close']::view-transition-old(pro-cockpit-sheet) {
+  animation-name: pro-sheet-to-below;
+}
+
+@keyframes pro-sheet-from-above {
+  from {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes pro-sheet-to-above {
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes pro-sheet-from-below {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes pro-sheet-to-below {
+  to {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes pro-sheet-from-below-soft {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@keyframes pro-workspace-from-above {
+  from {
+    opacity: 0.4;
+    transform: translateY(-32px);
+  }
+}
+
+@keyframes pro-panel-from-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pro-panel-to-left {
+  to {
+    opacity: 0;
+    transform: translateX(-28%);
+  }
+}
+
+@keyframes pro-panel-from-left {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes pro-panel-to-right {
+  to {
+    opacity: 0;
+    transform: translateX(28%);
+  }
+}
+
+@keyframes pro-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* DESIGN V3.0 §3 and correction I — the setup's radio cards (16 px), the
+   serving segments (13 px housing, 10 px segments) and the defaults notice
+   (12 px) keep the design's own corners. The blanket corner normaliser squares
+   every `rounded-*` to the 9 px control radius with !important, so these name
+   their elements and win on specificity. (The B4 settings pager they replace
+   is gone.) */
+.pro-setup-card {
+  border-radius: 16px;
+}
+
+.pro-setup-notice {
+  border-radius: 12px;
+}
+
+.pro-studio-radius-system .pro-segmented {
+  border-radius: 13px !important;
+}
+
+.pro-studio-radius-system .pro-segmented > button {
+  border-radius: 10px !important;
+}
+
+/* PRO MOBILE UX v2 · B2 — the Receptura dashboard is a TOP sheet: it hangs from
+   the header and ends in a rounded edge, while the modules keep the bottom-sheet
+   form. The blanket corner normaliser uses !important, so this has to as well. */
+.pro-studio-radius-system #mobile-cockpit-dialog[data-sheet-anchor='top'] {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-bottom-left-radius: var(--radius-pro-studio) !important;
+  border-bottom-right-radius: var(--radius-pro-studio) !important;
+}
+
+/* PRO MOBILE UX v2 · B10 — „Moja cena" is secondary in the product sheet (the
+   collapsed line's panel, below `lg`): one row until asked for. The desktop
+   ••• dialog keeps its editor open. */
+@media not all and (min-width: 64rem) {
+  .gellatti-price-secondary[data-price-open='false'] .gellatti-price-secondary__body {
+    display: none;
+  }
 }
 
 .theme-pro-light [data-testid='workbench-editor-pane'] {
@@ -121,12 +416,12 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
    a loud warning. An inset rail cannot shift the row by a pixel, so a changed
    line keeps perfect numeric alignment with the untouched ones. */
 .ingredient-line-changed {
-  box-shadow: inset 2px 0 0 0 var(--color-attention);
-  background-color: color-mix(in srgb, var(--color-attention) 4%, transparent);
+  box-shadow: inset 2px 0 0 0 var(--g-attention-line);
+  background-color: color-mix(in srgb, var(--g-attention-line) 4%, transparent);
 }
 
 .ingredient-line-changed:hover {
-  background-color: color-mix(in srgb, var(--color-attention) 7%, transparent);
+  background-color: color-mix(in srgb, var(--g-attention-line) 7%, transparent);
 }
 
 /* The changed line's own numerals adopt the same quiet accent on mobile, where
@@ -158,10 +453,10 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
      marker rides over whatever ground a row happens to have; this box only
      ever sits on the white display column, and an opaque mix resolves to the
      exact colour the legend has to paint behind itself to cut the border. */
-  border-color: var(--color-attention);
-  box-shadow: inset 0 0 0 1px var(--color-attention);
-  background-color: color-mix(in srgb, var(--color-attention) 4%, #fff);
-  --pro-legend-ground: color-mix(in srgb, var(--color-attention) 4%, #fff);
+  border-color: var(--g-attention-line);
+  box-shadow: inset 0 0 0 1px var(--g-attention-line);
+  background-color: color-mix(in srgb, var(--g-attention-line) 4%, #fff);
+  --pro-legend-ground: color-mix(in srgb, var(--g-attention-line) 4%, #fff);
 }
 
 .pro-legend-box.settings-preflight-blocked > [data-band-legend] {
@@ -169,14 +464,14 @@ body:has(details[open] [data-testid^='row-menu-']) [data-testid='design-review-o
 }
 
 /* The SAME attention language as the Settings box, worn by a button instead of a module.
-   Orange, never red: red is how this app says something is WRONG, and nothing here is
+   Gold, never red: red is how this app says something is WRONG, and nothing here is
    wrong — the customer simply has one thing left to press. The inner ring is drawn inset
    so it cannot shift the control's geometry, and the halo outside it is the same hue at
    low opacity, so the mark reads at a glance without competing with the label. */
 .pro-action-attention {
   box-shadow:
-    inset 0 0 0 1px var(--color-attention),
-    0 0 0 3px color-mix(in srgb, var(--color-attention) 22%, transparent);
+    inset 0 0 0 1px var(--g-attention-line),
+    0 0 0 3px color-mix(in srgb, var(--g-attention-line) 22%, transparent);
 }
 
 .pro-module {

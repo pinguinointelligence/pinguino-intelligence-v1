@@ -5,6 +5,8 @@ import {
   evaluateMapperSemanticCompatibility,
   parseProductDosage,
   validateProductSemanticModelOutput,
+  type MapperSemanticCandidate,
+  type ProductSemanticClassification,
   type ProductSemanticEvidence,
 } from './productRecognition';
 import {
@@ -71,7 +73,67 @@ const mapperRow = (
   freezing_factor: null,
 });
 
+const semanticDairyCandidate: MapperSemanticCandidate = {
+  ingredientId: 'PI-TEST-SEMANTIC-DAIRY',
+  name: 'Whole milk 3.5%',
+  category: 'dairy',
+  subcategory: 'fresh_milk',
+  brand: 'Test',
+};
+
+const semanticDairyTarget = (): ProductSemanticClassification =>
+  classifyProductSemantics(
+    evidence({
+      name: semanticDairyCandidate.name,
+      category: semanticDairyCandidate.category,
+      subcategory: semanticDairyCandidate.subcategory,
+      brand: semanticDairyCandidate.brand,
+    }),
+  );
+
 describe('Product Recognition V2 — deterministic semantic authority', () => {
+  it('REC-PI-000119 keeps canonical dry couverture in the chocolate family and dry form', () => {
+    const result = classifyProductSemantics(
+      evidence({
+        name: 'MILK CHOCOLATE 33.6% · Callebaut Couverture · Dry',
+        brand: 'Callebaut',
+        manufacturer: 'Callebaut',
+        manufacturerCode: 'PI-ING-000119',
+        productType: 'mapper_reference',
+        category: 'chocolate',
+        subcategory: 'milk_chocolate_couverture',
+      }),
+    );
+
+    expect(result).toMatchObject({
+      classificationSource: 'DETERMINISTIC',
+      productArchetype: 'CHOCOLATE',
+      ingredientFamily: 'chocolate',
+      physicalForm: 'DRY',
+      intendedUsageRole: 'BASE_ONLY',
+      modelRequired: false,
+    });
+  });
+
+  it('REC-DAIRY-LIQUID-01 keeps ordinary liquid dairy in dairy_liquid', () => {
+    const result = classifyProductSemantics(
+      evidence({
+        name: 'Whole milk 3.5%',
+        category: 'dairy',
+        subcategory: 'fresh_milk',
+      }),
+    );
+
+    expect(result).toMatchObject({
+      classificationSource: 'DETERMINISTIC',
+      productArchetype: 'NORMAL_INGREDIENT',
+      ingredientFamily: 'dairy_liquid',
+      physicalForm: 'LIQUID',
+      intendedUsageRole: 'BASE_ONLY',
+      modelRequired: false,
+    });
+  });
+
   it.each(['Cacao puro desgrasado en polvo', 'Cacau magro em pó', 'Cacao poudre'])(
     'recognizes multilingual explicit powder form without a model: %s',
     (name) => {
@@ -465,6 +527,92 @@ describe('Product Recognition V2 — deterministic semantic authority', () => {
 });
 
 describe('Product Recognition V2 — Mapper semantic hard contradictions', () => {
+  it('SCN-4.5-FIX-01 rejects a known product-archetype mismatch', () => {
+    const product = {
+      ...semanticDairyTarget(),
+      productArchetype: 'BASE_MIX' as const,
+    };
+
+    expect(evaluateMapperSemanticCompatibility(product, semanticDairyCandidate)).toMatchObject({
+      compatible: false,
+      reasonCodes: ['SEMANTIC_PRODUCT_ARCHETYPE_CONTRADICTION'],
+    });
+  });
+
+  it('SCN-4.5-FIX-02 rejects a known technical-status mismatch', () => {
+    const product = {
+      ...semanticDairyTarget(),
+      isTechnicalProduct: true,
+    };
+
+    expect(evaluateMapperSemanticCompatibility(product, semanticDairyCandidate)).toMatchObject({
+      compatible: false,
+      reasonCodes: ['SEMANTIC_TECHNICAL_STATUS_CONTRADICTION'],
+    });
+  });
+
+  it('SCN-4.5-FIX-03 rejects a known dosage-dependence mismatch', () => {
+    const product = {
+      ...semanticDairyTarget(),
+      isDosageDependent: true,
+    };
+
+    expect(evaluateMapperSemanticCompatibility(product, semanticDairyCandidate)).toMatchObject({
+      compatible: false,
+      reasonCodes: ['SEMANTIC_DOSAGE_DEPENDENCE_CONTRADICTION'],
+    });
+  });
+
+  it('SCN-4.5-FIX-04 rejects a known normalized subfamily mismatch', () => {
+    const product = {
+      ...semanticDairyTarget(),
+      manufacturerSubcategory: 'cultured_dairy',
+    };
+
+    expect(evaluateMapperSemanticCompatibility(product, semanticDairyCandidate)).toMatchObject({
+      compatible: false,
+      reasonCodes: ['SEMANTIC_SUBFAMILY_CONTRADICTION'],
+    });
+  });
+
+  it('SCN-4.5-FIX-05 preserves deterministic multi-reason output', () => {
+    const product = {
+      ...semanticDairyTarget(),
+      productArchetype: 'BASE_MIX' as const,
+      isTechnicalProduct: true,
+      isDosageDependent: true,
+      manufacturerSubcategory: 'cultured_dairy',
+    };
+
+    expect(
+      evaluateMapperSemanticCompatibility(product, semanticDairyCandidate).reasonCodes,
+    ).toEqual([
+      'SEMANTIC_PRODUCT_ARCHETYPE_CONTRADICTION',
+      'SEMANTIC_TECHNICAL_STATUS_CONTRADICTION',
+      'SEMANTIC_DOSAGE_DEPENDENCE_CONTRADICTION',
+      'SEMANTIC_SUBFAMILY_CONTRADICTION',
+    ]);
+  });
+
+  it('SCN-4.5-FIX-06 does not convert unknown archetype or subfamily into a mismatch', () => {
+    const product = {
+      ...semanticDairyTarget(),
+      productArchetype: 'UNKNOWN' as const,
+      manufacturerSubcategory: null,
+    };
+
+    expect(evaluateMapperSemanticCompatibility(product, semanticDairyCandidate)).toMatchObject({
+      compatible: true,
+      reasonCodes: [],
+    });
+
+    const candidateWithoutSubfamily = { ...semanticDairyCandidate, subcategory: null };
+    expect(
+      evaluateMapperSemanticCompatibility(semanticDairyTarget(), candidateWithoutSubfamily)
+        .reasonCodes,
+    ).not.toContain('SEMANTIC_SUBFAMILY_CONTRADICTION');
+  });
+
   it('enforces server-validated forbidden Mapper categories', () => {
     const product = {
       ...classifyProductSemantics(evidence({ name: 'Niejasny produkt' })),

@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useParams } from 'react-router';
 import { copy } from '@/copy/en';
@@ -22,19 +31,9 @@ import {
   applicationViewportSize,
   currentApplicationScale,
 } from '@/features/shell/applicationScaleAuthority';
+import { recipeProfileContextLabel } from './recipeProfileContext';
 
 const w = copy.proWorkbar;
-const pm = copy.proMachine;
-
-const TIER = { optimal: 'OPTIMAL', eco: 'ECO' } as const;
-const SERVING_LABEL: Record<string, string> = {
-  fresh: pm.serving.fresh,
-  temp_minus_11: pm.serving.minus11,
-  temp_minus_12: pm.serving.minus12,
-  temp_minus_13: pm.serving.minus13,
-  ninja_gelato: 'Ninja Gelato',
-  ninja_swirl: 'Ninja Swirl',
-};
 
 export const WORKBAR_POPOVER_IDLE_MS = 4_500;
 export const WORKBAR_POPOVER_FADE_MS = 180;
@@ -309,14 +308,16 @@ export function ProWorkbar({
   const saveTransitionSequence = useRef(0);
   const name = nameDraft ?? savedRecipeName ?? '';
 
-  const product = copy.studio.goal.productTypes[visibleProductType];
-  const serving = servingModeId
-    ? (SERVING_LABEL[servingModeId] ?? `${temperatureC}°C`)
-    : `${temperatureC}°C`;
-  const context =
-    machineKind === 'home' && machineLabel
-      ? `${machineLabel} · ${batchGrams} g`
-      : `${product} · ${TIER[mode] ?? mode} · ${serving} · ${batchGrams} g`;
+  // One profile sentence, shared with the phone's recipe bar (PRO MOBILE UX v2).
+  const context = recipeProfileContextLabel({
+    visibleProductType,
+    formulation_strategy: mode,
+    target_temperature_c: temperatureC,
+    target_batch_grams: batchGrams,
+    machineKind,
+    servingModeId,
+    machineLabel,
+  });
 
   const statusKey: keyof typeof w.status = save.error
     ? 'error'
@@ -419,6 +420,31 @@ export function ProWorkbar({
    *  tones inside it have to follow that ground rather than the page's. */
   const onGraphite = identityState !== 'unnamed';
 
+  /* PRO MOBILE UX v2 · A6 — below the workbench breakpoint the recipe name
+     WRAPS: a long name grows the card to two, three or more lines, and what sits
+     below it (Nowa receptura, •••, ZAPISZ) moves down with the card, instead of
+     the name being cut to one line to make the layout fit. The switch is CSS,
+     never a viewport read; desktop keeps its approved single-line input. */
+  const nameAreaRef = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const area = nameAreaRef.current;
+    if (!area) return;
+    let active = true;
+    const fit = () => {
+      if (!active) return;
+      area.style.height = '0px';
+      area.style.height = `${area.scrollHeight}px`;
+    };
+    fit();
+    // A web font arriving after the first fit re-breaks the lines.
+    void document.fonts?.ready.then(fit);
+    window.addEventListener('resize', fit);
+    return () => {
+      active = false;
+      window.removeEventListener('resize', fit);
+    };
+  }, [name, identityState]);
+
   /* Publish the typed preflight refusal so Settings can show the matching
      warning. It deliberately does not control disclosure state. Only the panel
      variant publishes: compact variants render where no Settings module exists
@@ -446,11 +472,11 @@ export function ProWorkbar({
       className={cn(
         'min-w-0 truncate text-xs',
         variant === 'panel'
-          ? 'mt-2.5 flex items-center gap-2 text-[13.5px] leading-[18px] font-semibold'
+          ? 'mt-2.5 flex items-center gap-2 text-[13.5px] leading-[18px] font-semibold min-[68.5rem]:mt-1.5'
           : 'ml-auto min-w-[7rem] flex-1 text-right xl:max-w-48',
         variant === 'panel'
           ? /* Two grounds, two palettes. On the GRAPHITE card (#191a1d) the
-               saved/dirty tones measure 8.2:1 and 10.2:1, where the light-ground
+               saved/dirty tones measure 8.2:1 and 10.5:1, where the light-ground
                tokens would be ~2.4:1 and unreadable. The unnamed state is a
                WHITE surface, so it keeps the light-ground tokens. Picking one
                palette for both would make one of the two states fail. */
@@ -461,12 +487,12 @@ export function ProWorkbar({
             : statusKey === 'error'
               ? 'text-[#ff9a8a]'
               : statusKey === 'dirty' || statusKey === 'newUnsaved'
-                ? 'text-[#ffb45c]'
+                ? 'text-attention-soft'
                 : 'text-[#5cc47a]'
           : statusKey === 'error'
             ? 'text-status-error'
             : statusKey === 'dirty' || statusKey === 'newUnsaved'
-              ? 'text-status-risky'
+              ? 'text-[var(--g-attention-ink)]'
               : 'text-stone-500',
       )}
       data-testid="pro-workbar-status"
@@ -535,17 +561,21 @@ export function ProWorkbar({
             at the bottom (z-0), the tongue slides out over them (z-[1]) so the
             rule passes behind it, and the card occludes the tongue's top
             (z-[2]) so it still reads as sliding out from behind the card. */}
-        <div className="relative pb-[34px]">
+        <div className="relative pb-[34px] min-[68.5rem]:pb-8">
           {/* ONE surface in every state, so it always occludes the tongue's
               top. The first attempt left the status line outside the painted
               area and the tongue showed through a transparent 24 px band —
               caught by measurement, not by reading the code. */}
           <div
             className={cn(
-              'relative z-[2] min-w-0 rounded-2xl px-7 py-6',
+              /* OWNER 2026-09-12 — desktop density: 16 / 24 px instead of 24 / 28.
+                 The name, the status and the reason keep their sizes, weights and
+                 order; only the empty band around them goes. Touch widths keep the
+                 current spacing (`min-[68.5rem]` only). */
+              'relative z-[2] min-w-0 rounded-2xl px-7 py-6 min-[68.5rem]:px-6 min-[68.5rem]:py-4',
               identityState === 'unnamed'
-                ? 'border-[1.5px] border-[#f58a07]/55 bg-white'
-                : 'border-l-[6px] border-[#f58a07] bg-[var(--g-graphite)]',
+                ? 'border-[1.5px] border-[var(--g-orange-line)] bg-white'
+                : 'border-l-[6px] border-[var(--g-orange)] bg-[var(--g-graphite)]',
             )}
             data-testid="pro-recipe-identity-card"
           >
@@ -554,6 +584,12 @@ export function ProWorkbar({
               {/* The title IS the name input in both states: renaming a saved
                   recipe stays exactly where it was, and there is never a second
                   field competing for the same value. */}
+              {/* A6 — two PRESENTATIONS of the one name field, switched by CSS
+                  at the workbench breakpoint: the approved single-line input on
+                  desktop, a wrapping field on a phone or tablet. Both write the
+                  same draft through the same handler and only one is ever
+                  displayed, so there is still never a second field competing
+                  for the value. */}
               <input
                 value={name}
                 placeholder={w.namePlaceholder}
@@ -567,6 +603,32 @@ export function ProWorkbar({
                   identityState === 'unnamed'
                     ? 'text-[22px] text-[var(--g-ink)] placeholder:font-semibold placeholder:text-[var(--g-text-muted)]'
                     : 'text-[28px] text-white placeholder:text-white/40',
+                  'max-[68.5rem]:hidden',
+                )}
+              />
+              <textarea
+                ref={nameAreaRef}
+                rows={1}
+                value={name}
+                placeholder={w.namePlaceholder}
+                aria-label={w.nameLabel}
+                enterKeyHint="done"
+                onChange={(event) => {
+                  setNameDraft(event.currentTarget.value.replace(/\s*[\r\n]+\s*/g, ' '));
+                  if (nameError) setNameError(null);
+                }}
+                onKeyDown={(event) => {
+                  // A recipe name is one line: Enter finishes it, never breaks it.
+                  if (event.key !== 'Enter') return;
+                  event.preventDefault();
+                  event.currentTarget.blur();
+                }}
+                data-testid="pro-workbar-name-wrap"
+                className={cn(
+                  'block w-full min-w-0 resize-none overflow-hidden border-0 bg-transparent p-0 leading-[1.05] font-extrabold tracking-[-0.04em] break-words focus:outline-none min-[68.5rem]:hidden',
+                  identityState === 'unnamed'
+                    ? 'text-[22px] text-[var(--g-ink)] placeholder:font-semibold placeholder:text-[var(--g-text-muted)]'
+                    : 'text-[28px] text-white placeholder:text-white/40',
                 )}
               />
             </label>
@@ -576,7 +638,7 @@ export function ProWorkbar({
                 the save control, which put the reason for the refusal further
                 from the name it refuses to save than from the next section.
 
-                The tones branch on the card's own ground: #8a5a2a and
+                The tones branch on the card's own ground: the attention ink and
                 status-error are legible on the white unnamed card and would be
                 near-invisible on graphite, where the light warm tones read at
                 11:1 and above. */}
@@ -584,7 +646,7 @@ export function ProWorkbar({
               <p
                 role="alert"
                 className={cn(
-                  'mt-1.5 text-xs',
+                  'mt-1.5 text-xs min-[68.5rem]:mt-1',
                   onGraphite ? 'text-[#ffb3a7]' : 'text-status-error',
                 )}
                 data-testid="pro-workbar-name-error"
@@ -596,7 +658,7 @@ export function ProWorkbar({
               <p
                 role="alert"
                 className={cn(
-                  'mt-1.5 text-xs',
+                  'mt-1.5 text-xs min-[68.5rem]:mt-1',
                   onGraphite ? 'text-[#ffb3a7]' : 'text-status-error',
                 )}
                 data-testid="pro-workbar-error"
@@ -605,13 +667,21 @@ export function ProWorkbar({
               </p>
             ) : blocker ? (
               <p
-                className={cn('mt-1.5 text-xs', onGraphite ? 'text-[#f8c98a]' : 'text-attention')}
+                className={cn(
+                  'mt-1.5 text-xs min-[68.5rem]:mt-1',
+                  onGraphite ? 'text-[var(--g-attention-surface)]' : 'text-attention',
+                )}
                 data-testid="pro-workbar-practical-block"
               >
                 {blocker.message}
               </p>
             ) : blockedMsg ? (
-              <p className={cn('mt-1.5 text-xs', onGraphite ? 'text-white/70' : 'text-stone-600')}>
+              <p
+                className={cn(
+                  'mt-1.5 text-xs min-[68.5rem]:mt-1',
+                  onGraphite ? 'text-white/70' : 'text-stone-600',
+                )}
+              >
                 {blockedMsg}
               </p>
             ) : null}
@@ -621,14 +691,18 @@ export function ProWorkbar({
               and the tongue paints over it, so a short segment stays visible to
               the right of ZAPISZ — the band reads as one line, not as a control
               parked beside a gap. */}
-          <div className="absolute inset-x-0 bottom-0 z-0 flex h-[34px] items-center gap-2.5">
+          {/* OWNER 2026-09-12 — one axis on the desktop: the band is 32 px, and
+              „+ Nowa receptura" is 28 px tall like the ••• circle beside it
+              (`iconButtonClasses('xs')` = size-7), so both sit centred on the rule
+              and on ZAPISZ's label instead of two heights side by side. */}
+          <div className="absolute inset-x-0 bottom-0 z-0 flex h-[34px] items-center gap-2.5 min-[68.5rem]:h-8 min-[68.5rem]:gap-2">
             <button
               type="button"
               onClick={requestNewDraft}
               data-testid="pro-workbar-new-recipe"
               data-workbar-action-size="primary"
               data-workbar-action-width="content"
-              className="pro-focus-ring shrink-0 rounded-full border border-[var(--g-line)] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)] transition-colors hover:border-ink/35 hover:text-ink"
+              className="pro-focus-ring shrink-0 rounded-full border border-[var(--g-line)] bg-white px-3 py-1 text-[11px] font-semibold whitespace-nowrap text-[var(--g-text-secondary)] transition-colors hover:border-ink/35 hover:text-ink min-[68.5rem]:inline-flex min-[68.5rem]:h-7 min-[68.5rem]:items-center min-[68.5rem]:py-0"
             >
               + Nowa receptura
             </button>
@@ -658,9 +732,17 @@ export function ProWorkbar({
             data-workbar-save-shape="tongue"
             className={cn(
               'pro-focus-ring absolute right-[26px] bottom-0 z-[1] inline-flex h-[58px] max-w-[calc(100%-52px)] items-end gap-2 rounded-b-[15px] px-[22px] pb-[9px] text-[15px] leading-4 font-bold tracking-[-0.02em] whitespace-nowrap',
+              /* OWNER 2026-09-12 — desktop proportions, taken from the owner-approved
+                 phone header of this same card (ZAPISZ tab: 13.5 px, 0.06 em, at
+                 least 104 px): 13 px bold, 0.06 em tracking, 18 px sides. It shows
+                 32 px under the card — the band's own height — and hides 14, with
+                 its label on the band's centre line (8 + 16 / 2 = 16 = 32 / 2), so
+                 „+ Nowa receptura", ••• and ZAPISZ share one axis. Right edge on
+                 the card's 24 px content inset. */
+              'min-[68.5rem]:right-6 min-[68.5rem]:h-[46px] min-[68.5rem]:max-w-[calc(100%-48px)] min-[68.5rem]:min-w-[104px] min-[68.5rem]:justify-center min-[68.5rem]:px-[18px] min-[68.5rem]:pb-2 min-[68.5rem]:text-[13px] min-[68.5rem]:tracking-[0.06em]',
               /* Graphite ink on the accent is 7.5:1. White on the accent would
                  be 2.5:1 — the same mistake that was removed from Direction. */
-              'bg-[#f58a07] text-[var(--g-graphite)] transition-[background-color,opacity] hover:bg-[#e07f06]',
+              'bg-[var(--g-orange)] text-[var(--g-graphite)] transition-[background-color,opacity] hover:bg-[var(--g-orange-hover)]',
               'disabled:cursor-not-allowed disabled:bg-[var(--g-line-quiet)] disabled:text-[var(--g-lock)]',
               tongueVisible ? null : 'pointer-events-none opacity-0',
             )}

@@ -115,7 +115,7 @@ describe('a customer never reads the pipeline', () => {
     vi.restoreAllMocks();
   });
 
-  it('the refusal the owner photographed reaches no text node on the screen', async () => {
+  it('SCN-MVP-02: a non-editable missing value shows truthful verification copy and no input prompt', async () => {
     const d = discovery();
     d.notReadyReasons.set(UNKNOWN, OWNER_REASONS);
     /*
@@ -156,13 +156,18 @@ describe('a customer never reads the pipeline', () => {
 
     const screen = text();
     expect(screen.length).toBeGreaterThan(0);
+    expect(screen).toContain(
+      'Tym zajmie się człowiek z naszej ekipy. Damy znać, gdy produkt będzie gotowy.',
+    );
+    expect(screen).not.toContain('Jeśli ją znasz, podaj ją poniżej');
+    expect(host.querySelectorAll('input[inputmode="decimal"]')).toHaveLength(0);
     for (const token of FORBIDDEN) expect(screen, `leaked: ${token}`).not.toContain(token);
     // and no SCREAMING_SNAKE code of any kind, including ones nobody has written yet
     expect(screen).not.toMatch(/\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b/);
     // a bare uuid is never customer copy either
     expect(screen).not.toMatch(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i);
     // the customer is still told what to do — silence would be its own defect
-    expect(screen).toMatch(/etykiet/i);
+    expect(screen).toMatch(/człowiek z naszej ekipy/i);
   });
 
   it('the codes are still carried, for logs and the admin panels', async () => {

@@ -1,17 +1,15 @@
 /**
- * SCAN IMPORT 2.0 — Supabase adapters (staging development only; not wired to any UI).
+ * SCAN IMPORT 2.0 — Supabase adapters.
  *
  * ONE exact-by-code authority for guests AND authenticated users (owner decision D8):
- * `resolve_exact_products_by_gtin_v1(p_gtin, p_symbology)` (migration 20260905090000) — exact only,
+ * `resolve_exact_products_by_gtin_v1(p_gtin, p_symbology)` — exact only,
  * read-only, bounded, validated server-side, public facts for guests, `ownership` fact for authenticated
  * callers. It runs as the caller's own JWT from the browser and from any server path, so client and
  * server can only differ by account visibility, and that difference is explicit in `ownership`.
  * Direct table reads are NOT used (RLS on `products` exposes own rows only — verified on staging).
  *
- * `exactAuthority: 'search_rpc'` keeps the interim path (`search_products_v1` numeric exact match,
- * authenticated only) available until the migration is applied on staging; both map to the same
- * `ExactCandidate` shape. Authenticated enrichment facts (private price, product intelligence) are read
- * from the search row of the SAME product id — facts, never identity.
+ * `search_rpc` remains a compatibility-only authority for old harness fixtures. The active Scanner
+ * path uses `gtin_rpc`; product-scan-analyze uses the same RPC and the same shared query contract.
  */
 import type {
   BehaviourPort,
@@ -28,6 +26,16 @@ import type {
 } from '../contracts';
 import { NetworkError } from '../contracts';
 import { createMemoryStore, type KeyValueStore } from '../offline/persistentStore';
+import {
+  candidateFromGtinRow,
+  exactLookupQueries,
+  exactRowsWithRetry,
+  isRetryableExactResolverError,
+  type ExactSymbology,
+  type GtinExactRow,
+} from '@/features/product-scanner/gtinExactResolver';
+
+export { candidateFromGtinRow };
 
 export interface SupabaseLike {
   rpc(
@@ -69,6 +77,7 @@ function asRows(data: unknown): SearchRow[] {
 }
 
 export function candidateFromRow(row: SearchRow, keys: readonly string[]): ExactCandidate | null {
+  if (row.status === 'blocked') return null;
   const eans = Array.isArray(row.eans) ? row.eans : [];
   const ean = eans.find((e) => keys.includes(e));
   if (!ean) return null; // the RPC also matches names/aliases; only an exact EAN hit is an identity
@@ -114,63 +123,6 @@ export function candidateFromRow(row: SearchRow, keys: readonly string[]): Exact
 
 export type ExactAuthority = 'gtin_rpc' | 'search_rpc';
 
-interface GtinRow {
-  product_id: string;
-  product_code: string | null;
-  display_name: string;
-  brand: string | null;
-  matched_gtin: string;
-  matched_from: string;
-  product_kind: string;
-  entity_kind: string;
-  visibility: string;
-  ownership: 'own' | 'linked' | 'public';
-  current_version_id: string | null;
-  verification_status: string | null;
-  product_country: string | null;
-  markets: string[] | null;
-  mapper_ingredient_id: string | null;
-  engine_usable: boolean;
-  lifecycle_rejected: boolean;
-}
-
-/** Identity strength from the resolver's explicit facts (audit F4.1: never search ranking). */
-export function candidateFromGtinRow(row: GtinRow): ExactCandidate {
-  const strength: ExactCandidate['strength'] =
-    row.entity_kind === 'customer_provisional' || row.ownership === 'linked'
-      ? 'provisional_linked'
-      : row.ownership === 'own' && row.visibility !== 'shared'
-        ? 'private_own'
-        : 'canonical_shared';
-  const markets = Array.isArray(row.markets)
-    ? row.markets.filter((m) => typeof m === 'string')
-    : [];
-  return {
-    productId: row.product_id,
-    productCode: row.product_code,
-    displayName: row.display_name,
-    brand: row.brand,
-    ean: row.matched_gtin,
-    strength,
-    entityKind:
-      row.entity_kind === 'pi_base' || row.entity_kind === 'customer_provisional'
-        ? row.entity_kind
-        : 'commercial_product',
-    engineReady: row.engine_usable === true,
-    mapperSlotId: row.mapper_ingredient_id ?? null,
-    country: row.product_country ?? (markets.length === 1 ? markets[0]! : null),
-    currentVersionId: row.current_version_id,
-    evidence: {
-      matchedFrom: row.matched_from,
-      visibility: row.visibility,
-      ownership: row.ownership,
-      verificationStatus: row.verification_status,
-      lifecycleRejected: row.lifecycle_rejected === true,
-      markets,
-    },
-  };
-}
-
 /** One adapter session shares the memoised rows between the catalogue, behaviour and price ports. */
 export function createSupabaseV2Ports(
   client: SupabaseLike,
@@ -184,19 +136,17 @@ export function createSupabaseV2Ports(
   rowsById: ReadonlyMap<string, SearchRow>;
 } {
   const rowsById = new Map<string, SearchRow>();
-  const gtinRowsById = new Map<string, GtinRow>();
+  const gtinRowsById = new Map<string, GtinExactRow>();
   const authority: ExactAuthority = options.exactAuthority ?? 'gtin_rpc';
 
-  const resolveExact = async (gtin: string, symbology: string): Promise<GtinRow[]> => {
-    const { data, error } = await client.rpc('resolve_exact_products_by_gtin_v1', {
-      p_gtin: gtin,
-      p_symbology: symbology,
-    });
-    if (error) {
-      if (NETWORK.test(error.message)) throw new NetworkError(error.message);
-      throw new Error(`lookup_failed: ${error.message}`);
+  const resolveExact = async (gtin: string, symbology: ExactSymbology | null): Promise<GtinExactRow[]> => {
+    try {
+      return await exactRowsWithRetry(client, { gtin, symbology });
+    } catch (error) {
+      if (isRetryableExactResolverError(error))
+        throw new NetworkError(error instanceof Error ? error.message : String(error));
+      throw error instanceof Error ? error : new Error(`lookup_failed: ${String(error)}`);
     }
-    return Array.isArray(data) ? (data as GtinRow[]) : [];
   };
 
   const searchExact = async (key: string): Promise<SearchRow[]> => {
@@ -220,22 +170,51 @@ export function createSupabaseV2Ports(
   };
 
   const catalog: CatalogPort = {
+    async exactByIdentity(identity, ctx: RequestContext) {
+      if (authority === 'gtin_rpc') {
+        const queries = exactLookupQueries(identity);
+        const out = new Map<string, ExactCandidate>();
+        for (const query of queries) {
+          for (const row of await resolveExact(query.gtin, query.symbology)) {
+            gtinRowsById.set(row.product_id, row);
+            const candidate = candidateFromGtinRow(row);
+            if (candidate && !out.has(row.product_id))
+              out.set(row.product_id, candidate as ExactCandidate);
+          }
+          // The canonical identity is primary. Legacy aliases are consulted only when the
+          // canonical query produced no user-facing product, so alias ordering can never choose
+          // the product identity.
+          if (out.size > 0) break;
+        }
+        return [...out.values()];
+      }
+      // Interim search authority: canonical first, then explicit aliases derived by identifyCode.
+      if (ctx.accountId === null) return [];
+      const keys = [
+        identity.canonicalGtin13,
+        ...identity.lookupKeys.filter((key) => key !== identity.canonicalGtin13),
+      ];
+      const out = new Map<string, ExactCandidate>();
+      for (const key of keys) {
+        for (const row of await searchExact(key)) {
+          rowsById.set(row.id, row);
+          const c = candidateFromRow(row, keys);
+          if (c && !out.has(c.productId)) out.set(c.productId, c);
+        }
+      }
+      return [...out.values()];
+    },
     async exactByKeys(keys, ctx: RequestContext) {
       if (authority === 'gtin_rpc') {
-        // the resolver derives every leading-zero key itself from the canonical GTIN; one call per identity
-        const gtin = keys.reduce((a, b) => (b.length > a.length ? b : a), keys[0] ?? '');
-        const symbology =
-          gtin.length === 13
-            ? 'EAN-13'
-            : gtin.length === 12
-              ? 'UPC-A'
-              : gtin.length === 8
-                ? 'EAN-8'
-                : null;
+        // Compatibility-only path. Active V2 resolution supplies CodeIdentity through
+        // exactByIdentity, so this path never infers an identity from key length.
+        const gtin = keys[0] ?? '';
         const out = new Map<string, ExactCandidate>();
-        for (const row of await resolveExact(gtin, symbology ?? 'EAN-13')) {
+        for (const row of await resolveExact(gtin, null)) {
           gtinRowsById.set(row.product_id, row);
-          if (!out.has(row.product_id)) out.set(row.product_id, candidateFromGtinRow(row));
+          const candidate = candidateFromGtinRow(row);
+          if (candidate && !out.has(row.product_id))
+            out.set(row.product_id, candidate as ExactCandidate);
         }
         return [...out.values()];
       }
@@ -382,10 +361,10 @@ export function createSupabaseV2Ports(
  * Offline cache over a persistent store (memory / Web Storage / IndexedDB — see offline/persistentStore.ts).
  *
  * Entries are namespaced per account (guests under 'guest'), carry the schema version, the resolution
- * time and the product's current version pointer. An entry is trusted offline only while ALL hold:
- * same schema version, not older than the TTL, and — when the caller knows a newer version pointer — the
- * pointer matches. Online resolutions always overwrite the entry (the authority wins; the cache is a
- * convenience, never a second product authority).
+ * time and the product's current version pointer. The entry is never an offline authority: the
+ * pipeline exposes it only as a local hint because offline code cannot observe a concurrent
+ * deactivate, visibility change or supersession. Online resolutions always overwrite the entry;
+ * the cache is a convenience, never a second product authority.
  */
 export const OFFLINE_CACHE_TTL_MS = 30 * 24 * 3600 * 1000; // PROVISIONAL — owner may shorten
 export const OFFLINE_CACHE_SCHEMA = 2;
@@ -406,12 +385,6 @@ export interface OfflineCacheOptions {
 
 export function createOfflineCache(options: OfflineCacheOptions = {}): OfflineCachePort & {
   size(): Promise<number>;
-  /** invalidates an entry whose version pointer no longer matches the authority (stale identity guard) */
-  invalidateIfStale(
-    accountId: string | null,
-    canonicalGtin13: string,
-    currentVersionId: string | null,
-  ): Promise<boolean>;
 } {
   const now = options.now ?? (() => Date.now());
   const ttl = options.ttlMs ?? OFFLINE_CACHE_TTL_MS;
@@ -451,6 +424,12 @@ export function createOfflineCache(options: OfflineCacheOptions = {}): OfflineCa
         accountId,
       };
       await store.set(key(accountId, gtin13), JSON.stringify(stored));
+    },
+    async invalidate(accountId, canonicalGtin13) {
+      const hit = await read(accountId, canonicalGtin13);
+      if (!hit) return false;
+      await store.delete(key(accountId, canonicalGtin13));
+      return true;
     },
     async invalidateIfStale(accountId, canonicalGtin13, currentVersionId) {
       const hit = await read(accountId, canonicalGtin13);

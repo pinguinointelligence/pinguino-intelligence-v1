@@ -96,6 +96,12 @@ import {
 import { sorbetStabilizerWholeGramBand } from '@/features/recipe-constraints/sorbetStabilizerSystemAuthority';
 import { constraintStudioCopy as copy } from './constraintStudioCopy';
 import {
+  applyPreviewInstructions,
+  isBootstrapOnlyInstructionSet,
+  samePreviewInstructions,
+  type PreviewLineInstruction,
+} from './previewInstructions';
+import {
   approvedFormulationToolboxIngredients,
   buildFormulationProposal,
   HARD_ROLES,
@@ -108,6 +114,7 @@ import {
 } from '@/features/formulation/formulate';
 import { resolveFunctionalRole, type FunctionalRole } from '@/features/formulation/ingredientRoles';
 import { flavourHeldLineIds } from '@/features/formulation/flavourMutationAuthority';
+import { isCrownBootstrapLine } from '@/features/formulation/crownBootstrapProvenance';
 import {
   buildUserIntentBaseline,
   MATERIAL_USER_INTENT_DRIFT,
@@ -250,6 +257,30 @@ const solverHolds = (input: RecipeInput, set: ConstraintSet): ConstraintSet =>
     withOwnerInulinPolicyHold(input, withTemplateControlledStabilizerLocks(input, set)),
   );
 
+/**
+ * Main search consumes the existing flavour-mutation authority as the
+ * one-sided interval it actually defines: a secondary flavour may give mass
+ * back, but it may never receive more than the owner supplied. Explicit user
+ * constraints remain stronger and are never widened or replaced.
+ */
+const withSecondaryFlavourDecreaseOnlyBounds = (
+  input: RecipeInput,
+  set: ConstraintSet,
+  lineIds: ReadonlySet<string>,
+): ConstraintSet => {
+  const byLineId: Record<string, IngredientConstraint> = { ...set.byLineId };
+  for (const item of input.items) {
+    if (!lineIds.has(item.id)) continue;
+    const existing = byLineId[item.id];
+    if (existing?.mode === 'locked' || existing?.mode === 'percent') continue;
+    byLineId[item.id] =
+      existing?.mode === 'range'
+        ? { ...existing, maxGrams: Math.min(existing.maxGrams, item.planned_grams) }
+        : { mode: 'range', minGrams: 1, maxGrams: item.planned_grams };
+  }
+  return { byLineId };
+};
+
 /** Build-only commercial inputs. They rank ECO candidates in memory and are
  * deliberately absent from RecipeInput, Preview payloads and saved versions. */
 export interface OptimizePreviewOptions extends FormulationOptions {
@@ -278,6 +309,9 @@ export interface OptimizePreviewOptions extends FormulationOptions {
    * launch sibling-level generation or the preference-stripped nearest retry.
    * The caller owns the one-step-toward-zero sequence. */
   directionFallbackPass?: boolean;
+  /** INTERNAL. Prevents the Vegan approved-template history seed from
+   * recursively seeding itself while that independent basin is evaluated. */
+  veganDirectionSeedPass?: boolean;
   /** Owner UX: ingredient alternatives are user-triggered only. Normal exact
    * and adjacent fallback runs therefore publish no automatic rescue advice. */
   skipRescueAssessment?: boolean;
@@ -422,6 +456,15 @@ export interface SuggestedFixSessionAuthorization {
   grams: number;
 }
 
+/** Session-only authorization for the amounts/padlocks the customer set
+ * inside an interactive preview and explicitly recalculated („Przelicz" /
+ * „Użyj propozycji"). Bound to the untouched recipe; Apply re-derives the
+ * adjusted draft from it and never from the Preview payload. */
+export interface PreviewInstructionSessionAuthorization {
+  baseFingerprint: string;
+  lines: PreviewLineInstruction[];
+}
+
 export function directionTargetFingerprint(input: RecipeInput): string {
   return JSON.stringify([
     input.category,
@@ -457,10 +500,7 @@ export function directionTargetFingerprint(input: RecipeInput): string {
  * produce the optimisation wording by construction.
  */
 export type PreviewOutcome =
-  | 'batch_rescale'
-  | 'engine_optimization'
-  | 'batch_rescale_and_optimization'
-  | 'no_verified_change';
+  'batch_rescale' | 'engine_optimization' | 'batch_rescale_and_optimization' | 'no_verified_change';
 
 export interface PreviewOutcomeClassification {
   outcome: PreviewOutcome;
@@ -785,9 +825,11 @@ export interface ConstraintPreview {
   crownOffMainCorrection?: CrownOffMainTargetProof;
   /**
    * Sorbet exact five-step Direction: the closed-form projection moved only
-   * the canonical adjustable roles and kept every Main line byte-exact, so no
-   * Main frontier proof exists for this proposal. The Apply door re-derives
-   * the same exact candidate from the trusted draft instead.
+   * the canonical adjustable roles and the final executable proposal kept
+   * every Main line byte-exact, so no Main frontier proof exists for this
+   * proposal. When whole-gram practicalization changes a fractional Main, this
+   * flag is omitted; the verified practicalization audit proves that distinct
+   * exact-to-executable transformation instead.
    */
   mainHeldByExactDirection?: boolean;
   /** Owner 2026-08-22: which Sorbet Direction candidate generator produced the
@@ -829,6 +871,18 @@ export interface ConstraintPreview {
   /** Audit provenance only. Apply requires a matching session authorization
    * and re-derives the exact permitted constraint transition. */
   suggestedFix?: SuggestedBoundFix;
+  /**
+   * INTERACTIVE RECALCULATION PREVIEW (owner 2026-09-11): the customer changed
+   * amounts/padlocks INSIDE the preview and recalculated. The proposal was
+   * built for the adjusted draft = the untouched recipe (`baseFingerprint`
+   * here) + these instructions, so the preview's own `baseFingerprint` names
+   * that adjusted draft. Audit provenance only: Apply requires the matching
+   * session authorization and re-derives the adjusted draft itself.
+   */
+  previewInstructions?: {
+    baseFingerprint: string;
+    lines: PreviewLineInstruction[];
+  };
   /** The proposed working state — applied ONLY through `commitPreview`. */
   proposedInput: RecipeInput;
   /** The constraint set in force AFTER apply (suggested fixes update a lock —
@@ -1011,6 +1065,15 @@ const isConstrained = (set: ConstraintSet, lineId: string): boolean => {
   const constraint = set.byLineId[lineId];
   return constraint !== undefined && constraint.mode !== 'ai';
 };
+
+/**
+ * PRO CROWN BOOTSTRAP (owner 2026-09-11): an untouched Crown seed carries no
+ * quantity authority, so no exact-Direction path may hold it — the Main search
+ * sizes it. A real lock on the line (its sidecar or a §17 constraint) always
+ * wins, and the decision is provenance, never the gram value.
+ */
+const hasUntouchedCrownBootstrap = (input: RecipeInput, set: ConstraintSet): boolean =>
+  input.items.some((item) => isCrownBootstrapLine(item) && !isConstrained(set, item.id));
 
 /**
  * CANONICAL INGREDIENT IDENTITY (owner P0 — recalc duplication): the merge key
@@ -1373,6 +1436,29 @@ export function buildLineDiffs(
   return lines;
 }
 
+/**
+ * Stamps an interactive-preview proposal (built for the adjusted draft) with
+ * its instruction provenance and re-bases the PRESENTATION diff onto the
+ * untouched recipe: the customer always compares the proposal with the recipe
+ * on screen, never with the provisional draft. Verification is unaffected —
+ * the Apply door re-derives the adjusted draft and never trusts `lines`.
+ */
+export function attachPreviewInstructionProof(
+  preview: ConstraintPreview,
+  untouchedInput: RecipeInput,
+  untouchedConstraints: ConstraintSet,
+  instructions: readonly PreviewLineInstruction[],
+): ConstraintPreview {
+  return {
+    ...preview,
+    previewInstructions: {
+      baseFingerprint: workingStateFingerprint(untouchedInput, untouchedConstraints),
+      lines: instructions.map((instruction) => ({ ...instruction })),
+    },
+    lines: buildLineDiffs(untouchedInput, preview.proposedInput, preview.nextConstraints),
+  };
+}
+
 export interface DirectionCandidateProgress {
   active: boolean;
   reached: boolean;
@@ -1521,11 +1607,28 @@ export type BuildPreviewResult =
       code: 'no_proposal';
       violatedMetrics?: string[];
       solverInvocations?: number;
+      /** A bounded search stop is not a proof that the requested recipe is
+       * physically impossible. Vegan Direction publishes this classification
+       * whenever its legal candidate search exhausts without a proposal. */
+      failureKind?: 'SEARCH_FAILED';
+      /** Reproducible owner evidence for a Vegan search failure. This survives
+       * publication so diagnostics can distinguish the search basin from a
+       * genuinely infeasible hard-constraint verdict. */
+      searchEvidence?: {
+        reason: 'vegan_direction_search_exhausted';
+        requestedTargets: RecipeDirectionTargets;
+        bindingMetrics: string[];
+        solverInvocations: number;
+        stopReason: IterationDiagnostics['stopReason'] | 'no_iteration_evidence';
+      };
       /** True only when the unchanged native-safe recipe is the verified
        * fixed point for the exact selected five-step Direction target. */
       directionTargetUnreached?: boolean;
       /** Owner P0 NIGHTLY (FAILURE 2): full iteration trajectory + stop reason. */
       iteration?: IterationDiagnostics;
+      /** The Main quantity verdicts that rejected the candidate (presentation
+       * evidence only: the exact remaining gap for the conflict view). */
+      blockingViolations?: MainEnvelopeViolation[];
     }
   /** Owner P0 (definitive fail): the pipeline PRODUCED a candidate but REJECTED it —
    * it did not improve the recipe (e.g. a batch-only rescale of an out-of-band
@@ -1553,6 +1656,8 @@ export type BuildPreviewResult =
       lineIds: string[];
       ingredientNames: string[];
       messagePl: string;
+      /** Presentation evidence only (see `no_proposal.blockingViolations`). */
+      blockingViolations?: MainEnvelopeViolation[];
     }
   | {
       ok: false;
@@ -1674,6 +1779,8 @@ export type BuildPreviewResult =
       iteration: IterationDiagnostics;
       templateId: string;
       templateStatus: TemplateStatus;
+      /** Presentation evidence only (see `no_proposal.blockingViolations`). */
+      blockingViolations?: MainEnvelopeViolation[];
     };
 
 function mainSafePreview(
@@ -1699,6 +1806,27 @@ function mainSafePreview(
   );
   if (direction.active && direction.supportedAxisCount > 0 && !direction.reached) {
     preview.directionTargetUnreached = true;
+    if (
+      input.category === 'vegan_gelato' &&
+      preview.mainObjective?.crownRefusal?.blockingRule ===
+        'no_technically_valid_main_candidate'
+    ) {
+      return {
+        ok: false,
+        code: 'no_proposal',
+        violatedMetrics: [
+          ...new Set(
+            direction.residuals
+              .filter((residual) => !residual.reached)
+              .map((residual) => residual.metric),
+          ),
+        ],
+        solverInvocations: preview.iteration?.solverInvocations ?? 0,
+        failureKind: 'SEARCH_FAILED',
+        directionTargetUnreached: true,
+        iteration: preview.iteration,
+      };
+    }
   }
   if (preview.proposedInput.category === 'vegan_gelato') {
     const issues = veganRecipeEligibilityIssues(preview.proposedInput.items);
@@ -2833,6 +2961,35 @@ const mainGroupLinesByteIdentical = (base: RecipeInput, proposed: RecipeInput): 
   });
 };
 
+type ExactDirectionMainProofKind = 'byte_exact' | 'practicalized';
+
+/**
+ * Exact Direction has two honest Main outcomes:
+ * - the executable candidate is byte-identical to the trusted Main group; or
+ * - the exact candidate is byte-identical and the already trustlessly
+ *   re-derived practicalization audit owns the exact-to-whole-gram change.
+ *
+ * This is deliberately not a tolerance. Any change outside the practicalizer's
+ * complete audit remains on the ordinary Main-objective proof path.
+ */
+const exactDirectionMainProofKind = (
+  base: RecipeInput,
+  preview: ConstraintPreview,
+): ExactDirectionMainProofKind | null => {
+  if (preview.kind !== 'optimize' || preview.directionCandidateSource === undefined) return null;
+  if (preview.mainHeldByExactDirection === true) {
+    return mainGroupLinesByteIdentical(base, preview.proposedInput) ? 'byte_exact' : null;
+  }
+  if (
+    preview.practicalization?.status === 'ready' &&
+    mainGroupLinesByteIdentical(base, preview.practicalization.audit.exactInput) &&
+    !mainGroupLinesByteIdentical(base, preview.proposedInput)
+  ) {
+    return 'practicalized';
+  }
+  return null;
+};
+
 const requiredLineContractViolations = (before: RecipeInput, after: RecipeInput): string[] => {
   const afterByLineId = new Map(after.items.map((item) => [item.id, item] as const));
   return before.items
@@ -2855,8 +3012,10 @@ const requiredLineContractViolations = (before: RecipeInput, after: RecipeInput)
  * is re-evaluated alongside x_user by the same hard/target/proximity hierarchy,
  * and every explored vector passes the normal constraint, required-line,
  * ProductBehavior and ECO-flavour gates. A reached recipe cannot trade away
- * its target; a NEAREST recipe may only move to the same violation count and a
- * better/equivalent severity tier before proximity is allowed to decide.
+ * its target. If every candidate remains in the same unreachable target tier,
+ * a soft-anchor probe may restore the exact user line when it also makes the
+ * complete vector closer; movement that did not buy the target is not allowed
+ * to outrank that explicit intent merely on residual severity.
  */
 const polishDirectionVector = (
   input: RecipeInput,
@@ -2946,7 +3105,7 @@ const polishDirectionVector = (
     polishSet,
     searchOptions,
   );
-  const softAnchorCandidates: RecipeInput[] = [];
+  const softAnchorCandidates: Array<{ input: RecipeInput; heldLineId: string }> = [];
   if (options.softAnchorPass !== true) {
     for (const item of input.items) {
       const proposed = practicalByLineId.get(item.id);
@@ -2983,7 +3142,7 @@ const polishDirectionVector = (
         measure.normalizedDistanceFromUser <
         practicalSeedMeasure.normalizedDistanceFromUser - SEVERITY_EPS
       ) {
-        softAnchorCandidates.push(candidate);
+        softAnchorCandidates.push({ input: candidate, heldLineId: item.id });
       }
     }
   }
@@ -3010,9 +3169,32 @@ const polishDirectionVector = (
   ) {
     best = { input: polished.input, measure: polished.measure };
   }
-  for (const candidate of softAnchorCandidates) {
+  for (const { input: candidate, heldLineId } of softAnchorCandidates) {
     const measure = evaluateExperimentalCandidate(input, candidate, polishSet, searchOptions);
-    if (compareExperimentalCandidateMeasures(measure, best.measure, strategy) < 0) {
+    const heldBaseline = input.items.find((item) => item.id === heldLineId);
+    const heldCandidate = candidate.items.find((item) => item.id === heldLineId);
+    const heldBest = best.input.items.find((item) => item.id === heldLineId);
+    const restoresMaterialAnchorInSameUnreachedTier =
+      heldBaseline !== undefined &&
+      heldCandidate !== undefined &&
+      heldBest !== undefined &&
+      Math.abs(heldCandidate.planned_grams - heldBaseline.planned_grams) <= BATCH_SUM_TOLERANCE_G &&
+      normalizedLineDrift(
+        heldBaseline.planned_grams,
+        heldBest.planned_grams,
+        input.target_batch_grams,
+      ) > MATERIAL_USER_INTENT_DRIFT &&
+      measure.structurallyAdmissible &&
+      best.measure.structurallyAdmissible &&
+      measure.hardViolationCount === best.measure.hardViolationCount &&
+      Math.abs(measure.hardSeverityPoints - best.measure.hardSeverityPoints) <= SEVERITY_EPS &&
+      measure.explicitTargetViolationCount > 0 &&
+      measure.explicitTargetViolationCount === best.measure.explicitTargetViolationCount &&
+      measure.normalizedDistanceFromUser < best.measure.normalizedDistanceFromUser - SEVERITY_EPS;
+    if (
+      restoresMaterialAnchorInSameUnreachedTier ||
+      compareExperimentalCandidateMeasures(measure, best.measure, strategy) < 0
+    ) {
       best = { input: candidate, measure };
     }
   }
@@ -4025,6 +4207,10 @@ function maximizeMainTechnicalObjective(
 ): { input: RecipeInput; proof: MainFlavourObjectiveProof | null } {
   const presentationInput = identityInput;
   const contractInput = identityInput;
+  // PRO CROWN BOOTSTRAP (owner 2026-09-11): while the Main group still holds an
+  // untouched Crown seed it has not been sized yet. The exact Direction
+  // objective ranks the finished recipe afterwards; it must not veto sizing it.
+  const crownBootstrapGroup = hasUntouchedCrownBootstrap(contractInput, set);
   const behaviorMode =
     normalizeFormulationStrategy(
       contractInput.goals?.formulation_strategy ?? contractInput.mode,
@@ -4191,6 +4377,12 @@ function maximizeMainTechnicalObjective(
   }
 
   const excluded = new Set(options.excludedIngredientIds ?? []);
+  const heldFlavourLineIds = flavourHeldLineIds(contractInput);
+  const heldFlavourUpperBounds = new Map(
+    contractInput.items
+      .filter((item) => heldFlavourLineIds.has(item.id))
+      .map((item) => [item.id, item.planned_grams] as const),
+  );
   const requiredLineIds = productBehaviorRequiredLineIds({ items: contractInput.items });
   const behaviorModule = behaviorMode === 'eco' ? 'ECO' : 'OPTIMAL';
   const managedBehavior = Object.keys(options.productBehaviorSnapshots ?? {}).length > 0;
@@ -4215,6 +4407,20 @@ function maximizeMainTechnicalObjective(
     }
     const executable = practical.audit.executableInput;
     const executableMainGrams = mainGroupTotal(contractInput, executable);
+    const raisedSecondaryFlavours = executable.items.filter((item) => {
+      const upperBound = heldFlavourUpperBounds.get(item.id);
+      return upperBound !== undefined && item.planned_grams > upperBound + MAIN_OBJECTIVE_EPSILON_G;
+    });
+    if (raisedSecondaryFlavours.length > 0) {
+      return {
+        ok: false,
+        mainGrams: requestedMainGrams,
+        reason: 'batch_or_constraints',
+        rules: raisedSecondaryFlavours.map(
+          (item) => `secondary_flavour_above_authority:${item.id}`,
+        ),
+      };
+    }
     const constraintCheck = verifyConstraintsPreserved(set, executable);
     if (!constraintCheck.ok) {
       return {
@@ -4302,9 +4508,11 @@ function maximizeMainTechnicalObjective(
     const technicalRules = [
       ...new Set([
         ...violations.map((violation) => violation.metric),
-        ...recipeDirectionViolations(executable).map(
-          (violation) => `direction:${violation.metric}`,
-        ),
+        ...(crownBootstrapGroup
+          ? []
+          : recipeDirectionViolations(executable).map(
+              (violation) => `direction:${violation.metric}`,
+            )),
         ...criticalWarnings,
         ...(protein.applicable && !protein.qualification.qualified ? ['protein_claim'] : []),
         ...veganIssues,
@@ -4356,28 +4564,29 @@ function maximizeMainTechnicalObjective(
         ),
       },
     };
-    // FLAVOUR MUTATION AUTHORITY (owner P1-B): the Main frontier re-solves a
-    // linear relaxation in which every non-Main line is a free variable, so a
-    // secondary flavour accent is otherwise just mass to allocate — this is the
-    // route that turned a 30 g lemon-juice accent into 188 g while water
-    // collapsed to 1 g. Pin the accents for the solver exactly as the Main
-    // allocation is pinned. Only `solverSet` is constrained, so the preview's
-    // user-facing lock counters keep reporting the user's own locks.
-    const heldFlavourLineIds = flavourHeldLineIds(identityInput);
-    const solverSet = solverHolds(staged, {
-      byLineId: {
-        ...candidateSet.byLineId,
-        ...Object.fromEntries(
-          staged.items
-            .filter((item) => heldFlavourLineIds.has(item.id))
-            .map((item) => [item.id, { mode: 'locked', grams: item.planned_grams }] as const),
-        ),
-      },
-    });
-    const candidates: RecipeInput[] = seedCandidates.filter(
-      (candidate) =>
-        Math.abs(mainGroupTotal(contractInput, candidate) - allocation.allocatedMainTotal) <=
-        MAIN_OBJECTIVE_EPSILON_G,
+    // FLAVOUR MUTATION AUTHORITY (owner P1-B): a secondary flavour accent is
+    // bounded above by the amount the owner supplied. It is not equality-held:
+    // Main search may reduce it when that is required to reach a legal Main
+    // floor. Real user locks/percent/ranges remain stronger and unchanged.
+    const solverSet = solverHolds(
+      staged,
+      withSecondaryFlavourDecreaseOnlyBounds(
+        contractInput,
+        candidateSet,
+        heldFlavourLineIds,
+      ),
+    );
+    const candidates: RecipeInput[] =
+      Math.abs(plannedSum(staged) - identityInput.target_batch_grams) <=
+      MAIN_OBJECTIVE_EPSILON_G
+        ? [staged]
+        : [];
+    candidates.push(
+      ...seedCandidates.filter(
+        (candidate) =>
+          Math.abs(mainGroupTotal(contractInput, candidate) - allocation.allocatedMainTotal) <=
+          MAIN_OBJECTIVE_EPSILON_G,
+      ),
     );
     // Re-solve the complete linear relaxation for this exact Main allocation.
     // Reusing only the maximum-bound vector would miss technically valid lower
@@ -4409,14 +4618,11 @@ function maximizeMainTechnicalObjective(
       candidates.push({
         ...staged,
         items: staged.items.map((item, index) =>
-          mainByLineId.has(item.id) || heldFlavourLineIds.has(item.id)
-            ? item
-            : { ...item, planned_grams: solution[index]! },
+          mainByLineId.has(item.id) ? item : { ...item, planned_grams: solution[index]! },
         ),
       });
       const optionsByIndex = staged.items.map((item, index): readonly number[] => {
-        if (mainByLineId.has(item.id) || heldFlavourLineIds.has(item.id))
-          return [item.planned_grams];
+        if (mainByLineId.has(item.id)) return [item.planned_grams];
         const value = Math.max(0, solution[index]!);
         const floor = Math.floor(value + MAIN_OBJECTIVE_EPSILON_G);
         const ceil = Math.ceil(value - MAIN_OBJECTIVE_EPSILON_G);
@@ -4746,14 +4952,25 @@ function maximizeMainTechnicalObjective(
   // failed sweep relabelled its input as the accepted maximum.
   const requestedCeilingIsLimiting =
     requestedCeiling < Math.min(batchUpperBound, linearUpperBound, behaviorUpperBound);
+  const independentUpperBoundCertified =
+    behaviorCeilingIsLimiting ||
+    (linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null);
+  // The independent bound can land on a whole gram that still fails the full
+  // integer/Engine acceptance authority. When that exact bound was probed and
+  // rejected, an accepted value one gram below it is also a proven maximum:
+  // no untested integer exists between the witness and the independent cap.
+  const rejectedIndependentUpperBound =
+    maximum + 1 === upperBound && nextFailure !== null;
   const mathematicallyCertified =
-    maximum === upperBound &&
     !requestedCeilingIsLimiting &&
-    (behaviorCeilingIsLimiting ||
-      (linearBound.status === 'certified' && linearBound.wholeGramUpperBound !== null));
-  const limitingCertifiedRules = behaviorCeilingIsLimiting
+    independentUpperBoundCertified &&
+    (maximum === upperBound || rejectedIndependentUpperBound);
+  const independentCertifiedRules = behaviorCeilingIsLimiting
     ? ['main_policy_ceiling']
     : linearBound.certificate;
+  const limitingCertifiedRules = rejectedIndependentUpperBound
+    ? [...new Set([...independentCertifiedRules, ...nextFailure.rules])]
+    : independentCertifiedRules;
   return {
     input: {
       ...accepted.input,
@@ -4775,7 +4992,9 @@ function maximizeMainTechnicalObjective(
           ? maximum + 1
           : null,
       firstHigherRejectedReason: mathematicallyCertified
-        ? 'certified_upper_bound'
+        ? rejectedIndependentUpperBound
+          ? nextFailure.reason
+          : 'certified_upper_bound'
         : nextFailure !== null
           ? nextFailure.reason
           : null,
@@ -4820,8 +5039,13 @@ export function maximizeMainFlavourObjective(
     // their exact current vector is the authority. Pure Engine/demo drafts do
     // not; for those, use the already-built technical toolbox rather than the
     // sparse/off-batch seed.
+    const veganDirectionHistorySeed =
+      identityInput.category === 'vegan_gelato' &&
+      hasActiveExactDirectionObjective(identityInput) &&
+      options.veganDirectionSeedPass === true;
     const technicalStart =
       identityInput.category === 'protein_gelato' ||
+      veganDirectionHistorySeed ||
       Object.keys(options.productBehaviorSnapshots ?? {}).length === 0
         ? start
         : identityInput;
@@ -6415,11 +6639,13 @@ function buildSorbetDirectionCandidatePreview(params: {
       preview.autoBalance = { batchRescaled, solverRounds: 0 };
       preview.hardResidualMetrics = [];
       preview.diagnosticOnly = false;
-      // Both generators keep Main, optional Inulin and stabilizer byte-exact
-      // (see sorbetDirectionProjection / sorbetNearestDirectionSearch); the
-      // Apply door verifies exactly that and re-derives the candidate.
-      preview.mainHeldByExactDirection = true;
       preview.directionCandidateSource = generator.source;
+      // Both generators keep Main byte-exact in their exact candidate. Claim
+      // byte identity on the executable Preview only when practicalization did
+      // not round Main; otherwise its verified audit is the explicit proof.
+      if (mainGroupLinesByteIdentical(input, preview.proposedInput)) {
+        preview.mainHeldByExactDirection = true;
+      }
       return mainSafePreview(input, preview, options.productBehaviorSnapshots);
     }
   }
@@ -6696,6 +6922,73 @@ function enforceTargetBatchInvariant(
 }
 
 /**
+ * GEL-P0-027 („an empty sweep is a refusal, never an echo”) for the ANSWER too.
+ *
+ * `already_clean` tells the customer the recipe on screen needs nothing. The bands
+ * the pipeline checks before saying so do not include the Main envelope, so a Crown
+ * group the Main authority itself rejects was published as clean. Served staging
+ * 2026-09-18: a strawberry gelato (berry floor 25 %) plus KIWI as a second priority
+ * (kiwi hard limit 20 %) — the combined envelope is empty, the Main sweep refused
+ * (`crownRefusal`), and HOME said „Receptura jest gotowa” with KIWI at 0 g.
+ *
+ * Such a recipe answers to the SAME Main safety check a proposal does (below): the
+ * customer's constrained Mains get the typed ratio conflict, anything else the typed
+ * `no_proposal` carrying the Main authority's own violations. A group the authority
+ * accepts keeps `already_clean` unchanged.
+ */
+function alreadyCleanMainGroupRefusal(
+  input: RecipeInput,
+  set: ConstraintSet,
+  options: OptimizePreviewOptions,
+): BuildPreviewResult | null {
+  const snapshots = options.productBehaviorSnapshots ?? {};
+  if (Object.keys(snapshots).length === 0) return null;
+  if (captureMainIngredientIntent(input).length === 0) return null;
+  const verdict = verifyMainEnvelope({
+    recipe: input,
+    snapshots,
+    mode:
+      normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode) === 'eco'
+        ? 'eco'
+        : 'optimal',
+    enforceFloor: true,
+    technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+  });
+  if (verdict.ok) return null;
+  const quantityViolations = verdict.violations.filter(
+    (violation) =>
+      violation.code === 'main_below_floor' ||
+      violation.code === 'main_above_hard_limit' ||
+      violation.code === 'liquid_dairy_carrier_below_floor',
+  );
+  if (quantityViolations.length === 0) return null;
+  const constrainedMains = captureMainIngredientIntent(input).filter((main) => {
+    const constraint = set.byLineId[main.lineId];
+    return constraint !== undefined && constraint.mode !== 'ai';
+  });
+  if (constrainedMains.length > 0) {
+    return {
+      ok: false,
+      code: 'main_ratio_conflict',
+      lineIds: constrainedMains.map((main) => main.lineId),
+      ingredientNames: constrainedMains.map((main) => main.ingredientName),
+      messagePl:
+        `Blokady lub zakresy składników Głównych ` +
+        `(${constrainedMains.map((main) => main.ingredientName).join(', ')}) ` +
+        `nie pozwalają osiągnąć zatwierdzonego minimum Main. Gellatti nie zmieniło receptury.`,
+      blockingViolations: quantityViolations,
+    };
+  }
+  return {
+    ok: false,
+    code: 'no_proposal',
+    violatedMetrics: [...new Set(quantityViolations.map((violation) => violation.code))],
+    solverInvocations: 0,
+    blockingViolations: quantityViolations,
+  };
+}
+
+/**
  * OWNER 2026-09-03 — the Crown-OFF Main SAFETY BACKSTOP.
  *
  * `verifyMainEnvelope` gained a capability-scoped safety band so that an
@@ -6728,12 +7021,158 @@ export function buildOptimizePreview(
   createdAt: string,
   options: OptimizePreviewOptions = {},
 ): BuildPreviewResult {
-  const result = buildOptimizePreviewInternal(input, set, createdAt, options);
-  if (!result.ok) return result;
+  const internalResult = buildOptimizePreviewInternal(input, set, createdAt, options);
+  const result: BuildPreviewResult =
+    !internalResult.ok &&
+    internalResult.code === 'no_proposal' &&
+    input.category === 'vegan_gelato' &&
+    hasActiveExactDirectionObjective(input)
+      ? {
+          ...internalResult,
+          failureKind: 'SEARCH_FAILED',
+          violatedMetrics: internalResult.violatedMetrics ?? [
+            ...new Set(recipeDirectionViolations(input).map((violation) => violation.metric)),
+          ],
+          searchEvidence: {
+            reason: 'vegan_direction_search_exhausted',
+            requestedTargets: normalizeRecipeDirectionTargets(input.goals?.direction_targets),
+            bindingMetrics: internalResult.violatedMetrics ?? [
+              ...new Set(recipeDirectionViolations(input).map((violation) => violation.metric)),
+            ],
+            solverInvocations: internalResult.solverInvocations ?? 0,
+            stopReason: internalResult.iteration?.stopReason ?? 'no_iteration_evidence',
+          },
+        }
+      : internalResult;
+  if (!result.ok) {
+    return result.code === 'already_clean'
+      ? (alreadyCleanMainGroupRefusal(input, set, options) ?? result)
+      : result;
+  }
   const snapshots = options.productBehaviorSnapshots ?? {};
   if (Object.keys(snapshots).length === 0) return result;
-  // Crown ON owns its own envelope; this closes only the uncrowned hole.
-  if (captureMainIngredientIntent(result.preview.proposedInput).length > 0) return result;
+  const proposedMains = captureMainIngredientIntent(result.preview.proposedInput);
+  if (proposedMains.length > 0) {
+    // Exact Direction owns its own hard-safe projection. Its Main proof is
+    // rebuilt only to keep Apply trustless; it is not a request to enforce the
+    // Main floor as a separate optimization objective.
+    //
+    // GEL-P0-027 („an empty sweep is a refusal, never an echo"): that holds
+    // only for a REAL Main proposal. A refused Main sweep (`crownRefusal`) hands
+    // back the unsized draft, and a diagnostic-only vector is not a proposal at
+    // all; letting either through published the served 1340 g banana + kiwi
+    // case as a REJECTED PROPOSAL („Propozycja Gellatti została odrzucona …
+    // nośnik mleczny ma 22.8%") instead of the conflict it is. Those two answer
+    // to the Main safety check below, which ends in the typed lock conflict and
+    // CORE's relaxation offer; its gap („Przy obecnych ustawieniach…”, owner
+    // 2026-09-11) still measures the customer's own amounts at this batch.
+    const realMainProposal =
+      result.preview.mainObjective?.crownRefusal === undefined &&
+      result.preview.diagnosticOnly !== true;
+    if (hasActiveExactDirectionObjective(input) && realMainProposal) return result;
+    // Exact Sorbet Direction owns its own already-verified projection and does
+    // not carry a Main-objective proof. This backstop is intentionally scoped
+    // to the Main search/fallback path that produced the invalid Owner result.
+    if (result.preview.mainObjective === undefined) return result;
+    // A failed Main sweep may retain `presentationInput` for diagnostics, but
+    // that vector is not a proposal when it misses immutable Main quantity
+    // authority. Fail closed here at the public Preview boundary, using the
+    // existing constraint/no-proposal vocabulary rather than letting Product
+    // Behavior reject an apparently successful Preview later.
+    const crownVerdict = verifyMainEnvelope({
+      recipe: result.preview.proposedInput,
+      snapshots,
+      mode:
+        normalizeFormulationStrategy(input.goals?.formulation_strategy ?? input.mode) === 'eco'
+          ? 'eco'
+          : 'optimal',
+      enforceFloor: true,
+      technicalOnlyMainLineIds: options.technicalOnlyMainLineIds,
+    });
+    if (crownVerdict.ok) return result;
+    const quantityViolations = crownVerdict.violations.filter(
+      (violation) =>
+        violation.code === 'main_below_floor' ||
+        violation.code === 'main_above_hard_limit' ||
+        violation.code === 'liquid_dairy_carrier_below_floor',
+    );
+    // This seam closes only the invalid quantity-vector fallback. Other Main
+    // eligibility failures retain their existing owning path (notably the
+    // accepted managed Protein flow whose test snapshots are STANDARD_ONLY).
+    if (quantityViolations.length === 0) return result;
+
+    const constrainedMains = captureMainIngredientIntent(input).filter((main) => {
+      const constraint = set.byLineId[main.lineId];
+      return constraint !== undefined && constraint.mode !== 'ai';
+    });
+    if (constrainedMains.length > 0) {
+      return {
+        ok: false,
+        code: 'main_ratio_conflict',
+        lineIds: constrainedMains.map((main) => main.lineId),
+        ingredientNames: constrainedMains.map((main) => main.ingredientName),
+        messagePl:
+          `Blokady lub zakresy składników Głównych ` +
+          `(${constrainedMains.map((main) => main.ingredientName).join(', ')}) ` +
+          `nie pozwalają osiągnąć zatwierdzonego minimum Main. Gellatti nie zmieniło receptury.`,
+        blockingViolations: quantityViolations,
+      };
+    }
+
+    const flavourLineIds = flavourHeldLineIds(input);
+    const flavourConflict = dominantHeldConstraint(input, set);
+    if (flavourConflict !== null && flavourLineIds.has(flavourConflict.lineId)) {
+      const iteration = result.preview.iteration ?? {
+        solverInvocations: 0,
+        draftVectorSearches: 0,
+        candidateVector: [],
+        draftPlannedSumGrams: plannedSum(input),
+        draftLineGrams: input.items.map((item) => ({
+          lineId: item.id,
+          ingredientId: canonicalIngredientId(item.ingredient),
+          grams: item.planned_grams,
+        })),
+        startPlannedSumGrams: plannedSum(input),
+        targetBatchGrams: input.target_batch_grams,
+        rounds: [],
+        stopReason: 'fixed_point_no_proposal' as const,
+        stopDetail: null,
+        capped: false,
+        attemptedMoves: [],
+      };
+      return {
+        ok: false,
+        code: 'impossible_under_constraints',
+        conflict: flavourConflict,
+        hardViolatedMetrics: [],
+        residualViolatedMetrics: quantityViolations.map((violation) => violation.code),
+        capReached: iteration.capped,
+        nearestFeasibleGrams: null,
+        alternativeProductType: null,
+        solverInvocations: iteration.solverInvocations,
+        iteration,
+        templateId: result.preview.formulation?.templateId ?? 'none',
+        templateStatus: result.preview.formulation?.templateStatus ?? 'approved',
+        blockingViolations: quantityViolations,
+      };
+    }
+
+    return {
+      ok: false,
+      code: 'no_proposal',
+      violatedMetrics: [
+        ...new Set([
+          ...quantityViolations.map((violation) => violation.code),
+          ...(result.preview.mainObjective?.limitingTechnicalRules ?? []),
+        ]),
+      ],
+      solverInvocations:
+        result.preview.iteration?.solverInvocations ?? result.preview.mainObjective?.attempts ?? 0,
+      iteration: result.preview.iteration,
+      blockingViolations: quantityViolations,
+    };
+  }
+  // Crown OFF backstop.
   const verdict = verifyMainEnvelope({
     recipe: result.preview.proposedInput,
     snapshots,
@@ -6826,6 +7265,7 @@ export function buildOptimizePreview(
     },
     templateId: 'none',
     templateStatus: 'approved',
+    blockingViolations: unsafe,
   };
 }
 
@@ -6842,6 +7282,9 @@ function buildOptimizePreviewInternal(
   }
   if (
     direct.ok ||
+    (direct.ok === false &&
+      direct.code === 'no_proposal' &&
+      direct.failureKind === 'SEARCH_FAILED') ||
     // An unreachable preference dead-ends in two distinct ways, and BOTH must
     // degrade to a truthful NEAREST rather than leave the user with no recipe:
     // the search can end on an illegal candidate (`unsafe_proposal`) or find no
@@ -7331,7 +7774,10 @@ function buildOptimizePreviewWithDirection(
     input.category === 'sorbet' &&
     hasActiveExactDirectionObjective(input) &&
     !input.items.some((item) => item.actual_grams !== null) &&
-    !(sorbetDraftOffBatch && sorbetMainLineCount !== 1)
+    !(sorbetDraftOffBatch && sorbetMainLineCount !== 1) &&
+    // This projection keeps every Main byte-exact; an untouched PRO Crown
+    // bootstrap is sized by the certified Main frontier instead.
+    !hasUntouchedCrownBootstrap(input, set)
   ) {
     const preConstrained = applyConstraintsToRecipe(input, set);
     if (preConstrained.ok) {
@@ -7423,6 +7869,190 @@ function buildOptimizePreviewWithDirection(
         }
       : routedDecision;
 
+  // VEGAN DIRECTION HISTORY INDEPENDENCE (owner 2026-09-10).
+  //
+  // A newly selected Strawberry enters through the approved Vegan formulation
+  // template, while the byte-equivalent recipe produced by a no-Direction
+  // Preview is classified as a complete local-correction draft. The latter
+  // therefore started the bounded greedy solver from V0 and could get trapped
+  // even though the former route had already demonstrated a legal exact vector.
+  // For an unpoured Vegan recipe with the same ingredient authority, restore
+  // that approved pre-solver vector as the LOCAL solver's starting basin. This
+  // is intentionally only a seed: the proposal still uses the real input as
+  // its baseline and crosses the unchanged Main, constraint, batch, native-band,
+  // stabilizer, practicalization and publication gates. Other profiles never
+  // enter this branch. A successful candidate is rebound onto the actual V0
+  // draft before publication, then receives a fresh Main proof whose starting
+  // grams are V0 (never the template seed).
+  if (
+    input.category === 'vegan_gelato' &&
+    decision.mode !== 'unsupported' &&
+    hasActiveExactDirectionObjective(input) &&
+    !input.items.some((item) => item.actual_grams !== null) &&
+    (options.rescueSimulationLineIds?.length ?? 0) === 0 &&
+    options.veganDirectionSeedPass !== true
+  ) {
+    const lookup = selectFormulationTemplateForRecipe(input);
+    if (lookup.template) {
+      const seeded = buildFormulationProposal(
+        input,
+        set,
+        lookup.template,
+        'full_formulation',
+        options,
+      );
+      if (seeded.ok && seeded.proposal.missingHardRoles.length === 0) {
+        // `proposedInput` is the normalized formulation result. It is useful as
+        // a customer proposal, but it is not always the approved PRE-solver
+        // state: an already-valid owner Inulin amount is intentionally retained
+        // by formulation and normalization can then squeeze every other role
+        // around that historical amount. Reconstruct the seed from the
+        // approved template's own role targets. Exact/range/percent constraints
+        // and established non-adjustable roles still win, so this grants no new
+        // ingredient or dosage authority; it only removes Preview history from
+        // the starting basin.
+        const templateRoleTarget = new Map(
+          lookup.template.roles.map((target) => [target.role, target] as const),
+        );
+        const templateScale = input.target_batch_grams / lookup.template.baseBatchG;
+        const currentLineIds = new Set(input.items.map((item) => item.id));
+        const approvedSeedInput: RecipeInput = {
+          ...seeded.proposal.proposedInput,
+          items: seeded.proposal.proposedInput.items.map((item) => {
+            const role = resolveFunctionalRole(item.ingredient);
+            const canonicalId = canonicalIngredientId(item.ingredient);
+            return {
+              ...item,
+              // Canonical Preview omits zero-use Water/Sucrose rows. When the
+              // formulation seed reintroduces them, its approved toolbox
+              // payload deliberately keeps the legacy toolbox `id` and broad
+              // category. The correction engine's current-draft vector uses
+              // those fields as routing keys, so that harmless representation
+              // difference selected a different basin. The INTERNAL seed uses
+              // the already-bound canonical Mapper identity/category; before
+              // publication the exact approved toolbox payload is restored.
+              ...(currentLineIds.has(item.id)
+                ? {}
+                : {
+                    id: item.ingredient.id,
+                    ingredient: {
+                      ...item.ingredient,
+                      id: canonicalId,
+                      identity_provenance: 'mapper' as const,
+                      category: role === 'water' ? ('other' as const) : item.ingredient.category,
+                    },
+                  }),
+              planned_grams: (() => {
+                const target = templateRoleTarget.get(resolveFunctionalRole(item.ingredient));
+                if (!target) return item.planned_grams;
+                const roleCarriers = seeded.proposal.proposedInput.items.filter(
+                  (candidate) => resolveFunctionalRole(candidate.ingredient) === target.role,
+                );
+                if (roleCarriers.length !== 1) return item.planned_grams;
+                const constraint = set.byLineId[item.id];
+                if (constraint?.mode === 'locked') return constraint.grams;
+                if (constraint?.mode === 'percent') {
+                  return (constraint.percent / 100) * input.target_batch_grams;
+                }
+                const roleGrams = target.grams * templateScale;
+                if (constraint?.mode === 'range') {
+                  return Math.min(Math.max(roleGrams, constraint.minGrams), constraint.maxGrams);
+                }
+                if (item.lock_type === 'grams' || !target.adjustable) {
+                  return item.planned_grams;
+                }
+                return roleGrams;
+              })(),
+            };
+          }),
+        };
+        const seedOnBatch =
+          Math.abs(plannedSum(approvedSeedInput) - input.target_batch_grams) <=
+          BATCH_SUM_TOLERANCE_G;
+        const seededResult = seedOnBatch
+          ? buildOptimizePreviewWithDirection(approvedSeedInput, set, createdAt, {
+              ...options,
+              veganDirectionSeedPass: true,
+              // The zero-use rows removed by canonical Preview no longer have
+              // line-keyed ProductBehavior snapshots. Their ingredient truth
+              // still comes from the closed approved toolbox, and publication
+              // later requires freshly bound proposal snapshots. Do not let
+              // the absence of not-yet-created line snapshots masquerade as a
+              // food-science infeasibility inside this pure candidate search.
+              productBehaviorSnapshots: {},
+            })
+          : null;
+        if (
+          seededResult?.ok &&
+          seededResult.preview.diagnosticOnly !== true &&
+          recipeDirectionViolations(seededResult.preview.proposedInput).length === 0
+        ) {
+          const approvedAddedByCanonicalId = new Map(
+            seeded.proposal.proposedInput.items
+              .filter((item) => !currentLineIds.has(item.id))
+              .map((item) => [canonicalIngredientId(item.ingredient), item] as const),
+          );
+          const authorizedCandidate: RecipeInput = {
+            ...seededResult.preview.proposedInput,
+            items: seededResult.preview.proposedInput.items.map((item) => {
+              if (currentLineIds.has(item.id)) return item;
+              const approved = approvedAddedByCanonicalId.get(
+                canonicalIngredientId(item.ingredient),
+              );
+              return approved
+                ? { ...item, id: approved.id, ingredient: approved.ingredient }
+                : item;
+            }),
+          };
+          const reboundMain = maximizeMainFlavourObjective(input, authorizedCandidate, set, {
+            ...options,
+            veganDirectionSeedPass: true,
+            // The internal template seed may search without not-yet-created
+            // line snapshots, but publication is rebound against the actual
+            // recipe. Current ProductBehavior authority must therefore be
+            // active here: in particular, a historical Direction vector may
+            // never bypass the current Main floor.
+            productBehaviorSnapshots: options.productBehaviorSnapshots,
+          });
+          let preview = finishPreview(
+            'optimize',
+            copy.preview.kindLabels.optimize,
+            input,
+            set,
+            reboundMain.input,
+            set,
+            violationCount(currentResult),
+            seededResult.preview.explanation,
+            createdAt,
+          );
+          preview = polishPracticalDirectionPreview(input, set, preview, createdAt, options);
+          attachMainObjective(preview, input, reboundMain.proof);
+          preview.autoBalance = seededResult.preview.autoBalance;
+          preview.iteration = seededResult.preview.iteration;
+          preview.hardResidualMetrics = classifyViolationBands(preview.proposedInput).hardMetrics;
+          preview.diagnosticOnly =
+            preview.practicalization?.status === 'blocked' ||
+            preview.hardResidualMetrics.length > 0 ||
+            preview.iteration?.capped === true;
+          preview.diagnosticReason =
+            preview.practicalization?.status === 'blocked'
+              ? 'practicalization_blocked'
+              : preview.hardResidualMetrics.length > 0
+                ? 'hard_residual'
+                : preview.iteration?.capped === true
+                  ? 'iteration_cap'
+                  : undefined;
+          if (
+            preview.diagnosticOnly !== true &&
+            recipeDirectionViolations(preview.proposedInput).length === 0
+          ) {
+            return mainSafePreview(input, preview, options.productBehaviorSnapshots);
+          }
+        }
+      }
+    }
+  }
+
   // A/B promotion (2026-08-25): for a complete on-batch recipe WITHOUT Main,
   // retain several nearby paths and rank them by the product hierarchy before
   // the historical single-path solver/template commits to one direction. The
@@ -7463,10 +8093,15 @@ function buildOptimizePreviewWithDirection(
     Math.abs(plannedSum(input) - input.target_batch_grams) <= BATCH_SUM_TOLERANCE_G;
   if (neighborhoodEligible) {
     // The promoted search is an alternative candidate generator, not an
-    // authority bypass. It must see the same internal Tara/Inulin/user-Main
-    // holds as the established solver; otherwise it can stage a Preview the
-    // trustless Apply door must reject (served Sorbet regression: Tara 1→2).
-    const neighborhoodSolverSet = solverHolds(input, set);
+    // authority bypass. Sorbet keeps the established stabilizer dose exact
+    // (served regression: Tara 1→2). Protein has only the existing positive
+    // stabilizer-presence gate, so imposing the template exact-hold there
+    // removes otherwise legal exchange paths and can make the beam return a
+    // farther vector even when Tara itself ends unchanged. User-visible locks
+    // remain in `set` and therefore continue to win.
+    const neighborhoodSolverSet = input.category === 'protein_gelato'
+      ? withVeganInulinEnvelopeHold(input, withOwnerInulinPolicyHold(input, set))
+      : solverHolds(input, set);
     const neighborhood = experimentalNeighborhoodSearch(input, neighborhoodSolverSet, {
       beamWidth: 3,
       evaluationBudget: 2_500,
@@ -8806,6 +9441,8 @@ export interface AppliedPresentationSnapshot {
   explicitStandardRemovalConsent: ExplicitStandardRemovalConsent | null;
   directionConsent: DirectionBestAchievableConsent | null;
   suggestedFixAuthorization: SuggestedFixSessionAuthorization | null;
+  /** Interactive-preview instructions the applied Preview was built with. */
+  previewInstructionAuthorization?: PreviewInstructionSessionAuthorization | null;
 }
 
 export interface AppliedChangeRecord {
@@ -8936,8 +9573,7 @@ export type BlockedApply =
     };
 
 export type CommitPreviewResult =
-  | { ok: true; verified: VerifiedApply }
-  | ({ ok: false } & BlockedApply);
+  { ok: true; verified: VerifiedApply } | ({ ok: false } & BlockedApply);
 
 function productBehaviorIdentityViolation(
   input: RecipeInput,
@@ -9248,7 +9884,83 @@ export class VerifiedApply {
        * proof equality and then runs every independent hard guard below. */
       prebuiltOptimizeRebuild?: BuildPreviewResult;
     } = {},
+    /** Interactive-preview instructions the customer explicitly recalculated. */
+    previewInstructionAuthorization?: PreviewInstructionSessionAuthorization | null,
   ): CommitPreviewResult {
+    // INTERACTIVE RECALCULATION PREVIEW (owner 2026-09-11). The customer changed
+    // amounts/padlocks inside the preview and recalculated WITHOUT touching the
+    // recipe, so the proposal was built for the ADJUSTED draft = this untouched
+    // recipe + those explicit instructions. The door re-derives that adjusted
+    // draft itself from the session authorization (never from the payload),
+    // verifies the proposal with EVERY check an ordinary Przelicz preview of the
+    // adjusted draft must pass — this same function, recursively — and only then
+    // rebases the history record onto the untouched recipe, so Cofnij restores
+    // the exact pre-preview recipe and nothing provisional survives a refusal.
+    if (preview.previewInstructions !== undefined || previewInstructionAuthorization) {
+      const proof = preview.previewInstructions;
+      const authorized = previewInstructionAuthorization;
+      // OWNER §18 (2026-09-18): a session made ONLY of HOME's technical
+      // bootstraps (read from the trusted session, never from the payload) is the
+      // plain recalculation of the recipe on its bootstrapped copy, so it may
+      // carry every route that plain run stages — the Direction fallback ladder
+      // and its Starter Pack rescue, the Suggested Fix / lock recovery. Each one
+      // is still verified below, on the adjusted draft, by this same door.
+      const plainRunOnCopy = authorized != null && isBootstrapOnlyInstructionSet(authorized.lines);
+      if (
+        proof === undefined ||
+        authorized == null ||
+        (preview.kind !== 'optimize' && !(plainRunOnCopy && preview.kind === 'suggested_fix')) ||
+        preview.substitution !== undefined ||
+        (preview.suggestedFix !== undefined && !plainRunOnCopy) ||
+        preview.explicitStandardRemoval !== undefined ||
+        (preview.directionFallback !== undefined && !plainRunOnCopy) ||
+        (preview.starterPackRescue !== undefined && !plainRunOnCopy) ||
+        authorized.baseFingerprint !== proof.baseFingerprint ||
+        !samePreviewInstructions(authorized.lines, proof.lines) ||
+        workingStateFingerprint(current, currentConstraints) !== authorized.baseFingerprint ||
+        (preview.baseDraftRevision !== undefined &&
+          currentDraftRevision !== undefined &&
+          preview.baseDraftRevision !== currentDraftRevision)
+      ) {
+        return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+      }
+      const adjusted = applyPreviewInstructions(current, currentConstraints, authorized.lines);
+      if (!adjusted.ok) {
+        return { ok: false, code: 'stale_preview', messagePl: copy.blocked.stale };
+      }
+      const adjustedPreview: ConstraintPreview = { ...preview };
+      delete adjustedPreview.previewInstructions;
+      const verifiedOnAdjustedDraft = VerifiedApply.commit(
+        adjusted.input,
+        adjusted.constraints,
+        adjustedPreview,
+        at,
+        id,
+        excludedIngredientIds,
+        currentDraftRevision,
+        null,
+        null,
+        directionConsent,
+        // Bound to the adjusted draft's own fingerprint, exactly as a plain
+        // run's Suggested Fix is bound to the recipe's.
+        plainRunOnCopy ? suggestedFixAuthorization : null,
+        currentProductBehaviorSnapshots,
+        technicalOnlyMainLineIds,
+        proposalAuthorization,
+        null,
+        rebuildOptions,
+        null,
+      );
+      if (!verifiedOnAdjustedDraft.ok) return verifiedOnAdjustedDraft;
+      return {
+        ok: true,
+        verified: VerifiedApply.rebasedOntoUntouchedRecipe(
+          verifiedOnAdjustedDraft.verified,
+          current,
+          currentConstraints,
+        ),
+      };
+    }
     const { prebuiltOptimizeRebuild, ...canonicalRebuildOptions } = rebuildOptions;
     let verifiedOptimizeRebuild = prebuiltOptimizeRebuild;
     // Phase 3 monotonic guard: a preview built for an earlier draft revision
@@ -10120,21 +10832,15 @@ export class VerifiedApply {
       mainIdentityBase,
       currentConstraints,
     );
-    // Sorbet exact five-step Direction (served QA 2026-08-22): the closed-form
-    // projection moves only the canonical adjustable roles and keeps every Main
-    // line byte-exact, so there is no Main frontier to certify — the Main
-    // maximisation frontier treats an unreached exact Direction target as a
-    // hard gate and could never issue a proof for an honest nearest-achievable
-    // Preview. The door instead requires the byte-exact Main group AND a
-    // deterministic reproduction of the same exact candidate from the trusted
-    // current draft. Any other optimize Preview keeps the full proof contract.
-    const mainHeldByExactDirection =
-      preview.kind === 'optimize' &&
-      preview.mainHeldByExactDirection === true &&
-      mainGroupLinesByteIdentical(mainIdentityBase, preview.proposedInput);
+    // Sorbet exact five-step Direction (served QA 2026-08-22 / SOL-041): there
+    // is no Main frontier to certify when the Direction candidate keeps Main.
+    // The proof is either byte-exact at the executable boundary or the already
+    // re-derived PracticalRecipeAudit from an exact byte-held Main to its
+    // whole-gram executable value. Both still require a deterministic rebuild.
+    const exactDirectionMainProof = exactDirectionMainProofKind(mainIdentityBase, preview);
     const requiresMainProof =
-      preview.kind === 'optimize' && adjustableMainIntent && !mainHeldByExactDirection;
-    if (mainHeldByExactDirection && adjustableMainIntent) {
+      preview.kind === 'optimize' && adjustableMainIntent && exactDirectionMainProof === null;
+    if (exactDirectionMainProof !== null && adjustableMainIntent) {
       const rebuilt =
         verifiedOptimizeRebuild ??
         buildOptimizePreview(current, currentConstraints, preview.createdAt, {
@@ -10148,9 +10854,13 @@ export class VerifiedApply {
           productBehaviorSnapshots: currentProductBehaviorSnapshots,
           technicalOnlyMainLineIds,
         });
+      const rebuiltExactDirectionMainProof = rebuilt.ok
+        ? exactDirectionMainProofKind(mainIdentityBase, rebuilt.preview)
+        : null;
       const rebuiltMatches =
         rebuilt.ok &&
-        rebuilt.preview.mainHeldByExactDirection === true &&
+        rebuiltExactDirectionMainProof === exactDirectionMainProof &&
+        rebuilt.preview.directionCandidateSource === preview.directionCandidateSource &&
         workingStateFingerprint(rebuilt.preview.proposedInput, rebuilt.preview.nextConstraints) ===
           workingStateFingerprint(preview.proposedInput, preview.nextConstraints);
       if (!rebuiltMatches) {
@@ -10639,6 +11349,33 @@ export class VerifiedApply {
         structuredClone(appliedProductBehaviorSnapshots),
       ),
     };
+  }
+
+  /**
+   * An interactive-preview verification (built by `commit` for the adjusted
+   * draft) rebased onto the untouched recipe it was derived from: the verified
+   * working state, constraints and authority are unchanged; only the history
+   * record's BEFORE names the exact recipe Cofnij must restore. Private, and
+   * reachable only from `commit` after the full verification has passed.
+   */
+  private static rebasedOntoUntouchedRecipe(
+    verified: VerifiedApply,
+    untouched: RecipeInput,
+    untouchedConstraints: ConstraintSet,
+  ): VerifiedApply {
+    return new VerifiedApply(
+      verified.input,
+      verified.constraints,
+      {
+        ...verified.record,
+        before: {
+          ...verified.record.before,
+          input: structuredClone(untouched),
+          constraints: untouchedConstraints,
+        },
+      },
+      verified.productBehaviorSnapshots,
+    );
   }
 }
 

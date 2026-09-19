@@ -20,6 +20,23 @@
  */
 import * as backend from '@/lib/supabase/client';
 import type { ReferenceEngineValues } from '@/data/products/productEngineResolver';
+import {
+  MAPPER_HOME_VERIFIED_STATUSES,
+  isMapperHomeVerifiedStatus,
+} from '@/data/ingredients/mapperVerificationStatus';
+import {
+  approvedConceptOrder,
+  attachedFormText,
+  conceptDefaultIntent,
+  conceptLineage,
+  loadMapperConceptDefaults,
+  loadMapperSearchRuntime,
+  planMapperCatalogSearch,
+  type ConceptDefaultFocus,
+  type ConceptDefaultNeighbour,
+  type MapperConceptScope,
+} from '@/features/mapper-search-runtime';
+import { normalizeSearchText, rankSearchHits } from '@/features/ingredient-builder/ingredientSearch';
 import { searchProducts } from '@/services/globalCatalog';
 
 /** The demo-safe view (0033) — searchable by anon AND authenticated. */
@@ -85,6 +102,8 @@ export type MapperSearchOutcome =
 export interface MapperSearchQuery {
   text: string;
   category?: string | null;
+  localeVariant?: string;
+  marketScope?: string;
   limit?: number;
   offset?: number;
   signal?: AbortSignal;
@@ -98,7 +117,14 @@ async function searchCanonicalMapperIngredientsWithPolicy(
   preserveHomeBaseline: boolean,
 ): Promise<MapperSearchOutcome> {
   if (query.signal?.aborted) return { kind: 'aborted' };
+  let tokenGroups: readonly (readonly string[])[] = [];
   try {
+    const plan = await planMapperCatalogSearch(query.text, {
+      localeVariant: query.localeVariant,
+      marketScope: query.marketScope ?? 'GLOBAL',
+    });
+    if (plan.blocked) return { kind: 'results', rows: [], hasMore: false };
+    tokenGroups = plan.tokenGroups;
     const limit = query.limit ?? MAPPER_SEARCH_DEFAULT_LIMIT;
     const requestedOffset = query.offset ?? 0;
     // Home retains its frozen Verified+Base+Engine projection. The RPC now
@@ -116,6 +142,7 @@ async function searchCanonicalMapperIngredientsWithPolicy(
         marketScope: 'global',
         selectedMarkets: [],
         entityKind: 'pi_base',
+        tokenGroups: plan.tokenGroups,
         limit: batchLimit,
         cursor,
       });
@@ -130,8 +157,9 @@ async function searchCanonicalMapperIngredientsWithPolicy(
             return (
               hit.usableInBase &&
               hit.publicData.approvedForEngines === true &&
-              typeof verificationStatus === 'string' &&
-              verificationStatus.toLocaleLowerCase('en').startsWith('verified')
+              isMapperHomeVerifiedStatus(
+                typeof verificationStatus === 'string' ? verificationStatus : null,
+              )
             );
           })
           .map((hit) => {
@@ -161,16 +189,232 @@ async function searchCanonicalMapperIngredientsWithPolicy(
       hasMore: rows.length > sliceOffset + limit,
     };
   } catch (error) {
+    // search_products_v1 deliberately remains authenticated because its payload is
+    // richer than HOME may expose. Anonymous HOME still has the public, closed
+    // Mapper projection, so only this exact capability failure falls back to it.
+    // The central concept plan and the already-accepted natural-form ranking are
+    // reused unchanged; this does not create a second alias or ranking authority.
+    if (preserveHomeBaseline && isCanonicalSearchPermissionDenied(error)) {
+      return searchPublicCanonicalHomeIngredients(query, tokenGroups);
+    }
     return { kind: 'error', message: error instanceof Error ? error.message : String(error) };
   }
 }
 
-/** Frozen Home search retains its previously accepted Verified + Base + Engine
- * result set even though the shared RPC now exposes all 2,089 active rows. */
+/** Frozen Home search retains its previously accepted exact verified-status +
+ * Base + Engine result set over the current immutable Mapper release. */
 export async function searchCanonicalMapperIngredients(
   query: MapperSearchQuery,
 ): Promise<MapperSearchOutcome> {
-  return searchCanonicalMapperIngredientsWithPolicy(query, true);
+  // HOME explicitly accepts equivalent locale aliases, but it has no locale
+  // selector of its own. Using the browser UI locale here made an English term
+  // such as `banana` fail closed on a German browser before the catalogue RPC
+  // could run. `*` is the central runtime's governed all-locale mode (including
+  // its collision/ambiguity gates); it does not add a HOME-side alias or ranker.
+  return searchCanonicalMapperIngredientsWithPolicy(
+    { ...query, localeVariant: query.localeVariant ?? '*' },
+    true,
+  );
+}
+
+export type ConceptDefaultSelection =
+  | {
+      kind: 'selected';
+      row: SafeMapperSearchRow;
+      conceptKey: string;
+      conceptId: string;
+      /** SA-03 queue id of the frozen decision that was consumed. */
+      decisionId: string;
+      /** 0 = the frozen default; n = the n-th frozen alternative (default not legal now). */
+      rank: number;
+      scope: MapperConceptScope | null;
+      recognisedBy: 'central' | 'parser';
+      /** The multi-word central mention this selection covers („syrop klonowy”). */
+      phraseText: string | null;
+    }
+  | {
+      /** Part of a multi-word mention another term of the same input owns. */
+      kind: 'covered';
+      phraseText: string;
+    }
+  | {
+      /** A decision exists but the input states a requirement; offer the frozen order. */
+      kind: 'clarify';
+      rows: SafeMapperSearchRow[];
+      conceptKey: string;
+      reason: 'explicit_qualifier' | 'prepared_form_role';
+    }
+  | { kind: 'not_applicable'; reason: string }
+  | {
+      kind: 'no_legal_candidate';
+      conceptKey: string;
+      scope: MapperConceptScope | null;
+      /** `scope_policy`: SA-04 has no compliant candidate; `none_legal_now`: none is active/approved. */
+      reason: 'scope_policy' | 'none_legal_now';
+    }
+  | { kind: 'unavailable'; reason: CatalogueUnavailableReason }
+  | { kind: 'aborted' }
+  | { kind: 'error'; message: string };
+
+export interface ConceptDefaultQuery {
+  /** The whole input the focus came from, so explicit words around it keep their meaning. */
+  text: string;
+  focus: ConceptDefaultFocus;
+  /**
+   * The listed elements said right before/after `text`. A form joined to it by a central
+   * grammar linker („sok z cytryny”) belongs to it; see `attachedFormText`.
+   */
+  neighbours?: {
+    readonly before?: ConceptDefaultNeighbour | null;
+    readonly after?: ConceptDefaultNeighbour | null;
+  };
+  /** Frozen SA-04 recipe scope when the profile is already known; `null` = ANY. */
+  scope?: MapperConceptScope | null;
+  signal?: AbortSignal;
+}
+
+/**
+ * HOME_ADD selection over the FINAL concept defaults (SA-03/SA-04).
+ *
+ * The central resolver recognises the concept, the frozen decision supplies the
+ * ordered Mapper identities, and ONE exact-id read of the demo-safe view (the same
+ * read for anonymous and signed-in customers: active + Base-approved by the view,
+ * Engine-approved here) establishes which of them are legal now. The first legal id
+ * in the frozen order wins, so the default can never be lost to search pagination or
+ * to a lexical ranking, and nothing is re-ranked or fabricated.
+ */
+export async function selectApprovedConceptDefault(
+  query: ConceptDefaultQuery,
+): Promise<ConceptDefaultSelection> {
+  if (query.signal?.aborted) return { kind: 'aborted' };
+  let plan: Awaited<ReturnType<typeof planMapperCatalogSearch>>;
+  let defaults: Awaited<ReturnType<typeof loadMapperConceptDefaults>>;
+  let lineage: ReturnType<typeof conceptLineage>;
+  try {
+    const [loadedDefaults, runtime] = await Promise.all([
+      loadMapperConceptDefaults(),
+      loadMapperSearchRuntime(),
+    ]);
+    defaults = loadedDefaults;
+    lineage = conceptLineage(runtime.release);
+    // The literal search that may follow records the gaps once; this stage must not
+    // duplicate them in the bounded review telemetry.
+    const options = { localeVariant: '*', marketScope: 'GLOBAL', telemetry: { record() {} } };
+    const text = query.neighbours
+      ? attachedFormText(
+          query.text,
+          query.neighbours,
+          (element) => runtime.resolve(element, options),
+          lineage,
+        )
+      : query.text;
+    plan = await planMapperCatalogSearch(text, options);
+  } catch (error) {
+    return { kind: 'error', message: error instanceof Error ? error.message : String(error) };
+  }
+  const intent = conceptDefaultIntent(plan.resolution, query.focus, defaults, lineage);
+  if (intent.kind === 'not_applicable' || intent.kind === 'covered') return intent;
+
+  const recipeTypeScope =
+    plan.resolution.recipeType === 'SORBET'
+      ? 'SORBET'
+      : plan.resolution.recipeType === 'GELATO'
+        ? 'GELATO'
+        : null;
+  const scope = query.scope ?? intent.impliedScope ?? recipeTypeScope;
+  const order = approvedConceptOrder(intent.decision, scope);
+  if (order.length === 0) {
+    return {
+      kind: 'no_legal_candidate',
+      conceptKey: intent.decision.conceptKey,
+      scope,
+      reason: 'scope_policy',
+    };
+  }
+
+  const read = await readLegalMapperRowsById(order, query.signal);
+  if (read.kind !== 'rows') return read;
+  if (query.signal?.aborted) return { kind: 'aborted' };
+
+  if (intent.kind === 'clarify') {
+    if (read.rows.length === 0) {
+      return {
+        kind: 'no_legal_candidate',
+        conceptKey: intent.decision.conceptKey,
+        scope,
+        reason: 'none_legal_now',
+      };
+    }
+    return {
+      kind: 'clarify',
+      // The frozen order keeps the default first, so a bounded choice never loses it.
+      rows: read.rows.slice(0, CONCEPT_CLARIFY_MAX_CANDIDATES),
+      conceptKey: intent.decision.conceptKey,
+      reason: intent.reason,
+    };
+  }
+  const row = read.rows[0];
+  if (!row) {
+    return {
+      kind: 'no_legal_candidate',
+      conceptKey: intent.decision.conceptKey,
+      scope,
+      reason: 'none_legal_now',
+    };
+  }
+  return {
+    kind: 'selected',
+    row,
+    conceptKey: intent.decision.conceptKey,
+    conceptId: intent.decision.conceptId,
+    decisionId: intent.decision.queueId,
+    rank: order.indexOf(row.ingredient_id),
+    scope,
+    recognisedBy: intent.recognisedBy,
+    phraseText: intent.phraseText,
+  };
+}
+
+/** A real choice stays a short list (the HOME §23 bound); the frozen default leads it. */
+export const CONCEPT_CLARIFY_MAX_CANDIDATES = 6;
+
+/** Exact-id legality read, returned in the caller's (frozen) order. */
+async function readLegalMapperRowsById(
+  orderedIds: readonly string[],
+  signal?: AbortSignal,
+): Promise<
+  | { kind: 'rows'; rows: SafeMapperSearchRow[] }
+  | { kind: 'unavailable'; reason: CatalogueUnavailableReason }
+  | { kind: 'aborted' }
+  | { kind: 'error'; message: string }
+> {
+  const client = backend.supabase;
+  if (!client) return { kind: 'unavailable', reason: 'not_configured' };
+  let builder = client
+    .from(DEMO_SEARCH_VIEW)
+    .select(MAPPER_SEARCH_COLUMNS.join(','))
+    .in('ingredient_id', [...orderedIds])
+    .eq('approved_for_base', true)
+    .eq('approved_for_engines', true);
+  if (signal) builder = builder.abortSignal(signal);
+  const { data, error } = await builder;
+  if (error) {
+    if (isAborted(error, signal)) return { kind: 'aborted' };
+    if (isViewMissing(error)) return { kind: 'unavailable', reason: 'view_missing' };
+    return { kind: 'error', message: error.message ?? 'Wyszukiwanie nie powiodło się' };
+  }
+  const byId = new Map(
+    ((data ?? []) as unknown as Record<string, unknown>[])
+      .map(toSafeMapperSearchRow)
+      .map((row) => [row.ingredient_id, row] as const),
+  );
+  return {
+    kind: 'rows',
+    rows: orderedIds.flatMap((id) => {
+      const row = byId.get(id);
+      return row ? [row] : [];
+    }),
+  };
 }
 
 /** Pro search shows all active Mapper rows and preserves exact approval flags. */
@@ -229,6 +473,14 @@ function isUnauthorized(error: QueryError): boolean {
   return error.code === '42501' || error.code === 'PGRST301';
 }
 
+/** searchProducts intentionally throws a plain Error, so its PostgreSQL code is
+ * no longer available here. Keep the fallback narrower than a generic 401: only
+ * the named canonical RPC permission denial is eligible. */
+function isCanonicalSearchPermissionDenied(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /permission denied/i.test(message) && /search_products_v1/i.test(message);
+}
+
 /** True when the failure is the caller's own cancellation. */
 function isAborted(error: QueryError, signal?: AbortSignal): boolean {
   return signal?.aborted === true || /abort/i.test(error.message ?? '');
@@ -285,6 +537,79 @@ export async function searchMapperIngredients(
   };
 }
 
+/**
+ * Anonymous HOME equivalent of the canonical PI-only search.
+ *
+ * `tokenGroups` comes from `planMapperCatalogSearch`: every group is ANDed and
+ * the aliases inside a group are ORed. The response can only contain the closed
+ * demo-safe columns, is limited to Base+Engine-approved rows, and is ordered with
+ * the existing accepted ranker so HOME's automatic #1 remains deterministic.
+ */
+async function searchPublicCanonicalHomeIngredients(
+  query: MapperSearchQuery,
+  tokenGroups: readonly (readonly string[])[],
+): Promise<MapperSearchOutcome> {
+  const client = backend.supabase;
+  if (!client) return { kind: 'unavailable', reason: 'not_configured' };
+  if (query.signal?.aborted) return { kind: 'aborted' };
+
+  const limit = query.limit ?? MAPPER_SEARCH_DEFAULT_LIMIT;
+  const offset = query.offset ?? 0;
+  let builder = client
+    .from(DEMO_SEARCH_VIEW)
+    .select(MAPPER_SEARCH_COLUMNS.join(','))
+    .eq('approved_for_base', true)
+    .eq('approved_for_engines', true);
+
+  for (const group of tokenGroups) {
+    const terms = [...new Set(group.map((term) => term.trim()).filter(Boolean))];
+    if (terms.length === 0) continue;
+    builder = builder.or(
+      terms
+        .flatMap((term) =>
+          ['ingredient_name_display', 'ingredient_name_internal'].map((column) =>
+            ilikeOrFilter([column], term),
+          ),
+        )
+        .join(','),
+    );
+  }
+  if (query.category) builder = builder.eq('ingredient_category', query.category);
+
+  // Ranking must see the whole current concept family; otherwise alphabetical
+  // database order could discard the natural #1 before the accepted ranker runs.
+  builder = builder.order('ingredient_name_display', { ascending: true }).range(0, 499);
+  if (query.signal) builder = builder.abortSignal(query.signal);
+
+  const { data, error } = await builder;
+  if (error) {
+    if (isAborted(error, query.signal)) return { kind: 'aborted' };
+    if (isViewMissing(error)) return { kind: 'unavailable', reason: 'view_missing' };
+    return { kind: 'error', message: error.message ?? 'Wyszukiwanie nie powiodło się' };
+  }
+
+  const rows = ((data ?? []) as unknown as Record<string, unknown>[]).map(toSafeMapperSearchRow);
+  const ranked = rankSearchHits(
+    rows.map((row) => ({
+      row,
+      id: row.ingredient_id,
+      name: row.ingredient_name_display,
+      nameNorm: normalizeSearchText(
+        `${row.ingredient_name_display} ${row.ingredient_name_internal ?? ''}`,
+      ),
+      category: row.ingredient_category ?? '',
+      form: row.ingredient_subcategory ?? '',
+    })),
+    query.text,
+  ).map(({ row }) => row);
+
+  return {
+    kind: 'results',
+    rows: ranked.slice(offset, offset + limit),
+    hasMore: ranked.length > offset + limit,
+  };
+}
+
 /* ------------------------------------------------------------------------ *
  * Post-selection engine values (rich view — authenticated only)             *
  * ------------------------------------------------------------------------ */
@@ -319,7 +644,7 @@ export async function fetchIngredientEngineValues(
     .eq('approved_for_engines', true)
     // Frozen Home exact-id hydration keeps the previously accepted
     // Verified-only contract. Pro uses the canonical product resolver instead.
-    .ilike('verification_status', 'Verified%');
+    .in('verification_status', [...MAPPER_HOME_VERIFIED_STATUSES]);
   if (signal) builder = builder.abortSignal(signal);
 
   const { data, error } = await builder.maybeSingle();

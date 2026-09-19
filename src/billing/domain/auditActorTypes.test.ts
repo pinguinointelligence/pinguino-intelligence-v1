@@ -52,17 +52,33 @@ function legalActorTypes(): readonly string[] {
 
 const LEGAL = legalActorTypes();
 
-/** Rule 2: the last declaration of a function wins, exactly as Postgres sees it. */
+/**
+ * Rule 2: the last declaration of a function wins, exactly as Postgres sees it.
+ * The body's dollar-quote tag is read from each definition: applied migrations
+ * use both `$$` and `$function$`, and a lookup that only knows `$$` silently
+ * skips the others and judges an older definition.
+ */
 function latestDefinition(fn: string): { file: string; body: string } | null {
   let latest: { file: string; body: string } | null = null;
+  const opener = new RegExp(`create or replace function public\\.${fn}\\s*\\(`, 'g');
   for (const file of ALL_MIGRATIONS) {
     const sql = readFileSync(join(MIGRATIONS, file), 'utf8');
-    const re = new RegExp(`create or replace function public\\.${fn}\\b[\\s\\S]*?\\n\\$\\$;`, 'g');
-    const hits = [...sql.matchAll(re)];
-    const last = hits[hits.length - 1];
-    if (last !== undefined) latest = { file, body: last[0] };
+    for (const match of sql.matchAll(opener)) {
+      const tag = /\bas\s+(\$[A-Za-z_]*\$)/.exec(sql.slice(match.index));
+      if (!tag) continue;
+      const bodyStart = match.index + tag.index + tag[0].length;
+      const close = sql.indexOf(tag[1]!, bodyStart);
+      if (close >= 0) latest = { file, body: sql.slice(match.index, close + tag[1]!.length) };
+    }
   }
   return latest;
+}
+
+/** A migration found by its name, not its version: DB-DRIFT-01 renames versions. */
+function migrationNamed(name: string): string {
+  const file = ALL_MIGRATIONS.find((f) => f.endsWith(`_${name}.sql`));
+  if (file === undefined) throw new Error(`no migration named ${name}`);
+  return file;
 }
 
 /** actor_type is the 7th of eight arguments to the audit helper. */
@@ -107,9 +123,11 @@ describe('audit actor_type stays inside the CHECK constraint', () => {
     });
   }
 
-  it('the submit function is now resolved from the fix, not the regression', () => {
+  it('the submit function is now resolved from the fix or a later definition, not the regression', () => {
     const latest = latestDefinition('gellatti_submit_partner_application_v1');
-    expect(latest?.file).toBe('20260831201100_partner_application_audit_actor_fix.sql');
+    // Later migrations redefine it (20260910044111 applied, 20260910180000
+    // prepared); each must keep the fix, so the claim is "not older than the fix".
+    expect((latest?.file ?? '') >= migrationNamed('partner_application_audit_actor_fix')).toBe(true);
     expect(actorTypesIn(latest?.body ?? '')).toEqual(['user', 'user']);
   });
 
@@ -118,7 +136,7 @@ describe('audit actor_type stays inside the CHECK constraint', () => {
     // passing because the bad value was edited away. 20260831201000 is applied
     // and must never be rewritten.
     const applied = readFileSync(
-      join(MIGRATIONS, '20260831201000_partner_application_more_information.sql'),
+      join(MIGRATIONS, migrationNamed('partner_application_more_information')),
       'utf8',
     );
     expect(applied).toContain("'customer'");

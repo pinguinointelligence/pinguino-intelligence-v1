@@ -11,7 +11,8 @@ import {
   APP_PAGE_MEASURE,
   APP_PAGE_WORKSPACE,
 } from '@/features/shell/shellGeometry';
-import { savedToRecipeInput, type SavedRecipe } from '@/features/recipes/recipePayload';
+import type { SavedRecipe } from '@/features/recipes/recipePayload';
+import { openSavedRecipeVersion } from '@/features/recipes/openSavedRecipeVersion';
 import { formatSavedRecipeDate } from '@/features/recipes/savedRecipeDate';
 import {
   readSavedRecipeMetadata,
@@ -27,14 +28,7 @@ import { RecipeCommunityActions } from '@/features/community/ui/RecipeCommunityA
 import { useCreatorProfile } from '@/features/community/useCreatorProfile';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { useAuthStore } from '@/stores/authStore';
-import { useRecipeStore } from '@/stores/recipeStore';
-import { resolveRecipesRepository } from '@/features/pro-core/proCoreRecipeRepo';
 import { useProCorePersona } from '@/features/pro-core/useProCorePersona';
-import { readRecipeCompositionMetadata } from '@/features/recipe-composition/recipeCompositionPersistence';
-import type {
-  RecipeVersion,
-  SavedRecipe as SavedRecipeAggregate,
-} from '@/features/pro-core/recipeContracts';
 
 const r = copy.recipes;
 
@@ -68,7 +62,6 @@ export function MyRecipesContent() {
   const available = useAuthStore((state) => state.available);
   const status = useAuthStore((state) => state.status);
   const openAuthModal = useAuthModalStore((state) => state.open);
-  const loadRecipeInput = useRecipeStore((state) => state.loadRecipeInput);
 
   const authed = status === 'authed';
   const recipesQuery = useSavedRecipes(authed);
@@ -85,77 +78,13 @@ export function MyRecipesContent() {
 
   const onOpen = async (row: SavedRecipe, requestedVersionNumber: number | null) => {
     setOpenError(null);
-    try {
-      const input = savedToRecipeInput(row.recipe_input);
-      // Link to the aggregate so the next save appends a NEW VERSION (not a copy). A legacy orphan
-      // row (no aggregate/meta) links only its name → the next save creates a fresh aggregate.
-      let aggregate: SavedRecipeAggregate | null = null;
-      let openedVersion: RecipeVersion | null = null;
-      let repoReachable = true;
-      try {
-        const repo = resolveRecipesRepository().repository;
-        aggregate = repo ? await repo.getRecipe(row.id) : null;
-        const wanted = requestedVersionNumber ?? aggregate?.latestVersionNumber ?? null;
-        openedVersion =
-          repo && aggregate && wanted !== null ? await repo.getVersion(row.id, wanted) : null;
-      } catch {
-        aggregate = null;
-        openedVersion = null;
-        repoReachable = false;
-      }
-      // A specific historical version was asked for and could not be read. Opening the LATEST
-      // instead would silently show different grams than the user selected, so refuse and say so.
-      const askedForHistory =
-        requestedVersionNumber !== null &&
-        aggregate !== null &&
-        requestedVersionNumber !== aggregate.latestVersionNumber;
-      if (askedForHistory && !openedVersion) {
-        setOpenError(r.versionSelector.openFailed(requestedVersionNumber));
-        return;
-      }
-      if (!repoReachable && requestedVersionNumber !== null && requestedVersionNumber > 1) {
-        setOpenError(r.versionSelector.historyUnavailable);
-        return;
-      }
-      const openedInput = openedVersion?.recipeInput ?? input;
-      loadRecipeInput(
-        openedInput,
-        aggregate
-          ? {
-              savedId: row.id,
-              savedName: row.name,
-              versionNumber: openedVersion?.versionNumber ?? aggregate.latestVersionNumber,
-              latestVersionNumber: aggregate.latestVersionNumber,
-              versionId: openedVersion?.versionId ?? null,
-              versionDate: openedVersion?.createdAt ?? aggregate.updatedAt,
-              composition:
-                openedVersion?.productComposition ??
-                readRecipeCompositionMetadata(
-                  row.product_composition,
-                  openedInput.items.map((item) => item.id),
-                  openedInput.items
-                    .filter((item) => item.lock_type === 'main')
-                    .map((item) => item.id),
-                ),
-            }
-          : {
-              savedId: null,
-              savedName: row.name,
-              versionNumber: null,
-              versionDate: null,
-              composition: readRecipeCompositionMetadata(
-                row.product_composition,
-                openedInput.items.map((item) => item.id),
-                openedInput.items
-                  .filter((item) => item.lock_type === 'main')
-                  .map((item) => item.id),
-              ),
-            },
-      );
-      navigate(persona === 'pro' ? '/pro/recipe' : '/home');
-    } catch {
-      setOpenError(r.versionSelector.openFailedGeneric);
+    // ONE opening path, shared with Produkcja → Partie → „Wróć do partii”.
+    const opened = await openSavedRecipeVersion(row, requestedVersionNumber, { persona });
+    if (!opened.ok) {
+      setOpenError(opened.message);
+      return;
     }
+    navigate(opened.to);
   };
 
   const rows = recipesQuery.data ?? [];

@@ -19,6 +19,10 @@ const productOwnedMigration = readFileSync(
   'utf8',
 );
 const edge = readFileSync(resolve(root, 'supabase/functions/catalog-submit/index.ts'), 'utf8');
+const sharedOnboarding = readFileSync(
+  resolve(root, 'supabase/functions/_shared/sharedProductOnboarding.ts'),
+  'utf8',
+);
 const importer = readFileSync(resolve(root, 'src/services/productCatalogImport.ts'), 'utf8');
 const mapperBefore = readFileSync(resolve(root, 'docs/ingredients/validation/mapper_basement.csv'));
 
@@ -51,7 +55,9 @@ describe('INTIMPORT Mapper knowledge is estimate provenance, not runtime identit
   });
 
   it('rejects manual/browser spoofing and recomputes a product-owned catalog_import profile', () => {
-    expect(edge).toContain('validateIntimportProductProfileProposal');
+    expect(edge).toContain('validateSharedProductOnboarding');
+    expect(sharedOnboarding).toContain('validateIntimportProductProfileProposal');
+    expect(sharedOnboarding).toContain('validateProductBehaviorAuthority');
     expect(edge).toContain("source !== 'catalog_import'");
     expect(edge).toContain('if (canonicalCode !== proposedCode) return null;');
     expect(edge).toContain('productProfileAuthority: serverProductProfileAuthority');

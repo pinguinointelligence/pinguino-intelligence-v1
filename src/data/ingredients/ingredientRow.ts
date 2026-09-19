@@ -11,17 +11,9 @@
  */
 
 import type { CarbonationStatus } from '@/data/products/carbonation';
+import type { MapperVerificationStatus } from './mapperVerificationStatus';
 
-export type VerificationStatus =
-  | 'Blocked'
-  | 'Estimated'
-  | 'Estimated / Needs Label Review'
-  | 'PI Calculated / Needs Label Review'
-  | 'Superseded Duplicate'
-  | 'Verified'
-  | 'Verified / Basis Check Needed'
-  | 'Verified / PI Calculated'
-  | 'Verified / Public Label';
+export type VerificationStatus = MapperVerificationStatus;
 
 export type StorageType =
   | 'ambient'

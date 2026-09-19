@@ -36,7 +36,9 @@ describe('P0 desktop Workbench tab anchor', () => {
     expect(contract).not.toContain('+10px');
     const css = read('styles', 'gellatti-v2-1.css');
     expect(css).toMatch(/\.pro-workbench-section-nav\s*\{[\s\S]*grid-column:\s*2/);
-    expect(css).toMatch(/\.pro-workbench-section-nav\s*\{[\s\S]*width:\s*100%/);
+    const stripRule = css.match(/\.pro-workbench-section-nav\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(stripRule).toContain('justify-self: stretch');
+    expect(stripRule).not.toMatch(/(?:^|\s)(?:min-|max-)?width\s*:/);
 
     // Both surfaces REUSE the one recipe; neither re-types its own columns.
     expect(shell).toContain('DESKTOP_WORKBENCH_COLUMNS');
@@ -44,7 +46,8 @@ describe('P0 desktop Workbench tab anchor', () => {
     expect(page).toContain('DESKTOP_TAB_STRIP');
     expect(shell.includes('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]')).toBe(false);
     expect(surface.includes('xl:grid-cols-[minmax(0,1.62fr)_minmax(400px,1fr)]')).toBe(false);
-    expect(page).toContain('className="w-full border-b-0"');
+    expect(page).toContain('className="border-b-0"');
+    expect(page).not.toContain('className="w-full border-b-0"');
   });
 
   it('distributes four tabs only inside the anchored display column', () => {
@@ -68,15 +71,16 @@ describe('P0 desktop Workbench tab anchor', () => {
     // Underline only: a filled or boxed active tab changes its own metrics and
     // is exactly what made the strip read as shifted (owner §7/§8).
     /* The orange is now scoped to the ONE edge that carries width. The old
-       `border-[#f58a07]` set all four border COLOURS while only one edge had a
+       bare accent `border-[…]` set all four border COLOURS while only one edge had a
        width — three orange lines waiting for any engine or zoom level that
        rounds a hairline into existence, which is the orange FRAME the owner
        saw around the active module. Naming the edge makes that frame
        impossible. The quiet fill still belongs to the bottom variant alone. */
-    expect(tabs).toContain(
-      "bottom ? 'border-t-[#f58a07] bg-[var(--g-ivory)]/70' : 'border-b-[#f58a07]'",
+    // Whitespace-tolerant: the formatter may wrap the ternary across lines.
+    expect(tabs).toMatch(
+      /bottom\s*\?\s*'border-t-\[var\(--g-orange\)\] bg-\[var\(--g-ivory\)\]\/70'\s*:\s*'border-b-\[var\(--g-orange\)\]'/,
     );
-    expect(tabs).not.toMatch(/'border-\[#f58a07\][^-]/);
+    expect(tabs).not.toMatch(/'border-\[(?:#f58a07|var\(--g-orange\))\][^-]/);
   });
 
   it('keeps the accepted mobile bottom navigation contract separate and unchanged', () => {

@@ -182,9 +182,14 @@ describe('ONE page gutter — a page may not re-scope the global header', () => 
     expect(shell).not.toContain('{!viewportLock ? actions : null}');
   });
 
-  it('still resolves the header and the workspace through that one token', () => {
+  it('still resolves the header and the workspace through one width authority', () => {
     expect(APP_HEADER_ROW).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
-    expect(APP_PAGE_WORKSPACE).toContain('xl:w-[calc(100%-var(--pro-page-gutter))]');
+    // SUPERSEDED, owner 2026-09-12: from the workbench breakpoint up the page
+    // workspace IS the workbench frame — the same box the header row now resolves
+    // to (`headerFrameAuthority.test.ts`). It used to follow the page gutter to a
+    // 1776 px ceiling, so /pro/versions opened at x = 32 under a header at 161.
+    expect(APP_PAGE_WORKSPACE).toContain('pro-workbench-frame');
+    expect(APP_PAGE_WORKSPACE).toContain('min-[68.5rem]:px-0');
     // mx-auto is what turns the token into the page origin: margin = gutter / 2.
     expect(APP_HEADER_ROW).toContain('mx-auto');
   });
@@ -224,6 +229,10 @@ describe('layering and the intermediate desktop band', () => {
     resolve(import.meta.dirname, '../studio/StudioEngineSurface.tsx'),
     'utf8',
   );
+  const moduleTabs = readFileSync(
+    resolve(import.meta.dirname, '../pro-workbench/WorkbenchModuleTabs.tsx'),
+    'utf8',
+  );
   const v21 = readFileSync(resolve(import.meta.dirname, '../../styles/gellatti-v2-1.css'), 'utf8');
 
   it('puts the mobile drawer ABOVE the page bottom chrome', () => {
@@ -247,10 +256,26 @@ describe('layering and the intermediate desktop band', () => {
 
   it('keeps the module strip on one canonical desktop geometry', () => {
     /* The former intermediate band is superseded by whole-application scale.
-       The canonical 1440 px tab geometry now scales with the rest of the shell. */
+       OWNER 2026-09-13: the module strip is the full right-panel column, with
+       four equal tracks inherited from the shared tab component. It must not
+       collapse back to a left-packed max-content strip. */
+    const rightColumn = v21.match(/\.pro-workbench-section-nav\s*\{([^}]*)\}/)?.[1] ?? '';
+    const desktopTabs =
+      v21.match(/\.gellatti-pro-workbench \[data-testid='pro-context-tabs'\]\s*\{([^}]*)\}/)?.[1] ??
+      '';
+    const labels = [...moduleTabs.matchAll(/\{ id: '[^']+', label: '([^']+)' \}/g)].map(
+      ([, label]) => label,
+    );
+
     expect(v21).not.toMatch(/max-width:\s*93\.749rem/);
-    expect(v21).toMatch(/grid-template-columns: repeat\(4, max-content\)/);
-    expect(v21).toMatch(/justify-content: start/);
-    expect(v21).toMatch(/\.pro-workbench-section-nav\s*\{[\s\S]*width:\s*100%/);
+    expect(rightColumn).toMatch(/grid-column:\s*2/);
+    expect(rightColumn).toMatch(/justify-self:\s*stretch/);
+    expect(rightColumn).not.toMatch(/(?:min-|max-)?width\s*:/);
+    expect(moduleTabs).toContain("'grid grid-cols-4'");
+    expect(desktopTabs).not.toMatch(/grid-template-columns:\s*repeat\(4,\s*max-content\)/);
+    expect(desktopTabs).not.toMatch(/justify-content:\s*start/);
+    expect(desktopTabs).not.toMatch(/column-gap:\s*4px/);
+    expect(labels).toEqual(['Receptura', 'Monitor', 'Produkcja', 'Etykieta']);
+    expect(moduleTabs).toContain('onClick={() => select(tab.id)}');
   });
 });

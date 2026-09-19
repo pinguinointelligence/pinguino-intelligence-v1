@@ -107,7 +107,8 @@ export type AdminStatusTone = 'neutral' | 'good' | 'attention' | 'quiet';
 const STATUS_TONES: Record<AdminStatusTone, string> = {
   neutral: 'border-[var(--g-line)] bg-white text-[var(--g-ink)]',
   good: 'border-[#cfe3d4] bg-[#f4f8f4] text-[#2f6b40]',
-  attention: 'border-[#f0d7ac] bg-[var(--g-attention-surface)] text-[var(--g-attention-ink)]',
+  attention:
+    'border-[var(--g-attention-line)]/40 bg-[var(--g-attention-surface)] text-[var(--g-attention-ink)]',
   quiet: 'border-[var(--g-line)] bg-[var(--g-ivory)] text-[var(--g-text-secondary)]',
 };
 

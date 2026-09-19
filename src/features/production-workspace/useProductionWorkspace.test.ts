@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_PRESET } from '@/data/demoPresets';
 import { ProductionRescueOptionUnavailableError } from '@/services/proCore/supabaseProduction';
+import type { ProductionRun } from '@/features/pro-core/productionContracts';
 import {
   confirmProductionLine,
   createProductionSession,
@@ -17,6 +18,7 @@ import {
   rescueOptionUnavailableMessage,
   productionSourceForRecipe,
   reusableRescueAuthorizeKey,
+  selectProductionRunForRecipeVersion,
 } from './useProductionWorkspace';
 
 describe('production source integrity', () => {
@@ -54,6 +56,16 @@ describe('production source integrity', () => {
       recipeVersionNumber: null,
       recipeName: 'Pistacja',
     });
+  });
+
+  it('selects one of multiple matching active runs by newest timestamp and UUID tie-break', () => {
+    const run = (runId: string, createdAt: string) => ({ runId, createdAt }) as ProductionRun;
+    const older = run('00000000-0000-4000-8000-000000000099', '2026-09-08T09:00:00.000Z');
+    const tiedLow = run('00000000-0000-4000-8000-000000000001', '2026-09-08T10:00:00.000Z');
+    const tiedHigh = run('00000000-0000-4000-8000-000000000002', '2026-09-08T10:00:00.000Z');
+
+    expect(selectProductionRunForRecipeVersion([tiedLow, older, tiedHigh])).toBe(tiedHigh);
+    expect(selectProductionRunForRecipeVersion([])).toBeNull();
   });
 });
 

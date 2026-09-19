@@ -6,6 +6,7 @@ import {
   type SupabaseLike,
 } from '../adapters/supabaseAdapters';
 import { runScanImportV2 } from '../pipeline';
+import { identifyCode } from '../codeIdentity';
 import { scan } from './codeIdentity.test';
 import { ctx } from './fakes';
 
@@ -117,8 +118,8 @@ describe('Supabase adapters (stub client) — one RPC row feeds catalogue, behav
       identity: { symbology: 'UPC-A' },
     });
     expect(client.calls.filter((c) => c.startsWith('search'))).toEqual([
-      'search_products_v1:"036000291452"',
       'search_products_v1:"0036000291452"',
+      'search_products_v1:"036000291452"',
     ]);
   });
   it('guest has no exact path — explicit, never a silent empty resolution', async () => {
@@ -291,9 +292,9 @@ describe('Supabase adapters (stub client) — one RPC row feeds catalogue, behav
         externalTimeoutMs: 50,
       }),
     ).toMatchObject({
-      kind: 'resolved_exact',
-      provenance: 'local_cache',
-      product: { currentVersionId: 'v1' },
+      kind: 'offline',
+      knownLocally: true,
+      cachedProduct: { currentVersionId: 'v1' },
     });
     t = 500;
     expect(
@@ -325,6 +326,9 @@ const gtinRow = (over: Record<string, unknown> = {}) => ({
   mapper_ingredient_id: null,
   engine_usable: true,
   lifecycle_rejected: false,
+  is_active: true,
+  merged_into_product_id: null,
+  current_version_facts: { productIntelligence: { engineUsable: true } },
   ...over,
 });
 
@@ -383,6 +387,31 @@ describe('D8 — guest-safe exact resolver adapter (resolve_exact_products_by_gt
         expect.arrayContaining(['privatePrice', 'favorite', 'ownerId']),
       );
   });
+  it('uses canonical GTIN-13 for exact RPC and does not re-infer capture symbology from its length', async () => {
+    const calls: Array<{ fn: string; args: Record<string, unknown> | undefined }> = [];
+    const client: SupabaseLike = {
+      async rpc(fn, args) {
+        calls.push({ fn, args });
+        return { data: [gtinRow({ matched_gtin: '0000096385074' })], error: null };
+      },
+      from() {
+        return {
+          async upsert() {
+            return { error: null };
+          },
+        };
+      },
+    };
+    const identityResult = identifyCode(scan('96385074', 'EAN-8'));
+    expect(identityResult.ok).toBe(true);
+    if (!identityResult.ok) return;
+    const port = createSupabaseV2Ports(client);
+    await port.catalog.exactByIdentity?.(identityResult.identity, ctx());
+    expect(calls[0]).toEqual({
+      fn: 'resolve_exact_products_by_gtin_v1',
+      args: { p_gtin: '0000096385074', p_symbology: null },
+    });
+  });
   it('guest unknown → unknown; guest invalid checksum → invalid_code before any RPC', async () => {
     const client = gtinStub({ anon: [], user: [] }, 'anon');
     expect(
@@ -398,6 +427,21 @@ describe('D8 — guest-safe exact resolver adapter (resolve_exact_products_by_gt
       }),
     ).toMatchObject({ kind: 'invalid_code', reason: 'checksum' });
     expect(client.calls).toEqual(['resolve_exact_products_by_gtin_v1:4305615614434']);
+  });
+  it('defensively rejects a quarantined GTIN row even if a stale RPC returns it', async () => {
+    const client = gtinStub(
+      {
+        anon: [gtinRow({ verification_status: 'blocked' })],
+        user: [gtinRow({ verification_status: 'blocked' })],
+      },
+      'user',
+    );
+    expect(
+      await runScanImportV2(scan('8402001047251'), ctx(), {
+        ...createSupabaseV2Ports(client),
+        ...base(),
+      }),
+    ).toMatchObject({ kind: 'unknown' });
   });
   it('a private/account-only twin is returned to its owner as own strength and never to a guest', async () => {
     const twin = gtinRow({
@@ -468,7 +512,7 @@ describe('D8 — guest-safe exact resolver adapter (resolve_exact_products_by_gt
         offlineCache: cache,
         externalTimeoutMs: 50,
       }),
-    ).toMatchObject({ kind: 'resolved_exact', provenance: 'local_cache' });
+    ).toMatchObject({ kind: 'offline', knownLocally: true, cachedProduct: { productId: '50c3d0e1-ca37-4891-a744-a3438d6b226a' } });
     expect(
       await runScanImportV2(scan('5900820012434'), ctx({ accountId: null, online: false }), {
         ...createSupabaseV2Ports(gtinStub(rows, 'anon')),

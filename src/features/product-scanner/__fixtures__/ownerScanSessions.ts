@@ -25,7 +25,7 @@ export const sport001ScanResult = () => ({
     originalName: null,
     brand: 'Vitamin Well',
     explicitlyUnbranded: false,
-    category: null,
+    category: 'beverages and beverages preparations / beverages',
     variant: null,
     countryOfOrigin: null,
     labelLanguages: [],
@@ -33,7 +33,7 @@ export const sport001ScanResult = () => ({
   barcodes: [{ value: SPORT_001_EAN, format: 'EAN_13' }],
   evidence: [],
   nutrition: {
-    basis: 'per_100ml',
+    basis: 'per_100g',
     energyKj: 98.6,
     energyKcal: 23,
     fat: 0,
@@ -64,6 +64,8 @@ export const sport001ScanResult = () => ({
     cocoaButterPercent: null,
     cocoaSolidsPercent: null,
     fruitContentPercent: null,
+    waterPercent: null,
+    totalSolidsPercent: null,
     technicalParametersText: null,
   },
   externalSources: [
@@ -155,6 +157,8 @@ export const sport002ScanResult = () => ({
     cocoaButterPercent: null,
     cocoaSolidsPercent: null,
     fruitContentPercent: null,
+    waterPercent: null,
+    totalSolidsPercent: null,
     technicalParametersText:
       'Sugar-free; lemon/lime; vitamin D, niacin, vitamin B6, vitamin B12, pantothenic acid and magnesium; non-carbonated sports drink.',
   },
@@ -182,11 +186,7 @@ export const sport002ScanResult = () => ({
       url: 'https://www.vitaminwell.com/product/electrolytes-sugar-free/',
       title: 'Isotonic Sugar Free – Vitamin Well',
       sourceType: 'manufacturer',
-      fieldsUsed: [
-        'identity.category',
-        'claims',
-        'productionDeclarations.technicalParametersText',
-      ],
+      fieldsUsed: ['identity.category', 'claims', 'productionDeclarations.technicalParametersText'],
     },
     {
       url: 'https://www.elcorteingles.es/supermercado/B001018623902212-vitamin-well-bebida-refrescante-con-vitaminas-y-minerales-sport-002-sabor-limon-lima-sin-azucar-botella-500-ml/',
@@ -201,15 +201,27 @@ export const sport002ScanResult = () => ({
   ],
 });
 
-/** The class the server writes onto a row once classifySourceAuthority has spoken. */
+/**
+ * What the server writes onto a source row: the class classifySourceAuthority assigned, and the
+ * barcode the page itself printed, as the enrichment read it. Both are server-side; neither is
+ * anything a browser can assert.
+ */
 export const withAuthority = <T extends { externalSources: Array<Record<string, unknown>> }>(
   result: T,
   byUrlFragment: Readonly<Record<string, string>>,
+  statedEanByUrlFragment: Readonly<Record<string, string>> = {},
 ): T => ({
   ...result,
   externalSources: result.externalSources.map((row) => {
     const url = String(row.url ?? '');
     const hit = Object.entries(byUrlFragment).find(([fragment]) => url.includes(fragment));
-    return hit ? { ...row, sourceAuthorityClass: hit[1] } : row;
+    const stated = Object.entries(statedEanByUrlFragment).find(([fragment]) =>
+      url.includes(fragment),
+    );
+    return {
+      ...row,
+      ...(hit ? { sourceAuthorityClass: hit[1] } : {}),
+      ...(stated ? { sourceStatedEan: stated[1] } : {}),
+    };
   }),
 });

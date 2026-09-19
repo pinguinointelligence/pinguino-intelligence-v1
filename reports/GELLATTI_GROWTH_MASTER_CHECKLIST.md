@@ -5,6 +5,9 @@ Earlier prints said `TOTAL 172`. That denominator was wrong; the row text was al
 
 **Branch** merged to `staging` @ `22ce861c` (PR #135, squash). Deployed + served-verified.
 **Legend** 🟢 proven with evidence · 🟡 built, proof partial · 🔴 blocked · ⚪ not started
+**Counts are row-based.** A section header states how many of its rows are 🟢. The recount of
+2026-09-10 corrected two headers that had drifted from their rows: K said 16/22 (rows: 14 🟢) and
+M said 2/9 (rows: 1 🟢). No row's status changed.
 
 ```
 ARCHITECTURE / AUTHORITY                                                    12/12
@@ -60,8 +63,12 @@ COMMISSION ENGINE                H01-H22 ⚪  backend exists; no Stripe TEST eve
 AFFILIATE DASHBOARD              I01-I14 ⚪
 PAYOUT / SETTLEMENT              J01-J08 ⚪  kill switch stays OFF (checkpoint §4)
 
-REFER-A-FRIEND — REGULAR USER                                               17/22
-K01 🟢 "Poleć Gellatti" in /account         K02 🟢 Code GPQPBPM6, mint idempotent
+REFER-A-FRIEND — REGULAR USER                                               14/22
+K01 🟢 "Poleć Gellatti" in /account — BUILT (#248) and SERVED-PROVEN 2026-09-10 on
+       staging 305d086c: /account?section=referral renders a real minted code GVLN474V and
+       link https://staging.pinguinoai.com/?ref=GVLN474V. Desktop + 390 (overflow 0).
+       Was 🔴: commit 0cc90b3a shipped copy/rules/service/tests and NOT ONE .tsx, so the
+       backend banked days nobody could see.  K02 🟢 Code GPQPBPM6, mint idempotent
 K03 🟢 Separate from Affiliate — copy guard bans money words; links out to /affiliate
 K04 🟢 Monthly = +7 days (live)             K05 🟢 Annual = +30 days (live)
 K06 🟢 HOME referrer temp PRO — 7 d auto-activated, ends 2026-09-09 (live)
@@ -74,8 +81,18 @@ K11 🟡 Activates when paid PRO would end — proven for "no paid PRO"; not at 
 K12 🟢 No duplicate — duplicate_invoice AND first_purchase_already_rewarded (live)
 K13 🟢 Failed payment -> no reward — unpaid + zero-value never reach the recorder
 K14 🟢 Refund/void reverses — live reversal, bank 30 -> 0; dispute path tested
-K15 🟢 Self-referral refused (live)          K16 🟢 Status visible (reversed shown struck)
-K17 🟢 Earned days visible                   K18 🟢 Remaining bank visible
+K15 🟢 Self-referral refused (live)
+K16 🟡 Status visible (reversed shown struck) — the RewardRow renders earned/reversed and
+       strikes a reversal through; unit-tested. NOT served-proven: the QA account has no
+       reversed reward, so no live row exists to show. Needs a real reversal to close.
+       → READY FOR SERVED OWNER QA (owner 2026-09-10). Not a served pass.
+       → Script: reports/GELLATTI_WWU_SERVED_OWNER_QA_SCRIPT.md §5 (needs a reversed reward
+         first). Render test added 2026-09-17: referralRewardRow.render.test.tsx — the
+         reversed row stays listed, reads Cofnięte, its days struck through and dimmed.
+K17 🟢 Earned days visible    — SERVED 305d086c: "ZDOBYTE DNI PRO" renders from the RPC
+K18 🟢 Remaining bank visible — SERVED 305d086c: "BANK DNI PRO" + the banked-while-PRO help
+       Rules render the canonical 7/30 from REFERRAL_BONUS_DAYS, and the separation line
+       "To nie jest program Affiliate" plus the link out are both live.
 K19 🔴 Monthly HOME served proof             K20 🔴 Monthly PRO served proof
 K21 🔴 Annual HOME served proof              K22 🔴 Annual PRO served proof
        BLOCKED: no Stripe CLI, no signing secret, and I must not enter card numbers
@@ -93,8 +110,12 @@ L09 🟢 RLS proven by 15 negative attempts, every one refused
 L10 🟡 Anonymous limited — anon blocked on referral tables; BUT anon still holds
        table-level INSERT/UPDATE/DELETE/TRUNCATE grants on commission_entries.
        RLS is currently the only barrier. Recorded as a defence-in-depth gap.
+       FINDING 2026-09-17 (Lane A J-REF-17, read-only on the live DB): authenticated holds
+       table-level SELECT on referral_rewards and user_referral_attributions, so a referrer can
+       read referred_user_id and the purchase's Stripe ids on their OWN reward rows via REST.
+       Latent (both tables empty). Grant change prepared for owner approval; no count changed.
 
-REGRESSION / EXISTING PRODUCT                                                 2/9
+REGRESSION / EXISTING PRODUCT                                                 1/9
 M01 ⚪ HOME  M02 ⚪ PRO  M03 ⚪ Shop  M04 🟡 Work With Us route (test, needs served)
 M05 ⚪ Franchise  M06 ⚪ Global header  M07 ⚪ Partner data  M08 ⚪ Commission history
 M09 🟢 No Production/main change — every DB op and the deploy targeted staging only

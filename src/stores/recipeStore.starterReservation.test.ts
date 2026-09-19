@@ -16,9 +16,9 @@
  *     sum(lines) + missingMainMassGrams === target batch
  *
  * Complete recipes (`missingMainMassGrams === 0`) still fill the batch exactly.
- * SOL-041 permits only the stabilizer role to move onto its executable whole-
- * gram hold; the relative mathematics of every ordinary line stays unchanged.
- * The discriminator is the reservation, never `productType === 'sorbet'`.
+ * A Home machine change now puts every scalable line onto a balanced whole-
+ * gram grid after SOL-041 projects the stabilizer. The discriminator for the
+ * reserved mass is still the reservation, never `productType === 'sorbet'`.
  */
 import { describe, expect, it } from 'vitest';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
@@ -45,9 +45,8 @@ const inulin = () =>
     .items.filter((item) => canonicalIngredientId(item.ingredient) === INULIN)
     .reduce((total, item) => total + item.planned_grams, 0);
 const ratios = () => st().items.map((item) => item.planned_grams / sum());
-/** PC-02 projects the Sorbet stabilizer onto whole grams, so that ONE line may
- *  legitimately land a gram or two off a pure proportional scale. Everything
- *  else must scale exactly. */
+/** PC-02 projects the Sorbet stabilizer before the final balanced whole-gram
+ *  allocation, so it remains useful to distinguish that profile-owned line. */
 const STABILIZER = 'PI-ING-000492';
 const isStabilizer = (item: { ingredient: unknown }) =>
   canonicalIngredientId(item.ingredient as never) === STABILIZER;
@@ -102,11 +101,10 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
     expect(inulin()).toBeLessThanOrEqual(band.maxGrams);
     expect(ownerInulinPolicyIssues(buildRecipeInput(st()))).toEqual([]);
 
-    // Support ratios are preserved for every line the stabilizer authority does
-    // not pin to whole grams.
+    // Every ordinary support line stays within one gram of its exact share.
     st().items.forEach((item, index) => {
       if (isStabilizer(item)) return;
-      expect(item.planned_grams / sum()).toBeCloseTo(before.ratios[index]!, 3);
+      expect(Math.abs(item.planned_grams - sum() * before.ratios[index]!)).toBeLessThanOrEqual(1);
     });
   });
 
@@ -143,8 +141,8 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
 
   it('4. a COMPLETE starter still fills its batch — the discriminator is the reservation', () => {
     // Gelato/Vegan/Protein starters already sum to the batch. They still fill
-    // it exactly; SOL-041 changes only the stabilizer representation to whole
-    // grams, while ordinary lines preserve their mutual proportions.
+    // it exactly; the final Home allocation keeps each ordinary line within
+    // one gram of its exact proportional share.
     for (const product of ['gelato', 'vegan', 'protein'] as const) {
       useRecipeStore.getState().startNewRecipe(product);
       const beforeBatch = st().target_batch_grams;
@@ -167,8 +165,9 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
         hardCapacityGrams: setup.hardMaximumBatchGrams,
         batchSource: 'MACHINE_DEFAULT',
       });
-      // A complete recipe still fills its new batch exactly.
+      // A complete recipe still fills its new batch exactly in whole grams.
       expect(sum()).toBeCloseTo(setup.recommendedBatchGrams, 6);
+      expect(st().items.every((item) => Number.isInteger(item.planned_grams))).toBe(true);
       const ordinaryAfter = st().items.filter((item) => !isStabilizer(item));
       const ordinaryAfterTotal = ordinaryAfter.reduce(
         (total, item) => total + item.planned_grams,
@@ -176,9 +175,9 @@ describe('an incomplete starter keeps its Main reservation across a batch resize
       );
       ordinaryAfter.forEach((item, index) => {
         expect(item.id).toBe(ordinaryBefore[index]!.id);
-        expect(item.planned_grams / ordinaryAfterTotal).toBeCloseTo(
-          ordinaryBefore[index]!.grams / ordinaryBeforeTotal,
-          10,
+        const exactShare = ordinaryBefore[index]!.grams / ordinaryBeforeTotal;
+        expect(Math.abs(item.planned_grams - ordinaryAfterTotal * exactShare)).toBeLessThanOrEqual(
+          1,
         );
       });
       expect(

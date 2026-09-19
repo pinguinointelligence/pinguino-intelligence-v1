@@ -9,6 +9,7 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { INGREDIENT_INTAKE_HEADERS } from './ingredientIntakeColumns';
+import { MAPPER_VERIFICATION_STATUSES } from './mapperVerificationStatus';
 
 const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const CSV = readFileSync(
@@ -60,8 +61,8 @@ const dataRows = parsed
 const col = (name: string) => headers.indexOf(name);
 
 describe('Mapper Basement dataset (mapper_basement.csv)', () => {
-  it('has exactly 2089 rows and 62 columns', () => {
-    expect(dataRows.length).toBe(2089);
+  it('has exactly 2541 rows and 62 columns', () => {
+    expect(dataRows.length).toBe(2541);
     expect(headers.length).toBe(62);
     for (const row of dataRows) expect(row.length).toBe(62);
   });
@@ -97,21 +98,7 @@ describe('Mapper Basement dataset (mapper_basement.csv)', () => {
     const base = col('approved_for_base');
     const eng = col('approved_for_engines');
     const status = col('verification_status');
-    const VOCAB = new Set([
-      'Blocked',
-      'Estimated',
-      'Estimated / Needs Label Review',
-      'PI Calculated / Needs Label Review',
-      'Superseded Duplicate',
-      'Verified',
-      'Verified / Basis Check Needed',
-      'Verified / Engine mapping review',
-      'Verified / PI Calculated',
-      'Verified / Public Label',
-      'Vegan verified / allergen label review required',
-      'Vegan verified / cross-contamination noted',
-      'Vegan/dairy-free verified / allergen label review required',
-    ]);
+    const VOCAB = new Set<string>(MAPPER_VERIFICATION_STATUSES);
     for (const row of dataRows) {
       expect(['true', 'false']).toContain((row[base] ?? '').toLowerCase());
       expect(['true', 'false']).toContain((row[eng] ?? '').toLowerCase());

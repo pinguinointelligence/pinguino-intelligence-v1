@@ -14,6 +14,7 @@ import type {
 } from './contracts';
 import { resolveIdentity } from './resolver';
 import { startDiscovery } from './discovery/discovery';
+import { assertScanRunCurrent, isStaleScanRunError } from './runAuthority';
 
 /** audit §6: an exact canonical match scores ≥ 97; slot-derived disambiguation is PROVISIONAL 90 */
 export const CONFIDENCE = { exactCatalog: 97, localCache: 97, slotDerived: 90 } as const;
@@ -68,12 +69,14 @@ async function research(
   if (!ports.external || !ctx.online) return { externalEvidence: null, evidenceError: null };
   try {
     const raw = await withTimeout(ports.external.research(identity, ctx), ports.externalTimeoutMs);
+    assertScanRunCurrent(ctx);
     if (raw === null) return { externalEvidence: null, evidenceError: null };
     if (!isExternalEvidence(raw))
       return { externalEvidence: null, evidenceError: 'provider_malformed' };
     // evidence is retained verbatim (conflicts included); it never becomes a product here
     return { externalEvidence: raw, evidenceError: null };
   } catch (error) {
+    if (isStaleScanRunError(error)) throw error;
     const timeout = error instanceof Error && error.message === 'provider_timeout';
     return {
       externalEvidence: null,
@@ -88,8 +91,24 @@ async function finish(
   provenance: Extract<ScanImportV2Result, { kind: 'resolved_exact' }>['provenance'],
   ctx: RequestContext,
   ports: ScanImportV2Ports,
+  revalidated = false,
 ): Promise<ScanImportV2Result> {
-  const behaviour = await ports.behaviour.classify(product.productId);
+  assertScanRunCurrent(ctx);
+  /*
+   * The discovery exact response is the result read back AFTER product-scan-finalize has had the
+   * opportunity to persist a current semantic version. Its engineReady flag therefore already is
+   * the server's role-specific readiness verdict. The catalogue behaviour adapter was hydrated
+   * before that version bump and must not overwrite the fresh verdict with its stale row.
+   */
+  const behaviour = revalidated
+    ? {
+        outcome: product.engineReady
+          ? ('classified' as const)
+          : ('unknown_requires_review' as const),
+        bindingId: product.engineReady ? (product.currentVersionId ?? null) : null,
+      }
+    : await ports.behaviour.classify(product.productId);
+  assertScanRunCurrent(ctx);
   if (behaviour.outcome !== 'classified')
     return {
       kind: 'needs_confirmation',
@@ -100,17 +119,21 @@ async function finish(
       behaviour: { outcome: behaviour.outcome, bindingId: behaviour.bindingId },
     };
   const price = await ports.price.priceState(product.productId, ctx);
+  assertScanRunCurrent(ctx);
   let imported: Extract<ScanImportV2Result, { kind: 'resolved_exact' }>['import'] = null;
   const importSkipped: 'guest' | 'offline' | null = ctx.accountId === null ? 'guest' : null;
   if (ctx.accountId !== null) {
     try {
+      assertScanRunCurrent(ctx);
       imported = await ports.importer.importOrLink({
         identity,
         product,
         idempotencyKey: idempotencyKey(identity, ctx),
         ctx,
       });
+      assertScanRunCurrent(ctx);
     } catch (error) {
+      if (isStaleScanRunError(error)) throw error;
       return {
         kind: 'failed',
         code: 'import_failed',
@@ -119,6 +142,7 @@ async function finish(
       };
     }
   }
+  assertScanRunCurrent(ctx);
   await ports.offlineCache.put(ctx.accountId, {
     candidate: product,
     behaviour: { outcome: 'classified', bindingId: behaviour.bindingId },
@@ -142,37 +166,61 @@ async function finish(
   };
 }
 
+async function revalidateExactProduct(
+  identity: CodeIdentity,
+  product: ExactCandidate,
+  ctx: RequestContext,
+  ports: ScanImportV2Ports,
+): Promise<{ product: ExactCandidate; revalidated: boolean }> {
+  if (ctx.accountId === null || !ports.discovery) return { product, revalidated: false };
+  try {
+    /*
+     * Known and unknown products share this one server path. `research` performs the free exact-EAN
+     * rescan: it reuses stored evidence, lets product-scan-finalize re-derive the current semantic
+     * binding, and reads the exact product back. A refusal never erases the identity already proven
+     * by the catalogue; it merely leaves its old fail-closed readiness in place.
+     */
+    const refreshed = await ports.discovery.research(identity, ctx);
+    return refreshed.kind === 'existing_product'
+      ? { product: refreshed.product, revalidated: true }
+      : { product, revalidated: false };
+  } catch (error) {
+    if (isStaleScanRunError(error)) throw error;
+    return { product, revalidated: false };
+  }
+}
+
 export async function runScanImportV2(
   scan: ConfirmedScan,
   ctx: RequestContext,
   ports: ScanImportV2Ports,
 ): Promise<ScanImportV2Result> {
+  assertScanRunCurrent(ctx);
   const id = identifyCode(scan);
   if (!id.ok) return { kind: 'invalid_code', reason: id.reason, input: scan };
   const identity = id.identity;
 
   if (!ctx.online) {
     const cached = await ports.offlineCache.get(ctx.accountId, identity.canonicalGtin13);
+    assertScanRunCurrent(ctx);
     if (!cached) return { kind: 'offline', identity, knownLocally: false };
+    // A cache has no way to observe a concurrent deactivate, visibility change or supersession.
+    // It may help the UI explain that the code was seen locally, but it must never be returned as
+    // resolved_exact or be consumed by import/finalize as if it were the current authority.
     return {
-      kind: 'resolved_exact',
+      kind: 'offline',
       identity,
-      product: cached.candidate,
-      exactness: 'exact_gtin',
-      provenance: 'local_cache',
-      confidence: CONFIDENCE.localCache,
-      behaviour: cached.behaviour,
-      price: cached.price,
-      import: null,
-      importSkipped: 'offline',
-      needsConfirmation: false,
+      knownLocally: true,
+      cachedProduct: cached.candidate,
     };
   }
 
   let resolution;
   try {
     resolution = await resolveIdentity(identity, ctx, ports);
+    assertScanRunCurrent(ctx);
   } catch (error) {
+    if (isStaleScanRunError(error)) throw error;
     return {
       kind: 'failed',
       code: 'lookup_failed',
@@ -185,20 +233,29 @@ export async function runScanImportV2(
   if (resolution.kind === 'ambiguous')
     return { kind: 'ambiguous', identity, candidates: resolution.candidates };
   if (resolution.kind === 'none') {
+    // Online exact authority says this identity is no longer usable (including quarantine). A
+    // prior offline answer must not survive that verdict and reappear on the next disconnected scan.
+    assertScanRunCurrent(ctx);
+    await ports.offlineCache.invalidate(ctx.accountId, identity.canonicalGtin13);
+    assertScanRunCurrent(ctx);
     // authenticated + discovery available: the unknown half of the product flow starts here
     if (ctx.accountId !== null && ports.discovery) {
       try {
-        // exact-GTIN registry evidence runs alongside the server research: the strongest identity
-        // source for a code nobody in the catalogue knows, gathered before anyone is asked anything
-        const [d, ev] = await Promise.all([
-          startDiscovery(identity, ctx, ports.discovery),
-          research(identity, ctx, ports),
-        ]);
-        if (d.kind === 'resolved_exact') return finish(identity, d.product, 'catalog', ctx, ports);
+        /*
+         * The discovery authority owns exact-GTIN external evidence for an authenticated scan.
+         * ScanFlow may already have started this call for early Recognition; the production
+         * discovery adapter shares that per-run promise. Calling `ports.external` here would make
+         * the browser and server acquire two unrelated OFF representations for one MISS.
+         */
+        const d = await startDiscovery(identity, ctx, ports.discovery);
+        assertScanRunCurrent(ctx);
+        if (d.kind === 'resolved_exact')
+          return finish(identity, d.product, 'catalog', ctx, ports, true);
         if (d.kind === 'discovered_pending' || d.kind === 'needs_confirmation')
-          return { ...d, externalEvidence: ev.externalEvidence };
+          return { ...d, externalEvidence: null };
         return d;
       } catch (error) {
+        if (isStaleScanRunError(error)) throw error;
         if (error instanceof Error && (error as { kind?: string }).kind === 'network')
           return { kind: 'failed', code: 'connection', identity, detail: null };
         return {
@@ -210,7 +267,23 @@ export async function runScanImportV2(
       }
     }
     const ev = await research(identity, ctx, ports);
+    assertScanRunCurrent(ctx);
     return { kind: 'unknown', identity, next: 'analyze_label', ...ev };
   }
-  return finish(identity, resolution.product, resolution.provenance, ctx, ports);
+  assertScanRunCurrent(ctx);
+  await ports.offlineCache.invalidateIfStale(
+    ctx.accountId,
+    identity.canonicalGtin13,
+    resolution.product.currentVersionId ?? null,
+  );
+  assertScanRunCurrent(ctx);
+  const refreshed = await revalidateExactProduct(identity, resolution.product, ctx, ports);
+  return finish(
+    identity,
+    refreshed.product,
+    resolution.provenance,
+    ctx,
+    ports,
+    refreshed.revalidated,
+  );
 }

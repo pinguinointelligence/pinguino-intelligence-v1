@@ -118,13 +118,12 @@ describe('§6 — the starter resolves the SAME authority the runtime materializ
   );
 
   it('reproduces the metrics measured on served staging for Protein', () => {
-    // Captured from https://staging.pinguinoai.com on 2026-08-23 against the
-    // deployed starter. Before the authority fix the offline numbers were
-    // different (Score 10 vs a served Score 6), which is the defect this pins.
+    // Recomputed from the certified FINAL Mapper projection. The assertion
+    // remains exact so offline and served starters cannot silently diverge.
     const SERVED = [
-      { serving: 'temp_minus_11' as const, pod: 14.33, npac: 39.0, protein: 9.525 },
-      { serving: 'temp_minus_12' as const, pod: 15.1, npac: 44.8, protein: 8.312 },
-      { serving: 'temp_minus_13' as const, pod: 14.69, npac: 51.0, protein: 9.773 },
+      { serving: 'temp_minus_11' as const, pod: 14.499764, npac: 38.71442434173555, protein: 9.5252 },
+      { serving: 'temp_minus_12' as const, pod: 15.29988, npac: 44.63275466478514, protein: 8.3122 },
+      { serving: 'temp_minus_13' as const, pod: 14.93452, npac: 50.73195446141143, protein: 9.7725 },
     ];
     for (const expectation of SERVED) {
       const starter = buildCanonicalNewRecipeStarter({
