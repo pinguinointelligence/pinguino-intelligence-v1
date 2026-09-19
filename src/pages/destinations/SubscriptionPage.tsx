@@ -14,6 +14,7 @@ import { AppShell } from '@/features/shell/AppShell';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthModalStore } from '@/features/auth/authModalStore';
 import { landingCopy } from '@/pages/landing/landingCopy';
+import { PlanComparisonTable } from './PlanComparisonTable';
 import { CUSTOMER_HOME_PATH } from '@/app/redirectState';
 import {
   annualEconomics,
@@ -489,7 +490,13 @@ export function SubscriptionPage() {
         <p className={cn('mt-4 max-w-prose text-[16px] leading-relaxed', color.textSecondary)}>
           {s.lead}
         </p>
-        <p className={cn('mt-3 max-w-prose', type.secondary, color.textMuted)}>{s.whatUnlocks}</p>
+        <ul className="mt-4 grid max-w-prose gap-1" data-testid="plan-hero-lines">
+          {s.whatUnlocks.map((line) => (
+            <li key={line} className={cn(type.secondary, color.textSecondary)}>
+              {line}
+            </li>
+          ))}
+        </ul>
 
         {checkoutParam === 'success' ? (
           <p
@@ -557,30 +564,47 @@ export function SubscriptionPage() {
           </Link>
         </div>
 
-        <section className="mt-16 max-w-md">
-          <p className={cn(type.label, color.textMuted)}>{s.futureLabel}</p>
-          <ul className="mt-3 divide-y divide-[var(--g-line)] border-y border-[var(--g-line)]">
-            {s.future.map((item) => (
-              <li
-                key={item}
-                className={cn(
-                  'flex items-center justify-between gap-3 py-3',
-                  type.secondary,
-                  color.textSecondary,
-                )}
-              >
-                {item}
-                <span
-                  className={cn(
-                    'shrink-0 rounded-full border border-[var(--g-line)] bg-[var(--g-ivory)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.1em]',
-                    color.textMuted,
-                  )}
-                >
-                  {s.futureLabel}
-                </span>
+        {/* DESIGN V3.0 §P1 — the comparison, then who each plan is for, then the
+            bridge to the account. The „Wkrótce" list that used to sit here is gone
+            in full: two of its three items are shipped (they live in Konto → Plan
+            i rozliczenia) and the third was never a plan we sell. */}
+        <PlanComparisonTable />
+
+        <section className="mt-14 grid gap-6 sm:grid-cols-2" data-testid="plan-audience">
+          <div>
+            <h3 className={cn('text-[15px] font-semibold', color.textPrimary)}>
+              {s.audience.homeTitle}
+            </h3>
+            <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>
+              {s.audience.homeBody}
+            </p>
+          </div>
+          <div>
+            <h3 className={cn('text-[15px] font-semibold', color.textPrimary)}>
+              {s.audience.proTitle}
+            </h3>
+            <p className={cn('mt-2 max-w-prose', type.secondary, color.textSecondary)}>
+              {s.audience.proBody}
+            </p>
+          </div>
+        </section>
+
+        <section className="mt-14 max-w-prose" data-testid="plan-account-bridge">
+          <p className={cn(type.label, color.textMuted)}>{s.bridge.label}</p>
+          <ul className="mt-3 grid gap-2">
+            {s.bridge.lines.map((line) => (
+              <li key={line} className={cn(type.secondary, color.textSecondary)}>
+                {line}
               </li>
             ))}
           </ul>
+          <Link
+            to="/account?section=billing"
+            className={cn(touchButtonClasses('secondary', 'md'), 'mt-4 inline-flex')}
+            data-testid="plan-account-bridge-cta"
+          >
+            {s.bridge.cta}
+          </Link>
         </section>
 
         <div className="mt-14 border-t border-[var(--g-line)] pt-8">

@@ -113,9 +113,12 @@ export const landingCopy = {
     pro: {
       name: 'Pro',
       tagline: 'Pełna kontrola w pracowni',
+      /* „Wybór temperatury serwowania" was not true: `canChooseProfessionalServingMode`
+         has no reader and HOME already picks the machine and temperature. It is replaced
+         with the three things Pro really gates — Produkcja, etykiety and the Pro space. */
       bullets: [
-        'Wybór temperatury serwowania',
-        'Pełniejsze dane techniczne i korekty',
+        'Produkcja: ważenie, odchylenia i zakończenie partii',
+        'Etykiety ze składem, numerem LOT i drukiem',
         'Gellatti Pro — pełna przestrzeń receptur',
       ],
     },
@@ -133,8 +136,13 @@ export const landingCopy = {
     eyebrow: 'Plany',
     title: 'Home czy Pro?',
     lead: 'Wybierz plan, który pasuje do Twojego sposobu pracy',
-    whatUnlocks:
-      'Bezpłatny podgląd pokazuje wynik i Monitor bez dokładnych gramatur. Home odblokowuje dokładne ilości i zapis, a Pro dodatkowo narzędzia pracowni i Produkcję.',
+    /* DESIGN V3.0 §P1: „jedno zdanie i trzy linijki: co daje podgląd, co Home, co Pro.
+       Bez eseju." The one paragraph became the three lines it was hiding. */
+    whatUnlocks: [
+      'Podgląd — wynik i Monitor, bez dokładnych ilości.',
+      'Home — dokładne gramatury i zapisana receptura.',
+      'Pro — Produkcja, etykiety i przestrzeń pracowni.',
+    ],
     homeBadge: 'Plan Home',
     proBadge: 'Plan Pro',
     homeCta: 'Wybierz Home',
@@ -187,12 +195,29 @@ export const landingCopy = {
       included: 'Zawarte w Twoim planie',
       includedNote: 'Ten plan jest już zawarty w Twoim wyższym planie.',
     },
-    futureLabel: 'Wkrótce',
-    future: [
-      'Plan dla zespołów i pracowni',
-      'Zarządzanie subskrypcją i fakturami',
-      'Zmiana planu w dowolnym momencie',
-    ],
+    /* DESIGN V3.0 §P1: the „Wkrótce" list is gone in full. Two of its three items
+       („Zarządzanie subskrypcją i fakturami", „Zmiana planu w dowolnym momencie")
+       are no longer future work at all — they live in Konto → Plan i rozliczenia,
+       which the bridge below points at. The third was never a plan we sell. */
+    audience: {
+      label: 'Dla kogo',
+      homeTitle: 'Home — dla domu',
+      homeBody:
+        'Robisz lody dla siebie i bliskich. Chcesz dokładne ilości, zapisaną recepturę i pewność, że wyjdzie tak samo drugi raz.',
+      proTitle: 'Pro — dla pracowni',
+      proBody:
+        'Sprzedajesz to, co robisz. Potrzebujesz produkcji z ważeniem i odchyleniami, historii partii oraz etykiety ze składem i numerem LOT.',
+    },
+    bridge: {
+      label: 'Po zakupie',
+      lines: [
+        'Plan odnawia się automatycznie — nie trzeba kupować go co okres.',
+        'Anulujesz sam w Ustawieniach; plan działa do końca opłaconego okresu.',
+        'Zmiana Home ↔ Pro i metoda płatności też są w Ustawieniach.',
+        'Wszystko znajdziesz w Konto → Plan i rozliczenia.',
+      ],
+      cta: 'Otwórz Plan i rozliczenia',
+    },
   },
 
   /* ---------------------------------------------------------------- FAQ -- */
