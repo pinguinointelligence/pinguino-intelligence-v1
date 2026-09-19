@@ -353,18 +353,41 @@ export const selectProductionRunForRecipeVersion = (
 export const productionSourceForRecipe = (
   recipe: Pick<
     RecipeState,
-    'savedRecipeId' | 'savedRecipeName' | 'currentVersionId' | 'currentVersionNumber'
+    | 'savedRecipeId'
+    | 'savedRecipeName'
+    | 'currentVersionId'
+    | 'currentVersionNumber'
+    | 'productionSnapshotRecipeId'
+    | 'productionSnapshotVersionId'
+    | 'productionSnapshotVersionNumber'
   >,
   executableVersionMatchesCurrent: boolean,
-) => ({
-  recipeId: recipe.savedRecipeId,
-  recipeVersionId:
-    executableVersionMatchesCurrent && recipe.savedRecipeId && recipe.currentVersionId
-      ? recipe.currentVersionId
-      : null,
-  recipeVersionNumber: executableVersionMatchesCurrent ? recipe.currentVersionNumber : null,
-  recipeName: recipe.savedRecipeName?.trim() || 'Bieżąca receptura',
-});
+) => {
+  const saved = {
+    recipeId: recipe.savedRecipeId,
+    recipeVersionId:
+      executableVersionMatchesCurrent && recipe.savedRecipeId && recipe.currentVersionId
+        ? recipe.currentVersionId
+        : null,
+    recipeVersionNumber: executableVersionMatchesCurrent ? recipe.currentVersionNumber : null,
+  };
+  /* OD-24: a recipe the customer has NOT put in their library can still run a durable
+     batch — the run then points at the technical production snapshot taken for it. The
+     saved identity always wins: once a recipe is in the library, that is what its batches
+     belong to. Nothing here makes an unsaved recipe look saved. */
+  const durable =
+    saved.recipeId !== null
+      ? saved
+      : {
+          recipeId: recipe.productionSnapshotRecipeId,
+          recipeVersionId: recipe.productionSnapshotVersionId,
+          recipeVersionNumber: recipe.productionSnapshotVersionNumber,
+        };
+  return {
+    ...durable,
+    recipeName: recipe.savedRecipeName?.trim() || 'Bieżąca receptura',
+  };
+};
 
 export type ProductionPrerequisiteCode =
   | 'preview_required'

@@ -42,8 +42,14 @@ export function ProductionProcessHost({
   hostAction?: ReactNode;
   /** The layer the process sheets open in; the shared `home-layer` placement by default. */
   sheetFrame?: ProcessSheetFrame;
-  /** What to render when there is no batch. Mounting the host never starts one. */
-  empty?: ReactNode;
+  /**
+   * What to render when there is no batch. Mounting the host never starts one.
+   *
+   * OD-24: a host that offers to START a batch (HOME's „Zaczynamy") needs the workspace
+   * to ask, so `empty` may also be a function receiving it. This keeps the single-host
+   * rule intact — the hook still lives here and nowhere else.
+   */
+  empty?: ReactNode | ((production: ProductionWorkspaceView) => ReactNode);
   testId: string;
 }) {
   const production = useProductionHost(true);
@@ -58,7 +64,9 @@ export function ProductionProcessHost({
           : { sessionId, ids: [stepId] },
       ),
   });
-  if (controller === null) return <>{empty}</>;
+  if (controller === null) {
+    return <>{typeof empty === 'function' ? empty(production) : empty}</>;
+  }
   return (
     <ProductionProcess
       controller={controller}

@@ -388,6 +388,21 @@ export interface RecipeState {
   currentVersionId: string | null;
   /** ISO date of the current version (drives the `DD.MM.YYYY · vN` label; persisted). */
   currentVersionDate: string | null;
+  /**
+   * OD-24 (Owner 19.09.2026) — the DURABLE recipe reference a batch runs from, when the
+   * customer has not saved this recipe to their library.
+   *
+   * Deliberately separate from `savedRecipeId` / `currentVersionId`: those mean „this
+   * recipe is in „Receptury → Moje"" and drive the Save button, sharing and the library.
+   * A production snapshot is infrastructure the run needed — the customer does not have
+   * to know it exists, so it must not make their recipe look saved. Production reads
+   * these when the saved ones are absent; nothing else reads them at all.
+   */
+  productionSnapshotRecipeId: string | null;
+  productionSnapshotVersionId: string | null;
+  productionSnapshotVersionNumber: number | null;
+  /** The recipe state the snapshot was taken from, so a later batch can reuse it. */
+  productionSnapshotFingerprint: string | null;
   /** Current recipe's label working copy: stable LOT/date plus editable label data. */
   labelDraft: RecipeLabelDraft | null;
   /** Where this working copy came from (official Gellatti / Community); null for an own recipe. */
@@ -647,6 +662,16 @@ export interface RecipeState {
     versionId?: string | null,
     savedProductionFingerprint?: string | null,
   ) => void;
+  /**
+   * OD-24: record the durable reference a batch will run from. This is NOT a save: it
+   * never touches `dirty`, the saved name, the library or the Save button.
+   */
+  markProductionSnapshot: (snapshot: {
+    recipeId: string;
+    versionId: string;
+    versionNumber: number;
+    fingerprint: string;
+  }) => void;
   /** Label-only write. Derived refreshes do not dirty recipe content; user edits do. */
   setLabelDraft: (draft: RecipeLabelDraft, markDirty?: boolean) => void;
   /** Record a server-authorized, whole-gram audit for an unchanged recipe.
@@ -1285,6 +1310,10 @@ const fromPreset = (preset: DemoPreset) => ({
   savedRecipeLatestVersionNumber: null,
   currentVersionId: null,
   currentVersionDate: null,
+  productionSnapshotRecipeId: null,
+  productionSnapshotVersionId: null,
+  productionSnapshotVersionNumber: null,
+  productionSnapshotFingerprint: null,
   labelDraft: null,
   provenance: null,
   machineKind: null,
@@ -3341,6 +3370,14 @@ export const useRecipeStore = create<RecipeState>()(
           useRecipeProfileStore.getState().rebindDraftIdentity(savedIdentity);
         }
       },
+      markProductionSnapshot: ({ recipeId, versionId, versionNumber, fingerprint }) =>
+        set({
+          productionSnapshotRecipeId: recipeId,
+          productionSnapshotVersionId: versionId,
+          productionSnapshotVersionNumber: versionNumber,
+          productionSnapshotFingerprint: fingerprint,
+        }),
+
       setLabelDraft: (labelDraft, markDirty = true) =>
         set((state) => ({
           labelDraft: structuredClone(labelDraft),

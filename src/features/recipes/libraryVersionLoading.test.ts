@@ -31,10 +31,19 @@ const VERSIONS = [
 
 const wireClient = (versionsResult: { data: unknown; error: unknown }) => {
   const inCalls: unknown[][] = [];
+  /** OD-24: what the library query filtered on — it must ask for the customer's own rows. */
+  const recipeFilters: Array<[string, unknown]> = [];
   from.mockReset();
   from.mockImplementation((table: string) => {
     if (table === 'saved_recipes') {
-      return { select: () => ({ order: async () => ({ data: RECIPES, error: null }) }) };
+      return {
+        select: () => ({
+          eq: (column: string, value: unknown) => {
+            recipeFilters.push([column, value]);
+            return { order: async () => ({ data: RECIPES, error: null }) };
+          },
+        }),
+      };
     }
     return {
       select: () => ({
@@ -45,10 +54,19 @@ const wireClient = (versionsResult: { data: unknown; error: unknown }) => {
       }),
     };
   });
-  return { inCalls };
+  return { inCalls, recipeFilters };
 };
 
 describe('listMine — batched version history (§10)', () => {
+  it('OD-24 lists the customer’s library only — a production snapshot is not a recipe they saved', async () => {
+    /* A `production_snapshot` exists so a HOME batch can have a durable run. It is
+       infrastructure, not a saved recipe: it must never appear in „Receptury → Moje",
+       and therefore never count against a saved-recipe limit either. */
+    const { recipeFilters } = wireClient({ data: VERSIONS, error: null });
+    await listMine();
+    expect(recipeFilters).toEqual([['origin', 'library']]);
+  });
+
   it('reads every recipe and every version in exactly TWO queries', async () => {
     const { inCalls } = wireClient({ data: VERSIONS, error: null });
     await listMine();

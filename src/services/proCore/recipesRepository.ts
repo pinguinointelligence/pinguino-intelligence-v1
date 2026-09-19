@@ -26,9 +26,21 @@ export interface CreateRecipeArgs {
   productComposition?: RecipeCompositionMetadata | null;
   trace: VersionTrace;
   source?: RecipeVersionSource;
+  /**
+   * OD-24 (Owner 19.09.2026) — which KIND of saved recipe this is.
+   *
+   * `library` (the default) is the customer's own recipe: listed in „Receptury → Moje"
+   * and counted against any saved-recipe limit. `production_snapshot` is the technical,
+   * hidden row a HOME batch needs so its durable run can point at an immutable version —
+   * never listed, never counted, never deleted to make room.
+   */
+  origin?: SavedRecipeOrigin;
   by: string;
   capabilities: RecipeCapabilities;
 }
+
+/** The two kinds of `saved_recipes` row (OD-24). */
+export type SavedRecipeOrigin = 'library' | 'production_snapshot';
 
 export interface SaveVersionOpts {
   source?: RecipeVersionSource;

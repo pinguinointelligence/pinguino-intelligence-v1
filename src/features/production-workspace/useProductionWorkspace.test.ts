@@ -30,6 +30,11 @@ describe('production source integrity', () => {
           savedRecipeName: 'Pistacja',
           currentVersionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
           currentVersionNumber: 3,
+          // OD-24: a saved recipe has no use for a production snapshot — the library
+          // identity always wins, and these stay empty.
+          productionSnapshotRecipeId: null,
+          productionSnapshotVersionId: null,
+          productionSnapshotVersionNumber: null,
         },
         true,
       ),
@@ -47,6 +52,11 @@ describe('production source integrity', () => {
           savedRecipeName: 'Pistacja',
           currentVersionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
           currentVersionNumber: 3,
+          // OD-24: a saved recipe has no use for a production snapshot — the library
+          // identity always wins, and these stay empty.
+          productionSnapshotRecipeId: null,
+          productionSnapshotVersionId: null,
+          productionSnapshotVersionNumber: null,
         },
         false,
       ),
@@ -432,5 +442,68 @@ describe('trusted Production Rescue authorization basis', () => {
     expect(hookSource).toContain("module: 'PRODUCTION'");
     expect(hookSource).toContain('validateRecipeBehaviorOnServer({');
     expect(hookSource).toContain('practicalGate.ready && !behaviorServerReady');
+  });
+});
+
+describe('OD-24 — a recipe outside the library can still run a durable batch', () => {
+  it('OD24-SOURCE-A an unsaved recipe runs from its production snapshot', () => {
+    /* HOME does not have to save to „Receptury → Moje" to make a batch: the technical
+       snapshot taken for the run is what the run points at. */
+    expect(
+      productionSourceForRecipe(
+        {
+          savedRecipeId: null,
+          savedRecipeName: null,
+          currentVersionId: null,
+          currentVersionNumber: null,
+          productionSnapshotRecipeId: 'snapshot-recipe',
+          productionSnapshotVersionId: 'snapshot-version',
+          productionSnapshotVersionNumber: 1,
+        },
+        true,
+      ),
+    ).toEqual({
+      recipeId: 'snapshot-recipe',
+      recipeVersionId: 'snapshot-version',
+      recipeVersionNumber: 1,
+      recipeName: 'Bieżąca receptura',
+    });
+  });
+
+  it('OD24-SOURCE-B the library identity always wins — a saved recipe never runs from a snapshot', () => {
+    expect(
+      productionSourceForRecipe(
+        {
+          savedRecipeId: 'recipe-1',
+          savedRecipeName: 'Pistacja',
+          currentVersionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
+          currentVersionNumber: 3,
+          productionSnapshotRecipeId: 'snapshot-recipe',
+          productionSnapshotVersionId: 'snapshot-version',
+          productionSnapshotVersionNumber: 1,
+        },
+        true,
+      ),
+    ).toMatchObject({
+      recipeId: 'recipe-1',
+      recipeVersionId: '5d5eae9c-0a8e-41d8-95ba-7a4d265461a2',
+    });
+  });
+
+  it('OD24-SOURCE-C no saved recipe and no snapshot is still no durable source', () => {
+    expect(
+      productionSourceForRecipe(
+        {
+          savedRecipeId: null,
+          savedRecipeName: null,
+          currentVersionId: null,
+          currentVersionNumber: null,
+          productionSnapshotRecipeId: null,
+          productionSnapshotVersionId: null,
+          productionSnapshotVersionNumber: null,
+        },
+        true,
+      ),
+    ).toMatchObject({ recipeId: null, recipeVersionId: null });
   });
 });
