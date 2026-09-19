@@ -4,7 +4,11 @@
  */
 import type { ConfirmedScan } from '@/scan-contract/confirmedScan';
 import { identifyCode } from './codeIdentity';
-import { canAttemptScannerRequest, isScannerTransportError } from './contracts';
+import {
+  canAttemptScannerRequest,
+  isScannerTransportError,
+  ScannerResponseError,
+} from './contracts';
 import type {
   CodeIdentity,
   ExactCandidate,
@@ -173,21 +177,27 @@ async function revalidateExactProduct(
   product: ExactCandidate,
   ctx: RequestContext,
   ports: ScanImportV2Ports,
-): Promise<{ product: ExactCandidate; revalidated: boolean }> {
+): Promise<
+  | { product: ExactCandidate; revalidated: boolean }
+  | Extract<ScanImportV2Result, { kind: 'ambiguous' | 'failed' }>
+> {
   if (ctx.accountId === null || !ports.discovery) return { product, revalidated: false };
   try {
     /*
      * Known and unknown products share this one server path. `research` performs the free exact-EAN
      * rescan: it reuses stored evidence, lets product-scan-finalize re-derive the current semantic
-     * binding, and reads the exact product back. A refusal never erases the identity already proven
-     * by the catalogue; it merely leaves its old fail-closed readiness in place.
+     * binding, and reads the exact product back. An ordinary readiness refusal retains the
+     * catalogue identity, but a conflict or invalid response cannot authorize that earlier hit.
      */
     const refreshed = await ports.discovery.research(identity, ctx);
+    if (refreshed.kind === 'ambiguous') return refreshed;
     return refreshed.kind === 'existing_product'
       ? { product: refreshed.product, revalidated: true }
       : { product, revalidated: false };
   } catch (error) {
     if (isStaleScanRunError(error)) throw error;
+    if (error instanceof ScannerResponseError)
+      return { kind: 'failed', code: 'lookup_failed', identity, detail: error.message };
     return { product, revalidated: false };
   }
 }
@@ -280,6 +290,7 @@ export async function runScanImportV2(
   );
   assertScanRunCurrent(ctx);
   const refreshed = await revalidateExactProduct(identity, resolution.product, ctx, ports);
+  if ('kind' in refreshed) return refreshed;
   return finish(
     identity,
     refreshed.product,
