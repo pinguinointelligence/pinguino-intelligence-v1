@@ -5,6 +5,8 @@ import { MyProductsPanel } from '@/features/products/MyProductsPanel';
 import { ProductsFilterTabs } from '@/features/products/ProductsFilterTabs';
 import { productFilterFromParam } from '@/features/products/productsFilter';
 import { DestinationSurface } from '@/components/shared/DestinationSurface';
+import { useTutorialStore } from '@/features/tutorial/tutorialState';
+import { CUSTOMER_HOME_PATH } from '@/app/redirectState';
 import { ProductionAreaSurface } from '@/features/production-area/ProductionAreaSurface';
 import { productionAreaCopy } from '@/copy/productionArea';
 import { buttonClasses } from '@/components/ui/buttonStyles';
@@ -75,11 +77,86 @@ const labelsCopy = productionBatchesLabelsCopy.labels;
 const quietLink =
   'flex min-h-14 items-center justify-between border-b border-[var(--g-line)] py-3 text-sm text-ink transition-opacity hover:opacity-55';
 
+/**
+ * DESIGN V3.0 GLOBAL MENU: the tutorial belongs HERE, not in the drawer. The
+ * menu used to carry its own „Uruchom samouczek ponownie" row beside this very
+ * destination — two doors onto one action. The knowledge page explains, and
+ * the tutorial shows; they answer the same need, so they live together.
+ *
+ * Starting it from here navigates to the workspace first: the spotlight lands
+ * on the real controls (add, primary, gear), which exist on the creator screen
+ * and not on this page.
+ */
 export function HowItWorksPage() {
+  const navigate = useNavigate();
+  const startTutorial = useTutorialStore((state) => state.start);
   return (
     <AppShell navigationPosition="trailing" contentClassName="bg-white">
       <KnowledgeTour />
+      <div className="px-5 pb-10">
+        <button
+          type="button"
+          onClick={() => {
+            startTutorial();
+            navigate(CUSTOMER_HOME_PATH);
+          }}
+          className="inline-flex min-h-12 items-center rounded-full border border-[var(--g-line)] px-5 text-sm text-ink transition-opacity hover:opacity-70"
+          data-testid="how-it-works-start-tutorial"
+        >
+          Uruchom samouczek
+        </button>
+      </div>
     </AppShell>
+  );
+}
+
+/**
+ * DESIGN V3.0 GLOBAL MENU: „Pomoc" is the support door — contact and reporting a
+ * problem. It is deliberately NOT the knowledge destination („Dlaczego to
+ * dziala?"), which explains why a recipe works; the accepted menu carries both,
+ * separated, because they answer different questions.
+ *
+ * This page invents no support system: it routes to `info@gellatti.com`, the
+ * mailbox the app already uses for partner applications and cooperation, and
+ * points at the knowledge destination for the questions that are not problems.
+ * What else Pomoc should offer is an OWNER DECISION, recorded in
+ * docs/OWNER-DECISION-LIST.md.
+ */
+export function HelpPage() {
+  return (
+    <DestinationSurface
+      eyebrow="Gellatti"
+      title="Pomoc"
+      blurb="Napisz do nas, jesli cos nie dziala albo czegos brakuje."
+      contextLabel="Pomoc"
+    >
+      <div className={ACCOUNT_PANEL}>
+        <section>
+          <h2 className="text-base font-medium text-ink">Zglos problem</h2>
+          <p className="mt-2 max-w-[56ch] text-sm text-ink/70">
+            Opisz, co sie stalo i na ktorym ekranie. Jesli to blad w partii albo w
+            recepturze, dodaj jej nazwe i wersje — odpowiemy szybciej.
+          </p>
+          <a
+            href="mailto:info@gellatti.com"
+            className="mt-4 inline-flex min-h-12 items-center rounded-full bg-ink px-5 text-sm text-white"
+            data-testid="help-contact"
+          >
+            Napisz na info@gellatti.com
+          </a>
+        </section>
+        <section className="border-t border-[var(--g-line)]">
+          <h2 className="text-base font-medium text-ink">Szukasz wyjasnienia?</h2>
+          <p className="mt-2 max-w-[56ch] text-sm text-ink/70">
+            Jak dzialaja skladniki, dlaczego receptura sie udaje i samouczek — to
+            wszystko jest w „Dlaczego to dziala?”.
+          </p>
+          <Link to="/how-it-works" className={cn(quietLink, 'mt-3')} data-testid="help-knowledge">
+            <span>Dlaczego to dziala?</span>
+          </Link>
+        </section>
+      </div>
+    </DestinationSurface>
   );
 }
 
