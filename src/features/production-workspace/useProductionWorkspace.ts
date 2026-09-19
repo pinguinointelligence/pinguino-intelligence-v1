@@ -84,6 +84,7 @@ import {
   productionVersionFingerprint,
 } from './productionReadinessState';
 import { productionMachineGuide } from '@/features/education';
+import type { MachineEducationGuide } from '@/features/education/machineEducation';
 import { carbonatedProductsForRecipe } from './productionDegassing';
 import {
   PRODUCTION_DECISION_ORDER,
@@ -444,7 +445,31 @@ const prerequisite = (
   actionLabel,
 });
 
-export function useProductionWorkspace(enabled: boolean) {
+/**
+ * A batch opened from the durable run itself — Produkcja v3, Etap 2.
+ *
+ * Production is RUN-CENTRIC, not EDITOR-CENTRIC. „Partie" opens a batch from the run and
+ * its immutable recipe VERSION, so continuing a batch never rewrites the recipe the user
+ * has open and never discards their draft. The authority is unchanged: the same workspace,
+ * the same session store, the same preparation plan, the same Rescue. Only the SOURCE of
+ * the planned recipe moves from the editor to the run's own frozen snapshot.
+ */
+export interface DurableRunContext {
+  runId: string;
+  /** The run's own recipe identity — its address in the session store. */
+  source: import('./productionSession').ProductionSource;
+  /** The run's immutable planned recipe, from its recipe VERSION. */
+  plannedInput: RecipeInput;
+  plannedComposition: ReturnType<typeof recipeCompositionFromState>;
+  /** The machine recorded in that version, never the editor's current one. */
+  machineGuide: MachineEducationGuide | null;
+}
+
+export function useProductionWorkspace(
+  enabled: boolean,
+  /** When given, the batch is read from THIS run instead of the open recipe. */
+  runContext?: DurableRunContext | null,
+) {
   const recipe = useRecipeStore();
   const persona = useProCorePersona();
   const repositoryState = useMemo(() => resolveProductionRepository(), []);
@@ -527,11 +552,11 @@ export function useProductionWorkspace(enabled: boolean) {
     return () => globalThis.clearTimeout(timeout);
   }, [rescueAuthorization]);
 
-  const plannedInput = useMemo(
+  const editorPlannedInput = useMemo(
     () => applyEffectiveCustomerPrices(buildRecipeInput(recipe, 'planning'), customerPrices),
     [customerPrices, recipe],
   );
-  const plannedComposition = useMemo(
+  const editorPlannedComposition = useMemo(
     () =>
       recipeCompositionFromState({
         ...recipe,
@@ -539,6 +564,10 @@ export function useProductionWorkspace(enabled: boolean) {
       }),
     [customerPrices, recipe],
   );
+  // A run context replaces the EDITOR as the source of the planned recipe — and nothing
+  // else. Every gram below still comes from this one planned input; none is recomputed.
+  const plannedInput = runContext?.plannedInput ?? editorPlannedInput;
+  const plannedComposition = runContext?.plannedComposition ?? editorPlannedComposition;
   const currentProductionVersionFingerprint = useMemo(
     () => productionVersionFingerprint(plannedInput, plannedComposition),
     [plannedComposition, plannedInput],
@@ -615,10 +644,11 @@ export function useProductionWorkspace(enabled: boolean) {
         };
   }, [constraints, plannedInput, preview, recalculationTerminal, recipeLifecycle]);
 
-  const source = useMemo(
+  const editorSource = useMemo(
     () => productionSourceForRecipe(recipe, recipeLifecycle === 'READY'),
     [recipe, recipeLifecycle],
   );
+  const source = runContext?.source ?? editorSource;
   const sessionAddress = useMemo<ProductionSessionAddress>(
     () => ({
       ownerUserId,
@@ -956,7 +986,9 @@ export function useProductionWorkspace(enabled: boolean) {
   );
   const forecastResult = useMemo(() => calculateRecipe(forecastInput), [forecastInput]);
   // ONE machine hand-off authority, shared with HOME (`productionMachineGuide`).
-  const machineGuide = productionMachineGuide(recipe);
+  const machineGuide = runContext
+    ? runContext.machineGuide
+    : productionMachineGuide(recipe);
   const rescue = useMemo(() => browserProductionRescueDecision(session), [session]);
   const rescueAuthorizationRunId =
     rescueAuthorization.status === 'preview'
