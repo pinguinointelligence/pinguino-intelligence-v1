@@ -21,6 +21,8 @@ import {
   commissionMonthDate,
   decideCommissionEligibility,
   decideEntitlementMirror,
+  decideScheduledChange,
+  extractScheduleSnapshot,
   decideReversal,
   divideRoundHalfUp,
   epochToIso,
@@ -264,6 +266,23 @@ describe('decideEntitlementMirror — mirror of planFromSubscription via the res
     expect(decideEntitlementMirror('canceled', FUTURE)).toEqual({ grant: false });
   });
 
+  it('cancel_at_period_end bounds an active grant by current_period_end (access identical until then)', () => {
+    expect(decideEntitlementMirror('active', FUTURE, true)).toEqual({ grant: true, endsAt: FUTURE });
+    expect(decideEntitlementMirror('trialing', FUTURE, true)).toEqual({ grant: true, endsAt: FUTURE });
+    // no period end known → cannot bound; stays open (the deletion event closes it)
+    expect(decideEntitlementMirror('active', null, true)).toEqual({ grant: true, endsAt: null });
+    // resume = flag off → open-ended again
+    expect(decideEntitlementMirror('active', FUTURE, false)).toEqual({ grant: true, endsAt: null });
+    // a cancelled-at-period-end plan is still PAID before the date and NOT after it
+    const grant = decideEntitlementMirror('active', FUTURE, true);
+    const row = {
+      id: 'ent-1', scope: 'home', source_type: 'paid_subscription', source_id: 'cache-1',
+      starts_at: '2026-01-01T00:00:00.000Z', ends_at: grant.grant ? grant.endsAt : null, status: 'active',
+    };
+    expect(resolveEntitlements([row], NOW).hasHome).toBe(true);
+    expect(resolveEntitlements([row], new Date(FUTURE)).hasHome).toBe(false);
+  });
+
   it('builds only paid_subscription grants, granted_by system:webhook', () => {
     const row = buildEntitlementInsertRow({
       userId: 'user-1',
@@ -339,6 +358,47 @@ describe('extractSubscriptionSnapshot — version-robust period extraction', () 
     });
     expect(snapshot.customerId).toBe('cus_fake_2');
     expect(snapshot.currentPeriodEndEpoch).toBe(1_782_000_000);
+  });
+});
+
+describe('subscription schedule → pending plan change (pure)', () => {
+  const END = 1_790_000_000;
+  const schedule = (status: string, nextPrice: string | null, nextStart = END) =>
+    extractScheduleSnapshot({
+      id: 'sched_fake_1',
+      subscription: 'sub_fake_1',
+      status,
+      current_phase: { start_date: END - 100, end_date: END },
+      phases: [
+        { start_date: END - 100, end_date: END, items: [{ price: 'price_pro' }] },
+        ...(nextPrice ? [{ start_date: nextStart, items: [{ price: { id: nextPrice } }] }] : []),
+      ],
+    });
+
+  it('reads the subscription linkage and the phases (string or expanded price ids)', () => {
+    const snap = schedule('active', 'price_home');
+    expect(snap.subscriptionId).toBe('sub_fake_1');
+    expect(snap.phases.map((p) => p.priceId)).toEqual(['price_pro', 'price_home']);
+    expect(extractSubscriptionSnapshot({ id: 'sub_x', schedule: 'sched_fake_1' }).scheduleId).toBe('sched_fake_1');
+    expect(extractSubscriptionSnapshot({ id: 'sub_x', schedule: { id: 'sched_fake_2' } }).scheduleId).toBe('sched_fake_2');
+    expect(extractSubscriptionSnapshot({ id: 'sub_x' }).scheduleId).toBeNull();
+  });
+
+  it('an active schedule with a different next price is a pending change at that phase start', () => {
+    expect(decideScheduledChange(schedule('active', 'price_home'), 'price_pro')).toEqual({
+      priceId: 'price_home',
+      startEpoch: END,
+    });
+  });
+
+  it('never invents a change: same price, no next phase, released/canceled/completed schedule', () => {
+    expect(decideScheduledChange(schedule('active', 'price_pro'), 'price_pro')).toBeNull();
+    expect(decideScheduledChange(schedule('active', null), 'price_pro')).toBeNull();
+    for (const status of ['released', 'canceled', 'completed', 'not_started']) {
+      expect(decideScheduledChange(schedule(status, 'price_home'), 'price_pro'), status).toBeNull();
+    }
+    // a phase that starts BEFORE the current phase ends is not "next"
+    expect(decideScheduledChange(schedule('active', 'price_home', END - 50), 'price_pro')).toBeNull();
   });
 });
 
@@ -575,6 +635,8 @@ describe('connect account mirror + no-contract coverage', () => {
       'checkout_async_payment_succeeded',
       'checkout_async_payment_failed',
       'checkout_session_expired',
+      // Account → Plan i rozliczenia: schedule events re-run the subscription sync.
+      'schedule_state_sync',
     ]);
     for (const eventType of SUPPORTED_WEBHOOK_EVENTS) {
       const intent = routeWebhookEvent(eventType);
