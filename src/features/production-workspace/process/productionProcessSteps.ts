@@ -239,6 +239,12 @@ export interface ProductionCorrectionOptionView {
 export interface ProductionCorrectionView {
   what: { name: string; actualG: number; planG: number } | null;
   options: readonly ProductionCorrectionOptionView[];
+  /**
+   * The options are still being authorised. An empty list with no word for it is a dead
+   * end — the operator is holding a vessel and the sheet says nothing — so a controller
+   * that waits on an authority says so here.
+   */
+  pendingReason: string | null;
   impossibleReason: string | null;
   recommendedId: ProductionDecisionId | null;
   selectedId: ProductionDecisionId | null;
@@ -276,4 +282,6 @@ export interface ProductionProcessController {
   applyDecision: () => void;
   /** „Wróć” from „Korekta partii”: reopens the deviating line; returns its id. */
   backFromCorrection: () => string | null;
+  /** Ask the authority for the options again; null when there is nothing to retry. */
+  retryDecision: (() => void) | null;
 }
