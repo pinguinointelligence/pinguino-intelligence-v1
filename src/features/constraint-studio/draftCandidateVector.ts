@@ -49,6 +49,7 @@ import {
   type RecipeInput,
 } from '@/engine';
 import type { ConstraintSet } from '@/features/recipe-constraints';
+import type { GramBand } from '@/features/recipe-direction/directionRelaxation';
 import { isToolboxCandidateExcluded } from '@/features/formulation/toolboxCanonical';
 import {
   isTemplateControlledStabilizer,
@@ -111,10 +112,32 @@ export interface DraftAdjustmentMove {
   actions: CorrectionAction[];
 }
 
+/**
+ * RANGE IS NOT LOCK (owner decision 2026-09-19, „GLOBAL ±2 CONTROLLED
+ * RELAXATION" § 3).
+ *
+ * `locked`, `percent` and an explicit exact amount HOLD a line: the generic
+ * gram search may not move it at all. A `range` does the opposite — it says
+ * the line MAY move, anywhere inside the interval. Reading a range as a hold is
+ * what removed an owner dosage band from the search entirely and left the
+ * solver without an approved lever: the band was enforced as a freeze at
+ * whatever amount the line happened to carry.
+ *
+ * This is generic. It is not about any one ingredient, profile or machine.
+ */
 const isHeldByConstraint = (set: ConstraintSet, lineId: string): boolean => {
   const constraint = set.byLineId[lineId];
-  return constraint !== undefined && constraint.mode !== 'ai';
+  return constraint !== undefined && constraint.mode !== 'ai' && constraint.mode !== 'range';
 };
+
+/** The interval a `range` constraint opens for the search, if it carries one. */
+const searchWindow = (set: ConstraintSet, lineId: string): GramBand | null => {
+  const constraint = set.byLineId[lineId];
+  if (constraint === undefined || constraint.mode !== 'range') return null;
+  return { minGrams: constraint.minGrams, maxGrams: constraint.maxGrams };
+};
+
+const WINDOW_EPS = 1e-9;
 
 /**
  * THE CANDIDATE VECTOR of the CURRENT draft: every currently selected line the
@@ -164,9 +187,11 @@ export function buildDraftCandidateVector(
     // shrink, but nothing in the recipe authorises the optimizer to RAISE it —
     // residual batch mass must never be parked in lemon juice, an extract or a
     // liqueur just because the row happens to be unlocked.
+    const window = searchWindow(set, item.id);
     const increasable =
       !isToolboxCandidateExcluded(item.ingredient.id, excludedIngredientIds) &&
-      !flavourHeld.has(item.id);
+      !flavourHeld.has(item.id) &&
+      (window === null || item.planned_grams < window.maxGrams - WINDOW_EPS);
     const current = item.planned_grams;
     // THE canonical user-intent authority (owner §6): ONE concept for „the user
     // gave this line a positive amount", covering an explicit add, a typed gram
@@ -176,7 +201,12 @@ export function buildDraftCandidateVector(
     const anchorGrams = userLineBaselineGrams(item, set);
     const materialFloorGrams =
       anchorGrams === null ? null : materialDeviationFloorGrams(anchorGrams, batch);
-    const emptiable = anchorGrams === null && !isSoleHardRoleCarrier(item);
+    // A window with a positive floor forbids 0 g by construction — the range is
+    // where the line may go, and 0 is outside it.
+    const emptiable =
+      anchorGrams === null &&
+      !isSoleHardRoleCarrier(item) &&
+      (window === null || window.minGrams <= WINDOW_EPS);
     const tested = new Set<number>();
 
     for (const fraction of DRAFT_ADJUSTMENT_STEP_FRACTIONS) {
@@ -217,8 +247,22 @@ export function buildDraftCandidateVector(
     }
     if (anchorGrams !== null && Math.abs(current - 1) >= MIN_MOVE_GRAMS) tested.add(1);
 
+    // The window's own EDGES are rungs. The best amount inside an owner band is
+    // very often the band's boundary, and a ladder built from fixed fractions of
+    // the batch has no reason to land on it.
+    if (window !== null) {
+      for (const edge of [window.minGrams, window.maxGrams]) {
+        if (Math.abs(edge - current) >= MIN_MOVE_GRAMS) tested.add(edge);
+      }
+    }
+
     const testedGrams = [...tested]
       .filter((g) => Math.abs(g - current) >= MIN_MOVE_GRAMS)
+      .filter(
+        (g) =>
+          window === null ||
+          (g >= window.minGrams - WINDOW_EPS && g <= window.maxGrams + WINDOW_EPS),
+      )
       .sort((a, b) => a - b);
     if (testedGrams.length === 0) continue;
 
