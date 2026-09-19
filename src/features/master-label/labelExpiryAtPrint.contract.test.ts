@@ -34,10 +34,14 @@ describe('§38 — a missing expiry date never blocks the preview', () => {
   it('the ONLY place the missing-data list gates anything is the print request', () => {
     const gate = workspace.slice(workspace.indexOf('const requestPrint'));
     const body = gate.slice(0, gate.indexOf('const onTouchStart'));
-    expect(body).toContain('if (printMissingFields(label).length > 0)');
+    expect(body).toContain('printMissingFields(label).length > 0');
     expect(body).toContain('setPrintMissingOpen(true)');
     // One consult in the whole component, and it is inside requestPrint.
     expect((workspace.match(/printMissingFields\(/g) ?? []).length).toBe(1);
+    /* The list may be skipped for a version already saved — the operator answered it when
+       they saved — but that is the ONLY thing allowed to stand in front of it, and it is
+       the same test that decides no second version is written. */
+    expect(body).toContain('!printsFrozenVersion(label) && printMissingFields(label)');
   });
 });
 
