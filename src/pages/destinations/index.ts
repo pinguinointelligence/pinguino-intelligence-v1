@@ -11,6 +11,7 @@ export {
   AccountSettingsPage,
   FranchisePage,
   HowItWorksPage,
+  HelpPage,
   LabelsHubPage,
   ProductsHubPage,
   ProductionHubPage,
