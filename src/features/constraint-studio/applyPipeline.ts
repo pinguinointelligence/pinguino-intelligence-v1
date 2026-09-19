@@ -2499,6 +2499,22 @@ function iterateSolverToFixedPoint(
   // `fitProteinFormulation` sweeps its own bounded ladder instead.
   minimumProteinScore: number | null = null,
   productBehaviorSnapshots?: Readonly<Record<string, ProductBehaviorSnapshot | undefined>>,
+  /**
+   * MAY THIS SOLVE USE THE DIRECTION ESCAPE? (P1 — cost boundary.)
+   *
+   * The paired-exchange pass is what lets a Direction request escape the
+   * coordinate-descent trap, and it is worth its price exactly once: on the
+   * solve that produces the candidate the customer is shown. It is NOT worth it
+   * on the Main frontier's internal probes, which run this solver hundreds of
+   * times inside a single preview to size one line — there the answer is a
+   * gram value, not a Direction verdict, and the old behaviour is both correct
+   * and cheap. Measured on `mainTechnicalMaximum.test.ts`: 53 s with the escape
+   * scoped to the shown solve, minutes with it on every probe.
+   *
+   * Default false, so every existing caller keeps its previous cost; the two
+   * routes that build the shown preview opt in explicitly.
+   */
+  directionEscape = false,
 ): {
   working: RecipeInput;
   lastProposal: CorrectionProposal | null;
@@ -2516,6 +2532,16 @@ function iterateSolverToFixedPoint(
   // and erased the user's vector before ranking even began. Capture `x_user`
   // once and never re-derive it from a seed or intermediate candidate.
   const userIntentBaseline = buildUserIntentBaseline(base, solverSet);
+  /**
+   * ONE escape budget for the WHOLE solve (P1 — cost boundary).
+   *
+   * The exact-target stage is the search's last resort, and „last resort" is a
+   * per-SOLVE idea, not a per-ROUND one. Without a shared budget it re-ran at
+   * full width on every round, so a preview that solves a dozen times paid for
+   * it a dozen times over. Measured on `mainTechnicalMaximum.test.ts`, which
+   * builds hundreds of solves: 53 s with this budget, minutes without it.
+   */
+  const escapeBudget = { remaining: directionEscape ? DIRECTION_ESCAPE_SOLVE_BUDGET : 0 };
   const measure = (candidate: RecipeInput): DraftStateMeasure => {
     const list = recipeDirectionViolations(candidate);
     return {
@@ -2698,7 +2724,7 @@ function iterateSolverToFixedPoint(
       const directionOnlyResidual =
         hasExactDirectionObjective &&
         (detectViolations(calculateRecipe(working)).length === 0 ||
-          recipeDirectionViolations(working).length > 0);
+          (directionEscape && recipeDirectionViolations(working).length > 0));
       return sweepDraftCandidateVector({
         start: working,
         set: solverSet,
@@ -2709,9 +2735,15 @@ function iterateSolverToFixedPoint(
         measure,
         startMeasure: current,
         directionOnlyResidual,
-        exactDirectionTargets: hasExactDirectionObjective
-          ? exactDirectionAxisTargets(working)
-          : undefined,
+        // Same cost boundary as the paired-exchange arm above: the exact-target
+        // stage belongs to the solve that produces the candidate the customer is
+        // SHOWN, not to the Main frontier's internal probes, which run this
+        // solver hundreds of times inside a single preview to size one line.
+        exactDirectionTargets:
+          hasExactDirectionObjective && directionEscape && escapeBudget.remaining > 0
+            ? exactDirectionAxisTargets(working)
+            : undefined,
+        budget: escapeBudget,
       });
     };
 
@@ -3060,8 +3092,21 @@ const requiredLineContractViolations = (before: RecipeInput, after: RecipeInput)
 /** How many aiming passes one preview may run. Orchestration only. */
 const DIRECTION_AIM_MAX_PASSES = 6;
 
+/** The exact-target stage's evaluation ceiling for one WHOLE solve. */
+const DIRECTION_ESCAPE_SOLVE_BUDGET = 400;
+
 /** How many aimed candidates one call may hand back for the caller to rank. */
 const DIRECTION_AIM_MAX_VARIANTS = 8;
+
+/**
+ * The WHOLE aim's evaluation ceiling — shared across both acceptance rules and
+ * every pass, not per step. Orchestration only, and load-bearing for cost: the
+ * aim runs on every Direction request that does not reach, so an unbounded
+ * repeat of a per-call ceiling multiplies the price of a Direction-heavy run by
+ * the number of passes. Measured on `mainTechnicalMaximum.test.ts`, which builds
+ * hundreds of previews: 53 s without an aim, over 180 s with an unshared budget.
+ */
+const DIRECTION_AIM_EVALUATION_BUDGET = 300;
 
 /**
  * AIM AT THE REQUESTED DIRECTION TARGET (P1 — the false-infeasible closure).
@@ -3138,11 +3183,12 @@ function aimDirectionVariants(
    * and the candidate that ends up nearest to the requested target is returned.
    */
   const visited: RecipeInput[] = [];
+  const budget = { remaining: DIRECTION_AIM_EVALUATION_BUDGET };
   const runRule = (rule: 'strictly_better' | 'nearest'): void => {
     let state = candidate;
     let best = measure(state);
     for (let pass = 0; pass < DIRECTION_AIM_MAX_PASSES; pass += 1) {
-      if (best.violations === 0) break;
+      if (best.violations === 0 || budget.remaining <= 0) break;
       const step = searchExactDirectionTargetCandidate({
         start: state,
         set: aimSet,
@@ -3155,6 +3201,7 @@ function aimDirectionVariants(
         allowMaterialDeviation,
         accept: admissible,
         acceptanceRule: rule,
+        budget,
         wholeGrams: candidate.items.every((item) => Number.isInteger(item.planned_grams)),
       });
       if (step === null || !admissible(step.input)) break;
@@ -3423,6 +3470,21 @@ const rankDirectionCandidate = (
   options: OptimizePreviewOptions,
 ): RecipeInput => {
   const polished = polishDirectionVector(input, set, candidate, createdAt, options);
+  // INTERNAL PROBE PASSES DO NOT PAY FOR THE AIM. The aim answers „is this the
+  // nearest candidate we can SHOW"; a soft-anchor probe, a nearest-level probe
+  // and a Rescue simulation are none of those — they are internal evaluations
+  // the customer never sees, and the Main frontier runs hundreds of them per
+  // preview. These are exactly the three passes that
+  // `polishPracticalDirectionPreview` already excludes, so the boundary is the
+  // existing one rather than a new one.
+  if (
+    optimizePreviewDepth > 1 ||
+    options.softAnchorPass === true ||
+    options.directionNearestPass === true ||
+    (options.rescueSimulationLineIds?.length ?? 0) > 0
+  ) {
+    return polished;
+  }
   // PRESERVE FIRST (§8/§12): aim without ever collapsing a positive user line.
   const preserved = aimAtDirectionTarget(input, set, polished, options) ?? polished;
   if (recipeDirectionViolations(preserved).length === 0) return preserved;
@@ -6037,6 +6099,7 @@ function iterateFormulationSeed(
   set: ConstraintSet,
   proposedInput: RecipeInput,
   options: OptimizePreviewOptions = {},
+  directionEscape = false,
 ): ReturnType<typeof iterateSolverToFixedPoint> {
   const solverSet = solverHolds(proposedInput, set);
   const constrainedIngredientIds = new Set(
@@ -6075,6 +6138,7 @@ function iterateFormulationSeed(
     options.effectivePriceOverrides,
     null,
     options.productBehaviorSnapshots,
+    directionEscape,
   );
 }
 
@@ -6315,6 +6379,7 @@ function buildFormulationPreviewInternal(
     solverSet,
     built.proposal.proposedInput,
     solverOptions,
+    optimizePreviewDepth <= 1,
   );
   // An uncrowned manual Main target is answered by the Crown authority itself
   // (capped at the request), so it takes precedence over the generic nearest
@@ -7292,7 +7357,34 @@ function alreadyCleanMainGroupRefusal(
  * product's own authority rejects, and it is scoped to Crown-OFF drafts so the
  * frozen Crown-ON behaviour (GEL-P0-027) is untouched.
  */
+/**
+ * RE-ENTRANCY DEPTH of the preview pipeline (P1 — cost guard for the aim).
+ *
+ * Every internal re-entry — the soft-anchor probe, the Direction fallback ladder,
+ * a Rescue simulation, a substitution, a removal, the Main frontier's own probes —
+ * goes back through `buildOptimizePreview`. Those inner previews are evaluations,
+ * not answers: the customer is shown exactly ONE of them, the outermost. The aim
+ * asks „is this the nearest candidate we can SHOW", so it belongs to that one and
+ * to no other. Without this, `mainTechnicalMaximum.test.ts` — which builds
+ * hundreds of inner previews — went from 53 s to minutes.
+ */
+let optimizePreviewDepth = 0;
+
 export function buildOptimizePreview(
+  input: RecipeInput,
+  set: ConstraintSet,
+  createdAt: string,
+  options: OptimizePreviewOptions = {},
+): BuildPreviewResult {
+  optimizePreviewDepth += 1;
+  try {
+    return buildOptimizePreviewOutermost(input, set, createdAt, options);
+  } finally {
+    optimizePreviewDepth -= 1;
+  }
+}
+
+function buildOptimizePreviewOutermost(
   input: RecipeInput,
   set: ConstraintSet,
   createdAt: string,
@@ -8870,6 +8962,7 @@ function buildOptimizePreviewWithDirection(
     options.effectivePriceOverrides,
     null,
     options.productBehaviorSnapshots,
+    optimizePreviewDepth <= 1,
   );
   // Same precedence as the formulation route: the Crown authority owns an
   // uncrowned manual Main target, capped at the request.

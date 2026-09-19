@@ -385,6 +385,15 @@ export interface DraftSweepArgs {
   /** Build WHOLE-GRAM candidates (see the note at the rounding site). */
   wholeGrams?: boolean;
   /**
+   * A SHARED evaluation budget. The per-call ceiling bounds one stage call; a
+   * caller that runs the stage repeatedly (the pipeline aims across several
+   * passes and two acceptance rules) needs the whole aim bounded, not each of
+   * its steps — otherwise the cost multiplies by the number of steps and a
+   * Direction-heavy suite slows to a crawl. Mutable and decremented in place,
+   * so the bound is exact and the search stays deterministic.
+   */
+  budget?: { remaining: number };
+  /**
    * How the exact-target stage picks between candidates.
    *
    * `'strictly_better'` (the default) is the solver's own acceptance rule and
@@ -884,6 +893,17 @@ function sweepExactDirectionTarget(
 
   const boundsById = new Map(bounded.map((entry) => [entry.candidate.lineId, entry]));
   let evaluations = 0;
+  const spend = (): boolean => {
+    if (args.budget !== undefined) {
+      if (args.budget.remaining <= 0) return false;
+      args.budget.remaining -= 1;
+    }
+    evaluations += 1;
+    return true;
+  };
+  const exhausted = (): boolean =>
+    evaluations >= EXACT_DIRECTION_EVALUATION_BUDGET ||
+    (args.budget !== undefined && args.budget.remaining <= 0);
   let best = startBest;
   let winner: DraftSweepResult | null = null;
 
@@ -920,7 +940,7 @@ function sweepExactDirectionTarget(
   };
 
   for (const reference of bounded) {
-    if (evaluations >= EXACT_DIRECTION_EVALUATION_BUDGET) break;
+    if (exhausted()) break;
     // The reference line absorbs the mass every solved move frees or needs, so
     // it must have a gram to give and room to take one.
     if (reference.candidate.currentGrams < 1) continue;
@@ -958,6 +978,29 @@ function sweepExactDirectionTarget(
         solved.push(new Map([[mover.candidate.lineId, delta], [reference.candidate.lineId, -delta]]));
       }
     } else {
+      // SINGLE-MOVER SOLUTIONS FIRST. Two axes cannot both be landed by moving
+      // one line against the reference — but ONE of them can, and that shape is
+      // not reachable from the pair solve below at any scale. Leaving it out is
+      // what made the aim path-dependent: on the served Sorbet at −13 °C the
+      // request for Sweetness +1 (centre 22) halted at POD 21.788 while the
+      // request for +2, aiming past it, passed through POD 22.033 — so a level's
+      // own candidate was farther from its own band than a sibling level's,
+      // which is exactly the „nearest is not nearest" defect, one level up.
+      // These candidates are judged by the same measure as every other, so they
+      // only ever win when they are genuinely nearer.
+      for (const mover of movers) {
+        for (let axis = 0; axis < need.length; axis += 1) {
+          const gradient = response.get(mover.candidate.lineId)![axis]!;
+          if (Math.abs(gradient) < EXACT_DIRECTION_RESPONSE_EPS) continue;
+          const delta = need[axis]! / gradient;
+          solved.push(
+            new Map([
+              [mover.candidate.lineId, delta],
+              [reference.candidate.lineId, -delta],
+            ]),
+          );
+        }
+      }
       for (let i = 0; i < movers.length; i += 1) {
         for (let j = i + 1; j < movers.length; j += 1) {
           const a = response.get(movers[i]!.candidate.lineId)!;
@@ -978,7 +1021,7 @@ function sweepExactDirectionTarget(
     }
 
     for (const deltas of solved) {
-      if (evaluations >= EXACT_DIRECTION_EVALUATION_BUDGET) break;
+      if (exhausted()) break;
       // CLAMP to the ladder's own reach: take the largest fraction of the solved
       // step that keeps every moved line inside its existing bounds. A full step
       // lands the axes exactly; a clamped step is still aimed at them.
@@ -999,7 +1042,7 @@ function sweepExactDirectionTarget(
       // exact landing is what reaches the target, and a shorter step is what
       // gets there when the exact landing would cross another engine band.
       for (const fraction of scale === 1 ? [1, 0.5, 0.25] : [scale, scale / 2, scale / 4]) {
-        if (evaluations >= EXACT_DIRECTION_EVALUATION_BUDGET) break;
+        if (exhausted()) break;
         const moves: DraftAdjustmentMove[] = [];
         // WHOLE GRAMS (caller's choice): a caller that is choosing what to SHOW
         // is choosing a vector that whole-gram practicalization will round, so
@@ -1043,7 +1086,7 @@ function sweepExactDirectionTarget(
         if (moves.length < 2) continue;
         const applied = applySolved(moves);
         if (applied === null) continue;
-        evaluations += 1;
+        if (!spend()) break;
         const normalized = normalize(applied);
         const next = measure(normalized);
         // The caller's own admissibility gate decides before acceptance, so a
