@@ -130,6 +130,14 @@ export type PreparationStep =
       sourceMachineId: string | null;
       /** The registered owner illustration of this machine's step, if any. */
       illustration: PreparationIllustration | null;
+      /**
+       * H4-3 — the program the operator presses, ONLY when the machine's data confirms
+       * it. `null` means the step stands on its own instructions; `programStatus` says
+       * whether that is a confirmed absence or a data gap, so a report can find the gap
+       * without the customer ever reading „DATA NEEDED”.
+       */
+      programName: string | null;
+      programStatus: 'confirmed' | 'data_needed';
       sourceIds: readonly string[];
     };
 
@@ -439,6 +447,9 @@ export function buildPreparationPlan(input: PreparationPlanInput): PreparationPl
       timing: guide.category === 'frozen_container' ? guide.timing.text : null,
       sourceMachineId: guide.sourceMachineId,
       illustration: guide.illustration,
+      // H4-3: carried straight from the machine authority — never derived here.
+      programName: guide.programName,
+      programStatus: guide.programStatus,
       sourceIds: machineSourceIds,
     });
   }
