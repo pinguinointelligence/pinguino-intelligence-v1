@@ -21,6 +21,7 @@ const OWNER = 'owner-batches';
 const mocks = vi.hoisted(() => ({
   listRuns: vi.fn(),
   resume: vi.fn(),
+  openDurableRun: vi.fn(),
 }));
 
 vi.mock('@/features/pro-core/useProCorePersona', () => ({ useProCorePersona: () => 'pro' }));
@@ -40,6 +41,7 @@ vi.mock('@/services/labels/labelRepository', async (importOriginal) => ({
   }),
 }));
 vi.mock('./resumeProductionRun', () => ({ resumeProductionRun: mocks.resume }));
+vi.mock('./openDurableRun', () => ({ openDurableRun: mocks.openDurableRun }));
 
 const { ProductionHubPage } = await import('@/pages/destinations/GlobalDestinationPages');
 
@@ -112,6 +114,8 @@ describe('Partie → W toku', () => {
     ).IS_REACT_ACT_ENVIRONMENT = true;
     mocks.listRuns.mockReset();
     mocks.resume.mockReset();
+    mocks.openDurableRun.mockReset();
+    mocks.openDurableRun.mockResolvedValue({ ok: false, reason: 'run-missing' });
     mocks.listRuns.mockImplementation(async (_owner: string, query: { status?: string }) =>
       query.status === 'in_progress'
         ? {
@@ -220,6 +224,39 @@ describe('Partie → W toku', () => {
     );
     // …and the draft is exactly where the operator left it.
     expect(JSON.stringify(useRecipeStore.getState())).toBe(draftBefore);
+  });
+
+  it('does not strand the batch when the list refetches while it loads', async () => {
+    /* The served defect this pins: the loader re-ran when „W toku" refreshed, cancelled
+       the request it had already started, and then refused to start another — so
+       „Wczytujemy partię…" stayed on screen for ever. The run must still arrive. */
+    let settle: ((value: unknown) => void) | undefined;
+    mocks.openDurableRun.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          settle = resolve;
+        }),
+    );
+    await render();
+    await vi.waitFor(() => expect(rows()).toHaveLength(2));
+    await act(async () => continueButton('run-r1').click());
+    expect(mocks.openDurableRun).toHaveBeenCalledTimes(1);
+
+    // The list changes identity underneath the in-flight load, exactly as it does live.
+    await act(async () => {
+      useProductionSessionStore.setState((current) => ({ ...current }));
+    });
+    expect(mocks.openDurableRun).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      settle!({ ok: false, reason: 'run-missing' });
+    });
+    // Resolved, not stranded: the honest refusal replaced „Wczytujemy partię…".
+    await vi.waitFor(() =>
+      expect(host.querySelector('[data-testid="production-opened-run"]')?.textContent).toContain(
+        'Nie udało się otworzyć tej partii',
+      ),
+    );
   });
 
   it('keeps the list from the server after a local clear („+ Nowa receptura”)', async () => {
