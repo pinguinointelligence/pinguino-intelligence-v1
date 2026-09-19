@@ -169,12 +169,13 @@ period-end downgrade, renewal after expiry, payment failure. See
 | D. Expiry → account usable, paid entitlement off, renew via new Checkout | `planPanelState.test.ts` "D. expired plan"; `manageSubscription.test.ts` "which subscription is managed" | covered |
 | E. HOME → PRO immediate, same period end, prorated difference, Stripe preview | `manageSubscription.test.ts` "plan change decision" + "Stripe call shapes"; `stripeWebhookDispatch.test.ts` "HOME → PRO immediate upgrade" | covered |
 | F. Yearly HOME → yearly PRO: same semantics | `manageSubscription.test.ts` "HOME → PRO (same cadence)" | covered |
+| Monthly → yearly is refused, not re-priced (owner conversion authority owns it) | `manageSubscription.test.ts` "monthly → yearly belongs to the owner-accepted conversion authority" | covered |
 | G. PRO → HOME at period end (schedule mirror, cancel the change) | `manageSubscription.test.ts` "PRO → HOME"; `stripeWebhookDispatch.test.ts` "period-end downgrade schedule"; `planPanelState.test.ts` "G." | covered |
 | H. Cancelled PRO: active until period end, then paid access gone | `planPanelState.test.ts` "H."; `stripeWebhookEffects.test.ts` "cancel_at_period_end bounds an active grant" | covered |
 | I. Payment failure: correct state, no fabricated cancellation | `planPanelState.test.ts` "I. payment failure"; `stripeWebhookDispatch.test.ts` "payment failure (past_due)" | covered |
 | J. Refresh / relaunch / other device: identical state | `planPanelState.test.ts` "row selection is stable across refresh/devices" (pure function of authority rows) | covered |
 | K. Webhook retry: no duplicate subscription/invoice effects | `stripeWebhookDispatch.test.ts` byte-identical redelivery assertions; `stripeWebhookEventOrder.test.ts` | covered |
-| Migration shape (mirror columns, FK, CHECK, no client grant) | `src/billing/account/scheduledChange.migration.test.ts` | covered |
+| Migration shape (mirror columns, FK, CHECK, no client grant) + rollback file | `src/billing/account/scheduledChange.migration.test.ts` | covered |
 | Client actions + typed refusals, portal payment-method flow | `src/services/subscriptionManagement.test.ts`; `src/services/createPortalSession.test.ts` | covered |
 
 ### §22.x — Checkout & portal sessions (Track F) — PLACEHOLDER

@@ -22,6 +22,7 @@ export type ManageFailureReason =
   | 'period_already_ended'
   | 'resume_before_changing_plan'
   | 'cancel_scheduled_change_first'
+  | 'cadence_conversion_not_available'
   | 'same_offer'
   | 'preview_required'
   | 'preview_expired'
@@ -240,6 +241,7 @@ export function manageReasonFromCode(code: string | null): ManageFailureReason {
     case 'period_already_ended':
     case 'resume_before_changing_plan':
     case 'cancel_scheduled_change_first':
+    case 'cadence_conversion_not_available':
     case 'same_offer':
     case 'preview_required':
     case 'preview_expired':

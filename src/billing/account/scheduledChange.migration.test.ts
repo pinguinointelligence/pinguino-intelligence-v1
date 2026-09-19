@@ -17,6 +17,10 @@ const REPO = resolve(import.meta.dirname, '..', '..', '..');
 const FILE = '20260919120000_customer_subscriptions_scheduled_change.sql';
 
 const SQL = readFileSync(join(REPO, 'supabase', 'migrations', FILE), 'utf8').replace(/\r\n?/g, '\n');
+const ROLLBACK = readFileSync(
+  join(REPO, 'supabase', 'rollbacks', FILE.replace(/\.sql$/, '.rollback.sql')),
+  'utf8',
+).replace(/\r\n?/g, '\n');
 const EXEC = SQL.split('\n')
   .map((line) => line.replace(/--.*$/, ''))
   .join('\n');
@@ -50,6 +54,17 @@ describe('customer_subscriptions scheduled-change columns', () => {
     expect(/grant\s+(insert|update|delete)/i.test(EXEC)).toBe(false);
     expect(/to\s+(anon|authenticated)/i.test(EXEC)).toBe(false);
     expect(/create policy/i.test(EXEC)).toBe(false);
+  });
+
+  it('ships a rollback file that drops the CHECK before the columns and nothing else', () => {
+    const flat = ROLLBACK.split('\n').map((l) => l.replace(/--.*$/, '')).join(' ').replace(/\s+/g, ' ');
+    expect(flat).toContain('drop constraint if exists customer_subscriptions_scheduled_change_shape');
+    expect(flat).toContain('drop column if exists scheduled_offer_key');
+    expect(flat).toContain('drop column if exists scheduled_change_at');
+    // the CHECK references both columns, so it must go first
+    expect(flat.indexOf('drop constraint')).toBeLessThan(flat.indexOf('drop column'));
+    // a mirror rollback never touches rows, entitlements or other tables
+    expect(/delete from|truncate|drop table|entitlements/i.test(flat)).toBe(false);
   });
 
   it('carries a rollback plan and touches no other table', () => {

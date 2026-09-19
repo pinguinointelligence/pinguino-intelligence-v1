@@ -9,11 +9,13 @@
  *    the plan stays active until current_period_end and is simply not renewed.
  *  - RESUME before that date clears the flag on the SAME subscription — no
  *    second subscription, no new charge; the original renewal date holds.
- *  - A plan change is either IMMEDIATE (going up: HOME → PRO, or monthly →
- *    yearly) with Stripe proration — the customer pays only the difference
+ *  - A plan change is either IMMEDIATE (going up to a richer plan at the same
+ *    cadence) with Stripe proration — the customer pays only the difference
  *    for the rest of the current period — or SCHEDULED (going down: PRO →
  *    HOME, or yearly → monthly) at the end of the paid period through a
  *    Subscription Schedule, so an already-paid plan is never taken away.
+ *  - MONTHLY → YEARLY mid-period is NOT priced here: the owner-accepted
+ *    conversion authority owns it (see PlanChangeDecision below).
  *  - The amount the customer sees before confirming comes from a REAL Stripe
  *    invoice preview; this module only extracts it. It never computes
  *    `pricePro - priceHome` itself.
@@ -166,25 +168,45 @@ const CADENCE_RANK: Record<ManagedCadence, number> = { monthly: 1, annual: 2 };
 export type PlanChangeDecision =
   | {
       kind: 'immediate';
-      /** True when the cadence changes (monthly ↔ yearly): the cycle restarts now. */
+      /** True when the cadence changes (yearly → monthly): the cycle restarts now. */
       resetBillingCycle: boolean;
     }
   | { kind: 'scheduled' }
+  /**
+   * Monthly → yearly while the plan is running. This is NOT ours to price:
+   * the owner-accepted conversion authority
+   * (src/billing/catalog/conversionStateMachine.ts, MONTHLY_CREDIT_POLICY =
+   * 'full_current_period', owner decision 2026-09-18) credits the WHOLE paid
+   * month and anchors the annual term at the current period start — which
+   * Stripe's default time-based proration does not produce. Applying a
+   * standard proration here would charge the customer under a policy the
+   * owner replaced, so this path refuses instead of inventing a second
+   * algorithm. It becomes available when that authority gets its server
+   * implementation.
+   */
+  | { kind: 'conversion_authority' }
   | { kind: 'noop'; reason: 'same_offer' };
 
 /**
- * Going UP (product, or cadence within the same product) → immediate with
- * proration. Going DOWN on product → scheduled at period end, whatever the
- * cadence does (an already-paid PRO is never taken away mid-period). Same
- * product, yearly → monthly → scheduled (the paid year runs out first).
+ * Locked mapping (see ACCOUNT_PLAN_MANAGEMENT.md):
+ *  - same offer                         → nothing to do;
+ *  - product DOWN (PRO → HOME)          → scheduled at period end, whatever
+ *    the cadence does: an already-paid plan is never taken away mid-period;
+ *  - monthly → yearly (tier up or not)  → the conversion authority owns it;
+ *  - product UP at the same cadence     → immediate, prorated, same period end
+ *    (the customer pays only the difference for the remaining time);
+ *  - product UP, yearly → monthly       → immediate, prorated, new cycle;
+ *  - yearly → monthly, same product     → scheduled (the paid year runs out);
+ *  - same product + cadence, other variant → immediate, prorated.
  */
 export function decidePlanChange(from: ManageableOffer, to: ManageableOffer): PlanChangeDecision {
   if (from.offerKey === to.offerKey) return { kind: 'noop', reason: 'same_offer' };
   const productDelta = PRODUCT_RANK[to.product] - PRODUCT_RANK[from.product];
   const cadenceDelta = CADENCE_RANK[to.cadence] - CADENCE_RANK[from.cadence];
-  if (productDelta > 0) return { kind: 'immediate', resetBillingCycle: cadenceDelta !== 0 };
   if (productDelta < 0) return { kind: 'scheduled' };
-  if (cadenceDelta > 0) return { kind: 'immediate', resetBillingCycle: true };
+  // monthly → yearly mid-period: owner-accepted conversion authority only.
+  if (cadenceDelta > 0) return { kind: 'conversion_authority' };
+  if (productDelta > 0) return { kind: 'immediate', resetBillingCycle: cadenceDelta !== 0 };
   if (cadenceDelta < 0) return { kind: 'scheduled' };
   // same product + cadence, different variant (standard ↔ launch/founding):
   // a price change inside the same tier — apply like an upgrade, prorated.

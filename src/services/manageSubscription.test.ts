@@ -172,14 +172,27 @@ describe('plan change decision — up is immediate + prorated, down waits for th
     expect(decidePlanChange(offer('pro_monthly_standard'), offer('home_yearly_standard'))).toEqual({ kind: 'scheduled' });
   });
 
-  it('cadence changes: monthly → yearly immediate (cycle restarts), yearly → monthly scheduled', () => {
+  it('monthly → yearly belongs to the owner-accepted conversion authority, never to a default proration', () => {
+    // MONTHLY_CREDIT_POLICY = 'full_current_period' (owner 2026-09-18) credits
+    // the WHOLE paid month and anchors the annual term at the current period
+    // start. Stripe's default time-based proration does not produce that, so
+    // this path refuses rather than charging under a replaced policy.
     expect(decidePlanChange(offer('home_monthly_standard'), offer('home_yearly_standard'))).toEqual({
-      kind: 'immediate',
-      resetBillingCycle: true,
+      kind: 'conversion_authority',
     });
-    expect(decidePlanChange(offer('pro_yearly_standard'), offer('pro_monthly_standard'))).toEqual({ kind: 'scheduled' });
-    // tier + cadence at once: HOME monthly → PRO yearly is an upgrade with a new cycle
+    // tier + cadence at once is the same conversion question
     expect(decidePlanChange(offer('home_monthly_standard'), offer('pro_yearly_standard'))).toEqual({
+      kind: 'conversion_authority',
+    });
+    expect(decidePlanChange(offer('pro_monthly_standard'), offer('pro_yearly_standard'))).toEqual({
+      kind: 'conversion_authority',
+    });
+  });
+
+  it('yearly → monthly moves no money now: same product scheduled, richer product immediate', () => {
+    expect(decidePlanChange(offer('pro_yearly_standard'), offer('pro_monthly_standard'))).toEqual({ kind: 'scheduled' });
+    // HOME yearly → PRO monthly is still an upgrade: applied now, new cycle.
+    expect(decidePlanChange(offer('home_yearly_standard'), offer('pro_monthly_standard'))).toEqual({
       kind: 'immediate',
       resetBillingCycle: true,
     });
@@ -378,6 +391,14 @@ describe('Deno entrypoint — source pins', () => {
     expect(/subscriptions\.create\(/.test(indexSource)).toBe(false);
     expect(/checkout\.sessions\.create\(/.test(indexSource)).toBe(false);
     expect(/refunds\.create\(/.test(indexSource)).toBe(false);
+  });
+
+  it('refuses monthly → yearly instead of applying a second proration algorithm', () => {
+    expect(/cadence_conversion_not_available/.test(indexSource)).toBe(true);
+    // the refusal happens before any Stripe call for that change
+    expect(indexSource.indexOf('cadence_conversion_not_available')).toBeLessThan(
+      indexSource.indexOf('invoices.createPreview'),
+    );
   });
 
   it('the preview amount comes from Stripe (invoices.createPreview); no local price arithmetic', () => {

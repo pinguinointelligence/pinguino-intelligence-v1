@@ -44,7 +44,7 @@ Action `resume` clears the flag on the **same** subscription while the period is
 no new subscription, no charge now, the original renewal date holds. A period that has already
 ended refuses with `period_already_ended` — that customer renews through Checkout instead.
 
-### Upgrade (HOME → PRO, or monthly → yearly): immediate + prorated
+### Upgrade (HOME → PRO at the same cadence): immediate + prorated
 
 `decidePlanChange` classifies the move. Going up applies immediately through
 `subscriptions.update` with `proration_behavior: 'always_invoice'` and an explicit
@@ -57,6 +57,21 @@ confirm will use and returns Stripe's own `amount_due`, tax, credit and next per
 is forbidden from computing `pricePro - priceHome`: a preview without a Stripe amount is
 rejected client-side (`subscriptionManagement.ts`). A confirm must echo the preview's
 `prorationTimestamp` and is refused when stale (`preview_expired`, 30 minutes).
+
+### Monthly → yearly: owned by the conversion authority, not by this function
+
+`MONTHLY_CREDIT_POLICY = 'full_current_period'` (owner decision 2026-09-18,
+`src/billing/catalog/conversionStateMachine.ts`) credits the **whole** paid month against the
+annual price whatever day the customer converts, and anchors the annual term at the current
+monthly period start so the paid month becomes month 1 of 12. Stripe's default time-based
+proration does not produce that, so `manage-subscription` refuses the change
+(`cadence_conversion_not_available`) rather than charging under a policy the owner replaced —
+and the panel does not offer the button (`actions.convertToYearly` is false). This applies to a
+pure cadence change and to a combined tier + cadence change alike. It becomes available when
+that authority gets a server implementation with a Stripe-verified call shape.
+
+Yearly → monthly is unaffected: no money moves today, so it is scheduled at period end like any
+other downgrade.
 
 ### Downgrade (PRO → HOME, or yearly → monthly): next period
 
@@ -86,7 +101,7 @@ never does.
 
 | Piece | Path |
 |---|---|
-| Migration (pending-change mirror) | `supabase/migrations/20260919120000_customer_subscriptions_scheduled_change.sql` |
+| Migration (pending-change mirror) | `supabase/migrations/20260919120000_customer_subscriptions_scheduled_change.sql` (+ matching file in `supabase/rollbacks/`) |
 | Actions (Edge Function) | `supabase/functions/manage-subscription/{index,logic}.ts` |
 | Subscription/schedule sync + entitlement mirror | `supabase/functions/stripe-webhook/{dispatch,effects}.ts` |
 | Portal payment-method flow | `supabase/functions/create-portal-session/{index,logic}.ts` |
@@ -101,7 +116,7 @@ never does.
 | `cancel` | — | `cancel_at_period_end = true` (releases a pending schedule first) |
 | `resume` | — | `cancel_at_period_end = false` |
 | `preview_change` | `targetOfferKey` | `invoices.createPreview` (immediate) or the period-end plan (scheduled) |
-| `confirm_change` | `targetOfferKey`, `prorationTimestamp` | `subscriptions.update` with proration, or a Subscription Schedule |
+| `confirm_change` | `targetOfferKey`, `prorationTimestamp` (immediate only) | `subscriptions.update` with proration, or a Subscription Schedule |
 | `cancel_scheduled_change` | — | `subscriptionSchedules.release` |
 
 Identity rules: the caller is the JWT user, the Stripe customer comes from `billing_customers`,
@@ -122,6 +137,18 @@ price id, a customer id, a subscription id or an amount.
   upsert on `stripe_subscription_id`, converge-to-desired entitlements.
 * State lives only in these tables. Refresh, logout/login and another device show the same
   status and the same dates; nothing is cached in `localStorage`.
+
+## Known divergence (follow-up, not introduced here)
+
+`gellatti_has_paid_access_v1` keeps a `customer_subscriptions` fallback that grants access on
+`status in ('active','trialing')` without looking at `cancel_at_period_end`. Between the moment
+a cancelled plan's period ends and the moment `customer.subscription.deleted` lands, that
+fallback still answers yes, while the entitlement row (now bounded by `current_period_end`) and
+the account panel both say the plan ended. The window is the webhook's delivery lag, it
+self-heals, and it is the behaviour that already existed — this change only makes the primary
+entitlement path stricter, never looser. Tightening the SQL fallback touches a SECURITY DEFINER
+function used by ~10 call sites on a database staging shares with production, so it is left as a
+separate, deliberately-deployed change.
 
 ## Webhook events used
 

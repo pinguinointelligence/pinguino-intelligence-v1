@@ -259,6 +259,14 @@ Deno.serve(async (req) => {
         if (live.cancelAtPeriodEnd) return json(409, { error: 'resume_before_changing_plan' });
         const change = decidePlanChange(from, to);
         if (change.kind === 'noop') return json(409, { error: change.reason });
+        // Monthly → yearly is priced by the owner-accepted conversion
+        // authority (full-month credit, annual term anchored at the current
+        // period start), which has no server implementation yet. Refusing is
+        // the honest answer — a default Stripe proration here would charge
+        // under a policy the owner replaced.
+        if (change.kind === 'conversion_authority') {
+          return json(409, { error: 'cadence_conversion_not_available' });
+        }
         // Stripe refuses direct updates on a subscription a schedule drives, and
         // a preview of one is meaningless. The pending change must be cancelled
         // first — preview and confirm refuse together, so a preview the customer

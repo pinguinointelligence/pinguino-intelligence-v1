@@ -60,16 +60,19 @@ describe('active HOME (A. new purchase → auto-renew ON)', () => {
       resume: false,
       upgradeToPro: true,
       downgradeToHome: false,
-      changeCadence: true,
+      // monthly plan: yearly conversion is the accepted authority's, not ours
+      changeCadence: false,
+      convertToYearly: false,
       renew: false,
       choosePlan: false,
     });
   });
 
-  it('yearly HOME shows the yearly catalog price', () => {
+  it('yearly HOME shows the yearly catalog price and may switch to monthly at period end', () => {
     const state = deriveBillingPlanState([row({ offer_key: 'home_yearly_standard', cadence: 'annual' })], NOW);
     expect(state.priceLabel).toBe('49 € / rok');
     expect(state.cadence).toBe('annual');
+    expect(state.actions).toMatchObject({ changeCadence: true, convertToYearly: false });
   });
 });
 
@@ -78,7 +81,14 @@ describe('active PRO', () => {
     const state = deriveBillingPlanState([row({ offer_key: 'pro_monthly_standard', product: 'pro' })], NOW);
     expect(state.status).toBe('active');
     expect(state.priceLabel).toBe('24,99 € / miesiąc');
-    expect(state.actions).toMatchObject({ upgradeToPro: false, downgradeToHome: true, changeCadence: true, cancel: true });
+    expect(state.actions).toMatchObject({
+      upgradeToPro: false,
+      downgradeToHome: true,
+      // PRO monthly: no yearly conversion from here yet (accepted authority owns it)
+      changeCadence: false,
+      convertToYearly: false,
+      cancel: true,
+    });
   });
 });
 

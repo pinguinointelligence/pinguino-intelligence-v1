@@ -47,6 +47,14 @@ export interface BillingPlanActions {
   downgradeToHome: boolean;
   changeCadence: boolean;
   cancelScheduledChange: boolean;
+  /**
+   * Monthly → yearly from the account panel. FALSE for now: that conversion is
+   * priced by the owner-accepted conversion authority (full-month credit,
+   * annual term anchored at the current period start — owner decision
+   * 2026-09-18), which has no server implementation yet, so the panel must not
+   * offer a button the backend refuses.
+   */
+  convertToYearly: boolean;
   /** Expired: „Odnów HOME” / „Przejdź na PRO” — a NEW checkout. */
   renew: boolean;
   /** No plan ever: „Wybierz HOME” / „Wybierz PRO”. */
@@ -89,6 +97,7 @@ const NO_ACTIONS: BillingPlanActions = {
   downgradeToHome: false,
   changeCadence: false,
   cancelScheduledChange: false,
+  convertToYearly: false,
   renew: false,
   choosePlan: false,
   updatePaymentMethod: false,
@@ -264,7 +273,9 @@ export function deriveBillingPlanState(
       cancel: true,
       upgradeToPro: product === 'home',
       downgradeToHome: product === 'pro',
-      changeCadence: cadence === 'monthly' || cadence === 'annual',
+      // Yearly → monthly is executable today (scheduled at period end).
+      // Monthly → yearly waits for the conversion authority (see the action's doc).
+      changeCadence: cadence === 'annual',
     },
   };
 }
