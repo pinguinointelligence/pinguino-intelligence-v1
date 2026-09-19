@@ -121,6 +121,7 @@ import {
   isMaterialUserIntentDeviation,
   measureUserIntentDrift,
   normalizedLineDrift,
+  USER_INTENT_DRIFT_EPS,
   userIntentDriftTotal,
   type UserIntentDeviation,
 } from '@/features/formulation/userLineIntent';
@@ -7604,9 +7605,20 @@ function selectNearestLegalDirectionCandidate(
   // solver's own holds — a customer's own range carries a different interval and
   // is never touched. Everything else in the set (locks, percents, structural
   // ceilings, machine and safety limits) comes through untouched.
+  //
+  // STAGE B RE-APPLIES THE HOLDS AFTER WIDENING. Widening a registered
+  // PREFERENCE band must never widen a STRUCTURAL one that governs the same
+  // line, so the holds run again over the widened set: a structural ceiling
+  // intersects whatever interval it finds and can only narrow it. Without this
+  // second pass a vegan ±2 request took inulin past its calibrated structural
+  // maximum (`recipeVectorProximity.test.ts`) — the preference had been widened
+  // and the ceiling was no longer there to stop it.
   const solverSet =
     envelope === 'extended'
-      ? withExtendedRelaxableRanges(input, solverHolds(incumbentInput, set))
+      ? solverHolds(
+          incumbentInput,
+          withExtendedRelaxableRanges(input, solverHolds(incumbentInput, set)),
+        )
       : solverHolds(incumbentInput, set);
   const excludedIngredientIds = new Set(
     (options.excludedIngredientIds ?? []).map(canonicalIngredientIdFromSourceId),
@@ -7651,6 +7663,28 @@ function selectNearestLegalDirectionCandidate(
     // Main 600 g held; the 1000 -> 670 role-aware rescale round-trip). A nearer
     // Direction candidate is never worth moving the Main the customer crowned.
     if (!mainGroupLinesByteIdentical(incumbentInput, executable)) return null;
+    // A PREFERENCE IS NOT WORTH REWRITING THE CUSTOMER'S RECIPE.
+    //
+    // Every other gate here asks whether the candidate is LEGAL. None asked
+    // whether it is still the customer's recipe, and a Direction-ranked search
+    // will happily buy a nearer target by parking batch mass wherever the bands
+    // allow: on the vegan Horchata draft it published GROUND CINNAMON at 82 g
+    // where the customer typed 2 g, against an accepted ceiling of 25 g
+    // (`recipeVectorProximity.test.ts`).
+    //
+    // The pipeline already owns the right measure — `userIntentDriftTotal`, the
+    // solver's own ranking key for „how far is this from what the user asked".
+    // So the rule needs no new threshold and no new authority: a candidate
+    // published for being NEARER on Direction may not be FURTHER from the
+    // customer than the one it replaces. Growth is still free (engine §11: do
+    // not freeze the recipe) — it simply may not be paid for with the
+    // customer's own amounts.
+    if (
+      userIntentDriftTotal(userIntentBaselineForSelector, executable) >
+      incumbentUserIntentDrift + USER_INTENT_DRIFT_EPS
+    ) {
+      return null;
+    }
     if (options.requirePracticalPreview === true && preview.practicalization?.status !== 'ready') {
       return null;
     }
@@ -7666,6 +7700,15 @@ function selectNearestLegalDirectionCandidate(
     }
     return preview;
   };
+
+  // The customer's own amounts, measured once, from the draft they typed — not
+  // from the incumbent, so a chain of challengers cannot drift away one step at
+  // a time while each step looks harmless.
+  const userIntentBaselineForSelector = buildUserIntentBaseline(input, solverSet);
+  const incumbentUserIntentDrift = userIntentDriftTotal(
+    userIntentBaselineForSelector,
+    incumbentInput,
+  );
 
   const budget = {
     remaining: DIRECTION_SELECTOR_EVALUATION_BUDGET,

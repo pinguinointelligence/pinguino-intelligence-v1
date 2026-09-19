@@ -2,6 +2,7 @@ import type { RecipeInput } from '@/engine';
 import { canonicalIngredientId } from '@/data/ingredients/canonicalIngredientIdentity';
 import type { ConstraintSet } from '@/features/recipe-constraints';
 import { permittedGramBand } from '@/features/recipe-direction/directionRelaxation';
+import { VEGAN_INULIN_CALIBRATION_MAX_PERCENT } from '@/features/formulation/veganProfileConstraints';
 
 export const OWNER_INULIN_POLICY = Object.freeze({
   policyId: 'gellatti-generic-inulin',
@@ -44,8 +45,35 @@ export function ownerInulinPresentDoseIsValid(baseGrams: number, grams: number):
  * `relaxableRangePolicy.relaxationScorePenalty`, not refused here.
  */
 export function ownerInulinDoseIsPermitted(input: RecipeInput, grams: number): boolean {
-  const band = permittedGramBand(input, ownerInulinGramBand(input.target_batch_grams));
+  const band = permittedInulinBand(input);
   return grams >= band.minGrams - 1e-9 && grams <= band.maxGrams + 1e-9;
+}
+
+/**
+ * THE BAND THIS DRAFT MAY ACTUALLY OCCUPY — a PREFERENCE widened by the
+ * controlled ±2 relaxation, then INTERSECTED with every STRUCTURAL limit that
+ * governs the same line.
+ *
+ * Relaxing a preference must never relax a structural ceiling. The Vegan
+ * calibration envelope is one: widening this dosage preference under a ±2
+ * request took a vegan draft to 95 g against a calibrated maximum of 83.1 g,
+ * and the whole Preview was then refused — the customer lost an answer because
+ * two authorities disagreed about the same line
+ * (`recipeVectorProximity.test.ts`). The tighter limit always wins.
+ */
+export function permittedInulinBand(input: RecipeInput): OwnerInulinGramBand {
+  const normal = ownerInulinGramBand(input.target_batch_grams);
+  const permitted = permittedGramBand(input, normal);
+  const structuralMaxGrams =
+    input.category === 'vegan_gelato'
+      ? (VEGAN_INULIN_CALIBRATION_MAX_PERCENT / 100) * input.target_batch_grams
+      : Number.POSITIVE_INFINITY;
+  const maxGrams = Math.min(permitted.maxGrams, structuralMaxGrams);
+  return {
+    minGrams: Math.min(permitted.minGrams, maxGrams),
+    preferredGrams: normal.preferredGrams,
+    maxGrams,
+  };
 }
 
 export type OwnerInulinPolicyIssueCode =
@@ -95,7 +123,7 @@ export function ownerInulinPolicyIssues(input: RecipeInput): OwnerInulinPolicyIs
   // valid — merely less ideal — result, so it must not be reported as a policy
   // breach here: everything downstream of this function treats an issue as a
   // refusal. Leaving the preferred band is charged by the canonical fit score.
-  const permitted = permittedGramBand(input, band);
+  const permitted = permittedInulinBand(input);
   const base = {
     lineIds,
     grams,

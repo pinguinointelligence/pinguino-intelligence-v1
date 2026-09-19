@@ -52,17 +52,41 @@ export function veganInulinLineIds(input: RecipeInput): string[] {
  * an unreachable exact target degrades to the nearest legal candidate.
  *
  * Only lines the user left to the solver (`ai`) are held — an explicit owner
- * lock, percent or range always wins, and the hold is never persisted as a
+ * lock or percent always wins, and the hold is never persisted as a
  * user-visible §17 constraint.
+ *
+ * A line that already carries a solver-side RANGE is a different case, and
+ * getting it wrong breached this very ceiling. Another authority's dosage
+ * PREFERENCE can be written onto the same inulin line, and this hold used to
+ * step aside for it entirely — so on a vegan draft the preference band replaced
+ * the structural ceiling, and widening that preference under a ±2 request took
+ * inulin to 95 g against a calibrated maximum of 83.1 g
+ * (`recipeVectorProximity.test.ts`). A structural ceiling is not a preference:
+ * it NARROWS whatever interval the line already carries and never widens it, so
+ * whichever authority writes first, the tighter limit is what the search sees.
  */
 export function withVeganInulinEnvelopeHold(input: RecipeInput, set: ConstraintSet): ConstraintSet {
   if (input.category !== 'vegan_gelato') return set;
+  // THE ENVELOPE IS A PERCENTAGE, SO THE WINDOW MUST BE ONE TOO.
+  //
+  // The ceiling used to be taken against the TARGET batch while the vector the
+  // search actually moves is routinely off batch, and the executable is
+  // rescaled to the target at the end. A line sitting at the ceiling of an
+  // 840 g working vector is 9.5 % of it, and the rescale to 1000 g carries that
+  // 9.5 % straight through the 8.31 % envelope: on the vegan Horchata draft the
+  // search produced 80 g, the rescale made it 95 g, and the customer lost the
+  // whole Preview to a refusal (`recipeVectorProximity.test.ts`). Measuring the
+  // window against the vector's OWN mass is rescale-invariant, so what the
+  // search may reach is exactly what the envelope permits. On an on-batch
+  // vector the two masses are equal and nothing changes at all.
   const total = input.target_batch_grams;
   if (!Number.isFinite(total) || total <= 0) return set;
-  const ceilingGrams = (VEGAN_INULIN_CALIBRATION_MAX_PERCENT / 100) * total;
+  const workingMass = input.items.reduce((sum, item) => sum + item.planned_grams, 0);
+  const envelopeMass = workingMass > 0 ? Math.min(workingMass, total) : total;
+  const ceilingGrams = (VEGAN_INULIN_CALIBRATION_MAX_PERCENT / 100) * envelopeMass;
   const lineIds = veganInulinLineIds(input).filter((lineId) => {
     const existing = set.byLineId[lineId];
-    return existing === undefined || existing.mode === 'ai';
+    return existing === undefined || existing.mode === 'ai' || existing.mode === 'range';
   });
   if (lineIds.length === 0) return set;
   // Several inulin lines share ONE envelope; hold each at the shared ceiling so
@@ -71,10 +95,20 @@ export function withVeganInulinEnvelopeHold(input: RecipeInput, set: ConstraintS
     byLineId: {
       ...set.byLineId,
       ...Object.fromEntries(
-        lineIds.map((lineId) => [
-          lineId,
-          { mode: 'range', minGrams: 0, maxGrams: ceilingGrams } as const,
-        ]),
+        lineIds.map((lineId) => {
+          const existing = set.byLineId[lineId];
+          // INTERSECT, never replace: the floor is the higher of the two and
+          // the ceiling the lower, so no authority can be widened by another.
+          const minGrams = existing?.mode === 'range' ? Math.max(0, existing.minGrams) : 0;
+          const maxGrams =
+            existing?.mode === 'range'
+              ? Math.min(ceilingGrams, existing.maxGrams)
+              : ceilingGrams;
+          return [
+            lineId,
+            { mode: 'range', minGrams: Math.min(minGrams, maxGrams), maxGrams } as const,
+          ];
+        }),
       ),
     },
   };
