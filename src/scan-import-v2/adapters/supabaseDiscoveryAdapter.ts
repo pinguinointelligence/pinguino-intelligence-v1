@@ -250,7 +250,8 @@ export function createSupabaseDiscoveryPort(
     if (!data || typeof data !== 'object' || Array.isArray(data) || Object.keys(data).length === 0)
       throw new Error(`${name}: malformed_response`);
     const d = obj(data);
-    if (typeof d['error'] === 'string') throw new Error(`${name}: ${d['error']}`);
+    if (typeof d['error'] === 'string')
+      throw Object.assign(new Error(`${name}: ${d['error']}`), { kind: 'service' });
     return d;
   };
   const applySession = (s: DiscoverySession, d: Record<string, unknown>): DiscoverySession => {

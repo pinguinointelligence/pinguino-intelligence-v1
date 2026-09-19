@@ -30,7 +30,7 @@ PASS below means deterministic local regression coverage, **not a live staging s
 | NET-03 | Genuine transport failure, honest retry, no false success/absence | PASS | Same file, failure then explicit barcode-preserving retry |
 | NET-04 | 401/403 retain access-error meaning | PASS | Same file, both HTTP statuses |
 | NET-05 | Structured 409 not-ready / stale assessment | PASS | Same file, both business verdicts |
-| NET-06 | 500/546 and malformed payload remain service failures | PASS | Same file, both statuses and four malformed payload cases |
+| NET-06 | 500/546, malformed payload and server error envelope remain service failures | PASS | Same file, both statuses and five payload cases |
 | NET-07 | NO_SAFE_RESULT / missing fields remain business data | PASS | Same file, genuine missing-total-solids form |
 | NET-08 | Stale response cannot replace newer run | PASS | Existing `ScanFlow.currentScan.test.tsx`, ST17-CROSS-EAN and ST17-SAME-EAN |
 | NET-09a | Research retry retains session and per-attempt sharing | PASS | `ScanFlow.networkHint.test.tsx` |
@@ -44,7 +44,7 @@ PASS below means deterministic local regression coverage, **not a live staging s
 2. Implemented: explicit request permission, truthful service errors, operation-preserving retry.
 3. Production files: `ScanFlow.tsx`, `scannerStatusCopy.ts`, scan-import-v2 `contracts.ts`,
    `pipeline.ts`, `adapters/supabaseDiscoveryAdapter.ts`; plus one focused test file and this ledger.
-4. Added tests: `src/features/scan-flow/ScanFlow.networkHint.test.tsx` (16 cases).
+4. Added tests: `src/features/scan-flow/ScanFlow.networkHint.test.tsx` (17 cases).
 5. Exact focused command:
 
    ```sh
@@ -53,7 +53,15 @@ PASS below means deterministic local regression coverage, **not a live staging s
    git diff --check
    ```
 
-6. Local result: 6 files, 104 tests PASS; targeted lint and diff check PASS. An initial test fixture
+   Final UI/adapter amendment rechecked with:
+
+   ```sh
+   npx vitest run src/features/scan-flow/ScanFlow.networkHint.test.tsx src/scan-import-v2/__tests__/discoveryAdapter.test.ts --reporter=dot
+   npx eslint src/features/scan-flow/ScanFlow.networkHint.test.tsx src/scan-import-v2/adapters/supabaseDiscoveryAdapter.ts
+   git diff --check
+   ```
+
+6. Local result: 6 files, 104 tests PASS; final UI/adapter amendment: 2 files, 35 tests PASS, including the additional server-error envelope case. Targeted lint and diff check PASS. An initial test fixture
    lacked the source confidence required by existing presentation rules; corrected the fixture.
 7. Accepted flows retested: shared Scanner recipe/catalog flow, automatic finalization, current-run
    rejection, discovery adapter session contract, explicit offline-only/cache behavior.

@@ -207,7 +207,7 @@ describe('Scanner explicit network attempt', () => {
     },
   );
 
-  it.each([null, [], 'not JSON', {}])(
+  it.each([null, [], 'not JSON', {}, { error: 'provider_network_timeout' }])(
     'NET-06 malformed payload %j is a service error, never absence or offline',
     async (data) => {
       invoke.mockResolvedValue(ok(data));
